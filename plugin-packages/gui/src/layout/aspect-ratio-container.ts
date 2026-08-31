@@ -1,6 +1,6 @@
 import { effectsClass, math } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { Container } from '../core/control';
-import type { AspectRatioContainerData } from '../data';
 import { AspectRatioStretchMode, LayoutAlignment } from './enums';
 import { assertEnumValue, assertFinite } from './utils';
 
@@ -135,7 +135,7 @@ export class AspectRatioContainer extends Container {
     return 0;
   }
 
-  override fromData (data: AspectRatioContainerData): void {
+  override fromData (data: spec.AspectRatioContainerData): void {
     super.fromData(data);
     if (data.ratio !== undefined) {
       this.ratio = data.ratio;

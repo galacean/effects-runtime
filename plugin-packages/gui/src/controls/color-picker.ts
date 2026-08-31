@@ -9,8 +9,8 @@ import type {
   EventEmitterListener,
   InputEventMouseButton,
   InputEventMouseMotion,
+  spec,
 } from '@galacean/effects';
-import type { ColorPickerButtonData, ColorPickerData } from '../data';
 import { Control, SizeFlags } from '../core/control';
 import type { ControlEvent } from '../core/control';
 import { MouseFilter } from '../core/enums';
@@ -303,7 +303,7 @@ export class ColorPicker extends VBoxContainer {
     }
   }
 
-  override fromData (data: ColorPickerData): void {
+  override fromData (data: spec.ColorPickerData): void {
     super.fromData(data);
     if (data.color !== undefined) {
       this.currentColor.copyFrom(data.color);
@@ -391,7 +391,7 @@ export class ColorPickerButton extends Button {
     super.onDestroy();
   }
 
-  override fromData (data: ColorPickerButtonData): void {
+  override fromData (data: spec.ColorPickerButtonData): void {
     super.fromData(data);
     if (data.color !== undefined) {this.picker.fromData({ color: data.color });}
     if (data.editAlpha !== undefined) {this.editAlpha = data.editAlpha;}

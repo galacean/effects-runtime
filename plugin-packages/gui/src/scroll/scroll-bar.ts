@@ -11,11 +11,11 @@ import type {
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
+  spec,
 } from '@galacean/effects';
 import { Orientation } from '../layout/enums';
 import { Range } from './range';
 import type { RangeEvent } from './range';
-import type { ScrollBarData } from '../data';
 
 export type ScrollBarEvent = RangeEvent & {
   scrolling: [],
@@ -408,7 +408,7 @@ export class ScrollBar extends Range {
     return icon ? this.orientation === Orientation.Horizontal ? icon.height : icon.width : 0;
   }
 
-  override fromData (data: ScrollBarData): void {
+  override fromData (data: spec.ScrollBarData): void {
     super.fromData(data);
     if (data.customStep !== undefined) {
       this.customStep = data.customStep;

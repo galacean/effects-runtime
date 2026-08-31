@@ -2,7 +2,6 @@ import { Component, effectsClass, getClass } from '@galacean/effects';
 import type { Constructor, Engine, Transform, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 import type { Control } from '../core/control';
-import type { UIControlData } from '../core/data';
 import { UICanvas } from './ui-canvas';
 
 /**
@@ -206,13 +205,13 @@ export class UIControl extends Component {
 
   override fromData (data: spec.ComponentData): void {
     super.fromData(data);
-    const serialized = (data as UIControlData).control;
-    const Constructor = getClass(serialized.type) as Constructor<Control>;
+    const uiControlData = data as spec.UIControlData;
+    const Constructor = getClass(uiControlData.control) as Constructor<Control>;
     const control = new Constructor(this.engine);
 
     this.attachControl(control);
     this.syncingLocation = true;
-    control.fromData(serialized.data);
+    control.fromData(uiControlData.data);
     this.syncingLocation = false;
     this.syncControlLocationToItem();
   }

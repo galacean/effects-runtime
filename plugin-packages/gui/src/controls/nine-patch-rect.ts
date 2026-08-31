@@ -7,12 +7,12 @@ import type {
   Engine,
   EventEmitterListener,
   Texture,
+  spec,
 } from '@galacean/effects';
 import { Control } from '../core/control';
 import type { ControlEvent, Rect } from '../core/control';
 import { MouseFilter } from '../core/enums';
 import { AxisStretchMode, Side } from './enums';
-import type { NinePatchRectData } from '../data';
 
 export type NinePatchRectEvent = ControlEvent & {
   textureChanged: [texture: Texture | null],
@@ -162,7 +162,7 @@ export class NinePatchRect extends Control {
     };
   }
 
-  override fromData (data: NinePatchRectData): void {
+  override fromData (data: spec.NinePatchRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {
       this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;

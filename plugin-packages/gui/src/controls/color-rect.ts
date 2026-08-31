@@ -1,8 +1,7 @@
 import { effectsClass, math } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
+import type { Engine, spec } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
-import type { ColorRectData } from '../data';
 
 @effectsClass('ColorRect')
 export class ColorRect extends Control {
@@ -18,7 +17,7 @@ export class ColorRect extends Control {
     this.fillRect(0, 0, this.width, this.height, this.color);
   }
 
-  override fromData (data: ColorRectData): void {
+  override fromData (data: spec.ColorRectData): void {
     super.fromData(data);
     if (data.color !== undefined) {
       this.color.copyFrom(data.color);

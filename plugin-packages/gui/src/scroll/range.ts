@@ -1,8 +1,7 @@
 import { EventEmitter } from '@galacean/effects';
-import type { Engine, EventEmitterListener } from '@galacean/effects';
+import type { Engine, EventEmitterListener, spec } from '@galacean/effects';
 import { Control } from '../core/control';
 import type { ControlEvent } from '../core/control';
-import type { RangeData } from '../data';
 
 export type RangeEvent = ControlEvent & {
   changed: [],
@@ -325,7 +324,7 @@ export class Range extends Control {
     }
   }
 
-  override fromData (data: RangeData): void {
+  override fromData (data: spec.RangeData): void {
     this.suppressSignals = true;
     super.fromData(data);
     if (data.allowGreater !== undefined) {

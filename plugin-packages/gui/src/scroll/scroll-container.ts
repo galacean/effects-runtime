@@ -10,13 +10,13 @@ import type {
   InputEventMouseButton,
   InputEventScreenDrag,
   InputEventScreenTouch,
+  spec,
 } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control, ControlEvent, RootControl } from '../core/control';
 import { FocusMode } from '../core/enums';
 import { ScrollMode } from './enums';
 import { HScrollBar, ScrollBar, VScrollBar } from './scroll-bar';
-import type { ScrollContainerData } from '../data';
 
 export type ScrollContainerEvent = ControlEvent & {
   scrollStarted: [],
@@ -651,7 +651,7 @@ export class ScrollContainer extends Container {
     }
   }
 
-  override fromData (data: ScrollContainerData): void {
+  override fromData (data: spec.ScrollContainerData): void {
     super.fromData(data);
     if (data.horizontalScrollMode !== undefined) {
       this.horizontalScrollMode = data.horizontalScrollMode;

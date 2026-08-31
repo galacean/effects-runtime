@@ -2,10 +2,9 @@ import {
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine, TextMeasurement } from '@galacean/effects';
+import type { Engine, TextMeasurement, spec } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
-import type { LabelData } from '../data';
 import { AutowrapMode, HorizontalAlignment, TextOverflow, VerticalAlignment } from './enums';
 
 type TextLine = {
@@ -415,7 +414,7 @@ export class Label extends Control {
     );
   }
 
-  override fromData (data: LabelData): void {
+  override fromData (data: spec.LabelData): void {
     super.fromData(data);
     if (data.text !== undefined) {
       this.text = data.text;

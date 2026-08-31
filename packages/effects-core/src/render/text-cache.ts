@@ -11,7 +11,7 @@ export type FontWeight = 'normal' | 'bold' | number;
 /**
  * 字形（对齐 canvas 2d font 字符串可接受值）
  */
-export type FontStyle = 'normal' | 'italic';
+export type FontStyle = 'normal' | 'italic' | 'oblique';
 
 /**
  * 单张字符 atlas 的逻辑边长。实际 canvas 像素尺寸会乘以渲染 resolution。
@@ -117,7 +117,7 @@ export class GlyphAtlas {
     ctx.fillStyle = '#ffffff';
 
     this.paddingPx = GLYPH_PADDING * resolution;
-    this.italicScale = fontStyle === 'italic' ? 2 : 1;
+    this.italicScale = fontStyle === 'italic' || fontStyle === 'oblique' ? 2 : 1;
 
     // ascent/descent 由探针 '|ÉqÅM' 测得 actualBoundingBox（重音字已抬高 ink 顶），
     // 两者内部保持浮点，仅 cell 高做一次外层 ceil — 与 padding 共同保证 cell 内不裁切

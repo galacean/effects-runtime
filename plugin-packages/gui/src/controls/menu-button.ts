@@ -1,7 +1,6 @@
 import { EventEmitter, effectsClass, math } from '@galacean/effects';
-import type { Engine, EventEmitterListener } from '@galacean/effects';
+import type { Engine, EventEmitterListener, spec } from '@galacean/effects';
 import { FocusMode } from '../core/enums';
-import type { MenuButtonData, OptionButtonData } from '../data';
 import { Button } from './button';
 import type { ContentInsets } from './button';
 import { ButtonDrawMode, HorizontalAlignment } from './enums';
@@ -36,7 +35,7 @@ export class MenuButton extends Button {
     super.onDestroy();
   }
 
-  override fromData (data: MenuButtonData): void {
+  override fromData (data: spec.MenuButtonData): void {
     super.fromData(data);
     if (data.items !== undefined) {this.popupMenu.fromData({ items: data.items });}
   }
@@ -168,7 +167,7 @@ export class OptionButton extends MenuButton {
     super.onDestroy();
   }
 
-  override fromData (data: OptionButtonData): void {
+  override fromData (data: spec.OptionButtonData): void {
     super.fromData(data);
     if (data.selected !== undefined) {this.select(data.selected, false);}
   }

@@ -2,10 +2,9 @@ import {
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine, Texture, TextureRegion } from '@galacean/effects';
+import type { Engine, Texture, TextureRegion, spec } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
-import type { TextureRectData } from '../data';
 import { TextureExpandMode, TextureStretchMode } from './enums';
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
@@ -206,7 +205,7 @@ export class TextureRect extends Control {
     }
   }
 
-  override fromData (data: TextureRectData): void {
+  override fromData (data: spec.TextureRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {
       this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;

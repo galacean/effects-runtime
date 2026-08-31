@@ -10,8 +10,8 @@ import type {
   InputEventMouseButton,
   InputEventMouseMotion,
   Texture,
+  spec,
 } from '@galacean/effects';
-import type { PopupMenuData } from '../data';
 import type { ControlEvent } from '../core/control';
 import { Popup } from './popup';
 
@@ -246,7 +246,7 @@ export class PopupMenu extends Popup {
     return -1;
   }
 
-  override fromData (data: PopupMenuData): void {
+  override fromData (data: spec.PopupMenuData): void {
     super.fromData(data);
     if (data.items !== undefined) {
       this.clear();

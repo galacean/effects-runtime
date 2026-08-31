@@ -6,14 +6,8 @@ import type {
   FontWeight,
   Graphics,
   Texture,
+  spec,
 } from '@galacean/effects';
-import type {
-  StyleBoxData,
-  StyleBoxMarginsData,
-  ThemeData,
-  ThemeFontData,
-  ThemeItemCollectionData,
-} from './data';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -75,7 +69,7 @@ function cloneMargins (value: StyleBoxMargins): StyleBoxMargins {
   return { left: value.left, top: value.top, right: value.right, bottom: value.bottom };
 }
 
-function marginsFromData (data?: StyleBoxMarginsData): StyleBoxMargins {
+function marginsFromData (data?: spec.StyleBoxMarginsData): StyleBoxMargins {
   return {
     left: data?.left ?? 0,
     top: data?.top ?? 0,
@@ -100,7 +94,7 @@ function cloneFont (value: ThemeFont): ThemeFont {
   return { family: value.family, weight: value.weight, style: value.style };
 }
 
-function fontFromData (value: ThemeFontData): ThemeFont {
+function fontFromData (value: spec.ThemeFontData): ThemeFont {
   return { family: value.family, weight: value.weight ?? 'normal', style: value.style ?? 'normal' };
 }
 
@@ -761,7 +755,7 @@ export class Theme {
     this.notifyChanged(true);
   }
 
-  static fromData (engine: Engine, data: ThemeData): Theme {
+  static fromData (engine: Engine, data: spec.ThemeData): Theme {
     const theme = new Theme();
 
     theme.batch(() => {
@@ -788,7 +782,7 @@ export class Theme {
     return theme;
   }
 
-  private setCollectionFromData (engine: Engine, type: string, data: ThemeItemCollectionData): void {
+  private setCollectionFromData (engine: Engine, type: string, data: spec.ThemeItemCollectionData): void {
     const colors = data.colors ?? {};
     const constants = data.constants ?? {};
     const fonts = data.fonts ?? {};
@@ -867,7 +861,7 @@ export class Theme {
   }
 }
 
-export function styleBoxFromData (engine: Engine, data: StyleBoxData): StyleBox {
+export function styleBoxFromData (engine: Engine, data: spec.StyleBoxData): StyleBox {
   let styleBox: StyleBox;
 
   if (data.type === 'flat') {
