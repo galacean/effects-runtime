@@ -219,16 +219,17 @@ describe('plugin/dom-content', () => {
       const sprite = item.getComponent(SpriteComponent);
       const initialTexture = sprite.material.getTexture('_MainTex');
       const domContent = item.addComponent(DomContentComponent);
+      const renderState = domContent as unknown as { rendering: boolean };
 
       domContent.setContent('', 100, 100);
-      player.gotoAndPlay(0.01);
-      await new Promise(_resolve => { setTimeout(_resolve, 100); });
+      domContent.onUpdate(0);
       // 空内容不应触发纹理替换，sprite 纹理应保持不变
+      expect(renderState.rendering).to.be.false;
       expect(sprite.material.getTexture('_MainTex')).to.equal(initialTexture);
 
       domContent.setContent('<div>Test</div>', 0, 0);
-      player.gotoAndPlay(0.01);
-      await new Promise(_resolve => { setTimeout(_resolve, 100); });
+      domContent.onUpdate(0);
+      expect(renderState.rendering).to.be.false;
       expect(sprite.material.getTexture('_MainTex')).to.equal(initialTexture);
     });
 
@@ -267,12 +268,31 @@ describe('plugin/dom-content', () => {
       const composition = await player.loadScene(json);
       const item = composition.getItemByName('place_holder')!;
       const domContent = item.addComponent(DomContentComponent);
+      const renderState = domContent as unknown as {
+        asyncCancelled: boolean,
+        ownedTextures: Set<unknown>,
+        rendering: boolean,
+        updateTexture: () => Promise<void>,
+      };
+      const updateTexture = renderState.updateTexture.bind(domContent);
+      let renderPromise: Promise<void> | undefined;
+
+      renderState.updateTexture = () => {
+        renderPromise = updateTexture();
+
+        return renderPromise;
+      };
 
       domContent.setContent('<div style="background:red;">Test</div>', 100, 100);
-      player.gotoAndPlay(0.01);
+      domContent.onUpdate(0);
+      expect(renderState.rendering).to.be.true;
+      expect(renderPromise).to.be.instanceOf(Promise);
       composition.dispose();
 
-      await new Promise(_resolve => { setTimeout(_resolve, 100); });
+      expect(renderState.asyncCancelled).to.be.true;
+      await renderPromise;
+      expect(renderState.rendering).to.be.false;
+      expect(renderState.ownedTextures.size).to.equal(0);
     });
   });
 
