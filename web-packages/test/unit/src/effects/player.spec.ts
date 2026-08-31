@@ -158,7 +158,6 @@ describe('player', () => {
 });
 
 describe('player/create by gl context', function () {
-  const timeout = 10;
   let player: Player;
 
   this.timeout('100s');
@@ -169,28 +168,25 @@ describe('player/create by gl context', function () {
     player = null;
   });
 
-  it('set webgl1 context', async () => {
+  it('set webgl1 context', () => {
     const canvas = document.createElement('canvas');
 
     player = new Player({ canvas, renderFramework: 'webgl' });
     expect(player.gpuCapability.type).to.eql('webgl');
     player.dispose();
     canvas.remove();
-    await sleep(timeout);
   });
 
-  it('set webgl2 context', async () => {
+  it('set webgl2 context', () => {
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2');
 
     player = new Player({ canvas, renderFramework: 'webgl2' });
     expect(player.gpuCapability.type).to.eql('webgl2');
     player.dispose();
     canvas.remove();
-    await sleep(timeout);
   });
 
-  it('set two webgl1 player', async () => {
+  it('set two webgl1 player', () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
     const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl' });
@@ -201,10 +197,9 @@ describe('player/create by gl context', function () {
     player2.dispose();
     canvas1.remove();
     canvas2.remove();
-    await sleep(timeout);
   });
 
-  it('set two webgl2 player', async () => {
+  it('set two webgl2 player', () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
     const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl2' });
@@ -215,10 +210,9 @@ describe('player/create by gl context', function () {
     player2.dispose();
     canvas1.remove();
     canvas2.remove();
-    await sleep(timeout);
   });
 
-  it('set different webgl player', async () => {
+  it('set different webgl player', () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
     const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl' });
@@ -233,10 +227,5 @@ describe('player/create by gl context', function () {
     player1.dispose();
     canvas1.remove();
     canvas2.remove();
-    await sleep(timeout);
   });
 });
-
-function sleep (ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}

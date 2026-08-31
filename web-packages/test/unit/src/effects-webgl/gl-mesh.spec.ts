@@ -2,7 +2,6 @@ import type { MaterialProps, Renderer } from '@galacean/effects';
 import { Geometry, Mesh, glContext, math, Material } from '@galacean/effects';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
 import { GLEngine } from '@galacean/effects-webgl';
-import { sleep } from '../utils';
 import { readBufferContents } from './gl-utils';
 
 const { expect } = chai;
@@ -21,7 +20,7 @@ describe('webgl/gl-mesh', () => {
     canvas = null;
   });
 
-  it('create GLMesh', async () => {
+  it('create GLMesh', () => {
     const result = generateGLMesh(renderer);
     const mesh = result.mesh;
     const geometry = result.geometry;
@@ -34,7 +33,6 @@ describe('webgl/gl-mesh', () => {
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
 
-    await sleep(100);
     expect((material.shaderVariant as GLShaderVariant).program.engine).to.eql(engine);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
