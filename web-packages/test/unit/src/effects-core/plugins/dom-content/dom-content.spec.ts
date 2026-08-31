@@ -327,17 +327,16 @@ describe('plugin/dom-content', () => {
     });
 
     it('should keep original URL when fetch fails', async () => {
-      // 使用 fetch stub 模拟网络失败，避免依赖 DNS 解析
-      const originalFetch = globalThis.fetch;
+      const captured = stubXHRCapture('error');
 
-      globalThis.fetch = () => Promise.reject(new Error('Network error'));
       try {
         const html = '<img src="https://example.com/404.png" />';
         const result = await inlineImageSources(html);
 
+        expect(captured.urls).to.deep.equal(['https://example.com/404.png']);
         expect(result).to.include('https://example.com/404.png');
       } finally {
-        globalThis.fetch = originalFetch;
+        captured.restore();
       }
     });
 
@@ -398,18 +397,17 @@ describe('plugin/dom-content', () => {
     });
 
     it('should preserve @font-face structure when fetch fails', async () => {
-      // 使用 fetch stub 模拟网络失败，避免依赖 DNS 解析
-      const originalFetch = globalThis.fetch;
+      const captured = stubXHRCapture('error');
 
-      globalThis.fetch = () => Promise.reject(new Error('Network error'));
       try {
         const html = '@font-face { font-family: "Test"; src: url("https://example.com/font.woff2"); }';
         const result = await inlineFontSources(html);
 
+        expect(captured.urls).to.deep.equal(['https://example.com/font.woff2']);
         expect(result).to.include('@font-face');
         expect(result).to.include('https://example.com/font.woff2');
       } finally {
-        globalThis.fetch = originalFetch;
+        captured.restore();
       }
     });
   });
