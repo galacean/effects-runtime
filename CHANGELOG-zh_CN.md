@@ -8,6 +8,60 @@
 
 ---
 
+## 2.10.0
+
+`2026-08-31`
+
+### Feat
+- Feat: 新增 `CanvasItem`、`CanvasLayer` 组件和 `RectTransform`。 [#1457](https://github.com/galacean/effects-runtime/pull/1457) @wumaolinmaoan
+  - Feat: 新增 `Control` 输入事件系统。 [#1514](https://github.com/galacean/effects-runtime/pull/1514) @wumaolinmaoan
+  - Refactor: 统一 `Control` 输入事件与接收处理。 [#1516](https://github.com/galacean/effects-runtime/pull/1516) @wumaolinmaoan
+  - Refactor: 统一 GUI 坐标系至左上角原点。 [#1517](https://github.com/galacean/effects-runtime/pull/1517) @wumaolinmaoan
+  - Fix: 拖拽状态保持至鼠标释放。 [#1518](https://github.com/galacean/effects-runtime/pull/1518) @wumaolinmaoan
+  - Feat: 新增 `Control` 和 `Container` 自动布局系统。 [#1519](https://github.com/galacean/effects-runtime/pull/1519) @wumaolinmaoan
+  - Feat: 新增基础控件、滚动与 scissor 裁剪支持。 [#1520](https://github.com/galacean/effects-runtime/pull/1520) @wumaolinmaoan
+  - Feat: 新增主题覆盖并提升样式一致性。 [#1522](https://github.com/galacean/effects-runtime/pull/1522) @wumaolinmaoan
+  - Feat: 新增文本输入、弹窗、菜单与取色器控件。 [#1524](https://github.com/galacean/effects-runtime/pull/1524) @wumaolinmaoan
+- Feat: 新增 shape 修剪路径。 [#1468](https://github.com/galacean/effects-runtime/pull/1468) @wumaolinmaoan
+- Feat: 支持多 mask。 [#1482](https://github.com/galacean/effects-runtime/pull/1482) @ChengYi996
+  - Fix: 恢复 mask material 状态。 [#1503](https://github.com/galacean/effects-runtime/pull/1503) @ChengYi996
+- Feat: 支持 additive transform clip 混合。 [#1497](https://github.com/galacean/effects-runtime/pull/1497) @ChengYi996
+- Feat: 新增 `Sprite` 资源并支持 timeline sprite 关键帧动画。 [#1489](https://github.com/galacean/effects-runtime/pull/1489) @wumaolinmaoan
+- Feat: 默认优先使用 `KTX2` 和 `HEVC` 资源。 [#1487](https://github.com/galacean/effects-runtime/pull/1487) @ChengYi996
+- Feat: GL engine 实现 context lost 与 restore 处理。 [#1502](https://github.com/galacean/effects-runtime/pull/1502) @wumaolinmaoan
+- Feat: 为插件系统新增 engine 创建/销毁回调。 [#1504](https://github.com/galacean/effects-runtime/pull/1504) @wumaolinmaoan
+  - Refactor: `Composition` 事件系统改从 engine 派生，不再使用 props。 [#1505](https://github.com/galacean/effects-runtime/pull/1505) @wumaolinmaoan
+
+### Refactor
+- Refactor: 将 geometry buffers 移至 core，集中处理 WebGL buffer 与 `VAO`。 [#1508](https://github.com/galacean/effects-runtime/pull/1508) @wumaolinmaoan
+  - Refactor: 将 geometry 绘制逻辑移至 renderer。 [#1512](https://github.com/galacean/effects-runtime/pull/1512) @wumaolinmaoan
+- Refactor: 将 `.claude` 配置迁移至 `.agents` 结构。 [#1531](https://github.com/galacean/effects-runtime/pull/1531) @yiiqii
+
+### Perf
+- Perf: 优化 canvas pool `getCanvasAndContext` 性能。 [#1471](https://github.com/galacean/effects-runtime/pull/1471) @wumaolinmaoan
+
+### Fix
+- Fix: GL engine `bindTexture` 问题。 [#1469](https://github.com/galacean/effects-runtime/pull/1469) @wumaolinmaoan
+  - Fix: 仅在超限时 resize textures 以避免 NPOT 回退。 [#1480](https://github.com/galacean/effects-runtime/pull/1480) @wumaolinmaoan
+- Fix: 文本 glyph atlas 顶部因 font metrics 错误被裁剪。 [#1499](https://github.com/galacean/effects-runtime/pull/1499) @wumaolinmaoan
+  - Fix: 确保文本渲染的最小 canvas 尺寸。 [#1509](https://github.com/galacean/effects-runtime/pull/1509) @wumaolinmaoan
+- Fix: 将 `FrameComponent` 的 hit test 限制在其 border band 范围内。 [#1506](https://github.com/galacean/effects-runtime/pull/1506) @wumaolinmaoan
+- Fix: 实例化预合成时使用 item end behavior。 [#1507](https://github.com/galacean/effects-runtime/pull/1507) @wumaolinmaoan
+- Fix: 保持 `composition` 顺序稳定且不修改数组。 [#1513](https://github.com/galacean/effects-runtime/pull/1513) @wumaolinmaoan
+
+### Chore
+- Chore: 将全项目 lint hook 替换为仅检查变更文件的 eslint。 [#1478](https://github.com/galacean/effects-runtime/pull/1478) @wumaolinmaoan
+- Chore: 移除 `bezier-curve.ts` 中多余的 `console.error` 日志。 [#1498](https://github.com/galacean/effects-runtime/pull/1498) @wumaolinmaoan
+- Chore: 按 title 定位 suite，使单独运行 case 时 frame-diff 截图正常显示。 [#1479](https://github.com/galacean/effects-runtime/pull/1479) @wumaolinmaoan
+- Chore: 更新 particle 与 text item 单元测试。 [#1510](https://github.com/galacean/effects-runtime/pull/1510) @wumaolinmaoan
+  - Chore: 移除 GL framebuffer 测试中未使用的 `sleep` 工具函数。 [#1528](https://github.com/galacean/effects-runtime/pull/1528) @wumaolinmaoan
+- Chore: `@galacean/effects-math` 升级至 `1.2.0`。 [#1488](https://github.com/galacean/effects-runtime/pull/1488) @wumaolinmaoan
+  - Chore: `@galacean/effects-math` 升级至 `1.2.1`。 [#1527](https://github.com/galacean/effects-runtime/pull/1527) @wumaolinmaoan
+- Chore: `@galacean/effects-specification` 升级至 `2.9.0`。 [#1526](https://github.com/galacean/effects-runtime/pull/1526) @wumaolinmaoan
+
+### Test
+- Test: 提升单元测试执行效率。 [#1530](https://github.com/galacean/effects-runtime/pull/1530) @wumaolinmaoan
+
 ## 2.9.4
 
 `2026-08-28`

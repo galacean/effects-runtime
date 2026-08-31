@@ -7,6 +7,60 @@
 
 ---
 
+## 2.10.0
+
+`2026-08-31`
+
+### Feat
+- Feat: add `CanvasItem`, `CanvasLayer` component and `RectTransform`. [#1457](https://github.com/galacean/effects-runtime/pull/1457) @wumaolinmaoan
+  - Feat: add `Control` input event system. [#1514](https://github.com/galacean/effects-runtime/pull/1514) @wumaolinmaoan
+  - Refactor: unify control input events and acceptance handling. [#1516](https://github.com/galacean/effects-runtime/pull/1516) @wumaolinmaoan
+  - Refactor: unify GUI coordinates to top-left origin. [#1517](https://github.com/galacean/effects-runtime/pull/1517) @wumaolinmaoan
+  - Fix: preserve drag state until mouseup. [#1518](https://github.com/galacean/effects-runtime/pull/1518) @wumaolinmaoan
+  - Feat: add `Control` and `Container` automatic layout system. [#1519](https://github.com/galacean/effects-runtime/pull/1519) @wumaolinmaoan
+  - Feat: add basic controls, scrolling, and scissor support. [#1520](https://github.com/galacean/effects-runtime/pull/1520) @wumaolinmaoan
+  - Feat: add theme overrides and improve styling consistency. [#1522](https://github.com/galacean/effects-runtime/pull/1522) @wumaolinmaoan
+  - Feat: add text input, popup, menu, and color picker controls. [#1524](https://github.com/galacean/effects-runtime/pull/1524) @wumaolinmaoan
+- Feat: add shape trim path. [#1468](https://github.com/galacean/effects-runtime/pull/1468) @wumaolinmaoan
+- Feat: support multiple masks. [#1482](https://github.com/galacean/effects-runtime/pull/1482) @ChengYi996
+  - Fix: restore mask material state. [#1503](https://github.com/galacean/effects-runtime/pull/1503) @ChengYi996
+- Feat: support additive transform clip mixing. [#1497](https://github.com/galacean/effects-runtime/pull/1497) @ChengYi996
+- Feat: add `Sprite` asset and support timeline sprite key frame animation. [#1489](https://github.com/galacean/effects-runtime/pull/1489) @wumaolinmaoan
+- Feat: default to preferred `KTX2` and `HEVC` assets. [#1487](https://github.com/galacean/effects-runtime/pull/1487) @ChengYi996
+- Feat: implement context lost and restore handling in GL engine. [#1502](https://github.com/galacean/effects-runtime/pull/1502) @wumaolinmaoan
+- Feat: add engine create/destroy callbacks to plugin system. [#1504](https://github.com/galacean/effects-runtime/pull/1504) @wumaolinmaoan
+  - Refactor: derive `Composition` event system from engine instead of props. [#1505](https://github.com/galacean/effects-runtime/pull/1505) @wumaolinmaoan
+
+### Refactor
+- Refactor: move geometry buffers to core and centralize WebGL buffer and `VAO` handling. [#1508](https://github.com/galacean/effects-runtime/pull/1508) @wumaolinmaoan
+  - Refactor: move geometry draw logic to renderer. [#1512](https://github.com/galacean/effects-runtime/pull/1512) @wumaolinmaoan
+- Refactor: migrate `.claude` config to `.agents` structure. [#1531](https://github.com/galacean/effects-runtime/pull/1531) @yiiqii
+
+### Perf
+- Perf: opt canvas pool `getCanvasAndContext` performance. [#1471](https://github.com/galacean/effects-runtime/pull/1471) @wumaolinmaoan
+
+### Fix
+- Fix: GL engine `bindTexture` issue. [#1469](https://github.com/galacean/effects-runtime/pull/1469) @wumaolinmaoan
+  - Fix: only resize textures when oversize to avoid NPOT regression. [#1480](https://github.com/galacean/effects-runtime/pull/1480) @wumaolinmaoan
+- Fix: text glyph atlas top cropped by wrong font metrics. [#1499](https://github.com/galacean/effects-runtime/pull/1499) @wumaolinmaoan
+  - Fix: ensure minimum canvas size for text rendering. [#1509](https://github.com/galacean/effects-runtime/pull/1509) @wumaolinmaoan
+- Fix: restrict `FrameComponent` hit test to its border band. [#1506](https://github.com/galacean/effects-runtime/pull/1506) @wumaolinmaoan
+- Fix: instantiate precomposition use item end behavior. [#1507](https://github.com/galacean/effects-runtime/pull/1507) @wumaolinmaoan
+- Fix: keep `composition` order stable without mutating array. [#1513](https://github.com/galacean/effects-runtime/pull/1513) @wumaolinmaoan
+
+### Chore
+- Chore: replace full-project lint hook with changed-files-only eslint. [#1478](https://github.com/galacean/effects-runtime/pull/1478) @wumaolinmaoan
+- Chore: remove unnecessary `console.error` logs in `bezier-curve.ts`. [#1498](https://github.com/galacean/effects-runtime/pull/1498) @wumaolinmaoan
+- Chore: locate suite by title so frame-diff screenshots show when running a single case. [#1479](https://github.com/galacean/effects-runtime/pull/1479) @wumaolinmaoan
+- Chore: update particle and text item unit test. [#1510](https://github.com/galacean/effects-runtime/pull/1510) @wumaolinmaoan
+  - Chore: remove unused `sleep` utility from GL framebuffer tests. [#1528](https://github.com/galacean/effects-runtime/pull/1528) @wumaolinmaoan
+- Chore: bump `@galacean/effects-math` to `1.2.0`. [#1488](https://github.com/galacean/effects-runtime/pull/1488) @wumaolinmaoan
+  - Chore: bump `@galacean/effects-math` to `1.2.1`. [#1527](https://github.com/galacean/effects-runtime/pull/1527) @wumaolinmaoan
+- Chore: bump `@galacean/effects-specification` to `2.9.0`. [#1526](https://github.com/galacean/effects-runtime/pull/1526) @wumaolinmaoan
+
+### Test
+- Test: improve unit test execution efficiency. [#1530](https://github.com/galacean/effects-runtime/pull/1530) @wumaolinmaoan
+
 ## 2.9.4
 
 `2026-08-28`
