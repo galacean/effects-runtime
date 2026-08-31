@@ -1,4 +1,5 @@
 ---
+name: "commit-push-pr"
 description: "Commit, push, and open a PR"
 ---
 
