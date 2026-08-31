@@ -43,24 +43,25 @@ describe('player/event', () => {
     const restored = chai.spy();
     const { gl } = (player.renderer.engine as GLEngine).context;
     const ext = gl?.getExtension('WEBGL_lose_context');
-
-    player.on('webglcontextlost', event => {
-      lost();
+    const lostEvent = new Promise<void>(resolve => {
+      player.on('webglcontextlost', () => {
+        lost();
+        resolve();
+      });
+    });
+    const restoredEvent = new Promise<void>(resolve => {
+      player.on('webglcontextrestored', () => {
+        restored();
+        resolve();
+      });
     });
 
-    player.on('webglcontextrestored', () => {
-      restored();
-    });
-
-    ext?.loseContext();
-
-    // 添加延迟以确保上下文有足够的时间恢复
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    ext?.restoreContext();
-
-    // 再次添加延迟以确保恢复事件被触发
-    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(ext).to.exist;
+    ext!.loseContext();
+    await lostEvent;
+    await new Promise(resolve => { setTimeout(resolve); });
+    ext!.restoreContext();
+    await restoredEvent;
 
     player.dispose();
 

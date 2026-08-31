@@ -6,7 +6,7 @@ import type {
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
   TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
-  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion,
+  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion, VertexBuffer,
 } from '@galacean/effects';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -21,6 +21,14 @@ import { RayTriangleTesting } from './hit-test-helper';
 
 type Box3 = math.Box3;
 type VertexArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array;
+
+interface AttributeLayout {
+  type: number,
+  size: number,
+  offset?: number,
+  stride?: number,
+  normalize?: boolean,
+}
 
 /**
  * WebGL 辅助类，负责 WebGL 相关对象的创建
@@ -433,26 +441,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'aPos',
+          dataSource: VertexBuffer.PositionKind,
         },
-        aNormal: {
+        [VertexBuffer.NormalKind]: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'aPos',
+          dataSource: VertexBuffer.PositionKind,
         },
       },
       drawStart: 0,
@@ -879,13 +887,13 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'aPos';
-      case 'NORMAL': return 'aNormal';
-      case 'TANGENT': return 'aTangent';
-      case 'TEXCOORD_0': return 'aUV';
-      case 'TEXCOORD_1': return 'aUV2';
-      case 'JOINTS_0': return 'aJoints';
-      case 'WEIGHTS_0': return 'aWeights';
+      case 'POSITION': return VertexBuffer.PositionKind;
+      case 'NORMAL': return VertexBuffer.NormalKind;
+      case 'TANGENT': return VertexBuffer.TangentKind;
+      case 'TEXCOORD_0': return VertexBuffer.UVKind;
+      case 'TEXCOORD_1': return VertexBuffer.UV2Kind;
+      case 'JOINTS_0': return VertexBuffer.JointsKind;
+      case 'WEIGHTS_0': return VertexBuffer.WeightsKind;
     }
 
     if (!name.startsWith('a')) {
@@ -1176,7 +1184,7 @@ class AttributeArray {
   compressed = false;
   compressScale = 1.0;
 
-  create (inAttrib: Attribute, inArray: spec.TypedArray) {
+  create (inAttrib: AttributeLayout, inArray: spec.TypedArray) {
     switch (inAttrib.type) {
       case WebGLRenderingContext['INT']:
         this.typeSize = 4;
@@ -1291,24 +1299,20 @@ export class GeometryBoxProxy {
   create (geometry: Geometry, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    // FIXME: 需要geometry中的attributes数组，GLGeometry有这个数组，其他的没有
-    // @ts-expect-error
-    const attributes = geometry.attributes as Record<string, Attribute>;
-
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['aPos'];
-    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
-    this.position.create(positionAttrib, positionArray);
+    this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = attributes['aJoints'];
-    const weightAttrib = attributes['aWeights'];
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1447,24 +1451,20 @@ export class HitTestingProxy {
   create (geometry: Geometry, doubleSided: boolean, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    // FIXME: 需要geometry中的attributes数组，GLGeometry有这个数组，其他的没有
-    // @ts-expect-error
-    const attributes = geometry.attributes as Record<string, Attribute>;
-
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['aPos'];
-    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
-    this.position.create(positionAttrib, positionArray);
+    this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = attributes['aJoints'];
-    const weightAttrib = attributes['aWeights'];
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1895,8 +1895,7 @@ export class CheckerHelper {
     if (!(v instanceof Geometry)) {
       console.error(`Invalid geometry type ${this.stringify(v)}.`);
     }
-    // @ts-expect-error
-    if (v.isDestroyed === true) {
+    if (v.isDisposed()) {
       console.error('Geometry object is destroyed.');
     }
     if (!this.checkNonnegative(v.getDrawStart())) {
@@ -1981,11 +1980,7 @@ export class CheckerHelper {
    * @returns
    */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
-    // @ts-expect-error
-    const attributes = v.attributes;
-
-    if (attributes === undefined) { return; }
-    const dataAttrib = attributes[name];
+    const dataAttrib = getAttributeLayout(v.getVertexBuffer(name));
 
     if (dataAttrib === undefined) { return; }
     const dataArray = v.getAttributeData(name);
@@ -1994,7 +1989,7 @@ export class CheckerHelper {
     //
     const attribArray = new AttributeArray();
 
-    attribArray.create(dataAttrib as Attribute, dataArray);
+    attribArray.create(dataAttrib, dataArray);
 
     return attribArray;
   }
@@ -2323,6 +2318,20 @@ export class CheckerHelper {
   }
 }
 
+function getAttributeLayout (vertexBuffer?: VertexBuffer): AttributeLayout | undefined {
+  if (!vertexBuffer) {
+    return;
+  }
+
+  return {
+    type: vertexBuffer.type,
+    size: vertexBuffer.getSize(),
+    offset: vertexBuffer.byteOffset,
+    stride: vertexBuffer.byteStride,
+    normalize: vertexBuffer.normalized,
+  };
+}
+
 /**
  * 半精度浮点数组类
  */
@@ -2412,4 +2421,3 @@ const toHalf = (function () {
   };
 
 }());
-

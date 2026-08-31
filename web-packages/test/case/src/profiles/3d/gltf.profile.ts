@@ -53,7 +53,6 @@ const scenes: FrameCompareScene[] = gltfList.map(url => {
 export const gltf3DProfile: FrameSuiteProfile = {
   id: '3d-gltf',
   title: 'glTF 帧对比',
-  frameworkIndexOffset: 0,
   frameworks: ['webgl', 'webgl2'],
   canvas: {
     width: 512,

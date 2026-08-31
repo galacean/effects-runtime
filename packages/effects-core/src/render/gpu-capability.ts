@@ -17,6 +17,8 @@ export interface GPUCapabilityDetail {
   maxTextureAnisotropy: number,
   shaderTextureLod: boolean,
   instanceDraw?: boolean,
+  /** @hide */
+  vertexArrayObject?: boolean,
   ktx2Support: boolean,
   drawBuffers?: boolean,
   asyncShaderCompile: boolean,
@@ -116,6 +118,7 @@ export class GPUCapability {
       maxTextureAnisotropy: textureAnisotropicExt ? gl.getParameter(textureAnisotropicExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0,
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
       instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
+      vertexArrayObject: level2 || !!this.vaoExt,
       ktx2Support: detectKTX2Support(this.compressTextureCapabilityList),
       drawBuffers: level2 || !!this.drawBufferExtension,
       asyncShaderCompile: !!this.glAsyncCompileExt,

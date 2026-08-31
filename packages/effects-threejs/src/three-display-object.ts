@@ -104,8 +104,8 @@ export class ThreeDisplayObject extends THREE.Group {
 
         engine.clearResources();
 
-        // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
-        PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
+        // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
+        PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
 
@@ -182,6 +182,8 @@ export class ThreeDisplayObject extends THREE.Group {
   update (delta: number) {
     this.compositions.forEach(composition => {
       composition.update(delta);
+
+      composition.render();
     });
   }
 }

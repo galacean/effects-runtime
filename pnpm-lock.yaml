@@ -150,11 +150,11 @@ importers:
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
-        specifier: 1.1.0
-        version: 1.1.0
+        specifier: 1.2.1
+        version: 1.2.1
       '@galacean/effects-specification':
-        specifier: ^2.8.1
-        version: 2.8.1
+        specifier: ^2.9.0
+        version: 2.9.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -218,6 +218,12 @@ importers:
         version: link:../model
 
   plugin-packages/ffd:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
+  plugin-packages/gui:
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -299,6 +305,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
@@ -327,6 +336,9 @@ importers:
       '@galacean/effects-plugin-ffd':
         specifier: workspace:*
         version: link:../../plugin-packages/ffd
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../../plugin-packages/model
@@ -358,6 +370,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../../plugin-packages/model
@@ -2243,12 +2258,16 @@ packages:
     resolution: {integrity: sha512-J8TOSBq3SoZbDhM9+R/u77hP93gz/rajSA+K2kGyijPpORPWUXHUpTaleoj+92As0S9uPRP7Oi8IqMf0u+ro6A==}
     dev: true
 
-  /@galacean/effects-math@1.1.0:
-    resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
+  /@galacean/effects-math@1.2.1:
+    resolution: {integrity: sha512-vO5VEk8qg4+yF7TuttDrPr5fLK2HxFf1wqdoCzaO2umBO6NNIxl+SzzLqleMwo2kuZHIYoH2OtekHLPnw9MvIQ==}
     engines: {node: '>=10.0.0'}
 
   /@galacean/effects-specification@2.8.1:
     resolution: {integrity: sha512-3KFI8BWcK24RiG8jle6kQiA3x/NAlU4m4r8VY41VCVijk8VHpwxGQhv8KFOmqifPbpA/06N7kTDSwJZSgN9JTw==}
+
+  /@galacean/effects-specification@2.9.0:
+    resolution: {integrity: sha512-muQh5e/ymZBRaxiBSEQ8c0gbXJFaMsVaQjtq6oDpuzxHOKO1zHkC2e4NWR2xAPz3LZ+NQjctBTv4AEHaLlvgTw==}
+    dev: false
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -3051,7 +3070,7 @@ packages:
     resolution: {integrity: sha512-gzBDmLIM6FQOyU3D8smJent+SGfoGlenka1gbwXy+/hrIN+2ZRsvdL9blYXKLwH0gx+FxSTDjELJiM0JRl2oFg==}
     engines: {node: '>=10.0.0'}
     dependencies:
-      '@galacean/effects-math': 1.1.0
+      '@galacean/effects-math': 1.2.1
       '@galacean/effects-specification': 2.8.1
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11

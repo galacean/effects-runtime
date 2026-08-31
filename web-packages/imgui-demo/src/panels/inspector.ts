@@ -1,8 +1,10 @@
 import type { Material, Texture } from '@galacean/effects';
 import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
+import { UIControl } from '@galacean/effects-plugin-gui';
+import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
-import { UIManager } from '../core/ui-manager';
+import { editorApp } from '../core/editor-application';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
@@ -74,10 +76,10 @@ export class Inspector extends EditorWindow {
       } else if (property instanceof EffectsObject) {
         EditorGUILayout.ObjectField(propertyName, object, key);
       } else if (property instanceof Object) {
-        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
+        if (EditorGUILayout.BeginFoldoutHeaderGroup(propertyName + '##' + propertyName, false)) {
           this.drawObject(property);
-          ImGui.TreePop();
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
       }
     }
   }
@@ -131,8 +133,15 @@ export class Inspector extends EditorWindow {
       transform.dispatchValueChange();
     }
 
+    // 仅当 VFXItem 挂了 Control 组件才显示锚点布局编辑区
+    const controlComp = activeObject.getComponent(UIControl)?.control;
+
+    if (controlComp && ImGui.CollapsingHeader('Layout', ImGui.TreeNodeFlags.DefaultOpen)) {
+      this.drawLayoutInspector(controlComp);
+    }
+
     for (const componet of activeObject.components) {
-      const customEditor = UIManager.customEditors.get(componet.constructor);
+      const customEditor = editorApp.getEditor(componet.constructor);
 
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
         ImGui.PushID(componet.getInstanceId());
@@ -301,6 +310,142 @@ export class Inspector extends EditorWindow {
     if (dirtyFlag) {
       GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
     }
+  }
+
+  /**
+   * 锚点布局编辑器。仅在 VFXItem 挂了 Control 组件时调用。
+   *
+   * - `Rect Position` / `Rect Size` 直接编辑 Control 的布局矩形,
+   *   内部反推 offset(保持当前 anchor)并 applyLayout
+   * - `Anchor Min/Max`、`Offset Min/Max`、`Pivot Offset`(= `Transform.anchor` 像素偏移)直接修改字段
+   * - `Anchor Preset` 4×4 网格切换 anchor;`Anchors + Offsets Preset` 同时贴边放置
+   */
+  private drawLayoutInspector (control: Control): void {
+    const rt = control;
+
+    // Rect Position(= rect 左下角)。Control.setPosition 会反推 offset
+    {
+      const buf: [number, number] = [rt.position.x, rt.position.y];
+
+      EditorGUILayout.Label('Rect Position');
+      if (ImGui.DragFloat2('##RectPosition', buf, 1, -10000, 10000, '%.0f')) {
+        rt.setPosition(buf[0], buf[1]);
+      }
+    }
+    // Rect Size。Control.setSize 会反推 offset
+    {
+      const buf: [number, number] = [rt.size.x, rt.size.y];
+
+      EditorGUILayout.Label('Rect Size');
+      if (ImGui.DragFloat2('##RectSize', buf, 1, 0, 10000, '%.0f')) {
+        rt.setSize(buf[0], buf[1]);
+      }
+    }
+
+    ImGui.Spacing();
+
+    // anchorMin (left, bottom),归一化 [0, 1]
+    {
+      const buf: [number, number] = [rt.anchorMin.x, rt.anchorMin.y];
+
+      EditorGUILayout.Label('Anchor Min');
+      if (ImGui.SliderFloat2('##AnchorMin', buf, 0, 1, '%.2f')) {
+        rt.setAnchorMin(buf[0], buf[1]);
+      }
+    }
+    // anchorMax (right, top),归一化 [0, 1]
+    {
+      const buf: [number, number] = [rt.anchorMax.x, rt.anchorMax.y];
+
+      EditorGUILayout.Label('Anchor Max');
+      if (ImGui.SliderFloat2('##AnchorMax', buf, 0, 1, '%.2f')) {
+        rt.setAnchorMax(buf[0], buf[1]);
+      }
+    }
+    // offsetMin (left, bottom),像素
+    {
+      const buf: [number, number] = [rt.offsetMin.x, rt.offsetMin.y];
+
+      EditorGUILayout.Label('Offset Min');
+      if (ImGui.DragFloat2('##OffsetMin', buf, 1, -10000, 10000, '%.0f')) {
+        rt.setOffsetMin(buf[0], buf[1]);
+      }
+    }
+    // offsetMax (right, top),像素
+    {
+      const buf: [number, number] = [rt.offsetMax.x, rt.offsetMax.y];
+
+      EditorGUILayout.Label('Offset Max');
+      if (ImGui.DragFloat2('##OffsetMax', buf, 1, -10000, 10000, '%.0f')) {
+        rt.setOffsetMax(buf[0], buf[1]);
+      }
+    }
+    // pivot(归一化 [0, 1])。setPivot 内部会同步 `transform.anchor = pivot * size`,
+    // 所以 layout 缩放中心 + 矩阵旋转/缩放中心都绕同一点
+    {
+      const buf: [number, number] = [rt.pivot.x, rt.pivot.y];
+
+      EditorGUILayout.Label('Pivot');
+      if (ImGui.SliderFloat2('##Pivot', buf, 0, 1, '%.2f')) {
+        rt.setPivot(buf[0], buf[1]);
+      }
+    }
+    // 派生只读显示:transform.anchor = pivot * size
+    ImGui.TextDisabled(`  pivot offset = (${(rt.pivot.x * rt.size.x).toFixed(0)}, ${(rt.pivot.y * rt.size.y).toFixed(0)})`);
+    ImGui.Spacing();
+
+    // Preset 4×4 网格,Shift = 同时设 offset(贴边放置),否则只切 anchor
+    if (ImGui.TreeNode('Anchor Preset')) {
+      Inspector.drawAnchorPresetGrid(control);
+      ImGui.TreePop();
+    }
+  }
+
+  /**
+   * 4×4 锚点预设网格。
+   *
+   * - 普通点击 = `setAnchorsAndOffsetsPreset(preset)`:rect 视觉上落到 preset 对应位置(跟编辑器惯例一致)
+   * - Shift+点击 = `setAnchorsPreset(preset, false)`:rect 视觉位置不变,反推 offset 让新 anchor 描述同一个 rect
+   *
+   * 不暴露 `setAnchorsPreset(preset, true)`(=改 anchor 但 offset 原样保留 → rect 会跟着跳),通常不是用户想要的
+   *
+   * 列:Left / Center / Right / Wide(横向拉伸)
+   * 行:Top  / Middle / Bottom / Tall(纵向拉伸)
+   */
+  private static drawAnchorPresetGrid (control: Control): void {
+    const rt = control;
+
+    type CellPreset = LayoutPreset;
+    // 矩阵索引 = [row][col],row 顺序:T/M/B/H,col 顺序:L/C/R/W
+    const matrix: CellPreset[][] = [
+      ['topLeft', 'centerTop', 'topRight', 'topWide'],
+      ['centerLeft', 'center', 'centerRight', 'hcenterWide'],
+      ['bottomLeft', 'centerBottom', 'bottomRight', 'bottomWide'],
+      ['leftWide', 'vcenterWide', 'rightWide', 'fullRect'],
+    ];
+    const colNames = ['L', 'C', 'R', 'W'];
+    const rowNames = ['T', 'M', 'B', 'H'];
+
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        if (col > 0) {
+          ImGui.SameLine();
+        }
+        const preset = matrix[row][col];
+        const label = `${colNames[col]}${rowNames[row]}##preset_${row}_${col}`;
+
+        if (ImGui.Button(label, new ImGui.Vec2(28, 22))) {
+          if (ImGui.GetIO().KeyShift) {
+            // 保持 rect 视觉位置:反推 offset 抵消 anchor 变化
+            rt.setAnchorsPreset(preset, false);
+          } else {
+            // 让 rect 落到预设位置(贴边 / 居中 / fullRect)
+            rt.setAnchorsAndOffsetsPreset(preset);
+          }
+        }
+      }
+    }
+    ImGui.TextDisabled('  Shift+click = keep current rect');
   }
 
   private endBehaviorToString (endBehavior: spec.EndBehavior) {

@@ -1,6 +1,6 @@
-import type { Camera, Renderer } from '@galacean/effects-core';
-import { Graphics } from '@galacean/effects-core';
+import type { Camera, Engine, Renderer } from '@galacean/effects-core';
 import { math, RendererComponent, VFXItem } from '@galacean/effects-core';
+import { Control } from '@galacean/effects-plugin-gui';
 import { Selection } from './selection';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
@@ -37,8 +37,7 @@ interface TransformStartData {
   mousePos: Vector2,
 }
 
-export class CanvasGizmo extends RendererComponent {
-  private render2D: Graphics;
+export class CanvasGizmo extends Control {
   private canvas: HTMLCanvasElement;
   private hoveredObject: VFXItem | null = null;
 
@@ -57,10 +56,9 @@ export class CanvasGizmo extends RendererComponent {
   private dragStarted = false; // 是否已经开始拖动
   private mouseDownSelected = false; // 鼠标按下时是否通过拾取选中对象
 
-  override onAwake (): void {
-    this.priority = 5000;
+  constructor (engine: Engine) {
+    super(engine);
     this.canvas = this.engine.canvas;
-    this.render2D = new Graphics(this.engine);
 
     // Setup mouse event listeners for 2D camera control
     this.setupMouseListeners();
@@ -74,13 +72,13 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private setupMouseListeners (): void {
-    this.canvas.addEventListener('mousedown', this.onMouseDown);
-    this.canvas.addEventListener('mousemove', this.onMouseMove);
-    this.canvas.addEventListener('mouseup', this.onMouseUp);
+    this.canvas.addEventListener('mousedown', this.onCanvasMouseDown);
+    this.canvas.addEventListener('mousemove', this.onCanvasMouseMove);
+    this.canvas.addEventListener('mouseup', this.onCanvasMouseUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
-  private onMouseDown = (e: MouseEvent): void => {
+  private onCanvasMouseDown = (e: MouseEvent): void => {
     this.isDragging = false;
     this.dragStarted = false;
     this.lastMousePos.set(e.clientX, e.clientY);
@@ -116,7 +114,7 @@ export class CanvasGizmo extends RendererComponent {
     }
   };
 
-  private onMouseMove = (e: MouseEvent): void => {
+  private onCanvasMouseMove = (e: MouseEvent): void => {
     // 进行拖动检测
     if (e.buttons !== 0) {
       if (!this.dragStarted) {
@@ -162,7 +160,7 @@ export class CanvasGizmo extends RendererComponent {
     }
   };
 
-  private onMouseUp = (e: MouseEvent): void => {
+  private onCanvasMouseUp = (e: MouseEvent): void => {
     if (this.dragStarted) {
       this.onDragEnd(e);
     } else {
@@ -291,7 +289,7 @@ export class CanvasGizmo extends RendererComponent {
 
     const res = [];
 
-    if (this.item.composition) {
+    if (this.item?.composition) {
       const hitResults = this.item.composition.hitTest(normalizedX, normalizedY, true);
 
       for (const hitResult of hitResults) {
@@ -417,6 +415,15 @@ export class CanvasGizmo extends RendererComponent {
 
   private midPoint (p1: Vector3, p2: Vector3): Vector2 {
     return new Vector2((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+  }
+
+  /** Converts the camera's bottom-left screen coordinates to GUI coordinates. */
+  private worldToGUIPoint (camera: Camera, position: Vector3): Vector3 {
+    const point = camera.worldToScreenPoint(position);
+
+    point.y = this.canvas.getBoundingClientRect().height - point.y;
+
+    return point;
   }
 
   private startTransform (e: MouseEvent): void {
@@ -681,16 +688,13 @@ export class CanvasGizmo extends RendererComponent {
 
   override onDestroy (): void {
     // Clean up event listeners
-    this.canvas.removeEventListener('mousedown', this.onMouseDown);
-    this.canvas.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('mouseup', this.onMouseUp);
+    this.canvas.removeEventListener('mousedown', this.onCanvasMouseDown);
+    this.canvas.removeEventListener('mousemove', this.onCanvasMouseMove);
+    this.canvas.removeEventListener('mouseup', this.onCanvasMouseUp);
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 
-  override render (renderer: Renderer): void {
-    const render2D = this.render2D;
-
-    this.render2D.begin();
+  override draw (): void {
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
 
@@ -702,9 +706,10 @@ export class CanvasGizmo extends RendererComponent {
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
           const screenPoints: math.Vector3[] = [];
+          const camera = rendererComponent.item.composition!.camera;
 
           for (let i = 0; i < 4; i++) {
-            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+            screenPoints.push(this.worldToGUIPoint(camera, boundingBox.vectorsWorld[i]));
           }
 
           const linePoints: number[] = [];
@@ -715,7 +720,7 @@ export class CanvasGizmo extends RendererComponent {
           const p3 = screenPoints[3].toVector2();
 
           linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
-          this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
+          this.drawPolyline(linePoints, lineColor, lineWidth + 2);
         }
       }
 
@@ -728,9 +733,10 @@ export class CanvasGizmo extends RendererComponent {
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
           const screenPoints: math.Vector3[] = [];
+          const camera = rendererComponent.item.composition!.camera;
 
           for (let i = 0; i < 4; i++) {
-            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+            screenPoints.push(this.worldToGUIPoint(camera, boundingBox.vectorsWorld[i]));
           }
 
           const linePoints: number[] = [];
@@ -741,7 +747,7 @@ export class CanvasGizmo extends RendererComponent {
           const p3 = screenPoints[3].toVector2();
 
           linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
-          this.render2D.drawLines(linePoints, lineColor, lineWidth);
+          this.drawPolyline(linePoints, lineColor, lineWidth);
 
           const resizeHandleSize = 20;
           const fillSize = resizeHandleSize - lineWidth;
@@ -749,8 +755,8 @@ export class CanvasGizmo extends RendererComponent {
 
           // 绘制四个角的缩放手柄
           for (const screenPoint of screenPoints) {
-            this.render2D.drawRectangle(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-            this.render2D.fillRectangle(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+            this.drawRect(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.fillRect(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
           }
 
           // 绘制边缘中点的缩放手柄
@@ -762,28 +768,28 @@ export class CanvasGizmo extends RendererComponent {
           ];
 
           for (const edgePoint of edges) {
-            this.render2D.drawRectangle(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-            this.render2D.fillRectangle(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+            this.drawRect(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.fillRect(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
           }
 
           // 绘制旋转手柄（顶部中点上方）
           const topMid = this.midPoint(screenPoints[3], screenPoints[1]);
-          const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
+          const rotationHandleY = topMid.y - rotationHandleDistance;
 
           // 绘制连接线
-          this.render2D.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
+          this.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
 
           // 绘制旋转手柄（圆形）
           const rotationHandleRadius = 8;
 
-          this.render2D.drawCircle(
+          this.drawCircle(
             topMid.x,
             rotationHandleY,
             rotationHandleRadius,
             new Color(0.2, 1, 0.4, 1),
             lineWidth
           );
-          this.render2D.fillCircle(
+          this.fillCircle(
             topMid.x,
             rotationHandleY,
             rotationHandleRadius - lineWidth,
@@ -801,18 +807,18 @@ export class CanvasGizmo extends RendererComponent {
     //-------------------------------------------------------------------------
 
     // 绘制两条交叉的线
-    this.render2D.drawLine(10, 10, 85, 60, new Color(0.8, 0.2, 0.2, 1), 2);
-    this.render2D.drawLine(10, 60, 85, 10, new Color(0.2, 0.2, 0.8, 1), 2);
+    this.drawLine(10, 10, 85, 60, new Color(0.8, 0.2, 0.2, 1), 2);
+    this.drawLine(10, 60, 85, 10, new Color(0.2, 0.2, 0.8, 1), 2);
 
     // 绘制填充矩形
-    this.render2D.fillRectangle(10, 75, 75, 50, new Color(0.2, 0.8, 0.2, 1));
+    this.fillRect(10, 75, 75, 50, new Color(0.2, 0.8, 0.2, 1));
 
     // 绘制描边矩形
-    this.render2D.drawRectangle(10, 140, 75, 50, new Color(0.8, 0.6, 0.2, 1), 3);
+    this.drawRect(10, 140, 75, 50, new Color(0.8, 0.6, 0.2, 1), 3);
 
     // 绘制贝塞尔曲线 - 明显的弯曲效果
-    this.render2D.drawBezier(
-      10, 205,      // 起点（左下）
+    this.drawBezier(
+      10, 205,      // 起点（左上）
       47.5, 205,    // 控制点1（中间偏上）
       47.5, 255,    // 控制点2（中间偏下）
       85, 255,      // 终点（右下）
@@ -820,14 +826,14 @@ export class CanvasGizmo extends RendererComponent {
       2
     );
 
-    this.render2D.fillTriangle(
+    this.fillTriangle(
       10, 275,
       85, 275,
       47.5, 325,
       new Color(0.2, 0.8, 0.8, 1),
     );
 
-    this.render2D.drawTriangle(
+    this.drawTriangle(
       10, 350,
       85, 350,
       47.5, 400,
@@ -835,20 +841,18 @@ export class CanvasGizmo extends RendererComponent {
       2
     );
 
-    this.render2D.fillCircle(
+    this.fillCircle(
       47.5, 450,
       25,
       new Color(0.1, 0.6, 0.3, 1),
     );
 
-    this.render2D.drawCircle(
+    this.drawCircle(
       47.5, 525,
       25,
       new Color(0.6, 0.1, 0.9, 1),
       2
     );
-
-    this.render2D.end();
   }
 }
 

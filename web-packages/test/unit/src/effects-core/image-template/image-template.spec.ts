@@ -42,8 +42,8 @@ describe('core/image-template', async () => {
   it('测试 template background 的 url 无效', async () => {
     // 1. 使用 canvas 绘制图片并得到 imageData
     // 30x30 背景图
-    const url1 = 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg';
-    const { canvas: canvas1, imageData: imageData1, width, height } = await getImageDataByUrl(url1);
+    const url1 = createSVGImageURL(30, 30, '#2f80ed');
+    const { canvas: canvas1, imageData: imageData1 } = await getImageDataByUrl(url1);
 
     // 2. 使用 canvas 绘制动态图片并得到 imageData
     const template = {
@@ -60,18 +60,7 @@ describe('core/image-template', async () => {
     const { canvas: canvas2, imageData: imageData2 } = await getImageDataByUrl(image2);
 
     // 3. 对比
-    const pixels = width * height;
-
-    for (let i = 0; i < pixels; ++i) {
-      const index = i * 4;
-
-      for (let j = 0; j < 3; ++j) {
-        const b = imageData1[index + j];
-        const a = imageData2[index + j];
-
-        expect(a).to.eql(b);
-      }
-    }
+    expectSameRGB(imageData2, imageData1);
 
     canvas1.remove();
     canvas2.remove();
@@ -79,11 +68,11 @@ describe('core/image-template', async () => {
 
   it('测试 template 换图成功', async () => {
     // 1. 通过 canvas 绘制原始图片，获得 imageData
-    const url1 = 'https://mdn.alipayobjects.com/mars/afts/img/A*JKibRacHibcAAAAAAAAAAAAADlB4AQ/original';
+    const url1 = createSVGImageURL(179, 194, '#eb5757');
     const { canvas: canvas1, imageData: imageData1 } = await getImageDataByUrl(url1);
 
     // 2. 通过 template 动画换图并使用 canvas 绘制结果，获得 imageData
-    const url2 = 'https://mdn.alipayobjects.com/huamei_uj3n0k/afts/img/A*oelLS68rL4kAAAAAAAAAAAAADt_KAQ/original';
+    const url2 = createSVGImageURL(179, 194, '#27ae60');
     const template = {
       width: 179,
       height: 194,
@@ -104,18 +93,7 @@ describe('core/image-template', async () => {
     const { canvas: canvas2, imageData: imageData2 } = await getImageDataByUrl(image2);
 
     // 3. 对比
-    const pixels = image2.width * image2.height;
-
-    for (let i = 0; i < pixels; ++i) {
-      const index = i * 4;
-
-      for (let j = 0; j < 3; ++j) {
-        const a = imageData1[index + j];
-        const b = imageData2[index + j];
-
-        expect(a).to.eql(b);
-      }
-    }
+    expectSameRGB(imageData2, imageData1);
 
     canvas1.remove();
     canvas2.remove();
@@ -221,4 +199,28 @@ async function getImageDataByUrl (url: string | HTMLImageElement) {
   const imageData = context.getImageData(0, 0, width, height).data;
 
   return { canvas, imageData, width, height };
+}
+
+function expectSameRGB (actual: Uint8ClampedArray, expected: Uint8ClampedArray) {
+  expect(actual.length).to.equal(expected.length);
+  let mismatch = -1;
+
+  for (let index = 0; index < actual.length; index += 4) {
+    for (let channel = 0; channel < 3; channel++) {
+      if (actual[index + channel] !== expected[index + channel]) {
+        mismatch = index + channel;
+
+        break;
+      }
+    }
+    if (mismatch !== -1) { break; }
+  }
+
+  expect(mismatch, `RGB differs at pixel ${Math.floor(mismatch / 4)}`).to.equal(-1);
+}
+
+function createSVGImageURL (width: number, height: number, color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${color}"/></svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

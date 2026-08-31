@@ -1,5 +1,4 @@
-import { generateGUID } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { generateGUID, Player } from '@galacean/effects';
 
 const { expect } = chai;
 

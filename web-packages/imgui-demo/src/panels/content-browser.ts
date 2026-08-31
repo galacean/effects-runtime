@@ -2,11 +2,13 @@ import type { Engine, EffectsObject } from '@galacean/effects';
 import {
   Texture, Material, Shader, ShaderVariant, Geometry, AnimationClip,
 } from '@galacean/effects';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './editor-window';
+import { getOrCreateTexturePreview, type TexturePreview } from '../widgets/texture-preview';
 
 // ── 分类定义 ──────────────────────────────────────────────────────────
 
@@ -446,20 +448,21 @@ export class ContentBrowser extends EditorWindow {
         colU32([0.08, 0.08, 0.08, 1]), 4);
 
       // ── 缩略图内容（居中显示）──
-      let drewThumb = false;
+      let drewPreview = false;
 
-      if (obj instanceof Texture && obj.definition?.image) {
-        const thumb = this.getOrCreateThumbnail(obj);
+      if (obj instanceof Texture) {
+        const preview = this.getOrCreatePreviewTexture(obj);
 
-        if (thumb) {
+        if (preview) {
           const thumbSize = ts - pad * 2;
+          const fit = this.getAspectFitRect(obj, thumbSize);
 
-          ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + pad, origin.y + pad));
-          ImGui.Image(thumb, new ImGui.Vec2(thumbSize, thumbSize));
-          drewThumb = true;
+          ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + pad + fit.ox, origin.y + pad + fit.oy));
+          ImGui.Image(preview.tex, new ImGui.Vec2(fit.w, fit.h), preview.uv0, preview.uv1);
+          drewPreview = true;
         }
       }
-      if (!drewThumb && cat) {
+      if (!drewPreview && cat) {
         const [ar, ag, ab] = col.accent;
 
         this.drawAssetIcon(dl, cat,
@@ -632,22 +635,23 @@ export class ContentBrowser extends EditorWindow {
         colU32([0.08, 0.08, 0.08, 1]), 2,
       );
 
-      let drewThumb = false;
+      let drewPreview = false;
 
-      if (obj instanceof Texture && obj.definition?.image) {
-        const thumb = this.getOrCreateThumbnail(obj);
+      if (obj instanceof Texture) {
+        const preview = this.getOrCreatePreviewTexture(obj);
 
-        if (thumb) {
+        if (preview) {
           const thumbSize = iconBgSize - 2;
-          const thumbX = iconBgX + 1;
-          const thumbY = iconBgY + 1;
+          const fit = this.getAspectFitRect(obj, thumbSize);
+          const thumbX = iconBgX + 1 + fit.ox;
+          const thumbY = iconBgY + 1 + fit.oy;
 
           ImGui.SetCursorScreenPos(new ImGui.Vec2(thumbX, thumbY));
-          ImGui.Image(thumb, new ImGui.Vec2(thumbSize, thumbSize));
-          drewThumb = true;
+          ImGui.Image(preview.tex, new ImGui.Vec2(fit.w, fit.h), preview.uv0, preview.uv1);
+          drewPreview = true;
         }
       }
-      if (!drewThumb) {
+      if (!drewPreview) {
         const iconCx = iconBgX + iconBgSize / 2;
         const iconCy = iconBgY + iconBgSize / 2;
 
@@ -908,22 +912,24 @@ export class ContentBrowser extends EditorWindow {
     dl.AddRectFilled(origin, thumbMax, colU32([0.08, 0.08, 0.08, 1]), 4);
 
     // 缩略图内容（用 DrawList.AddImage 避免影响布局高度）
-    let drewThumb = false;
+    let drewPreview = false;
 
-    if (obj instanceof Texture && obj.definition?.image) {
-      const thumb = this.getOrCreateThumbnail(obj);
+    if (obj instanceof Texture) {
+      const preview = this.getOrCreatePreviewTexture(obj);
 
-      if (thumb) {
+      if (preview) {
         const thumbSize = ts - pad * 2;
+        const fit = this.getAspectFitRect(obj, thumbSize);
 
-        dl.AddImage(thumb,
-          new ImGui.Vec2(origin.x + pad, origin.y + pad),
-          new ImGui.Vec2(origin.x + pad + thumbSize, origin.y + pad + thumbSize),
+        dl.AddImage(preview.tex,
+          new ImGui.Vec2(origin.x + pad + fit.ox, origin.y + pad + fit.oy),
+          new ImGui.Vec2(origin.x + pad + fit.ox + fit.w, origin.y + pad + fit.oy + fit.h),
+          preview.uv0, preview.uv1,
         );
-        drewThumb = true;
+        drewPreview = true;
       }
     }
-    if (!drewThumb && cat) {
+    if (!drewPreview && cat) {
       const [ar, ag, ab] = col.accent;
 
       this.drawAssetIcon(dl, cat,
@@ -1002,22 +1008,24 @@ export class ContentBrowser extends EditorWindow {
     );
 
     // 图标内容（用 DrawList.AddImage 避免影响布局高度）
-    let drewThumb = false;
+    let drewPreview = false;
 
-    if (obj instanceof Texture && obj.definition?.image) {
-      const thumb = this.getOrCreateThumbnail(obj);
+    if (obj instanceof Texture) {
+      const preview = this.getOrCreatePreviewTexture(obj);
 
-      if (thumb) {
+      if (preview) {
         const thumbSize = iconBgSize - 2;
+        const fit = this.getAspectFitRect(obj, thumbSize);
 
-        dl.AddImage(thumb,
-          new ImGui.Vec2(iconBgX + 1, iconBgY + 1),
-          new ImGui.Vec2(iconBgX + 1 + thumbSize, iconBgY + 1 + thumbSize),
+        dl.AddImage(preview.tex,
+          new ImGui.Vec2(iconBgX + 1 + fit.ox, iconBgY + 1 + fit.oy),
+          new ImGui.Vec2(iconBgX + 1 + fit.ox + fit.w, iconBgY + 1 + fit.oy + fit.h),
+          preview.uv0, preview.uv1,
         );
-        drewThumb = true;
+        drewPreview = true;
       }
     }
-    if (!drewThumb) {
+    if (!drewPreview) {
       const iconCx = iconBgX + iconBgSize / 2;
       const iconCy = iconBgY + iconBgSize / 2;
 
@@ -1184,26 +1192,28 @@ export class ContentBrowser extends EditorWindow {
     return obj.constructor.name;
   }
 
-  private getOrCreateThumbnail (obj: Texture): WebGLTexture | null {
+  /** 把贴图按原始宽高比内接(object-fit: contain)到 boxSize × boxSize 方框内并居中,返回相对方框左上角的 (w, h, ox, oy) */
+  private getAspectFitRect (obj: Texture, boxSize: number): { w: number, h: number, ox: number, oy: number } {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cached = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
+    const src = obj.source as any;
+    const sw = obj.width || src?.image?.width || src?.data?.width || 1;
+    const sh = obj.height || src?.image?.height || src?.data?.height || 1;
+    const aspect = sw / sh;
+    let w: number;
+    let h: number;
 
-    if (cached) { return cached; }
-    if (!obj.definition?.image || !ImGui_Impl.gl) { return null; }
+    if (aspect >= 1) {
+      w = boxSize;
+      h = boxSize / aspect;
+    } else {
+      h = boxSize;
+      w = boxSize * aspect;
+    }
 
-    const gl = ImGui_Impl.gl;
-    const tex = gl.createTexture();
+    return { w, h, ox: (boxSize - w) / 2, oy: (boxSize - h) / 2 };
+  }
 
-    if (!tex) { return null; }
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, obj.definition.image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (obj as any).__imguiAssetThumb = tex;
-
-    return tex;
+  private getOrCreatePreviewTexture (obj: Texture): TexturePreview | null {
+    return getOrCreateTexturePreview(obj);
   }
 }

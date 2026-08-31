@@ -82,10 +82,14 @@ describe('webgl/gl-texture', () => {
   });
 
   it('compare GPU memory and loading time: ktx2 vs png vs webp', async () => {
+    const pngUrl = new URL('../../../../demo/public/assets/SuperAnt.png', import.meta.url).href;
+    const ktx2Url = new URL('../../../../demo/public/assets/SuperAnt_uastc.ktx2', import.meta.url).href;
+    const pngImage = await loadImage(pngUrl);
+    const webpUrl = await createWebPObjectURL(pngImage);
     const urls = {
-      ktx2: 'https://mdn.alipayobjects.com/mars/afts/file/A*b3SLT7ZBMYQAAAAAbZAAAAgAelB4AQ/original',
-      png: 'https://mdn.alipayobjects.com/mars/afts/file/A*VgsWR6PksnIAAAAAgDAAAAgAelB4AQ/original',
-      webp: 'https://mdn.alipayobjects.com/mars/afts/file/A*zRfqQ52NkuwAAAAAXbAAAAgAelB4AQ/original',
+      ktx2: ktx2Url,
+      png: pngUrl,
+      webp: webpUrl,
     };
 
     const cpuDecodeTimes: Record<string, number> = {};
@@ -137,27 +141,28 @@ describe('webgl/gl-texture', () => {
     expect(gpuUploadTimes.ktx2).to.be.lessThan(gpuUploadTimes.png);
     expect(gpuUploadTimes.ktx2).to.be.lessThan(gpuUploadTimes.webp);
 
-    expect(texKTX2.width).to.eql(2048);
-    expect(texKTX2.height).to.eql(2048);
-    expect(texPNG.width).to.eql(2048);
-    expect(texPNG.height).to.eql(2048);
-    expect(texWebP.width).to.eql(2048);
-    expect(texWebP.height).to.eql(2048);
+    expect(texKTX2.width).to.eql(pngImage.width);
+    expect(texKTX2.height).to.eql(pngImage.height);
+    expect(texPNG.width).to.eql(pngImage.width);
+    expect(texPNG.height).to.eql(pngImage.height);
+    expect(texWebP.width).to.eql(pngImage.width);
+    expect(texWebP.height).to.eql(pngImage.height);
 
     const gpuInfoKTX2 = getTextureGPUInfo(texKTX2, retKTX2);
     const gpuInfoPNG = getTextureGPUInfo(texPNG, retPNG);
     const gpuInfoWebP = getTextureGPUInfo(texWebP, retWebP);
 
-    expect(gpuInfoKTX2).to.deep.equal([37808, 0, gl.TEXTURE_2D, [[2048, 2048]]]);
-    expect(gpuInfoPNG).to.deep.equal([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[2048, 2048]]]);
-    expect(gpuInfoWebP).to.deep.equal([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[2048, 2048]]]);
+    expect(gpuInfoKTX2.slice(0, 3)).to.deep.equal([COMPRESSED_RGBA_ASTC_4x4_KHR, 0, gl.TEXTURE_2D]);
+    expect(gpuInfoKTX2[3][0]).to.deep.equal([pngImage.width, pngImage.height]);
+    expect(gpuInfoPNG).to.deep.equal([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[pngImage.width, pngImage.height]]]);
+    expect(gpuInfoWebP).to.deep.equal([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[pngImage.width, pngImage.height]]]);
 
     const memKTX2 = getTextureMemory(texKTX2, gpuInfoKTX2);
     const memPNG = getTextureMemory(texPNG, gpuInfoPNG);
     const memWebP = getTextureMemory(texWebP, gpuInfoWebP);
 
-    expect(memPNG).to.eql(memKTX2 * 4);
-    expect(memWebP).to.eql(memKTX2 * 4);
+    expect(memPNG).to.eql(memWebP);
+    expect(memKTX2).to.be.lessThan(memPNG);
 
     const line = (c1: string, c2: string, c3: string, c4: string, c5: string) =>
       `${c1.padEnd(6)}| ${c2.padEnd(12)}| ${c3.padEnd(12)}| ${c4.padEnd(12)}| ${c5.padEnd(12)}`;
@@ -170,6 +175,11 @@ describe('webgl/gl-texture', () => {
     console.info(line('KTX2', timeStr(cpuDecodeTimes.ktx2), timeStr(gpuUploadTimes.ktx2), timeStr(cpuDecodeTimes.ktx2 + gpuUploadTimes.ktx2), memStr(memKTX2)));
     console.info(line('PNG', timeStr(cpuDecodeTimes.png), timeStr(gpuUploadTimes.png), timeStr(cpuDecodeTimes.png + gpuUploadTimes.png), memStr(memPNG)));
     console.info(line('WebP', timeStr(cpuDecodeTimes.webp), timeStr(gpuUploadTimes.webp), timeStr(cpuDecodeTimes.webp + gpuUploadTimes.webp), memStr(memWebP)));
+
+    texPNG.dispose();
+    texWebP.dispose();
+    texKTX2.dispose();
+    URL.revokeObjectURL(webpUrl);
   });
 
   it('load 2d ktx2 file', async () => {
@@ -775,3 +785,26 @@ describe('webgl2/gl-texture', () => {
     imgeElementTexture.dispose();
   });
 });
+
+async function createWebPObjectURL (image: HTMLImageElement): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d')!;
+
+  canvas.width = image.width;
+  canvas.height = image.height;
+  context.drawImage(image, 0, 0);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(result => {
+      if (result) {
+        resolve(result);
+      } else {
+        reject(new Error('Failed to encode WebP fixture.'));
+      }
+    }, 'image/webp');
+  });
+
+  canvas.remove();
+
+  return URL.createObjectURL(blob);
+}

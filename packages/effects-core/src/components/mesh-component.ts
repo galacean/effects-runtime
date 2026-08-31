@@ -4,7 +4,7 @@ import type { Engine } from '../engine';
 import type { Maskable } from '../material';
 import { extractMinAndMax } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
-import type { Geometry, Renderer } from '../render';
+import { VertexBuffer, type Geometry, type Renderer } from '../render';
 import { RendererComponent } from './renderer-component';
 
 interface MeshComponentData extends spec.ComponentData {
@@ -73,7 +73,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
   }
 
   override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+    const positionArray = this.geometry.getAttributeData(VertexBuffer.PositionKind) as Float32Array;
 
     if (positionArray) {
       const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);

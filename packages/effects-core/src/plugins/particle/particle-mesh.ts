@@ -19,9 +19,11 @@ import {
   RandomValue,
 } from '../../math';
 import type {
-  Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
+  Attribute, Buffer, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
 } from '../../render';
-import { GLSLVersion, Geometry, Mesh } from '../../render';
+import {
+  BufferUsage, GLSLVersion, Geometry, Mesh, VertexBuffer,
+} from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
@@ -85,8 +87,6 @@ export interface ParticleMeshData {
 export interface ParticleMeshProps extends ParticleMeshData {
   renderMode?: number,
   blending?: number,
-  mask: number,
-  maskMode: number,
   side: number,
   transparentOcclusion?: boolean,
   matrix?: Matrix4,
@@ -138,6 +138,7 @@ export class ParticleMesh implements ParticleMeshData {
   private cachedRotationMatrix = new Matrix3();
   private cachedLinearMove = new Vector3();
   private tempMatrix3 = new Matrix3();
+  private readonly attributeData = new Map<Buffer, Float32Array>();
 
   VERT_MAX_KEY_FRAME_COUNT = 0;
 
@@ -375,6 +376,14 @@ export class ParticleMesh implements ParticleMeshData {
     this.anchor = anchor;
     this.mesh = mesh;
     this.geometry = mesh.firstGeometry();
+    this.geometry.getAttributeNames().forEach(name => {
+      const vertexBuffer = this.geometry.getVertexBuffer(name);
+      const data = this.geometry.getAttributeData(name);
+
+      if (vertexBuffer && data instanceof Float32Array) {
+        this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
+      }
+    });
     this.forceTarget = forceTarget;
     this.sizeOverLifetime = sizeOverLifetime;
     this.speedOverLifetime = speedOverLifetime;
@@ -384,6 +393,7 @@ export class ParticleMesh implements ParticleMeshData {
     this.gravityModifier = gravityModifier;
     this.rotationOverLifetime = rotationOverLifetime;
     this.maxCount = maxCount;
+    this.maxParticleBufferCount = maxCount;
     // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
     this.time = 0;
@@ -400,40 +410,19 @@ export class ParticleMesh implements ParticleMeshData {
   // }
 
   getPointColor (index: number) {
-    const data = this.geometry.getAttributeData('aRot');
+    const data = this.getAttributeData('aRot');
     const i = index * 32 + 4;
-
-    assertExist(data);
 
     return [data[i], data[i + 1], data[i + 2], data[i + 3]];
   }
 
   clearPoints () {
-    this.resetGeometryData(this.geometry);
     this.particleCount = 0;
     this.geometry.setDrawCount(0);
-    this.maxParticleBufferCount = 0;
-  }
-
-  resetGeometryData (geometry: Geometry) {
-    const names = geometry.getAttributeNames();
-    const index = geometry.getIndexData();
-
-    for (let i = 0; i < names.length; i++) {
-      const name = names[i];
-      const data = geometry.getAttributeData(name);
-
-      if (data) {
-        // @ts-expect-error
-        geometry.setAttributeData(name, new data.constructor(0));
-      }
-    }
-    // @ts-expect-error
-    geometry.setIndexData(new index.constructor(0));
   }
 
   onUpdate (dt: number) {
-    const aPosArray = this.geometry.getAttributeData('aPos') as Float32Array; // vector3
+    const aPosArray = this.getAttributeData(VertexBuffer.PositionKind); // vector3
     const vertexCount = Math.ceil(aPosArray.length / 12);
 
     this.applyTranslation(vertexCount, dt);
@@ -442,18 +431,18 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   minusTime (time: number) {
-    const aOffset = this.geometry.getAttributeData('aOffset') as Float32Array;
+    const aOffset = this.getAttributeData('aOffset');
 
     for (let i = 0; i < aOffset.length; i += 4) {
       aOffset[i + 2] -= time;
     }
-    this.geometry.setAttributeData('aOffset', aOffset);
+    this.setAttributeData('aOffset', aOffset);
     this.time -= time;
   }
 
   removePoint (index: number) {
     if (index < this.particleCount) {
-      this.geometry.setAttributeSubData('aOffset', index * 16, new Float32Array(16));
+      this.setAttributeSubData('aOffset', index * 16, new Float32Array(16));
     }
   }
 
@@ -564,16 +553,14 @@ export class ParticleMesh implements ParticleMeshData {
         const attrSize = geometry.getAttributeStride(name) / Float32Array.BYTES_PER_ELEMENT;
 
         if (increaseBuffer) {
-          const baseData = geometry.getAttributeData(name);
-
-          assertExist(baseData);
+          const baseData = this.getAttributeData(name);
 
           const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
 
           geoData.set(data, data.length * index);
-          geometry.setAttributeData(name, geoData);
+          this.setAttributeData(name, geoData);
         } else {
-          geometry.setAttributeSubData(name, data.length * index, data);
+          this.setAttributeSubData(name, data.length * index, data);
         }
       });
       this.particleCount = Math.max(particleCount, this.particleCount);
@@ -583,9 +570,9 @@ export class ParticleMesh implements ParticleMeshData {
 
   private applyTranslation (vertexCount: number, deltaTime: number) {
     const localTime = this.time;
-    let aTranslationArray = this.geometry.getAttributeData('aTranslation') as Float32Array;
-    const aVelArray = this.geometry.getAttributeData('aVel') as Float32Array; // vector3
-    const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
+    let aTranslationArray = this.getAttributeData('aTranslation');
+    const aVelArray = this.getAttributeData('aVel'); // vector3
+    const aOffsetArray = this.getAttributeData('aOffset');
 
     if (aTranslationArray.length < vertexCount * 3) {
       aTranslationArray = this.expandArray(aTranslationArray, vertexCount * 3);
@@ -656,14 +643,14 @@ export class ParticleMesh implements ParticleMeshData {
         aTranslationArray[aTranslationOffset + 11] += aTranslationZ;
       }
     }
-    this.geometry.setAttributeData('aTranslation', aTranslationArray);
+    this.setAttributeData('aTranslation', aTranslationArray);
   }
 
   private applyRotation (vertexCount: number, deltaTime: number) {
-    let aRotationArray = this.geometry.getAttributeData('aRotation0') as Float32Array;
-    const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
-    const aRotArray = this.geometry.getAttributeData('aRot') as Float32Array; // vector3
-    const aSeedArray = this.geometry.getAttributeData('aSeed') as Float32Array; // float
+    let aRotationArray = this.getAttributeData('aRotation0');
+    const aOffsetArray = this.getAttributeData('aOffset');
+    const aRotArray = this.getAttributeData('aRot'); // vector3
+    const aSeedArray = this.getAttributeData('aSeed'); // float
     const localTime = this.time;
     const aRotationMatrix = this.cachedRotationMatrix;
 
@@ -766,13 +753,13 @@ export class ParticleMesh implements ParticleMeshData {
       }
     }
 
-    this.geometry.setAttributeData('aRotation0', aRotationArray);
+    this.setAttributeData('aRotation0', aRotationArray);
   }
 
   private applyLinearMove (vertexCount: number, deltaTime: number) {
-    let aLinearMoveArray = this.geometry.getAttributeData('aLinearMove') as Float32Array;
-    const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
-    const aSeedArray = this.geometry.getAttributeData('aSeed') as Float32Array; // float
+    let aLinearMoveArray = this.getAttributeData('aLinearMove');
+    const aOffsetArray = this.getAttributeData('aOffset');
+    const aSeedArray = this.getAttributeData('aSeed'); // float
     const localTime = this.time;
 
     if (aLinearMoveArray.length < vertexCount * 3) {
@@ -856,7 +843,45 @@ export class ParticleMesh implements ParticleMeshData {
         aLinearMoveArray[aLinearMoveOffset + 11] = linearMove.z;
       }
     }
-    this.geometry.setAttributeData('aLinearMove', aLinearMoveArray);
+    this.setAttributeData('aLinearMove', aLinearMoveArray);
+  }
+
+  private getAttributeData (name: string): Float32Array {
+    const vertexBuffer = this.geometry.getVertexBuffer(name);
+    const data = vertexBuffer && this.attributeData.get(vertexBuffer.getWrapperBuffer());
+
+    assertExist(data);
+
+    return data;
+  }
+
+  private setAttributeData (name: string, data: Float32Array) {
+    const vertexBuffer = this.geometry.getVertexBuffer(name);
+
+    assertExist(vertexBuffer);
+    this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
+    this.geometry.setAttributeData(name, data);
+  }
+
+  private setAttributeSubData (name: string, offset: number, data: Float32Array) {
+    const target = this.getAttributeData(name);
+
+    target.set(data, offset);
+    this.geometry.setAttributeSubData(name, offset, data);
+  }
+
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
+      return;
+    }
+    this.attributeData.forEach((data, buffer) => {
+      if (!buffer.getData()) {
+        buffer.update(data);
+      }
+    });
   }
 
   private expandArray (array: Float32Array, newSize: number): Float32Array {
@@ -876,14 +901,14 @@ function generateGeometryProps (
   const bpe = Float32Array.BYTES_PER_ELEMENT;
   const j12 = bpe * 12;
   const attributes: Record<string, Attribute> = {
-    aPos: { size: 3, offset: 0, stride: j12, data: new Float32Array(0) },
-    aVel: { size: 3, offset: 3 * bpe, stride: j12, dataSource: 'aPos' },
-    aDirX: { size: 3, offset: 6 * bpe, stride: j12, dataSource: 'aPos' },
-    aDirY: { size: 3, offset: 9 * bpe, stride: j12, dataSource: 'aPos' },
+    [VertexBuffer.PositionKind]: { size: 3, offset: 0, stride: j12, data: new Float32Array(0) },
+    aVel: { size: 3, offset: 3 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
+    aDirX: { size: 3, offset: 6 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
+    aDirY: { size: 3, offset: 9 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
     //
     aRot: { size: 3, offset: 0, stride: 8 * bpe, data: new Float32Array(0) },
     aSeed: { size: 1, offset: 3 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
-    aColor: { size: 4, offset: 4 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
+    [VertexBuffer.ColorKind]: { size: 4, offset: 4 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
     //
     aOffset: { size: 4, stride: 4 * bpe, data: new Float32Array(0) },
     aTranslation: { size: 3, data: new Float32Array(0) },
@@ -897,7 +922,13 @@ function generateGeometryProps (
     attributes['aSprite'] = { size: 3, stride: 3 * bpe, data: new Float32Array(0) };
   }
 
-  return { attributes, indices: { data: new Uint16Array(0) }, name, maxVertex };
+  return {
+    attributes,
+    indices: { data: new Uint16Array(maxVertex / 4 * 6) },
+    name,
+    maxVertex,
+    bufferUsage: BufferUsage.Dynamic,
+  };
 }
 
 export function getParticleMeshShader (

@@ -42,16 +42,18 @@ export abstract class Component extends EffectsObject {
   set enabled (value: boolean) {
     if (this.enabled !== value) {
       this._enabled = value;
-      if (value) {
-        if (this.isActiveAndEnabled) {
-          this.enable();
-          if (!this.isStartCalled) {
-            this.onStart();
-            this.isStartCalled = true;
+
+      if (this.item?.isDuringPlay && this.item.isActive) {
+        if (value) {
+          if (!this.isEnableCalled) {
+            this.enable();
+
+            if (!this.isStartCalled) {
+              this.onStart();
+              this.isStartCalled = true;
+            }
           }
-        }
-      } else {
-        if (this.isEnableCalled) {
+        } else if (this.isEnableCalled) {
           this.disable();
         }
       }
@@ -125,6 +127,13 @@ export abstract class Component extends EffectsObject {
    * 当父级或间接父级发生改变时调用
    */
   onParentChanged () {
+    // OVERRIDE
+  }
+
+  /**
+   * Called when the owning item's sibling order changes.
+   */
+  onOrderInParentChanged () {
     // OVERRIDE
   }
 

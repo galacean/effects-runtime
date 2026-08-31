@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "exclude": ["**/dist/**", "node_modules", "**/devtools/**"]
+  "exclude": ["**/dist/**", "node_modules", "**/devtools/**", "temp"]
 }

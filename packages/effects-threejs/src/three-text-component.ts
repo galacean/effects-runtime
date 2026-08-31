@@ -17,9 +17,10 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
   constructor (engine: Engine, props?: spec.TextContent) {
     super(engine, props as unknown as spec.SpriteComponentData);
 
-    this.canvas = canvasPool.getCanvas();
-    canvasPool.saveCanvas(this.canvas);
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+
+    this.canvas = canvasAndContext.canvas;
+    this.context = canvasAndContext.context;
 
     if (!props) {
       return;
@@ -34,6 +35,12 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+    this.disposeTextTexture();
+    this.releaseTextCanvas();
   }
 
   override fromData (data: spec.SpriteComponentData): void {

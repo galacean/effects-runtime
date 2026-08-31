@@ -70,7 +70,10 @@ export class CompositionCache {
 
     if (this.brdfLutTexture === undefined || this.brdfLutTexture.isDestroyed) {
       if (CompositionCache.brdfLutTexOptions === undefined) {
-        throw new Error('Please load brdfLutTexOptions at first.');
+        // A Composition can be created and played directly without going through
+        // the player's asynchronous asset-loading lifecycle. In that case the
+        // optional BRDF LUT is not ready yet, but non-PBR content can still run.
+        return;
       }
       //
       const brdfLutTextureName = 'brdfLutTexture';

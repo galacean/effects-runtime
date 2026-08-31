@@ -43,7 +43,7 @@ export class OrbitController {
     if (ImGui.IsMouseDown(ImGui.MouseButton.Middle)) {
       this.handlePan();
     }
-    if (ImGui.GetIO().MouseWheelH !== 0) {
+    if (ImGui.GetIO().MouseWheel !== 0) {
       this.handleZoom();
     }
 

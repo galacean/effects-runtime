@@ -1,5 +1,5 @@
 import type { GeometryProps, Engine } from '@galacean/effects';
-import { glContext, Geometry, Material, Mesh, RenderPassAttachmentStorageType } from '@galacean/effects';
+import { glContext, Geometry, Material, Mesh, RenderPassAttachmentStorageType, VertexBuffer } from '@galacean/effects';
 import type { Matrix4 } from '../runtime/math';
 import { Vector2, Vector3 } from '../runtime/math';
 
@@ -198,7 +198,7 @@ export class BoxMesh {
 
     return {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 1,
           data,

@@ -135,6 +135,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       interactive = false,
       renderOptions = {},
       env = '',
+      doNotHandleContextLost,
     } = config;
     const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
 
@@ -186,6 +187,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         notifyTouch: notifyTouch,
         interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
+        doNotHandleContextLost,
       });
       this.engine.offscreenMode = true;
 
@@ -290,7 +292,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 获取当前播放的所有合成（请不要修改返回的数组内容）
    */
   getCompositions () {
-    return this.compositions.sort((a, b) => a.getIndex() - b.getIndex());
+    return this.compositions;
   }
 
   /**

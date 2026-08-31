@@ -1,9 +1,8 @@
 import type {
-  Engine, GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
+  Engine, GeometryMeshProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Geometry, Material, Mesh, Texture, logger } from '@galacean/effects-core';
+import { Material, Mesh, Texture, logger } from '@galacean/effects-core';
 import { ThreeMaterial } from './material';
-import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
 
@@ -45,16 +44,6 @@ Texture.createWithData = (engine: Engine, data?: TextureDataType, options?: Reco
  */
 Material.create = (engine: Engine, props?: MaterialProps) => {
   return new ThreeMaterial(engine, props);
-};
-
-/**
- * geometry 创建方法
- *
- * @param options - geometry 创建参数
- * @returns THREE 中的抽象 geometry 对象
- */
-Geometry.create = (engine: Engine, options?: GeometryProps) => {
-  return new ThreeGeometry(engine, options);
 };
 
 /**

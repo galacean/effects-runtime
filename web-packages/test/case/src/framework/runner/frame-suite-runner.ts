@@ -26,10 +26,10 @@ function assertGpuCapability (renderFramework: GLType, controller: TestControlle
 }
 
 export function runFrameSuite (profile: FrameSuiteProfile) {
-  const frameworkIndexOffset = profile.frameworkIndexOffset ?? 0;
+  profile.frameworks.forEach(renderFramework => {
+    const suiteTitle = `${profile.title}@${renderFramework}`;
 
-  profile.frameworks.forEach((renderFramework, frameworkIndex) => {
-    describe(`${profile.title}@${renderFramework}`, function () {
+    describe(suiteTitle, function () {
       this.timeout(`${profile.timeoutMs}ms`);
 
       let controller: TestController | undefined;
@@ -76,7 +76,8 @@ export function runFrameSuite (profile: FrameSuiteProfile) {
             profile,
             scene,
             renderFramework,
-            idx: [frameworkIndexOffset + frameworkIndex, sceneIndex],
+            sceneIndex,
+            suiteTitle,
           });
 
           expect(result.diffRatioList).to.be.eqls([]);

@@ -1,4 +1,5 @@
-import { Player } from '@galacean/effects';
+import { Player, VFXItem } from '@galacean/effects';
+import { UICanvas, UIControl } from '@galacean/effects-plugin-gui';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
@@ -585,12 +586,18 @@ export class GalaceanEffects {
 
       void converter.processScene(url).then(async (scene: any) => {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
-
-        composition.rootItem.addComponent(CanvasGizmo);
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        composition.rootItem.addComponent(CanvasGizmo);
+        const overlayCanvas = composition.pluginRoot.getComponent(UICanvas) ??
+          composition.pluginRoot.addComponent(UICanvas);
+        const canvasGizmo = new VFXItem(composition.engine);
+        const bridge = canvasGizmo.addComponent(UIControl);
+
+        overlayCanvas.order = Number.MAX_SAFE_INTEGER;
+        bridge.control = new CanvasGizmo(composition.engine);
+
+        canvasGizmo.setParent(composition.pluginRoot);
       });
     }
 

@@ -3,6 +3,34 @@ import { AssetManager, Player, SpriteComponent, TextComponent, spec } from '@gal
 import { cubeTexture1, cubeTexture2 } from '../../../assets/cube-texture';
 
 const { expect } = chai;
+const TINY_PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2ZAAAAABJRU5ErkJggg==';
+const INVALID_IMAGE_DATA_URL = 'data:image/png;base64,invalid';
+
+function stubXHRFailure (): { urls: string[], restore: () => void } {
+  const urls: string[] = [];
+  const OriginalXHR = globalThis.XMLHttpRequest;
+
+  class MockXHR {
+    status = 0;
+    response: unknown = null;
+    responseType: XMLHttpRequestResponseType = '';
+    private errorHandler: ((event: Event) => void) | null = null;
+
+    addEventListener (event: string, handler: (event: Event) => void) {
+      if (event === 'error') { this.errorHandler = handler; }
+    }
+
+    open (_method: string, url: string) { urls.push(url); }
+
+    send () {
+      queueMicrotask(() => { this.errorHandler?.(new Event('error')); });
+    }
+  }
+
+  globalThis.XMLHttpRequest = MockXHR as unknown as typeof XMLHttpRequest;
+
+  return { urls, restore: () => { globalThis.XMLHttpRequest = OriginalXHR; } };
+}
 
 describe('player/scene-load', () => {
   let player: Player;
@@ -93,15 +121,22 @@ describe('player/scene-load', () => {
   });
 
   it('load json fail with msg', async () => {
+    const url = 'https://example.com/invalid-scene.json';
+    const captured = stubXHRFailure();
     const spy = chai.spy();
 
     try {
-      await player.loadScene('https://www.galacean.com/effects/', { timeout: 5 });
-    } catch (e: any) {
-      expect(e.message).to.include('Load error in loadJSON');
-      spy();
+      try {
+        await player.loadScene(url, { timeout: 5 });
+      } catch (e: any) {
+        expect(e.message).to.include('Load error in loadJSON');
+        spy();
+      }
+      expect(captured.urls).to.deep.equal([url]);
+      expect(spy).to.has.been.called.once;
+    } finally {
+      captured.restore();
     }
-    expect(spy).to.has.been.called.once;
   });
 
   it('load timeout', async () => {
@@ -117,15 +152,15 @@ describe('player/scene-load', () => {
   });
 
   it('toggle png when webp fails', async () => {
-    const png = 'https://mdn.alipayobjects.com/mars/afts/img/A*_aDmQ6X7laUAAAAAAAAAAAAADlB4AQ/original';
-    const json = getJSONWithImageURL(png, 'https://mdn.alipayobjects.com/error');
+    const png = TINY_PNG_DATA_URL;
+    const json = getJSONWithImageURL(png, 'data:image/webp;base64,invalid');
     const scene = await player.loadScene(json);
 
     expect(scene.textures[0].sourceFrom).to.contains({ url: png });
   });
 
   it('load image fail with msg', async () => {
-    const json = getJSONWithImageURL('https://mdn.alipayobjects.com/error');
+    const json = getJSONWithImageURL(INVALID_IMAGE_DATA_URL);
     const spy = chai.spy();
 
     try {
@@ -144,7 +179,7 @@ describe('player/scene-load', () => {
     try {
       await player.loadScene(json, {
         variables: {
-          'image1': 'https://mdn.alipayobjects.com/error',
+          'image1': INVALID_IMAGE_DATA_URL,
         },
       });
     } catch (e: any) {
@@ -155,16 +190,23 @@ describe('player/scene-load', () => {
   });
 
   it('load bin fail with url', async () => {
-    const json = JSON.parse('{"bins":[{"url":"https://mdn.alipayobjects.com/error"}],"images":[],"compositions":[{"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"duration":5,"id":"1","items":[{"type":"3","name":"parent","id":"1","duration":2,"endBehavior":5,"content":{"options":{},"rotationOverLifetime":{"separateAxes":true,"y":[0,180]}},"transform":{"rotation":[0,45,0]}}]}],"version":"1.3","compositionId":"1"}');
+    const url = 'https://example.com/missing.bin';
+    const captured = stubXHRFailure();
+    const json = JSON.parse(`{"bins":[{"url":"${url}"}],"images":[],"compositions":[{"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"duration":5,"id":"1","items":[{"type":"3","name":"parent","id":"1","duration":2,"endBehavior":5,"content":{"options":{},"rotationOverLifetime":{"separateAxes":true,"y":[0,180]}},"transform":{"rotation":[0,45,0]}}]}],"version":"1.3","compositionId":"1"}`);
     const spy = chai.spy();
 
     try {
-      await player.loadScene(json);
-    } catch (e: any) {
-      expect(e.message).to.include('Load error in processBins');
-      spy();
+      try {
+        await player.loadScene(json);
+      } catch (e: any) {
+        expect(e.message).to.include('Load error in processBins');
+        spy();
+      }
+      expect(captured.urls).to.deep.equal([url]);
+      expect(spy).to.has.been.called.once;
+    } finally {
+      captured.restore();
     }
-    expect(spy).to.has.been.called.once;
   });
 
   it('load scene with varible text', async () => {
