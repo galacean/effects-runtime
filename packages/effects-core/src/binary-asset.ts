@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { EffectsObject } from './effects-object';
+import { Asset } from './asset';
 import { effectsClass } from './decorators';
 
 interface BinaryAssetData extends spec.EffectsObjectData {
@@ -7,7 +7,7 @@ interface BinaryAssetData extends spec.EffectsObjectData {
 }
 
 @effectsClass(spec.DataType.BinaryAsset)
-export class BinaryAsset extends EffectsObject {
+export class BinaryAsset extends Asset {
   buffer: ArrayBuffer;
 
   override fromData (data: BinaryAssetData): void {

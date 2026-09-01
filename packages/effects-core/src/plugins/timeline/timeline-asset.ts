@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from './track';
@@ -7,10 +8,9 @@ import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
 import type { SceneBinding } from '../../components';
-import { EffectsObject } from '../../effects-object';
 
 @effectsClass(spec.DataType.TimelineAsset)
-export class TimelineAsset extends EffectsObject {
+export class TimelineAsset extends Asset {
   tracks: TrackAsset[] = [];
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;

@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import { EffectsObject } from '../../effects-object';
+import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { Texture } from '../../texture';
@@ -35,7 +35,7 @@ export interface SpriteData extends spec.EffectsObjectData {
  * 字段反序列化统一由 fromData 完成，避免双路径带来的引用覆盖陷阱。
  */
 @effectsClass('Sprite')
-export class Sprite extends EffectsObject {
+export class Sprite extends Asset {
   /** 关联的纹理对象 */
   texture: Texture;
   /** 归一化 UV 矩形 [x, y, w, h]，默认整张纹理 */

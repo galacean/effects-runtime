@@ -1,4 +1,4 @@
-import type { Asset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import type { DataAsset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { MaskableGraphic, Texture, effectsClass, math, spec } from '@galacean/effects';
 
 /**
@@ -165,7 +165,7 @@ export class VideoComponent extends MaskableGraphic {
     this.transparent = transparent;
 
     if (video) {
-      const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
+      const videoAsset = this.engine.findObject<DataAsset<HTMLVideoElement>>(video);
 
       if (videoAsset) {
         this.video = videoAsset.data;

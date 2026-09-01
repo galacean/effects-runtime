@@ -4,7 +4,7 @@ import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { EffectsObject } from './effects-object';
-import { Asset } from './asset';
+import { DataAsset } from './asset';
 import { Material } from './material';
 
 /**
@@ -88,7 +88,7 @@ export class AssetService implements Disposable {
   ) {
     for (const assetId of Object.keys(assets)) {
       const asset = assets[assetId];
-      const engineAsset = new Asset(this.engine);
+      const engineAsset = new DataAsset<ImageLike>(this.engine);
 
       engineAsset.data = asset;
       engineAsset.setInstanceId(assetId);

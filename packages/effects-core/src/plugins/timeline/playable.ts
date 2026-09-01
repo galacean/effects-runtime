@@ -1,4 +1,4 @@
-import { EffectsObject } from '../../effects-object';
+import { Asset } from '../../asset';
 import type { Disposable } from '../../utils';
 
 /**
@@ -139,7 +139,7 @@ export class PlayableOutput {
   }
 }
 
-export abstract class PlayableAsset extends EffectsObject {
+export abstract class PlayableAsset extends Asset {
   abstract createPlayable (): Playable;
 }
 
