@@ -1,8 +1,17 @@
 import type { ImGui } from '../../imgui';
+import type { Sprite } from '@galacean/effects';
 
 export type KeyframeData = {
   time: number,
   value: number,
+};
+
+/**
+ * Sprite 对象引用关键帧：time 为归一化 0-1（相对 clip），sprite 为运行时 Sprite 资产实例。
+ */
+export type SpriteKeyframeData = {
+  time: number,
+  sprite: Sprite,
 };
 
 export type TransformPropertyChannel = {

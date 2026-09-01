@@ -47,22 +47,34 @@ export class PluginSystem {
     return plugins;
   }
 
-  static initializeComposition (composition: Composition, scene?: Scene) {
-    plugins.forEach(loader => loader.onCompositionCreated(composition, scene));
+  static notifyCompositionCreating (composition: Composition, scene?: Scene) {
+    plugins.forEach(plugin => plugin.onCompositionCreating(composition, scene));
   }
 
-  static destroyComposition (comp: Composition) {
-    plugins.forEach(loader => loader.onCompositionDestroy(comp));
+  static notifyCompositionCreated (composition: Composition, scene?: Scene) {
+    plugins.forEach(plugin => plugin.onCompositionCreated(composition, scene));
   }
 
-  static async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions) {
+  static notifyCompositionDestroy (composition: Composition) {
+    plugins.forEach(plugin => plugin.onCompositionDestroy(composition));
+  }
+
+  static notifyEngineCreated (engine: Engine) {
+    plugins.forEach(plugin => plugin.onEngineCreated(engine));
+  }
+
+  static notifyEngineDestroy (engine: Engine) {
+    plugins.forEach(plugin => plugin.onEngineDestroy(engine));
+  }
+
+  static async notifyAssetsLoadStart (scene: Scene, options?: SceneLoadOptions) {
     return Promise.all(
       plugins.map(plugin => plugin.onAssetsLoadStart(scene, options)),
     );
   }
 
-  static onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
-    plugins.forEach(loader => loader.onAssetsLoadFinish(scene, options, engine));
+  static notifyAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
+    plugins.forEach(plugin => plugin.onAssetsLoadFinish(scene, options, engine));
   }
 }
 

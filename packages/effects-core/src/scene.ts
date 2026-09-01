@@ -80,14 +80,17 @@ export interface SceneLoadOptions {
   variables?: spec.TemplateVariables,
 
   /**
-   * 是否使用压缩纹理
-   * @default undefined
+   * 是否优先使用压缩纹理
+   * 当资源存在且当前环境支持时使用，否则回退到普通图片
+   * 需要注册 KTX2 loader，例如 import '@galacean/effects-plugin-ktx2'
+   * @default true
    */
   useCompressedTexture?: boolean,
 
   /**
-   * 是否使用 Hevc 视频
-   * @default undefined
+   * 是否优先使用 Hevc 视频
+   * 当资源存在且当前环境支持时使用，否则回退到普通视频
+   * @default true
    */
   useHevcVideo?: boolean,
 

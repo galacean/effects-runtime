@@ -1,5 +1,5 @@
 import type {
-  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, Texture,
+  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, RestoreHandler, Texture,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
@@ -12,7 +12,7 @@ import type { GLEngine } from './gl-engine';
 
 let seed = 1;
 
-export class GLFramebuffer extends Framebuffer implements Disposable {
+export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHandler {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
   depthStencilRenderbuffer?: GLRenderbuffer;
   depthTexture?: GLTexture;
@@ -117,6 +117,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     }
     if (willUseFbo) {
       this.fbo = this.engine.createGLFramebuffer(this.name) as WebGLFramebuffer;
+      this.engine.addFramebuffer(this);
     }
 
     switch (storageType) {
@@ -211,7 +212,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     storeAction: RenderPassStoreAction,
     separateDepthStencil: boolean,
   ): GLenum[] | undefined {
-    const gl = this.engine.gl as WebGL2RenderingContext;
+    const gl = this.engine.gl;
     const colorLen = this.colorTextures.length;
 
     if (storeAction && isWebGL2(gl) && colorLen > 0) {
@@ -258,7 +259,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
     // TODO 不在bind中设置viewport
-    state.viewport(x, y, width, height);
+    state.setViewport(x, y, width, height);
     const whiteTexture = this.renderer.engine.whiteTexture as GLTexture;
     const whiteWebGLTexture = whiteTexture.textureBuffer;
 
@@ -348,8 +349,25 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     }
   }
 
+  /**
+   * 上下文恢复后重建 framebuffer 句柄。
+   * 内部 renderbuffer 由中央 renderbuffers 列表统一恢复，此处不重复处理。
+   * 附件纹理由各自 GLTexture.restore 恢复，此处仅重置 ready 并清空附件缓存，
+   * 让下次 bind 用各纹理的最新句柄重新挂载。
+   */
+  restore (): void {
+    if (!this.fbo) {
+      return;
+    }
+    // 旧 fbo 已随上下文丢失失效，直接重建。
+    this.fbo = this.engine.createGLFramebuffer(this.name) as WebGLFramebuffer;
+    this.ready = false;
+    this.attachmentTextures.length = 0;
+  }
+
   override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
     if (this.renderer) {
+      this.engine.removeFramebuffer(this);
       this.engine.deleteGLFramebuffer(this);
       delete this.fbo;
       const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;

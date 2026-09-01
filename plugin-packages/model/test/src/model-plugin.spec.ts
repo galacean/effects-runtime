@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/quotes */
 import type { HitTestBoxParams, HitTestSphereParams } from '@galacean/effects';
-import { Player, HitTestType, spec, math } from '@galacean/effects';
+import { Composition, Player, HitTestType, spec, math } from '@galacean/effects';
 import { generateComposition } from './utilities';
 
 const { Vector3 } = math;
@@ -16,6 +16,17 @@ describe('需要关闭 WebGL Spector', () => {
 });
 
 describe('mode plugin test', () => {
+  it('supports directly creating and playing a composition', () => {
+    const comp = new Composition(player.engine);
+
+    expect(() => {
+      comp.play();
+      comp.update(0);
+    }).not.to.throw();
+
+    comp.dispose();
+  });
+
   it('parent affects 3d item position', async () => {
     const scene = {
       "compositionId": 1,

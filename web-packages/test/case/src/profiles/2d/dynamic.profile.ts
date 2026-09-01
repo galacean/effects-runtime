@@ -26,7 +26,6 @@ const scenes: FrameCompareScene[] = mapScenes(
 export const dynamic2DProfile: FrameSuiteProfile = buildProfile({
   id: '2d-dynamic',
   title: '文本/动态换图测试',
-  frameworkIndexOffset: 2,
   frameworks: ['webgl', 'webgl2'],
   canvas: DEFAULT_CANVAS_SIZE,
   timeoutMs: 300 * 1000,

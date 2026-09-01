@@ -1,9 +1,9 @@
 import type { Renderer } from '@galacean/effects-core';
 import { SpriteComponent, effectsClass, glContext, spec } from '@galacean/effects-core';
-import type { ThreeGeometry } from './three-geometry';
 import type { ThreeMaterial } from './material';
 import * as THREE from 'three';
 import type { ThreeEngine } from './three-engine';
+import { getThreeGeometry } from './three-geometry';
 
 @effectsClass(spec.DataType.SpriteComponent)
 export class ThreeSpriteComponent extends SpriteComponent {
@@ -70,13 +70,15 @@ export class ThreeSpriteComponent extends SpriteComponent {
   override fromData (data: spec.SpriteComponentData): void {
     super.fromData(data);
     if (!this.threeMesh) {
-      if ((this.geometry as ThreeGeometry).mode === glContext.LINES) {
+      const nativeGeometry = getThreeGeometry(this.geometry);
+
+      if (this.geometry.mode === glContext.LINES) {
         this.threeMesh = new THREE.LineSegments(
-          (this.geometry as ThreeGeometry).geometry,
+          nativeGeometry,
           (this.material as ThreeMaterial).material);
       } else {
         this.threeMesh = new THREE.Mesh(
-          (this.geometry as ThreeGeometry).geometry,
+          nativeGeometry,
           (this.material as ThreeMaterial).material
         );
       }
@@ -93,6 +95,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     if (!this.isActiveAndEnabled) {
       return;
     }
+    this.threeMesh.geometry = getThreeGeometry(this.geometry);
     this.material.setVector2('_Size', this.transform.size);
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);

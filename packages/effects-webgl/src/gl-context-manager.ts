@@ -2,7 +2,7 @@ import type { GLType, LostHandler, RestoreHandler } from '@galacean/effects-core
 import { assertExist, createGLContext } from '@galacean/effects-core';
 
 export class GLContextManager {
-  gl: WebGLRenderingContext | WebGL2RenderingContext | null;
+  gl: WebGL2RenderingContext | null;
 
   private readonly contextLostListener: (e: Event) => void;
   private readonly contextRestoredListener: (e: Event) => void;
@@ -15,18 +15,18 @@ export class GLContextManager {
     options: WebGLContextAttributes = {},
   ) {
     assertExist(canvas);
-    this.gl = createGLContext(canvas, glType, options);
+    this.gl = createGLContext(canvas, glType, options) as WebGL2RenderingContext;
     this.contextLostListener = (e: Event) => {
+      // 必须在 lost 同步阶段最前调用 preventDefault，浏览器才会触发 restored 事件。
+      e.preventDefault();
       for (const lostHandler of this.lostHandlers) {
         lostHandler.lost(e);
       }
-      this.canvas?.removeEventListener('webglcontextlost', this.contextLostListener);
     };
-    this.contextRestoredListener = (e: Event) => {
-      for (const restorable of this.restoreHandlers) {
-        restorable.restore();
+    this.contextRestoredListener = () => {
+      for (const restoreHandler of this.restoreHandlers) {
+        void restoreHandler.restore();
       }
-      this.canvas?.addEventListener('webglcontextlost', this.contextLostListener);
     };
     canvas.addEventListener('webglcontextlost', this.contextLostListener);
     canvas.addEventListener('webglcontextrestored', this.contextRestoredListener);

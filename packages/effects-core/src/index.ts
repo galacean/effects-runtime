@@ -22,6 +22,7 @@ export * from './decorators';
 export * from './downloader';
 export * from './effects-object';
 export * from './engine';
+export * from './input';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,
   getStandardJSON, normalizeColor,

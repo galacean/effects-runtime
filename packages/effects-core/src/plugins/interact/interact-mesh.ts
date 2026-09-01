@@ -7,13 +7,13 @@ import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import { createValueGetter } from '../../math';
 import type { ShaderMacros } from '../../render';
-import { GLSLVersion, Geometry, Mesh } from '../../render';
+import { GLSLVersion, Geometry, Mesh, VertexBuffer } from '../../render';
 import type { Transform } from '../../transform';
 
 const vertex = `
 precision highp float;
 
-attribute vec2 aPoint;
+attribute vec2 aPos;
 uniform vec4 uPos;
 uniform vec2 uSize;
 uniform vec4 uQuat;
@@ -32,7 +32,7 @@ vec3 rotateByQuat(vec3 a, vec4 quat){
 
 void main() {
   vec4 _pos = uPos;
-  vec3 point = rotateByQuat(vec3(aPoint.xy * uSize, 0.),uQuat);
+  vec3 point = rotateByQuat(vec3(aPos.xy * uSize, 0.),uQuat);
   vec4 pos = vec4(_pos.xyz, 1.0);
   pos = effects_ObjectToWorld * pos;
   pos.xyz += effects_MatrixInvV[0].xyz * point.x+ effects_MatrixInvV[1].xyz * point.y;
@@ -119,13 +119,13 @@ export class InteractMesh {
   }
 
   private createGeometry () {
-    const indexData = new Uint8Array([0, 1, 1, 2, 2, 3, 3, 0]);
+    const indexData = new Uint16Array([0, 1, 1, 2, 2, 3, 3, 0]);
 
     return Geometry.create(
       this.engine,
       {
         attributes: {
-          aPoint: {
+          [VertexBuffer.PositionKind]: {
             size: 2,
             offset: 0,
             stride: 2 * Float32Array.BYTES_PER_ELEMENT,

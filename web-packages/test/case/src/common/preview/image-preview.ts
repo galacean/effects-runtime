@@ -42,8 +42,9 @@ type ZoomableImage = HTMLImageElement & {
 
 export type SavePreviewImageOptions = {
   filename: string,
-  idx: [number, number],
+  sceneIndex: number,
   url: string,
+  suiteTitle: string,
   isNew?: boolean,
   imageClassName?: string,
   note?: string,
@@ -51,11 +52,11 @@ export type SavePreviewImageOptions = {
 
 export class CaseImagePreview {
   async saveImage (options: SavePreviewImageOptions) {
-    const { filename, idx, url, isNew, imageClassName, note } = options;
+    const { filename, sceneIndex, url, suiteTitle, isNew, imageClassName, note } = options;
     const img = document.createElement('img');
-    const suite = document.querySelectorAll('.suite');
-    const ul = suite[idx[0]]?.querySelector('ul');
-    let li = ul?.querySelector(`li.idx-${idx[1]}`);
+    const suiteEl = this.findSuiteByTitle(suiteTitle);
+    const ul = suiteEl?.querySelector('ul');
+    let li = ul?.querySelector(`li.idx-${sceneIndex}`);
 
     if (!ul) {
       return;
@@ -67,7 +68,7 @@ export class CaseImagePreview {
       div.classList.add('image-cell');
       li = document.createElement('li');
       li.classList.add('idx');
-      li.classList.add(`idx-${idx[1]}`);
+      li.classList.add(`idx-${sceneIndex}`);
       li.appendChild(div);
     }
 
@@ -125,6 +126,20 @@ export class CaseImagePreview {
     }
 
     ul.appendChild(li);
+  }
+
+  private findSuiteByTitle (suiteTitle: string): HTMLElement | null {
+    const suites = document.querySelectorAll<HTMLElement>('.suite');
+
+    for (const suite of suites) {
+      const title = suite.querySelector('h1 a')?.textContent?.trim();
+
+      if (title === suiteTitle) {
+        return suite;
+      }
+    }
+
+    return null;
   }
 
   private getImageGroupType (filename: string, isNew?: boolean, imageClassName?: string): 'old' | 'new' | 'heatmap' {

@@ -569,23 +569,30 @@ describe('core/interact/item', () => {
     const clickSpy = chai.spy();
 
     container.addEventListener('mouseup', clickSpy);
-    const eventArg = {
-      cancelable: true,
-      bubbles: true,
-      clientX: cvsBounding.left + cvsBounding.width / 2,
-      clientY: cvsBounding.top + cvsBounding.height / 2,
+    const createMouseEvent = (type: 'mousedown' | 'mouseup') => {
+      // Focusing the canvas on mousedown may scroll a long Mocha report, so
+      // read its current position for every synthetic event.
+      const bounding = player.canvas.getBoundingClientRect();
+
+      return new MouseEvent(type, {
+        cancelable: true,
+        bubbles: true,
+        clientX: bounding.left + bounding.width / 2,
+        clientY: bounding.top + bounding.height / 2,
+      });
     };
 
-    player.canvas.dispatchEvent(new MouseEvent('mouseup', eventArg));
+    player.canvas.dispatchEvent(createMouseEvent('mouseup'));
     expect(clickSpy).to.has.been.called.once;
     player.gotoAndPlay(0.01);
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', eventArg));
-    const mouseUpEvent = new MouseEvent('mouseup', eventArg);
+    player.canvas.dispatchEvent(createMouseEvent('mousedown'));
+    const mouseUpEvent = createMouseEvent('mouseup');
 
     player.canvas.dispatchEvent(mouseUpEvent);
     expect(spy).to.has.been.called.once;
     expect(mouseUpEvent.defaultPrevented).to.be.true;
     expect(clickSpy).to.has.been.called.once;
+    container.remove();
   });
 });
 

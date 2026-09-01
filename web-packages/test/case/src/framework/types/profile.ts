@@ -29,7 +29,6 @@ export type FrameCompareScene = {
 export type FrameSuiteProfile = {
   id: string,
   title: string,
-  frameworkIndexOffset?: number,
   frameworks: GLType[],
   canvas: {
     width: number,

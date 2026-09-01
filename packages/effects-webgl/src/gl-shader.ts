@@ -14,14 +14,15 @@ type Quaternion = math.Quaternion;
 export class GLShaderVariant extends ShaderVariant {
   program: GLProgram;
   compileResult: ShaderCompileResult;
-  id: string;
   initialized = false;
   uniformLocations: Record<string, WebGLUniformLocation | null> = {};
 
   private samplerChannels: Record<string, number> = {};
+  private uniformsNames: string[] = [];
+  private samplerList: string[] = [];
 
-  constructor (engine: Engine, source: ShaderWithSource) {
-    super(engine, source);
+  constructor (engine: Engine, source: ShaderWithSource, key: string) {
+    super(engine, source, key);
   }
 
   // shader 的 GPU 资源初始化方法，在绘制前调用
@@ -78,6 +79,10 @@ export class GLShaderVariant extends ShaderVariant {
     // 避免修改原数组。
     const samplerList = samplers.slice();
 
+    // 缓存名称，便于上下文恢复后重新绑定 uniform location。
+    this.uniformsNames = uniformNames.slice();
+    this.samplerList = samplerList.slice();
+
     uniformNames = uniformNames.concat(samplerList);
     const avaliableUniforms = (this.engine as GLEngine).getUniforms(this.program.program, uniformNames);
 
@@ -100,6 +105,27 @@ export class GLShaderVariant extends ShaderVariant {
       const samplerName = samplerList[index];
 
       this.samplerChannels[samplerName] = index;
+    }
+  }
+
+  /**
+   * 上下文丢失后重置 GPU 侧状态，使其在下次 compileShader 时重新编译并重新绑定 uniform/sampler。
+   */
+  resetForContextRestore () {
+    this.initialized = false;
+    this.uniformLocations = {};
+    this.samplerChannels = {};
+  }
+
+  /**
+   * 上下文恢复重编译完成后，用缓存的 uniform/sampler 名称重新查询并填充 location
+   */
+  refillUniforms () {
+    if (!this.initialized || !this.program) {
+      return;
+    }
+    if (this.uniformsNames.length > 0 || this.samplerList.length > 0) {
+      this.fillShaderInformation(this.uniformsNames, this.samplerList);
     }
   }
 

@@ -1,17 +1,22 @@
-import type { Composition, EngineOptions, Geometry, Material, Nullable, RenderPassClearAction, ShaderLibrary, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, Renderer, SceneLoader, TextureLoadAction, assertExist, glContext, isIOS, logger } from '@galacean/effects-core';
+import type {
+  DataBuffer, DataBufferOptions, EngineOptions, IndicesArray, Nullable,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
+} from '@galacean/effects-core';
+import {
+  Engine, GPUCapability, Renderer, TextureLoadAction, assertExist,
+  glContext, isIOS, logger, toBufferView,
+} from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import { GLContextManager } from './gl-context-manager';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
-import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
-import { GLVertexArrayObject } from './gl-vertex-array-object';
-import type { GLGeometry } from './gl-geometry';
 import type { GLShaderVariant } from './gl-shader';
+import { GLDataBuffer } from './gl-data-buffer';
 
 type Color = math.Color;
+type BufferData = number[] | ArrayBuffer | ArrayBufferView;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -19,20 +24,24 @@ type Matrix3 = math.Matrix3;
 type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
+const INSTANCE_DRAW_ERROR = 'Instanced drawing is not supported by the current graphics context.';
+
 export class GLEngine extends Engine {
   textureUnitDict: Record<string, WebGLTexture | null>;
   shaderLibrary: GLShaderLibrary;
-  gl: WebGLRenderingContext | WebGL2RenderingContext;
+  gl: WebGL2RenderingContext;
   context: GLContextManager;
 
   private readonly maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
-  private currentTextureBinding: WebGLTexture | null;
+  private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
+  private currentIndexBuffer: DataBuffer | null = null;
+  private currentVertexArrayObject: WebGLVertexArrayObject | null = null;
+  private vaoRecordInProgress = false;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
-  private restoreCompositionsCache: Composition[] = [];
 
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super(canvas, options);
@@ -50,10 +59,11 @@ export class GLEngine extends Engine {
     this.context = new GLContextManager(canvas, options.glType, options);
     this.context.addLostHandler({
       lost: e => {
-        this.ticker?.pause();
-        this.restoreCompositionsCache = this.compositions.slice();
+        // 仅恢复模式启用帧短路标志。
+        if (!this.doNotHandleContextLost) {
+          this.contextWasLost = true;
+        }
         this.compositions.forEach(comp => comp.lost(e));
-        e.preventDefault();
         logger.error(`WebGL context lost. Event target: ${e.target}.`);
         this.emit('contextlost', { engine: this, e });
       },
@@ -61,54 +71,49 @@ export class GLEngine extends Engine {
 
     this.context.addRestoreHandler({
       restore: async () => {
-        // FIXME: 需要测试下lost和restore流程
-        const { gl } = this.context;
+        if (this.doNotHandleContextLost) {
+          this.emit('contextrestored', this);
 
-        if (!gl) {
-          throw new Error('Can not restore automatically because losing gl context.');
+          return;
         }
 
-        this.reset();
-        this.shaderLibrary = new GLShaderLibrary(this);
-        this.gpuCapability = new GPUCapability(gl);
+        try {
+          const gl = this.context.gl;
 
-        await Promise.all(this.restoreCompositionsCache.map(async composition => {
-          const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
-          const newComposition = await SceneLoader.load(url, this);
-
-          newComposition.speed = speed;
-          newComposition.reusable = reusable;
-          newComposition.renderOrder = renderOrder;
-          newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
-          newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
-          newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
-          newComposition.onItemMessage = composition.onItemMessage;
-
-          for (let i = 0; i < videoState.length; i++) {
-            if (videoState[i]) {
-              const video = (newComposition.textures[i].source as Texture2DSourceOptionsVideo).video;
-
-              video.currentTime = videoState[i] ?? 0;
-              await video.play();
-            }
+          if (!gl) {
+            return;
           }
-          newComposition.isEnded = false;
-          newComposition.gotoAndPlay(currentTime);
+          // 1. 清空与旧上下文绑定的状态缓存。
+          this.gl = gl;
+          this.reset();
+          // 2. 重新探测 GPU 能力并初始化上下文方法。
+          this.initGLContext();
+          // 3. 重建 shader（先于其它资源：纹理/几何上传可能依赖 shader）。
+          await this.shaderLibrary.restore();
+          // 4. 重建几何顶点缓冲
+          this.geometries.forEach(geo => geo.restore());
+          // 5. 从粒子系统保留的数据重建动态缓冲内容
+          this.particleSystems.forEach(particleSystem => particleSystem.rebuild());
+          // 6. 重建 renderbuffer
+          this.renderbuffers.forEach(rb => (rb as GLRenderbuffer).restore());
+          // 7. 重建纹理
+          this.textures.forEach(tex => (tex as GLTexture).restore());
+          // 8. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
+          this.framebuffers.forEach(fb => (fb as GLFramebuffer).restore());
 
-          return newComposition;
-        }));
-
-        this.restoreCompositionsCache = [];
-        this.ticker?.resume();
-
-        if (isIOS() && this.canvas) {
-          this.canvas.style.display = 'none';
-          window.setTimeout(() => {
-            this.canvas.style.display = '';
-          }, 0);
+          if (isIOS() && this.canvas) {
+            this.canvas.style.display = 'none';
+            window.setTimeout(() => {
+              this.canvas.style.display = '';
+            }, 0);
+          }
+        } catch (e) {
+          this.renderErrors.add(e as Error);
+        } finally {
+          // 无论重建成功、部分失败还是 gl 不可用，都复位标志并通知宿主，避免 mainLoop 永久短路。
+          this.contextWasLost = false;
+          this.emit('contextrestored', this);
         }
-
-        this.emit('contextrestored', this);
       },
     });
 
@@ -117,13 +122,58 @@ export class GLEngine extends Engine {
     assertExist(gl);
     this.gl = gl;
     this.reset();
-    this.gpuCapability = new GPUCapability(gl);
+    this.initGLContext();
     this.shaderLibrary = new GLShaderLibrary(this);
     this.renderer = new Renderer(this);
     this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
 
     // resize need gl renderer initialized
     this.resize();
+  }
+
+  protected initGLContext (): void {
+    const gl = this.gl;
+
+    this.gpuCapability = new GPUCapability(gl);
+    if (this.gpuCapability.isWebGL2) {
+      return;
+    }
+
+    const vertexArrayObjectExtension = gl.getExtension('OES_vertex_array_object');
+
+    if (vertexArrayObjectExtension) {
+      gl.createVertexArray = vertexArrayObjectExtension.createVertexArrayOES.bind(
+        vertexArrayObjectExtension,
+      );
+      gl.bindVertexArray = vertexArrayObjectExtension.bindVertexArrayOES.bind(
+        vertexArrayObjectExtension,
+      );
+      gl.deleteVertexArray = vertexArrayObjectExtension.deleteVertexArrayOES.bind(
+        vertexArrayObjectExtension,
+      );
+    } else {
+      gl.createVertexArray = (() => null) as unknown as WebGL2RenderingContext['createVertexArray'];
+      gl.bindVertexArray = () => {};
+      gl.deleteVertexArray = () => {};
+    }
+
+    const instanceExtension = gl.getExtension('ANGLE_instanced_arrays');
+
+    if (instanceExtension) {
+      gl.drawArraysInstanced = instanceExtension.drawArraysInstancedANGLE.bind(instanceExtension);
+      gl.drawElementsInstanced = instanceExtension.drawElementsInstancedANGLE.bind(instanceExtension);
+      gl.vertexAttribDivisor = instanceExtension.vertexAttribDivisorANGLE.bind(instanceExtension);
+    } else {
+      gl.drawArraysInstanced = () => {
+        throw new Error(INSTANCE_DRAW_ERROR);
+      };
+      gl.drawElementsInstanced = () => {
+        throw new Error(INSTANCE_DRAW_ERROR);
+      };
+      gl.vertexAttribDivisor = () => {
+        throw new Error(INSTANCE_DRAW_ERROR);
+      };
+    }
   }
 
   override getWidth (): number {
@@ -138,6 +188,238 @@ export class GLEngine extends Engine {
     return this.shaderLibrary;
   }
 
+  override createVertexBuffer (
+    data: BufferData | number,
+    options: DataBufferOptions,
+  ): GLDataBuffer {
+    const resource = this.gl.createBuffer();
+
+    if (!resource) {
+      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+    const buffer = new GLDataBuffer(resource);
+    const view = typeof data === 'number' ? undefined : toBufferView(data);
+    const byteLength = typeof data === 'number' ? data : view!.byteLength;
+
+    assignInspectorName(resource, options.label);
+    this.bindArrayBuffer(buffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, Math.max(byteLength, 1), options.usage);
+    if (view && byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, view);
+    }
+    this.bindArrayBuffer(null);
+    buffer.capacity = byteLength;
+    buffer.references = 1;
+
+    return buffer;
+  }
+
+  override createDynamicVertexBuffer (
+    data: BufferData | number,
+    options: DataBufferOptions,
+  ): GLDataBuffer {
+    return this.createVertexBuffer(data, options);
+  }
+
+  override createIndexBuffer (
+    indices: IndicesArray,
+    options: DataBufferOptions,
+  ): GLDataBuffer {
+    const data = this.normalizeIndexData(indices);
+    const resource = this.gl.createBuffer();
+
+    if (!resource) {
+      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+    const buffer = new GLDataBuffer(resource);
+
+    assignInspectorName(resource, options.label);
+    this.bindIndexBuffer(buffer);
+    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, Math.max(data.byteLength, 1), options.usage);
+    if (data.byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ELEMENT_ARRAY_BUFFER, 0, data);
+    }
+    this.bindIndexBuffer(null);
+    buffer.capacity = data.byteLength;
+    buffer.references = 1;
+    buffer.is32Bits = data instanceof Uint32Array;
+
+    return buffer;
+  }
+
+  override updateDynamicVertexBuffer (
+    vertexBuffer: DataBuffer,
+    data: BufferData,
+    byteOffset = 0,
+    byteLength?: number,
+  ): void {
+    let view = toBufferView(data);
+
+    if (byteLength !== undefined && byteLength < view.byteLength) {
+      view = new Uint8Array(view.buffer, view.byteOffset, byteLength);
+    }
+    if (byteOffset < 0 || byteOffset + view.byteLength > vertexBuffer.capacity) {
+      throw new RangeError('Buffer update is out of range.');
+    }
+    this.bindArrayBuffer(vertexBuffer);
+    if (view.byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, byteOffset, view);
+    }
+  }
+
+  override updateDynamicIndexBuffer (
+    indexBuffer: DataBuffer,
+    indices: IndicesArray,
+    byteOffset = 0,
+  ): void {
+    const data = indexBuffer.is32Bits
+      ? indices instanceof Uint32Array ? indices : new Uint32Array(indices)
+      : indices instanceof Uint16Array ? indices : new Uint16Array(indices);
+
+    if (byteOffset < 0 || byteOffset + data.byteLength > indexBuffer.capacity) {
+      throw new RangeError('Buffer update is out of range.');
+    }
+    this.bindIndexBuffer(indexBuffer);
+    if (data.byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ELEMENT_ARRAY_BUFFER, byteOffset, data);
+    }
+    this.bindIndexBuffer(null);
+  }
+
+  /** @hide */
+  override releaseBuffer (buffer: DataBuffer): boolean {
+    buffer.references--;
+    if (buffer.references !== 0) {
+      return false;
+    }
+    if (!this.disposed) {
+      this.gl.deleteBuffer(buffer.underlyingResource as WebGLBuffer);
+    }
+    buffer.capacity = 0;
+
+    return true;
+  }
+
+  /** @hide */
+  releaseVertexArrayObject (vertexArrayObject: WebGLVertexArrayObject): void {
+    this.gl.deleteVertexArray(vertexArrayObject);
+  }
+
+  /** @hide */
+  recordVertexArrayObject (
+    vertexBuffers: Record<string, VertexBuffer>,
+    indexBuffer: DataBuffer | null,
+    effect: ShaderVariant,
+  ): WebGLVertexArrayObject | undefined {
+    const vertexArrayObject = this.gl.createVertexArray() ?? undefined;
+
+    if (!vertexArrayObject) {
+      return undefined;
+    }
+    this.vaoRecordInProgress = true;
+    this.bindVertexArrayObject(vertexArrayObject, null);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect);
+    this.bindIndexBuffer(indexBuffer);
+    this.vaoRecordInProgress = false;
+    this.bindVertexArrayObject(null, null);
+
+    return vertexArrayObject;
+  }
+
+  /** @hide */
+  override bindBuffers (
+    vertexBuffers: Record<string, VertexBuffer>,
+    indexBuffer: DataBuffer | null,
+    effect: ShaderVariant,
+  ): void {
+    this.bindVertexArrayObject(null, null);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect);
+    this.bindIndexBuffer(indexBuffer);
+  }
+
+  private bindVertexBuffersAttributes (
+    vertexBuffers: Record<string, VertexBuffer>,
+    effect: ShaderVariant,
+  ): void {
+    const gl = this.gl;
+    const program = (effect as GLShaderVariant).program;
+    const attributes = program.getAttributesNames();
+
+    for (let index = 0; index < attributes.length; index++) {
+      const location = program.getAttributeLocation(index);
+
+      if (location < 0) {
+        continue;
+      }
+      const name = attributes[index];
+      const attribute = vertexBuffers[name];
+
+      if (!attribute) {
+        continue;
+      }
+      const buffer = attribute.getBuffer();
+
+      if (!buffer) {
+        throw new Error(`Failed to find a buffer named '${attribute.getKind() || name}'. Please ensure the buffer is correctly initialized and bound.`);
+      }
+      this.bindArrayBuffer(buffer);
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(
+        location,
+        attribute.getSize(),
+        attribute.type,
+        attribute.normalized,
+        attribute.byteStride,
+        attribute.byteOffset,
+      );
+      if (attribute.getInstanceDivisor() > 0) {
+        gl.vertexAttribDivisor(location, attribute.getInstanceDivisor());
+      }
+    }
+  }
+
+  bindArrayBuffer (buffer: DataBuffer | null): void {
+    if (!this.vaoRecordInProgress) {
+      this.unbindVertexArrayObject();
+    }
+    this.gl.bindBuffer(
+      this.gl.ARRAY_BUFFER,
+      buffer?.underlyingResource as WebGLBuffer | undefined ?? null,
+    );
+  }
+
+  protected bindIndexBuffer (buffer: DataBuffer | null): void {
+    if (!this.vaoRecordInProgress) {
+      this.unbindVertexArrayObject();
+    }
+    this.currentIndexBuffer = buffer;
+    this.gl.bindBuffer(
+      this.gl.ELEMENT_ARRAY_BUFFER,
+      buffer?.underlyingResource as WebGLBuffer | undefined ?? null,
+    );
+  }
+
+  private normalizeIndexData (indices: IndicesArray): Uint16Array | Uint32Array {
+    if (indices instanceof Uint16Array) {
+      return indices;
+    }
+    const supports32Bits = this.gpuCapability.isWebGL2
+      || this.gpuCapability.detail.intIndexElementBuffer;
+
+    if (supports32Bits) {
+      if (indices instanceof Uint32Array) {
+        return indices;
+      }
+      for (let i = 0; i < indices.length; i++) {
+        if (indices[i] >= 65535) {
+          return new Uint32Array(indices);
+        }
+      }
+    }
+
+    return new Uint16Array(indices);
+  }
+
   createGLFramebuffer (name?: string): WebGLFramebuffer | null {
     const fbo = this.gl.createFramebuffer();
 
@@ -150,24 +432,32 @@ export class GLEngine extends Engine {
     return fbo;
   }
 
-  createVAO (name?: string): GLVertexArrayObject | undefined {
-    const ret = new GLVertexArrayObject(this, name);
+  /** @hide */
+  bindVertexArrayObject (
+    vertexArrayObject: WebGLVertexArrayObject | null,
+    indexBuffer: DataBuffer | null,
+  ): void {
+    this.currentIndexBuffer = indexBuffer;
+    if (this.currentVertexArrayObject === vertexArrayObject) {
+      return;
+    }
+    this.currentVertexArrayObject = vertexArrayObject;
+    this.gl.bindVertexArray(vertexArrayObject);
+  }
 
-    return ret;
+  private unbindVertexArrayObject (): void {
+    if (!this.currentVertexArrayObject) {
+      return;
+    }
+    this.currentVertexArrayObject = null;
+    this.currentIndexBuffer = null;
+    this.gl.bindVertexArray(null);
   }
 
   deleteGLTexture (texture: GLTexture) {
     if (texture.textureBuffer && !this.disposed) {
       this.gl.deleteTexture(texture.textureBuffer);
       texture.textureBuffer = null;
-    }
-  }
-
-  deleteGPUBuffer (buffer: GLGPUBuffer | null) {
-    if (buffer && !this.disposed) {
-      this.gl.deleteBuffer(buffer.glBuffer);
-      // @ts-expect-error
-      delete buffer.glBuffer;
     }
   }
 
@@ -185,67 +475,40 @@ export class GLEngine extends Engine {
     }
   }
 
-  override drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0): void {
-    if (!geometry || !material) {
-      return;
+  override drawElementsType (
+    mode: number,
+    indexOffset: number,
+    indexCount: number,
+    instanceCount?: number,
+  ): void {
+    if (instanceCount && !this.gpuCapability.detail.instanceDraw) {
+      throw new Error(INSTANCE_DRAW_ERROR);
     }
+    const indexType = this.currentIndexBuffer?.is32Bits
+      ? this.gl.UNSIGNED_INT
+      : this.gl.UNSIGNED_SHORT;
 
-    material.initialize();
-    geometry.initialize();
-    geometry.flush();
-    const renderingData = this.renderingData;
-
-    material.setMatrix('effects_ObjectToWorld', matrix);
-
-    try {
-      material.use(this.renderer, renderingData.currentFrame.globalUniforms);
-    } catch (e) {
-      console.error(e);
-
-      this.renderErrors.add(e as Error);
-
-      return;
-    }
-
-    const gl = this.gl;
-
-    if (!gl) {
-      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
-
-      return;
-    }
-
-    const glGeometry = geometry as GLGeometry;
-
-    const program = (material.shaderVariant as GLShaderVariant).program;
-
-    const vao = program.setupAttributes(glGeometry);
-    const indicesBuffer = glGeometry.indicesBuffer;
-    let offset = glGeometry.drawStart;
-    let count = glGeometry.drawCount;
-    const mode = glGeometry.mode;
-    const subMeshes = glGeometry.subMeshes;
-
-    if (subMeshes && subMeshes.length) {
-      const subMesh = subMeshes[subMeshIndex];
-
-      // FIXME: 临时处理3D线框状态下隐藏模型
-      if (count < 0) {
-        return;
-      }
-      offset = subMesh.offset;
-      if (indicesBuffer) {
-        count = subMesh.indexCount ?? 0;
-      } else {
-        count = subMesh.vertexCount;
-      }
-    }
-    if (indicesBuffer) {
-      gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+    if (instanceCount) {
+      this.gl.drawElementsInstanced(mode, indexCount, indexType, indexOffset, instanceCount);
     } else {
-      gl.drawArrays(mode, offset, count);
+      this.gl.drawElements(mode, indexCount, indexType, indexOffset);
     }
-    vao?.unbind();
+  }
+
+  override drawArraysType (
+    mode: number,
+    vertexStart: number,
+    vertexCount: number,
+    instanceCount?: number,
+  ): void {
+    if (instanceCount && !this.gpuCapability.detail.instanceDraw) {
+      throw new Error(INSTANCE_DRAW_ERROR);
+    }
+    if (instanceCount) {
+      this.gl.drawArraysInstanced(mode, vertexStart, vertexCount, instanceCount);
+    } else {
+      this.gl.drawArrays(mode, vertexStart, vertexCount);
+    }
   }
 
   override clear (action: RenderPassClearAction): void {
@@ -295,8 +558,12 @@ export class GLEngine extends Engine {
     this.activeTextureIndex = glContext.TEXTURE0;
     this.textureUnitDict = {};
     this.currentFramebuffer = {};
+    this.currentTextureBinding = {};
     this.pixelStorei = {};
     this.currentRenderbuffer = {};
+    this.currentIndexBuffer = null;
+    this.currentVertexArrayObject = null;
+    this.vaoRecordInProgress = false;
   }
 
   override setSampleAlphaToCoverage (enable: boolean) {
@@ -329,6 +596,18 @@ export class GLEngine extends Engine {
     } else {
       this.disable(glContext.STENCIL_TEST);
     }
+  }
+
+  override setScissorTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.SCISSOR_TEST);
+    } else {
+      this.disable(glContext.SCISSOR_TEST);
+    }
+  }
+
+  override setScissor (x: number, y: number, width: number, height: number) {
+    this.set4('scissor', x, y, width, height);
   }
 
   override setCulling (enable: boolean) {
@@ -704,7 +983,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  override viewport (x: number, y: number, width: number, height: number) {
+  override setViewport (x: number, y: number, width: number, height: number) {
     this.set4('viewport', x, y, width, height);
   }
 
@@ -733,11 +1012,18 @@ export class GLEngine extends Engine {
    */
   // TODO: texture.bind 替换时对于这段逻辑的处理
   bindTexture (target: GLenum, texture: WebGLTexture | null, force?: boolean) {
-    if (this.currentTextureBinding !== texture || force) {
-      this.gl.bindTexture(target, texture);
-      this.currentTextureBinding = texture;
+    const unit = this.activeTextureIndex;
+    let targetBindings = this.currentTextureBinding[unit];
+
+    if (!targetBindings) {
+      targetBindings = this.currentTextureBinding[unit] = {};
     }
-    this.textureUnitDict[this.activeTextureIndex] = texture;
+
+    if (targetBindings[target] !== texture || force) {
+      this.gl.bindTexture(target, texture);
+      targetBindings[target] = texture;
+    }
+    this.textureUnitDict[unit] = texture;
   }
 
   private set1 (name: string, param: any) {
@@ -853,17 +1139,19 @@ export class GLEngine extends Engine {
 
   setTexture (uniform: Nullable<WebGLUniformLocation>, channel: number, texture: Texture) {
     if (!uniform) { return; }
-    this.gl.activeTexture(this.gl.TEXTURE0 + channel);
-    const target = (texture as GLTexture).target;
+    // 必须走 this.activeTexture / this.bindTexture 包装，以保持 activeTextureIndex / currentTextureBinding 缓存一致。
+    // 否则后续 engine.bindTexture(sameTex) 会因缓存判定相同而跳过实际绑定，导致 texImage2D 写到错误纹理
+    const glTex = texture as GLTexture;
 
-    this.gl.bindTexture(target, (texture as GLTexture).textureBuffer);
+    this.activeTexture(this.gl.TEXTURE0 + channel);
+    this.bindTexture(glTex.target, glTex.textureBuffer);
     this.gl.uniform1i(uniform, channel);
   }
 
   /**
-   * 查询所有uniform的location。
-   * @param program 查询的shader program
-   * @param uniformsNames 查询的uniform名称列表
+   * 查询所有 uniform 的 location。
+   * @param program - 查询的 shader program
+   * @param uniformsNames - 查询的 uniform 名称列表
    * @returns
    */
   getUniforms (program: WebGLProgram, uniformsNames: string[]): Nullable<WebGLUniformLocation>[] {

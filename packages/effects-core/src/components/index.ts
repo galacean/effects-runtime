@@ -6,6 +6,5 @@ export * from './effect-component';
 export * from './position-constraint';
 export * from './post-process-volume';
 export * from './base-render-component';
-export * from './shape-component';
 export * from './fake-3d-component';
 export * from './frame-component';

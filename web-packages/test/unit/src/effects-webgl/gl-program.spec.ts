@@ -1,6 +1,6 @@
 // // @ts-nocheck
 // import { TextureLoadAction, TextureSourceType, glContext, Camera } from '@galacean/effects-core';
-// import { GLGeometry, GLMaterial, GLMesh, GLRenderFrame, GLTexture, GLRenderPass, GLRenderer } from '@galacean/effects-webgl';
+// import { Geometry, GLMaterial, GLMesh, GLRenderFrame, GLTexture, GLRenderPass, GLRenderer } from '@galacean/effects-webgl';
 
 // const { assert, expect } = chai;
 
@@ -19,7 +19,7 @@
 //     const mesh = new GLMesh({
 //       name: 'mesh',
 //       material: generateMtl(),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         attributes: {
 //           aPoint: {
 //             type: glContext.FLOAT,
@@ -237,7 +237,7 @@
 //         shader: { vertex, fragment, name: 'myShader' },
 //         states: {},
 //       }),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         name: 'myGeometry',
 //         attributes: {
 //           aPoint: {
@@ -336,7 +336,7 @@
 //     const mesh = new GLMesh({
 //       name: 'mesh',
 //       material: generateMtl(),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         attributes: {
 //           aPoint: {
 //             type: glContext.FLOAT,
@@ -387,7 +387,7 @@
 //     const mesh = new GLMesh({
 //       name: 'mesh',
 //       material: generateMtl(),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         attributes: {
 //           aPoint: {
 //             type: glContext.FLOAT,
@@ -438,7 +438,7 @@
 //     const mesh = new GLMesh({
 //       name: 'mesh',
 //       material: generateMtl(),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         attributes: {
 //           aPoint: {
 //             type: glContext.FLOAT,
@@ -488,7 +488,7 @@
 //     const mesh = new GLMesh({
 //       name: 'mesh',
 //       material: generateMtl('xxxx'),
-//       geometry: new GLGeometry({
+//       geometry: new Geometry({
 //         attributes: {
 //           aPoint: {
 //             type: glContext.FLOAT,

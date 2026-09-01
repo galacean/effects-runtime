@@ -153,7 +153,7 @@ describe('webgl/gl-state', () => {
     state.setPixelStorei(gl.PACK_ALIGNMENT, 4);
     assert.equal(gl.getParameter(gl.PACK_ALIGNMENT), 4);
     //viewport
-    state.viewport(0, 0, 900, 800);
+    state.setViewport(0, 0, 900, 800);
     expect(gl.getParameter(gl.VIEWPORT)).deep.equals(new Int32Array([0, 0, 900, 800]));
   });
 

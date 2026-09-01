@@ -26,8 +26,8 @@ export class SceneLoader {
 
     engine.clearResources();
 
-    // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
-    PluginSystem.onAssetsLoadFinish(loadedScene, assetManager.options, engine);
+    // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
+    PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
@@ -59,7 +59,6 @@ export class SceneLoader {
   private static createComposition (scene: Scene, engine: Engine, options: SceneLoadOptions = {}): Composition {
     const composition = new Composition(engine, {
       ...options,
-      event: engine.eventSystem,
     }, scene);
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。

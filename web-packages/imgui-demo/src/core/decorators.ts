@@ -1,9 +1,19 @@
 
-export const menuItemStore: Record<string, () => void> = {};
+export type MenuItemEntry = {
+  action: () => void,
+  priority: number,
+  shortcut: string,
+};
 
-export function menuItem (path: string) {
+export const menuItemStore: Record<string, MenuItemEntry> = {};
+
+export function menuItem (path: string, options?: { priority?: number, shortcut?: string }) {
   return (target: any, key: string, descriptor: PropertyDescriptor) => {
-    menuItemStore[path] = descriptor.value;
+    menuItemStore[path] = {
+      action: descriptor.value,
+      priority: options?.priority ?? 200,
+      shortcut: options?.shortcut ?? '',
+    };
   };
 }
 

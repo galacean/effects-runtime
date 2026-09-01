@@ -34,6 +34,14 @@ export abstract class Plugin {
   onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
 
   /**
+   * 合成内容开始创建前触发。
+   * 此时 root、pluginRoot 和 sceneRoot 已创建，但场景内容尚未实例化。
+   * @param composition - 正在创建的合成对象
+   * @param scene - 场景对象
+   */
+  onCompositionCreating (composition: Composition, scene?: Scene): void { }
+
+  /**
    * 合成创建完成后触发。
    * @param composition - 合成对象
    * @param scene - 场景对象
@@ -45,4 +53,20 @@ export abstract class Plugin {
    * @param composition - 合成对象
    */
   onCompositionDestroy (composition: Composition): void { }
+
+  /**
+   * 引擎创建完成后触发。
+   * 适用于注册引擎级单例、建立以引擎为键的映射、绑定全局监听等场景。
+   * @param engine - 引擎实例
+   * @since 2.10.0
+   */
+  onEngineCreated (engine: Engine): void { }
+
+  /**
+   * 引擎销毁时触发。
+   * 适合解绑监听、释放引擎级资源或清理以引擎为键的映射。
+   * @param engine - 引擎实例
+   * @since 2.10.0
+   */
+  onEngineDestroy (engine: Engine): void { }
 }

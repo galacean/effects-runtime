@@ -1,14 +1,14 @@
-import { spec, Engine, TextComponent, TextLayout, TextStyle } from '@galacean/effects';
+import { spec, GLEngine, TextComponent, TextLayout, TextStyle, VFXItem } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/plugins/text/text-item', () => {
-  let engine: Engine;
+  let engine: GLEngine;
   let textComponent: TextComponent;
 
   beforeEach(() => {
-    engine = new Engine(document.createElement('canvas'));
-    textComponent = new TextComponent(engine);
+    engine = new GLEngine(document.createElement('canvas'));
+    textComponent = new VFXItem(engine).addComponent(TextComponent);
   });
 
   afterEach(() => {
@@ -47,6 +47,15 @@ describe('core/plugins/text/text-item', () => {
     expect(textComponent.textLayout.textAlign).to.equal(options.textAlign);
     expect(textComponent.textStyle.textColor).to.deep.equal(options.textColor);
     expect(textComponent.textStyle.fontFamily).to.equal(options.fontFamily);
+  });
+
+  it('文本宽度为 0 时使用最小纹理', () => {
+    textComponent.setFontStyle(spec.FontStyle.normal);
+    textComponent.setTextWidth(0);
+
+    expect(() => textComponent.renderText({} as spec.TextContentOptions)).not.to.throw();
+    expect(textComponent.textLayout.width).to.equal(0);
+    expect(textComponent.canvas.width).to.equal(1);
   });
 
   // 换行集成测试：打桩 measureText 返回固定宽度（CJK=10 / 西文与标点=5 / 空格=3），

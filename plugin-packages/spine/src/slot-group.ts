@@ -20,10 +20,6 @@ export interface SlotGroupProps {
    * png 是否已经预乘 alpha
    */
   pma: boolean,
-  /**
-   * mask 和 renderer 相关参数
-   */
-  renderOptions: {},
   engine: Engine,
 }
 export class SlotGroup {
@@ -53,10 +49,6 @@ export class SlotGroup {
    * png 是否已经预乘 alpha
    */
   pma: boolean;
-  /**
-   * mask 相关参数
-   */
-  renderOptions: {};
   /**
    * 包含父节点的世界变换
    */
@@ -98,7 +90,6 @@ export class SlotGroup {
     this.transform = props.transform;
     this.listIndex = props.listIndex;
     this.pma = props.pma;
-    this.renderOptions = props.renderOptions;
     this.engine = props.engine;
   }
 
@@ -248,7 +239,6 @@ export class SlotGroup {
             texture,
             name: this.meshName,
             priority: this.listIndex += 0.01,
-            renderOptions: this.renderOptions,
             engine: this.engine,
           });
 

@@ -36,6 +36,9 @@ export class SequencerState {
   selectedKeyframeInfo: SelectedKeyframeInfo | null = null;
   selectedKeyframes = new Set<string>();
 
+  // sprite 关键帧拖动：按下时锁定 index，拖动期间不依赖每帧 hit-test
+  draggedSpriteKeyframe: { trackId: string, index: number } | null = null;
+
   // 展开状态
   expandedTracks = new Set<string>();
   expandedPropertyGroups = new Set<string>();
