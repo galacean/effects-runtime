@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../decorators';
+import { effectsClass } from '../decorators';
 import { Component } from './component';
 import type { Engine } from '../engine';
 
@@ -9,16 +9,12 @@ import type { Engine } from '../engine';
 @effectsClass(spec.DataType.PostProcessVolume)
 export class PostProcessVolume extends Component {
 
-  @serialize()
   bloom: spec.Bloom;
 
-  @serialize()
   vignette: spec.Vignette;
 
-  @serialize()
   tonemapping: spec.Tonemapping;
 
-  @serialize()
   colorAdjustments: spec.ColorAdjustments;
 
   constructor (engine: Engine) {
@@ -47,6 +43,14 @@ export class PostProcessVolume extends Component {
       contrast: 0,
       active: false,
     };
+  }
+
+  override fromData (data: spec.PostProcessVolumeData): void {
+    super.fromData(data);
+    if (data.bloom !== undefined) { this.bloom = { ...data.bloom }; }
+    if (data.vignette !== undefined) { this.vignette = { ...data.vignette }; }
+    if (data.tonemapping !== undefined) { this.tonemapping = { ...data.tonemapping }; }
+    if (data.colorAdjustments !== undefined) { this.colorAdjustments = { ...data.colorAdjustments }; }
   }
 
   override onStart (): void {

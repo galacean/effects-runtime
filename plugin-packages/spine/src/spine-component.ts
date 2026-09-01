@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects';
 import {
   effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
-  serialize, spec,
+  spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
@@ -50,6 +50,23 @@ export interface SpineDataCache extends SpineBaseData {
   animationList?: string[],
   // 编辑器资源缓存ID
   editorResourceID?: string,
+}
+
+interface SpineResourceData extends Omit<SpineResource, 'atlas' | 'skeleton' | 'images'> {
+  atlas: {
+    bins: spec.DataPath,
+    source: [start: number, length?: number],
+  },
+  skeleton: {
+    bins: spec.DataPath,
+    source: [start: number, length?: number],
+  },
+  images: spec.DataPath[],
+}
+
+interface SpineComponentData extends Omit<spec.SpineComponent, 'resource'> {
+  resource?: SpineResourceData,
+  cache?: SpineDataCache,
 }
 
 /**
@@ -96,9 +113,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
   };
   options: spec.PluginSpineOption;
 
-  @serialize()
   resource: SpineResource;
-  @serialize()
   cache: SpineDataCache;
 
   private content: SlotGroup | null;
@@ -120,8 +135,25 @@ export class SpineComponent extends RendererComponent implements Maskable {
     super(engine);
   }
 
-  override fromData (data: spec.SpineComponent) {
+  override fromData (data: SpineComponentData) {
     super.fromData(data);
+    if (data.resource !== undefined) {
+      this.resource = {
+        ...data.resource,
+        atlas: {
+          ...data.resource.atlas,
+          bins: this.engine.findObject<BinaryAsset>(data.resource.atlas.bins),
+        },
+        skeleton: {
+          ...data.resource.skeleton,
+          bins: this.engine.findObject<BinaryAsset>(data.resource.skeleton.bins),
+        },
+        images: data.resource.images.map(image => this.engine.findObject<Texture>(image)),
+      };
+    }
+    if (data.cache !== undefined) {
+      this.cache = { ...data.cache };
+    }
     this.options = data.options;
     this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,

@@ -32,7 +32,7 @@ export interface SpriteData extends spec.EffectsObjectData {
  * 被 SpriteComponent 引用，替代直接引用 Texture + 散落的 splits。
  *
  * 反序列化全部集中在 fromData 手动解析（与 SpriteComponent 风格一致），
- * 不使用 @serialize 装饰器，避免序列化/反序列化双路径带来的引用覆盖陷阱。
+ * 字段反序列化统一由 fromData 完成，避免双路径带来的引用覆盖陷阱。
  */
 @effectsClass('Sprite')
 export class Sprite extends EffectsObject {
@@ -59,4 +59,3 @@ export class Sprite extends EffectsObject {
     this.rotation = data.rotation ?? SpriteRotation.None;
   }
 }
-

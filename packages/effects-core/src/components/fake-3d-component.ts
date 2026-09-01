@@ -1,50 +1,74 @@
-import { effectsClass, serialize } from '../decorators';
+import type * as spec from '@galacean/effects-specification';
+import { effectsClass } from '../decorators';
 import { Component } from './component';
 import { EffectComponent } from './effect-component';
 
+interface Fake3DComponentData extends spec.ComponentData {
+  loop?: boolean,
+  amountOfMotion?: number,
+  animationLength?: number,
+  mode?: Fake3DAnimationMode,
+  startPositionX?: number,
+  startPositionY?: number,
+  startPositionZ?: number,
+  endPositionX?: number,
+  endPositionY?: number,
+  endPositionZ?: number,
+  amplitudeX?: number,
+  amplitudeY?: number,
+  amplitudeZ?: number,
+  phaseX?: number,
+  phaseY?: number,
+  phaseZ?: number,
+}
+
 @effectsClass('Fake3DComponent')
 export class Fake3DComponent extends Component {
-  @serialize()
   loop = false;
 
-  @serialize()
   amountOfMotion = 1.0;
 
-  @serialize()
   animationLength = 2.0;
 
-  @serialize()
   mode = Fake3DAnimationMode.Linear;
 
-  @serialize()
   startPositionX = 0;
-  @serialize()
   startPositionY = 0;
-  @serialize()
   startPositionZ = 0;
 
-  @serialize()
   endPositionX = 0;
-  @serialize()
   endPositionY = 0;
-  @serialize()
   endPositionZ = 0;
 
-  @serialize()
   amplitudeX = 0;
-  @serialize()
   amplitudeY = 0;
-  @serialize()
   amplitudeZ = 0;
 
-  @serialize()
   phaseX = 0;
-  @serialize()
   phaseY = 0;
-  @serialize()
   phaseZ = 0;
 
   effectComponent: EffectComponent;
+
+  override fromData (data: Fake3DComponentData): void {
+    super.fromData(data);
+    if (data.loop !== undefined) { this.loop = data.loop; }
+    if (data.amountOfMotion !== undefined) { this.amountOfMotion = data.amountOfMotion; }
+    if (data.animationLength !== undefined) { this.animationLength = data.animationLength; }
+    if (data.mode !== undefined) { this.mode = data.mode; }
+    if (data.startPositionX !== undefined) { this.startPositionX = data.startPositionX; }
+    if (data.startPositionY !== undefined) { this.startPositionY = data.startPositionY; }
+    if (data.startPositionZ !== undefined) { this.startPositionZ = data.startPositionZ; }
+    if (data.endPositionX !== undefined) { this.endPositionX = data.endPositionX; }
+    if (data.endPositionY !== undefined) { this.endPositionY = data.endPositionY; }
+    if (data.endPositionZ !== undefined) { this.endPositionZ = data.endPositionZ; }
+    if (data.amplitudeX !== undefined) { this.amplitudeX = data.amplitudeX; }
+    if (data.amplitudeY !== undefined) { this.amplitudeY = data.amplitudeY; }
+    if (data.amplitudeZ !== undefined) { this.amplitudeZ = data.amplitudeZ; }
+    if (data.phaseX !== undefined) { this.phaseX = data.phaseX; }
+    if (data.phaseY !== undefined) { this.phaseY = data.phaseY; }
+    if (data.phaseZ !== undefined) { this.phaseZ = data.phaseZ; }
+  }
 
   override onStart (): void {
     this.effectComponent = this.item.getComponent(EffectComponent);

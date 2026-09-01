@@ -1,5 +1,4 @@
 import type * as spec from '@galacean/effects-specification';
-import { serialize } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable } from '../material';
 import { extractMinAndMax } from '../math';
@@ -9,6 +8,7 @@ import { RendererComponent } from './renderer-component';
 
 interface MeshComponentData extends spec.ComponentData {
   mask?: spec.MaskOptions,
+  geometry?: spec.DataPath,
 }
 
 /**
@@ -18,7 +18,6 @@ export class MeshComponent extends RendererComponent implements Maskable {
   /**
    * 渲染的 Geometry
    */
-  @serialize()
   protected geometry: Geometry;
 
   constructor (engine: Engine) {
@@ -90,6 +89,10 @@ export class MeshComponent extends RendererComponent implements Maskable {
 
   override fromData (data: MeshComponentData): void {
     super.fromData(data);
+
+    if (data.geometry !== undefined) {
+      this.geometry = this.engine.findObject<Geometry>(data.geometry);
+    }
 
     const maskOptions = data.mask;
 
