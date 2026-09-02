@@ -35,6 +35,40 @@ describe('player/event', () => {
     player.dispose();
   });
 
+  it('dispose preserves a caller-owned canvas for reuse', () => {
+    const container = document.createElement('div');
+    const canvas = document.createElement('canvas');
+
+    container.style.width = '64px';
+    container.style.height = '64px';
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+    player = new Player({ canvas, manualRender: true });
+
+    expect(player.engine.ownsCanvas).to.equal(false);
+
+    player.dispose();
+
+    expect(canvas.parentNode).to.equal(container);
+    container.remove();
+  });
+
+  it('dispose releases a Player-owned canvas', () => {
+    const container = document.createElement('div');
+
+    container.style.width = '64px';
+    container.style.height = '64px';
+    document.body.appendChild(container);
+    player = new Player({ container, manualRender: true });
+    const canvas = player.canvas;
+
+    expect(player.engine.ownsCanvas).to.equal(true);
+    player.dispose();
+
+    expect(canvas.parentNode).to.equal(null);
+    container.remove();
+  });
+
   it('player lost/restored', async () => {
     player = new Player({
       canvas: document.createElement('canvas'),
