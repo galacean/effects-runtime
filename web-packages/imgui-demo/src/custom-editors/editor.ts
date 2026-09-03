@@ -1,5 +1,5 @@
 import type { Component } from '@galacean/effects';
-import { EffectsObject, getMergedStore, isObject, math, RendererComponent } from '@galacean/effects';
+import { EffectsObject, isObject, math, RendererComponent } from '@galacean/effects';
 import { EditorGUILayout } from '../widgets/editor-gui-layout';
 import { ImGui } from '../imgui';
 
@@ -8,7 +8,6 @@ export class Editor {
 
   onInspectorGUI () {
     const component = this.target as Component;
-    const propertyDecoratorStore = getMergedStore(component);
 
     this.drawObject(component);
     if (component instanceof RendererComponent) {

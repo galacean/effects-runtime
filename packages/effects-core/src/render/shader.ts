@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { Color, Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Asset } from '../asset';
 import { effectsClass } from '../decorators';
-import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 import type { Texture } from '../texture';
 
@@ -63,7 +63,7 @@ export interface SharedShaderWithSource {
 
 export type ShaderWithSource = SharedShaderWithSource;
 
-export abstract class ShaderVariant extends EffectsObject {
+export abstract class ShaderVariant extends Asset {
   shader: Shader;
 
   constructor (
@@ -102,7 +102,7 @@ export abstract class ShaderVariant extends EffectsObject {
 }
 
 @effectsClass(spec.DataType.Shader)
-export class Shader extends EffectsObject {
+export class Shader extends Asset {
   shaderData: spec.ShaderData;
 
   createVariant (macros?: Record<string, number | boolean>) {

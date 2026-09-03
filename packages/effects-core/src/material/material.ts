@@ -9,7 +9,7 @@ import type { DestroyOptions, Disposable } from '../utils';
 import { assertExist, generateGUID, isFunction, logger, throwDestroyedError } from '../utils';
 import type { UniformValue } from './types';
 import type { Engine } from '../engine';
-import { EffectsObject } from '../effects-object';
+import { Asset } from '../asset';
 import { MaterialState } from './material-state';
 import { glContext } from '../gl';
 
@@ -64,7 +64,7 @@ let seed = 1;
 /**
  * Material 类
  */
-export class Material extends EffectsObject implements Disposable {
+export class Material extends Asset implements Disposable {
   shaderVariant: ShaderVariant;
 
   // TODO: 待移除

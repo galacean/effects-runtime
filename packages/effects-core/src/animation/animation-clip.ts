@@ -2,8 +2,8 @@ import type { Euler } from '@galacean/effects-math/es/core/euler';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
+import { Asset } from '../asset';
 import { effectsClass } from '../decorators';
-import { EffectsObject } from '../effects-object';
 import type { ValueGetter, Vector3Curve, BezierCurve, ColorCurve } from '../math';
 import { createValueGetter } from '../math';
 import type { VFXItem } from '../vfx-item';
@@ -43,7 +43,7 @@ export interface ColorAnimationCurve extends AnimationCurve {
 }
 
 @effectsClass(spec.DataType.AnimationClip)
-export class AnimationClip extends EffectsObject {
+export class AnimationClip extends Asset {
   duration = 0;
   positionCurves: PositionAnimationCurve[] = [];
   rotationCurves: RotationAnimationCurve[] = [];

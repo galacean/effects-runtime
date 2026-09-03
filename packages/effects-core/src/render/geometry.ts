@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
+import { Asset } from '../asset';
 import type { Engine } from '../engine';
-import { EffectsObject } from '../effects-object';
 import { Buffer } from './buffer';
 import type { DataBuffer, IndexData, IndicesArray } from './data-buffer';
 import {
@@ -62,7 +62,7 @@ interface VertexArrayObjectEngine {
 /**
  * 几何数据、属性布局和绘制范围的后端无关实现。
  */
-export class Geometry extends EffectsObject {
+export class Geometry extends Asset {
   static create = (engine: Engine, props?: GeometryProps): Geometry => new Geometry(engine, props);
 
   name = '';
