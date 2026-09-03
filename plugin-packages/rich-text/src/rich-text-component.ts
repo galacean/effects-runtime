@@ -156,8 +156,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
    * 根据配置更新文本样式和布局
    */
   updateWithOptions (options: RichTextContentOptions): void {
-    const richOptions = options;
-
     const nextText = options.text ? options.text.toString() : ' ';
 
     if (nextText !== this.text) {
@@ -165,7 +163,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       this.stableEffectPaddingKey = undefined;
     }
 
-    this.rangeFancyLayers = richOptions.rangeFancyLayers ?? {};
+    this.rangeFancyLayers = options.rangeFancyLayers ?? {};
     this.textStyle = new TextStyle(options);
 
     const fancyConfig = this.textStyle.fancyConfig;
@@ -178,13 +176,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       );
     }
 
-    this.fancyResolution = fancyConfig && hasRangeStacks
-      ? TextStyle.resolveFancyConfig(
-        fancyConfig,
-        this.textStyle.textColor,
-        this.textStyle.fancyRenderStyle.layers,
-      )
-      : undefined;
+    if (fancyConfig?.rangeStacks !== undefined) {
+      this.fancyResolution = TextStyle.resolveFancyConfig(fancyConfig, this.textStyle.textColor);
+    } else {
+      this.fancyResolution = undefined;
+    }
     this.textLayout = new RichTextLayout(options);
     this.text = nextText;
     // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置

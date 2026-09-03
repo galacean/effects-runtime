@@ -41,16 +41,15 @@ export function parseRichTextOptions (
   const program = generateProgram((rangeText, context) => {
     const currentSourceRangeIndex = sourceRangeIndex++;
     const sourceRangeId = `range-${currentSourceRangeIndex}`;
-    const legacyRangeLayers = rangeFancyLayersById?.[sourceRangeId];
-    const resolvedRangeLayers = legacyRangeLayers ?? (
-      fancyResolution
-        ? TextStyle.resolveRangeOverride(
-          fancyResolution,
-          fancyResolution.rangeOverrides[currentSourceRangeIndex],
-          textStyle.textColor,
-        )
-        : undefined
-    );
+    let resolvedRangeLayers = rangeFancyLayersById?.[sourceRangeId];
+
+    if (resolvedRangeLayers === undefined && fancyResolution) {
+      resolvedRangeLayers = TextStyle.resolveRangeOverride(
+        fancyResolution,
+        fancyResolution.rangeOverrides[currentSourceRangeIndex],
+        textStyle.textColor,
+      );
+    }
     let normalizedText = rangeText;
 
     if (/^\n+$/.test(normalizedText)) {

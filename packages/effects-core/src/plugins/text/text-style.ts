@@ -163,11 +163,19 @@ export class TextStyle {
   static resolveFancyConfig (
     config: FancyConfig | undefined,
     fallbackFillColor?: spec.vec4,
+    /** @deprecated Keep for callers using the pre-refactor compatibility path. */
     fallbackLayers?: FancyRenderLayer[],
   ): FancyScopeResolution {
-    const renderLayers = config
-      ? this.parseFancyConfig(config, fallbackFillColor).layers
-      : (fallbackLayers ?? this.parseFancyConfig({ layers: [] }, fallbackFillColor).layers);
+    let renderLayers: FancyRenderLayer[];
+
+    if (config) {
+      renderLayers = this.parseFancyConfig(config, fallbackFillColor).layers;
+    } else if (fallbackLayers) {
+      renderLayers = fallbackLayers;
+    } else {
+      renderLayers = this.parseFancyConfig({ layers: [] }, fallbackFillColor).layers;
+    }
+
     const defaultRangeLayers = renderLayers.filter(layer => !isObjectFancyLayer(layer));
     const objectLayers = renderLayers.filter(layer => isObjectFancyLayer(layer));
     const rangeStackLayers = (config?.rangeStacks ?? []).map(stack => {
