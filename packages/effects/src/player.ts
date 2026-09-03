@@ -138,6 +138,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       doNotHandleContextLost,
     } = config;
     const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
+    const ownsCanvas = !canvas;
 
     this.onError = onError;
 
@@ -156,7 +157,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.env = env;
     this.name = name || `${seed++}`;
-    let useExternalCanvas = false;
 
     try {
       if (initErrors.length) {
@@ -168,7 +168,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       if (canvas) {
         this.canvas = canvas;
-        useExternalCanvas = true;
       } else {
         assertContainer(container);
         this.canvas = document.createElement('canvas');
@@ -188,6 +187,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
         doNotHandleContextLost,
+        ownsCanvas,
       });
       this.engine.offscreenMode = true;
 
@@ -250,7 +250,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       assertNoConcurrentPlayers();
     } catch (e: any) {
-      if (this.canvas && !useExternalCanvas) {
+      if (this.canvas && ownsCanvas) {
         this.canvas.remove();
       }
       this.engine?.dispose();
@@ -656,11 +656,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.canvas instanceof HTMLCanvasElement) {
       // TODO: 数据模版下掉可以由文本模块单独管理
       canvasPool.dispose();
-      // canvas will become a cry emoji in Android if still in dom
-      if (this.canvas.parentNode) {
-        this.canvas.parentNode.removeChild(this.canvas);
+      if (this.engine.ownsCanvas) {
+        // canvas will become a cry emoji in Android if still in dom
+        if (this.canvas.parentNode) {
+          this.canvas.parentNode.removeChild(this.canvas);
+        }
+        this.canvas.remove();
       }
-      this.canvas.remove();
     }
 
     // 在报错函数中传入 player.name

@@ -39,6 +39,10 @@ export interface EngineOptions extends WebGLContextAttributes {
   notifyTouch?: boolean,
   interactive?: boolean,
   /**
+   * Engine 是否拥有 canvas 的生命周期，默认 true。
+   */
+  ownsCanvas?: boolean,
+  /**
    * 是否不处理 WebGL 上下文丢失恢复。
    * - `true`（默认）：上传 GPU 后释放 CPU 端源数据以节省内存；上下文丢失后不自动恢复，
    *   渲染暂停，等待宿主重建资源后手动恢复播放。
@@ -129,6 +133,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   doNotHandleContextLost = true;
   /**
+   * Engine 是否拥有 canvas 的生命周期
+   */
+  readonly ownsCanvas: boolean;
+  /**
    * WebGL 上下文是否处于丢失状态
    */
   protected contextWasLost = false;
@@ -161,6 +169,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     super();
     this.canvas = canvas;
     this.env = options?.env ?? '';
+    this.ownsCanvas = options?.ownsCanvas ?? true;
     this.doNotHandleContextLost = options?.doNotHandleContextLost ?? true;
     this.name = options?.name ?? this.name;
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
