@@ -8,6 +8,12 @@
 
 ---
 
+## 2.10.1
+
+`2026-09-03`
+
+- Fix: preserve context for externally owned canvas. [#1535](https://github.com/galacean/effects-runtime/pull/1535) @wumaolinmaoan
+
 ## 2.10.0
 
 `2026-08-31`
