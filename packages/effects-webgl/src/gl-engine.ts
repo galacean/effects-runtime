@@ -549,7 +549,7 @@ export class GLEngine extends Engine {
     this.renderer.dispose();
     this.renderTargetPool.dispose();
     this.shaderLibrary?.dispose();
-    this.context.dispose();
+    this.context.dispose(this.ownsCanvas);
     this.reset();
   }
 

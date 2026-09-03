@@ -43,13 +43,13 @@ describe('webgl/gl-context-lost', () => {
   let engine: GLEngine;
   let gl: WebGLRenderingContext;
 
-  function createEngine (doNotHandleContextLost: boolean): GLEngine {
+  function createEngine (doNotHandleContextLost: boolean, ownsCanvas = true): GLEngine {
     const c = document.createElement('canvas');
 
     c.width = 64;
     c.height = 64;
 
-    return new GLEngine(c, { glType: 'webgl2', doNotHandleContextLost });
+    return new GLEngine(c, { glType: 'webgl2', doNotHandleContextLost, ownsCanvas });
   }
 
   afterEach(() => {
@@ -262,6 +262,19 @@ describe('webgl/gl-context-lost', () => {
       engine.removeTexture(tex);
       tex.dispose();
     });
+  });
+
+  it('销毁 Engine 时可保留外部 canvas 的 WebGL context', function () {
+    engine = createEngine(true, false);
+    gl = engine.gl as WebGLRenderingContext;
+    if (!canEmulateContextLoss(engine)) {
+      this.skip();
+
+      return;
+    }
+    engine.dispose();
+
+    expect(gl.isContextLost()).to.equal(false);
   });
 
   describe('opt-in 模式 CPU 数据保留', () => {

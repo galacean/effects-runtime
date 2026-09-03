@@ -32,13 +32,13 @@ export class GLContextManager {
     canvas.addEventListener('webglcontextrestored', this.contextRestoredListener);
   }
 
-  dispose () {
+  dispose (releaseContext = true) {
     if (this.canvas) {
       this.canvas.removeEventListener('webglcontextlost', this.contextLostListener);
       this.canvas.removeEventListener('webglcontextrestored', this.contextRestoredListener);
     }
 
-    if (this.gl) {
+    if (this.gl && releaseContext) {
       this.gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
 
