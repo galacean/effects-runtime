@@ -3,6 +3,7 @@ import './composition';
 import './fallback';
 import './image-template/image-template.spec';
 import './interact/interact.spec';
+import './interact/event-system.spec';
 import './math';
 import './plugins/cal/transform.spec';
 import './plugins/cal/transform-clip-mix.spec';
