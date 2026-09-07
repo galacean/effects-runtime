@@ -7,6 +7,12 @@
 
 ---
 
+## 2.10.2
+
+`2026-09-07`
+
+- Fix: guard optional canvas DOM APIs. [#1538](https://github.com/galacean/effects-runtime/pull/1538) @wumaolinmaoan
+
 ## 2.10.1
 
 `2026-09-03`
