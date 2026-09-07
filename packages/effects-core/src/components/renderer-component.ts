@@ -1,16 +1,20 @@
-import { serialize } from '../decorators';
+import type * as spec from '@galacean/effects-specification';
 import type { Material, Maskable } from '../material';
 import { MaskProcessor } from '../material';
 import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
 
+interface RendererComponentData extends spec.ComponentData {
+  materials?: spec.DataPath[],
+  _priority?: number,
+}
+
 /**
  * 所有渲染组件的基类
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-  @serialize()
   materials: Material[] = [];
 
   /**
@@ -27,7 +31,6 @@ export class RendererComponent extends Component {
    */
   maskManager: MaskProcessor = new MaskProcessor();
 
-  @serialize()
   protected _priority = 0;
   /**
    * 用于点击测试的碰撞器
@@ -49,6 +52,16 @@ export class RendererComponent extends Component {
       this.materials.push(material);
     } else {
       this.materials[0] = material;
+    }
+  }
+
+  override fromData (data: RendererComponentData): void {
+    super.fromData(data);
+    if (data.materials !== undefined) {
+      this.materials = data.materials.map(material => this.engine.findObject<Material>(material));
+    }
+    if (data._priority !== undefined) {
+      this._priority = data._priority;
     }
   }
 

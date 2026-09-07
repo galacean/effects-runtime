@@ -1,4 +1,4 @@
-import type { Asset } from '@galacean/effects';
+import type { DataAsset } from '@galacean/effects';
 import { effectsClass, RendererComponent, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
@@ -53,7 +53,7 @@ export class AudioComponent extends RendererComponent {
     let audio: AudioBuffer | HTMLAudioElement | undefined = undefined;
 
     if (options.audio) {
-      const audioAsset = this.engine.findObject<Asset<HTMLAudioElement | AudioBuffer>>(options.audio);
+      const audioAsset = this.engine.findObject<DataAsset<HTMLAudioElement | AudioBuffer>>(options.audio);
 
       audio = audioAsset.data;
     }

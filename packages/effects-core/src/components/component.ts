@@ -1,8 +1,11 @@
 import type * as spec from '@galacean/effects-specification';
-import { serialize } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
 import type { VFXItem } from '../vfx-item';
+
+interface ComponentData extends spec.ComponentData {
+  _enabled?: boolean,
+}
 
 /**
  * @since 2.0.0
@@ -12,13 +15,11 @@ export abstract class Component extends EffectsObject {
   /**
    * 附加到的 VFXItem 对象
    */
-  @serialize()
   item: VFXItem;
   isAwakeCalled = false;
   isStartCalled = false;
   isEnableCalled = false;
 
-  @serialize()
   private _enabled = true;
 
   /**
@@ -173,8 +174,14 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  override fromData (data: spec.ComponentData): void {
+  override fromData (data: ComponentData): void {
     super.fromData(data);
+    if (data.item !== undefined) {
+      this.item = this.engine.findObject<VFXItem>(data.item);
+    }
+    if (data._enabled !== undefined) {
+      this._enabled = data._enabled;
+    }
   }
 
   override dispose (): void {

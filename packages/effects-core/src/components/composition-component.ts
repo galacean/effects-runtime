@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
 import { VFXItem } from '../vfx-item';
-import { effectsClass, serialize } from '../decorators';
+import { effectsClass } from '../decorators';
 import { Component } from './component';
 import { decimalEqual } from '../math';
 
@@ -26,7 +26,6 @@ export enum UpdateModes {
  */
 @effectsClass('CompositionComponent')
 export class CompositionComponent extends Component {
-  @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
   /**
    * @internal
@@ -45,9 +44,7 @@ export class CompositionComponent extends Component {
 
   private time = 0;
   private lastTime = 0;
-  @serialize()
   private sceneBindings: SceneBinding[] = [];
-  @serialize()
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
   private nestedCompositions: CompositionComponent[] = [];
@@ -268,6 +265,19 @@ export class CompositionComponent extends Component {
 
   override fromData (data: spec.CompositionComponentData): void {
     super.fromData(data);
+
+    if (data.items !== undefined) {
+      this.items = data.items.map(item => this.engine.findObject<VFXItem>(item));
+    }
+    if (data.sceneBindings !== undefined) {
+      this.sceneBindings = data.sceneBindings.map(binding => ({
+        key: this.engine.findObject<TrackAsset>(binding.key),
+        value: this.engine.findObject<VFXItem>(binding.value),
+      }));
+    }
+    if (data.timelineAsset !== undefined) {
+      this.timelineAsset = this.engine.findObject<TimelineAsset>(data.timelineAsset);
+    }
 
     this._timelineInstance = null;
   }

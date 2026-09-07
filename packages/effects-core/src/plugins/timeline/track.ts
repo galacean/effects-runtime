@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../../decorators';
+import { effectsClass } from '../../decorators';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';
@@ -45,10 +45,8 @@ export class TrackAsset extends PlayableAsset {
 
   private clipSeed = 0;
 
-  @serialize(TimelineClip)
   private clips: TimelineClip[] = [];
 
-  @serialize()
   protected children: TrackAsset[] = [];
 
   /**
@@ -156,6 +154,22 @@ export class TrackAsset extends PlayableAsset {
 
   override fromData (data: spec.TrackAssetData): void {
     super.fromData(data);
+
+    if (data.clips !== undefined) {
+      this.clips = data.clips.map(clipData => {
+        const clip = new TimelineClip();
+
+        if (clipData.start !== undefined) { clip.start = clipData.start; }
+        if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
+        if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
+        clip.asset = this.engine.findObject<PlayableAsset>(clipData.asset);
+
+        return clip;
+      });
+    }
+    if (data.children !== undefined) {
+      this.children = data.children.map(child => this.engine.findObject<TrackAsset>(child));
+    }
     for (const child of this.children) {
       child.parent = this;
     }

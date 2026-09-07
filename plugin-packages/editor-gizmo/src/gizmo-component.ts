@@ -2,7 +2,7 @@ import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, Renderer, Text
 import {
   RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
-  effectsClass, glContext, math, serialize, spec, PluginSystem,
+  effectsClass, glContext, math, spec, PluginSystem,
   ParticleSystem,
 } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
@@ -23,6 +23,7 @@ import { GeometryType } from './geometry';
 interface GizmoComponentData extends spec.ComponentData {
   options: GizmoVFXItemOptions,
   transform?: Record<string, unknown>,
+  coordinateSpace?: CoordinateSpace,
 }
 
 const editorRenderPassName = 'editor-gizmo';
@@ -48,7 +49,6 @@ export class GizmoComponent extends RendererComponent {
   boundingMap: Map<string, GizmoItemBounding> = new Map();
   hitBounding?: { key: string, position: Vector3 };
   wireframeMesh: Mesh;
-  @serialize()
   coordinateSpace: CoordinateSpace = CoordinateSpace.Local;
 
   color: spec.vec3;
@@ -573,6 +573,9 @@ export class GizmoComponent extends RendererComponent {
 
   override fromData (data: GizmoComponentData): void {
     super.fromData(data);
+    if (data.coordinateSpace !== undefined) {
+      this.coordinateSpace = data.coordinateSpace;
+    }
     const item = this.item;
 
     item.duration = 999;

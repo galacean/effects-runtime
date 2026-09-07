@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../../decorators';
+import { Asset } from '../../asset';
+import { effectsClass } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from './track';
 import { ObjectBindingTrack } from './tracks';
@@ -7,14 +8,20 @@ import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
 import type { SceneBinding } from '../../components';
-import { EffectsObject } from '../../effects-object';
 
 @effectsClass(spec.DataType.TimelineAsset)
-export class TimelineAsset extends EffectsObject {
-  @serialize()
+export class TimelineAsset extends Asset {
   tracks: TrackAsset[] = [];
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;
+
+  override fromData (data: spec.TimelineAssetData): void {
+    super.fromData(data);
+    if (data.tracks !== undefined) {
+      this.tracks = data.tracks.map(track => this.engine.findObject<TrackAsset>(track));
+      this.invalidate();
+    }
+  }
 
   get flattenedTracks () {
     if (!this.cacheFlattenedTracks) {

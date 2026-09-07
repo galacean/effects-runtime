@@ -217,7 +217,7 @@ export class AssetManager implements Disposable {
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedBins, jsonScene));
 
         scene.bins.push(...loadedBins);
         scene.textureOptions.push(...loadedTextures);
@@ -387,11 +387,10 @@ export class AssetManager implements Disposable {
   }
 
   private async processTextures (
-    images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
   ) {
-    const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
+    const textures = jsonScene.textures ?? [];
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;

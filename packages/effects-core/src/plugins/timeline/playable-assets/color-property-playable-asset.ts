@@ -1,4 +1,4 @@
-import { effectsClass, serialize } from '../../../decorators';
+import { effectsClass } from '../../../decorators';
 import type { Playable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
@@ -8,8 +8,12 @@ import * as spec from '@galacean/effects-specification';
 
 @effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends PlayableAsset {
-  @serialize()
   curveData: spec.ColorCurveValue;
+
+  override fromData (data: spec.ColorPropertyPlayableAssetData): void {
+    super.fromData(data);
+    this.curveData = data.curveData;
+  }
 
   override createPlayable (): Playable {
     const clipPlayable = new PropertyClipPlayable<Color>();

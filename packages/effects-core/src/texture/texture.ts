@@ -1,9 +1,9 @@
 import * as spec from '@galacean/effects-specification';
+import { Asset } from '../asset';
 import { TextureSourceType } from './types';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
-import { EffectsObject } from '../effects-object';
 import { loadImage, loadVideo } from '../downloader';
 import { generateGUID } from '../utils';
 
@@ -12,7 +12,7 @@ let seed = 1;
 /**
  * Texture 抽象类
  */
-export abstract class Texture extends EffectsObject {
+export abstract class Texture extends Asset {
   /**
    * Texture 名称
    */

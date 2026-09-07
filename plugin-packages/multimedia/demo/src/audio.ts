@@ -1,4 +1,4 @@
-import { Asset, Player } from '@galacean/effects';
+import { DataAsset, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { AudioComponent, checkAutoplayPermission, loadAudio } from '@galacean/effects-plugin-multimedia';
 
@@ -38,7 +38,7 @@ addButton?.addEventListener('click', async () => {
   if (value) {
     const item = player.getCompositionByName('comp1')?.getItemByName('video');
     const audio = await loadAudio(value);
-    const audioAsset = new Asset<HTMLAudioElement | AudioBuffer>(player.renderer.engine);
+    const audioAsset = new DataAsset<HTMLAudioElement | AudioBuffer>(player.renderer.engine);
 
     audioAsset.data = audio;
 
