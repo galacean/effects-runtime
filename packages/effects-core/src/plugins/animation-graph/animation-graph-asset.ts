@@ -58,4 +58,14 @@ export class AnimationGraphAsset extends Asset {
       this.graphDataSet.resources.push(animationClip);
     }
   }
+
+  protected override loadAsset (): void | Promise<void> {
+    const pending = this.graphDataSet.resources.filter(asset => !asset.isLoaded);
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    return Promise.all(pending.map(asset => asset.waitForLoaded())).then(() => undefined);
+  }
 }

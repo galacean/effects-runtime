@@ -10,7 +10,7 @@ const { Vector2, Vector3, Matrix4, Quaternion } = math;
 let input: Input;
 let orbitController: OrbitController;
 
-(async () => {
+async function main () {
   const player = new Player({
     container: document.getElementById('J-container'),
     renderFramework: 'webgl2',
@@ -37,7 +37,7 @@ let orbitController: OrbitController;
   requestAnimationFrame(update);
 
   void player.play();
-})();
+}
 
 function update () {
   orbitController.update();
@@ -321,3 +321,5 @@ export enum KeyCode {
   Num8,
   Num9,
 }
+
+void main();

@@ -2,7 +2,7 @@ export function gpuTimer (gl: WebGL2RenderingContext) {
   const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
 
   if (ext) {
-    let query = gl.createQuery();
+    let query: WebGLQuery | null = gl.createQuery();
     const getTime = async () => {
       return new Promise<number | null>((resolve, reject) => {
         if (query) {
@@ -45,4 +45,3 @@ export function gpuTimer (gl: WebGL2RenderingContext) {
     };
   }
 }
-

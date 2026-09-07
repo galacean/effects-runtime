@@ -1,13 +1,15 @@
-import type { spec, Player } from '@galacean/effects';
+import type { Player } from '@galacean/effects';
 import { math } from '@galacean/effects';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
-import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
+import { EditorContent, isJsonAssetFile } from '../editor/content';
+import { createPreviewPlayer, generateAssetScene } from '../editor/content/preview-utils';
 import { editorWindow, menuItem } from '../core/decorators';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { FileNode } from '../core/file-node';
+import { GalaceanEffects } from '../ge';
 
 @editorWindow()
 export class Preview extends EditorWindow {
@@ -26,7 +28,11 @@ export class Preview extends EditorWindow {
     this.title = 'Preview';
     this.previewPlayer = createPreviewPlayer();
     this.previewPlayer.ticker?.add(this.updateRenderTexture);
-    this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
+    this.previewPlayer.renderer.engine.content = new EditorContent(
+      this.previewPlayer.renderer.engine,
+      GalaceanEffects.editorContent.assetsCache,
+      GalaceanEffects.editorContent.contentDatabase,
+    );
     this.cameraController = new OrbitController();
   }
 
@@ -41,8 +47,12 @@ export class Preview extends EditorWindow {
       void selectedObject.handle.getFile().then(async (file: File)=>{
         if (file.name.endsWith('.json')) {
           const json = await this.readFile(file);
-          const packageData: spec.EffectsPackageData = JSON.parse(json);
-          const previewScene = generateAssetScene(packageData);
+          const jsonAsset = JSON.parse(json) as unknown;
+
+          if (!isJsonAssetFile(jsonAsset)) {
+            return;
+          }
+          const previewScene = generateAssetScene(jsonAsset);
 
           if (previewScene) {
             this.previewPlayer.destroyCurrentCompositions();

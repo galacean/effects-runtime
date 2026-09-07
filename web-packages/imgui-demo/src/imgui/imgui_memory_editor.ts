@@ -81,9 +81,9 @@ export class MemoryEditor {
   OptMidColsCount: int;                            // = 8      // set to 0 to disable extra spacing between every mid-cols.
   OptAddrDigitsCount: int;                         // = 0      // number of addr digits to display (default calculated based on maximum displayed addr).
   HighlightColor: ImGui.U32;                       //          // background color of highlighted bytes.
-  public ReadFn: ((data: ArrayBuffer, off: size_t) => size_t) | null; // = 0 // optional handler to read bytes.
-  public WriteFn: ((data: ArrayBuffer, off: size_t, d: number) => void) | null; // = 0 // optional handler to write bytes.
-  public HighlightFn: ((data: ArrayBuffer, off: size_t) => boolean) | null; // = 0 // optional handler to return Highlight property (to support non-contiguous highlighting).
+  public ReadFn: ((data: ArrayBufferLike, off: size_t) => size_t) | null; // = 0 // optional handler to read bytes.
+  public WriteFn: ((data: ArrayBufferLike, off: size_t, d: number) => void) | null; // = 0 // optional handler to write bytes.
+  public HighlightFn: ((data: ArrayBufferLike, off: size_t) => boolean) | null; // = 0 // optional handler to return Highlight property (to support non-contiguous highlighting).
 
   // [Internal State]
   ContentsWidthChanged: boolean;
@@ -156,7 +156,7 @@ export class MemoryEditor {
   }
 
   // Standalone Memory Editor window
-  public DrawWindow (title: string, mem_data: ArrayBuffer, mem_size: number = mem_data.byteLength, base_display_addr: number = 0x0000): void {
+  public DrawWindow (title: string, mem_data: ArrayBufferLike, mem_size: number = mem_data.byteLength, base_display_addr: number = 0x0000): void {
     const s: MemoryEditor.Sizes = new MemoryEditor.Sizes();
 
     this.CalcSizes(s, mem_size, base_display_addr);
@@ -176,7 +176,7 @@ export class MemoryEditor {
 
   // Memory Editor contents only
   // void DrawContents(void* mem_data_void, size_t mem_size, size_t base_display_addr = 0x0000)
-  public DrawContents (mem_data: ArrayBuffer, mem_size: number = mem_data.byteLength, base_display_addr: number = 0x0000): void {
+  public DrawContents (mem_data: ArrayBufferLike, mem_size: number = mem_data.byteLength, base_display_addr: number = 0x0000): void {
     if (this.Cols < 1) {this.Cols = 1;}
 
     // ImU8* mem_data = (ImU8*)mem_data_void;
@@ -431,7 +431,7 @@ export class MemoryEditor {
     ImGui.SetCursorPosX(s.WindowWidth);
   }
 
-  DrawOptionsLine (s: MemoryEditor.Sizes, mem_data: ArrayBuffer, mem_size: size_t, base_display_addr: size_t): void {
+  DrawOptionsLine (s: MemoryEditor.Sizes, mem_data: ArrayBufferLike, mem_size: size_t, base_display_addr: size_t): void {
     // IM_UNUSED(mem_data);
     const style: ImGui.Style = ImGui.GetStyle();
     // const char* format_range = OptUpperCaseHex ? "Range %0*" _PRISizeT "X..%0*" _PRISizeT "X" : "Range %0*" _PRISizeT "x..%0*" _PRISizeT "x";
@@ -492,7 +492,7 @@ export class MemoryEditor {
   }
 
   // void DrawPreviewLine(const Sizes& s, void* mem_data_void, size_t mem_size, size_t base_display_addr)
-  DrawPreviewLine (s: MemoryEditor.Sizes, mem_data: ArrayBuffer, mem_size: size_t, base_display_addr: size_t): void {
+  DrawPreviewLine (s: MemoryEditor.Sizes, mem_data: ArrayBufferLike, mem_size: size_t, base_display_addr: size_t): void {
     // IM_UNUSED(base_display_addr);
     // ImU8* mem_data = (ImU8*)mem_data_void;
     const style: ImGui.Style = ImGui.GetStyle();
@@ -620,7 +620,7 @@ export class MemoryEditor {
   // }
 
   // [Internal]
-  DrawPreviewData (addr: size_t, mem_data: ArrayBuffer, mem_size: size_t, data_type: ImGui.DataType, data_format: MemoryEditor.DataFormat, out_buf: ImGui.StringBuffer, out_buf_size: size_t): void {
+  DrawPreviewData (addr: size_t, mem_data: ArrayBufferLike, mem_size: size_t, data_type: ImGui.DataType, data_format: MemoryEditor.DataFormat, out_buf: ImGui.StringBuffer, out_buf_size: size_t): void {
     // uint8_t buf[8];
     const buf = new Uint8Array(8);
     const elem_size: size_t = this.DataTypeGetSize(data_type);

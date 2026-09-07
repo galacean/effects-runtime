@@ -1,15 +1,24 @@
-export const effectsClassStore: Record<string, any> = {};
+import type { Constructor } from './utils';
 
-export function getClass (className: string) {
-  return effectsClassStore[className];
+export const effectsClassStore: Record<string, Constructor> = {};
+const effectsClassNames = new WeakMap<Constructor, string>();
+
+export function getClass<T = unknown> (className: string): Constructor<T> | undefined {
+  return effectsClassStore[className] as Constructor<T> | undefined;
 }
 
 export function effectsClass (className: string) {
-  return (target: Object, context?: unknown) => {
+  return <T extends Constructor> (target: T, context?: unknown) => {
     if (effectsClassStore[className]) {
       console.warn(`Class ${className} is already registered.`);
     }
-    // TODO: three修改json dataType, 这边重复注册直接 return
+    // Rendering backends intentionally replace core registrations with their
+    // concrete implementations when their entry module is evaluated.
     effectsClassStore[className] = target;
+    effectsClassNames.set(target, className);
   };
+}
+
+export function getEffectsClassName (target: Constructor): string | undefined {
+  return effectsClassNames.get(target);
 }

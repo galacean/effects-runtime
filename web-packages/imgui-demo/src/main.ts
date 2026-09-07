@@ -8,7 +8,7 @@ import './panels';
 import './custom-editors';
 import { imGuiIni } from './imgui/imgui-config';
 import { editorApp } from './core/editor-application';
-import { Project } from './panels';
+import { Content } from './panels';
 import { EditorThemeManager } from './panels/theme';
 
 let font: ImGui.Font | null = null;
@@ -131,8 +131,8 @@ async function _init (): Promise<void> {
     canvas.style.height = '100%';
     canvas.style.userSelect = 'none';
 
-    canvas.addEventListener('dragover', Project.allowDrop);
-    canvas.addEventListener('drop', Project.drop);
+    canvas.addEventListener('dragover', Content.allowDrop);
+    canvas.addEventListener('drop', Content.drop);
 
     ImGui_Impl.Init(canvas);
   } else {
@@ -578,4 +578,3 @@ function ShowMovieWindow (title: string, p_open: ImGui.Access<boolean> | null = 
   }
   ImGui.End();
 }
-

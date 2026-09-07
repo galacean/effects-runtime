@@ -10,6 +10,7 @@ import { assertExist, generateGUID, isFunction, logger, throwDestroyedError } fr
 import type { UniformValue } from './types';
 import type { Engine } from '../engine';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import { MaterialState } from './material-state';
 import { glContext } from '../gl';
 
@@ -64,6 +65,7 @@ let seed = 1;
 /**
  * Material 类
  */
+@effectsClass(spec.DataType.Material)
 export class Material extends Asset implements Disposable {
   shaderVariant: ShaderVariant;
 
@@ -763,6 +765,29 @@ export class Material extends Asset implements Disposable {
     }
     this.stringTags = data.stringTags ?? {};
     this.initialized = false;
+  }
+
+  protected override loadAsset (): void | Promise<void> {
+    const shader = this._shader;
+
+    if (!shader) {
+      return;
+    }
+
+    const applyShaderData = () => {
+      // A reload may replace the shader while the previous one is loading.
+      if (this._shader === shader) {
+        this.shaderSource = shader.shaderData;
+      }
+    };
+
+    if (shader.isLoaded) {
+      applyShaderData();
+
+      return;
+    }
+
+    return shader.waitForLoaded().then(applyShaderData);
   }
 
   override toData (): spec.MaterialData {

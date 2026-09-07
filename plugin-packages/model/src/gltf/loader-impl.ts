@@ -110,7 +110,7 @@ export class LoaderImpl implements Loader {
     }
 
     this.images = gltfResource.images.map(gltfImage => {
-      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
+      const blob = new Blob([new Uint8Array(gltfImage.imageData)], { type: gltfImage.mimeType ?? 'image/png' });
 
       return {
         id: gltfImage.id,

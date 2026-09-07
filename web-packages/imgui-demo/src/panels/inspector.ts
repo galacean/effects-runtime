@@ -308,7 +308,7 @@ export class Inspector extends EditorWindow {
 
     SerializationHelper.deserialize(serializedData, glMaterial);
     if (dirtyFlag) {
-      GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
+      GalaceanEffects.editorContent.setDirty(glMaterial.getInstanceId());
     }
   }
 

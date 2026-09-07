@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, SceneData } from './asset-loader';
-import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
+import { Asset } from './asset';
 import type { Material } from './material';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
@@ -13,7 +12,7 @@ import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
+import { addItem, getPixelRatio, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import type { Composition } from './composition';
@@ -28,6 +27,9 @@ import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { VFXItem } from './vfx-item';
+import { Content } from './content';
+import { getClass } from './decorators';
+import { SerializationHelper } from './serialization-helper';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -93,9 +95,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * GPU 能力
    */
   gpuCapability: GPUCapability;
-  jsonSceneData: SceneData;
+  jsonSceneData: Record<string, spec.EffectsObjectData>;
   objectInstance: Record<string, EffectsObject>;
-  database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
+  /**
+   * Asset content service. Editors may replace it before the first scene load.
+   */
+  content: Content;
   /**
    * 渲染过程中错误队列
    */
@@ -152,7 +157,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   private _compositions: Composition[] = [];
   private _graphics: Graphics;
-  private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
     clearStencil: 0,
@@ -175,6 +179,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
+    this.content = new Content(this);
     this.root = new VFXItem(this);
     this.root.name = 'root';
     this.whiteTexture = generateWhiteTexture(this);
@@ -189,7 +194,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem.enabled = options?.interactive ?? false;
     this.eventSystem.bindListeners(this.canvas);
 
-    this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
@@ -239,19 +243,59 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /**
    * @ignore
    */
-  findObject<T> (guid: spec.DataPath): T {
-    // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
-    if (!(isPlainObject(guid))) {
-      return guid as T;
+  findObject<T> (reference: spec.DataPath): T;
+  findObject<T> (reference: T): T;
+  findObject<T> (reference: spec.DataPath | T): T {
+    // Serialized references use DataPath. Runtime values, including strings,
+    // are returned unchanged.
+    if (!SerializationHelper.checkDataPath(reference)) {
+      return reference;
     }
 
-    if (this.objectInstance[guid.id]) {
-      return this.objectInstance[guid.id] as T;
+    const guid = reference.id;
+
+    const existing = this.objectInstance[guid] ?? this.content.getAsset(guid);
+
+    if (existing) {
+      return existing as T;
     }
 
-    const result = this.assetLoader.loadGUID<T>(guid);
+    const effectsObjectData = this.findEffectsObjectData(guid);
 
-    return result;
+    if (!effectsObjectData) {
+      // Runtime JSONScene data only contains embedded objects. EditorContent
+      // can additionally resolve external assets through its asset index.
+      const asset = this.content.loadAsync(guid);
+
+      if (asset) {
+        return asset as T;
+      }
+
+      logger.warn(`Object or asset data with uuid '${guid}' was not found.`);
+
+      return undefined as T;
+    }
+
+    const classConstructor = getClass(effectsObjectData.dataType);
+
+    if (!classConstructor) {
+      logger.warn(`Constructor for DataType '${effectsObjectData.dataType}' was not found.`);
+
+      return undefined as T;
+    }
+
+    if (classConstructor.prototype instanceof Asset) {
+      return this.content.loadAsync(guid) as T;
+    }
+
+    const result = new classConstructor(this) as EffectsObject;
+
+    // The constructor registers a temporary GUID. Replace it before
+    // deserialization so recursive scene references reuse this instance.
+    result.setInstanceId(effectsObjectData.id);
+    SerializationHelper.deserialize(effectsObjectData, result);
+
+    return result as T;
   }
 
   removeInstance (id: string) {
@@ -821,6 +865,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.root.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
+
+    for (const asset of this.content.getAssets()) {
+      this.content.unloadAsset(asset);
+    }
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());

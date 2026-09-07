@@ -11,7 +11,7 @@ import type {
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 import type {
-  spec, TextureSourceOptions, EffectComponentData,
+  spec, TextureSourceOptions,
   Texture, Geometry,
 } from '@galacean/effects';
 import type {
@@ -135,7 +135,7 @@ export interface Loader {
 
   processGLTFResource (resource: GLTFResources, imageElements: ModelImageLike[]): void,
 
-  processComponentData (components: EffectComponentData[]): void,
+  processComponentData (components: spec.EffectComponentData[]): void,
 
   processLightComponentData (light: ModelLightComponentData): void,
 

@@ -1,7 +1,7 @@
 import type {
   MaterialProps, Texture, UniformValue, UndefinedAble, Engine,
   GlobalUniforms, Renderer } from '@galacean/effects-core';
-import { math, Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
+import { effectsClass, math, Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -21,6 +21,7 @@ type Color = math.Color;
 /**
  * THREE 抽象材质类
  */
+@effectsClass(spec.DataType.Material)
 export class ThreeMaterial extends Material {
   /**
    * 储存纹理类型的 uniform 值

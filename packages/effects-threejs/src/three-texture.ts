@@ -1,14 +1,15 @@
 import type {
   Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions, spec,
+  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
+import { effectsClass, glContext, spec, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
 
 /**
  * THREE 抽象纹理类
  */
+@effectsClass(spec.DataType.Texture)
 export class ThreeTexture extends Texture {
   /**
    * THREE 纹理对象
@@ -154,7 +155,7 @@ export class ThreeTexture extends Texture {
       const { data } = options as Texture2DSourceOptionsData;
 
       texture = new THREE.DataTexture(
-        data.data, data.width, data.height,
+        data.data as BufferSource, data.width, data.height,
         format, type, mapping, wrapS, wrapT, magFilter, minFilter
       );
       this.width = data.width;
@@ -222,4 +223,3 @@ export class ThreeTexture extends Texture {
   }
 
 }
-

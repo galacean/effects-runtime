@@ -170,7 +170,7 @@ Size=902,462
 Collapsed=0
 DockId=0x00000005,3
 
-[Window][Project]
+[Window][Content]
 Pos=0,843
 Size=902,462
 Collapsed=0
@@ -188,7 +188,7 @@ Size=210,817
 Collapsed=0
 DockId=0x00000009,1
 
-[Window][Content Browser]
+[Window][Asset Browser]
 Pos=0,843
 Size=902,462
 Collapsed=0

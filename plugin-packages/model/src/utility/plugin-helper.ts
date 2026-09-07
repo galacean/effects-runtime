@@ -78,7 +78,7 @@ export class WebGLHelper {
         },
       });
     }
-    const blob = new Blob([image.imageData], { type: image.mimeType });
+    const blob = new Blob([new Uint8Array(image.imageData)], { type: image.mimeType });
     const urlCreator = window.URL || window.webkitURL;
     const imageUrl = urlCreator.createObjectURL(blob);
     const imageObj = new Image();
@@ -1006,7 +1006,7 @@ export class WebHelper {
    * @returns HTML 图像元素
    */
   static async loadImageFromGLTFImage (image: GLTFImage): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.imageData], { type: image.mimeType }));
+    return loadImage(new Blob([new Uint8Array(image.imageData)], { type: image.mimeType }));
   }
 
   /**
@@ -1015,7 +1015,7 @@ export class WebHelper {
    * @returns
    */
   static async loadImageFromImageData (image: PImageBufferData): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.data], { type: image.mimeType }));
+    return loadImage(new Blob([new Uint8Array(image.data)], { type: image.mimeType }));
   }
 
   /**

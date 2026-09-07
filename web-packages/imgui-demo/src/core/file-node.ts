@@ -1,4 +1,5 @@
 import type { EffectsObject } from '@galacean/effects';
+import { isJsonAssetFile } from '../editor/content';
 import { GalaceanEffects } from '../ge';
 
 export class FileNode {
@@ -36,12 +37,12 @@ export class FileNode {
         return;
       }
       try {
-        const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+        const jsonAsset = JSON.parse(await file.text()) as unknown;
 
-        if (!effectsPackage) {
+        if (!isJsonAssetFile(jsonAsset)) {
           return;
         }
-        this.assetObject = effectsPackage.exportObjects[0];
+        this.assetObject = GalaceanEffects.editorContent.loadAsync(jsonAsset.ID);
       } catch (error) {
         console.error(error);
       }

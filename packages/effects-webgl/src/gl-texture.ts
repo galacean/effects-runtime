@@ -2,11 +2,11 @@ import type {
   CanvasAndContext, Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, Engine,
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
-  throwDestroyedError, canvasPool, logger, isPowerOfTwo,
+  throwDestroyedError, canvasPool, logger, isPowerOfTwo, effectsClass, spec,
 } from '@galacean/effects-core';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLEngine } from './gl-engine';
@@ -28,6 +28,7 @@ const FORMAT_FLOAT: Record<string, number> = {
   [glContext.LUMINANCE]: 33326, //R32F
 };
 
+@effectsClass(spec.DataType.Texture)
 export class GLTexture extends Texture implements Disposable, RestoreHandler {
   textureBuffer: WebGLTexture | null;
   target: GLenum;

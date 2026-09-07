@@ -15,6 +15,9 @@ import './plugins/sprite';
 // plugin text
 import './plugins/text';
 import './asset-manager.spec';
+import './content.spec';
+import './content-model.spec';
+import './editor-content-fixtures.spec';
 import './engine-plugin.spec';
 import './texture.spec';
 import './text-cache.spec';

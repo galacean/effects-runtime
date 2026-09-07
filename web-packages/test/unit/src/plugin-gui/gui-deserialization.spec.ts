@@ -570,7 +570,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
     expect(events).deep.equals([]);
   });
 
-  it('loads UIControl through AssetLoader and applies JSON after the initial Item location', () => {
+  it('loads UIControl through Engine.findObject and applies JSON after the initial Item location', () => {
     const item = new VFXItem(player.engine);
     const itemId = `gui-item-${serial++}`;
     const componentId = `gui-component-${serial++}`;

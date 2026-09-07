@@ -1,3 +1,4 @@
+import type { spec } from '@galacean/effects';
 import { Player, VFXItem } from '@galacean/effects';
 import { UICanvas, UIControl } from '@galacean/effects-plugin-gui';
 import '@galacean/effects-plugin-ffd';
@@ -6,13 +7,13 @@ import { JSONConverter } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-rich-text';
 import '@galacean/effects-plugin-spine';
-import { AssetDatabase } from './core/asset-data-base';
+import { EditorContent } from './editor/content';
 import { CanvasGizmo } from './core/canvas-gizmo';
 import { ImGui_Impl } from './imgui';
 
 export class GalaceanEffects {
   static player: Player;
-  static assetDataBase: AssetDatabase;
+  static editorContent: EditorContent;
   static sceneRendederTexture: WebGLTexture;
   static async initialize () {
     const container = document.getElementById('J-container');
@@ -21,10 +22,9 @@ export class GalaceanEffects {
     GalaceanEffects.player = new Player({ container });
 
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
-    GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
-    GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    // @ts-expect-error
-    GalaceanEffects.playURL({
+    GalaceanEffects.editorContent = new EditorContent(GalaceanEffects.player.renderer.engine);
+    GalaceanEffects.player.renderer.engine.content = GalaceanEffects.editorContent;
+    void GalaceanEffects.playURL({
       'playerVersion': {
         'web': '2.8.3',
         'native': '0.0.1.202311221223',
@@ -576,31 +576,31 @@ export class GalaceanEffects {
       ],
       'compositionId': 'dee7c98fc5f34aad957bc756c8face77',
       'shapes': [],
-    });
+    } as unknown as spec.JSONScene);
   }
 
-  static playURL (url: string, use3DConverter = false) {
+  static async playURL (url: string | spec.JSONScene, use3DConverter = false): Promise<void> {
     GalaceanEffects.player.destroyCurrentCompositions();
     if (use3DConverter) {
+      if (typeof url !== 'string') {
+        throw new TypeError('The 3D converter only accepts a scene URL.');
+      }
       const converter = new JSONConverter(GalaceanEffects.player.renderer);
+      const scene = await converter.processScene(url);
 
-      void converter.processScene(url).then(async (scene: any) => {
-        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
-      });
+      await GalaceanEffects.player.loadScene(scene, { autoplay: true });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        const overlayCanvas = composition.pluginRoot.getComponent(UICanvas) ??
-          composition.pluginRoot.addComponent(UICanvas);
-        const canvasGizmo = new VFXItem(composition.engine);
-        const bridge = canvasGizmo.addComponent(UIControl);
+      const composition = await GalaceanEffects.player.loadScene(url, { autoplay: true });
+      const overlayCanvas = composition.pluginRoot.getComponent(UICanvas) ??
+        composition.pluginRoot.addComponent(UICanvas);
+      const canvasGizmo = new VFXItem(composition.engine);
+      const bridge = canvasGizmo.addComponent(UIControl);
 
-        overlayCanvas.order = Number.MAX_SAFE_INTEGER;
-        bridge.control = new CanvasGizmo(composition.engine);
+      overlayCanvas.order = Number.MAX_SAFE_INTEGER;
+      bridge.control = new CanvasGizmo(composition.engine);
 
-        canvasGizmo.setParent(composition.pluginRoot);
-      });
+      canvasGizmo.setParent(composition.pluginRoot);
     }
-
   }
 
   static updateRenderTexture () {
