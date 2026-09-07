@@ -71,6 +71,22 @@ export class CompositionComponent extends Component {
     return this._timelineInstance;
   }
 
+  override onEnable () {
+    this.item.getDescendants(false, item => {
+      item.setActive(true);
+
+      return false;
+    });
+  }
+
+  override onDisable () {
+    this.item.getDescendants(false, item => {
+      item.setActive(false);
+
+      return false;
+    });
+  }
+
   override onStart (): void {
     if (this.playOnStart) {
       this.play();
@@ -155,28 +171,6 @@ export class CompositionComponent extends Component {
     this.timelineInstance.evaluate(time, deltaTime);
 
     this.lastTime = this.time = time;
-  }
-
-  override onEnable () {
-    this.item.getDescendants(false, item => {
-      item.setActive(true);
-
-      return false;
-    });
-  }
-
-  override onDisable () {
-    this.item.getDescendants(false, item => {
-      item.setActive(false);
-
-      return false;
-    });
-  }
-
-  override onDestroy (): void {
-    const items = this.item.getDescendants();
-
-    items.forEach(item => item.dispose());
   }
 
   /**

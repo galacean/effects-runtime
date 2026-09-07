@@ -68,8 +68,8 @@ export class TestPlayer {
       timeout: 100,
       autoplay: false,
     });
-    // @ts-expect-error
-    Math.seedrandom('runtime');
+    // Keep initialization and the first frame in the same random sequence:
+    // component Start may run during loadScene rather than the first update.
     this.player.gotoAndStop(0);
   }
 

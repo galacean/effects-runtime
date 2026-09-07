@@ -44,12 +44,19 @@ export class SceneTicking {
     }
   }
 
+  setTicking (enabled: boolean): void {
+    this.update.canTick = enabled;
+    this.lateUpdate.canTick = enabled;
+    this.preRender.canTick = enabled;
+  }
+
   /**
    *
    */
   clear (): void {
     this.update.clear();
     this.lateUpdate.clear();
+    this.preRender.clear();
   }
 }
 
@@ -57,18 +64,18 @@ class TickData {
   components: Component[] = [];
   ticks: ((dt: number) => void)[] = [];
 
-  constructor () {
-  }
+  canTick = true;
 
   tick (dt: number) {
-    this.tickComponents(this.components, dt);
-
-    for (let i = 0;i < this.ticks.length;i++) {
+    for (let i = 0; i < this.components.length && this.canTick; i++) {
+      this.tickComponent(this.components[i], dt);
+    }
+    for (let i = 0; i < this.ticks.length && this.canTick; i++) {
       this.ticks[i](dt);
     }
   }
 
-  tickComponents (components: Component[], dt: number): void {
+  tickComponent (component: Component, dt: number): void {
     // To be implemented in derived classes
   }
 
@@ -82,7 +89,12 @@ class TickData {
     const index = this.components.indexOf(component);
 
     if (index > -1) {
-      this.components.splice(index, 1);
+      // Flax Array.Remove swaps in the last entry instead of preserving order.
+      const last = this.components.pop()!;
+
+      if (index < this.components.length) {
+        this.components[index] = last;
+      }
     }
   }
 
@@ -95,41 +107,25 @@ class TickData {
   }
 
   clear (): void {
-    this.components = [];
+    this.components.length = 0;
+    this.ticks.length = 0;
   }
 }
 
 class UpdateTickData extends TickData {
-  override tickComponents (components: Component[], dt: number): void {
-    for (const component of components) {
-      component.onUpdate(dt);
-    }
+  override tickComponent (component: Component, dt: number): void {
+    component.onUpdate(dt);
   }
 }
 
 class LateUpdateTickData extends TickData {
-  override tickComponents (components: Component[], dt: number): void {
-    for (const component of components) {
-      component.onLateUpdate(dt);
-    }
+  override tickComponent (component: Component, dt: number): void {
+    component.onLateUpdate(dt);
   }
 }
 
 class PreRenderTickData extends TickData {
-  override tickComponents (components: Component[], dt: number): void {
-    for (const component of components) {
-      component.onPreRender();
-    }
+  override tickComponent (component: Component, dt: number): void {
+    component.onPreRender();
   }
 }
-
-// function compareComponents (a: Component, b: Component): number {
-//   const itemA = a.item;
-//   const itemB = b.item;
-
-//   if (VFXItem.isAncestor(itemA, itemB)) {
-//     return -1;
-//   } else {
-//     return 1;
-//   }
-// }

@@ -358,6 +358,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.createRenderFrame();
 
     PluginSystem.notifyCompositionCreated(this, scene);
+    this.root.initializeHierarchy();
+    this.root.beginPlay();
   }
 
   /**
@@ -440,7 +442,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   restart () {
     this.reset();
-    this.forwardTime(this.startTime);
+    this.setTime(0);
   }
 
   /**
@@ -488,16 +490,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    *
    */
   play () {
-    if (this.isEnded && this.reusable) {
-      this.restart();
-    }
-    if (this.rootComposition.isStartCalled) {
-      this.setTime(this.time - this.startTime);
-      this.resume();
-    } else {
-      this.setTime(0);
-      this.resume();
-    }
+    this.resume();
+    // Evaluate the first frame at startTime, or keep the current playback position.
+    this.setTime(Math.max(0, this.time - this.startTime));
   }
 
   /**
@@ -610,7 +605,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   protected reset () {
     this.isEnded = false;
     this.isEndCalled = false;
-    this.rootComposition.setTime(0);
   }
 
   /** Renders this Composition content. Screen-space UI is rendered by Engine. */
@@ -634,11 +628,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    // Scene VFXItem components lifetime function
-    if (!this.root.isDuringPlay) {
-      this.root.awake();
-      this.root.beginPlay();
-    }
     const previousCompositionTime = this.time;
 
     this.updateCompositionTime(deltaTime * this.speed / 1000);
@@ -875,6 +864,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.destroyed = true;
 
+    this.sceneTicking.setTicking(false);
+    this.root.dispose();
+    this.sceneTicking.clear();
+
     for (const texture of this.textures) {
       texture.dispose();
     }
@@ -889,9 +882,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.videos = [];
 
-    this.sceneRoot.dispose();
-    this.pluginRoot.dispose();
-    this.root.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
     PluginSystem.notifyCompositionDestroy(this);
