@@ -50,6 +50,17 @@ export class Sprite extends Asset {
     }
   }
 
+  override toData (): void {
+    this.definition = {
+      rect: this.rect.slice(),
+      rotation: this.rotation,
+    };
+    super.toData();
+    if (this.texture && this.texture !== this.engine.whiteTexture) {
+      this.definition.texture = { id: this.texture.getInstanceId() };
+    }
+  }
+
   override fromData (data: SpriteData): void {
     super.fromData(data);
     // findObject 对 Texture 实例原样返回，对 {id} 解析为 Texture 实例，

@@ -96,6 +96,38 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.disposeTextTexture();
   }
 
+  override toData (): void {
+    super.toData();
+    // The text texture is generated from these properties, not a scene asset.
+    delete this.definition.renderer.texture;
+    const style = this.textStyle;
+    const layout = this.textLayout;
+
+    this.definition.options = {
+      text: this.text,
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      fontWeight: style.textWeight,
+      fontStyle: style.fontStyle,
+      textColor: style.textColor.slice(),
+      outline: style.isOutlined ? { outlineColor: style.outlineColor.slice(), outlineWidth: style.outlineWidth } : undefined,
+      shadow: style.hasShadow ? {
+        shadowColor: style.shadowColor.slice(), shadowBlur: style.shadowBlur,
+        shadowOffsetX: style.shadowOffsetX, shadowOffsetY: style.shadowOffsetY,
+      } : undefined,
+      textVerticalAlign: layout.textVerticalAlign,
+      textAlign: layout.textAlign,
+      textOverflow: layout.overflow,
+      letterSpace: layout.letterSpace,
+      lineHeight: layout.lineHeight,
+      wrapEnabled: layout.wrapEnabled,
+      maxTextWidth: layout.maxTextWidth,
+      maxTextHeight: layout.maxTextHeight,
+      autoResize: layout.autoResize,
+    };
+    if (this.interaction) {this.definition.interaction = { ...this.interaction };}
+  }
+
   override fromData (data: spec.RichTextComponentData): void {
     super.fromData(data);
     const { interaction, options } = data;

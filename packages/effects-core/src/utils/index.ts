@@ -187,6 +187,7 @@ export function applyMixins<T extends Constructor, K extends Constructor> (
 ) {
   baseCtrls.forEach(baseCtrl => {
     Object.getOwnPropertyNames(baseCtrl.prototype).forEach(name => {
+      if (name === 'constructor') {return;}
       const propertyDescriptor = Object.getOwnPropertyDescriptor(baseCtrl.prototype, name);
 
       if (!propertyDescriptor) {

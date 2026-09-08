@@ -3,6 +3,7 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
+import type { EffectsObject } from '../effects-object';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
 import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
@@ -311,6 +312,27 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     for (let i = 0; i < this.materials.length; i++) {
       renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.materials[i], i);
     }
+  }
+
+  override toData (): void {
+    super.toData();
+    // Graphic materials are generated from renderer options, not scene assets.
+    delete this.definition.materials;
+    delete this.definition._priority;
+    const { renderMode, blending, side, occlusion, transparentOcclusion, texture } = this.renderer;
+
+    this.definition.renderer = { renderMode, blending, side, occlusion, transparentOcclusion };
+    if (texture && texture !== this.engine.whiteTexture) {
+      this.definition.renderer.texture = { id: texture.getInstanceId() };
+    }
+    this.definition.mask = {
+      isMask: this.maskManager.isMask,
+      alphaMaskEnabled: this.maskManager.alphaMaskEnabled,
+      references: this.maskManager.getMaskReferences().map(reference => ({
+        mask: { id: (reference.maskable as unknown as EffectsObject).getInstanceId() },
+        inverted: reference.inverted,
+      })),
+    };
   }
 
   override fromData (data: MaskableGraphicData): void {

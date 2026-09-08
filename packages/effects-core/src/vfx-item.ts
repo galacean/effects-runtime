@@ -5,7 +5,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
-import { EffectComponent, RendererComponent } from './components';
+import { RendererComponent } from './components';
 import type { Composition, CompositionHitTestOptions } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
@@ -23,11 +23,19 @@ import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
 
+/** Scene node flags, following Flax Actor.HideFlags. */
+export enum HideFlags {
+  None = 0,
+  HideInHierarchy = 1,
+  DontSave = 2,
+}
+
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
  */
 @effectsClass(spec.DataType.VFXItemData)
 export class VFXItem extends EffectsObject implements Disposable {
+  hideFlags = HideFlags.None;
   /**
    * 元素绑定的父元素
    */
@@ -968,6 +976,9 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.props = data;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.parentId = parentId;
+    if (parentId !== undefined) {
+      this.setParent(this.engine.findObject<VFXItem>({ id: parentId }));
+    }
     this.components.length = 0;
 
     if (VFXItem.isComposition(this)) {
@@ -1019,23 +1030,24 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
-    this.definition.id = this.guid;
-    this.definition.transform = this.transform.toData();
-    this.definition.dataType = spec.DataType.VFXItemData;
-    if (this.parent?.name !== 'sceneRoot') {
-      this.definition.parentId = this.parent?.guid;
+    this.definition = {};
+    super.toData();
+    this.definition = {
+      ...this.definition,
+      name: this.name,
+      type: this.type,
+      duration: this.duration,
+      endBehavior: this.endBehavior,
+      visible: this.visible,
+      transform: this.transform.toData(),
+      components: this.components.map(component => ({ id: component.getInstanceId() })),
+      children: this.children.filter(child => !(child.hideFlags & HideFlags.DontSave))
+        .map(child => ({ id: child.getInstanceId() })),
+      content: {},
+    };
+    if (this.parent && !(this.parent.hideFlags & HideFlags.DontSave)) {
+      this.definition.parentId = this.parent.getInstanceId();
     }
-
-    // TODO 统一 sprite 等其他组件的序列化逻辑
-    if (!this.definition.components) {
-      this.definition.components = [];
-      for (const component of this.components) {
-        if (component instanceof EffectComponent) {
-          this.definition.components.push(component);
-        }
-      }
-    }
-    this.definition.content = {};
   }
 
   /**

@@ -128,6 +128,14 @@ export class EditorContent extends Content {
     return root;
   }
 
+  async loadSceneAssets (scene: spec.JSONScene): Promise<void> {
+    for (const id of this.collectDependencies(scene, '')) {
+      if (!await this.loadGraph(id)) {
+        throw new Error(`Failed to load scene asset '${id}'.`);
+      }
+    }
+  }
+
   getDependencies (id: string): readonly string[] {
     return Array.from(this.dependencies.get(id) ?? []);
   }

@@ -11,7 +11,7 @@ interface ComponentData extends spec.ComponentData {
  * @since 2.0.0
  */
 export abstract class Component extends EffectsObject {
-  name: string;
+  name = '';
   /**
    * 附加到的 VFXItem 对象
    */
@@ -214,8 +214,18 @@ export abstract class Component extends EffectsObject {
     }
   }
 
+  override toData (): void {
+    this.definition = {};
+    super.toData();
+    this.definition.name = this.name;
+    if (this.item) {
+      this.definition.item = { id: this.item.getInstanceId() };
+    }
+  }
+
   override fromData (data: ComponentData): void {
     super.fromData(data);
+    this.name = (data as ComponentData & { name?: string }).name ?? this.name;
     if (data.item !== undefined) {
       this.item = this.engine.findObject<VFXItem>(data.item);
     }

@@ -323,6 +323,14 @@ export class Slider extends Range {
       : { x: (this.width - grabberSize) * 0.5, y: this.getUsableLength() - offset, width: grabberSize, height: grabberSize };
   }
 
+  override toData (): spec.SliderData {
+    return {
+      ...super.toData(),
+      editable: this.editable,
+      scrollable: this.scrollable,
+    };
+  }
+
   override fromData (data: spec.SliderData): void {
     super.fromData(data);
     if (data.editable !== undefined) {

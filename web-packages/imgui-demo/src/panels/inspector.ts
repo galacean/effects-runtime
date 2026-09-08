@@ -1,6 +1,6 @@
 import type { Material, Texture } from '@galacean/effects';
 import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
-import { UIControl } from '@galacean/effects-plugin-gui';
+import { UIControl, Label, Button, ColorRect, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
 import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
@@ -44,12 +44,24 @@ export class Inspector extends EditorWindow {
       activeObject = this.lockedObject;
     }
 
+    if (activeObject instanceof VFXItem && GalaceanEffects.document && !GalaceanEffects.document.owns(activeObject)) {
+      this.locked = false;
+
+      return;
+    }
+    if (activeObject instanceof VFXItem) {this.drawObjectTitle('VFXItem');}
+    ImGui.BeginDisabled(GalaceanEffects.isPlaying || GalaceanEffects.busy);
+    ImGui.BeginGroup();
     if (activeObject instanceof VFXItem) {
-      this.drawObjectTitle('VFXItem');
       this.drawVFXItemInspector(activeObject);
     } else {
       this.drawObject(activeObject);
     }
+    ImGui.EndGroup();
+    if (ImGui.IsItemEdited() && activeObject instanceof VFXItem && GalaceanEffects.document?.owns(activeObject)) {
+      GalaceanEffects.document.markModified();
+    }
+    ImGui.EndDisabled();
   }
 
   private drawObject (object: object) {
@@ -104,33 +116,25 @@ export class Inspector extends EditorWindow {
 
   private drawVFXItemInspector (activeObject: VFXItem) {
     EditorGUILayout.TextField('Name', activeObject, 'name');
-    EditorGUILayout.TextField('GUID', activeObject, 'guid');
-
-    EditorGUILayout.Label('Is Active');
-    ImGui.Checkbox('##IsActive', (_ = activeObject.isActive) => {
-      activeObject.setActive(_);
-
-      return activeObject.isActive;
-    });
+    EditorGUILayout.Text('GUID', activeObject.getInstanceId());
 
     EditorGUILayout.FloatField('Duration', activeObject, 'duration');
-    EditorGUILayout.FloatField('Time', activeObject, 'time');
     EditorGUILayout.Text('End Behavior', this.endBehaviorToString(activeObject.endBehavior));
 
-    if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
+    const isDocumentRoot = GalaceanEffects.document?.scene.compositions.some(entry => entry.root === activeObject);
+
+    if (!isDocumentRoot && ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
 
-      EditorGUILayout.Vector3Field('Position', transform.position);
-      EditorGUILayout.Vector3Field('Rotation', transform.rotation);
-      EditorGUILayout.Vector3Field('Scale', transform.scale);
-      EditorGUILayout.Vector2Field('Size', transform.size);
+      const position = transform.position.clone();
+      const rotation = transform.rotation.clone();
+      const scale = transform.scale.clone();
+      const size = transform.size.clone();
 
-      transform.quat.setFromEuler(transform.rotation);
-      transform.quat.conjugate();
-      //@ts-expect-error
-      transform.dirtyFlags.localData = true;
-      //@ts-expect-error
-      transform.dispatchValueChange();
+      if (EditorGUILayout.Vector3Field('Position', position)) {transform.setPosition(position.x, position.y, position.z);}
+      if (EditorGUILayout.Vector3Field('Rotation', rotation)) {transform.setRotation(rotation.x, rotation.y, rotation.z);}
+      if (EditorGUILayout.Vector3Field('Scale', scale)) {transform.setScale(scale.x, scale.y, scale.z);}
+      if (EditorGUILayout.Vector2Field('Size', size)) {transform.setSize(size.x, size.y);}
     }
 
     // 仅当 VFXItem 挂了 Control 组件才显示锚点布局编辑区
@@ -146,7 +150,11 @@ export class Inspector extends EditorWindow {
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
         ImGui.PushID(componet.getInstanceId());
 
-        EditorGUILayout.Checkbox('Enabled', componet, 'enabled');
+        if (componet instanceof UIControl && componet.control) {
+          this.drawControlProperties(componet.control);
+          ImGui.PopID();
+          continue;
+        }
 
         let editor = this.defaultComponentEditor;
 
@@ -167,6 +175,23 @@ export class Inspector extends EditorWindow {
         this.drawMaterial(material);
       }
     }
+  }
+
+  private drawControlProperties (control: Control): void {
+    EditorGUILayout.Text('Control', control.constructor.name);
+    if (control instanceof Label || control instanceof Button || control instanceof LineEdit || control instanceof TextEdit) {
+      EditorGUILayout.TextField('Text', control, 'text');
+      const font = { size: control.getThemeFontSize('fontSize') };
+      const color = control.getThemeColor('fontColor');
+
+      if (EditorGUILayout.FloatField('Font Size', font, 'size')) {
+        control.setThemeFontSizeOverride('fontSize', Math.max(1, font.size));
+      }
+      if (EditorGUILayout.ColorField('Font Color', color)) {
+        control.setThemeColorOverride('fontColor', color);
+      }
+    }
+    if (control instanceof ColorRect) {EditorGUILayout.ColorField('Color', control.color);}
   }
 
   private drawMaterial (material: Material) {
@@ -306,8 +331,9 @@ export class Inspector extends EditorWindow {
       }
     }
 
-    SerializationHelper.deserialize(serializedData, glMaterial);
     if (dirtyFlag) {
+      SerializationHelper.deserialize(serializedData, glMaterial);
+      GalaceanEffects.document?.markModified();
       GalaceanEffects.editorContent.setDirty(glMaterial.getInstanceId());
     }
   }
@@ -435,6 +461,7 @@ export class Inspector extends EditorWindow {
         const label = `${colNames[col]}${rowNames[row]}##preset_${row}_${col}`;
 
         if (ImGui.Button(label, new ImGui.Vec2(28, 22))) {
+          GalaceanEffects.document?.markModified();
           if (ImGui.GetIO().KeyShift) {
             // 保持 rect 视觉位置:反推 offset 抵消 anchor 变化
             rt.setAnchorsPreset(preset, false);

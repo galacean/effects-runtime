@@ -651,6 +651,21 @@ export class ScrollContainer extends Container {
     }
   }
 
+  override toData (): spec.ScrollContainerData {
+    return {
+      ...super.toData(),
+      horizontalScrollMode: this.horizontalScrollMode,
+      verticalScrollMode: this.verticalScrollMode,
+      horizontalCustomStep: this.horizontalCustomStep,
+      verticalCustomStep: this.verticalCustomStep,
+      scrollHorizontalByDefault: this.scrollHorizontalByDefault,
+      deadzone: this.deadzone,
+      followFocus: this.followFocus,
+      hScroll: this.horizontalBar.value,
+      vScroll: this.verticalBar.value,
+    };
+  }
+
   override fromData (data: spec.ScrollContainerData): void {
     super.fromData(data);
     if (data.horizontalScrollMode !== undefined) {

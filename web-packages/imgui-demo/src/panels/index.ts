@@ -1,7 +1,6 @@
 export * from './composition';
 export * from './content';
 export * from './hierarchy';
-export * from './preview';
 export * from './inspector';
 export * from './scene';
 export * from './asset-browser';

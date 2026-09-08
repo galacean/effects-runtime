@@ -291,6 +291,20 @@ export class Button extends BaseButton {
     return characters.slice(0, count).join('') + ellipsis;
   }
 
+  override toData (): spec.ButtonData {
+    return {
+      ...super.toData(),
+      text: this.text,
+      icon: this.icon ? { id: this.icon.getInstanceId() } : null,
+      flat: this.flat,
+      clipText: this.clipText,
+      expandIcon: this.expandIcon,
+      textAlignment: this.textAlignment,
+      iconAlignment: this.iconAlignment,
+      iconVerticalAlignment: this.iconVerticalAlignment,
+    };
+  }
+
   override fromData (data: spec.ButtonData): void {
     super.fromData(data);
     if (data.text !== undefined) {

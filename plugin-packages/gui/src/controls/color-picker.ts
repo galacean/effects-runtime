@@ -303,6 +303,14 @@ export class ColorPicker extends VBoxContainer {
     }
   }
 
+  override toData (): spec.ColorPickerData {
+    return {
+      ...super.toData(),
+      color: { r: this.color.r, g: this.color.g, b: this.color.b, a: this.color.a },
+      editAlpha: this.editAlpha,
+    };
+  }
+
   override fromData (data: spec.ColorPickerData): void {
     super.fromData(data);
     if (data.color !== undefined) {
@@ -389,6 +397,14 @@ export class ColorPickerButton extends Button {
     this.off('pressed', this.openPicker);
     this.popupPanel.dispose();
     super.onDestroy();
+  }
+
+  override toData (): spec.ColorPickerButtonData {
+    return {
+      ...super.toData(),
+      color: { r: this.color.r, g: this.color.g, b: this.color.b, a: this.color.a },
+      editAlpha: this.editAlpha,
+    };
   }
 
   override fromData (data: spec.ColorPickerButtonData): void {

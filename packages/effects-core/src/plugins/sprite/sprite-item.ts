@@ -46,6 +46,11 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
     return spriteColorPlayable;
   }
 
+  override toData (): void {
+    this.definition = { ...this.data };
+    super.toData();
+  }
+
   override fromData (data: ColorPlayableAssetData): void {
     this.data = data;
   }
@@ -99,6 +104,7 @@ export class SpriteComponent extends MaskableGraphic {
   duration = 1;
 
   protected textureSheetAnimation?: spec.TextureSheetAnimation;
+  private splits?: spec.SplitParameter[];
 
   /**
    * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + rotation），渲染唯一数据源。
@@ -263,6 +269,24 @@ export class SpriteComponent extends MaskableGraphic {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.options = { startColor: this.material.getColor('_Color')?.toArray() ?? [1, 1, 1, 1] };
+    if (this.sprite) {
+      this.definition.sprite = { id: this.sprite.getInstanceId() };
+      delete this.definition.renderer.texture;
+    } else if (this.splits) {
+      this.definition.splits = this.splits.map(split => split.slice());
+    }
+    if (this.geometry !== this.defaultGeometry) {
+      this.definition.geometry = { id: this.geometry.getInstanceId() };
+    }
+    if (this.textureSheetAnimation) {
+      this.definition.textureSheetAnimation = { ...this.textureSheetAnimation };
+    }
+    if (this.interaction) {this.definition.interaction = { ...this.interaction };}
+  }
+
   override fromData (data: SpriteComponentDataEx): void {
     super.fromData(data);  // MaskableGraphic: 设 renderer.texture（whiteTexture 或 data.renderer.texture）、_MainTex、_Color
 
@@ -279,6 +303,8 @@ export class SpriteComponent extends MaskableGraphic {
 
     const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
     const splits = data.splits;
+
+    this.splits = splits?.map(split => [...split] as spec.SplitParameter);
 
     if (splits && splits.length > 1) {
       // 原有打包纹理拆分逻辑（多 split，2x2 纹理打包），保留向后兼容；

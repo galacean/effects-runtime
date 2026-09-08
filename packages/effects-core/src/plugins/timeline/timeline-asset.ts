@@ -15,6 +15,12 @@ export class TimelineAsset extends Asset {
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;
 
+  override toData (): void {
+    this.definition = {};
+    super.toData();
+    this.definition.tracks = this.tracks.map(track => ({ id: track.getInstanceId() }));
+  }
+
   override fromData (data: spec.TimelineAssetData): void {
     super.fromData(data);
     if (data.tracks !== undefined) {

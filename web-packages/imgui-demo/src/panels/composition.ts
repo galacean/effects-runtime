@@ -91,7 +91,7 @@ export class Composition extends EditorWindow {
       undefined,
       ImGui.InputTextFlags.EnterReturnsTrue,
     )) {
-      this.playURL(this.currentCompositionURL);
+      this.openScene(this.currentCompositionURL);
     }
   }
 
@@ -167,7 +167,7 @@ export class Composition extends EditorWindow {
           this.currentItem = idx;
           this.currentCompositionURL = this.compositionURLs[idx];
           Selection.select(null);
-          this.playURL(this.currentCompositionURL, idx);
+          this.openScene(this.currentCompositionURL, idx);
         }
 
         ImGui.PopID();
@@ -254,13 +254,16 @@ export class Composition extends EditorWindow {
     }
   }
 
-  private playURL (url: string, listIndex?: number): void {
+  private openScene (url: string, listIndex?: number): void {
     if (!url) {
       return;
     }
     if (listIndex !== undefined) {
       this.playingIndex = listIndex;
     }
-    void GalaceanEffects.playURL(url);
+    if (GalaceanEffects.isDocumentDirty() && !window.confirm('Discard unsaved scene changes and open another scene?')) {return;}
+    void GalaceanEffects.openDocument(url)
+      .then(() => GalaceanEffects.setPlaying(true))
+      .catch(error => GalaceanEffects.reportSceneError(error));
   }
 }

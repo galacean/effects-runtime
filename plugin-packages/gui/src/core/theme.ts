@@ -156,6 +156,10 @@ export abstract class StyleBox {
     );
   }
 
+  toData (): spec.StyleBoxData {
+    throw new Error(`StyleBox '${this.constructor.name}' has no serializer.`);
+  }
+
   abstract draw (graphics: Graphics, rect: StyleBoxRect): void;
 
   protected notifyChanged (): void { this.eventEmitter.emit('changed', this); }
@@ -166,6 +170,10 @@ export abstract class StyleBox {
 
 export class StyleBoxEmpty extends StyleBox {
   static readonly shared = new StyleBoxEmpty().makeReadOnly();
+  override toData (): spec.StyleBoxEmptyData {
+    return { type: 'empty', contentMargins: this.getContentMargins() };
+  }
+
   override draw (): void {}
 }
 
@@ -174,6 +182,17 @@ export class StyleBoxFlat extends StyleBox {
   private borderColor = Color.CLEAR.clone();
   private borderWidths = cloneMargins(ZERO_MARGINS);
   private cornerRadii = cloneMargins(ZERO_MARGINS);
+
+  override toData (): spec.StyleBoxFlatData {
+    return {
+      type: 'flat',
+      contentMargins: this.getContentMargins(),
+      backgroundColor: colorToData(this.backgroundColor),
+      borderColor: colorToData(this.borderColor),
+      borderWidths: this.getBorderWidths(),
+      cornerRadii: this.getCornerRadii(),
+    };
+  }
 
   getBackgroundColor (): Color { return this.backgroundColor.clone(); }
   getBorderColor (): Color { return this.borderColor.clone(); }
@@ -414,6 +433,23 @@ export class StyleBoxTexture extends StyleBox {
   private _horizontalAxisStretchMode = PatchStretchMode.Stretch;
   private _verticalAxisStretchMode = PatchStretchMode.Stretch;
   private _drawCenter = true;
+
+  override toData (): spec.StyleBoxTextureData {
+    return {
+      type: 'texture',
+      texture: this.texture ? { id: this.texture.getInstanceId() } : null,
+      contentMargins: this.getContentMargins(),
+      sourceRect: this.sourceRect ? {
+        position: [this.sourceRect.x, this.sourceRect.y],
+        size: [this.sourceRect.width, this.sourceRect.height],
+      } : undefined,
+      patchMargins: this.getPatchMargins(),
+      horizontalAxisStretchMode: this.horizontalAxisStretchMode,
+      verticalAxisStretchMode: this.verticalAxisStretchMode,
+      drawCenter: this.drawCenter,
+      tint: colorToData(this.tint),
+    };
+  }
 
   get texture (): Texture | null { return this._texture; }
   set texture (value: Texture | null) {
@@ -755,6 +791,19 @@ export class Theme {
     this.notifyChanged(true);
   }
 
+  toData (): spec.ThemeData {
+    const data: spec.ThemeData = { types: {}, variations: {} };
+
+    for (const [type, items] of this.values) {
+      data.types[type] = themeItemsToData(items);
+    }
+    for (const [name, base] of this.variations) {
+      data.variations![name] = base;
+    }
+
+    return data;
+  }
+
   static fromData (engine: Engine, data: spec.ThemeData): Theme {
     const theme = new Theme();
 
@@ -905,3 +954,49 @@ export const themeFallbacks = {
   icon: null as Texture | null,
   styleBox: StyleBoxEmpty.shared,
 };
+
+function colorToData (color: Color): spec.ColorData {
+  return { r: color.r, g: color.g, b: color.b, a: color.a };
+}
+
+/** Serializes explicit overrides only, never inherited or native fallback values. */
+export function themeItemsToData (items: ReadonlyMap<ThemeItemType, ReadonlyMap<string, ThemeValue>>): spec.ThemeItemCollectionData {
+  const data: spec.ThemeItemCollectionData = {};
+
+  for (const [type, entries] of items) {
+    for (const [name, value] of entries) {
+      switch (type) {
+        case ThemeItemType.Color:
+          (data.colors ??= {})[name] = colorToData(value as Color);
+
+          break;
+        case ThemeItemType.Constant:
+          (data.constants ??= {})[name] = value as number;
+
+          break;
+        case ThemeItemType.Font:
+          (data.fonts ??= {})[name] = {
+            family: (value as ThemeFont).family,
+            weight: (value as ThemeFont).weight,
+            style: (value as ThemeFont).style as spec.FontStyle,
+          };
+
+          break;
+        case ThemeItemType.FontSize:
+          (data.fontSizes ??= {})[name] = value as number;
+
+          break;
+        case ThemeItemType.Icon:
+          (data.icons ??= {})[name] = value ? { id: (value as Texture).getInstanceId() } : null;
+
+          break;
+        case ThemeItemType.StyleBox:
+          (data.styleBoxes ??= {})[name] = (value as StyleBox).toData();
+
+          break;
+      }
+    }
+  }
+
+  return data;
+}

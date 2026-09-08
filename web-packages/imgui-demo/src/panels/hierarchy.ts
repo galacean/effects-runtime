@@ -8,6 +8,8 @@ import { EditorWindow } from './editor-window';
 import { EditorColors } from './theme';
 import { searchBar } from '../widgets';
 
+type HierarchyComposition = Pick<Composition, 'id' | 'root'>;
+
 // 颜色常量
 const COLORS = {
   selectionFocused: EditorColors.selectionFocused,
@@ -30,7 +32,7 @@ const LAYOUT = {
 @editorWindow()
 export class Hierarchy extends EditorWindow {
   // 扁平 item 列表（用于原生多选的 index ↔ 对象映射）
-  private flatItemList: (VFXItem | Composition)[] = [];
+  private flatItemList: VFXItem[] = [];
   // 可见性列位置缓存
   private visibilityColumnLocalX = 0;
   private visibilityColumnScreenX = 0;
@@ -49,6 +51,7 @@ export class Hierarchy extends EditorWindow {
 
   // 自动展开相关
   private itemsToExpand: Set<VFXItem> = new Set();
+  private lastRoot: VFXItem | undefined;
   private lastSelectedItem: VFXItem | null = null;
   private wasInSearchMode = false;
 
@@ -64,12 +67,17 @@ export class Hierarchy extends EditorWindow {
   }
 
   override onGUI () {
-    const composition = GalaceanEffects.player.getCompositions()[0];
+    const composition = GalaceanEffects.getHierarchyComposition();
 
     if (!composition) {
       return;
     }
 
+    if (this.lastRoot !== composition.root) {
+      this.lastRoot = composition.root;
+      this.itemsToExpand.clear();
+      this.updateSearchMatches();
+    }
     // 绘制搜索框
     this.drawSearchBar();
 
@@ -122,8 +130,10 @@ export class Hierarchy extends EditorWindow {
 
       const compositionId = `composition_${composition.id}`;
 
+      const selectionTarget = composition.root;
+
       // Composition 选中状态
-      const isCompositionSelected = Selection.isSelected(composition);
+      const isCompositionSelected = Selection.isSelected(selectionTarget);
       let compositionFlags = baseFlags | ImGui.TreeNodeFlags.DefaultOpen;
 
       if (isCompositionSelected) {
@@ -135,19 +145,19 @@ export class Hierarchy extends EditorWindow {
 
       // 设置 Composition 的多选用户数据（index 0）
       ImGui.SetNextItemSelectionUserData(0);
-      const compositionNodeOpen = ImGui.TreeNodeEx(compositionId, compositionFlags, 'Composition');
+      const compositionNodeOpen = ImGui.TreeNodeEx(compositionId, compositionFlags, composition.root.name);
 
       // 处理 Composition 的多选切换
       if (ImGui.IsItemToggledSelection()) {
-        if (Selection.isSelected(composition)) {
-          Selection.removeObject(composition);
+        if (Selection.isSelected(selectionTarget)) {
+          Selection.removeObject(selectionTarget);
         } else {
-          Selection.addObject(composition);
+          Selection.addObject(selectionTarget);
         }
       }
 
       if (compositionNodeOpen) {
-        this.drawVFXItemTreeNode(composition.root, baseFlags);
+        for (const child of composition.root.children) {this.drawVFXItemTreeNode(child, baseFlags);}
         ImGui.TreePop();
       }
     }
@@ -209,7 +219,7 @@ export class Hierarchy extends EditorWindow {
       return;
     }
 
-    const composition = GalaceanEffects.player.getCompositions()[0];
+    const composition = GalaceanEffects.getHierarchyComposition();
 
     if (!composition) {
       return;
@@ -403,6 +413,7 @@ export class Hierarchy extends EditorWindow {
     const nextState = !item.isVisible;
 
     for (const target of targets) {
+      if (GalaceanEffects.document?.scene.compositions.some(entry => entry.root === target)) {continue;}
       target.setVisible(nextState);
     }
   }
@@ -471,12 +482,12 @@ export class Hierarchy extends EditorWindow {
   /**
    * 构建扁平 item 列表（composition + 所有 VFXItem），用于原生多选的 index ↔ 对象映射
    */
-  private buildFlatItemList (composition: Composition): void {
+  private buildFlatItemList (composition: HierarchyComposition): void {
     this.flatItemList.length = 0;
     // composition 自身作为第一个 item
-    this.flatItemList.push(composition);
+    this.flatItemList.push(composition.root);
     // 递归收集所有 VFXItem
-    this.collectItemsFlat(composition.root);
+    for (const child of composition.root.children) {this.collectItemsFlat(child);}
   }
 
   private collectItemsFlat (item: VFXItem): void {

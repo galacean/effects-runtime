@@ -35,6 +35,13 @@ export class MenuButton extends Button {
     super.onDestroy();
   }
 
+  override toData (): spec.MenuButtonData {
+    return {
+      ...super.toData(),
+      items: this.popupMenu.toData().items,
+    };
+  }
+
   override fromData (data: spec.MenuButtonData): void {
     super.fromData(data);
     if (data.items !== undefined) {this.popupMenu.fromData({ items: data.items });}
@@ -165,6 +172,13 @@ export class OptionButton extends MenuButton {
   override onDestroy (): void {
     this.popupMenu.off('idPressed', this.menuSelected as EventEmitterListener<PopupMenuEvent['idPressed']>);
     super.onDestroy();
+  }
+
+  override toData (): spec.OptionButtonData {
+    return {
+      ...super.toData(),
+      selected: this.selected,
+    };
   }
 
   override fromData (data: spec.OptionButtonData): void {

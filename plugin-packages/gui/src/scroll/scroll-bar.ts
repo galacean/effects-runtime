@@ -408,6 +408,13 @@ export class ScrollBar extends Range {
     return icon ? this.orientation === Orientation.Horizontal ? icon.height : icon.width : 0;
   }
 
+  override toData (): spec.ScrollBarData {
+    return {
+      ...super.toData(),
+      customStep: this.customStep,
+    };
+  }
+
   override fromData (data: spec.ScrollBarData): void {
     super.fromData(data);
     if (data.customStep !== undefined) {

@@ -125,6 +125,14 @@ export class ProgressBar extends Range {
     }
   }
 
+  override toData (): spec.ProgressBarData {
+    return {
+      ...super.toData(),
+      showPercentage: this.showPercentage,
+      fillMode: this.fillMode,
+    };
+  }
+
   override fromData (data: spec.ProgressBarData): void {
     super.fromData(data);
     if (data.showPercentage !== undefined) {

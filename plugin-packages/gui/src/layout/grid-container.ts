@@ -165,6 +165,13 @@ export class GridContainer extends Container {
     this.queueSort();
   }
 
+  override toData (): spec.GridContainerData {
+    return {
+      ...super.toData(),
+      columns: this.columns,
+    };
+  }
+
   override fromData (data: spec.GridContainerData): void {
     super.fromData(data);
     if (data.columns !== undefined) {

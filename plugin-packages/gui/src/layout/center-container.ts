@@ -60,6 +60,13 @@ export class CenterContainer extends Container {
     return new math.Vector2(width, height);
   }
 
+  override toData (): spec.CenterContainerData {
+    return {
+      ...super.toData(),
+      useTopLeft: this.useTopLeft,
+    };
+  }
+
   override fromData (data: spec.CenterContainerData): void {
     super.fromData(data);
     if (data.useTopLeft !== undefined) {

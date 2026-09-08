@@ -135,6 +135,16 @@ export class AspectRatioContainer extends Container {
     return 0;
   }
 
+  override toData (): spec.AspectRatioContainerData {
+    return {
+      ...super.toData(),
+      ratio: this.ratio,
+      stretchMode: this.stretchMode,
+      horizontalAlignment: this.horizontalAlignment,
+      verticalAlignment: this.verticalAlignment,
+    };
+  }
+
   override fromData (data: spec.AspectRatioContainerData): void {
     super.fromData(data);
     if (data.ratio !== undefined) {

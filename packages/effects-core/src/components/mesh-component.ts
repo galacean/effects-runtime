@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import type { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 import type { Maskable } from '../material';
 import { extractMinAndMax } from '../math';
@@ -87,17 +88,29 @@ export class MeshComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
+  override toData (): void {
+    super.toData();
+    if (this.geometry) {
+      this.definition.geometry = { id: this.geometry.getInstanceId() };
+    }
+    this.definition.mask = {
+      isMask: this.maskManager.isMask,
+      alphaMaskEnabled: this.maskManager.alphaMaskEnabled,
+      references: this.maskManager.getMaskReferences().map(reference => ({
+        mask: { id: (reference.maskable as unknown as EffectsObject).getInstanceId() },
+        inverted: reference.inverted,
+      })),
+    };
+  }
+
   override fromData (data: MeshComponentData): void {
     super.fromData(data);
 
     if (data.geometry !== undefined) {
       this.geometry = this.engine.findObject<Geometry>(data.geometry);
     }
-
-    const maskOptions = data.mask;
-
-    if (maskOptions) {
-      this.maskManager.setMaskOptions(this.engine, maskOptions);
+    if (data.mask !== undefined) {
+      this.maskManager.setMaskOptions(this.engine, data.mask);
     }
   }
 }

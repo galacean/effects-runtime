@@ -33,6 +33,7 @@ import {
   cloneThemeValue,
   StyleBox,
   styleBoxFromData,
+  themeItemsToData,
   themeFallbacks,
   ThemeItemType,
   ThemeRegistry,
@@ -1648,6 +1649,35 @@ export class Control {
     }
 
     return this.focusBehaviorRecursive === FocusBehaviorRecursive.Enabled;
+  }
+
+  toData (): spec.ControlData {
+    return {
+      anchorMin: [this.anchorMin.x, this.anchorMin.y],
+      anchorMax: [this.anchorMax.x, this.anchorMax.y],
+      offsetMin: [this.offsetMin.x, this.offsetMin.y],
+      offsetMax: [this.offsetMax.x, this.offsetMax.y],
+      pivot: [this.pivot.x, this.pivot.y],
+      scale: [this.scale.x, this.scale.y],
+      shear: [this.shear.x, this.shear.y],
+      customMinimumSize: [this.customMinimumSize.x, this.customMinimumSize.y],
+      customMaximumSize: [this.customMaximumSize.x, this.customMaximumSize.y],
+      rotation: this.rotation,
+      horizontalSizeFlags: this.horizontalSizeFlags,
+      verticalSizeFlags: this.verticalSizeFlags,
+      stretchRatio: this.stretchRatio,
+      horizontalGrowDirection: this.horizontalGrowDirection,
+      verticalGrowDirection: this.verticalGrowDirection,
+      mouseFilter: this.mouseFilter,
+      mouseBehaviorRecursive: this.mouseBehaviorRecursive,
+      mouseForcePassScrollEvents: this.mouseForcePassScrollEvents,
+      focusMode: this.focusMode,
+      focusBehaviorRecursive: this.focusBehaviorRecursive,
+      defaultCursorShape: this.defaultCursorShape,
+      clipContents: this.clipContents,
+      themeTypeVariation: this.themeTypeVariation,
+      themeOverrides: themeItemsToData(this.themeOverrides),
+    };
   }
 
   fromData (data: spec.ControlData): void {

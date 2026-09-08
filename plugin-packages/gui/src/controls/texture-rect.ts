@@ -205,6 +205,18 @@ export class TextureRect extends Control {
     }
   }
 
+  override toData (): spec.TextureRectData {
+    return {
+      ...super.toData(),
+      texture: this.texture ? { id: this.texture.getInstanceId() } : null,
+      expandMode: this.expandMode,
+      stretchMode: this.stretchMode,
+      flipH: this.flipH,
+      flipV: this.flipV,
+      tint: { r: this.tint.r, g: this.tint.g, b: this.tint.b, a: this.tint.a },
+    };
+  }
+
   override fromData (data: spec.TextureRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {

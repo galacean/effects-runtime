@@ -6,7 +6,6 @@ import { Selection } from '../core/selection';
 import {
   ContentDatabaseEvent, createJsonAssetFile, isJsonAssetFile, readFileAsDataUrl,
 } from '../editor/content';
-import { JsonSceneCooker } from '../editor/cooker';
 import { generateAssetScene } from '../editor/content/preview-utils';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
@@ -829,7 +828,12 @@ export class Content extends EditorWindow {
           throw new Error(`'${path}' is not a JsonAsset or JSONScene.`);
         }
 
-        await this.playContentScene(json);
+        if (GalaceanEffects.isDocumentDirty() && !window.confirm('Discard unsaved scene changes and open another scene?')) {
+          this.status = 'Open canceled';
+
+          return;
+        }
+        await GalaceanEffects.openDocument(json, handle.name, handle);
         this.status = `Opened ${this.getDisplayName(entry)}`;
 
         return;
@@ -838,27 +842,18 @@ export class Content extends EditorWindow {
       const previewScene = generateAssetScene(json);
 
       if (previewScene) {
-        await this.playContentScene(previewScene);
+        if (GalaceanEffects.isDocumentDirty() && !window.confirm('Discard unsaved scene changes and open another scene?')) {return;}
+        await GalaceanEffects.openDocument(previewScene);
       } else {
         await GalaceanEffects.editorContent.loadGraph(json.ID);
       }
       this.status = `Opened ${this.getDisplayName(entry)}`;
     } catch (error) {
-      this.status = `Failed to open ${this.getDisplayName(entry)}`;
+      this.status = `Failed to open ${this.getDisplayName(entry)}: ${error instanceof Error ? error.message : String(error)}`;
       console.error(this.status, error);
     } finally {
       this.busy = false;
     }
-  }
-
-  private async playContentScene (source: spec.JSONScene): Promise<void> {
-    // Assets used by the current Composition are disposed together with it.
-    // Tear it down before cooking so the cooker reloads fresh, fully-ready
-    // Content assets instead of serializing instances that are about to die.
-    GalaceanEffects.player.destroyCurrentCompositions();
-    const scene = await new JsonSceneCooker(GalaceanEffects.editorContent).cook(source);
-
-    await GalaceanEffects.playURL(scene);
   }
 
   private chooseImportFiles (): void {

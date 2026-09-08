@@ -1,4 +1,4 @@
-import { Component, effectsClass, getClass } from '@galacean/effects';
+import { Component, effectsClass, getClass, getEffectsClassName } from '@galacean/effects';
 import type { Constructor, Engine, Transform, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 import type { Control } from '../core/control';
@@ -40,6 +40,7 @@ export class UIControl extends Component {
 
   override onAwake (): void {
     this.syncControl();
+    this.syncControlLocationToItem();
   }
 
   override onEnable (): void {
@@ -57,7 +58,13 @@ export class UIControl extends Component {
   }
 
   override onParentChanged (): void {
-    this.syncControl();
+    const control = this.controlNode;
+
+    if (control && !this.syncingLocation) {
+      control.visible = this.item.isActive;
+      control.parent = this.resolveParent();
+      control.indexInParent = this.item.orderInParent;
+    }
   }
 
   override onOrderInParentChanged (): void {
@@ -90,6 +97,7 @@ export class UIControl extends Component {
       this.controlNode = value;
       value.owner = this;
       this.syncControl();
+      this.syncItemLocationToControl();
     }
   }
 
@@ -114,7 +122,6 @@ export class UIControl extends Component {
     control.enabled = this.enabled;
     control.parent = this.resolveParent();
     this.syncControlOrder();
-    this.copyItemLocationToControl();
     this.syncingLocation = false;
     this.bindLocationSync();
   }
@@ -201,6 +208,18 @@ export class UIControl extends Component {
         control.setPosition(source.x, source.y);
       }
     }
+  }
+
+  override toData (): void {
+    super.toData();
+    const control = this.controlNode;
+    const type = control && getEffectsClassName(control.constructor as Constructor<Control>);
+
+    if (!control || !type) {
+      throw new Error('UIControl requires a registered Control to serialize.');
+    }
+    this.definition.control = type;
+    this.definition.data = control.toData();
   }
 
   override fromData (data: spec.ComponentData): void {

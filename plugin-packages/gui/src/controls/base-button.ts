@@ -439,6 +439,18 @@ export class BaseButton extends Control {
     this.buttonEventEmitter.emit('pressed');
   }
 
+  override toData (): spec.BaseButtonData {
+    return {
+      ...super.toData(),
+      disabled: this.disabled,
+      toggleMode: this.toggleMode,
+      buttonPressed: this.buttonPressed,
+      buttonMask: this.buttonMask,
+      actionMode: this.actionMode,
+      keepPressedOutside: this.keepPressedOutside,
+    };
+  }
+
   override fromData (data: spec.BaseButtonData): void {
     super.fromData(data);
     if (data.disabled !== undefined) {

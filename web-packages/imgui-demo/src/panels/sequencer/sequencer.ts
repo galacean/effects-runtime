@@ -43,6 +43,11 @@ export class Sequencer extends EditorWindow {
   }
 
   protected override onGUI (): void {
+    if (!GalaceanEffects.isPlaying) {
+      ImGui.Text('Start playback from the Scene toolbar to inspect the timeline.');
+
+      return;
+    }
     if (GalaceanEffects.player.getCompositions().length === 0) {
       return;
     }

@@ -246,6 +246,13 @@ export class PopupMenu extends Popup {
     return -1;
   }
 
+  override toData (): spec.PopupMenuData {
+    return {
+      ...super.toData(),
+      items: this.items.map(item => ({ id: item.id, text: item.text, disabled: item.disabled, separator: item.separator, checked: item.checked })),
+    };
+  }
+
   override fromData (data: spec.PopupMenuData): void {
     super.fromData(data);
     if (data.items !== undefined) {
@@ -253,6 +260,7 @@ export class PopupMenu extends Popup {
       for (const item of data.items) {
         if (item.separator) {
           this.addSeparator(item.text);
+          this.items[this.items.length - 1].id = item.id;
         } else {
           this.addItem(item.text, item.id);
           const index = this.items.length - 1;

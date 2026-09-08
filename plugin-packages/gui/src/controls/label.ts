@@ -414,6 +414,17 @@ export class Label extends Control {
     );
   }
 
+  override toData (): spec.LabelData {
+    return {
+      ...super.toData(),
+      text: this.text,
+      horizontalAlignment: this.horizontalAlignment,
+      verticalAlignment: this.verticalAlignment,
+      autowrapMode: this.autowrapMode,
+      textOverflow: this.textOverflow,
+    };
+  }
+
   override fromData (data: spec.LabelData): void {
     super.fromData(data);
     if (data.text !== undefined) {

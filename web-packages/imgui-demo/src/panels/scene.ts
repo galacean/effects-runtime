@@ -3,6 +3,7 @@ import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { OrbitController } from '../core/orbit-controller';
+import { resizePlayerViewport } from '../core/player-viewport';
 import { Selection } from '../core/selection';
 import { CanvasGizmo } from '../core/canvas-gizmo';
 import { VFXItem } from '@galacean/effects-core';
@@ -37,6 +38,15 @@ export class Scene extends EditorWindow {
     }
   }
 
+  @menuItem('File/Open Scene')
+  static openScene () {void GalaceanEffects.chooseScene().catch(error => GalaceanEffects.reportSceneError(error));}
+
+  @menuItem('File/Save Scene')
+  static saveScene () {void GalaceanEffects.saveDocument().catch(error => GalaceanEffects.reportSceneError(error));}
+
+  @menuItem('File/Save Scene As')
+  static saveSceneAs () {void GalaceanEffects.saveDocument(true).catch(error => GalaceanEffects.reportSceneError(error));}
+
   @menuItem('Window/Scene')
   static showWindow () {
     EditorWindow.getWindow(Scene).open();
@@ -51,14 +61,22 @@ export class Scene extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (!GalaceanEffects.player.getCompositions()[0]) {
-      return;
-    }
     const player = GalaceanEffects.player;
 
     beginToolbar('##SceneToolbar');
+    if (GalaceanEffects.document || GalaceanEffects.isPlaying) {
+      ImGui.BeginDisabled(GalaceanEffects.busy);
+      if (ImGui.Button(GalaceanEffects.isPlaying ? 'Stop' : 'Play')) {
+        void GalaceanEffects.setPlaying(!GalaceanEffects.isPlaying).catch(error => GalaceanEffects.reportSceneError(error));
+      }
+      ImGui.EndDisabled();
+      ImGui.SameLine();
+    }
     this.is2DMode = toggleButton('2D', this.is2DMode, { size: new ImGui.Vec2(32, 20) });
     endToolbar();
+    if (GalaceanEffects.document) {ImGui.TextWrapped(GalaceanEffects.document.name + (GalaceanEffects.isDocumentDirty() ? ' *' : ''));}
+    if (GalaceanEffects.sceneError) {ImGui.TextWrapped(GalaceanEffects.sceneError);}
+    if (!player.getCompositions()[0]) {return;}
 
     const screenPos = ImGui.GetCursorScreenPos();
 
@@ -71,12 +89,8 @@ export class Scene extends EditorWindow {
 
     const sceneImageSize = ImGui.GetContentRegionAvail();
 
-    if (player.container && (player.container.style.width !== sceneImageSize.x + 'px' ||
-          player.container.style.height !== sceneImageSize.y + 'px')
-    ) {
-      player.container.style.width = sceneImageSize.x + 'px';
-      player.container.style.height = sceneImageSize.y + 'px';
-      player.resize();
+    if (!resizePlayerViewport(player, sceneImageSize.x, sceneImageSize.y)) {
+      return;
     }
 
     if (GalaceanEffects.sceneRendederTexture) {

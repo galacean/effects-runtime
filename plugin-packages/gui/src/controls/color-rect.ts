@@ -17,6 +17,13 @@ export class ColorRect extends Control {
     this.fillRect(0, 0, this.width, this.height, this.color);
   }
 
+  override toData (): spec.ColorRectData {
+    return {
+      ...super.toData(),
+      color: { r: this.color.r, g: this.color.g, b: this.color.b, a: this.color.a },
+    };
+  }
+
   override fromData (data: spec.ColorRectData): void {
     super.fromData(data);
     if (data.color !== undefined) {

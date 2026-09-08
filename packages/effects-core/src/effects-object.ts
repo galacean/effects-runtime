@@ -1,4 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
+import { getEffectsClassName } from './decorators';
+import type { Constructor } from './utils';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
 
@@ -87,7 +89,13 @@ export abstract class EffectsObject {
   /**
    *
    */
-  toData () { }
+  toData () {
+    this.definition = {
+      ...this.definition,
+      id: this.getInstanceId(),
+      dataType: getEffectsClassName(this.constructor as Constructor<EffectsObject>) ?? this.definition.dataType,
+    };
+  }
 
   /**
    * 反序列化函数

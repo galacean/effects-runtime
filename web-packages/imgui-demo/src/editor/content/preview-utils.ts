@@ -1,5 +1,4 @@
-import type { Player, spec } from '@galacean/effects';
-import { Player as EffectsPlayer } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { previewScene } from '../../asset/preview-scene';
 import type { JsonAssetFile } from './json-asset-file';
 
@@ -106,15 +105,4 @@ function createTexturePreviewScene (textureId: string): spec.JSONScene {
     textures: [],
     bins: [],
   } as unknown as spec.JSONScene;
-}
-
-export function createPreviewPlayer (): Player {
-  const container = document.createElement('div');
-
-  container.style.width = '100px';
-  container.style.height = '100px';
-  container.style.backgroundColor = 'black';
-  document.body.appendChild(container);
-
-  return new EffectsPlayer({ container });
 }

@@ -152,6 +152,18 @@ export class TrackAsset extends PlayableAsset {
     return clip.asset.createPlayable();
   }
 
+  override toData (): void {
+    this.definition = {};
+    super.toData();
+    this.definition.children = this.children.map(child => ({ id: child.getInstanceId() }));
+    this.definition.clips = this.clips.map(clip => ({
+      start: clip.start,
+      duration: clip.duration,
+      endBehavior: clip.endBehavior,
+      asset: { id: clip.asset.getInstanceId() },
+    }));
+  }
+
   override fromData (data: spec.TrackAssetData): void {
     super.fromData(data);
 

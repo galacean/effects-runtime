@@ -156,6 +156,14 @@ export class BoxContainer extends Container {
     this.queueSort();
   }
 
+  override toData (): spec.BoxContainerData {
+    return {
+      ...super.toData(),
+      alignment: this.alignment,
+      reverse: this.reverse,
+    };
+  }
+
   override fromData (data: spec.BoxContainerData): void {
     super.fromData(data);
     if (data.alignment !== undefined) {

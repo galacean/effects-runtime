@@ -324,6 +324,21 @@ export class Range extends Control {
     }
   }
 
+  override toData (): spec.RangeData {
+    return {
+      ...super.toData(),
+      allowGreater: this.allowGreater,
+      allowLesser: this.allowLesser,
+      exponentialRatio: this.exponentialRatio,
+      rounded: this.rounded,
+      minValue: this.minValue,
+      maxValue: this.maxValue,
+      step: this.step,
+      page: this.page,
+      value: this.value,
+    };
+  }
+
   override fromData (data: spec.RangeData): void {
     this.suppressSignals = true;
     super.fromData(data);

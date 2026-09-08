@@ -271,6 +271,13 @@ export class TransformPlayableAsset extends PlayableAsset {
     return transformPlayable;
   }
 
+  override toData (): void {
+    const { sizeOverLifetime, rotationOverLifetime, positionOverLifetime } = this.transformAnimationData;
+
+    this.definition = { sizeOverLifetime, rotationOverLifetime, positionOverLifetime };
+    super.toData();
+  }
+
   override fromData (data: TransformPlayableAssetData): void {
     this.transformAnimationData = data;
   }

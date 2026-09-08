@@ -631,14 +631,22 @@ export class Transform implements Disposable {
     return this.valid;
   }
 
-  toData () {
-    const transformData = this.taggedProperties;
+  toData (): spec.TransformData {
+    // Keep the editing hint when it represents the current quaternion. Direct
+    // quaternion edits still save their orientation through spec's eulerHint.
+    const hintQuaternion = new Quaternion().setFromEuler(this.rotation).conjugate();
+    const dot = hintQuaternion.x * this.quat.x + hintQuaternion.y * this.quat.y
+      + hintQuaternion.z * this.quat.z + hintQuaternion.w * this.quat.w;
+    const rotation = Math.abs(Math.abs(dot) - 1) < 1e-10
+      ? this.rotation : Transform.getRotation(this.quat, new Euler());
 
-    transformData.position = this.position.clone();
-    transformData.eulerHint = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
-    transformData.scale = this.scale.clone();
-
-    return transformData;
+    return {
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      eulerHint: { x: rotation.x, y: rotation.y, z: rotation.z },
+      scale: { x: this.scale.x, y: this.scale.y, z: this.scale.z },
+      size: { x: this.size.x, y: this.size.y },
+      anchor: { x: this.anchor.x, y: this.anchor.y },
+    };
   }
 
   fromData (data: spec.TransformData) {

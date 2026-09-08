@@ -151,6 +151,19 @@ export class LineEdit extends TextInput {
     return left;
   }
 
+  override toData (): spec.LineEditData {
+    return {
+      ...super.toData(),
+      text: this.text,
+      placeholderText: this.placeholderText,
+      editable: this.editable,
+      maxLength: this.maxLength,
+      secret: this.secret,
+      secretCharacter: this.secretCharacter,
+      alignment: this.alignment,
+    };
+  }
+
   override fromData (data: spec.LineEditData): void {
     super.fromData(data);
     if (data.text !== undefined) {this.text = data.text;}

@@ -186,6 +186,16 @@ export class TextEdit extends TextInput {
     if (caretLine < this.scrollLine) {this.scrollLine = caretLine;}
   }
 
+  override toData (): spec.TextEditData {
+    return {
+      ...super.toData(),
+      text: this.text,
+      placeholderText: this.placeholderText,
+      editable: this.editable,
+      maxLength: this.maxLength,
+    };
+  }
+
   override fromData (data: spec.TextEditData): void {
     super.fromData(data);
     if (data.text !== undefined) {this.text = data.text;}

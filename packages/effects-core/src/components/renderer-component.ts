@@ -55,6 +55,12 @@ export class RendererComponent extends Component {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.materials = this.materials.map(material => ({ id: material.getInstanceId() }));
+    this.definition._priority = this.priority;
+  }
+
   override fromData (data: RendererComponentData): void {
     super.fromData(data);
     if (data.materials !== undefined) {

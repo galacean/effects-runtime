@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import { VFXItem } from '../vfx-item';
+import { HideFlags, VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { Component } from './component';
 import { decimalEqual } from '../math';
@@ -257,8 +257,23 @@ export class CompositionComponent extends Component {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.items = this.items.filter(item => !(item.hideFlags & HideFlags.DontSave)).map(item => ({ id: item.getInstanceId() }));
+    this.definition.sceneBindings = this.sceneBindings.map(binding => ({
+      key: { id: binding.key.getInstanceId() },
+      value: { id: binding.value.getInstanceId() },
+    }));
+    if (this.timelineAsset) {
+      this.definition.timelineAsset = { id: this.timelineAsset.getInstanceId() };
+    }
+  }
+
   override fromData (data: spec.CompositionComponentData): void {
     super.fromData(data);
+    this.items = [];
+    this.sceneBindings = [];
+    this.timelineAsset = null;
 
     if (data.items !== undefined) {
       this.items = data.items.map(item => this.engine.findObject<VFXItem>(item));

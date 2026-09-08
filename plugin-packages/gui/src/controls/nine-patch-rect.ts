@@ -162,6 +162,22 @@ export class NinePatchRect extends Control {
     };
   }
 
+  override toData (): spec.NinePatchRectData {
+    return {
+      ...super.toData(),
+      texture: this.texture ? { id: this.texture.getInstanceId() } : null,
+      regionRect: { position: [this.regionRect.position.x, this.regionRect.position.y], size: [this.regionRect.size.x, this.regionRect.size.y] },
+      patchMarginLeft: this.patchMargins[0],
+      patchMarginTop: this.patchMargins[1],
+      patchMarginRight: this.patchMargins[2],
+      patchMarginBottom: this.patchMargins[3],
+      drawCenter: this.drawCenter,
+      horizontalAxisStretchMode: this.horizontalAxisStretchMode,
+      verticalAxisStretchMode: this.verticalAxisStretchMode,
+      tint: { r: this.tint.r, g: this.tint.g, b: this.tint.b, a: this.tint.a },
+    };
+  }
+
   override fromData (data: spec.NinePatchRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {
