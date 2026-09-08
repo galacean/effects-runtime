@@ -21,6 +21,10 @@ export class StateNodeData extends GraphNodeData {
     node.childNode = context.getNode<PoseNode>(this.childNodeIndex);
   }
 
+  override toData (): spec.StateNodeData {
+    return { ...super.toData(), childNodeIndex: this.childNodeIndex, stateName: this.stateName } as spec.StateNodeData;
+  }
+
   override load (data: spec.StateNodeData): void {
     super.load(data);
 

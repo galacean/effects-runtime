@@ -84,11 +84,17 @@ export class GraphNode {
 
 export abstract class GraphNodeData {
   index: number;
+  type: spec.NodeDataType;
+
+  toData (): spec.GraphNodeData {
+    return { type: this.type, index: this.index };
+  }
 
   abstract instantiate (context: InstantiationContext): void;
 
   load (data: spec.GraphNodeData) {
     this.index = data.index;
+    this.type = data.type as spec.NodeDataType;
   }
 
   protected createNode<T extends GraphNode> (nodeType: new () => T, context: InstantiationContext) {

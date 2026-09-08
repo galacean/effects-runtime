@@ -88,7 +88,21 @@ export class AnimationClip extends Asset {
     // TODO float curves 采样
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.duration = this.duration;
+    this.definition.events = this.events.map(event => ({ name: event.name, startTime: event.startTime, duration: event.duration }));
+    this.definition.positionCurves = this.positionCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+    this.definition.rotationCurves = this.rotationCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+    this.definition.eulerCurves = this.eulerCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+    this.definition.scaleCurves = this.scaleCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+    this.definition.floatCurves = this.floatCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+    this.definition.colorCurves = this.colorCurves.map(curve => ({ ...curve, keyFrames: curve.keyFrames.toExpression() }));
+  }
+
   override fromData (data: spec.AnimationClipData): void {
+    super.fromData(data);
+    this.events.length = 0;
     this.positionCurves.length = 0;
     this.scaleCurves.length = 0;
     this.rotationCurves.length = 0;

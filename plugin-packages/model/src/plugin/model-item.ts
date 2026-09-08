@@ -117,13 +117,20 @@ export class ModelMeshComponent extends RendererComponent {
   override onDestroy (): void {
     this.sceneManager?.removeItem(this.content);
     this.sceneManager = undefined;
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
    * 反序列化，记录传入参数
    * @param data - 组件参数
    */
+  override toData (): void {
+    super.toData();
+    const { id, dataType, item, enabled } = this.definition;
+
+    this.definition = { ...this.data, id, dataType, item, enabled };
+  }
+
   override fromData (data: ModelMeshComponentData): void {
     super.fromData(data);
     this.data = {
@@ -327,13 +334,18 @@ export class ModelSkyboxComponent extends RendererComponent {
   override onDestroy (): void {
     this.sceneManager?.removeItem(this.content);
     this.sceneManager = undefined;
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
    * 反序列化，记录传入参数
    * @param data - 组件参数
    */
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.data, ...this.definition };
+  }
+
   override fromData (data: ModelSkyboxComponentData): void {
     super.fromData(data);
 
@@ -420,13 +432,18 @@ export class ModelLightComponent extends Behaviour {
    * 组件销毁
    */
   override onDestroy (): void {
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
    * 反序列化，记录传入参数
    * @param data - 组件参数
    */
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.data, ...this.definition };
+  }
+
   override fromData (data: ModelLightComponentData): void {
     super.fromData(data);
 
@@ -518,6 +535,11 @@ export class ModelCameraComponent extends Behaviour {
    * 反序列化，记录传入参数
    * @param data - 组件参数
    */
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.data, ...this.definition };
+  }
+
   override fromData (data: ModelCameraComponentData): void {
     super.fromData(data);
 
@@ -622,6 +644,11 @@ export class AnimationComponent extends Behaviour {
    * 反序列化，记录传入参数
    * @param data - 组件参数
    */
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.data, ...this.definition };
+  }
+
   override fromData (data: AnimationComponentData): void {
     super.fromData(data);
     this.data = data;

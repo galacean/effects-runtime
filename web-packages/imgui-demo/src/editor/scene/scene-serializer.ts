@@ -1,6 +1,7 @@
-import { Asset, Component, getClass, getEffectsClassName, EffectsObject, SerializationHelper, HideFlags, VFXItem, spec, version } from '@galacean/effects';
+import { Asset, Component, ParticleSystemRenderer, getClass, getEffectsClassName, EffectsObject, SerializationHelper, HideFlags, VFXItem, spec, version } from '@galacean/effects';
 import type { Engine, Constructor } from '@galacean/effects';
 
+import { expandSceneInstances } from './scene-instances';
 import type { SceneGraph } from './scene-graph';
 
 type ObjectData = spec.EffectsObjectData & Record<string, any>;
@@ -11,20 +12,27 @@ type ObjectData = spec.EffectsObjectData & Record<string, any>;
  * Loading returns detached, uninitialized trees and never starts playback.
  */
 export class SceneSerializer {
+  static serializeObject (object: EffectsObject): ObjectData {
+    return snapshot(SerializationHelper.serialize(object)) as ObjectData;
+  }
+
   static serialize (scene: SceneGraph): spec.JSONScene {
     const objects = new Map<string, EffectsObject>();
+    const runtimeComponents = new Set<string>();
     const roots = new Set(scene.compositions.map(composition => composition.root));
     const collect = (item: VFXItem) => {
       if (item.hideFlags & HideFlags.DontSave) {
         return;
       }
-      if (VFXItem.isComposition(item)) {
-        throw new Error('Precomposition instances require definition/instance serialization, which is not supported yet.');
-      }
       add(item);
       for (const component of item.components) {
         if (component.item !== item) {
           throw new Error(`Component '${component.getInstanceId()}' has an inconsistent owner.`);
+        }
+        // Recreated by ParticleSystem.onStart; ownership and ticking remain on the item.
+        if (component instanceof ParticleSystemRenderer) {
+          runtimeComponents.add(component.getInstanceId());
+          continue;
         }
         add(component);
       }
@@ -55,15 +63,34 @@ export class SceneSerializer {
     for (const { asset } of scene.assets ?? []) {add(asset);}
 
     const records = new Map<string, ObjectData>();
+    const instances = new Map((scene.instances ?? []).filter(instance => objects.has(instance.root.getInstanceId()))
+      .map(instance => [instance.root, instance]));
+    const definitionIds = new Set(Array.from(instances.values(), instance => instance.id));
 
     for (const [id, object] of objects) {
-      const data = snapshot(SerializationHelper.serialize(object)) as ObjectData;
+      const data = this.serializeObject(object);
 
       if (roots.has(object as VFXItem)) {
         delete data.parentId;
       }
+      if (object instanceof VFXItem) {
+        data.components = data.components.filter((reference: spec.DataPath) => !runtimeComponents.has(reference.id));
+        const parentInstance = object.parent && instances.get(object.parent);
+
+        if (parentInstance) {data.parentId = parentInstance.id;}
+      }
+      if (object instanceof Component) {
+        let owner: VFXItem | undefined = object.item;
+
+        while (owner && !instances.has(owner)) {owner = owner.parent;}
+        const instance = owner && instances.get(owner);
+
+        if (instance) {
+          replaceReferences(data, instance.root.getInstanceId(), instance.id);
+        }
+      }
       visitReferences(data, reference => {
-        if (objects.has(reference)) {
+        if (objects.has(reference) || definitionIds.has(reference)) {
           return;
         }
         const asset = object.engine.objectInstance[reference] ?? object.engine.content.getAsset(reference);
@@ -90,6 +117,19 @@ export class SceneSerializer {
         startTime: composition.startTime ?? 0,
       };
     });
+
+    for (const instance of instances.values()) {
+      const record = records.get(instance.root.getInstanceId())!;
+
+      compositions.push({ id: instance.id, name: instance.name, duration: instance.duration,
+        endBehavior: instance.endBehavior, camera: snapshot(instance.camera) as spec.CameraOptions,
+        previewSize: instance.previewSize, startTime: instance.startTime ?? 0,
+        components: record.components, children: record.children });
+      record.type = spec.ItemType.composition;
+      record.content = { options: { refId: instance.id } };
+      record.components = [];
+      record.children = [];
+    }
     const compositionId = scene.compositionId ?? compositions[0]?.id;
 
     if (!compositions.length || !compositions.some(composition => composition.id === compositionId)) {
@@ -97,8 +137,8 @@ export class SceneSerializer {
     }
 
     const result: spec.JSONScene = {
-      // Explicit children belong to the 3.7 schema; older versions migrate and rebuild them.
-      version: spec.JSONSceneVersion['3_7'],
+      // The authoring graph uses the current schema; do not re-run legacy migrations on reopen.
+      version: spec.JSONSceneVersion.LATEST,
       playerVersion: { web: version, native: '' },
       type: 'ge',
       compositionId,
@@ -106,7 +146,8 @@ export class SceneSerializer {
       renderSettings: snapshot(scene.renderSettings) as spec.RenderSettings | undefined,
       items: Array.from(records.values()).filter(data => objects.get(data.id) instanceof VFXItem && !roots.has(objects.get(data.id) as VFXItem)) as spec.VFXItemData[],
       components: Array.from(records.values()).filter(data => objects.get(data.id) instanceof Component) as spec.ComponentData[],
-      images: [], plugins: [], materials: [], shaders: [], geometries: [], animations: [], miscs: [],
+      images: [], plugins: [], ...scene.resources?.toData(),
+      materials: [], shaders: [], geometries: [], animations: [], miscs: [],
     };
 
     for (const { asset, collection } of scene.assets ?? []) {
@@ -114,6 +155,8 @@ export class SceneSerializer {
 
       entries.push(records.get(asset.getInstanceId())!);
     }
+
+    scene.resources?.writePackages(result);
 
     return result;
   }
@@ -127,7 +170,8 @@ export class SceneSerializer {
 
   static deserialize (source: spec.JSONScene, engine: Engine): SceneGraph {
     // A private snapshot prevents fromData implementations from mutating the file data.
-    const data = snapshot(source) as spec.JSONScene;
+    const expanded = expandSceneInstances(snapshot(source) as spec.JSONScene);
+    const data = expanded.data;
 
     for (const collection of [data.materials, data.shaders, data.geometries, data.animations, data.miscs, data.textures, data.images, data.bins]) {
       if (collection?.length) {
@@ -154,12 +198,7 @@ export class SceneSerializer {
     for (const composition of data.compositions) {
       append({ dataType: spec.DataType.VFXItemData, type: spec.ItemType.base, content: {}, ...composition });
     }
-    data.items.forEach(record => {
-      if (record.type === spec.ItemType.composition) {
-        throw new Error('Precomposition instance loading is not supported by SceneSerializer yet.');
-      }
-      append(record as ObjectData);
-    });
+    data.items.forEach(record => append(record as ObjectData));
     data.components.forEach(record => append(record as ObjectData));
     if (!rootIds.size || (data.compositionId && !rootIds.has(data.compositionId))) {
       throw new Error('Scene must have an existing active composition.');
@@ -191,7 +230,16 @@ export class SceneSerializer {
         }
       }
 
+      const instances = Array.from(expanded.instances, ([id, metadata]) => {
+        const root = objects.get(id) as VFXItem;
+
+        root.type = spec.ItemType.composition;
+
+        return { ...metadata, root };
+      });
+
       return {
+        instances,
         compositionId: data.compositionId ?? data.compositions[0].id,
         renderSettings: data.renderSettings,
         compositions: data.compositions.map(composition => ({
@@ -324,4 +372,12 @@ function snapshot (value: unknown, ancestors = new Set<object>()): unknown {
   ancestors.delete(value);
 
   return result;
+}
+
+function replaceReferences (value: unknown, from: string, to: string): void {
+  if (SerializationHelper.checkDataPath(value)) {
+    if (value.id === from) {value.id = to;}
+  } else if (value && typeof value === 'object') {
+    Object.values(value).forEach(entry => replaceReferences(entry, from, to));
+  }
 }

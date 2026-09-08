@@ -865,6 +865,24 @@ export class ParticleSystem extends Component implements Maskable {
     }
   };
 
+  override toData (): void {
+    super.toData();
+    this.definition.splits = this.props.splits;
+    this.definition.options = this.props.options;
+    this.definition.renderer = this.props.renderer;
+    this.definition.mask = this.maskManager.toData();
+    this.definition.shape = this.props.shape;
+    this.definition.emission = this.props.emission;
+    this.definition.sizeOverLifetime = this.props.sizeOverLifetime;
+    this.definition.emitterTransform = this.props.emitterTransform;
+    this.definition.positionOverLifetime = this.props.positionOverLifetime;
+    this.definition.rotationOverLifetime = this.props.rotationOverLifetime;
+    this.definition.colorOverLifetime = this.props.colorOverLifetime;
+    this.definition.textureSheetAnimation = this.props.textureSheetAnimation;
+    this.definition.trails = this.props.trails;
+    this.definition.interaction = this.props.interaction;
+  }
+
   override fromData (data: spec.ParticleSystemData): void {
     super.fromData(data);
     const props = data;

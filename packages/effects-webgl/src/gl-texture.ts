@@ -329,6 +329,18 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
   }
 
+  override toData (): void {
+    super.toData();
+    const options = this.source as unknown as Record<string, unknown>;
+
+    for (const key of ['target', 'format', 'internalFormat', 'type', 'wrapS', 'wrapT', 'magFilter', 'minFilter',
+      'anisotropic', 'flipY', 'premultiplyAlpha', 'generateMipmap', 'keepImageSource']) {
+      if (options[key] !== undefined) {this.definition[key] = options[key];}
+    }
+    this.definition.name = this.name;
+    for (const key of ['image', 'video', 'cube', 'data', 'sourceType', 'sourceFrom']) {delete this.definition[key];}
+  }
+
   override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
     const source = data as unknown as TextureSourceOptions;

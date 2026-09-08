@@ -22,6 +22,10 @@ export class AnimationClipNodeData extends GraphNodeData {
     node.animation = context.dataSet.getResource(this.dataSlotIndex);
   }
 
+  override toData (): spec.AnimationClipNodeData {
+    return { ...super.toData(), dataSlotIndex: this.dataSlotIndex } as spec.AnimationClipNodeData;
+  }
+
   override load (data: spec.AnimationClipNodeData): void {
     super.load(data);
 

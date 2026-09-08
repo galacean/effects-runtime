@@ -186,13 +186,14 @@ export class PMesh extends PEntity {
   override render (scene: PSceneManager, renderer: Renderer) {
     this.updateMaterial(scene);
 
+    const normalMatrix = this.matrix.clone().invert().transpose();
+
     this.subMeshes.forEach((subMesh, index) => {
-      renderer.drawGeometry(
-        subMesh.getEffectsGeometry(),
-        this.matrix,
-        subMesh.getEffectsMaterial(),
-        index
-      );
+      subMesh.updateMaterial(this.matrix, normalMatrix, scene.sceneStates, renderer);
+      renderer.drawGeometry(subMesh.getEffectsGeometry(), this.matrix, subMesh.getEffectsMaterial(), index);
+      for (const name of ['_jointMatrixSampler', '_jointNormalMatrixSampler', '_brdfLUT', '_DiffuseEnvSampler', '_SpecularEnvSampler']) {
+        renderer.setGlobalTexture(name, null);
+      }
     });
 
     if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
@@ -276,12 +277,7 @@ export class PMesh extends PEntity {
    */
   updateMaterial (scene: PSceneManager) {
     const worldMatrix = this.matrix;
-    const normalMatrix = worldMatrix.clone().invert().transpose();
     const sceneStates = scene.sceneStates;
-
-    this.subMeshes.forEach(prim => {
-      prim.updateMaterial(worldMatrix, normalMatrix, sceneStates);
-    });
 
     if (this.boundingBoxMesh !== undefined) {
       this.computeBoundingBox(worldMatrix);
@@ -716,9 +712,9 @@ export class PSubMesh {
    * @param nomralMatrix - 法线矩阵
    * @param sceneStates - 场景状态
    */
-  updateMaterial (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
-    this.updateUniformsByAnimation(worldMatrix, nomralMatrix);
-    this.updateUniformsByScene(sceneStates);
+  updateMaterial (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates, renderer: Renderer) {
+    this.updateUniformsByAnimation(worldMatrix, nomralMatrix, renderer);
+    this.updateUniformsByScene(sceneStates, renderer);
     this.material.updateUniforms(this.getEffectsMaterial());
   }
 
@@ -812,10 +808,9 @@ export class PSubMesh {
     }
   }
 
-  private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
-    const material = this.getEffectsMaterial();
+  private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4, renderer: Renderer) {
 
-    material.setMatrix('_NormalMatrix', normalMatrix);
+    renderer.setGlobalMatrix('_NormalMatrix', normalMatrix);
     //
     const skin = this.skin;
 
@@ -830,16 +825,16 @@ export class PSubMesh {
 
         jointMatrixTexture.update(jointMatrixList);
         jointNormalMatTexture.update(jointNormalMatList);
-        material.setTexture('_jointMatrixSampler', jointMatrixTexture.getTexture());
-        material.setTexture('_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
+        renderer.setGlobalTexture('_jointMatrixSampler', jointMatrixTexture.getTexture());
+        renderer.setGlobalTexture('_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
       } else {
         const jointMatrixNumbers: number[] = [];
         const jointNormalMatNumbers: number[] = [];
 
         jointMatrixList.forEach(val => jointMatrixNumbers.push(val));
         jointNormalMatList.forEach(val => jointNormalMatNumbers.push(val));
-        material.setMatrixNumberArray('_jointMatrix', jointMatrixNumbers);
-        material.setMatrixNumberArray('_jointNormalMatrix', jointNormalMatNumbers);
+        renderer.setGlobalMatrixArray('_jointMatrix', jointMatrixNumbers);
+        renderer.setGlobalMatrixArray('_jointNormalMatrix', jointNormalMatNumbers);
       }
     }
 
@@ -849,14 +844,13 @@ export class PSubMesh {
     if (morph !== undefined && morph.hasMorph()) {
       const morphWeights = morph.morphWeightsArray.slice();
 
-      material.setFloats('_morphWeights', morphWeights);
+      renderer.setGlobalFloats('_morphWeights', morphWeights);
     }
   }
 
-  private updateUniformsByScene (sceneStates: PSceneStates) {
-    const material = this.getEffectsMaterial();
+  private updateUniformsByScene (sceneStates: PSceneStates, renderer: Renderer) {
 
-    material.setVector3('_Camera', sceneStates.cameraPosition);
+    renderer.setGlobalVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {
       const { maxLightCount, lightList, inverseViewMatrix } = sceneStates;
@@ -870,49 +864,49 @@ export class PSubMesh {
             const newDirection = inverseViewMatrix.transformNormal(light.getWorldDirection(), new Vector3());
             const newPosition = inverseViewMatrix.transformPoint(light.getWorldPosition(), new Vector3());
 
-            material.setVector3(`_Lights[${i}].direction`, newDirection);
-            material.setVector3(`_Lights[${i}].position`, newPosition);
+            renderer.setGlobalVector3(`_Lights[${i}].direction`, newDirection);
+            renderer.setGlobalVector3(`_Lights[${i}].position`, newPosition);
           } else {
-            material.setVector3(`_Lights[${i}].direction`, light.getWorldDirection());
-            material.setVector3(`_Lights[${i}].position`, light.getWorldPosition());
+            renderer.setGlobalVector3(`_Lights[${i}].direction`, light.getWorldDirection());
+            renderer.setGlobalVector3(`_Lights[${i}].position`, light.getWorldPosition());
           }
-          material.setFloat(`_Lights[${i}].range`, light.range);
-          material.setVector3(`_Lights[${i}].color`, light.color);
-          material.setFloat(`_Lights[${i}].intensity`, intensity);
-          material.setFloat(`_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
-          material.setFloat(`_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
-          material.setInt(`_Lights[${i}].type`, light.lightType);
-          material.setVector2(`_Lights[${i}].padding`, light.padding);
+          renderer.setGlobalFloat(`_Lights[${i}].range`, light.range);
+          renderer.setGlobalVector3(`_Lights[${i}].color`, light.color);
+          renderer.setGlobalFloat(`_Lights[${i}].intensity`, intensity);
+          renderer.setGlobalFloat(`_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
+          renderer.setGlobalFloat(`_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
+          renderer.setGlobalInt(`_Lights[${i}].type`, light.lightType);
+          renderer.setGlobalVector2(`_Lights[${i}].padding`, light.padding);
         } else {
-          material.setVector3(`_Lights[${i}].direction`, Vector3.ZERO);
-          material.setFloat(`_Lights[${i}].range`, 0);
-          material.setVector3(`_Lights[${i}].color`, Vector3.ZERO);
-          material.setFloat(`_Lights[${i}].intensity`, 0);
-          material.setVector3(`_Lights[${i}].position`, Vector3.ZERO);
-          material.setFloat(`_Lights[${i}].innerConeCos`, 0);
-          material.setFloat(`_Lights[${i}].outerConeCos`, 0);
-          material.setInt(`_Lights[${i}].type`, 99999);
-          material.setVector2(`_Lights[${i}].padding`, Vector2.ZERO);
+          renderer.setGlobalVector3(`_Lights[${i}].direction`, Vector3.ZERO);
+          renderer.setGlobalFloat(`_Lights[${i}].range`, 0);
+          renderer.setGlobalVector3(`_Lights[${i}].color`, Vector3.ZERO);
+          renderer.setGlobalFloat(`_Lights[${i}].intensity`, 0);
+          renderer.setGlobalVector3(`_Lights[${i}].position`, Vector3.ZERO);
+          renderer.setGlobalFloat(`_Lights[${i}].innerConeCos`, 0);
+          renderer.setGlobalFloat(`_Lights[${i}].outerConeCos`, 0);
+          renderer.setGlobalInt(`_Lights[${i}].type`, 99999);
+          renderer.setGlobalVector2(`_Lights[${i}].padding`, Vector2.ZERO);
         }
       }
 
       const skybox = sceneStates.skybox;
 
       if (skybox !== undefined && skybox.available) {
-        material.setVector2('_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
-        material.setTexture('_brdfLUT', skybox.brdfLUT as Texture);
+        renderer.setGlobalVector2('_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
+        renderer.setGlobalTexture('_brdfLUT', skybox.brdfLUT as Texture);
         if (skybox.diffuseImage !== undefined) {
-          material.setTexture('_DiffuseEnvSampler', skybox.diffuseImage);
+          renderer.setGlobalTexture('_DiffuseEnvSampler', skybox.diffuseImage);
         } else {
           const coeffs = skybox.irradianceCoeffs as number[][];
           const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
           aliasName.forEach((n, i) => {
-            material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
+            renderer.setGlobalVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('_MipCount', skybox.specularMipCount - 1);
-        material.setTexture('_SpecularEnvSampler', skybox.specularImage);
+        renderer.setGlobalInt('_MipCount', skybox.specularMipCount - 1);
+        renderer.setGlobalTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }
   }

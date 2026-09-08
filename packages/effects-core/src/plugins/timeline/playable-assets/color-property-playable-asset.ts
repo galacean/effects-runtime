@@ -10,6 +10,11 @@ import * as spec from '@galacean/effects-specification';
 export class ColorPropertyPlayableAsset extends PlayableAsset {
   curveData: spec.ColorCurveValue;
 
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = this.curveData;
+  }
+
   override fromData (data: spec.ColorPropertyPlayableAssetData): void {
     super.fromData(data);
     this.curveData = data.curveData;

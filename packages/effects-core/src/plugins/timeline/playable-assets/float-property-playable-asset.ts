@@ -10,6 +10,11 @@ import * as spec from '@galacean/effects-specification';
 export class FloatPropertyPlayableAsset extends PlayableAsset {
   curveData: FixedNumberExpression;
 
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = this.curveData;
+  }
+
   override fromData (data: spec.FloatPropertyPlayableAssetData): void {
     super.fromData(data);
     this.curveData = data.curveData;

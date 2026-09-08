@@ -1030,6 +1030,8 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
+    const { content, renderLevel, delay, pn, pluginName } = this.definition;
+
     this.definition = {};
     super.toData();
     this.definition = {
@@ -1043,7 +1045,8 @@ export class VFXItem extends EffectsObject implements Disposable {
       components: this.components.map(component => ({ id: component.getInstanceId() })),
       children: this.children.filter(child => !(child.hideFlags & HideFlags.DontSave))
         .map(child => ({ id: child.getInstanceId() })),
-      content: {},
+      content: content ?? {},
+      renderLevel, delay, pn, pluginName,
     };
     if (this.parent && !(this.parent.hideFlags & HideFlags.DontSave)) {
       this.definition.parentId = this.parent.getInstanceId();

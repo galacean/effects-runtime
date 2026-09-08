@@ -1,3 +1,4 @@
+import { decodeBase64ToArrayBuffer } from './utils';
 import * as flatbuffers from 'flatbuffers';
 import * as spec from '@galacean/effects-specification';
 import {
@@ -96,7 +97,8 @@ export class EffectsPackage {
     fbGeometryData.boneNames = boneNames;
     fbGeometryData.rootBoneName = rootBoneName;
     fbGeometryData.inverseBindMatrices = inverseBindMatrices;
-    fbGeometryData.binaryData = binaryData as unknown as number[];
+    fbGeometryData.binaryData = (geometryData.buffer
+      ? new Uint8Array(decodeBase64ToArrayBuffer(geometryData.buffer)) : binaryData) as unknown as number[];
     const fbVertexdata = new FBVertexDataT();
 
     fbVertexdata.vertexCount = vertexData.vertexCount;

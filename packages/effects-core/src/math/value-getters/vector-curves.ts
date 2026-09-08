@@ -1,12 +1,16 @@
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { ValueGetter } from './value-getter';
 import { createValueGetter } from './value-getter-map';
 import type { BezierCurve } from './bezier-curve';
 
 export class Vector4Curve extends ValueGetter<Vector4> {
+  override toExpression (): any {
+    return [spec.ValueType.VECTOR4_CURVE, [this.xCurve.toExpression(), this.yCurve.toExpression(), this.zCurve.toExpression(), this.wCurve.toExpression()]];
+  }
+
   private value = new Vector4();
 
   private xCurve: BezierCurve;
@@ -43,6 +47,10 @@ export class Vector4Curve extends ValueGetter<Vector4> {
 }
 
 export class Vector3Curve extends ValueGetter<Vector3> {
+  override toExpression (): any {
+    return [27, [this.xCurve.toExpression(), this.yCurve.toExpression(), this.zCurve.toExpression()]];
+  }
+
   private value = new Vector3();
 
   private xCurve: BezierCurve;
@@ -75,6 +83,10 @@ export class Vector3Curve extends ValueGetter<Vector3> {
 }
 
 export class Vector2Curve extends ValueGetter<Vector2> {
+  override toExpression (): any {
+    return [spec.ValueType.VECTOR2_CURVE, [this.xCurve.toExpression(), this.yCurve.toExpression()]];
+  }
+
   private value = new Vector2();
 
   private xCurve: BezierCurve;

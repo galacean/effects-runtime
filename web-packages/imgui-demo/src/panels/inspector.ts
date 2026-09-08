@@ -59,7 +59,7 @@ export class Inspector extends EditorWindow {
     }
     ImGui.EndGroup();
     if (ImGui.IsItemEdited() && activeObject instanceof VFXItem && GalaceanEffects.document?.owns(activeObject)) {
-      GalaceanEffects.document.markModified();
+      GalaceanEffects.document.markModified(activeObject);
     }
     ImGui.EndDisabled();
   }
@@ -333,7 +333,7 @@ export class Inspector extends EditorWindow {
 
     if (dirtyFlag) {
       SerializationHelper.deserialize(serializedData, glMaterial);
-      GalaceanEffects.document?.markModified();
+      GalaceanEffects.document?.markModified(glMaterial);
       GalaceanEffects.editorContent.setDirty(glMaterial.getInstanceId());
     }
   }

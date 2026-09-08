@@ -58,7 +58,7 @@ export class Sequencer extends EditorWindow {
     const currentComposition = state.currentComposition;
 
     // 清除轨道颜色缓存当 composition 变化时
-    const compositionId = currentComposition.name ?? '';
+    const compositionId = currentComposition.id;
 
     if (state.lastCompositionId !== compositionId) {
       state.trackColorMap.clear();
@@ -79,15 +79,28 @@ export class Sequencer extends EditorWindow {
       }
     }
 
-    let compositionComponent = currentComposition.sceneRoot.getComponent(CompositionComponent);
+    const document = GalaceanEffects.document;
+    const root = document?.getPreviewObject(document.root) ?? currentComposition.sceneRoot;
+    let compositionComponent = root.getComponent(CompositionComponent);
 
     const selectedObject = Selection.getSelectedObjects()[0];
 
     if (selectedObject instanceof VFXItem && selectedObject.getComponent(CompositionComponent)) {
-      compositionComponent = selectedObject.getComponent(CompositionComponent);
+      const previewItem = document?.getPreviewObject(selectedObject) ?? selectedObject;
+
+      compositionComponent = previewItem.getComponent(CompositionComponent);
     }
 
     if (!compositionComponent) {
+      return;
+    }
+
+    //@ts-expect-error
+    const timelineAsset = compositionComponent.timelineAsset;
+
+    if (!timelineAsset) {
+      ImGui.Text('This composition has no timeline.');
+
       return;
     }
 
@@ -268,8 +281,7 @@ export class Sequencer extends EditorWindow {
         //@ts-expect-error
         const sceneBindings = compositionComponent.sceneBindings;
 
-        //@ts-expect-error
-        for (const track of compositionComponent.timelineAsset.tracks) {
+        for (const track of timelineAsset.tracks) {
           const trackAsset = track;
           const trackId = trackAsset.getInstanceId().toString();
 
@@ -344,8 +356,7 @@ export class Sequencer extends EditorWindow {
           //@ts-expect-error
           const sceneBindings = compositionComponent.sceneBindings;
 
-          //@ts-expect-error
-          for (const track of compositionComponent.timelineAsset.tracks) {
+          for (const track of timelineAsset.tracks) {
             const trackAsset = track;
 
             let boundObject: object | null = null;

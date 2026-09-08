@@ -1,10 +1,14 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { ValueGetter } from './value-getter';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { createValueGetter } from './value-getter-map';
 import type { BezierCurve } from './bezier-curve';
 
 export class ColorCurve extends ValueGetter<Color> {
+  override toExpression (): any {
+    return [spec.ValueType.COLOR_CURVE, [this.rCurve.toExpression(), this.gCurve.toExpression(), this.bCurve.toExpression(), this.aCurve.toExpression()]];
+  }
+
   private value = new Color();
 
   private rCurve: BezierCurve;

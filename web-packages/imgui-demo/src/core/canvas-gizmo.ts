@@ -2,6 +2,7 @@ import type { Camera, Engine, Renderer } from '@galacean/effects-core';
 import { math, RendererComponent, VFXItem } from '@galacean/effects-core';
 import { Control } from '@galacean/effects-plugin-gui';
 import { Selection } from './selection';
+import { GalaceanEffects } from '../ge';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
 
@@ -79,6 +80,7 @@ export class CanvasGizmo extends Control {
   }
 
   private onCanvasMouseDown = (e: MouseEvent): void => {
+    if (GalaceanEffects.isPlaying) {return;}
     this.isDragging = false;
     this.dragStarted = false;
     this.lastMousePos.set(e.clientX, e.clientY);
@@ -277,6 +279,10 @@ export class CanvasGizmo extends Control {
     }
   }
 
+  private previewItem (item: VFXItem): VFXItem {
+    return GalaceanEffects.document?.getPreviewObject(item) ?? item;
+  }
+
   private pickItems (x: number, y: number): VFXItem[] {
     // 计算鼠标在画布上的位置
     const rect = this.canvas.getBoundingClientRect();
@@ -293,7 +299,7 @@ export class CanvasGizmo extends Control {
       const hitResults = this.item.composition.hitTest(normalizedX, normalizedY, true);
 
       for (const hitResult of hitResults) {
-        res.push(hitResult.item);
+        res.push(GalaceanEffects.document?.getAuthoredObject(hitResult.item) ?? hitResult.item);
       }
     }
 
@@ -308,7 +314,7 @@ export class CanvasGizmo extends Control {
       return HandleType.None;
     }
 
-    const mesh = activeObject.getComponent(RendererComponent);
+    const mesh = this.previewItem(activeObject).getComponent(RendererComponent);
 
     if (!(mesh instanceof RendererComponent)) {
       return HandleType.None;
@@ -460,7 +466,7 @@ export class CanvasGizmo extends Control {
     }
 
     const item = activeObject;
-    const camera = item.composition!.camera;
+    const camera = this.previewItem(item).composition!.camera;
 
     switch (this.gizmoMode) {
       case GizmoMode.Move:
@@ -502,7 +508,7 @@ export class CanvasGizmo extends Control {
   private handleRotate (e: MouseEvent, item: VFXItem, camera: Camera): void {
     if (!this.transformStart) {return;}
 
-    const mesh = item.getComponent(RendererComponent);
+    const mesh = this.previewItem(item).getComponent(RendererComponent);
 
     if (!(mesh instanceof RendererComponent)) {return;}
 
@@ -701,7 +707,7 @@ export class CanvasGizmo extends Control {
     // 移动物体时不绘制 gizmo，避免干扰
     if (!(this.gizmoMode === GizmoMode.Move && this.isDragging)) {
       if (this.hoveredObject) {
-        const rendererComponent = this.hoveredObject.getComponent(RendererComponent);
+        const rendererComponent = this.previewItem(this.hoveredObject).getComponent(RendererComponent);
 
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
@@ -728,7 +734,7 @@ export class CanvasGizmo extends Control {
 
       if (activeObject instanceof VFXItem) {
         const selectedItem = activeObject;
-        const rendererComponent = selectedItem.getComponent(RendererComponent);
+        const rendererComponent = this.previewItem(selectedItem).getComponent(RendererComponent);
 
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;

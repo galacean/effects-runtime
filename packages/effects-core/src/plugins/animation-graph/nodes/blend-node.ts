@@ -21,6 +21,10 @@ export class BlendNodeData extends GraphNodeData {
     node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNodeIndex);
   }
 
+  override toData (): spec.BlendNodeData {
+    return { ...super.toData(), sourceNodeIndex0: this.sourceNodeIndex0, sourceNodeIndex1: this.sourceNodeIndex1, inputParameterValueNodeIndex: this.inputParameterValueNodeIndex } as spec.BlendNodeData;
+  }
+
   override load (data: spec.BlendNodeData): void {
     super.load(data);
     this.sourceNodeIndex0 = data.sourceNodeIndex0;

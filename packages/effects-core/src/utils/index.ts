@@ -201,3 +201,26 @@ export function applyMixins<T extends Constructor, K extends Constructor> (
     });
   });
 }
+
+/** Encodes live binary storage without exceeding the argument limit on large buffers. */
+export function binaryToBase64 (data: ArrayBuffer | ArrayBufferView): string {
+  const bytes = ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(data);
+  let text = '';
+
+  for (let i = 0; i < bytes.length; i += 8192) {
+    text += String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192)));
+  }
+
+  return btoa(text);
+}
+
+export function decodeBase64ToArrayBuffer (value: string): ArrayBuffer {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return bytes.buffer;
+}

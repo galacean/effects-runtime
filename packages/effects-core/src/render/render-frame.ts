@@ -215,6 +215,10 @@ export function getTextureSize (tex?: Texture): Vector2 {
 }
 
 export class GlobalUniforms {
+  vector2s: Record<string, Vector2> = {};
+  floatArrays: Record<string, number[]> = {};
+  matrixArrays: Record<string, number[]> = {};
+  textures: Record<string, Texture> = {};
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
   vector3s: Record<string, Vector3> = {};

@@ -75,12 +75,31 @@ export class ValueGetter<T> {
     return this;
   }
 
+  /** Scene expression, separate from the packed GPU curve representation. */
+  toExpression (): any {
+    throw new Error(`Missing scene expression serializer for ${this.constructor.name}.`);
+  }
+
   toData (): ArrayLike<number> {
     throw new Error(NOT_IMPLEMENT);
   }
 }
 
 export class StaticValue extends ValueGetter<number> {
+  override toExpression (): any {
+    const value = this.value as any;
+
+    if (value instanceof Quaternion) {return [spec.ValueType.BEZIER_CURVE_QUAT, [[[spec.BezierKeyframeType.LINE, [0, 0]]], [value.toArray()], []]];}
+    if (value instanceof Vector3) {return [spec.ValueType.BEZIER_CURVE_PATH, [[[spec.BezierKeyframeType.LINE, [0, 0]]], [value.toArray()], []]];}
+    if (Array.isArray(value)) {
+      const type = value.length === 2 ? spec.ValueType.CONSTANT_VEC2 : value.length === 3 ? spec.ValueType.CONSTANT_VEC3 : spec.ValueType.CONSTANT_VEC4;
+
+      return [type, value.slice()];
+    }
+
+    return [spec.ValueType.CONSTANT, value];
+  }
+
   private value: number;
 
   override onCreate (arg: number) {
@@ -202,6 +221,10 @@ export class RandomVectorValue extends ValueGetter<number[]> {
 }
 
 export class LinearValue extends ValueGetter<number> {
+  override toExpression (): any {
+    return [spec.ValueType.LINE, [[0, this.min], [this.xCoord, this.max]]];
+  }
+
   private min: number;
   private max: number;
   private xCoord: number;
@@ -294,6 +317,10 @@ export class GradientValue extends ValueGetter<number[]> {
 }
 
 export class LineSegments extends ValueGetter<number> {
+  override toExpression (): any {
+    return [spec.ValueType.LINE, this.keys.map(key => key.slice())];
+  }
+
   isLineSeg: boolean;
 
   keys: number[][];
@@ -421,6 +448,10 @@ export class LineSegments extends ValueGetter<number> {
 }
 
 export class PathSegments extends ValueGetter<number[]> {
+  override toExpression (): any {
+    return [spec.ValueType.LINEAR_PATH, [this.keys.map(key => key.slice()), this.values.map(value => value.slice())]];
+  }
+
   keys: number[][];
   values: number[][];
 
@@ -473,6 +504,27 @@ export class PathSegments extends ValueGetter<number[]> {
 }
 
 export class BezierCurvePath extends ValueGetter<Vector3> {
+  override toExpression (): any {
+    const segments = Object.keys(this.curveSegments).map(key => this.curveSegments[key]);
+    const points: number[][] = [];
+    const controls: number[][] = [];
+    const keys: any[] = [];
+
+    for (let i = 0; i <= segments.length; i++) {
+      const before = segments[i - 1];
+      const after = segments[i];
+      const center = after ? after.points[0] : before.points[3];
+      const left = before ? before.points[2] : center;
+      const right = after ? after.points[1] : center;
+
+      keys.push([spec.BezierKeyframeType.EASE, [...left.toArray(), ...center.toArray(), ...right.toArray()]]);
+      points.push((after ? after.pathCurve.p1 : before.pathCurve.p2).toArray());
+      if (after) {controls.push(after.pathCurve.p3.toArray(), after.pathCurve.p4.toArray());}
+    }
+
+    return [spec.ValueType.BEZIER_CURVE_PATH, [keys, points, controls]];
+  }
+
   curveSegments: Record<string, {
     points: Vector2[],
     // 缓动曲线
@@ -585,6 +637,27 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 }
 
 export class BezierCurveQuat extends ValueGetter<Quaternion> {
+  override toExpression (): any {
+    const segments = Object.keys(this.curveSegments).map(key => this.curveSegments[key]);
+    const points: number[][] = [];
+    const controls: number[][] = [];
+    const keys: any[] = [];
+
+    for (let i = 0; i <= segments.length; i++) {
+      const before = segments[i - 1];
+      const after = segments[i];
+      const center = after ? after.points[0] : before.points[3];
+      const left = before ? before.points[2] : center;
+      const right = after ? after.points[1] : center;
+
+      keys.push([spec.BezierKeyframeType.EASE, [...left.toArray(), ...center.toArray(), ...right.toArray()]]);
+      points.push((after ? after.pathCurve.p1 : before.pathCurve.p2).toArray());
+      if (after) {controls.push(after.pathCurve.p3.toArray(), after.pathCurve.p4.toArray());}
+    }
+
+    return [spec.ValueType.BEZIER_CURVE_QUAT, [keys, points, controls]];
+  }
+
   curveSegments: Record<string, {
     points: Vector2[],
     // 缓动曲线

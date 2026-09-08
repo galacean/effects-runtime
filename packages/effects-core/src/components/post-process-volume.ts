@@ -45,6 +45,14 @@ export class PostProcessVolume extends Component {
     };
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.bloom = this.bloom;
+    this.definition.vignette = this.vignette;
+    this.definition.tonemapping = this.tonemapping;
+    this.definition.colorAdjustments = this.colorAdjustments;
+  }
+
   override fromData (data: spec.PostProcessVolumeData): void {
     super.fromData(data);
     if (data.bloom !== undefined) { this.bloom = { ...data.bloom }; }

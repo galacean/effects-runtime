@@ -1,3 +1,4 @@
+import type { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 import type * as spec from '@galacean/effects-specification';
 import type { Maskable, MaskReference } from './types';
@@ -76,6 +77,13 @@ export class MaskProcessor {
 
   constructor () {
     this.stencilClearAction = { stencilAction: TextureLoadAction.clear };
+  }
+
+  toData (): MaskOptions {
+    return { isMask: this.isMask, alphaMaskEnabled: this.alphaMaskEnabled,
+      references: this.maskReferences.map(reference => ({
+        mask: { id: (reference.maskable as unknown as EffectsObject).getInstanceId() }, inverted: reference.inverted,
+      })) };
   }
 
   /**

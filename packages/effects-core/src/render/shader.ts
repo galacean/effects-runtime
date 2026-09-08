@@ -120,6 +120,11 @@ export class Shader extends Asset {
     return shaderVariant;
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.shaderData, ...this.definition };
+  }
+
   override fromData (data: spec.ShaderData): void {
     super.fromData(data);
     this.shaderData = data;

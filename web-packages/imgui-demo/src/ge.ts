@@ -16,15 +16,14 @@ export class GalaceanEffects {
   static player: Player;
   static editorContent: EditorContent;
   static document?: SceneDocument;
-  static isDocumentDirty (): boolean { return this.document?.isDirty ?? this.playDocument?.dirty ?? false; }
+  static isDocumentDirty (): boolean { return this.document?.isDirty ?? false; }
   static sceneError = '';
   static isPlaying = false;
   static busy = false;
-  private static playDocument?: { data: spec.JSONScene, name: string, handle?: FileSystemFileHandle, dirty: boolean };
 
   static getHierarchyComposition () {
     const document = this.document;
-    const root = this.isPlaying ? this.player.getCompositions()[0]?.root : document?.root;
+    const root = document?.root;
 
     return root ? { id: root.getInstanceId(), root } : undefined;
   }
@@ -32,7 +31,7 @@ export class GalaceanEffects {
   static async openDocument (data: spec.JSONScene | string, name = 'scene.json', handle?: FileSystemFileHandle): Promise<void> {
     if (this.busy) {throw new Error('Please wait for the current scene operation.');}
     const previous = this.document;
-    const backup = previous ? { data: previous.restoreData(), name: previous.name, handle: previous.fileHandle, dirty: previous.isDirty } : this.playDocument;
+    const backup = previous ? { data: previous.snapshot(), name: previous.name, handle: previous.fileHandle, dirty: previous.isDirty } : undefined;
 
     this.busy = true;
     try {
@@ -49,13 +48,11 @@ export class GalaceanEffects {
       this.player.ticker?.start();
       this.isPlaying = false;
       this.sceneError = '';
-      this.playDocument = undefined;
     } catch (error) {
       this.document?.dispose();
       this.document = undefined;
       this.player.destroyCurrentCompositions();
       this.isPlaying = false;
-      this.playDocument = undefined;
       if (backup) {
         this.document = await SceneDocument.open(this.player.engine, backup.data, backup.name);
         this.document.fileHandle = backup.handle;
@@ -69,39 +66,10 @@ export class GalaceanEffects {
   }
 
   static async setPlaying (play = false): Promise<void> {
-    if (this.busy || play === this.isPlaying) {return;}
-    if (play && this.document) {
-      const document = this.document;
-      const backup = { data: document.restoreData(), name: document.name, handle: document.fileHandle, dirty: document.isDirty };
-
-      this.busy = true;
-      try {
-        const preview = await document.previewData();
-
-        Selection.clear();
-        document.dispose();
-        this.document = undefined;
-        await this.player.loadScene(preview, { autoplay: true });
-        this.playDocument = backup;
-        this.isPlaying = true;
-      } catch (error) {
-        this.document?.dispose();
-        this.player.destroyCurrentCompositions();
-        this.document = await SceneDocument.open(this.player.engine, backup.data, backup.name);
-        this.document.fileHandle = backup.handle;
-        if (backup.dirty) {this.document.markModified();}
-        this.document.show();
-        throw error;
-      } finally {
-        this.busy = false;
-      }
-    } else if (!play && this.playDocument) {
-      const backup = this.playDocument;
-
-      await this.openDocument(backup.data, backup.name, backup.handle);
-      if (backup.dirty) {this.document?.markModified();}
-      this.playDocument = undefined;
-    }
+    if (this.busy || play === this.isPlaying || !this.document) {return;}
+    this.document.setPlaying(play);
+    this.isPlaying = play;
+    this.player.tick(0);
   }
 
   static reportSceneError (error: unknown): void {
@@ -111,7 +79,7 @@ export class GalaceanEffects {
 
   static async chooseScene (): Promise<void> {
     if (this.busy) {return;}
-    if ((this.document?.isDirty || this.playDocument?.dirty) && !window.confirm('Discard unsaved scene changes and open another scene?')) {return;}
+    if (this.document?.isDirty && !window.confirm('Discard unsaved scene changes and open another scene?')) {return;}
     if (typeof window.showOpenFilePicker === 'function') {
       const [handle] = await window.showOpenFilePicker({ multiple: false, types: [{ description: 'Scene JSON', accept: { 'application/json': ['.json'] } }] });
       const file = await handle.getFile();

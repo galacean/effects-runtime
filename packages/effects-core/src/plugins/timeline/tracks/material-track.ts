@@ -12,6 +12,11 @@ export class MaterialTrack extends TrackAsset {
 
   index: number;
 
+  override toData (): void {
+    super.toData();
+    this.definition.index = this.index;
+  }
+
   override fromData (data: MaterialTrackData): void {
     super.fromData(data);
     if (data.index !== undefined) {

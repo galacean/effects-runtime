@@ -34,6 +34,15 @@ export class FFDComponent extends Component {
     this.updateShaderUniform();
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.boundMax = this.boundMax;
+    this.definition.boundMin = this.boundMin;
+    this.definition.rowNum = this.rowNum;
+    this.definition.colNum = this.colNum;
+    this.definition.controlPoints = this.controlPoints.map(point => ({ x: point.x, y: point.y, z: point.z }));
+  }
+
   override fromData (data: spec.FFDComponentData): void {
     super.fromData(data);
     this.data = data;

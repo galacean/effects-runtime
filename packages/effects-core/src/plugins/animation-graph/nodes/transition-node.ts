@@ -30,6 +30,10 @@ export class TransitionNodeData extends GraphNodeData {
     node.exitTime = this.exitTime;
   }
 
+  override toData (): spec.TransitionNodeData {
+    return { ...super.toData(), duration: this.duration, hasExitTime: this.hasExitTime, exitTime: this.exitTime, targetStateNodeIndex: this.targetStateNodeIndex } as spec.TransitionNodeData;
+  }
+
   override load (data: spec.TransitionNodeData): void {
     super.load(data);
 

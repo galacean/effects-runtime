@@ -34,6 +34,11 @@ export class ModelTreeComponent extends Behaviour {
    * 反序列化，保存入参和创建节点树元素
    * @param options
    */
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.options, ...this.definition };
+  }
+
   override fromData (options: ModelTreeComponentData): void {
     super.fromData(options);
     this.options = options;

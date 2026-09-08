@@ -50,6 +50,26 @@ export class Fake3DComponent extends Component {
 
   effectComponent: EffectComponent;
 
+  override toData (): void {
+    super.toData();
+    this.definition.loop = this.loop;
+    this.definition.amountOfMotion = this.amountOfMotion;
+    this.definition.animationLength = this.animationLength;
+    this.definition.mode = this.mode;
+    this.definition.startPositionX = this.startPositionX;
+    this.definition.startPositionY = this.startPositionY;
+    this.definition.startPositionZ = this.startPositionZ;
+    this.definition.endPositionX = this.endPositionX;
+    this.definition.endPositionY = this.endPositionY;
+    this.definition.endPositionZ = this.endPositionZ;
+    this.definition.amplitudeX = this.amplitudeX;
+    this.definition.amplitudeY = this.amplitudeY;
+    this.definition.amplitudeZ = this.amplitudeZ;
+    this.definition.phaseX = this.phaseX;
+    this.definition.phaseY = this.phaseY;
+    this.definition.phaseZ = this.phaseZ;
+  }
+
   override fromData (data: Fake3DComponentData): void {
     super.fromData(data);
     if (data.loop !== undefined) { this.loop = data.loop; }

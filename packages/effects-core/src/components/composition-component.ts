@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import { HideFlags, VFXItem } from '../vfx-item';
+import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { Component } from './component';
 import { decimalEqual } from '../math';
@@ -26,7 +26,6 @@ export enum UpdateModes {
  */
 @effectsClass('CompositionComponent')
 export class CompositionComponent extends Component {
-  items: VFXItem[] = [];  // 场景的所有元素
   /**
    * @internal
    */
@@ -259,8 +258,7 @@ export class CompositionComponent extends Component {
 
   override toData (): void {
     super.toData();
-    this.definition.items = this.items.filter(item => !(item.hideFlags & HideFlags.DontSave)).map(item => ({ id: item.getInstanceId() }));
-    this.definition.sceneBindings = this.sceneBindings.map(binding => ({
+    this.definition.sceneBindings = this.sceneBindings.filter(binding => binding.value.isRegistered).map(binding => ({
       key: { id: binding.key.getInstanceId() },
       value: { id: binding.value.getInstanceId() },
     }));
@@ -271,13 +269,9 @@ export class CompositionComponent extends Component {
 
   override fromData (data: spec.CompositionComponentData): void {
     super.fromData(data);
-    this.items = [];
     this.sceneBindings = [];
     this.timelineAsset = null;
 
-    if (data.items !== undefined) {
-      this.items = data.items.map(item => this.engine.findObject<VFXItem>(item));
-    }
     if (data.sceneBindings !== undefined) {
       this.sceneBindings = data.sceneBindings.map(binding => ({
         key: this.engine.findObject<TrackAsset>(binding.key),

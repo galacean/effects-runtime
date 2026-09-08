@@ -411,6 +411,19 @@ export class Material extends Asset implements Disposable {
     }
 
     if (globalUniforms) {
+      for (name in globalUniforms.vector2s) {
+        shaderVariant.setVector2(name, globalUniforms.vector2s[name]);
+      }
+      for (name in globalUniforms.floatArrays) {
+        shaderVariant.setFloats(name, globalUniforms.floatArrays[name]);
+      }
+      for (name in globalUniforms.matrixArrays) {
+        shaderVariant.setMatrixArray(name, globalUniforms.matrixArrays[name]);
+      }
+      for (name in globalUniforms.textures) {
+        globalUniforms.textures[name].initialize();
+        shaderVariant.setTexture(name, globalUniforms.textures[name]);
+      }
       for (name in globalUniforms.floats) {
         shaderVariant.setFloat(name, globalUniforms.floats[name]);
       }

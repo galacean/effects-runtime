@@ -37,6 +37,10 @@ export class StateMachineNodeData extends GraphNodeData {
     }
   }
 
+  override toData (): spec.StateMachineNodeData {
+    return { ...super.toData(), stateDatas: this.stateDatas, defaultStateIndex: this.defaultStateIndex, machineName: this.machineName } as spec.StateMachineNodeData;
+  }
+
   override load (data: spec.StateMachineNodeData): void {
     super.load(data);
 

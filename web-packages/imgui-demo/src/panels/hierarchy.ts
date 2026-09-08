@@ -415,6 +415,7 @@ export class Hierarchy extends EditorWindow {
     for (const target of targets) {
       if (GalaceanEffects.document?.scene.compositions.some(entry => entry.root === target)) {continue;}
       target.setVisible(nextState);
+      GalaceanEffects.document?.markModified(target);
     }
   }
 

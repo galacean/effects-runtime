@@ -1,12 +1,13 @@
-import { Asset, AssetManager, getClass, PluginSystem, VFXItem, spec } from '@galacean/effects';
-import type { Engine, EffectsObject } from '@galacean/effects';
+import { CompositionComponent, VFXItem } from '@galacean/effects';
+import type { EffectsObject, Engine, spec } from '@galacean/effects';
 import { Control, Label, UIControl } from '@galacean/effects-plugin-gui';
 import { SceneSerializer } from './scene-serializer';
-import { sceneAssetCollections } from './scene-graph';
-import type { SceneGraph, EmbeddedSceneAsset, SceneAssetCollection } from './scene-graph';
+import { SceneLoader } from './scene-loader';
+import type { SceneGraph } from './scene-graph';
 import { EditorContent } from '../content';
 import { JsonSceneCooker } from '../cooker/json-scene-cooker';
 import { EditorScene } from './editor-scene';
+import { removeTimelineBindings } from './scene-timeline';
 
 /** Owns the editable objects rendered by the scene viewport. The Engine is borrowed. */
 export class SceneDocument {
@@ -14,134 +15,33 @@ export class SceneDocument {
   private revision = 0;
   private savedRevision = 0;
   private viewport?: EditorScene;
-  private playbackData?: spec.JSONScene;
-  private assetManager?: AssetManager;
-  private resources: EffectsObject[] = [];
   fileHandle?: FileSystemFileHandle;
+  private readonly transformListeners = new Map<VFXItem, () => void>();
 
   static async open (engine: Engine, data: spec.JSONScene | string, name = 'scene.json'): Promise<SceneDocument> {
-    const manager = new AssetManager();
-    const loaded = await manager.loadScene(typeof data === 'string' ? data : structuredClone(data), engine.renderer).catch(error => {
-      manager.dispose();
-      throw error;
-    });
-    const normalized = loaded.jsonScene;
-    const playbackData = structuredClone(normalized);
-    const baseURL = typeof data === 'string' ? new URL(data, location.href).href : location.href;
-
-    // Checkpoints may be replayed as JSON, so they must not depend on the URL's directory.
-    for (const image of playbackData.images as spec.CompressedImage[]) {
-      for (const key of ['url', 'webp', 'avif', 'ktx2'] as const) {
-        const url = image[key];
-
-        if (url) {image[key] = new URL(url, baseURL).href;}
-      }
-    }
-    for (const binary of playbackData.bins ?? []) {binary.url = new URL(binary.url, baseURL).href;}
-    for (const font of playbackData.fonts ?? []) {
-      if ('fontURL' in font && font.fontURL) {font.fontURL = new URL(font.fontURL, baseURL).href;}
-    }
-
-    const assets: EmbeddedSceneAsset[] = [];
-    let records: { collection: SceneAssetCollection, record: spec.EffectsObjectData }[] = [];
+    const loaded = await SceneLoader.load(engine, data);
 
     try {
-      PluginSystem.notifyAssetsLoadFinish(loaded, manager.options, engine);
-      const previousRecords = new Map(Object.entries(engine.jsonSceneData));
+      const scene = SceneSerializer.deserialize(loaded.data, engine);
 
-      engine.assetService.prepareAssets(loaded, loaded.assets);
-      records = sceneAssetCollections.flatMap(collection =>
-        (normalized[collection] ?? []).map(record => {
-          if (!record.id) {throw new Error('Embedded scene assets require an ID.');}
+      scene.assets = loaded.assets;
+      scene.resources = loaded.resources;
 
-          return { collection, record: engine.jsonSceneData[record.id] ?? record };
-        }));
-      const listedIds = new Set(records.map(({ record }) => record.id));
-      const collections: Partial<Record<spec.DataType, SceneAssetCollection>> = {
-        [spec.DataType.Geometry]: 'geometries',
-        [spec.DataType.Material]: 'materials',
-        [spec.DataType.Shader]: 'shaders',
-        [spec.DataType.Texture]: 'textures',
-        [spec.DataType.AnimationClip]: 'animations',
-        [spec.DataType.AnimationGraphAsset]: 'animations',
-      };
-
-      // Binary packages publish asset records through prepareAssets too. They are
-      // absent from the JSON collections, but must be ready before tree validation.
-      for (const record of Object.values(engine.jsonSceneData)) {
-        if (listedIds.has(record.id) || previousRecords.get(record.id) === record) {continue;}
-        const Type = getClass(record.dataType);
-
-        if (!Type || !(Type.prototype instanceof Asset)) {continue;}
-        records.push({ collection: collections[record.dataType] ?? 'miscs', record });
-      }
-      // Publish every embedded asset identity before Content resolves dependencies.
-      for (const { record } of records) {
-        const existing = engine.content.getAsset(record.id);
-
-        if (existing) {engine.content.unloadAsset(existing);}
-        engine.addEffectsObjectData(record);
-      }
-      for (const { collection, record } of records) {
-        const asset = await engine.content.load(record.id);
-
-        if (!asset) {throw new Error(`Failed to load embedded scene asset '${record.id}'.`);}
-        assets.push({ asset, collection });
-      }
-      if (engine.content instanceof EditorContent) {
-        await engine.content.loadSceneAssets(normalized);
-      }
-      let document: SceneDocument;
-
-      if (normalized.items.some(item => item.type === spec.ItemType.composition)) {
-        // Use the runtime's definition/instance expansion for precompositions.
-        const composition = new EditorScene(engine, loaded);
-        const metadata = normalized.compositions.find(entry => entry.id === normalized.compositionId)!;
-
-        composition.sceneRoot.name = metadata.name;
-        document = new SceneDocument(engine, { compositions: [{ ...metadata, root: composition.sceneRoot }],
-          compositionId: metadata.id, renderSettings: normalized.renderSettings }, name);
-        document.viewport = composition;
-      } else {
-        const tree = { ...normalized, images: [], bins: [] };
-
-        for (const collection of sceneAssetCollections) {tree[collection] = [];}
-        document = new SceneDocument(engine, tree, name);
-      }
-      document.scene.assets = assets;
-      document.playbackData = playbackData;
-      document.assetManager = manager;
-      document.resources = [...Object.keys(loaded.assets), ...(normalized.bins ?? []).map(binary => binary.id)]
-        .filter((id): id is string => !!id).map(id => engine.objectInstance[id]).filter(Boolean);
-
-      return document;
+      return new SceneDocument(engine, scene, name);
     } catch (error) {
-      for (const { record } of records) {
-        const asset = engine.content.getAsset(record.id);
-
-        if (asset) {engine.content.unloadAsset(asset);}
-        delete engine.jsonSceneData[record.id];
+      for (const { asset } of loaded.assets) {
+        engine.content.unloadAsset(asset);
+        delete engine.jsonSceneData[asset.getInstanceId()];
       }
-      for (const id of [...Object.keys(loaded.assets), ...(normalized.bins ?? []).map(binary => binary.id)]) {
-        if (!id) {continue;}
-        engine.objectInstance[id]?.dispose();
-        delete engine.jsonSceneData[id];
-      }
-      manager.dispose();
+      loaded.resources.dispose();
       throw error;
     }
-  }
-
-  /** Reload/playback checkpoint only. Saving always serializes the live scene tree. */
-  restoreData (): spec.JSONScene {
-    return this.revision === 0 && this.playbackData ? structuredClone(this.playbackData) : this.snapshot();
   }
 
   async previewData (): Promise<spec.JSONScene> {
-    const content = this.engine.content;
-    const snapshot = this.restoreData();
+    const snapshot = this.snapshot();
 
-    return content instanceof EditorContent ? new JsonSceneCooker(content).cook(snapshot) : snapshot;
+    return this.engine.content instanceof EditorContent ? new JsonSceneCooker(this.engine.content).cook(snapshot) : snapshot;
   }
 
   constructor (readonly engine: Engine, data: spec.JSONScene | SceneGraph, public name = 'scene.json') {
@@ -152,7 +52,8 @@ export class SceneDocument {
           throw new Error('The composition root cannot have a UIControl. Place it on a child item.');
         }
       }
-      if ('items' in data) {SceneSerializer.initialize(this.scene);}
+      SceneSerializer.initialize(this.scene);
+      this.observeTransforms();
     } catch (error) {
       for (const { root } of this.scene.compositions) {root.dispose();}
       throw error;
@@ -164,10 +65,6 @@ export class SceneDocument {
   }
 
   snapshot (): spec.JSONScene {
-    if (this.playbackData?.images.length || this.playbackData?.bins?.length) {
-      throw new Error('Saving embedded image and binary resources is not supported yet.');
-    }
-
     return SceneSerializer.serialize(this.scene);
   }
 
@@ -202,16 +99,61 @@ export class SceneDocument {
     this.savedRevision = revision;
   }
 
-  markModified (): void {
+  markModified (object?: EffectsObject): void {
     this.revision++;
+    this.viewport?.markModified(object);
   }
 
-  show (): void {
+  private observeTransforms (): void {
+    for (const { root } of this.scene.compositions) {
+      for (const item of [root, ...root.getDescendants()]) {
+        if (this.transformListeners.has(item)) {continue;}
+        const changed = () => this.markModified(item);
+
+        item.transform.on('changed', changed);
+        this.transformListeners.set(item, changed);
+      }
+    }
+  }
+
+  getPreviewObject<T extends EffectsObject> (object: T): T | undefined {
+    return this.viewport?.objects.copies.get(object) as T | undefined;
+  }
+
+  getAuthoredObject<T extends EffectsObject> (object: T): T | undefined {
+    return this.viewport?.objects.originals.get(object) as T | undefined;
+  }
+
+  setPlaying (playing: boolean): void {
+    this.rebuildPreview(playing);
+  }
+
+  private rebuildPreview (playing = false): void {
+    const camera = this.viewport?.camera;
+
+    this.viewport?.dispose();
+    this.viewport = undefined;
+    const viewport = this.show(playing);
+
+    if (camera && !playing) {viewport.camera.copy(camera);}
+  }
+
+  show (playing = false): EditorScene {
     if (!this.viewport) {
       const composition = this.scene.compositions.find(entry => entry.root === this.root)!;
 
-      this.viewport = new EditorScene(this.engine, composition, this.scene.renderSettings);
+      const viewport = new EditorScene(this.engine, composition.root, playing);
+
+      try {
+        viewport.initialize(composition, this.scene.renderSettings);
+        this.viewport = viewport;
+      } finally {
+        // Only publish a fully initialized viewport; release partial allocations on failure.
+        if (this.viewport !== viewport) {viewport.dispose();}
+      }
     }
+
+    return this.viewport;
   }
 
   owns (item: VFXItem): boolean {
@@ -230,7 +172,8 @@ export class SceneDocument {
       ? new Label(this.engine, 'New label') : new Control(this.engine);
     item.getComponent(UIControl).control!.setSize(160, 40);
     item.initializeHierarchy();
-
+    this.observeTransforms();
+    if (this.viewport) {this.rebuildPreview();}
     this.markModified();
 
     return item;
@@ -243,6 +186,7 @@ export class SceneDocument {
     }
     if (item.parent === parent) {return;}
     item.setParent(parent);
+    if (this.viewport) {this.rebuildPreview();}
     this.markModified();
   }
 
@@ -250,25 +194,29 @@ export class SceneDocument {
     if (!this.owns(item) || this.scene.compositions.some(entry => entry.root === item)) {
       throw new Error('Cannot delete a composition root.');
     }
+    removeTimelineBindings(this.scene, new Set([item, ...item.getDescendants()]));
+    for (const removed of [item, ...item.getDescendants()]) {
+      const listener = this.transformListeners.get(removed);
+
+      if (listener) {removed.transform.off('changed', listener);}
+      this.transformListeners.delete(removed);
+    }
     item.dispose();
+    if (this.viewport) {this.rebuildPreview();}
     this.markModified();
   }
 
   dispose (): void {
-    for (const { root } of this.scene.compositions) {root.dispose();}
     this.viewport?.dispose();
     this.viewport = undefined;
+    for (const [item, listener] of this.transformListeners) {item.transform.off('changed', listener);}
+    this.transformListeners.clear();
+    for (const { root } of this.scene.compositions) {root.dispose();}
     for (const { asset } of this.scene.assets ?? []) {
       this.engine.content.unloadAsset(asset);
       delete this.engine.jsonSceneData[asset.getInstanceId()];
     }
     this.scene.assets = [];
-    for (const resource of this.resources) {
-      resource.dispose();
-      delete this.engine.jsonSceneData[resource.getInstanceId()];
-    }
-    this.resources = [];
-    this.assetManager?.dispose();
-    this.assetManager = undefined;
+    this.scene.resources?.dispose();
   }
 }

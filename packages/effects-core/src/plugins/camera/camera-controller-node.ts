@@ -36,6 +36,11 @@ export class CameraController extends Component {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.options = this.options;
+  }
+
   override fromData (data: CameraControllerData): void {
     super.fromData(data);
 

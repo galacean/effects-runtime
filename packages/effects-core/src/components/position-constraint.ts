@@ -181,6 +181,19 @@ export class PositionConstraint extends Component {
     return start + (end - start) * t;
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.positionAtRest = this.positionAtRest;
+    this.definition.positionOffset = this.positionOffset;
+    this.definition.weight = this.weight;
+    this.definition.constrainX = this.constrainX;
+    this.definition.constrainY = this.constrainY;
+    this.definition.constrainZ = this.constrainZ;
+    this.definition.targets = this.targets.map(target => ({
+      target: target.target ? { id: target.target.getInstanceId() } : null, weight: target.weight,
+    }));
+  }
+
   override fromData (data: PositionConstraintData): void {
     super.fromData(data);
 

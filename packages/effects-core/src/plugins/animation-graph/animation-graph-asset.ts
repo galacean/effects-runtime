@@ -24,7 +24,19 @@ export class AnimationGraphAsset extends Asset {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition = { ...this.definition,
+      rootNodeIndex: this.rootNodeIndex,
+      controlParameterIDs: this.controlParameterIDs.slice(),
+      nodeDatas: this.nodeDatas.map(node => node.toData()),
+      graphDataSet: { resources: this.graphDataSet.resources.map(resource => ({ id: resource.getInstanceId() })) },
+    };
+  }
+
   override fromData (data: spec.AnimationGraphAssetData) {
+    super.fromData(data);
+    this.parameterLookupMap.clear();
     const graphAssetData = data;
     const nodeDatas = graphAssetData.nodeDatas;
 

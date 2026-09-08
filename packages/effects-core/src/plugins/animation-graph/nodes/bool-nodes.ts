@@ -15,6 +15,10 @@ export class AndNodeData extends GraphNodeData {
     }
   }
 
+  override toData (): spec.AndNodeData {
+    return { ...super.toData(), conditionNodeIndices: this.conditionNodeIndices } as spec.AndNodeData;
+  }
+
   override load (data: spec.AndNodeData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
@@ -75,6 +79,10 @@ export class OrNodeData extends GraphNodeData {
     }
   }
 
+  override toData (): spec.OrNodeData {
+    return { ...super.toData(), conditionNodeIndices: this.conditionNodeIndices } as spec.OrNodeData;
+  }
+
   override load (data: spec.OrNodeData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
@@ -131,6 +139,10 @@ export class NotNodeData extends GraphNodeData {
     const node = this.createNode(NotNode, context);
 
     node.inputValueNode = context.getNode<BoolValueNode>(this.inputValueNodeIndex);
+  }
+
+  override toData (): spec.NotNodeData {
+    return { ...super.toData(), inputValueNodeIndex: this.inputValueNodeIndex } as spec.NotNodeData;
   }
 
   override load (data: spec.NotNodeData): void {

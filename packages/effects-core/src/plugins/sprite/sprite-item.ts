@@ -105,6 +105,7 @@ export class SpriteComponent extends MaskableGraphic {
 
   protected textureSheetAnimation?: spec.TextureSheetAnimation;
   private splits?: spec.SplitParameter[];
+  private sourceGeometry?: Geometry;
 
   /**
    * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + rotation），渲染唯一数据源。
@@ -280,6 +281,8 @@ export class SpriteComponent extends MaskableGraphic {
     }
     if (this.geometry !== this.defaultGeometry) {
       this.definition.geometry = { id: this.geometry.getInstanceId() };
+    } else if (this.sourceGeometry) {
+      this.definition.geometry = { id: this.sourceGeometry.getInstanceId() };
     }
     if (this.textureSheetAnimation) {
       this.definition.textureSheetAnimation = { ...this.textureSheetAnimation };
@@ -301,7 +304,9 @@ export class SpriteComponent extends MaskableGraphic {
 
     this.textureSheetAnimation = data.textureSheetAnimation;
 
-    const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
+    // updateGeometry copies the asset into the generated mesh; retain its identity for saving.
+    this.sourceGeometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : undefined;
+    const geometry = this.sourceGeometry ?? this.defaultGeometry;
     const splits = data.splits;
 
     this.splits = splits?.map(split => [...split] as spec.SplitParameter);

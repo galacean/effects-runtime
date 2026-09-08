@@ -1,3 +1,4 @@
+import { decodeBase64ToArrayBuffer, binaryToBase64 } from '../utils';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
 import { effectsClass } from '../decorators';
@@ -332,6 +333,63 @@ export class Geometry extends Asset {
       this.indexBuffer = undefined;
       this.createIndexBuffer();
     }
+  }
+
+  override toData (): void {
+    super.toData();
+    const buffers = Object.keys(this.vertexBuffers).map(name => [name, this.vertexBuffers[name]] as const);
+    const position = this.vertexBuffers[VertexBuffer.PositionKind] ?? buffers[0]?.[1];
+    const storage = position?.getData() as spec.TypedArray | undefined;
+    const vertexCount = storage && position ? Math.floor(storage.byteLength / position.byteStride) : 0;
+    const chunks: Uint8Array[] = [];
+    const channels: spec.VertexChannel[] = [];
+    let byteLength = 0;
+    const append = (bytes: Uint8Array) => {
+      const offset = byteLength;
+      const padded = new Uint8Array(Math.ceil(bytes.byteLength / 4) * 4);
+
+      padded.set(bytes);
+      chunks.push(padded);
+      byteLength += padded.byteLength;
+
+      return offset;
+    };
+
+    for (const [semantic, buffer] of buffers) {
+      const data = buffer.getData() as spec.TypedArray;
+      const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+      const size = buffer.getSize(true);
+      const packed = new Uint8Array(vertexCount * size);
+
+      for (let vertex = 0; vertex < vertexCount; vertex++) {
+        const offset = vertex * buffer.byteStride + buffer.byteOffset;
+
+        packed.set(bytes.subarray(offset, offset + size), vertex * size);
+      }
+      const formats: Record<number, spec.VertexFormatType> = {
+        [BufferDataType.Float]: spec.VertexFormatType.Float32,
+        [BufferDataType.Short]: spec.VertexFormatType.Int16,
+        [BufferDataType.Byte]: spec.VertexFormatType.Int8,
+        [BufferDataType.UnsignedShort]: spec.VertexFormatType.UInt16,
+        [BufferDataType.UnsignedByte]: spec.VertexFormatType.UInt8,
+      };
+
+      channels.push({ semantic, offset: append(packed), dimension: buffer.getSize(),
+        format: formats[buffer.type], normalize: buffer.normalized });
+    }
+    const indexOffset = byteLength;
+
+    chunks.push(new Uint8Array(this.indices.buffer, this.indices.byteOffset, this.indices.byteLength));
+    byteLength += this.indices.byteLength;
+    const binary = new Uint8Array(byteLength);
+    let offset = 0;
+
+    for (const chunk of chunks) {binary.set(chunk, offset); offset += chunk.byteLength;}
+    this.definition = { ...this.definition, name: this.name, mode: this.mode,
+      vertexData: { vertexCount, channels }, indexOffset,
+      indexFormat: this.indices.length ? (this.indices instanceof Uint32Array ? spec.IndexFormatType.UInt32 : spec.IndexFormatType.UInt16) : spec.IndexFormatType.None,
+      subMeshes: this.subMeshes, ...this.skin, buffer: binaryToBase64(binary) };
+    delete this.definition.binaryData;
   }
 
   override fromData (data: spec.GeometryData): void {
@@ -689,17 +747,6 @@ function vertexFormatToDataType (format: spec.VertexFormatType): spec.BufferType
 
 function hasSemantic (data: spec.GeometryData): boolean {
   return data.vertexData.channels.some(channel => !!channel.semantic);
-}
-
-function decodeBase64ToArrayBuffer (value: string): ArrayBuffer {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return bytes.buffer;
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {

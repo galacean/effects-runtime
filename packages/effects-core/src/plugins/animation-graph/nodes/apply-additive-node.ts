@@ -21,6 +21,10 @@ export class ApplyAdditiveNodeData extends GraphNodeData {
     node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNodeIndex);
   }
 
+  override toData (): spec.ApplyAdditiveNodeData {
+    return { ...super.toData(), baseNodeIndex: this.baseNodeIndex, additiveNodeIndex: this.additiveNodeIndex, inputParameterValueNodeIndex: this.inputParameterValueNodeIndex } as spec.ApplyAdditiveNodeData;
+  }
+
   override load (data: spec.ApplyAdditiveNodeData): void {
     super.load(data);
     this.baseNodeIndex = data.baseNodeIndex;

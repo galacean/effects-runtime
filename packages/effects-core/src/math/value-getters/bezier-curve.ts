@@ -48,6 +48,22 @@ export class BezierCurve extends ValueGetter<number> {
   private keyFrames: Keyframe[];
   private curveInfos: CurveInfo[];
 
+  override toExpression (): any {
+    return [spec.ValueType.BEZIER_CURVE, this.keyFrames.map((key, index) => {
+      if (key.tangentMode === TangentMode.Constant) {return [spec.BezierKeyframeType.HOLD, [key.time, key.value]];}
+      if (key.tangentMode === TangentMode.Linear) {return [spec.BezierKeyframeType.LINE, [key.time, key.value]];}
+      const before = this.keyFrames[index - 1] ?? key;
+      const after = this.keyFrames[index + 1] ?? key;
+      const inWeight = key.weightedMode === WeightedMode.In || key.weightedMode === WeightedMode.Both ? key.inWeight : 1;
+      const outWeight = key.weightedMode === WeightedMode.Out || key.weightedMode === WeightedMode.Both ? key.outWeight : 1;
+      const left = (key.time - before.time) / 3 * inWeight;
+      const right = (after.time - key.time) / 3 * outWeight;
+
+      return [spec.BezierKeyframeType.EASE, [key.time - left, key.value - key.inSlope * left,
+        key.time, key.value, key.time + right, key.value + key.outSlope * right]];
+    })];
+  }
+
   override onCreate (props: spec.BezierKeyframeValue[]) {
     this.keyFrames = oldBezierKeyFramesToNew(props);
     const keyframes = this.keyFrames;

@@ -346,6 +346,16 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
+  override toData (): void {
+    super.toData();
+    delete this.definition.materials;
+    this.definition.options = { ...this.interactData.options };
+    if (this.interactData.options.type === spec.InteractType.DRAG) {
+      this.definition.options.dxRange = [...this.dragRange.dxRange];
+      this.definition.options.dyRange = [...this.dragRange.dyRange];
+    }
+  }
+
   override fromData (data: spec.InteractComponentData): void {
     super.fromData(data);
     this.interactData = data;

@@ -16,6 +16,10 @@ export class EqualNodeData extends GraphNodeData {
     node.comparandValueNode = context.getNode<ValueNode>(this.comparandValueNodeIndex);
   }
 
+  override toData (): spec.EqualNodeData {
+    return { ...super.toData(), inputValueNodeIndex: this.inputValueNodeIndex, comparandValueNodeIndex: this.comparandValueNodeIndex } as spec.EqualNodeData;
+  }
+
   override load (data: spec.EqualNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
@@ -73,6 +77,10 @@ class EqualNode extends BoolValueNode {
 export abstract class FloatComparisonNodeData extends GraphNodeData {
   protected inputValueNodeIndex = InvalidIndex;
   protected comparandValueNodeIndex = InvalidIndex;
+
+  override toData (): spec.FloatComparisonNodeData {
+    return { ...super.toData(), inputValueNodeIndex: this.inputValueNodeIndex, comparandValueNodeIndex: this.comparandValueNodeIndex } as spec.FloatComparisonNodeData;
+  }
 
   override load (data: spec.FloatComparisonNodeData): void {
     super.load(data);

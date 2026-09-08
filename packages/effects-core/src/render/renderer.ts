@@ -1,4 +1,4 @@
-import type { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import { Material } from '../material';
@@ -76,6 +76,33 @@ export class Renderer {
   setGlobalVector3 (name: string, value: Vector3) {
     this.checkGlobalUniform(name);
     this.renderingData.currentFrame.globalUniforms.vector3s[name] = value;
+  }
+
+  setGlobalVector2 (name: string, value: Vector2) {
+    this.checkGlobalUniform(name);
+    this.renderingData.currentFrame.globalUniforms.vector2s[name] = value;
+  }
+
+  setGlobalFloats (name: string, value: number[]) {
+    this.checkGlobalUniform(name);
+    this.renderingData.currentFrame.globalUniforms.floatArrays[name] = value;
+  }
+
+  setGlobalMatrixArray (name: string, value: number[]) {
+    this.checkGlobalUniform(name);
+    this.renderingData.currentFrame.globalUniforms.matrixArrays[name] = value;
+  }
+
+  setGlobalTexture (name: string, value: Texture | null) {
+    const globals = this.renderingData.currentFrame.globalUniforms;
+
+    if (value === null) {
+      delete globals.textures[name];
+
+      return;
+    }
+    if (!globals.samplers.includes(name)) {globals.samplers.push(name);}
+    globals.textures[name] = value;
   }
 
   getFramebuffer (): Framebuffer {
@@ -179,7 +206,7 @@ export class Renderer {
     material.initialize();
     geometry.initialize();
     geometry.flush();
-    material.setMatrix('effects_ObjectToWorld', matrix);
+    this.setGlobalMatrix('effects_ObjectToWorld', matrix);
 
     try {
       material.use(this, this.renderingData.currentFrame.globalUniforms);

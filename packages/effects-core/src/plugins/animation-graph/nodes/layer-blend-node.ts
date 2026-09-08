@@ -32,6 +32,10 @@ export class LayerBlendNodeData extends GraphNodeData {
     }
   }
 
+  override toData (): spec.LayerBlendNodeData {
+    return { ...super.toData(), baseNodeIndex: this.baseNodeIndex, layerDatas: this.layerDatas } as spec.LayerBlendNodeData;
+  }
+
   override load (data: spec.LayerBlendNodeData): void {
     super.load(data);
 

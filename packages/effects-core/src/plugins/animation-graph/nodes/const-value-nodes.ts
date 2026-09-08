@@ -13,6 +13,10 @@ export class ConstFloatNodeData extends GraphNodeData {
     node.value = this.value;
   }
 
+  override toData (): spec.ConstFloatNodeData {
+    return { ...super.toData(), value: this.value } as spec.ConstFloatNodeData;
+  }
+
   override load (data: spec.ConstFloatNodeData): void {
     super.load(data);
     this.value = data.value;
@@ -39,6 +43,10 @@ export class ConstBoolNodeData extends GraphNodeData {
     const node = this.createNode(ConstBoolNode, context);
 
     node.value = this.value;
+  }
+
+  override toData (): spec.ConstBoolNodeData {
+    return { ...super.toData(), value: this.value } as spec.ConstBoolNodeData;
   }
 
   override load (data: spec.ConstBoolNodeData): void {

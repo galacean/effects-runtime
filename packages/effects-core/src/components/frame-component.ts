@@ -119,6 +119,11 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.material, maskRef);
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.color = this.color;
+  }
+
   override fromData (data: FrameComponentData): void {
     super.fromData(data);
 

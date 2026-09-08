@@ -26,6 +26,11 @@ export interface SpritePropertyAssetData extends spec.EffectsObjectData {
 export class SpritePropertyPlayableAsset extends PlayableAsset {
   curveData: [number, ReferenceCurveData<Sprite>] = [REFERENCE_CURVE, []];
 
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = [this.curveData[0], this.curveData[1].map(([time, sprite]) => [time, { id: sprite.getInstanceId() }])];
+  }
+
   override fromData (data: SpritePropertyAssetData): void {
     super.fromData(data);
     const items = data.curveData[1];

@@ -14,6 +14,11 @@ interface Vector3PropertyPlayableAssetData extends spec.EffectsObjectData {
 export class Vector4PropertyPlayableAsset extends PlayableAsset {
   curveData: spec.Vector4CurveValue;
 
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = this.curveData;
+  }
+
   override fromData (data: spec.Vector4PropertyPlayableAssetData): void {
     super.fromData(data);
     this.curveData = data.curveData;
@@ -33,6 +38,11 @@ export class Vector4PropertyPlayableAsset extends PlayableAsset {
 export class Vector3ropertyPlayableAsset extends PlayableAsset {
   curveData: spec.Vector3CurveValue;
 
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = this.curveData;
+  }
+
   override fromData (data: Vector3PropertyPlayableAssetData): void {
     super.fromData(data);
     this.curveData = data.curveData;
@@ -51,6 +61,11 @@ export class Vector3ropertyPlayableAsset extends PlayableAsset {
 @effectsClass(spec.DataType.Vector2PropertyPlayableAsset)
 export class Vector2PropertyPlayableAsset extends PlayableAsset {
   curveData: spec.Vector2CurveValue;
+
+  override toData (): void {
+    super.toData();
+    this.definition.curveData = this.curveData;
+  }
 
   override fromData (data: spec.Vector2PropertyPlayableAssetData): void {
     super.fromData(data);

@@ -148,7 +148,13 @@ export class Animator extends Component {
     }
   }
 
+  override toData (): void {
+    super.toData();
+    this.definition.graphAsset = this.graphAsset ? { id: this.graphAsset.getInstanceId() } : undefined;
+  }
+
   override fromData (data: spec.AnimatorData): void {
+    super.fromData(data);
     this.graphAsset = this.engine.findObject<AnimationGraphAsset>(data.graphAsset);
   }
 }

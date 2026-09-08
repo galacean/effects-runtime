@@ -172,7 +172,7 @@ export class Scene extends EditorWindow {
               if (hitResults.length > 0) {
                 const selectedObject = hitResults[hitResults.length - 1].item;
 
-                Selection.select(selectedObject);
+                Selection.select(GalaceanEffects.document?.getAuthoredObject(selectedObject) ?? selectedObject);
               }
             }
           }

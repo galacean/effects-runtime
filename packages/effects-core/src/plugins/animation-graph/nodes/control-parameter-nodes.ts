@@ -13,6 +13,10 @@ export class ControlParameterFloatNodeData extends GraphNodeData {
     node.setValue(this.value);
   }
 
+  override toData (): spec.ControlParameterFloatNodeData {
+    return { ...super.toData(), value: this.value } as spec.ControlParameterFloatNodeData;
+  }
+
   override load (data: spec.ControlParameterFloatNodeData): void {
     super.load(data);
     this.value = data.value;
@@ -45,6 +49,10 @@ export class ControlParameterBoolNodeData extends GraphNodeData {
     node.setValue(this.value);
   }
 
+  override toData (): spec.ControlParameterBoolNodeData {
+    return { ...super.toData(), value: this.value } as spec.ControlParameterBoolNodeData;
+  }
+
   override load (data: spec.ControlParameterBoolNodeData): void {
     super.load(data);
     this.value = data.value;
@@ -71,6 +79,10 @@ export class ControlParameterBoolNode extends BoolValueNode {
 export class ControlParameterTriggerNodeData extends GraphNodeData {
   override instantiate (context: InstantiationContext) {
     this.createNode(ControlParameterTriggerNode, context);
+  }
+
+  override toData (): spec.ControlParameterTriggerNodeData {
+    return { ...super.toData() } as spec.ControlParameterTriggerNodeData;
   }
 
   override load (data: spec.ControlParameterTriggerNodeData): void {

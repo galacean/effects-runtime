@@ -135,6 +135,20 @@ export class SpineComponent extends RendererComponent implements Maskable {
     super(engine);
   }
 
+  override toData (): void {
+    super.toData();
+    delete this.definition.materials;
+    delete this.definition._priority;
+    if (this.resource) {
+      const { atlas, skeleton, images, skeletonType } = this.resource;
+
+      this.definition.resource = { atlas, skeleton, images, skeletonType };
+    }
+    this.definition.options = this.options;
+    this.definition.renderer = this.rendererOptions;
+    this.definition.mask = this.maskManager.toData();
+  }
+
   override fromData (data: SpineComponentData) {
     super.fromData(data);
     if (data.resource !== undefined) {

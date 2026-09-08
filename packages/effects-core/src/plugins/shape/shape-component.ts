@@ -747,6 +747,34 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return material;
   }
 
+  override toData (): void {
+    super.toData();
+    delete this.definition.materials;
+    Object.assign(this.definition, this.shapeAttributes);
+    this.definition.strokeWidth = this.strokeWidth;
+    this.definition.strokeCap = this.strokeCap;
+    this.definition.strokeJoin = this.strokeJoin;
+    this.definition.mask = this.maskManager.toData();
+    const renderer = this.rendererOptions;
+
+    this.definition.renderer = { side: renderer.side, occlusion: renderer.occlusion,
+      transparentOcclusion: renderer.transparentOcclusion, blending: renderer.blending,
+      texture: renderer.texture === this.engine.whiteTexture ? undefined : { id: renderer.texture.getInstanceId() } };
+    const paintData = (paint: Paint) => {
+      if (paint.type === spec.FillType.Solid) {return { type: paint.type, color: paint.color };}
+      if (paint.type === spec.FillType.Texture) {
+        return { ...paint, texture: { id: paint.texture.getInstanceId() } };
+      }
+
+      return { type: paint.type, startPoint: paint.startPoint, endPoint: paint.endPoint,
+        gradientStops: [spec.ValueType.GRADIENT_COLOR,
+          paint.gradientStops.stops.map(stop => [stop.time, ...stop.color.toArray()])] };
+    };
+
+    this.definition.fills = this.fills.map(paintData);
+    this.definition.strokes = this.strokes.map(paintData);
+  }
+
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;

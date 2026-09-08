@@ -1,3 +1,4 @@
+import type { SceneResources } from './scene-resources';
 import type { Asset, VFXItem, spec } from '@galacean/effects';
 
 /** Composition metadata, independent of a Player or an input JSON. */
@@ -16,7 +17,20 @@ export interface EmbeddedSceneAsset {
   collection: SceneAssetCollection,
 }
 
+export interface SceneInstance {
+  root: VFXItem,
+  id: string,
+  camera: spec.CameraOptions,
+  previewSize?: [number, number],
+  startTime?: number,
+  name: string,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
+
 export interface SceneGraph {
+  instances?: SceneInstance[],
+  resources?: SceneResources,
   assets?: EmbeddedSceneAsset[],
   compositions: SceneComposition[],
   compositionId?: string,

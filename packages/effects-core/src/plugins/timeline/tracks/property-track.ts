@@ -11,6 +11,11 @@ export abstract class PropertyTrack extends TrackAsset {
 
   protected path = '';
 
+  override toData (): void {
+    super.toData();
+    this.definition.path = this.path;
+  }
+
   override fromData (data: PropertyTrackData): void {
     super.fromData(data);
     if (data.path !== undefined) {

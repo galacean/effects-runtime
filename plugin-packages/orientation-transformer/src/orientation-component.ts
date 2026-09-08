@@ -16,6 +16,11 @@ interface OrientationComponentData extends spec.ComponentData {
 export class OrientationComponent extends Behaviour {
   private targets: spec.PluginGyroscopeTarget[];
 
+  override toData (): void {
+    super.toData();
+    this.definition.options = { targets: this.targets };
+  }
+
   override fromData (data: OrientationComponentData): void {
     super.fromData(data);
 

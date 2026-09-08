@@ -135,8 +135,7 @@ export class TestPlayer {
 
       if (interaction) {
         if (particleMesh) {
-          // @ts-expect-error
-          itemList.push(content);
+          itemList.push(item.getComponent(ParticleSystem));
         }
       }
     });
