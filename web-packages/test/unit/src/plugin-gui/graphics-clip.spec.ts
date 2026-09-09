@@ -102,7 +102,7 @@ describe('plugin-gui/Graphics clip stack', () => {
     };
 
     try {
-      composition.root.awake();
+      composition.root.initializeHierarchy();
       composition.root.beginPlay();
       clipped.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
       clipped.setRect({ position: new math.Vector2(20, 20), size: new math.Vector2(20, 20) });

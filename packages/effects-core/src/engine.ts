@@ -220,6 +220,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   clearResources () {
+    for (const id of Object.keys(this.objectInstance)) {
+      this.objectInstance[id].unregisterObject();
+    }
     this.jsonSceneData = {};
     this.objectInstance = {};
   }

@@ -1,4 +1,4 @@
-import { generateGUID, Player } from '@galacean/effects';
+import { generateGUID, Player, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -148,6 +148,74 @@ describe('core/composition', () => {
 
     comp.setVisible(false);
 
+    expect(comp.items[0].isActive).to.eql(false, 'deactivates composition descendants');
     expect(comp.items[0].isActive).to.eql(false, 'composition visible');
+    comp.setVisible(true);
+    expect(comp.items[0].isActive).to.eql(true, 'restores composition visibility');
   });
+
+  async function loadPlaybackScene (startTime = 0) {
+    player.destroyCurrentCompositions();
+    const id = generateGUID();
+
+    return player.loadScene({
+      version: '1.5', type: 'mars', compositionId: id,
+      compositions: [{
+        id, name: 'playback', duration: 2, startTime, endBehavior: spec.EndBehavior.freeze,
+        items: [{
+          id: '1', name: 'node', type: '3', delay: 0, duration: 5, endBehavior: spec.EndBehavior.freeze,
+          content: { options: { startColor: [1, 1, 1, 1] } },
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+        }],
+      }],
+      images: [], textures: [], bins: [], plugins: [], shapes: [],
+    }, { autoplay: false, reusable: true });
+  }
+
+  it('plays from startTime and preserves the position when resuming or playing again', async () => {
+    const comp = await loadPlaybackScene(1.3);
+    const playEvents: number[] = [];
+
+    comp.on('play', () => playEvents.push(comp.time));
+    comp.play();
+    expect(comp.time).closeTo(1.3, 0.000001);
+    expect(playEvents.length).equals(1);
+    comp.gotoAndStop(0.4);
+    comp.play();
+    expect(comp.time).closeTo(1.7, 0.000001);
+    comp.play();
+    expect(comp.time).closeTo(1.7, 0.000001);
+  });
+
+  it('restarts at startTime while preserving pause and speed', async () => {
+    const comp = await loadPlaybackScene(1.3);
+
+    comp.gotoAndStop(0.8);
+    comp.setSpeed(2);
+    comp.restart();
+    expect(comp.time).closeTo(1.3, 0.000001);
+    expect(comp.getPaused()).equals(true);
+    expect(comp.getSpeed()).equals(2);
+    comp.resume();
+    comp.update(100);
+    expect(comp.time).closeTo(1.5, 0.000001);
+    comp.restart();
+    expect(comp.time).closeTo(1.3, 0.000001);
+    expect(comp.getPaused()).equals(false);
+    expect(comp.getSpeed()).equals(2);
+  });
+
+  it('plays an ended reusable composition from the beginning', async () => {
+    const comp = await loadPlaybackScene();
+
+    comp.gotoAndStop(2.1);
+    expect(comp.isEnded).equals(true);
+    comp.play();
+    expect(comp.time).closeTo(0, 0.000001);
+    expect(comp.isEnded).equals(false);
+    expect(comp.getPaused()).equals(false);
+    comp.update(100);
+    expect(comp.time).closeTo(0.1, 0.000001);
+  });
+
 });

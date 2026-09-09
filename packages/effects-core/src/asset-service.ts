@@ -99,7 +99,7 @@ export class AssetService implements Disposable {
 
     // 加入内置引擎对象
     for (const effectsObject of this.builtinObjects) {
-      this.engine.addInstance(effectsObject);
+      effectsObject.registerObject();
     }
   }
 

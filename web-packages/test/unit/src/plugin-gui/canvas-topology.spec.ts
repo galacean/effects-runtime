@@ -1,5 +1,6 @@
 import {
   Composition,
+  CompositionComponent,
   Player,
   Plugin,
   VFXItem,
@@ -37,7 +38,7 @@ describe('plugin-gui/GUI topology', () => {
       manualRender: true,
     });
     composition = new Composition(player.engine);
-    composition.root.awake();
+    composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 
@@ -83,7 +84,7 @@ describe('plugin-gui/GUI topology', () => {
     const first = composition;
     const second = new Composition(engine);
 
-    second.root.awake();
+    second.root.initializeHierarchy();
     second.root.beginPlay();
 
     expect(first.sceneRoot.getComponent(UICanvas)).not.equals(second.sceneRoot.getComponent(UICanvas));
@@ -171,6 +172,34 @@ describe('plugin-gui/GUI topology', () => {
     expect(parentControl.children).includes(childControl);
     expect(parentControl.root).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
     expect(childControl.root).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
+  });
+
+  it('hides GUI descendants and nested canvases with their composition component', () => {
+    const parent = new VFXItem(player.engine);
+
+    parent.setParent(composition.sceneRoot);
+    const gate = parent.addComponent(CompositionComponent);
+    const child = new VFXItem(player.engine);
+
+    child.setParent(parent);
+    const bridge = child.addComponent(UIControl);
+
+    bridge.control = new Control(player.engine);
+    const canvasItem = new VFXItem(player.engine);
+
+    canvasItem.setParent(parent);
+    const canvas = canvasItem.addComponent(UICanvas);
+
+    gate.enabled = false;
+    expect(child.isActive).equals(false);
+    expect(bridge.control.visible).equals(false);
+    expect(canvas.isVisible).equals(false);
+    gate.enabled = true;
+    expect(bridge.control.visible).equals(true);
+    expect(canvas.isVisible).equals(true);
+    parent.dispose();
+    expect(bridge.control).equals(null);
+    expect(canvas.rootControl.isDisposed).equals(true);
   });
 
   it('keeps the VFXItem transform independent from Control layout while synchronizing local XY position', () => {
