@@ -73,12 +73,6 @@ type ParticleEmissionOptions = {
   burstOffsets: Record<string, vec3[] | null>,
 };
 
-interface ParticleTransform {
-  position: Vector3,
-  rotation?: Euler,
-  path?: ValueGetter<vec3>,
-}
-
 type TrailOptions = {
   lifetime: ValueGetter<number>,
   minimumVertexDistance: number,
@@ -148,7 +142,6 @@ export class ParticleSystem extends Component implements Maskable {
   private frozen: boolean;
   private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
-  private basicTransform: ParticleTransform;
   private clickedPoint: LinkNode<ParticleContent>;
 
   private particleMeshProps: ParticleMeshProps | null = null;
@@ -208,48 +201,7 @@ export class ParticleSystem extends Component implements Maskable {
     return this.ended;
   }
 
-  initEmitterTransform () {
-    const position = this.item.transform.position.clone();
-    const rotation = this.item.transform.rotation.clone();
-    const transformPath = this.props.emitterTransform && this.props.emitterTransform.path;
-    let path;
-
-    if (transformPath) {
-      if (transformPath[0] === spec.ValueType.CONSTANT_VEC3) {
-        position.add(transformPath[1]);
-      } else {
-        path = createValueGetter(transformPath);
-      }
-    }
-    this.basicTransform = {
-      position, rotation, path,
-    };
-
-    const selfPos = position.clone();
-
-    if (path) {
-      selfPos.add(path.getValue(0));
-    }
-    this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
-
-    if (this.options.particleFollowParent) {
-      const worldMatrix = this.transform.getWorldMatrix();
-
-      this.renderer.updateWorldMatrix(worldMatrix);
-    }
-  }
-
-  private updateEmitterTransform (time: number) {
-    const { path, position } = this.basicTransform;
-    const selfPos = position.clone();
-
-    if (path) {
-      const duration = this.item.duration;
-
-      selfPos.add(path.getValue(time / duration));
-    }
-    this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
-
+  private updateEmitterWorldMatrix () {
     if (this.options.particleFollowParent) {
       const worldMatrix = this.transform.getWorldMatrix();
 
@@ -323,7 +275,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.meshes = this.renderer.meshes;
 
     this.startEmit();
-    this.initEmitterTransform();
+    this.updateEmitterWorldMatrix();
 
     this.item.on('click', ()=>{
       if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle) {
@@ -387,7 +339,7 @@ export class ParticleSystem extends Component implements Maskable {
           const meshTime = now;
           const maxCount = options.maxCount;
 
-          this.updateEmitterTransform(timePassed);
+          this.updateEmitterWorldMatrix();
           const shouldSkipGenerate = () => {
             const first = link.first;
 

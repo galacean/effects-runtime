@@ -203,7 +203,6 @@ describe('core/plugins/particle/transform', () => {
     // @ts-expect-error
     const { position, rotation, path } = itemContent.basicTransform;
 
-    // @ts-expect-error
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
     expect(path).to.be.an.instanceof(BezierCurvePath);
