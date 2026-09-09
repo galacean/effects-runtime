@@ -2,7 +2,7 @@ import { Component, Composition, CompositionComponent, Player, Plugin, VFXItem, 
 
 const { expect } = chai;
 
-describe('core/components/Flax lifecycle', () => {
+describe('core/components/lifecycle', () => {
   let player: Player;
   let composition: Composition;
   let events: string[];
@@ -36,7 +36,7 @@ describe('core/components/Flax lifecycle', () => {
   });
 
   afterEach(() => {
-    unregisterPlugin('flax-load-lifecycle');
+    unregisterPlugin('component-lifecycle');
     player.dispose();
   });
 
@@ -201,14 +201,13 @@ describe('core/components/Flax lifecycle', () => {
     expect(events).deep.equals(['second:update']);
   });
 
-  it('matches the first-attachment branch for an enabled script on an inactive running item', () => {
+  it('matches first-attachment behavior for an enabled component on an inactive running item', () => {
     const node = item('node', composition.sceneRoot);
 
     node.setActive(false);
     const probe = node.addComponent(Probe);
 
-    // Flax SetParent checks the script's Enabled flag in this first-attachment
-    // branch, rather than the actor's active flag (unlike its reattach branch).
+    // First attachment checks the component's enabled flag rather than the item's active flag.
     expect(events).deep.equals(['node:awake', 'node:start', 'node:enable']);
     expect(probe.isActiveAndEnabled).equals(false);
   });
@@ -413,7 +412,7 @@ describe('core/components/Flax lifecycle', () => {
     expect(events).deep.equals(['node:disable', 'node:destroy']);
   });
 
-  it('uses Flax live-array iteration when the current component removes itself', () => {
+  it('uses live-array iteration when the current component removes itself', () => {
     class SelfDestroy extends Probe {
       override onUpdate () {
         super.onUpdate();
@@ -484,7 +483,7 @@ describe('core/components/Flax lifecycle', () => {
         created.sceneRoot.addComponent(Probe);
       }
     }
-    registerPlugin('flax-load-lifecycle', LifecyclePlugin);
+    registerPlugin('component-lifecycle', LifecyclePlugin);
     const created = new Composition(player.engine);
 
     expect(created.getPaused()).equals(true);
@@ -504,7 +503,7 @@ describe('core/components/Flax lifecycle', () => {
         created.sceneRoot.addComponent(Probe);
       }
     }
-    registerPlugin('flax-load-lifecycle', LifecyclePlugin);
+    registerPlugin('component-lifecycle', LifecyclePlugin);
     const id = '11111111111141118111111111111111';
     const loaded = await player.loadScene({
       version: '3.0',

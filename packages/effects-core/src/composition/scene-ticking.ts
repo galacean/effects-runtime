@@ -89,7 +89,7 @@ class TickData {
     const index = this.components.indexOf(component);
 
     if (index > -1) {
-      // Flax Array.Remove swaps in the last entry instead of preserving order.
+      // 将最后一个元素移至被删除的位置，不保持数组顺序。
       const last = this.components.pop()!;
 
       if (index < this.components.length) {

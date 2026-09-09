@@ -59,7 +59,7 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
-   * 生命周期函数，加载或挂接后的初始化阶段调用，在 BeginPlay 之前执行
+   * 生命周期函数，组件初始化时调用一次
    */
   onAwake () {
     // OVERRIDE
@@ -179,7 +179,7 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  /** Sets the owning item, corresponding to Flax Script.SetActor. */
+  /** 设置组件所属的 VFX 元素。 */
   setVFXItem (item: VFXItem | null) {
     this.setParent(item);
   }
