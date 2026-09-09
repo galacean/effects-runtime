@@ -102,7 +102,12 @@ export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Pr
         const oldFileName = `${namePrefix}_${scene.name}_${time}_old.png`;
         const newFileName = `${namePrefix}_${scene.name}_${time}_new.png`;
         const diffFileName = `${namePrefix}_${scene.name}_${time}_diff.png`;
-        const diffHeatmapDataURL = imageCmp.getLastDiffHeatmapDataURL();
+        const diffHeatmapDataURL = imageCmp.generateDiffHeatmapDataURL(
+          oldImage,
+          newImage,
+          profile.canvas.width,
+          profile.canvas.height,
+        );
 
         await oldPlayer.saveCanvasToImage(oldFileName, sceneIndex, suiteTitle);
         await newPlayer.saveCanvasToImage(newFileName, sceneIndex, suiteTitle, true);

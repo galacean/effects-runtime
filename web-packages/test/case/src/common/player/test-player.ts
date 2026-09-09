@@ -11,6 +11,9 @@ export class TestPlayer {
   canvas: HTMLCanvasElement;
   composition!: Composition;
   lastTime = 0;
+  private imageBuffer?: Uint8Array;
+  private imageBufferWidth = 0;
+  private imageBufferHeight = 0;
   private readonly imagePreview = new CaseImagePreview();
 
   constructor (
@@ -82,17 +85,22 @@ export class TestPlayer {
     this.player.gotoAndStop(time);
   }
 
+  // The returned buffer is reused by the next read on this player.
   async readImageBuffer () {
     const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
-
-    // 强制等待 GPU 完成所有渲染命令
-    ctx.finish();
 
     //使用实际的drawingBuffer读取，而不是使用画布尺寸
     const originalWidth = ctx.drawingBufferWidth;
     const originalHeight = ctx.drawingBufferHeight;
-    const pixels = new Uint8Array(originalWidth * originalHeight * 4);
 
+    if (!this.imageBuffer || this.imageBufferWidth !== originalWidth || this.imageBufferHeight !== originalHeight) {
+      this.imageBuffer = new Uint8Array(originalWidth * originalHeight * 4);
+      this.imageBufferWidth = originalWidth;
+      this.imageBufferHeight = originalHeight;
+    }
+    const pixels = this.imageBuffer;
+
+    // Synchronous readPixels waits for rendering before returning the pixels.
     ctx.readPixels(0, 0, originalWidth, originalHeight, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
 
     return pixels;
@@ -205,6 +213,7 @@ export class TestPlayer {
   }
 
   dispose () {
+    this.imageBuffer = undefined;
     this.player.dispose();
     // @ts-expect-error
     this.player = null;
