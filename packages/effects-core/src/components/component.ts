@@ -19,6 +19,7 @@ export abstract class Component extends EffectsObject {
   isAwakeCalled = false;
   isStartCalled = false;
   isEnableCalled = false;
+  isDuringPlay = false;
 
   private _enabled = true;
 
@@ -33,7 +34,7 @@ export abstract class Component extends EffectsObject {
    * 组件是否可以更新，true 更新，false 不更新
    */
   get isActiveAndEnabled () {
-    return this.item.isActive && this.enabled;
+    return this.enabled && (!this.item || this.item.isActive);
   }
 
   get enabled () {
@@ -41,49 +42,45 @@ export abstract class Component extends EffectsObject {
   }
 
   set enabled (value: boolean) {
-    if (this.enabled !== value) {
-      this._enabled = value;
-
-      if (this.item?.isDuringPlay && this.item.isActive) {
-        if (value) {
-          if (!this.isEnableCalled) {
-            this.enable();
-
-            if (!this.isStartCalled) {
-              this.onStart();
-              this.isStartCalled = true;
-            }
-          }
-        } else if (this.isEnableCalled) {
-          this.disable();
+    if (this._enabled === value) {
+      return;
+    }
+    this._enabled = value;
+    if (!this.item || (this.item.isDuringPlay && this.item.isActive)) {
+      if (value) {
+        if (!this.isEnableCalled) {
+          this.start();
+          this.enable();
         }
+      } else if (this.isEnableCalled) {
+        this.disable();
       }
     }
   }
 
   /**
-   * 生命周期函数，初始化后调用，生命周期内只调用一次
+   * 生命周期函数，组件初始化时调用一次
    */
   onAwake () {
     // OVERRIDE
   }
 
   /**
-   * 在 enabled 变为 true 时触发
+   * 组件首次启用或重新启用时调用，首次调用在 onStart 之后
    */
   onEnable () {
     // OVERRIDE
   }
 
   /**
-   * 在 enabled 变为 false 时触发
+   * 组件禁用或退出运行时调用，回调结束后注销帧更新
    */
   onDisable () {
     // OVERRIDE
   }
 
   /**
-   * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
+   * 生命周期函数，首次启用时调用一次，不受合成播放暂停状态影响
    */
   onStart () {
     // OVERRIDE
@@ -111,7 +108,7 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
-   * 生命周期函数，在组件销毁时调用
+   * 生命周期函数，在组件销毁或所属元素退出运行时调用
    */
   onDestroy () {
     // OVERRIDE
@@ -142,35 +139,78 @@ export abstract class Component extends EffectsObject {
    * @internal
    */
   enable () {
-    if (this.item.composition) {
+    if (this.item?.composition) {
       this.item.composition.sceneTicking.addComponent(this);
       this.isEnableCalled = true;
     }
     this.onEnable();
   }
 
-  /**
-   * @internal
-   */
+  /** @internal */
   disable () {
     this.onDisable();
-    if (this.item.composition) {
+    if (this.item?.composition) {
       this.isEnableCalled = false;
       this.item.composition.sceneTicking.removeComponent(this);
     }
   }
 
-  setVFXItem (item: VFXItem) {
-    this.item = item;
-    if (item.isDuringPlay) {
-      if (!this.isAwakeCalled) {
-        this.onAwake();
-        this.isAwakeCalled = true;
+  /** @internal */
+  initialize () {
+    if (!this.isRegistered) {
+      this.registerObject();
+    }
+    if (!this.isAwakeCalled) {
+      this.isAwakeCalled = true;
+      this.onAwake();
+    }
+  }
+
+  /** @internal */
+  beginPlay () {
+    this.isDuringPlay = true;
+  }
+
+  /** @internal */
+  endPlay () {
+    this.isDuringPlay = false;
+    if (this.isRegistered) {
+      this.unregisterObject();
+    }
+  }
+
+  /** 设置组件所属的 VFX 元素。 */
+  setVFXItem (item: VFXItem | null) {
+    this.setParent(item);
+  }
+
+  /** @internal */
+  setParent (item: VFXItem | null) {
+    if (this.item === item) {
+      return;
+    }
+    const previous = this.item;
+
+    if (previous) {
+      if (!item && previous.isDuringPlay && previous.isActive && this.enabled && this.isEnableCalled) {
+        this.disable();
       }
-      if (item.isActive && this.enabled) {
+      removeItem(previous.components, this);
+    }
+    // As during construction, item-dependent APIs require an attached component.
+    this.item = item!;
+    if (item) {
+      item.components.push(this);
+    }
+    if (item && item.isDuringPlay && !this.isDuringPlay) {
+      this.initialize();
+      this.beginPlay();
+      if (this.enabled) {
         this.start();
         this.enable();
       }
+    } else if (!previous && item && item.isDuringPlay && item.isActive && this.enabled) {
+      this.enable();
     }
   }
 
@@ -192,20 +232,22 @@ export abstract class Component extends EffectsObject {
       this.isAwakeCalled = false;
       this.onDestroy();
     }
-    if (this.item) {
-      removeItem(this.item.components, this);
+    if (this.isDuringPlay) {
+      this.endPlay();
     }
-
+    this.setParent(null);
     super.dispose();
   }
 
-  private start () {
+  /** @internal */
+  start () {
     if (this.isStartCalled) {
       return;
     }
     this.isStartCalled = true;
     this.onStart();
   }
+
 }
 
 /**
@@ -214,7 +256,7 @@ export abstract class Component extends EffectsObject {
  */
 export abstract class Behaviour extends Component {
 
-  override setVFXItem (item: VFXItem): void {
+  override setVFXItem (item: VFXItem | null): void {
     super.setVFXItem(item);
   }
 

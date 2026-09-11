@@ -98,6 +98,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
   private _composition: Composition | null;
+  private disposed = false;
 
   /**
    *
@@ -203,12 +204,36 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 设置元素的合成
    */
-  set composition (value: Composition) {
-    this._composition = value;
+  set composition (value: Composition | null) {
+    if (this._composition === value) {
+      return;
+    }
+    this.disableInHierarchy();
+    this.setCompositionInHierarchy(value);
+    this.enableInHierarchy();
+  }
 
+  private setCompositionInHierarchy (value: Composition | null) {
+    this._composition = value;
     for (const child of this.children) {
-      if (!child.composition) {
-        child.composition = value;
+      child.setCompositionInHierarchy(value);
+    }
+  }
+
+  private disableInHierarchy () {
+    for (const child of this.children.slice()) {
+      child.disableInHierarchy();
+    }
+    if (this.isEnabled) {
+      this.onDisable();
+    }
+  }
+
+  private enableInHierarchy () {
+    this.onActiveChanged();
+    for (const child of this.children.slice()) {
+      if (child.parent === this) {
+        child.enableInHierarchy();
       }
     }
   }
@@ -326,7 +351,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
 
-    this.components.push(newComponent);
     newComponent.setVFXItem(this);
 
     return newComponent;
@@ -376,28 +400,33 @@ export class VFXItem extends EffectsObject implements Disposable {
     return results;
   }
 
-  setParent (vfxItem: VFXItem) {
-    if (vfxItem === this || this.parent === vfxItem) {
+  setParent (vfxItem: VFXItem | null) {
+    if (this.disposed || vfxItem?.disposed || vfxItem === this || this.parent === (vfxItem ?? undefined)) {
       return;
     }
 
+    const previousComposition = this.composition;
+
+    // Engine.root has no composition; composition roots retain their own owner.
+    const composition = vfxItem === this.engine.root ? this.composition : vfxItem?.composition ?? null;
+
+    if (composition !== previousComposition) {
+      this.disableInHierarchy();
+    }
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
-
-    this.parent = vfxItem;
-    this.transform.parentTransform = vfxItem.transform;
-    vfxItem.children.push(this);
-
-    if (!this.composition && vfxItem.composition) {
-      this.composition = vfxItem.composition;
-    }
-
+    this.parent = vfxItem ?? undefined;
+    this.transform.parentTransform = vfxItem?.transform ?? null;
+    vfxItem?.children.push(this);
+    this.setCompositionInHierarchy(composition);
     this.onParentChanged();
 
-    if (!this.isDuringPlay && vfxItem.isDuringPlay) {
-      this.awake();
+    if (!this.isDuringPlay && vfxItem?.isDuringPlay) {
+      this.initializeHierarchy();
       this.beginPlay();
+    } else if (composition !== previousComposition) {
+      this.enableInHierarchy();
     }
   }
 
@@ -423,7 +452,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 激活或停用 VFXItem
+   * 激活或停用当前 VFXItem，不传播到子节点。
    */
   setActive (value: boolean) {
     if (this.active !== !!value) {
@@ -432,9 +461,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  /**
-   * 当前 VFXItem 是否激活
-   */
+  /** 当前 VFXItem 自身是否激活。 */
   get isActive () {
     return this.active;
   }
@@ -775,75 +802,128 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   beginPlay () {
-    this.isDuringPlay = true;
-
-    if (this.composition && this.active && !this.isEnabled) {
-      this.onEnable();
+    if (this.disposed || this.isDuringPlay) {
+      return;
     }
-
-    for (const child of this.children) {
-      if (!child.isDuringPlay) {
+    this.isDuringPlay = true;
+    this.onBeginPlay();
+    for (const component of this.components.slice()) {
+      if (!component.isDuringPlay && this.components.includes(component)) {
+        component.beginPlay();
+      }
+    }
+    for (const child of this.children.slice()) {
+      if (child.parent === this) {
         child.beginPlay();
       }
     }
-  }
-
-  /**
-   * @internal
-   */
-  awake () {
-    for (const component of this.components) {
-      if (!component.isAwakeCalled) {
-        component.onAwake();
-        component.isAwakeCalled = true;
-      }
-    }
-    for (const child of this.children) {
-      child.awake();
+    if (this.isActive && this.composition) {
+      this.onEnable();
     }
   }
 
-  /**
-   * @internal
-   */
-  onActiveChanged () {
-    if (!this.isDuringPlay || !this.composition) {
+  /** Initializes this item without initializing its components or descendants. @internal */
+  initialize () {
+    if (this.parent && this.parent !== this.engine.root) {
+      this._composition = this.parent.composition;
+    }
+    if (!this.isRegistered) {
+      this.registerObject();
+    }
+  }
+
+  /** Initializes this item, its components, and then its child hierarchies. @internal */
+  initializeHierarchy () {
+    if (this.disposed) {
       return;
     }
-
-    if (this.active) {
-      if (!this.isEnabled) {
-        this.onEnable();
+    this.initialize();
+    for (const component of this.components.slice()) {
+      if (component.item === this && this.components.includes(component)) {
+        component.initialize();
       }
-    } else if (this.isEnabled) {
-      this.onDisable();
+    }
+    for (const child of this.children.slice()) {
+      if (child.parent === this) {
+        child.initializeHierarchy();
+      }
     }
   }
 
-  /**
-   * @internal
-   */
-  onEnable () {
-    this.isEnabled = true;
-    for (const component of this.components) {
-      if (component.enabled && !component.isStartCalled) {
-        component.onStart();
-        component.isStartCalled = true;
+  /** Called after entering play, before attached components and children enter play. */
+  onBeginPlay () {
+    // OVERRIDE
+  }
+
+  /** Called after this item's component Destroy callbacks, before leaving play. */
+  onEndPlay () {
+    // OVERRIDE
+  }
+
+  /** @internal */
+  endPlay () {
+    if (!this.isDuringPlay) {
+      return;
+    }
+    if (this.isActive && this.composition) {
+      this.onDisable();
+    }
+    for (const component of this.components.slice()) {
+      if (component.isAwakeCalled) {
+        component.isAwakeCalled = false;
+        component.onDestroy();
       }
     }
-    for (const component of this.components) {
-      if (component.enabled && !component.isEnableCalled) {
+    this.onEndPlay();
+    this.isDuringPlay = false;
+    for (const child of this.children.slice()) {
+      if (child.parent === this && child.isDuringPlay) {
+        child.endPlay();
+      }
+    }
+    for (const component of this.components.slice()) {
+      if (component.isDuringPlay) {
+        component.endPlay();
+      }
+    }
+    if (this.isRegistered) {
+      this.unregisterObject();
+    }
+  }
+
+  /** @internal */
+  onActiveChanged () {
+    if (this.isDuringPlay && this.composition) {
+      if (this.isActive) {
+        this.onEnable();
+      } else if (this.isEnabled) {
+        this.onDisable();
+      }
+    }
+  }
+
+  /** @internal */
+  onEnable () {
+    if (this.isEnabled || !this.isDuringPlay || !this.isActive || !this.composition) {
+      return;
+    }
+    this.isEnabled = true;
+    for (const component of this.components.slice()) {
+      if (component.item === this && component.enabled && !component.isStartCalled) {
+        component.start();
+      }
+    }
+    for (const component of this.components.slice()) {
+      if (component.item === this && component.enabled && !component.isEnableCalled) {
         component.enable();
       }
     }
   }
 
-  /**
-   * @internal
-   */
+  /** @internal */
   onDisable () {
     this.isEnabled = false;
-    for (const component of this.components) {
+    for (const component of this.components.slice().reverse()) {
       if (component.enabled && component.isEnableCalled) {
         component.disable();
       }
@@ -962,36 +1042,32 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 销毁元素
    */
   override dispose (): void {
-    if (this.composition) {
-      this.composition.destroyItem(this);
+    if (this.disposed) {
+      return;
     }
-
-    // component.dispose() removes itself from this.components. Use a snapshot
-    // so Engine.root components are also disposed even without a Composition.
+    this.disposed = true;
+    if (this.isDuringPlay) {
+      this.endPlay();
+    } else if (this.isEnabled) {
+      this.onDisable();
+    }
+    this.composition?.destroyItem(this);
+    for (const child of this.children.slice()) {
+      child.dispose();
+    }
     for (const component of this.components.slice()) {
       component.dispose();
     }
+    this.children = [];
     this.components = [];
     this._composition = null;
     this.transform.setValid(false);
-
-    this.resetChildrenParent();
-
-    super.dispose();
-  }
-
-  private resetChildrenParent () {
-    // GE 父元素销毁子元素继承逻辑
-    // 如果有父对象，销毁时子对象继承父对象。
-    for (const child of this.children) {
-      if (this.parent) {
-        child.setParent(this.parent);
-      }
-    }
-
     if (this.parent) {
-      removeItem(this.parent?.children, this);
+      removeItem(this.parent.children, this);
     }
+    this.parent = undefined;
+    this.transform.parentTransform = null;
+    super.dispose();
   }
 
   /**

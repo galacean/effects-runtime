@@ -75,7 +75,7 @@ describe('plugin-gui/GUI measurement and automatic layout', () => {
       manualRender: true,
     });
     composition = new Composition(player.engine);
-    composition.root.awake();
+    composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 

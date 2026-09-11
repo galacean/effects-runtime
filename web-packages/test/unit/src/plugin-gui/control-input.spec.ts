@@ -170,7 +170,7 @@ describe('plugin-gui/input', () => {
       interactive: true,
     });
     composition = new Composition(player.engine);
-    composition.root.awake();
+    composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 
@@ -810,7 +810,7 @@ describe('plugin-gui/input', () => {
     touch.position.set(10, 10);
     player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(touch);
 
-    child.item!.setParent(secondParent.item!);
+    child.item!.setParent(secondParent.item);
     expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot.guiGetFocusOwner()).equals(child);
 
     const key = new InputEventKey();

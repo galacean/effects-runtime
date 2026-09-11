@@ -16,6 +16,7 @@ export abstract class EffectsObject {
   }
 
   protected guid: string;
+  private _isRegistered = false;
   /**
    * 存储需要序列化的数据
    */
@@ -30,7 +31,30 @@ export abstract class EffectsObject {
   ) {
     this.guid = generateGUID();
     this.definition = {};
+    this.registerObject();
+  }
+
+  /** Whether this object is registered for lookup by its instance ID. */
+  get isRegistered (): boolean {
+    return this._isRegistered;
+  }
+
+  /** @internal */
+  registerObject (): void {
+    if (this._isRegistered) {
+      return;
+    }
+    this._isRegistered = true;
     this.engine.addInstance(this);
+  }
+
+  /** @internal */
+  unregisterObject (): void {
+    if (!this._isRegistered) {
+      return;
+    }
+    this._isRegistered = false;
+    this.engine.removeInstance(this.guid);
   }
 
   /**
@@ -46,9 +70,18 @@ export abstract class EffectsObject {
    * @param guid
    */
   setInstanceId (guid: string) {
-    this.engine.removeInstance(this.guid);
+    if (this.guid === guid) {
+      return;
+    }
+    const wasRegistered = this.isRegistered;
+
+    if (wasRegistered) {
+      this.unregisterObject();
+    }
     this.guid = guid;
-    this.engine.addInstance(this);
+    if (wasRegistered) {
+      this.registerObject();
+    }
   }
 
   /**
@@ -71,6 +104,6 @@ export abstract class EffectsObject {
    * 销毁当前对象
    */
   dispose () {
-    this.engine.removeInstance(this.guid);
+    this.unregisterObject();
   }
 }

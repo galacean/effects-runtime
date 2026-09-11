@@ -4,7 +4,7 @@ import { TestPlayer } from './test-player';
 import { loadScript } from '../utilities';
 
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '2.9.0';  // 旧版 Player 版本
+const oldVersion = params.get('version') || '2.10.2';  // 旧版 Player 版本
 // URL 加 local=true 时，读取 web-packages/test/dist/baseline 下的 UMD 产物。
 const useLocalBaseline = params.get('local') === 'true';
 

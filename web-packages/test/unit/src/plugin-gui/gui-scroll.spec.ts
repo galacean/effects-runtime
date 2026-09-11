@@ -60,7 +60,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
       interactive: true,
     });
     composition = new Composition(player.engine);
-    composition.root.awake();
+    composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 
@@ -365,7 +365,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     target.setRect({ position: new math.Vector2(10, 350), size: new math.Vector2(30, 20) });
     target.setRotation(20);
     target.focusMode = FocusMode.All;
-    lateComposition.root.awake();
+    lateComposition.root.initializeHierarchy();
     lateComposition.root.beginPlay();
     player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
 

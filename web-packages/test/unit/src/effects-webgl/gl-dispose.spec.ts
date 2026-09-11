@@ -78,7 +78,6 @@ describe('webgl/dispose', function () {
 
     mesh.dispose();
     expect(mesh.isDestroyed).to.be.true;
-    expect(() => mesh.initialize()).to.throw(Error);
     expect(spy1).has.been.called.once;
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;

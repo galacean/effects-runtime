@@ -33,7 +33,7 @@ describe('plugin-gui/editor controls', () => {
       interactive: true,
     });
     composition = new Composition(player.engine);
-    composition.root.awake();
+    composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 
