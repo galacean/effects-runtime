@@ -1,4 +1,5 @@
-import { Player, ParticleSystem, VFXItem, BezierCurvePath, ParticleSystemRenderer } from '@galacean/effects';
+import { Player, ParticleSystem, VFXItem, createValueGetter, ParticleSystemRenderer } from '@galacean/effects';
+import { ensureFixedVec3 } from '../../../../../../../packages/effects-core/src/fallback/utils';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -181,13 +182,15 @@ describe('core/plugins/particle/transform', () => {
   });
 
   it('transform path with asMovement', async () => {
+    const pathData = [7, [[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, -1.5, -1], [0.2, 1.2, 0]], [[1, 1, 0], [2, 1, 0]]]];
+
     const comp = await generateComposition(player, [{
       name: 'item',
       type: '2',
       transform: {
         position: [0, 0, 0],
         rotation: [0, 0, -180],
-        path: [7, [[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, -1.5, -1], [0.2, 1.2, 0]], [[1, 1, 0], [2, 1, 0]]]],
+        path: pathData,
       },
       velocityOverLifetime: {
         asMovement: true,
@@ -200,13 +203,26 @@ describe('core/plugins/particle/transform', () => {
     expect(item).to.be.instanceof(VFXItem);
     expect(itemContent).to.be.an.instanceof(ParticleSystem);
 
-    // @ts-expect-error
-    const { position, rotation, path } = itemContent.basicTransform;
+    const path = createValueGetter(ensureFixedVec3(pathData)!);
+    const createPoint = itemContent.createPoint.bind(itemContent);
+    const emissionPositions: number[][] = [];
 
-    // @ts-expect-error
-    expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
-    expect(position.toArray()).to.eql([0, 0, 0]);
-    expect(path).to.be.an.instanceof(BezierCurvePath);
+    itemContent.createPoint = lifetime => {
+      emissionPositions.push(item.transform.position.toArray());
+
+      return createPoint(lifetime);
+    };
+    // 直接 seek：轨道求值目标帧，补算粒子时使用该帧的发射器位置。
+    player.gotoAndStop(2.5);
+    const expectedPosition = path.getValue(2.5 / item.duration).toArray();
+
+    expect(emissionPositions.length).to.be.greaterThan(1);
+    for (const position of [...emissionPositions, item.transform.position.toArray()]) {
+      position.forEach((value, index) => {
+        expect(value).to.be.closeTo(expectedPosition[index], 1e-6);
+      });
+    }
+    expect(sanitizeNumbers(item.transform.rotation.toArray())).to.eql([0, 0, -180]);
     expect(item.getComponent(ParticleSystemRenderer).particleMesh.linearVelOverLifetime?.asMovement).to.be.true;
     expect(item.getComponent(ParticleSystemRenderer).particleMesh.speedOverLifetime).to.not.exist;
   });

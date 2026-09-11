@@ -840,6 +840,91 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
 }
 
 /**
+ * 3.9 数据适配：将粒子发射器路径迁移到元素的 TransformTrack。
+ * 粒子自身的生命周期曲线仍由 ParticleSystem 消费。
+ */
+export function version38Migration (json: JSONScene): JSONScene {
+  json.miscs ??= [];
+  const assets = new Map(json.miscs.map(asset => [asset.id, asset]));
+  const items = new Map(json.items.map(item => [item.id, item]));
+  const bindings: spec.SceneBindingData[] = [];
+
+  for (const component of json.components) {
+    if (component.dataType !== DataType.CompositionComponent) {
+      continue;
+    }
+    const composition = component as spec.CompositionComponentData;
+
+    if (composition.sceneBindings) {
+      for (const binding of composition.sceneBindings) {
+        bindings.push(binding);
+      }
+    }
+  }
+
+  for (const component of json.components) {
+    if (component.dataType !== DataType.ParticleSystem) {
+      continue;
+    }
+    const particle = component as spec.ParticleSystemData;
+    const path = particle.emitterTransform?.path;
+
+    if (!path) {
+      continue;
+    }
+    const item = items.get(particle.item.id);
+    const itemBindings = bindings.filter(binding => binding.value.id === particle.item.id);
+
+    if (!item) {
+      continue;
+    }
+    for (const binding of itemBindings) {
+      const parent = assets.get(binding.key.id) as spec.TrackAssetData | undefined;
+
+      if (!parent || parent.dataType !== DataType.ObjectBindingTrack) {
+        continue;
+      }
+      const playable = {
+        id: generateGUID(),
+        dataType: DataType.TransformPlayableAsset,
+        positionOverLifetime: { path },
+      };
+      const track: spec.TrackAssetData = {
+        id: generateGUID(),
+        dataType: DataType.TransformTrack,
+        children: [],
+        clips: [{
+          start: item.delay,
+          duration: item.duration,
+          endBehavior: item.endBehavior,
+          asset: { id: playable.id },
+        }],
+      };
+
+      const existingTrack = parent.children
+        .map(child => assets.get(child.id) as spec.TrackAssetData | undefined)
+        .find(child => child?.dataType === DataType.TransformTrack);
+
+      if (existingTrack) {
+        // 使用同一个 mixer 合成已有动画与发射器路径，避免多条轨道相互覆盖。
+        existingTrack.clips.push(...track.clips);
+      } else {
+        // 放在其他行为轨道前，确保发射粒子时能读取到本帧的 transform。
+        parent.children.unshift({ id: track.id });
+        json.miscs.push(track);
+        assets.set(track.id, track);
+      }
+      json.miscs.push(playable);
+    }
+    delete particle.emitterTransform;
+  }
+
+  json.version = '3.9' as unknown as JSONSceneVersion;
+
+  return json;
+}
+
+/**
  * 确保文本组件有版本标识字段
  */
 function ensureTextVerticalAlign (options: any) {
