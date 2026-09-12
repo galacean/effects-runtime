@@ -82,15 +82,15 @@ const assetManager = new AssetManager(options);
 管理动画播放的数据处理与渲染：
 
 ```typescript
-const composition = new Composition(props, scene);
+const composition = new Composition(engine, props, scene);
 
 // 播放控制
 composition.play();
 composition.pause();
 composition.resume();
 
-// 更新
-composition.update(deltaTime);
+// 更新并渲染全部合成，deltaTime 单位为毫秒
+engine.mainLoop(deltaTime);
 
 // 销毁
 composition.dispose();
@@ -100,7 +100,12 @@ composition.dispose();
 - `renderFrame`：当前帧的渲染数据对象
 - `rootItem`：合成根元素
 - `camera`：合成相机
-- `speed`：播放速度
+- `speed`：时间轴播放速度
+
+播放接口转发到根 `CompositionComponent`。暂停、倍速、跳帧和重播仅影响时间轴；
+处于启用状态的 Animator 和脚本使用 Engine 的帧时间，时间轴暂停时仍会更新。
+跳帧立即求值时间轴，普通组件在下一次 Engine 帧更新时执行。
+组件注册和生命周期仍由合成所属场景管理。
 
 ### 4. VFX 元素 [VFXItem](./src/vfx-item.ts)
 

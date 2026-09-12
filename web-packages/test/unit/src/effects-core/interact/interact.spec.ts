@@ -20,6 +20,7 @@ describe('core/interact/item', () => {
     canvas,
     pixelRatio: 1,
     interactive: true,
+    manualRender: true,
   };
 
   before(() => {
@@ -501,9 +502,11 @@ describe('core/interact/item', () => {
     comp.play();
 
     player?.gotoAndStop(0.1);
+    player.engine.mainLoop(100);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
 
     player?.gotoAndStop(0.3);
+    player.engine.mainLoop(200);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
     expect(messageSpy).to.have.been.called.twice;
     comp?.dispose();

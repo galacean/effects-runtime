@@ -82,15 +82,15 @@ Supported features:
 Manages data processing and rendering for animation playback:
 
 ```typescript
-const composition = new Composition(props, scene);
+const composition = new Composition(engine, props, scene);
 
 // Playback control
 composition.play();
 composition.pause();
 composition.resume();
 
-// Update
-composition.update(deltaTime);
+// Advance and render all compositions (deltaTime is in milliseconds).
+engine.mainLoop(deltaTime);
 
 // Dispose
 composition.dispose();
@@ -100,7 +100,13 @@ Main properties:
 - `renderFrame`: The rendering data object for the current frame
 - `rootItem`: The root element of the composition
 - `camera`: The composition camera
-- `speed`: Playback speed
+- `speed`: Timeline playback speed
+
+Playback controls delegate to the root `CompositionComponent`. Pause, speed, seek,
+and restart affect only the timeline. Enabled Animator and script components use
+the engine's frame delta, even when the timeline is paused. Seeking evaluates the
+timeline immediately; ordinary component updates run on the next engine frame.
+Component registration and lifecycle remain owned by the composition's scene.
 
 ### 4. VFX Element [VFXItem](./src/vfx-item.ts)
 

@@ -180,10 +180,18 @@ export class ThreeDisplayObject extends THREE.Group {
    * @param delta
    */
   update (delta: number) {
-    this.compositions.forEach(composition => {
-      composition.update(delta);
+    const compositions = this.compositions;
 
+    for (const composition of compositions) {
+      composition.sceneTicking.update.tick(delta);
+    }
+    for (const composition of compositions) {
+      composition.sceneTicking.lateUpdate.tick(delta);
+    }
+    for (const composition of compositions) {
+      composition.camera.updateMatrix();
+      composition.sceneTicking.preRender.tick(0);
       composition.render();
-    });
+    }
   }
 }

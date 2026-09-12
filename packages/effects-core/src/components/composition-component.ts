@@ -3,8 +3,9 @@ import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
 import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
+import { EventEmitter } from '../events';
+import type { EventEmitterListener, EventEmitterOptions } from '../events';
 import { Component } from './component';
-import { decimalEqual } from '../math';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -20,6 +21,10 @@ export enum UpdateModes {
   EveryUpdate,
   Manual,
 }
+
+export type CompositionComponentEvent = {
+  end: [CompositionComponent],
+};
 
 /**
  * @since 2.0.0
@@ -40,16 +45,53 @@ export class CompositionComponent extends Component {
 
   playOnStart = false;
 
-  endBehavior = spec.EndBehavior.forward;
+  speed = 1;
+  /** Absolute start of the timeline, in seconds. */
+  startTime = 0;
+  isEnded = false;
+  private isEndCalled = false;
+  private readonly eventEmitter = new EventEmitter<CompositionComponentEvent>();
 
   private time = 0;
-  private lastTime = 0;
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
   private nestedCompositions: CompositionComponent[] = [];
 
+  get endBehavior () {
+    return this.item.endBehavior;
+  }
+
+  set endBehavior (value: spec.EndBehavior) {
+    this.item.endBehavior = value;
+  }
+
   private get timelineInstance (): TimelineInstance | null {
+    this.initializeTimeline();
+
+    return this._timelineInstance;
+  }
+
+  on<E extends keyof CompositionComponentEvent> (
+    eventName: E,
+    listener: EventEmitterListener<CompositionComponentEvent[E]>,
+    options?: EventEmitterOptions,
+  ) {
+    this.eventEmitter.on(eventName, listener, options);
+  }
+
+  off<E extends keyof CompositionComponentEvent> (
+    eventName: E,
+    listener: EventEmitterListener<CompositionComponentEvent[E]>,
+  ) {
+    this.eventEmitter.off(eventName, listener);
+  }
+
+  override onAwake () {
+    this.initializeTimeline();
+  }
+
+  private initializeTimeline () {
     if (!this._timelineInstance && this.timelineAsset) {
       this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
 
@@ -62,13 +104,10 @@ export class CompositionComponent extends Component {
         if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
           const nestedComposition = boundObject.getComponent(CompositionComponent);
 
-          nestedComposition.updateMode = UpdateModes.Manual;  // 嵌套预合成由父级预合成驱动更新
           this.nestedCompositions.push(nestedComposition);
         }
       }
     }
-
-    return this._timelineInstance;
   }
 
   override onEnable () {
@@ -111,8 +150,8 @@ export class CompositionComponent extends Component {
 
   stop () {
     this.state = PlayState.Stopped;
-    this.time = 0;
-    this.lastTime = 0;
+    this.time = this.startTime;
+    this.resetEndState();
 
     for (const subComposition of this.nestedCompositions) {
       subComposition.stop();
@@ -124,7 +163,7 @@ export class CompositionComponent extends Component {
   }
 
   setTime (time: number) {
-    this.time = time;
+    this.evaluateAt(time);
   }
 
   override onUpdate (dt: number): void {
@@ -133,44 +172,91 @@ export class CompositionComponent extends Component {
     }
 
     if (this.updateMode === UpdateModes.EveryUpdate) {
-      this.tick(dt / 1000);
+      this.tick(dt / 1000 * this.speed);
     }
   }
 
   tick (deltaTime: number) {
-    if (!this.timelineInstance) {
+    this.evaluateAt(this.time + deltaTime);
+  }
+
+  /** Apply playback end behavior and sample the timeline without advancing other components. */
+  evaluateAt (time: number) {
+    if (!this.item) {
       return;
     }
+    const previousTime = this.time;
+    let localTime = time - this.startTime;
 
-    let time = this.time;
-
-    if (decimalEqual(this.lastTime, this.time)) {
-      time += deltaTime;
+    if (time < previousTime && localTime < 0) {
+      localTime = 0;
     }
+    const duration = this.item.duration;
+    const isEnded = localTime >= duration;
 
-    if (time > this.item.duration) {
+    if (this.isEnded !== isEnded) {
+      this.isEndCalled = false;
+    }
+    this.isEnded = isEnded;
+
+    if (isEnded) {
       switch (this.endBehavior) {
         case spec.EndBehavior.forward:
 
           break;
         case spec.EndBehavior.freeze:
-          time = this.item.duration;
+          localTime = duration;
 
           break;
         case spec.EndBehavior.restart:
-          time = time % this.item.duration;
+          localTime = duration > 0 ? localTime % duration : 0;
+          if (duration > 0) {
+            this.isEndCalled = false;
+          }
 
           break;
         case spec.EndBehavior.destroy:
-          this.item.dispose();
-
-          return;
+          break;
       }
     }
 
-    this.timelineInstance.evaluate(time, deltaTime);
+    this.sampleTime(localTime + this.startTime);
+    if (this.isEnded) {
+      this.emitEnd();
+      if (this.item && this.endBehavior === spec.EndBehavior.destroy
+        && this.item !== this.item.composition?.sceneRoot) {
+        this.item.dispose();
+      }
+    }
+  }
 
-    this.lastTime = this.time = time;
+  private emitEnd () {
+    if (!this.isEndCalled) {
+      this.isEndCalled = true;
+      this.eventEmitter.emit('end', this);
+    }
+  }
+
+  /**
+   * Sample an absolute timeline time in seconds, already mapped by the caller.
+   * Parent clips own the playback range of nested compositions; do not apply
+   * this component's standalone end behavior or update its end state here.
+   * @internal
+   */
+  sampleTime (time: number) {
+    const previousTime = this.time;
+
+    this.timelineInstance?.evaluate(time, time - previousTime);
+    this.time = time;
+    if (this.updateMode === UpdateModes.EveryUpdate || this.item === this.item.composition?.sceneRoot) {
+      this.setChildrenRenderOrder(0);
+    }
+  }
+
+  /** @internal */
+  resetEndState () {
+    this.isEnded = false;
+    this.isEndCalled = false;
   }
 
   /**
