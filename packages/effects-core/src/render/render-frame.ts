@@ -109,8 +109,12 @@ export class RenderFrame implements Disposable {
     this.globalUniforms = new GlobalUniforms();
     this.renderer = renderer;
 
-    if (postProcessingEnabled && this.enableHDR && !this.renderer.engine.gpuCapability.detail.halfFloatTexture) {
-      throw new Error('Half float texture is not supported.');
+    if (postProcessingEnabled && this.enableHDR) {
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = engine.gpuCapability.detail;
+
+      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear) {
+        throw new Error('Post processing requires half float textures with color attachment and linear filtering support.');
+      }
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer);
