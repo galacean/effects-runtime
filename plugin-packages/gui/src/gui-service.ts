@@ -1,21 +1,23 @@
 import { EngineService, effectsClass } from '@galacean/effects';
-import type { InputEvent } from '@galacean/effects';
+import type { Engine, InputEvent, OverlayRenderer } from '@galacean/effects';
 import { WindowRootControl } from './core/roots';
 
 /** Engine-level owner for the GUI window root and its runtime subscriptions. */
 @effectsClass('GUIService')
 export class GUIService extends EngineService {
-  // Update and draw after scenes. Scene canvases detach during onBeforeExit.
-  override readonly order: number = 300;
   windowRoot: WindowRootControl;
   private disposed = false;
+  private readonly overlayRenderer: OverlayRenderer = {
+    render: () => this.windowRoot.render(),
+  };
+
+  constructor (engine: Engine) {
+    // Update after scenes. Scene canvases detach during onBeforeExit.
+    super(engine, 300);
+  }
 
   override onLateUpdate (deltaTime: number): void {
     this.windowRoot.update(deltaTime);
-  }
-
-  override onDraw (): void {
-    this.windowRoot.render();
   }
 
   private readonly resizeWindowRoot = (): void => {
@@ -40,6 +42,7 @@ export class GUIService extends EngineService {
     const { engine } = this;
 
     this.windowRoot = new WindowRootControl(engine);
+    engine.renderer.addOverlayRenderer(this.overlayRenderer);
     engine.on('resize', this.resizeWindowRoot);
     engine.eventSystem.on('input', this.pushInput);
     engine.eventSystem.on('canvasBlur', this.onCanvasBlur);
@@ -51,6 +54,7 @@ export class GUIService extends EngineService {
       return;
     }
     this.disposed = true;
+    this.engine.renderer.removeOverlayRenderer(this.overlayRenderer);
     this.engine.off('resize', this.resizeWindowRoot);
     this.engine.eventSystem.off('input', this.pushInput);
     this.engine.eventSystem.off('canvasBlur', this.onCanvasBlur);

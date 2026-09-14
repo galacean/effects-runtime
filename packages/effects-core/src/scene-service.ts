@@ -1,13 +1,18 @@
 import type { Composition } from './composition';
+import type { Engine } from './engine';
 import { EngineService } from './engine-service';
+import { effectsClass } from './decorators';
 import { addItem, removeItem } from './utils';
 
 /** Owns and schedules the independent runtime compositions. Built into every engine. */
+@effectsClass('SceneService')
 export class SceneService extends EngineService {
-  override readonly order: number = 200;
-
   private readonly scenes: Composition[] = [];
   private disposed = false;
+
+  constructor (engine: Engine) {
+    super(engine, 200);
+  }
 
   get compositions (): Composition[] {
     return this.scenes.sort((a, b) => a.getIndex() - b.getIndex());
@@ -32,20 +37,6 @@ export class SceneService extends EngineService {
   override onLateUpdate (deltaTime: number): void {
     for (const composition of this.compositions) {
       composition.sceneTicking.lateUpdate.tick(deltaTime);
-    }
-  }
-
-  /** Prepare a redraw without advancing scene time. Runs before framebuffer clearing. */
-  prepareRender (): void {
-    for (const composition of this.compositions) {
-      composition.camera.updateMatrix();
-      composition.sceneTicking.preRender.tick(0);
-    }
-  }
-
-  override onDraw (): void {
-    for (const composition of this.compositions) {
-      composition.renderContent();
     }
   }
 

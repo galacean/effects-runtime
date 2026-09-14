@@ -172,8 +172,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.sceneService = new SceneService(this);
-    this.services = [this.sceneService];
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -196,6 +194,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
     this.renderer = this.createRenderer();
 
+    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
+    this.sceneService = this.getService(SceneService)!;
     this.initializeServices();
 
     PluginSystem.notifyEngineCreated(this);
@@ -212,9 +212,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   private initializeServices (): void {
-    this.services.push(...getClassesDerivedFrom(EngineService)
-      .filter(Service => Service !== SceneService)
-      .map(Service => new Service(this)));
     this.services.sort((a, b) => a.order - b.order);
 
     for (const service of this.services) {
@@ -380,15 +377,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    this.sceneService.prepareRender();
-
-    this.renderer.setFramebuffer(null);
-    this.renderer.clear(this.clearAction);
-
     for (const service of this.services) {
       service.onDraw();
     }
 
+    this.renderer.renderCompositions(this.compositions, this.clearAction);
+    this.renderer.renderOverlays();
     this.renderTargetPool.flush();
   }
 

@@ -7,9 +7,10 @@ import type { Engine } from './engine';
  */
 export abstract class EngineService {
   /** Lower orders initialize and tick first; shutdown runs in reverse order. */
-  readonly order: number = 0;
-
-  constructor (readonly engine: Engine) {}
+  constructor (
+    readonly engine: Engine,
+    readonly order: number = 0,
+  ) {}
 
   /** Initialize synchronously. Throw an error to abort engine creation. */
   onInit (): void {}
@@ -20,7 +21,7 @@ export abstract class EngineService {
   /** Called in service order after all updates and before rendering. */
   onLateUpdate (deltaTime: number): void {}
 
-  /** Called in service order after framebuffer clearing and before render-target cleanup. */
+  /** Called in service order before scene preparation, framebuffer clearing and rendering. */
   onDraw (): void {}
 
   /** Prepare shutdown before service disposal. Scene services unload their compositions here. */

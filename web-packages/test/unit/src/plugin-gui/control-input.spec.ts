@@ -613,7 +613,10 @@ describe('plugin-gui/input', () => {
     player.engine.eventSystem.dispose();
     expect(guiWindow.windowRoot.cancelPointerInput).to.not.have.been.called();
 
+    chai.spy.on(guiWindow.windowRoot, 'render');
     guiWindow.onDispose();
+    player.engine.renderer.renderOverlays();
+    expect(guiWindow.windowRoot.render).to.not.have.been.called();
     expect(guiWindow.windowRoot.cancelPointerInput).to.have.been.called.once;
   });
 

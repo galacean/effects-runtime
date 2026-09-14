@@ -8,7 +8,9 @@ describe('core/engine/plugin-engine-lifetime', () => {
     const order: string[] = [];
 
     class FrameObserver extends EngineService {
-      override readonly order = 300;
+      constructor (engine: Engine) {
+        super(engine, 300);
+      }
       override onLateUpdate (deltaTime: number): void { order.push(`service-lateupdate:${deltaTime}`); }
       override onDraw (): void { order.push('service-draw'); }
     }
@@ -31,9 +33,9 @@ describe('core/engine/plugin-engine-lifetime', () => {
       'composition-update',
       'composition-lateupdate',
       'service-lateupdate:16',
+      'service-draw',
       'composition-prerender',
       'composition-render',
-      'service-draw',
       'pool-flush',
     ]);
     player.dispose();

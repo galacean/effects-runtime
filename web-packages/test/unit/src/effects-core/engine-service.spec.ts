@@ -1,5 +1,5 @@
-import { Composition, EngineService, Player, SceneService, effectsClass, effectsClassStore } from '@galacean/effects';
-import type { Renderer } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { Composition, EngineService, Player, Renderer, SceneService, effectsClass, effectsClassStore } from '@galacean/effects';
 import { ThreeEngine } from '../../../../../packages/effects-threejs/src/three-engine';
 import { ThreeRenderer } from '../../../../../packages/effects-threejs/src/three-renderer';
 
@@ -33,9 +33,11 @@ describe('core/engine/services', () => {
     const calls: string[] = [];
 
     class Early extends EngineService {
-      override readonly order: number = -10;
+      constructor (engine: Engine, order = -10) {
+        super(engine, order);
+      }
       override onInit () {
-        expect(this.engine.getService(SceneService)).to.exist;
+        expect(this.engine.getService(SceneService)).to.equal(this.engine.sceneService);
         expect(this.engine.renderer).to.exist;
         expect(this.engine.renderer.engine).to.equal(this.engine);
         expect(this.engine.getService(Late)).to.be.instanceOf(Late);
@@ -48,7 +50,9 @@ describe('core/engine/services', () => {
       override onDispose () { calls.push(`${this.order}:dispose`); }
     }
     class Late extends Early {
-      override readonly order = 300;
+      constructor (engine: Engine) {
+        super(engine, 300);
+      }
     }
 
     register('late', Late);
@@ -72,8 +76,7 @@ describe('core/engine/services', () => {
       '-10:init', '300:init',
       '-10:update:100', 'composition:update', '300:update:100',
       '-10:lateUpdate:100', 'composition:lateUpdate', '300:lateUpdate:100',
-      'composition:preRender',
-      '-10:draw', 'composition:render', '300:draw',
+      '-10:draw', '300:draw', 'composition:preRender', 'composition:render',
       '300:beforeExit', '-10:beforeExit', '300:dispose', '-10:dispose',
     ]);
     expect(engine.getService(Early)).to.equal(undefined);
@@ -96,8 +99,9 @@ describe('core/engine/services', () => {
     expect(second.getService(LaterService)).to.be.instanceOf(LaterService);
   });
 
-  it('owns one built-in scene service per engine and preserves composition ordering', () => {
-    // Explicit registration must not create a second built-in service.
+  it('creates one registered scene service per engine and preserves composition ordering', () => {
+    expect(effectsClassStore.SceneService).to.equal(SceneService);
+    // Aliases use the same class deduplication as other services.
     register('scene-alias', SceneService);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
@@ -127,7 +131,9 @@ describe('core/engine/services', () => {
     const calls: string[] = [];
 
     class Observer extends EngineService {
-      override readonly order = 300;
+      constructor (engine: Engine) {
+        super(engine, 300);
+      }
       override onLateUpdate () { calls.push('service:lateUpdate'); }
       override onDraw () { calls.push('service:draw'); }
     }
@@ -142,7 +148,63 @@ describe('core/engine/services', () => {
     composition.renderContent = () => calls.push('render');
     engine.renderTargetPool.flush = () => calls.push('flush');
     engine.renderFrame();
-    expect(calls).to.deep.equal(['camera', 'preRender:0', 'render', 'service:draw', 'flush']);
+    expect(calls).to.deep.equal(['service:draw', 'camera', 'preRender:0', 'render', 'flush']);
+  });
+
+  it('renders every composition before overlays and frame cleanup', () => {
+    const engine = createPlayer().engine;
+    const first = new Composition(engine);
+    const second = new Composition(engine);
+    const calls: string[] = [];
+
+    first.setIndex(2);
+    second.setIndex(1);
+    for (const [index, composition] of [first, second].entries()) {
+      composition.camera.updateMatrix = () => calls.push(`camera:${index}`);
+      composition.sceneTicking.preRender.tick = () => calls.push(`prepare:${index}`);
+      composition.renderContent = () => calls.push(`scene:${index}`);
+    }
+    engine.renderer.setFramebuffer = () => calls.push('framebuffer');
+    engine.renderer.clear = () => calls.push('clear');
+    const overlay = { render: () => calls.push('overlay') };
+
+    engine.renderer.addOverlayRenderer(overlay);
+
+    engine.renderTargetPool.flush = () => calls.push('flush');
+    engine.renderFrame();
+    expect(calls).to.deep.equal([
+      'camera:1', 'prepare:1', 'camera:0', 'prepare:0',
+      'framebuffer', 'clear', 'scene:1', 'scene:0', 'overlay', 'flush',
+    ]);
+    engine.renderer.removeOverlayRenderer(overlay);
+  });
+
+  it('isolates overlay registrations and releases them without owning the overlay', () => {
+    const engine = createPlayer().engine;
+    // A plain renderer works without any GUI registration.
+    const first = new Renderer(engine);
+    const second = new Renderer(engine);
+    const calls: string[] = [];
+    const overlay = { render: () => calls.push('overlay') };
+
+    first.addOverlayRenderer(overlay);
+    first.addOverlayRenderer(overlay);
+    second.renderOverlays();
+    expect(calls).to.deep.equal([]);
+    first.renderOverlays();
+    expect(calls).to.deep.equal(['overlay']);
+    first.removeOverlayRenderer(overlay);
+    first.removeOverlayRenderer(overlay);
+    first.renderOverlays();
+    expect(calls).to.deep.equal(['overlay']);
+    first.addOverlayRenderer(overlay);
+    first.dispose();
+    first.renderOverlays();
+    first.addOverlayRenderer(overlay);
+    first.renderOverlays();
+    expect(calls).to.deep.equal(['overlay']);
+    first.removeOverlayRenderer(overlay);
+    second.dispose();
   });
 
   it('rejects offloaded scenes before advancing any service or composition', () => {
