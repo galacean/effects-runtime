@@ -89,9 +89,6 @@ composition.play();
 composition.pause();
 composition.resume();
 
-// Advance and render all compositions (deltaTime is in milliseconds).
-engine.mainLoop(deltaTime);
-
 // Dispose
 composition.dispose();
 ```

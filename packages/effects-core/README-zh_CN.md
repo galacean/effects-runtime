@@ -89,9 +89,6 @@ composition.play();
 composition.pause();
 composition.resume();
 
-// 更新并渲染全部合成，deltaTime 单位为毫秒
-engine.mainLoop(deltaTime);
-
 // 销毁
 composition.dispose();
 ```
