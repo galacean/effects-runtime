@@ -27,7 +27,6 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
-import { SceneService } from './scene-service';
 import { getClassesDerivedFrom } from './decorators';
 import { EngineService } from './engine-service';
 
@@ -103,7 +102,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  readonly sceneService: SceneService;
   env = '';
   /**
    * 计时器
@@ -147,6 +145,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
+  private readonly _compositions: Composition[] = [];
   private services: EngineService[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
@@ -194,8 +193,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
     this.renderer = this.createRenderer();
 
-    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
-    this.sceneService = this.getService(SceneService)!;
     this.initializeServices();
 
     PluginSystem.notifyEngineCreated(this);
@@ -212,6 +209,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   private initializeServices (): void {
+    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
     this.services.sort((a, b) => a.order - b.order);
 
     for (const service of this.services) {
@@ -220,7 +218,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   get compositions (): Composition[] {
-    return this.sceneService.compositions;
+    return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
 
   get graphics (): Graphics {
@@ -443,7 +441,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.setViewport(0, 0, width, height);
     }
 
-    this.sceneService.setCameraAspect(width / height);
+    for (const composition of this._compositions) {
+      composition.camera.aspect = width / height;
+    }
 
     this.emit('resize', this);
   }
@@ -642,11 +642,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   addComposition (composition: Composition) {
-    this.sceneService.addComposition(composition);
+    if (this.disposed) {
+      return;
+    }
+    addItem(this._compositions, composition);
   }
 
   removeComposition (composition: Composition) {
-    this.sceneService.removeComposition(composition);
+    removeItem(this._compositions, composition);
   }
 
   getWidth (): number {

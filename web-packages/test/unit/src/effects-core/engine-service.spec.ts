@@ -37,7 +37,7 @@ describe('core/engine/services', () => {
         super(engine, order);
       }
       override onInit () {
-        expect(this.engine.getService(SceneService)).to.equal(this.engine.sceneService);
+        expect(this.engine.getService(SceneService)).to.be.instanceOf(SceneService);
         expect(this.engine.renderer).to.exist;
         expect(this.engine.renderer.engine).to.equal(this.engine);
         expect(this.engine.getService(Late)).to.be.instanceOf(Late);
@@ -109,7 +109,7 @@ describe('core/engine/services', () => {
     const first = new Composition(engine);
     const second = new Composition(engine);
 
-    expect(service).to.equal(engine.sceneService);
+    expect(service.engine).to.equal(engine);
     expect(service).not.to.equal(other.getService(SceneService));
     expect(first.root.parent).to.equal(undefined);
     expect(first.root.composition).to.equal(first);
@@ -118,12 +118,12 @@ describe('core/engine/services', () => {
     engine.addComposition(first);
     expect(engine.compositions).to.deep.equal([second, first]);
     first.setIndex(0);
-    expect(service.compositions).to.deep.equal([first, second]);
+    expect(engine.compositions).to.deep.equal([first, second]);
     engine.setSize(200, 100);
     expect(first.camera.aspect).to.equal(2);
     expect(second.camera.aspect).to.equal(2);
     first.dispose();
-    expect(service.compositions).to.deep.equal([second]);
+    expect(engine.compositions).to.deep.equal([second]);
     expect(other.compositions).to.have.length(0);
   });
 
