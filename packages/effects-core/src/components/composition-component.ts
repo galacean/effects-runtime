@@ -4,7 +4,7 @@ import { TimelineInstance, PlayState } from '../plugins';
 import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
-import type { EventEmitterListener, EventEmitterOptions } from '../events';
+import type { EventEmitterListener } from '../events';
 import { Component } from './component';
 
 export interface SceneBinding {
@@ -75,9 +75,8 @@ export class CompositionComponent extends Component {
   on<E extends keyof CompositionComponentEvent> (
     eventName: E,
     listener: EventEmitterListener<CompositionComponentEvent[E]>,
-    options?: EventEmitterOptions,
   ) {
-    this.eventEmitter.on(eventName, listener, options);
+    this.eventEmitter.on(eventName, listener);
   }
 
   off<E extends keyof CompositionComponentEvent> (
