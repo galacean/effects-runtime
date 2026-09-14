@@ -23,6 +23,7 @@ export * from './downloader';
 export * from './effects-object';
 export * from './engine';
 export * from './engine-service';
+export * from './scene-service';
 export * from './input';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,

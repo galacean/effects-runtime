@@ -1,19 +1,22 @@
-import { Component } from '@galacean/effects';
-import type { Engine, InputEvent } from '@galacean/effects';
-import { WindowRootControl } from '../core/roots';
+import { EngineService, effectsClass } from '@galacean/effects';
+import type { InputEvent } from '@galacean/effects';
+import { WindowRootControl } from './core/roots';
 
 /** Engine-level owner for the GUI window root and its runtime subscriptions. */
-export class GUIWindowComponent extends Component {
-  readonly windowRoot: WindowRootControl;
+@effectsClass('GUIService')
+export class GUIService extends EngineService {
+  // Update and draw after scenes. Scene canvases detach during onBeforeExit.
+  override readonly order: number = 300;
+  windowRoot: WindowRootControl;
   private disposed = false;
 
-  private readonly updateWindowRoot = (deltaTime: number): void => {
+  override onLateUpdate (deltaTime: number): void {
     this.windowRoot.update(deltaTime);
-  };
+  }
 
-  private readonly renderWindowRoot = (): void => {
+  override onDraw (): void {
     this.windowRoot.render();
-  };
+  }
 
   private readonly resizeWindowRoot = (): void => {
     const rect = this.engine.canvas.getBoundingClientRect();
@@ -33,28 +36,24 @@ export class GUIWindowComponent extends Component {
     this.windowRoot.onCanvasBlur();
   };
 
-  constructor (engine: Engine) {
-    super(engine);
+  override onInit (): void {
+    const { engine } = this;
+
     this.windowRoot = new WindowRootControl(engine);
-    engine.on('update', this.updateWindowRoot);
-    engine.on('postrender', this.renderWindowRoot);
     engine.on('resize', this.resizeWindowRoot);
     engine.eventSystem.on('input', this.pushInput);
     engine.eventSystem.on('canvasBlur', this.onCanvasBlur);
     this.resizeWindowRoot();
   }
 
-  override dispose (): void {
+  override onDispose (): void {
     if (this.disposed) {
       return;
     }
     this.disposed = true;
-    this.engine.off('update', this.updateWindowRoot);
-    this.engine.off('postrender', this.renderWindowRoot);
     this.engine.off('resize', this.resizeWindowRoot);
     this.engine.eventSystem.off('input', this.pushInput);
     this.engine.eventSystem.off('canvasBlur', this.onCanvasBlur);
     this.windowRoot.dispose();
-    super.dispose();
   }
 }

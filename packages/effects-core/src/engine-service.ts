@@ -14,16 +14,16 @@ export abstract class EngineService {
   /** Initialize synchronously. Throw an error to abort engine creation. */
   onInit (): void {}
 
-  /** Called before compositions update. deltaTime is in milliseconds. */
+  /** Called in service order. deltaTime is in milliseconds. */
   onUpdate (deltaTime: number): void {}
 
-  /** Called after compositions update and before rendering. */
+  /** Called in service order after all updates and before rendering. */
   onLateUpdate (deltaTime: number): void {}
 
-  /** Called after clearing the framebuffer and before compositions render. */
+  /** Called in service order after framebuffer clearing and before render-target cleanup. */
   onDraw (): void {}
 
-  /** Called before any service or engine resources are released. */
+  /** Prepare shutdown before service disposal. Scene services unload their compositions here. */
   onBeforeExit (): void {}
 
   /** Release service resources. */

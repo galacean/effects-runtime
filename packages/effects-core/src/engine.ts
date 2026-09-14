@@ -27,7 +27,7 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
-import { VFXItem } from './vfx-item';
+import { SceneService } from './scene-service';
 import { getClassesDerivedFrom } from './decorators';
 import { EngineService } from './engine-service';
 
@@ -63,8 +63,6 @@ export type EngineEvent = {
   pointerdown: [eventData: PointerEventData],
   pointerup: [eventData: PointerEventData],
   pointermove: [eventData: PointerEventData],
-  update: [deltaTime: number],
-  postrender: [],
 };
 
 /**
@@ -105,10 +103,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  /**
-   * Root of the unified runtime scene tree.
-   */
-  root: VFXItem;
+  readonly sceneService: SceneService;
   env = '';
   /**
    * 计时器
@@ -152,7 +147,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
-  private _compositions: Composition[] = [];
   private services: EngineService[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
@@ -178,8 +172,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.root = new VFXItem(this);
-    this.root.name = 'root';
+    this.sceneService = new SceneService(this);
+    this.services = [this.sceneService];
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -202,9 +196,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
     this.renderer = this.createRenderer();
 
-    PluginSystem.notifyEngineCreated(this);
-
     this.initializeServices();
+
+    PluginSystem.notifyEngineCreated(this);
   }
 
   /** Get a service registered before this engine was initialized. */
@@ -218,7 +212,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   private initializeServices (): void {
-    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
+    this.services.push(...getClassesDerivedFrom(EngineService)
+      .filter(Service => Service !== SceneService)
+      .map(Service => new Service(this)));
     this.services.sort((a, b) => a.order - b.order);
 
     for (const service of this.services) {
@@ -227,7 +223,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   get compositions (): Composition[] {
-    return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
+    return this.sceneService.compositions;
   }
 
   get graphics (): Graphics {
@@ -371,36 +367,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       service.onUpdate(dt);
     }
 
-    // Sort compositions by index
-    //-------------------------------------------------------------------------
-
-    const compositions = this.compositions;
-
-    for (const composition of compositions) {
-      if (composition.textureOffloaded) {
-        const error = new Error(`Composition ${composition.name} cannot update while its textures are offloaded.`);
-
-        logger.error(error.message);
-        this.ticker?.pause();
-        this.emit('rendererror', error);
-
-        return;
-      }
-    }
-
-    // Update Compositions
-    //-------------------------------------------------------------------------
-
-    for (const composition of compositions) {
-      composition.sceneTicking.update.tick(dt);
-    }
-
-    for (const composition of compositions) {
-      composition.sceneTicking.lateUpdate.tick(dt);
-    }
-
-    this.emit('update', dt);
-
     for (const service of this.services) {
       service.onLateUpdate(dt);
     }
@@ -414,18 +380,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    const compositions = this.compositions;
-
-    // Tick compositions onPreRender
-    //-------------------------------------------------------------------------
-
-    for (const composition of compositions) {
-      composition.camera.updateMatrix();
-      composition.sceneTicking.preRender.tick(0);
-    }
-
-    // Render Compositions
-    //-------------------------------------------------------------------------
+    this.sceneService.prepareRender();
 
     this.renderer.setFramebuffer(null);
     this.renderer.clear(this.clearAction);
@@ -433,11 +388,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (const service of this.services) {
       service.onDraw();
     }
-
-    for (const composition of compositions) {
-      composition.renderContent();
-    }
-    this.emit('postrender');
 
     this.renderTargetPool.flush();
   }
@@ -499,9 +449,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.setViewport(0, 0, width, height);
     }
 
-    this.compositions?.forEach(comp => {
-      comp.camera.aspect = width / height;
-    });
+    this.sceneService.setCameraAspect(width / height);
 
     this.emit('resize', this);
   }
@@ -700,17 +648,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   addComposition (composition: Composition) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.compositions, composition);
+    this.sceneService.addComposition(composition);
   }
 
   removeComposition (composition: Composition) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.compositions, composition);
+    this.sceneService.removeComposition(composition);
   }
 
   getWidth (): number {
@@ -845,15 +787,18 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     }
     this._disposed = true;
 
+    this.ticker?.stop();
+    this.eventSystem?.dispose();
+    PluginSystem.notifyEngineDestroy(this);
+
     for (let i = this.services.length - 1; i >= 0; i--) {
       this.services[i].onBeforeExit();
     }
+
     for (let i = this.services.length - 1; i >= 0; i--) {
       this.services[i].onDispose();
     }
     this.services = [];
-
-    PluginSystem.notifyEngineDestroy(this);
 
     const info: string[] = [];
 
@@ -874,12 +819,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.ticker?.stop();
-    this.eventSystem?.dispose();
-    for (const composition of this._compositions.slice()) {
-      composition.dispose();
-    }
-    this.root.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 
@@ -896,7 +835,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes = [];
     this.renderPasses = [];
     this.particleSystems = [];
-    this._compositions = [];
   }
 
   private getTargetSize (parentEle: HTMLElement) {

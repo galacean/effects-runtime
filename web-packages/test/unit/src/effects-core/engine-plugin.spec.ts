@@ -1,34 +1,39 @@
 import type { Engine } from '@galacean/effects';
-import { Composition, Player, Plugin, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { Composition, EngineService, Player, Plugin, effectsClass, effectsClassStore, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/engine/plugin-engine-lifetime', () => {
-  it('emits update and postrender at the engine frame boundaries', () => {
+  it('runs service hooks at the engine frame boundaries', () => {
+    const order: string[] = [];
+
+    class FrameObserver extends EngineService {
+      override readonly order = 300;
+      override onLateUpdate (deltaTime: number): void { order.push(`service-lateupdate:${deltaTime}`); }
+      override onDraw (): void { order.push('service-draw'); }
+    }
+    effectsClass('test-plugin-frame-observer')(FrameObserver);
     const player = new Player({
       canvas: document.createElement('canvas'),
       manualRender: true,
     });
     const composition = new Composition(player.engine);
-    const order: string[] = [];
 
     composition.sceneTicking.update.tick = () => order.push('composition-update');
     composition.sceneTicking.lateUpdate.tick = () => order.push('composition-lateupdate');
     composition.sceneTicking.preRender.tick = () => order.push('composition-prerender');
     composition.renderContent = () => order.push('composition-render');
     player.engine.renderTargetPool.flush = () => order.push('pool-flush');
-    player.engine.on('update', deltaTime => order.push(`engine-update:${deltaTime}`));
-    player.engine.on('postrender', () => order.push('engine-postrender'));
 
     player.engine.mainLoop(16);
 
     expect(order).deep.equals([
       'composition-update',
       'composition-lateupdate',
-      'engine-update:16',
+      'service-lateupdate:16',
       'composition-prerender',
       'composition-render',
-      'engine-postrender',
+      'service-draw',
       'pool-flush',
     ]);
     player.dispose();
@@ -79,6 +84,7 @@ describe('core/engine/plugin-engine-lifetime', () => {
   });
 
   afterEach(() => {
+    delete effectsClassStore['test-plugin-frame-observer'];
     unregisterPlugin('test-engine-plugin');
   });
 });

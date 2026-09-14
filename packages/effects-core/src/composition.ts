@@ -299,7 +299,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root = new VFXItem(this.engine);
     this.root.name = 'root';
     this.root.composition = this;
-    this.root.setParent(this.engine.root);
 
     this.pluginRoot = new VFXItem(this.engine);
     this.pluginRoot.name = 'pluginRoot';
