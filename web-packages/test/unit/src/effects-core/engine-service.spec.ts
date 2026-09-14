@@ -147,7 +147,7 @@ describe('core/engine/services', () => {
     composition.sceneTicking.preRender.tick = dt => calls.push(`preRender:${dt}`);
     composition.renderContent = () => calls.push('render');
     engine.renderTargetPool.flush = () => calls.push('flush');
-    engine.renderFrame();
+    engine.onDraw();
     expect(calls).to.deep.equal(['service:draw', 'camera', 'preRender:0', 'render', 'flush']);
   });
 
@@ -171,7 +171,7 @@ describe('core/engine/services', () => {
     engine.renderer.addOverlayRenderer(overlay);
 
     engine.renderTargetPool.flush = () => calls.push('flush');
-    engine.renderFrame();
+    engine.onDraw();
     expect(calls).to.deep.equal([
       'camera:1', 'prepare:1', 'camera:0', 'prepare:0',
       'framebuffer', 'clear', 'scene:1', 'scene:0', 'overlay', 'flush',

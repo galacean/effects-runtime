@@ -366,11 +366,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       service.onLateUpdate(dt);
     }
 
-    this.renderFrame();
+    this.onDraw();
   }
 
   /** Render current scene state without advancing timelines, Animator or scripts. */
-  renderFrame (): void {
+  onDraw (): void {
     if (this.contextWasLost || this.renderErrors.size > 0) {
       return;
     }

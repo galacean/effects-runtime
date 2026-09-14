@@ -122,7 +122,7 @@ describe('plugin-gui/GUI topology', () => {
     engine.mainLoop(16);
     expect(calls).deep.equals(['scene:update', 'scene:lateUpdate', 'gui:update', 'scene:render', 'gui:render']);
     calls.length = 0;
-    engine.renderFrame();
+    engine.onDraw();
     expect(calls).deep.equals(['scene:render', 'gui:render']);
   });
 
