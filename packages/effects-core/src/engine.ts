@@ -5,10 +5,10 @@ import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
-  RenderPassClearAction, Renderer, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
+  RenderPassClearAction, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, RenderTargetPool } from './render';
+import { Graphics, Renderer, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
@@ -28,6 +28,8 @@ import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { VFXItem } from './vfx-item';
+import { getClassesDerivedFrom } from './decorators';
+import { EngineService } from './engine-service';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -151,6 +153,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected particleSystems: ParticleSystem[] = [];
 
   private _compositions: Composition[] = [];
+  private services: EngineService[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -197,8 +200,30 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       // @ts-expect-error
       currentFrame: {},
     };
+    this.renderer = this.createRenderer();
 
     PluginSystem.notifyEngineCreated(this);
+
+    this.initializeServices();
+  }
+
+  /** Get a service registered before this engine was initialized. */
+  getService<T extends EngineService> (constructor: abstract new (...args: any[]) => T): T | undefined {
+    return this.services.find(service => service.constructor === constructor) as T | undefined;
+  }
+
+  /** Called during base construction, before backend-specific fields are initialized. */
+  protected createRenderer (): Renderer {
+    return new Renderer(this);
+  }
+
+  private initializeServices (): void {
+    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
+    this.services.sort((a, b) => a.order - b.order);
+
+    for (const service of this.services) {
+      service.onInit();
+    }
   }
 
   get compositions (): Composition[] {
@@ -342,6 +367,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     dt *= this.speed;
 
+    for (const service of this.services) {
+      service.onUpdate(dt);
+    }
+
     // Sort compositions by index
     //-------------------------------------------------------------------------
 
@@ -372,6 +401,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.emit('update', dt);
 
+    for (const service of this.services) {
+      service.onLateUpdate(dt);
+    }
+
     this.renderFrame();
   }
 
@@ -396,6 +429,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.renderer.setFramebuffer(null);
     this.renderer.clear(this.clearAction);
+
+    for (const service of this.services) {
+      service.onDraw();
+    }
 
     for (const composition of compositions) {
       composition.renderContent();
@@ -807,6 +844,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     this._disposed = true;
+
+    for (let i = this.services.length - 1; i >= 0; i--) {
+      this.services[i].onBeforeExit();
+    }
+    for (let i = this.services.length - 1; i >= 0; i--) {
+      this.services[i].onDispose();
+    }
+    this.services = [];
 
     PluginSystem.notifyEngineDestroy(this);
 
