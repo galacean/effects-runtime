@@ -1,5 +1,5 @@
-import type { Engine } from '@galacean/effects';
-import { Composition, EngineService, Player, Renderer, SceneService, effectsClass, effectsClassStore } from '@galacean/effects';
+import type { Engine, Scene } from '@galacean/effects';
+import { AssetService, Composition, EngineService, Player, Renderer, SceneService, effectsClass, effectsClassStore } from '@galacean/effects';
 import { ThreeEngine } from '../../../../../packages/effects-threejs/src/three-engine';
 import { ThreeRenderer } from '../../../../../packages/effects-threejs/src/three-renderer';
 
@@ -125,6 +125,54 @@ describe('core/engine/services', () => {
     first.dispose();
     expect(engine.compositions).to.deep.equal([second]);
     expect(other.compositions).to.have.length(0);
+  });
+
+  it('initializes registered asset services per engine and restores built-in object lookup', () => {
+    expect(effectsClassStore.AssetService).to.equal(AssetService);
+    register('asset-alias', AssetService);
+    const engine = createPlayer().engine;
+    const other = createPlayer().engine;
+    const assets = engine.getService(AssetService)!;
+    const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
+
+    expect(assets).to.be.instanceOf(AssetService);
+    expect(assets).not.to.equal(other.getService(AssetService));
+    engine.clearResources();
+    expect(engine.whiteTexture.isRegistered).to.equal(false);
+    assets.prepareAssets(scene, {});
+    expect(engine.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
+    expect(engine.objectInstance[engine.transparentTexture.getInstanceId()]).to.equal(engine.transparentTexture);
+    expect(other.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(other.whiteTexture);
+    expect(other.whiteTexture).not.to.equal(engine.whiteTexture);
+  });
+
+  it('keeps built-in textures alive until scenes unload and disposes the asset service once', () => {
+    const engine = createPlayer().engine;
+    const other = createPlayer().engine;
+    const assets = engine.getService(AssetService)!;
+    const composition = new Composition(engine);
+    const disposeComposition = composition.dispose.bind(composition);
+    const disposeAssets = assets.onDispose.bind(assets);
+    const calls: string[] = [];
+
+    composition.dispose = () => {
+      expect(engine.whiteTexture.isDestroyed).to.equal(false);
+      expect(engine.transparentTexture.isDestroyed).to.equal(false);
+      calls.push('scene');
+      disposeComposition();
+    };
+    assets.onDispose = () => {
+      expect(engine.compositions).to.have.length(0);
+      calls.push('assets');
+      disposeAssets();
+    };
+    engine.dispose();
+    engine.dispose();
+    expect(calls).to.deep.equal(['scene', 'assets']);
+    expect(engine.whiteTexture.isDestroyed).to.equal(true);
+    expect(engine.transparentTexture.isDestroyed).to.equal(true);
+    expect(other.whiteTexture.isDestroyed).to.equal(false);
+    expect(engine.getService(AssetService)).to.equal(undefined);
   });
 
   it('redraws the scene without advancing update lifecycles', () => {

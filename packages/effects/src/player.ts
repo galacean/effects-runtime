@@ -4,7 +4,7 @@ import type {
   PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
-  isArray, spec, assertExist, SceneLoader,
+  isArray, spec, assertExist, SceneLoader, AssetService,
 } from '@galacean/effects-core';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
@@ -81,7 +81,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   private get assetService () {
-    return this.engine.assetService;
+    return this.engine.getService(AssetService)!;
   }
 
   private get event () {

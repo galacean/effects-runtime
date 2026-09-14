@@ -56,7 +56,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const { width, height, camera } = options;
 
     this.engine = new ThreeEngine(context);
-    this.assetService = new AssetService(this.engine);
+    this.assetService = this.engine.getService(AssetService)!;
     this.width = width;
     this.height = height;
     this.camera = camera;

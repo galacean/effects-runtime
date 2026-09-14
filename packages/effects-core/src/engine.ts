@@ -18,7 +18,6 @@ import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import type { Composition } from './composition';
 import type { AssetManager } from './asset-manager';
-import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
@@ -100,7 +99,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   renderErrors: Set<Error> = new Set();
   assetManagers: AssetManager[] = [];
-  assetService: AssetService;
   eventSystem: EventSystem;
   env = '';
   /**
@@ -184,7 +182,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem.bindListeners(this.canvas);
 
     this.assetLoader = new AssetLoader(this);
-    this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
     this.renderingData = {
@@ -816,7 +813,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.assetService?.dispose();
     this._graphics?.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());

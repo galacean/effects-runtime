@@ -1,3 +1,4 @@
+import { AssetService } from '../asset-service';
 import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
 import { PluginSystem } from '../plugin-system';
@@ -23,8 +24,8 @@ export class PrecompositionManager {
     // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
     PluginSystem.notifyAssetsLoadFinish(scene, options, engine);
 
-    engine.assetService.prepareAssets(scene, scene.assets);
-    engine.assetService.updateTextVariables(scene, options.variables);
+    engine.getService(AssetService)!.prepareAssets(scene, scene.assets);
+    engine.getService(AssetService)!.updateTextVariables(scene, options.variables);
 
     composition.createTexturesFromData(scene.textureOptions);
 
