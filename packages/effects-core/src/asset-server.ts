@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Disposable } from './utils';
+import { EngineServer } from './engine-server';
+import { effectsClass } from './decorators';
 import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
@@ -7,21 +8,18 @@ import type { EffectsObject } from './effects-object';
 import { DataAsset } from './asset';
 import { Material } from './material';
 
-/**
- *
- */
-export class AssetService implements Disposable {
+/** Engine-owned asset preparation and built-in resource lifecycle. */
+@effectsClass('AssetServer')
+export class AssetServer extends EngineServer {
   private readonly builtinObjects: EffectsObject[] = [];
 
-  /**
-   *
-   * @param engine
-   */
-  constructor (
-    private readonly engine: Engine,
-  ) {
-    this.builtinObjects.push(engine.whiteTexture);
-    this.builtinObjects.push(engine.transparentTexture);
+  constructor (engine: Engine) {
+    super(engine, -600);
+  }
+
+  override onInit (): void {
+    this.builtinObjects.push(this.engine.whiteTexture);
+    this.builtinObjects.push(this.engine.transparentTexture);
   }
 
   /**
@@ -122,11 +120,7 @@ export class AssetService implements Disposable {
     this.builtinObjects.length = 0;
   }
 
-  /**
-   *
-   */
-  dispose (): void {
+  override onDispose (): void {
     this.destroyBuiltinObjects();
-    // Optionally remove references from engine if any
   }
 }

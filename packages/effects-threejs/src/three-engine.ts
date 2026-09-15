@@ -28,8 +28,11 @@ export class ThreeEngine extends Engine {
   constructor (gl: WebGLRenderingContext | WebGL2RenderingContext, options?: EngineOptions) {
     super(gl.canvas as HTMLCanvasElement, options);
 
-    this.renderer = new ThreeRenderer(this);
     this.gpuCapability = new GPUCapability(gl);
+  }
+
+  protected override createRenderer (): ThreeRenderer {
+    return new ThreeRenderer(this);
   }
 
   setOptions (threeEngineOptions: ThreeEngineOptions) {

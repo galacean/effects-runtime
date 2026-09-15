@@ -2,6 +2,7 @@ import { registerPlugin } from '@galacean/effects';
 import { GUIPlugin } from './plugin';
 
 export * from './core';
+export * from './gui-server';
 export * from './components';
 export * from './layout/enums';
 export * from './layout/box-container';

@@ -1,6 +1,7 @@
 import {
   Composition,
   CompositionComponent,
+  InputEventMouseButton,
   Player,
   Plugin,
   VFXItem,
@@ -13,7 +14,7 @@ import {
   RootControl,
   UICanvas,
   UIControl,
-  GUIWindowComponent,
+  GUIServer,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
@@ -50,15 +51,15 @@ describe('plugin-gui/GUI topology', () => {
   it('keeps the window as the only RootControl and canvases as ordinary containers', () => {
     const canvas = composition.sceneRoot.getComponent(UICanvas);
 
-    expect(player.engine.root.components.filter(component => component instanceof GUIWindowComponent)).length(1);
-    expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot).instanceOf(RootControl);
+    expect(player.engine.getServer(GUIServer)).instanceOf(GUIServer);
+    expect(player.engine.getServer(GUIServer).windowRoot).instanceOf(RootControl);
     expect(canvas.rootControl).instanceOf(Control);
     expect(canvas.rootControl).not.instanceOf(RootControl);
-    expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.parent).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
+    expect(player.engine.getServer(GUIServer).windowRoot.canvases.parent).equals(player.engine.getServer(GUIServer).windowRoot);
     expect(composition.sceneRoot.components.filter(component => component instanceof UICanvas)).length(1);
     expect(composition.root.components.some(component => component instanceof UICanvas)).equals(false);
-    expect(canvas.rootControl.parent).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases);
-    expect(canvas.rootControl.root).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
+    expect(canvas.rootControl.parent).equals(player.engine.getServer(GUIServer).windowRoot.canvases);
+    expect(canvas.rootControl.root).equals(player.engine.getServer(GUIServer).windowRoot);
   });
 
   it('isolates the GUI root and window state between engines', () => {
@@ -67,16 +68,89 @@ describe('plugin-gui/GUI topology', () => {
       pixelRatio: 1,
       manualRender: true,
     });
-    const firstWindow = player.engine.root.getComponent(GUIWindowComponent);
-    const secondWindow = other.engine.root.getComponent(GUIWindowComponent);
+    const firstWindow = player.engine.getServer(GUIServer);
+    const secondWindow = other.engine.getServer(GUIServer);
 
     expect(secondWindow).not.equals(firstWindow);
     expect(secondWindow.windowRoot).not.equals(firstWindow.windowRoot);
-    expect(other.engine.root.components.filter(component => component instanceof GUIWindowComponent)).length(1);
+    expect(other.engine.getServer(GUIServer)).equals(secondWindow);
 
     chai.spy.on(secondWindow.windowRoot, 'dispose');
     other.dispose();
     expect(secondWindow.windowRoot.dispose).to.have.been.called.once;
+  });
+
+  it('initializes GUI before engine-created plugins can create scenes', () => {
+    let created = false;
+
+    class SceneCreator extends Plugin {
+      override onEngineCreated (engine: Player['engine']): void {
+        const gui = engine.getServer(GUIServer);
+        const scene = new Composition(engine);
+
+        scene.root.initializeHierarchy();
+        scene.root.beginPlay();
+        expect(scene.sceneRoot.getComponent(UICanvas).rootControl.parent).equals(gui.windowRoot.canvases);
+        created = true;
+      }
+
+      override onEngineDestroy (engine: Player['engine']): void {
+        expect(engine.compositions).length(1);
+        expect(engine.getServer(GUIServer).windowRoot.isDisposed).equals(false);
+      }
+    }
+    registerPlugin('test-gui-composition-order', SceneCreator);
+    const other = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+
+    try {
+      expect(created).equals(true);
+    } finally {
+      other.dispose();
+    }
+  });
+
+  it('keeps GUI update and drawing at the scene frame boundaries', () => {
+    const engine = player.engine;
+    const gui = engine.getServer(GUIServer);
+    const calls: string[] = [];
+
+    composition.sceneTicking.update.tick = () => calls.push('scene:update');
+    composition.sceneTicking.lateUpdate.tick = () => calls.push('scene:lateUpdate');
+    composition.renderContent = () => calls.push('scene:render');
+    gui.windowRoot.update = () => calls.push('gui:update');
+    gui.windowRoot.render = () => calls.push('gui:render');
+    engine.mainLoop(16);
+    expect(calls).deep.equals(['scene:update', 'scene:lateUpdate', 'gui:update', 'scene:render', 'gui:render']);
+    calls.length = 0;
+    engine.onDraw();
+    expect(calls).deep.equals(['scene:render', 'gui:render']);
+  });
+
+  it('detaches scene canvases before disposing GUI and removes runtime subscriptions', () => {
+    const engine = player.engine;
+    const gui = engine.getServer(GUIServer);
+    const canvas = composition.sceneRoot.getComponent(UICanvas).rootControl;
+    const calls: string[] = [];
+    const dispose = gui.windowRoot.dispose.bind(gui.windowRoot);
+
+    gui.windowRoot.dispose = () => {
+      expect(canvas.isDisposed).equals(true);
+      expect(gui.windowRoot.canvases.children).not.includes(canvas);
+      calls.push('dispose');
+      dispose();
+    };
+    engine.dispose();
+    engine.dispose();
+    expect(calls).deep.equals(['dispose']);
+    gui.windowRoot.update = () => calls.push('update');
+    gui.windowRoot.render = () => calls.push('render');
+    gui.windowRoot.resize = () => calls.push('resize');
+    gui.windowRoot.onCanvasBlur = () => calls.push('blur');
+    gui.windowRoot.pushInput = () => calls.push('input');
+    engine.emit('resize', engine);
+    engine.eventSystem.emit('canvasBlur');
+    engine.eventSystem.emit('input', new InputEventMouseButton());
+    expect(calls).deep.equals(['dispose']);
   });
 
   it('creates an isolated default canvas for every composition', () => {
@@ -90,14 +164,16 @@ describe('plugin-gui/GUI topology', () => {
     expect(first.sceneRoot.getComponent(UICanvas)).not.equals(second.sceneRoot.getComponent(UICanvas));
     expect(first.sceneRoot.getComponent(UICanvas)).instanceOf(UICanvas);
     expect(second.sceneRoot.getComponent(UICanvas)).instanceOf(UICanvas);
-    expect(first.root.parent).equals(engine.root);
-    expect(second.root.parent).equals(engine.root);
+    expect(first.root.parent).equals(undefined);
+    expect(first.root.composition).equals(first);
+    expect(second.root.parent).equals(undefined);
+    expect(second.root.composition).equals(second);
     expect(first.sceneRoot.components.filter(component => component instanceof UICanvas)).length(1);
     expect(second.sceneRoot.components.filter(component => component instanceof UICanvas)).length(1);
     expect(first.root.components.some(component => component instanceof UICanvas)).equals(false);
     expect(second.root.components.some(component => component instanceof UICanvas)).equals(false);
-    expect(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children).includes(first.sceneRoot.getComponent(UICanvas).rootControl);
-    expect(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children).includes(second.sceneRoot.getComponent(UICanvas).rootControl);
+    expect(engine.getServer(GUIServer).windowRoot.canvases.children).includes(first.sceneRoot.getComponent(UICanvas).rootControl);
+    expect(engine.getServer(GUIServer).windowRoot.canvases.children).includes(second.sceneRoot.getComponent(UICanvas).rootControl);
 
     first.setIndex(10);
     second.setIndex(-5);
@@ -106,12 +182,12 @@ describe('plugin-gui/GUI topology', () => {
 
     first.sceneRoot.getComponent(UICanvas).order = 10;
     second.sceneRoot.getComponent(UICanvas).order = -5;
-    engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.sortCanvases();
+    engine.getServer(GUIServer).windowRoot.canvases.sortCanvases();
     expect(engine.compositions).deep.equals([second, first]);
     expect(first.sceneRoot.getComponent(UICanvas).order).equals(10);
     expect(second.sceneRoot.getComponent(UICanvas).order).equals(-5);
-    expect(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children.indexOf(second.sceneRoot.getComponent(UICanvas).rootControl))
-      .lessThan(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children.indexOf(first.sceneRoot.getComponent(UICanvas).rootControl));
+    expect(engine.getServer(GUIServer).windowRoot.canvases.children.indexOf(second.sceneRoot.getComponent(UICanvas).rootControl))
+      .lessThan(engine.getServer(GUIServer).windowRoot.canvases.children.indexOf(first.sceneRoot.getComponent(UICanvas).rootControl));
 
     first.interactive = false;
     expect(first.sceneRoot.getComponent(UICanvas).receivesEvents).equals(true);
@@ -127,10 +203,10 @@ describe('plugin-gui/GUI topology', () => {
     second.dispose();
     expect(firstRoot.isDisposed).equals(true);
     expect(secondRoot.isDisposed).equals(true);
-    expect(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children).not.includes(firstRoot);
-    expect(engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children).not.includes(secondRoot);
-    expect(engine.root.children).not.includes(first.root);
-    expect(engine.root.children).not.includes(second.root);
+    expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(firstRoot);
+    expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(secondRoot);
+    expect(engine.compositions).not.includes(first);
+    expect(engine.compositions).not.includes(second);
   });
 
   it('injects the default canvas before later plugin creation hooks', () => {
@@ -170,8 +246,8 @@ describe('plugin-gui/GUI topology', () => {
     expect(parentControl.parent).equals(composition.sceneRoot.getComponent(UICanvas).rootControl);
     expect(childControl.parent).equals(parentControl);
     expect(parentControl.children).includes(childControl);
-    expect(parentControl.root).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
-    expect(childControl.root).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot);
+    expect(parentControl.root).equals(player.engine.getServer(GUIServer).windowRoot);
+    expect(childControl.root).equals(player.engine.getServer(GUIServer).windowRoot);
   });
 
   it('hides GUI descendants and nested canvases with their composition component', () => {
@@ -396,9 +472,9 @@ describe('plugin-gui/GUI topology', () => {
     overlay.order = -10;
     overlay.receivesEvents = false;
     overlayItem.setParent(composition.root);
-    player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.sortCanvases();
-    expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children[0]).equals(overlay.rootControl);
-    expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases.children[1]).equals(composition.sceneRoot.getComponent(UICanvas).rootControl);
+    player.engine.getServer(GUIServer).windowRoot.canvases.sortCanvases();
+    expect(player.engine.getServer(GUIServer).windowRoot.canvases.children[0]).equals(overlay.rootControl);
+    expect(player.engine.getServer(GUIServer).windowRoot.canvases.children[1]).equals(composition.sceneRoot.getComponent(UICanvas).rootControl);
     expect(overlay.receivesEvents).equals(false);
     expect(composition.interactive).equals(true);
   });
@@ -408,14 +484,14 @@ describe('plugin-gui/GUI topology', () => {
     expect(composition.sceneRoot.getComponent(UICanvas).rootControl.parent).equals(null);
 
     composition.sceneRoot.getComponent(UICanvas).enabled = true;
-    expect(composition.sceneRoot.getComponent(UICanvas).rootControl.parent).equals(player.engine.root.getComponent(GUIWindowComponent).windowRoot.canvases);
+    expect(composition.sceneRoot.getComponent(UICanvas).rootControl.parent).equals(player.engine.getServer(GUIServer).windowRoot.canvases);
   });
 
   it('synchronizes a canvas to the current window size when attaching late', () => {
     const canvasRoot = composition.sceneRoot.getComponent(UICanvas).rootControl;
 
     composition.sceneRoot.getComponent(UICanvas).enabled = false;
-    player.engine.root.getComponent(GUIWindowComponent).windowRoot.resize(640, 360);
+    player.engine.getServer(GUIServer).windowRoot.resize(640, 360);
     expect([canvasRoot.width, canvasRoot.height]).not.deep.equals([640, 360]);
 
     composition.sceneRoot.getComponent(UICanvas).enabled = true;
@@ -485,8 +561,8 @@ describe('plugin-gui/GUI topology', () => {
     const control = new Control(player.engine);
 
     root.addChild(control);
-    chai.spy.on(player.engine.root.getComponent(GUIWindowComponent).windowRoot, 'controlRemoved');
+    chai.spy.on(player.engine.getServer(GUIServer).windowRoot, 'controlRemoved');
     control.dispose();
-    expect(player.engine.root.getComponent(GUIWindowComponent).windowRoot.controlRemoved).to.have.been.called.once;
+    expect(player.engine.getServer(GUIServer).windowRoot.controlRemoved).to.have.been.called.once;
   });
 });

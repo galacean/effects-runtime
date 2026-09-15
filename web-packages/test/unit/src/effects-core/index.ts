@@ -17,6 +17,7 @@ import './plugins/sprite';
 import './plugins/text';
 import './asset-manager.spec';
 import './engine-plugin.spec';
+import './engine-server.spec';
 import './texture.spec';
 import './text-cache.spec';
 import './transform.spec';
@@ -25,3 +26,5 @@ import './event-emitter.spec';
 import './render-target-pool.spec';
 import './mask-processor.spec';
 import './plugins/dom-content';
+
+import './post-processing-regressions.spec';

@@ -19,7 +19,7 @@ import {
   StyleBoxFlat,
   StyleBoxTexture,
   Theme,
-  GUIWindowComponent,
+  GUIServer,
 } from '@galacean/effects-plugin-gui';
 import type { StyleBox } from '@galacean/effects-plugin-gui';
 
@@ -82,7 +82,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   it('supports multi-level variations, explicit type queries and rejects bad variation graphs', () => {
     const button = new Button(player.engine);
     const theme = new Theme();
-    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
 
     theme.setTypeVariation('DangerButton', 'Button');
     theme.setTypeVariation('ProminentDangerButton', 'DangerButton');
@@ -118,7 +118,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     let themeChanges = 0;
     let layoutChanges = 0;
     let lastAffectsLayout = false;
-    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
 
     label.theme = theme;
     label.parent = root;
@@ -207,7 +207,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('assigns Theme owners without notifying outside the tree and notifies on every tree entry', () => {
-    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
     const theme = new Theme();
     const left = new Control(player.engine);
     const right = new Control(player.engine);
@@ -230,7 +230,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('keeps explicit Theme owner boundaries while inherited owner chains change', () => {
-    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
     const outerTheme = new Theme();
     const innerTheme = new Theme();
     const branch = new Control(player.engine);
@@ -262,7 +262,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('defers and coalesces measurement changes across a nested themed layout', () => {
-    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
     const theme = new Theme();
     const outer = new HBoxContainer(player.engine);
     const inner = new HBoxContainer(player.engine);
@@ -300,10 +300,10 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
 
       firstTheme.setColor('Label', 'fontColor', color(0.2));
       secondTheme.setColor('Label', 'fontColor', color(0.8));
-      player.engine.root.getComponent(GUIWindowComponent).windowRoot.theme = firstTheme;
-      other.engine.root.getComponent(GUIWindowComponent).windowRoot.theme = secondTheme;
-      first.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
-      second.parent = other.engine.root.getComponent(GUIWindowComponent).windowRoot;
+      player.engine.getServer(GUIServer).windowRoot.theme = firstTheme;
+      other.engine.getServer(GUIServer).windowRoot.theme = secondTheme;
+      first.parent = player.engine.getServer(GUIServer).windowRoot;
+      second.parent = other.engine.getServer(GUIServer).windowRoot;
       expect(first.getThemeColor('fontColor').r).equals(0.2);
       expect(second.getThemeColor('fontColor').r).equals(0.8);
       firstTheme.setColor('Label', 'fontColor', color(0.4));
@@ -432,7 +432,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     second.setCustomMinimumSize(10, 8);
     box.addChild(first);
     box.addChild(second);
-    root.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    root.parent = player.engine.getServer(GUIServer).windowRoot;
     expect(box.getCombinedMinimumSize().x).equals(20);
     theme.setConstant('HBoxContainer', 'separation', 7);
     expect(box.getCombinedMinimumSize().x).equals(27);
@@ -450,7 +450,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
       theme.setStyleBox('Button', name, style);
     }
     button.theme = theme;
-    button.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    button.parent = player.engine.getServer(GUIServer).windowRoot;
     const draws: StyleBox[] = [];
 
     button.drawStyleBox = ((style: StyleBox) => draws.push(style)) as typeof button.drawStyleBox;
@@ -528,7 +528,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(drawnIcon).equals(checkedIcon);
 
     slider.theme = theme;
-    slider.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    slider.parent = player.engine.getServer(GUIServer).windowRoot;
     slider.setSize(100, 20);
     const sliderDraws: StyleBox[] = [];
 

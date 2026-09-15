@@ -39,7 +39,7 @@ describe('core/composition/plugin', () => {
         ) ?? scene?.jsonScene.compositions[0];
 
         lifecycle.push('creating');
-        expect(composition.root.parent).equals(composition.engine.root);
+        expect(composition.root.parent).equals(undefined);
         expect(composition.pluginRoot.parent).equals(composition.root);
         expect(composition.sceneRoot.parent).equals(composition.root);
         expect(composition.sceneRoot.getInstanceId()).equals(sourceContent?.id);
