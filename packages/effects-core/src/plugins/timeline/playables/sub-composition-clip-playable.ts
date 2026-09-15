@@ -7,7 +7,9 @@ export class SubCompositionClipPlayable extends Playable {
     const boundObject = context.output.getUserData();
 
     if (boundObject instanceof CompositionComponent) {
-      boundObject.tick(this.getTime() - boundObject.getTime());
+      // RuntimeClip has already mapped parent time through the clip's range
+      // and end behavior, so sample that time directly.
+      boundObject.sampleTime(this.getTime());
     }
   }
 }

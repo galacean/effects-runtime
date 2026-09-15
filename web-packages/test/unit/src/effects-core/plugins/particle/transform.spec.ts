@@ -148,8 +148,8 @@ describe('core/plugins/particle/transform', () => {
       { id: 2, type: '2', name: '1', transform: { position: [1, 0, 0] } },
     ]);
 
-    // @ts-expect-error
-    comp.forwardTime(1);
+    comp.gotoAndStop(1);
+    player.engine.mainLoop(1000);
     const item = comp.getItemByName('1')!;
     const itemContent = item.getComponent(ParticleSystem);
     const pos = itemContent.getPointPositionByIndex(0)!;
@@ -165,8 +165,8 @@ describe('core/plugins/particle/transform', () => {
       { type: '3', id: '1', transform: { position: [1, 0, 0], rotation: [0, 0, 90], scale: [1, 1, 1] } },
     ]);
 
-    // @ts-expect-error
-    comp.forwardTime(1);
+    comp.gotoAndStop(1);
+    player.engine.mainLoop(1000);
     const item = comp.getItemByName('1')!;
     const itemContent = item.getComponent(ParticleSystem);
     const pos = itemContent.getPointPositionByIndex(0)!;

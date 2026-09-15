@@ -86,14 +86,25 @@ const jsons: [url: string, pos: number[], scale?: number][] = [
   let lastTime = performance.now();
 
   function render () {
+    const now = performance.now();
+    const delta = now - lastTime;
+
     for (const group of groups) {
       const { currentComposition } = group;
 
       if (!currentComposition.isDestroyed) {
-        currentComposition.update(performance.now() - lastTime);
+        currentComposition.sceneTicking.update.tick(delta);
       }
     }
-    lastTime = performance.now();
+    for (const group of groups) {
+      if (!group.currentComposition.isDestroyed) {
+        group.currentComposition.sceneTicking.lateUpdate.tick(delta);
+      }
+    }
+    for (const group of groups) {
+      group.currentComposition.camera.updateMatrix();
+    }
+    lastTime = now;
     // 标志板设置
     groups[2].lookAt(camera.position.x, camera.position.y, camera.position.z);
     renderThree();

@@ -12,7 +12,7 @@ import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import { TextureLoadAction, type Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, generateGUID, logger, noop } from './utils';
+import { assertExist, generateGUID, noop } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
@@ -124,7 +124,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 动画播放速度
    */
-  speed = 1;
+  get speed () {
+    return this.rootComposition.speed;
+  }
+
+  set speed (value: number) {
+    this.rootComposition.speed = value;
+  }
   /**
    * 是否卸载纹理贴图，就是将纹理贴图大小设置为1x1
    */
@@ -162,7 +168,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成是否结束
    */
-  isEnded = false;
+  get isEnded () {
+    return this.rootComposition.isEnded;
+  }
   /**
    * 合成id
    */
@@ -198,7 +206,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成开始渲染的时间
    */
-  readonly startTime: number = 0;
+  get startTime () {
+    return this.rootComposition.startTime;
+  }
   /**
    * 插件元素根元素
    */
@@ -224,11 +234,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   protected destroyed = false;
   protected rootComposition: CompositionComponent;
-  /**
-   * 合成暂停/播放 标识
-   */
-  private paused = true;
-  private isEndCalled = false;
   private _renderOrder = 0;
   private _interactive = true;
   private _textures: Texture[] = [];
@@ -318,8 +323,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.sceneRoot.name = 'sceneRoot';
 
     this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);
-    this.rootComposition.updateMode = UpdateModes.Manual;
-    this.rootComposition.play();
+    this.rootComposition.updateMode = UpdateModes.EveryUpdate;
+    this.rootComposition.pause();
+    this.rootComposition.on('end', () => {
+      this.emit('end', { composition: this });
+      if (this.shouldDispose()) {
+        this.dispose();
+      }
+    });
 
     // Bind animation event
     this.sceneRoot.on('animationevent', eventData => {
@@ -330,7 +341,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
-    this.startTime = sourceContent?.startTime ?? 0;
+    this.rootComposition.startTime = sourceContent?.startTime ?? 0;
     this.event = engine.eventSystem;
     this.statistic = {
       loadStart: scene?.startTime ?? 0,
@@ -499,7 +510,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 暂停合成的播放
    */
   pause () {
-    this.paused = true;
+    this.rootComposition.pause();
     this.emit('pause');
   }
 
@@ -508,14 +519,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @returns
    */
   getPaused () {
-    return this.paused;
+    return this.rootComposition.state !== PlayState.Playing;
   }
 
   /**
    * 恢复合成的播放
    */
   resume () {
-    this.paused = false;
+    this.rootComposition.play();
     if (this.isEnded && this.reusable) {
       this.restart();
     }
@@ -561,18 +572,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   setTime (time: number) {
-    const speed = this.speed;
-    const pause = this.getPaused();
-
-    if (pause) {
-      this.resume();
-    }
-    this.setSpeed(1);
-    this.forwardTime(time + this.startTime);
-    this.setSpeed(speed);
-    if (pause) {
-      this.paused = true;
-    }
+    this.rootComposition.setTime(time + this.startTime);
   }
 
   addItem (item: VFXItem) {
@@ -590,21 +590,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 前进合成到指定时间
-   * @param time - 相对0时刻的时间
-   */
-  private forwardTime (time: number) {
-    const deltaTime = time * 1000 - this.time * 1000;
-
-    this.update(deltaTime);
-  }
-
-  /**
    * 重置状态函数
    */
   protected reset () {
-    this.isEnded = false;
-    this.isEndCalled = false;
+    this.rootComposition.resetEndState();
   }
 
   /** Renders this Composition content. Screen-space UI is rendered by Engine. */
@@ -619,106 +608,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer.renderRenderFrame(this.renderFrame);
   }
 
-  /**
-   * 合成更新，针对所有 item 的更新
-   * @param deltaTime - 更新的时间步长
-   */
-  update (deltaTime: number) {
-    if (this.getPaused()) {
-      return;
-    }
-
-    const previousCompositionTime = this.time;
-
-    this.updateCompositionTime(deltaTime * this.speed / 1000);
-    const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
-
-    this.rootComposition.setChildrenRenderOrder(0);
-
-    this.sceneTicking.update.tick(deltaTimeInMs);
-    this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
-
-    this.updateCamera();
-
-    if (this.isEnded && !this.isEndCalled) {
-      this.isEndCalled = true;
-      this.emit('end', { composition: this });
-    }
-    if (this.shouldDispose()) {
-      this.dispose();
-    }
-  }
-
   private shouldDispose () {
     return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
-  }
-
-  /**
-   * 更新相机
-   * @override
-   */
-  private updateCamera () {
-    this.camera.updateMatrix();
-  }
-
-  /**
-   * 更新主合成组件
-   */
-  private updateCompositionTime (deltaTime: number) {
-    if (this.rootComposition.state !== PlayState.Playing || !this.rootComposition.isActiveAndEnabled) {
-      return;
-    }
-
-    // 相对于合成开始时间的时间
-    let localTime = this.time + deltaTime - this.startTime;
-
-    if (deltaTime < 0 && localTime < 0) {
-      localTime = 0;
-    }
-
-    const duration = this.sceneRoot.duration;
-    const endBehavior = this.sceneRoot.endBehavior;
-
-    let isEnded = false;
-
-    if (localTime >= duration) {
-
-      isEnded = true;
-
-      switch (endBehavior) {
-        case spec.EndBehavior.restart: {
-          localTime = localTime % duration;
-          this.restart();
-
-          break;
-        }
-        case spec.EndBehavior.freeze: {
-          localTime = Math.min(duration, localTime);
-
-          break;
-        }
-        case spec.EndBehavior.forward: {
-
-          break;
-        }
-        case spec.EndBehavior.destroy: {
-
-          break;
-        }
-      }
-    }
-
-    this.rootComposition.tick(localTime + this.startTime - this.rootComposition.getTime());
-
-    // end state changed, handle onEnd flags
-    if (this.isEnded !== isEnded) {
-      if (isEnded) {
-        this.isEnded = true;
-      } else {
-        this.isEnded = false;
-        this.isEndCalled = false;
-      }
-    }
   }
 
   /**
@@ -885,12 +776,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
     PluginSystem.notifyCompositionDestroy(this);
-
-    this.update = () => {
-      if (!__DEBUG__) {
-        logger.error(`Update disposed composition: ${this.name}.`);
-      }
-    };
 
     this.dispose = noop;
     this.renderer.engine.removeComposition(this);

@@ -12,7 +12,8 @@ describe('core/engine/plugin-engine-lifetime', () => {
     const composition = new Composition(player.engine);
     const order: string[] = [];
 
-    composition.update = () => order.push('composition-update');
+    composition.sceneTicking.update.tick = () => order.push('composition-update');
+    composition.sceneTicking.lateUpdate.tick = () => order.push('composition-lateupdate');
     composition.sceneTicking.preRender.tick = () => order.push('composition-prerender');
     composition.renderContent = () => order.push('composition-render');
     player.engine.renderTargetPool.flush = () => order.push('pool-flush');
@@ -23,6 +24,7 @@ describe('core/engine/plugin-engine-lifetime', () => {
 
     expect(order).deep.equals([
       'composition-update',
+      'composition-lateupdate',
       'engine-update:16',
       'composition-prerender',
       'composition-render',

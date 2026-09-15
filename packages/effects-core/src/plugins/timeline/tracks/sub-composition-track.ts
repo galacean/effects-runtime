@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { CompositionComponent } from '../../../components';
+import { CompositionComponent, UpdateModes } from '../../../components';
 import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
 import type { TrackMixerPlayable } from '../playables';
@@ -14,7 +14,12 @@ export class SubCompositionTrack extends TrackAsset {
       throw new Error('SubCompositionTrack needs to be set under the VFXItem track.');
     }
 
-    return boundObject.getComponent(CompositionComponent);
+    const composition = boundObject.getComponent(CompositionComponent);
+
+    // The parent clip owns this component's time as soon as it is bound.
+    composition.updateMode = UpdateModes.Manual;
+
+    return composition;
   }
 
   override createTrackMixer (): TrackMixerPlayable {

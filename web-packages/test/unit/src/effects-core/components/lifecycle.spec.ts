@@ -473,7 +473,8 @@ describe('core/components/lifecycle', () => {
     parent.setParent(composition.sceneRoot);
     events = [];
     composition.resume();
-    composition.update(16);
+    composition.sceneTicking.update.tick(16);
+    composition.sceneTicking.lateUpdate.tick(16);
     expect(events).deep.equals(['child:update', 'timeline', 'child:late']);
   });
 
@@ -490,10 +491,13 @@ describe('core/components/lifecycle', () => {
     expect(created.root.isDuringPlay).equals(true);
     expect(events).deep.equals(['sceneRoot:awake', 'sceneRoot:start', 'sceneRoot:enable']);
     events = [];
-    created.update(16);
-    expect(events).deep.equals([]);
+    created.sceneTicking.update.tick(16);
+    created.sceneTicking.lateUpdate.tick(16);
+    expect(events).deep.equals(['sceneRoot:update', 'sceneRoot:late']);
+    events = [];
     created.resume();
-    created.update(16);
+    created.sceneTicking.update.tick(16);
+    created.sceneTicking.lateUpdate.tick(16);
     expect(events).deep.equals(['sceneRoot:update', 'sceneRoot:late']);
   });
 

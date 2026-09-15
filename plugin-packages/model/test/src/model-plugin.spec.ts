@@ -21,7 +21,7 @@ describe('mode plugin test', () => {
 
     expect(() => {
       comp.play();
-      comp.update(0);
+      player.engine.mainLoop(0);
     }).not.to.throw();
 
     comp.dispose();

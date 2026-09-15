@@ -240,7 +240,7 @@ describe('plugin-gui/editor controls', () => {
     popup.setSize(100, 80);
     popup.popup(new math.Vector2(290, 140), source);
     expect(popup.visible).equals(true);
-    expect(popup.x).closeTo(200, 0.1);
+    expect(popup.x + popup.width).closeTo(root.width, 0.1);
     expect(popup.y).equals(70);
     expect(popup.getThemeColor('fontColor').toArray()).deep.equals([0.3, 0.4, 0.5, 1]);
     expect(popup.hasFocus()).equals(true);

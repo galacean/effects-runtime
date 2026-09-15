@@ -54,6 +54,7 @@ export class TestPlayer {
     // @ts-expect-error
     Math.seedrandom('runtime');
     this.clearResource();
+    this.lastTime = 0;
 
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100 });
     let json: spec.JSONScene | string = url;
@@ -78,11 +79,14 @@ export class TestPlayer {
 
   gotoTime (newtime: number) {
     const time = newtime;
+    const deltaTime = (time - this.lastTime) * 1000;
 
-    this.lastTime = newtime;
+    this.lastTime = time;
     // @ts-expect-error
     Math.seedrandom(`runtime${time}`);
-    this.player.gotoAndStop(time);
+    // Seek the timeline separately from advancing Animator and scripts.
+    this.composition.gotoAndStop(time);
+    this.player.engine.mainLoop(deltaTime);
   }
 
   // The returned buffer is reused by the next read on this player.

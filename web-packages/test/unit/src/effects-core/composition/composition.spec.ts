@@ -197,7 +197,7 @@ describe('core/composition', () => {
     expect(comp.getPaused()).equals(true);
     expect(comp.getSpeed()).equals(2);
     comp.resume();
-    comp.update(100);
+    comp.sceneTicking.update.tick(100);
     expect(comp.time).closeTo(1.5, 0.000001);
     comp.restart();
     expect(comp.time).closeTo(1.3, 0.000001);
@@ -214,7 +214,7 @@ describe('core/composition', () => {
     expect(comp.time).closeTo(0, 0.000001);
     expect(comp.isEnded).equals(false);
     expect(comp.getPaused()).equals(false);
-    comp.update(100);
+    comp.sceneTicking.update.tick(100);
     expect(comp.time).closeTo(0.1, 0.000001);
   });
 

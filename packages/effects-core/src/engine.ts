@@ -340,41 +340,54 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    dt = Math.min(dt, 33) * this.speed;
+    dt *= this.speed;
 
     // Sort compositions by index
     //-------------------------------------------------------------------------
 
     const compositions = this.compositions;
 
-    let skipRender = false;
+    for (const composition of compositions) {
+      if (composition.textureOffloaded) {
+        const error = new Error(`Composition ${composition.name} cannot update while its textures are offloaded.`);
+
+        logger.error(error.message);
+        this.ticker?.pause();
+        this.emit('rendererror', error);
+
+        return;
+      }
+    }
 
     // Update Compositions
     //-------------------------------------------------------------------------
 
     for (const composition of compositions) {
-      if (composition.textureOffloaded) {
-        skipRender = true;
-        logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
-        continue;
-      }
-
-      composition.update(dt);
+      composition.sceneTicking.update.tick(dt);
     }
 
-    if (skipRender) {
-      this.emit('rendererror', new Error('Play when texture offloaded.'));
-      this.ticker?.pause();
-
-      return;
+    for (const composition of compositions) {
+      composition.sceneTicking.lateUpdate.tick(dt);
     }
 
     this.emit('update', dt);
+
+    this.renderFrame();
+  }
+
+  /** Render current scene state without advancing timelines, Animator or scripts. */
+  renderFrame (): void {
+    if (this.contextWasLost || this.renderErrors.size > 0) {
+      return;
+    }
+
+    const compositions = this.compositions;
 
     // Tick compositions onPreRender
     //-------------------------------------------------------------------------
 
     for (const composition of compositions) {
+      composition.camera.updateMatrix();
       composition.sceneTicking.preRender.tick(0);
     }
 
