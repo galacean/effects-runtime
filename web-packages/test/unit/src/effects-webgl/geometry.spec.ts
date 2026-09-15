@@ -384,7 +384,7 @@ describe('webgl/geometry', () => {
         });
 
         engine.renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
-        expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).not.to.equal(null);
+        expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(null);
         geometry.dispose();
       });
     } finally {
@@ -422,7 +422,7 @@ describe('webgl/geometry', () => {
         math.Matrix4.IDENTITY,
         createMaterialStub(),
       );
-      expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).not.to.equal(null);
+      expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(null);
     } finally {
       gl.drawArrays = originalDrawArrays;
       geometry.dispose();
@@ -437,9 +437,11 @@ describe('webgl/geometry', () => {
     const secondGeometry = createGeometry(engine);
 
     engine.renderer.drawGeometry(firstGeometry, math.Matrix4.IDENTITY, material);
-    const vertexArrayObject = gl.getParameter(gl.VERTEX_ARRAY_BINDING) as WebGLVertexArrayObject;
+    // @ts-expect-error Verify the cached VAO remains usable after the renderer unbinds it.
+    const vertexArrayObject = firstGeometry.vertexArrayObjects[material.shaderVariant.key] as WebGLVertexArrayObject;
     const indexResource = firstGeometry.getIndexBuffer()!.underlyingResource;
 
+    expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(null);
     secondGeometry.initialize();
     expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(null);
     gl.bindVertexArray(vertexArrayObject);

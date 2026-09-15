@@ -7,6 +7,18 @@
 
 ---
 
+## 2.10.3
+
+`2026-09-15`
+
+- Fix: unbind VAO after WebGL draw calls. [#1543](https://github.com/galacean/effects-runtime/pull/1543) @wumaolinmaoan
+
+## 2.10.2
+
+`2026-09-07`
+
+- Fix: guard optional canvas DOM APIs. [#1538](https://github.com/galacean/effects-runtime/pull/1538) @wumaolinmaoan
+
 ## 2.10.1
 
 `2026-09-03`
