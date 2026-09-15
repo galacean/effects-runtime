@@ -10,7 +10,7 @@ export * from './asset';
 export * from './binary-asset';
 export * from './asset-loader';
 export * from './asset-manager';
-export * from './asset-service';
+export * from './asset-server';
 export * from './camera';
 export * from './canvas-pool';
 export * from './components';
@@ -22,8 +22,8 @@ export * from './decorators';
 export * from './downloader';
 export * from './effects-object';
 export * from './engine';
-export * from './engine-service';
-export * from './scene-service';
+export * from './engine-server';
+export * from './scene-server';
 export * from './input';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,

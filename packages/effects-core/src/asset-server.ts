@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { EngineService } from './engine-service';
+import { EngineServer } from './engine-server';
 import { effectsClass } from './decorators';
 import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
@@ -9,8 +9,8 @@ import { DataAsset } from './asset';
 import { Material } from './material';
 
 /** Engine-owned asset preparation and built-in resource lifecycle. */
-@effectsClass('AssetService')
-export class AssetService extends EngineService {
+@effectsClass('AssetServer')
+export class AssetServer extends EngineServer {
   private readonly builtinObjects: EffectsObject[] = [];
 
   constructor (engine: Engine) {

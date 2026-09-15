@@ -1,10 +1,10 @@
-import { EngineService, effectsClass } from '@galacean/effects';
+import { EngineServer, effectsClass } from '@galacean/effects';
 import type { Engine, InputEvent, OverlayRenderer } from '@galacean/effects';
 import { WindowRootControl } from './core/roots';
 
 /** Engine-level owner for the GUI window root and its runtime subscriptions. */
-@effectsClass('GUIService')
-export class GUIService extends EngineService {
+@effectsClass('GUIServer')
+export class GUIServer extends EngineServer {
   windowRoot: WindowRootControl;
   private disposed = false;
   private readonly overlayRenderer: OverlayRenderer = {

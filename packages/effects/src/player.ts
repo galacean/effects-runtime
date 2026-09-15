@@ -4,7 +4,7 @@ import type {
   PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
-  isArray, spec, assertExist, SceneLoader, AssetService,
+  isArray, spec, assertExist, SceneLoader, AssetServer,
 } from '@galacean/effects-core';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
@@ -80,8 +80,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return this.engine.assetManagers;
   }
 
-  private get assetService () {
-    return this.engine.getService(AssetService)!;
+  private get assetServer () {
+    return this.engine.getServer(AssetServer)!;
   }
 
   private get event () {
@@ -429,7 +429,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const baseOrder = this.engine.compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;
-      const { source, options: compositionOptions } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+      const { source, options: compositionOptions } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });
       const compositionAutoplay = compositionOptions?.autoplay ?? true;
       const composition = await SceneLoader.load(source, this.engine, compositionOptions);
 

@@ -35,7 +35,10 @@ if (missing.length > 0) {
 } else {
   fs.mkdirSync(destination, { recursive: true });
   for (const [source, filename] of artifacts) {
-    fs.copyFileSync(path.join(root, source), path.join(destination, filename));
+    const content = fs.readFileSync(path.join(root, source), 'utf8')
+      .replace(/\r?\n\/\/# sourceMappingURL=.*?(?:\r?\n)?$/, '\n');
+
+    fs.writeFileSync(path.join(destination, filename), content);
     console.log(`${source} -> web-packages/test/dist/baseline/${filename}`);
   }
   console.log('帧对比基准已更新，URL 加 local=true 即可使用。');

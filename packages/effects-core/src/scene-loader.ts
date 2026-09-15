@@ -1,5 +1,5 @@
 import { AssetManager } from './asset-manager';
-import { AssetService } from './asset-service';
+import { AssetServer } from './asset-server';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import type { Engine } from './engine';
@@ -30,8 +30,8 @@ export class SceneLoader {
     // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
     PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
 
-    engine.getService(AssetService)!.prepareAssets(loadedScene, loadedScene.assets);
-    engine.getService(AssetService)!.updateTextVariables(loadedScene, options.variables);
+    engine.getServer(AssetServer)!.prepareAssets(loadedScene, loadedScene.assets);
+    engine.getServer(AssetServer)!.updateTextVariables(loadedScene, options.variables);
 
     const composition = this.createComposition(loadedScene, engine, options);
 
@@ -64,7 +64,7 @@ export class SceneLoader {
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
     if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      engine.getService(AssetService)!.createShaderVariant();
+      engine.getServer(AssetServer)!.createShaderVariant();
     }
 
     return composition;

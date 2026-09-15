@@ -1,18 +1,18 @@
 import type { Engine } from '@galacean/effects';
-import { Composition, EngineService, Player, Plugin, effectsClass, effectsClassStore, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { Composition, EngineServer, Player, Plugin, effectsClass, effectsClassStore, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/engine/plugin-engine-lifetime', () => {
-  it('runs service hooks at the engine frame boundaries', () => {
+  it('runs server hooks at the engine frame boundaries', () => {
     const order: string[] = [];
 
-    class FrameObserver extends EngineService {
+    class FrameObserver extends EngineServer {
       constructor (engine: Engine) {
         super(engine, 300);
       }
-      override onLateUpdate (deltaTime: number): void { order.push(`service-lateupdate:${deltaTime}`); }
-      override onDraw (): void { order.push('service-draw'); }
+      override onLateUpdate (deltaTime: number): void { order.push(`server-lateupdate:${deltaTime}`); }
+      override onDraw (): void { order.push('server-draw'); }
     }
     effectsClass('test-plugin-frame-observer')(FrameObserver);
     const player = new Player({
@@ -32,8 +32,8 @@ describe('core/engine/plugin-engine-lifetime', () => {
     expect(order).deep.equals([
       'composition-update',
       'composition-lateupdate',
-      'service-lateupdate:16',
-      'service-draw',
+      'server-lateupdate:16',
+      'server-draw',
       'composition-prerender',
       'composition-render',
       'pool-flush',

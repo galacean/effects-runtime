@@ -1,10 +1,10 @@
 import type { Engine } from './engine';
-import { EngineService } from './engine-service';
+import { EngineServer } from './engine-server';
 import { effectsClass } from './decorators';
 
 /** Schedules and unloads the compositions owned by an engine. */
-@effectsClass('SceneService')
-export class SceneService extends EngineService {
+@effectsClass('SceneServer')
+export class SceneServer extends EngineServer {
   private disposed = false;
 
   constructor (engine: Engine) {

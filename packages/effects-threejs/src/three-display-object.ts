@@ -1,7 +1,7 @@
 import type {
   EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, Engine,
 } from '@galacean/effects-core';
-import { AssetService, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
+import { AssetServer, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeEngine } from './three-engine';
@@ -41,7 +41,7 @@ export class ThreeDisplayObject extends THREE.Group {
   }
 
   private baseCompositionIndex = 0;
-  private assetService: AssetService;
+  private assetServer: AssetServer;
 
   /**
    *
@@ -56,7 +56,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const { width, height, camera } = options;
 
     this.engine = new ThreeEngine(context);
-    this.assetService = this.engine.getService(AssetService)!;
+    this.assetServer = this.engine.getServer(AssetServer)!;
     this.width = width;
     this.height = height;
     this.camera = camera;
@@ -96,7 +96,7 @@ export class ThreeDisplayObject extends THREE.Group {
 
     await Promise.all(
       scenes.map(async (url, index) => {
-        const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+        const { source, options: opts } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });
         const assetManager = new AssetManager(opts);
         const scene = await assetManager.loadScene(source, this.renderer);
 
@@ -106,8 +106,8 @@ export class ThreeDisplayObject extends THREE.Group {
 
         // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
         PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);
-        this.assetService.prepareAssets(scene, assetManager.getAssets());
-        this.assetService.updateTextVariables(scene, assetManager.options.variables);
+        this.assetServer.prepareAssets(scene, assetManager.getAssets());
+        this.assetServer.updateTextVariables(scene, assetManager.options.variables);
 
         const composition = this.createComposition(scene, opts);
 

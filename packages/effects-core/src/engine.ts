@@ -27,7 +27,7 @@ import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { getClassesDerivedFrom } from './decorators';
-import { EngineService } from './engine-service';
+import { EngineServer } from './engine-server';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -144,7 +144,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected particleSystems: ParticleSystem[] = [];
 
   private readonly _compositions: Composition[] = [];
-  private services: EngineService[] = [];
+  private servers: EngineServer[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -190,14 +190,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
     this.renderer = this.createRenderer();
 
-    this.initializeServices();
+    this.initializeServers();
 
     PluginSystem.notifyEngineCreated(this);
   }
 
-  /** Get a service registered before this engine was initialized. */
-  getService<T extends EngineService> (constructor: abstract new (...args: any[]) => T): T | undefined {
-    return this.services.find(service => service.constructor === constructor) as T | undefined;
+  /** Get a server registered before this engine was initialized. */
+  getServer<T extends EngineServer> (constructor: abstract new (...args: any[]) => T): T | undefined {
+    return this.servers.find(server => server.constructor === constructor) as T | undefined;
   }
 
   /** Called during base construction, before backend-specific fields are initialized. */
@@ -205,12 +205,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     return new Renderer(this);
   }
 
-  private initializeServices (): void {
-    this.services = getClassesDerivedFrom(EngineService).map(Service => new Service(this));
-    this.services.sort((a, b) => a.order - b.order);
+  private initializeServers (): void {
+    this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
+    this.servers.sort((a, b) => a.order - b.order);
 
-    for (const service of this.services) {
-      service.onInit();
+    for (const server of this.servers) {
+      server.onInit();
     }
   }
 
@@ -355,12 +355,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     dt *= this.speed;
 
-    for (const service of this.services) {
-      service.onUpdate(dt);
+    for (const server of this.servers) {
+      server.onUpdate(dt);
     }
 
-    for (const service of this.services) {
-      service.onLateUpdate(dt);
+    for (const server of this.servers) {
+      server.onLateUpdate(dt);
     }
 
     this.onDraw();
@@ -372,8 +372,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    for (const service of this.services) {
-      service.onDraw();
+    for (const server of this.servers) {
+      server.onDraw();
     }
 
     this.renderer.renderCompositions(this.compositions, this.clearAction);
@@ -785,14 +785,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem?.dispose();
     PluginSystem.notifyEngineDestroy(this);
 
-    for (let i = this.services.length - 1; i >= 0; i--) {
-      this.services[i].onBeforeExit();
+    for (let i = this.servers.length - 1; i >= 0; i--) {
+      this.servers[i].onBeforeExit();
     }
 
-    for (let i = this.services.length - 1; i >= 0; i--) {
-      this.services[i].onDispose();
+    for (let i = this.servers.length - 1; i >= 0; i--) {
+      this.servers[i].onDispose();
     }
-    this.services = [];
+    this.servers = [];
 
     const info: string[] = [];
 

@@ -10,7 +10,7 @@ import {
 } from '@galacean/effects';
 import {
   ColorPicker,
-  GUIService,
+  GUIServer,
   LineEdit,
   OptionButton,
   PopupMenu,
@@ -225,7 +225,7 @@ describe('plugin-gui/editor controls', () => {
   });
 
   it('opens PopupMenu on the top layer, clamps it and restores focus', () => {
-    const root = player.engine.getService(GUIService)!.windowRoot;
+    const root = player.engine.getServer(GUIServer)!.windowRoot;
     const source = new OptionButton(player.engine);
     const popup = new PopupMenu(player.engine);
 
@@ -258,7 +258,7 @@ describe('plugin-gui/editor controls', () => {
   });
 
   it('navigates OptionButton choices and emits the selected id', () => {
-    const root = player.engine.getService(GUIService)!.windowRoot;
+    const root = player.engine.getServer(GUIServer)!.windowRoot;
     const option = new OptionButton(player.engine);
     const selected: Array<number | string> = [];
 
