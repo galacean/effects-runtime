@@ -50,6 +50,7 @@ export class GPUCapability {
   private textureMaxAnisotropyExt: number;
   glAsyncCompileExt: KHR_parallel_shader_compile | null;
   vaoExt: OES_vertex_array_object | null;
+  instanceExt: ANGLE_instanced_arrays | null;
 
   constructor (
     gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -73,6 +74,7 @@ export class GPUCapability {
     this.level = level;
     this.type = level2 ? 'webgl2' : 'webgl';
     this.vaoExt = gl.getExtension('OES_vertex_array_object');
+    this.instanceExt = level2 ? null : gl.getExtension('ANGLE_instanced_arrays');
     this.glAsyncCompileExt = gl.getExtension('KHR_parallel_shader_compile');
 
     this.UNSIGNED_INT_24_8 = (gl as WebGL2RenderingContext).UNSIGNED_INT_24_8;
@@ -117,7 +119,7 @@ export class GPUCapability {
       floatLinear,
       maxTextureAnisotropy: textureAnisotropicExt ? gl.getParameter(textureAnisotropicExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0,
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
-      instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
+      instanceDraw: level2 || !!this.instanceExt,
       vertexArrayObject: level2 || !!this.vaoExt,
       ktx2Support: detectKTX2Support(this.compressTextureCapabilityList),
       drawBuffers: level2 || !!this.drawBufferExtension,

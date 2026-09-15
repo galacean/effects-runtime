@@ -132,48 +132,8 @@ export class GLEngine extends Engine {
   }
 
   protected initGLContext (): void {
-    const gl = this.gl;
-
-    this.gpuCapability = new GPUCapability(gl);
-    if (this.gpuCapability.isWebGL2) {
-      return;
-    }
-
-    const vertexArrayObjectExtension = gl.getExtension('OES_vertex_array_object');
-
-    if (vertexArrayObjectExtension) {
-      gl.createVertexArray = vertexArrayObjectExtension.createVertexArrayOES.bind(
-        vertexArrayObjectExtension,
-      );
-      gl.bindVertexArray = vertexArrayObjectExtension.bindVertexArrayOES.bind(
-        vertexArrayObjectExtension,
-      );
-      gl.deleteVertexArray = vertexArrayObjectExtension.deleteVertexArrayOES.bind(
-        vertexArrayObjectExtension,
-      );
-    } else {
-      gl.createVertexArray = (() => null) as unknown as WebGL2RenderingContext['createVertexArray'];
-      gl.bindVertexArray = () => {};
-      gl.deleteVertexArray = () => {};
-    }
-
-    const instanceExtension = gl.getExtension('ANGLE_instanced_arrays');
-
-    if (instanceExtension) {
-      gl.drawArraysInstanced = instanceExtension.drawArraysInstancedANGLE.bind(instanceExtension);
-      gl.drawElementsInstanced = instanceExtension.drawElementsInstancedANGLE.bind(instanceExtension);
-      gl.vertexAttribDivisor = instanceExtension.vertexAttribDivisorANGLE.bind(instanceExtension);
-    } else {
-      gl.drawArraysInstanced = () => {
-        throw new Error(INSTANCE_DRAW_ERROR);
-      };
-      gl.drawElementsInstanced = () => {
-        throw new Error(INSTANCE_DRAW_ERROR);
-      };
-      gl.vertexAttribDivisor = () => {
-        throw new Error(INSTANCE_DRAW_ERROR);
-      };
-    }
+    // context 恢复时重新探测能力并获取扩展，不向原生 context 写入属性。
+    this.gpuCapability = new GPUCapability(this.gl);
   }
 
   override getWidth (): number {
@@ -302,7 +262,11 @@ export class GLEngine extends Engine {
 
   /** @hide */
   releaseVertexArrayObject (vertexArrayObject: WebGLVertexArrayObject): void {
-    this.gl.deleteVertexArray(vertexArrayObject);
+    if (this.gpuCapability.isWebGL2) {
+      this.gl.deleteVertexArray(vertexArrayObject);
+    } else {
+      this.gpuCapability.vaoExt?.deleteVertexArrayOES(vertexArrayObject);
+    }
   }
 
   /** @hide */
@@ -311,7 +275,9 @@ export class GLEngine extends Engine {
     indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): WebGLVertexArrayObject | undefined {
-    const vertexArrayObject = this.gl.createVertexArray() ?? undefined;
+    const vertexArrayObject = (this.gpuCapability.isWebGL2
+      ? this.gl.createVertexArray()
+      : this.gpuCapability.vaoExt?.createVertexArrayOES()) ?? undefined;
 
     if (!vertexArrayObject) {
       return undefined;
@@ -373,7 +339,13 @@ export class GLEngine extends Engine {
         attribute.byteOffset,
       );
       if (attribute.getInstanceDivisor() > 0) {
-        gl.vertexAttribDivisor(location, attribute.getInstanceDivisor());
+        if (this.gpuCapability.isWebGL2) {
+          gl.vertexAttribDivisor(location, attribute.getInstanceDivisor());
+        } else if (this.gpuCapability.instanceExt) {
+          this.gpuCapability.instanceExt.vertexAttribDivisorANGLE(location, attribute.getInstanceDivisor());
+        } else {
+          throw new Error(INSTANCE_DRAW_ERROR);
+        }
       }
     }
   }
@@ -442,7 +414,11 @@ export class GLEngine extends Engine {
       return;
     }
     this.currentVertexArrayObject = vertexArrayObject;
-    this.gl.bindVertexArray(vertexArrayObject);
+    if (this.gpuCapability.isWebGL2) {
+      this.gl.bindVertexArray(vertexArrayObject);
+    } else {
+      this.gpuCapability.vaoExt?.bindVertexArrayOES(vertexArrayObject);
+    }
   }
 
   private unbindVertexArrayObject (): void {
@@ -451,7 +427,11 @@ export class GLEngine extends Engine {
     }
     this.currentVertexArrayObject = null;
     this.currentIndexBuffer = null;
-    this.gl.bindVertexArray(null);
+    if (this.gpuCapability.isWebGL2) {
+      this.gl.bindVertexArray(null);
+    } else {
+      this.gpuCapability.vaoExt?.bindVertexArrayOES(null);
+    }
   }
 
   deleteGLTexture (texture: GLTexture) {
@@ -489,7 +469,13 @@ export class GLEngine extends Engine {
       : this.gl.UNSIGNED_SHORT;
 
     if (instanceCount) {
-      this.gl.drawElementsInstanced(mode, indexCount, indexType, indexOffset, instanceCount);
+      if (this.gpuCapability.isWebGL2) {
+        this.gl.drawElementsInstanced(mode, indexCount, indexType, indexOffset, instanceCount);
+      } else if (this.gpuCapability.instanceExt) {
+        this.gpuCapability.instanceExt.drawElementsInstancedANGLE(mode, indexCount, indexType, indexOffset, instanceCount);
+      } else {
+        throw new Error(INSTANCE_DRAW_ERROR);
+      }
     } else {
       this.gl.drawElements(mode, indexCount, indexType, indexOffset);
     }
@@ -505,7 +491,13 @@ export class GLEngine extends Engine {
       throw new Error(INSTANCE_DRAW_ERROR);
     }
     if (instanceCount) {
-      this.gl.drawArraysInstanced(mode, vertexStart, vertexCount, instanceCount);
+      if (this.gpuCapability.isWebGL2) {
+        this.gl.drawArraysInstanced(mode, vertexStart, vertexCount, instanceCount);
+      } else if (this.gpuCapability.instanceExt) {
+        this.gpuCapability.instanceExt.drawArraysInstancedANGLE(mode, vertexStart, vertexCount, instanceCount);
+      } else {
+        throw new Error(INSTANCE_DRAW_ERROR);
+      }
     } else {
       this.gl.drawArrays(mode, vertexStart, vertexCount);
     }

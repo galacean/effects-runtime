@@ -96,14 +96,14 @@ describe('webgl/gl-vertex-array-object', () => {
 
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_STRIDE)).to.eql(4 * Float32Array.BYTES_PER_ELEMENT);
-    gl.bindVertexArray(null);
+    extension!.bindVertexArrayOES(null);
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, 0, 0);
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(4);
-    gl.bindVertexArray(vao);
+    extension!.bindVertexArrayOES(vao);
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
     expect(extension!.isVertexArrayOES(vao)).is.true;
-    gl.deleteVertexArray(vao);
+    extension!.deleteVertexArrayOES(vao);
     expect(extension!.isVertexArrayOES(vao)).is.false;
   });
 
@@ -174,3 +174,97 @@ function createGLGPURenderer (type: 'webgl' | 'webgl2') {
 
   return engine.renderer;
 }
+
+// Expose the initialization also used by the context restore handler.
+class CompatibilityTestEngine extends GLEngine {
+  reinitializeContext (): void {
+    this.initGLContext();
+  }
+}
+
+describe('webgl/context compatibility', () => {
+  for (const type of ['webgl', 'webgl2'] as const) {
+    it(`initializes ${type} without modifying a non-extensible context`, () => {
+      const gl = (type === 'webgl' ? getGL() : getGL2())!;
+      const prototype = Object.getPrototypeOf(gl);
+      const properties = Object.getOwnPropertyDescriptors(gl);
+
+      Object.preventExtensions(gl);
+      const engine = new CompatibilityTestEngine(gl.canvas as HTMLCanvasElement, { glType: type });
+
+      try {
+        engine.reinitializeContext();
+        expect(engine.gl).to.equal(gl);
+        expect(Object.getPrototypeOf(gl)).to.equal(prototype);
+        expect(Object.getOwnPropertyDescriptors(gl)).to.deep.equal(properties);
+      } finally {
+        engine.dispose();
+      }
+    });
+  }
+
+  it('refreshes WebGL1 extensions and preserves fallbacks without writing to the context', () => {
+    const gl = getGL()!;
+    const getExtension = gl.getExtension.bind(gl);
+    const vaoExtension = getExtension('OES_vertex_array_object')!;
+    const calls: unknown[][] = [];
+    const instanceExtension = {
+      drawArraysInstancedANGLE (...args: number[]) {
+        expect(this).to.equal(instanceExtension);
+        calls.push(args);
+      },
+      drawElementsInstancedANGLE (...args: number[]) {
+        expect(this).to.equal(instanceExtension);
+        calls.push(args);
+      },
+      vertexAttribDivisorANGLE () {},
+    };
+    let extensionsAvailable = true;
+
+    gl.getExtension = ((name: string) => {
+      if (name === 'ANGLE_instanced_arrays') {
+        return extensionsAvailable ? instanceExtension : null;
+      }
+      if (name === 'OES_vertex_array_object') {
+        return extensionsAvailable ? vaoExtension : null;
+      }
+
+      return getExtension(name);
+    }) as typeof gl.getExtension;
+    Object.preventExtensions(gl);
+    const engine = new CompatibilityTestEngine(gl.canvas as HTMLCanvasElement, { glType: 'webgl' });
+    const shader = { program: { getAttributesNames: () => [] } } as unknown as ShaderVariant;
+
+    try {
+      const vao = engine.recordVertexArrayObject({}, null, shader)!;
+
+      expect(vao).to.exist;
+      engine.bindVertexArrayObject(vao, null);
+      expect(gl.getParameter(vaoExtension.VERTEX_ARRAY_BINDING_OES)).to.equal(vao);
+      engine.releaseVertexArrayObject(vao);
+      expect(vaoExtension.isVertexArrayOES(vao)).to.equal(false);
+      engine.drawArraysType(gl.TRIANGLES, 0, 3, 2);
+      engine.drawElementsType(gl.TRIANGLES, 0, 3, 2);
+      expect(calls).to.deep.equal([
+        [gl.TRIANGLES, 0, 3, 2],
+        [gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0, 2],
+      ]);
+
+      extensionsAvailable = false;
+      engine.reinitializeContext();
+      expect(engine.recordVertexArrayObject({}, null, shader)).to.equal(undefined);
+      expect(() => engine.drawArraysType(gl.TRIANGLES, 0, 3, 2)).to.throw('Instanced drawing is not supported');
+      expect(() => engine.drawElementsType(gl.TRIANGLES, 0, 3, 2)).to.throw('Instanced drawing is not supported');
+      expect(calls).to.have.length(2);
+
+      extensionsAvailable = true;
+      engine.reinitializeContext();
+      engine.drawArraysType(gl.TRIANGLES, 0, 3, 2);
+      expect(calls).to.have.length(3);
+      expect(Object.prototype.hasOwnProperty.call(gl, 'createVertexArray')).to.equal(false);
+      expect(Object.prototype.hasOwnProperty.call(gl, 'drawArraysInstanced')).to.equal(false);
+    } finally {
+      engine.dispose();
+    }
+  });
+});
