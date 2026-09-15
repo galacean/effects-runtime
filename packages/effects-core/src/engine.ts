@@ -196,8 +196,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   /** Get a server registered before this engine was initialized. */
-  getServer<T extends EngineServer> (constructor: abstract new (...args: any[]) => T): T | undefined {
-    return this.servers.find(server => server.constructor === constructor) as T | undefined;
+  getServer<T extends EngineServer> (constructor: abstract new (...args: any[]) => T): T {
+    const server = this.servers.find(server => server.constructor === constructor) as T | undefined;
+
+    return server as T;
   }
 
   /** Called during base construction, before backend-specific fields are initialized. */

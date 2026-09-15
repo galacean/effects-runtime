@@ -320,7 +320,7 @@ describe('plugin-gui/GUI basic controls', () => {
   });
 
   it('keeps pointer focus hidden for text fields and popup sources', () => {
-    const root = player.engine.getServer(GUIServer)!.windowRoot;
+    const root = player.engine.getServer(GUIServer).windowRoot;
     const edit = new LineEdit(player.engine);
     const pointer = mouseButton(2, 2, MouseButton.Left);
 

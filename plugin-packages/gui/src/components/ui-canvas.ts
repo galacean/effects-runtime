@@ -30,7 +30,7 @@ export class UICanvas extends Component {
   set order (value: number) {
     if (this._order !== value) {
       this._order = value;
-      this.engine.getServer(GUIServer)!.windowRoot.canvases.sortCanvases();
+      this.engine.getServer(GUIServer).windowRoot.canvases.sortCanvases();
     }
   }
 
@@ -58,7 +58,7 @@ export class UICanvas extends Component {
 
   private register (): void {
     if (!this.registered) {
-      const guiWindow = this.engine.getServer(GUIServer)!;
+      const guiWindow = this.engine.getServer(GUIServer);
 
       this.rootControl.parent = guiWindow.windowRoot.canvases;
       this.registered = true;

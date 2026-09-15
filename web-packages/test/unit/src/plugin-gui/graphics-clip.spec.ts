@@ -113,7 +113,7 @@ describe('plugin-gui/Graphics clip stack', () => {
       sibling.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
       sibling.setRect({ position: new math.Vector2(60, 60), size: new math.Vector2(10, 10) });
 
-      player.engine.getServer(GUIServer)!.windowRoot.render();
+      player.engine.getServer(GUIServer).windowRoot.render();
 
       expect(drawScissorStates).deep.equals([false, true, false]);
       expect(scissorRects).length(1);

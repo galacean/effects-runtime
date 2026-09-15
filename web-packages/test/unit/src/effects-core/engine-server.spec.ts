@@ -79,7 +79,7 @@ describe('core/engine/servers', () => {
       '-10:draw', '300:draw', 'composition:preRender', 'composition:render',
       '300:beforeExit', '-10:beforeExit', '300:dispose', '-10:dispose',
     ]);
-    expect(engine.getServer(Early)).to.equal(undefined);
+    expect(() => engine.getServer(Early)).to.throw('Engine server "Early" is not registered.');
   });
 
   it('keeps server instances separate for each engine and snapshots registrations', () => {
@@ -93,9 +93,9 @@ describe('core/engine/servers', () => {
     const second = createPlayer().engine;
 
     expect(first.getServer(Server)).not.to.equal(second.getServer(Server));
-    expect(first.getServer(Server)?.engine).to.equal(first);
-    expect(second.getServer(Server)?.engine).to.equal(second);
-    expect(first.getServer(LaterServer)).to.equal(undefined);
+    expect(first.getServer(Server).engine).to.equal(first);
+    expect(second.getServer(Server).engine).to.equal(second);
+    expect(() => first.getServer(LaterServer)).to.throw('Engine server "LaterServer" is not registered.');
     expect(second.getServer(LaterServer)).to.be.instanceOf(LaterServer);
   });
 
@@ -105,7 +105,7 @@ describe('core/engine/servers', () => {
     register('scene-alias', SceneServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const server = engine.getServer(SceneServer)!;
+    const server = engine.getServer(SceneServer);
     const first = new Composition(engine);
     const second = new Composition(engine);
 
@@ -132,7 +132,7 @@ describe('core/engine/servers', () => {
     register('asset-alias', AssetServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer)!;
+    const assets = engine.getServer(AssetServer);
     const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
 
     expect(assets).to.be.instanceOf(AssetServer);
@@ -149,7 +149,7 @@ describe('core/engine/servers', () => {
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer)!;
+    const assets = engine.getServer(AssetServer);
     const composition = new Composition(engine);
     const disposeComposition = composition.dispose.bind(composition);
     const disposeAssets = assets.onDispose.bind(assets);
@@ -172,7 +172,7 @@ describe('core/engine/servers', () => {
     expect(engine.whiteTexture.isDestroyed).to.equal(true);
     expect(engine.transparentTexture.isDestroyed).to.equal(true);
     expect(other.whiteTexture.isDestroyed).to.equal(false);
-    expect(engine.getServer(AssetServer)).to.equal(undefined);
+    expect(() => engine.getServer(AssetServer)).to.throw('Engine server "AssetServer" is not registered.');
   });
 
   it('redraws the scene without advancing update lifecycles', () => {
@@ -302,7 +302,7 @@ describe('core/engine/servers', () => {
     engine.dispose();
     engine.dispose();
     expect(calls).to.deep.equal(['scene:0', 'scene:1', 'resources']);
-    expect(engine.getServer(SceneServer)).to.equal(undefined);
+    expect(() => engine.getServer(SceneServer)).to.throw('Engine server "SceneServer" is not registered.');
   });
 
   it('creates the ThreeRenderer before servers initialize and keeps the same instance', () => {

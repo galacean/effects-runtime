@@ -81,7 +81,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   private get assetServer () {
-    return this.engine.getServer(AssetServer)!;
+    return this.engine.getServer(AssetServer);
   }
 
   private get event () {

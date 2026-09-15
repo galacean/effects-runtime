@@ -18,7 +18,7 @@ export function boot (): void {
   const composition = new Composition(player.engine);
 
   const uiCanvas = composition.sceneRoot.getComponent(UICanvas);
-  const guiWindow = player.engine.getServer(GUIServer)!;
+  const guiWindow = player.engine.getServer(GUIServer);
 
   if (!uiCanvas || !guiWindow) {
     throw new Error('GUI plugin failed to initialize.');
