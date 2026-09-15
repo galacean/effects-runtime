@@ -126,11 +126,17 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     if (!target || typeof window === 'undefined') {
       return;
     }
-    if (!target.hasAttribute('tabindex')) {
+    // Mini-program canvas adapters support input events but may not implement
+    // the full HTMLElement attribute and CSSStyleDeclaration APIs.
+    if (
+      typeof target.hasAttribute === 'function' &&
+      typeof target.removeAttribute === 'function' &&
+      !target.hasAttribute('tabindex')
+    ) {
       target.tabIndex = 0;
       this.addedTabIndex = true;
     }
-    if (!target.style.outline) {
+    if (typeof target.style?.removeProperty === 'function' && !target.style.outline) {
       target.style.outline = 'none';
       this.addedOutlineStyle = true;
     }
@@ -827,7 +833,9 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
   }
 
   private focusTarget (): void {
-    this.target?.focus();
+    if (typeof this.target?.focus === 'function') {
+      this.target.focus();
+    }
   }
 
   private resetInputState (): void {

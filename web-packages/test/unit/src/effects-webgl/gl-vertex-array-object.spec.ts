@@ -152,6 +152,53 @@ describe('webgl/gl-vertex-array-object', () => {
     // expect(bindFunc).to.have.been.called.exactly(3);
   });
 
+  for (const type of ['webgl', 'webgl2'] as const) {
+    for (const indexed of [false, true]) {
+      for (const instanced of [false, true]) {
+        it(`unbinds after drawing and supports drawing again (${type}, indexed=${indexed}, instanced=${instanced})`, () => {
+          renderer = createGLGPURenderer(type);
+          const engine = renderer.engine as GLEngine;
+          const gl = engine.gl;
+          const binding = type === 'webgl2'
+            ? gl.VERTEX_ARRAY_BINDING
+            : gl.getExtension('OES_vertex_array_object')!.VERTEX_ARRAY_BINDING_OES;
+          const geometry = new Geometry(engine, {
+            attributes: {
+              aPoint: { size: 2, stride: 16, data: new Float32Array([-1, -1, 0, 1, 1, -1, 0, 1, 0, 1, 0, 1]) },
+              aTexCoord: { size: 2, stride: 16, offset: 8, dataSource: 'aPoint' },
+            },
+            indices: indexed ? { data: new Uint16Array([0, 1, 2]) } : undefined,
+            drawCount: 3,
+          });
+          const shader = engine.shaderLibrary.createShader({ vertex, fragment });
+
+          engine.shaderLibrary.compileShader(shader);
+          expect(shader.compileResult.status).to.equal(ShaderCompileResultStatus.success);
+          geometry.initialize();
+          engine.useProgram(shader.program.program);
+
+          for (let draw = 0; draw < 2; draw++) {
+            geometry.bind(shader);
+            expect(gl.getParameter(binding)).to.not.equal(null);
+            if (indexed) {
+              engine.drawElementsType(gl.TRIANGLES, 0, 3, instanced ? 2 : undefined);
+            } else {
+              engine.drawArraysType(gl.TRIANGLES, 0, 3, instanced ? 2 : undefined);
+            }
+            expect(gl.getError()).to.equal(gl.NO_ERROR);
+            expect(gl.getParameter(binding)).to.equal(null);
+            // @ts-expect-error Verify the cache matches the native VAO binding.
+            expect(engine.currentVertexArrayObject).to.equal(null);
+            // @ts-expect-error The next draw must restore its own index buffer.
+            expect(engine.currentIndexBuffer).to.equal(null);
+          }
+          geometry.dispose();
+          expect(gl.getError()).to.equal(gl.NO_ERROR);
+        });
+      }
+    }
+  }
+
   it('bind buffers directly when vertex array objects are unavailable', () => {
     renderer = createGLGPURenderer('webgl');
     const engine = renderer.engine as GLEngine;

@@ -492,6 +492,7 @@ export class GLEngine extends Engine {
     } else {
       this.gl.drawElements(mode, indexCount, indexType, indexOffset);
     }
+    this.unbindVertexArrayObject();
   }
 
   override drawArraysType (
@@ -508,6 +509,7 @@ export class GLEngine extends Engine {
     } else {
       this.gl.drawArrays(mode, vertexStart, vertexCount);
     }
+    this.unbindVertexArrayObject();
   }
 
   override clear (action: RenderPassClearAction): void {
