@@ -25,13 +25,13 @@ export class DrawObjectPass extends RenderPass {
   }
 
   override execute (renderer: Renderer) {
-    if (this.useRenderTarget) {
-      renderer.clear({
-        colorAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-        stencilAction: TextureLoadAction.clear,
-      });
-    }
+    // Compositions share color, but never depth or stencil. Offscreen color starts transparent.
+    renderer.clear({
+      colorAction: this.useRenderTarget ? TextureLoadAction.clear : undefined,
+      clearColor: [0, 0, 0, 0],
+      depthAction: TextureLoadAction.clear,
+      stencilAction: TextureLoadAction.clear,
+    });
 
     this.meshes.sort((a, b) => a.priority - b.priority);
 

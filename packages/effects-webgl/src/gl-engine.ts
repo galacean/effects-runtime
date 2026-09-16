@@ -3,7 +3,7 @@ import type {
   RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
 } from '@galacean/effects-core';
 import {
-  Engine, GPUCapability, Renderer, TextureLoadAction, assertExist,
+  Engine, GPUCapability, TextureLoadAction, assertExist,
   glContext, isIOS, logger, toBufferView,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
@@ -124,7 +124,6 @@ export class GLEngine extends Engine {
     this.reset();
     this.initGLContext();
     this.shaderLibrary = new GLShaderLibrary(this);
-    this.renderer = new Renderer(this);
     this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
 
     // resize need gl renderer initialized

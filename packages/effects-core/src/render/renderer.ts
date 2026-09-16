@@ -1,8 +1,9 @@
 import type { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
+import type { Composition } from '../composition';
 import { Material } from '../material';
-import { sortByOrder } from '../utils';
+import { addItem, removeItem, sortByOrder } from '../utils';
 import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
 import { Geometry } from './geometry';
 import { VertexBuffer } from './vertex-buffer';
@@ -31,6 +32,14 @@ void main(){
     gl_FragColor = texture2D(_MainTex, vTex);
 }`;
 
+/**
+ * Draws screen-space content after all compositions. Ownership remains with the caller.
+ * @hide
+ */
+export interface OverlayRenderer {
+  render (): void,
+}
+
 export class Renderer {
   static create (engine: Engine): Renderer {
     return new Renderer(engine);
@@ -43,10 +52,56 @@ export class Renderer {
   protected currentFramebuffer: Framebuffer | null = null;
   protected disposed = false;
 
+  private readonly overlayRenderers: OverlayRenderer[] = [];
+
   private blitGeometry: Geometry | null = null;
   private blitMaterial: Material | null = null;
 
   constructor (public engine: Engine) {
+  }
+
+  /**
+   * Prepare and draw the current scene state without advancing scene time.
+   * @internal
+   */
+  renderCompositions (compositions: readonly Composition[], clearAction: RenderPassClearAction): void {
+    for (const composition of compositions) {
+      composition.camera.updateMatrix();
+      composition.sceneTicking.preRender.tick(0);
+    }
+
+    this.setFramebuffer(null);
+    this.clear(clearAction);
+
+    for (const composition of compositions) {
+      composition.renderContent();
+    }
+  }
+
+  /**
+   * Register in drawing order. Repeated registration of the same object is ignored.
+   * @hide
+   */
+  addOverlayRenderer (renderer: OverlayRenderer): void {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.overlayRenderers, renderer);
+  }
+
+  /**
+   * Remove a registered overlay without disposing it.
+   * @hide
+   */
+  removeOverlayRenderer (renderer: OverlayRenderer): void {
+    removeItem(this.overlayRenderers, renderer);
+  }
+
+  /** @internal */
+  renderOverlays (): void {
+    for (const renderer of this.overlayRenderers) {
+      renderer.render();
+    }
   }
 
   get renderingData () {
@@ -296,6 +351,7 @@ export class Renderer {
       return;
     }
 
+    this.overlayRenderers.length = 0;
     this.blitGeometry?.dispose();
     this.blitGeometry = null;
     this.blitMaterial?.dispose();

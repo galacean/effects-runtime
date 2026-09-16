@@ -407,8 +407,8 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     const previousComposition = this.composition;
 
-    // Engine.root has no composition; composition roots retain their own owner.
-    const composition = vfxItem === this.engine.root ? this.composition : vfxItem?.composition ?? null;
+    // Composition roots own their scene; other items inherit their parent's scene.
+    const composition = previousComposition?.root === this ? previousComposition : vfxItem?.composition ?? null;
 
     if (composition !== previousComposition) {
       this.disableInHierarchy();
@@ -824,7 +824,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /** Initializes this item without initializing its components or descendants. @internal */
   initialize () {
-    if (this.parent && this.parent !== this.engine.root) {
+    if (this.parent && this.composition?.root !== this) {
       this._composition = this.parent.composition;
     }
     if (!this.isRegistered) {

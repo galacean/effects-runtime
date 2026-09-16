@@ -1,5 +1,5 @@
 import { Composition, Player } from '@galacean/effects';
-import { GUIWindowComponent, UICanvas } from '@galacean/effects-plugin-gui';
+import { GUIServer, UICanvas } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { ControlApp } from './app';
 import { attachFullRect } from './layout';
@@ -18,7 +18,7 @@ export function boot (): void {
   const composition = new Composition(player.engine);
 
   const uiCanvas = composition.sceneRoot.getComponent(UICanvas);
-  const guiWindow = player.engine.root.getComponent(GUIWindowComponent);
+  const guiWindow = player.engine.getServer(GUIServer);
 
   if (!uiCanvas || !guiWindow) {
     throw new Error('GUI plugin failed to initialize.');

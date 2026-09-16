@@ -5,10 +5,10 @@ import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
-  RenderPassClearAction, Renderer, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
+  RenderPassClearAction, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, RenderTargetPool } from './render';
+import { Graphics, Renderer, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
@@ -18,7 +18,6 @@ import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import type { Composition } from './composition';
 import type { AssetManager } from './asset-manager';
-import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
@@ -27,7 +26,8 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
-import { VFXItem } from './vfx-item';
+import { getClassesDerivedFrom } from './decorators';
+import { EngineServer } from './engine-server';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -61,8 +61,6 @@ export type EngineEvent = {
   pointerdown: [eventData: PointerEventData],
   pointerup: [eventData: PointerEventData],
   pointermove: [eventData: PointerEventData],
-  update: [deltaTime: number],
-  postrender: [],
 };
 
 /**
@@ -101,12 +99,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   renderErrors: Set<Error> = new Set();
   assetManagers: AssetManager[] = [];
-  assetService: AssetService;
   eventSystem: EventSystem;
-  /**
-   * Root of the unified runtime scene tree.
-   */
-  root: VFXItem;
   env = '';
   /**
    * 计时器
@@ -150,7 +143,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
-  private _compositions: Composition[] = [];
+  private readonly _compositions: Composition[] = [];
+  private servers: EngineServer[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -175,8 +169,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.root = new VFXItem(this);
-    this.root.name = 'root';
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -190,15 +182,38 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem.bindListeners(this.canvas);
 
     this.assetLoader = new AssetLoader(this);
-    this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
     this.renderingData = {
       // @ts-expect-error
       currentFrame: {},
     };
+    this.renderer = this.createRenderer();
+
+    this.initializeServers();
 
     PluginSystem.notifyEngineCreated(this);
+  }
+
+  /** Get a server registered before this engine was initialized. */
+  getServer<T extends EngineServer> (constructor: abstract new (...args: any[]) => T): T {
+    const server = this.servers.find(server => server.constructor === constructor) as T | undefined;
+
+    return server as T;
+  }
+
+  /** Called during base construction, before backend-specific fields are initialized. */
+  protected createRenderer (): Renderer {
+    return new Renderer(this);
+  }
+
+  private initializeServers (): void {
+    this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
+    this.servers.sort((a, b) => a.order - b.order);
+
+    for (const server of this.servers) {
+      server.onInit();
+    }
   }
 
   get compositions (): Composition[] {
@@ -342,66 +357,29 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     dt *= this.speed;
 
-    // Sort compositions by index
-    //-------------------------------------------------------------------------
-
-    const compositions = this.compositions;
-
-    for (const composition of compositions) {
-      if (composition.textureOffloaded) {
-        const error = new Error(`Composition ${composition.name} cannot update while its textures are offloaded.`);
-
-        logger.error(error.message);
-        this.ticker?.pause();
-        this.emit('rendererror', error);
-
-        return;
-      }
+    for (const server of this.servers) {
+      server.onUpdate(dt);
     }
 
-    // Update Compositions
-    //-------------------------------------------------------------------------
-
-    for (const composition of compositions) {
-      composition.sceneTicking.update.tick(dt);
+    for (const server of this.servers) {
+      server.onLateUpdate(dt);
     }
 
-    for (const composition of compositions) {
-      composition.sceneTicking.lateUpdate.tick(dt);
-    }
-
-    this.emit('update', dt);
-
-    this.renderFrame();
+    this.onDraw();
   }
 
   /** Render current scene state without advancing timelines, Animator or scripts. */
-  renderFrame (): void {
+  onDraw (): void {
     if (this.contextWasLost || this.renderErrors.size > 0) {
       return;
     }
 
-    const compositions = this.compositions;
-
-    // Tick compositions onPreRender
-    //-------------------------------------------------------------------------
-
-    for (const composition of compositions) {
-      composition.camera.updateMatrix();
-      composition.sceneTicking.preRender.tick(0);
+    for (const server of this.servers) {
+      server.onDraw();
     }
 
-    // Render Compositions
-    //-------------------------------------------------------------------------
-
-    this.renderer.setFramebuffer(null);
-    this.renderer.clear(this.clearAction);
-
-    for (const composition of compositions) {
-      composition.renderContent();
-    }
-    this.emit('postrender');
-
+    this.renderer.renderCompositions(this.compositions, this.clearAction);
+    this.renderer.renderOverlays();
     this.renderTargetPool.flush();
   }
 
@@ -462,9 +440,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.setViewport(0, 0, width, height);
     }
 
-    this.compositions?.forEach(comp => {
-      comp.camera.aspect = width / height;
-    });
+    for (const composition of this._compositions) {
+      composition.camera.aspect = width / height;
+    }
 
     this.emit('resize', this);
   }
@@ -666,14 +644,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     if (this.disposed) {
       return;
     }
-    addItem(this.compositions, composition);
+    addItem(this._compositions, composition);
   }
 
   removeComposition (composition: Composition) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.compositions, composition);
+    removeItem(this._compositions, composition);
   }
 
   getWidth (): number {
@@ -808,7 +783,18 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     }
     this._disposed = true;
 
+    this.ticker?.stop();
+    this.eventSystem?.dispose();
     PluginSystem.notifyEngineDestroy(this);
+
+    for (let i = this.servers.length - 1; i >= 0; i--) {
+      this.servers[i].onBeforeExit();
+    }
+
+    for (let i = this.servers.length - 1; i >= 0; i--) {
+      this.servers[i].onDispose();
+    }
+    this.servers = [];
 
     const info: string[] = [];
 
@@ -829,13 +815,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.ticker?.stop();
-    this.eventSystem?.dispose();
-    for (const composition of this._compositions.slice()) {
-      composition.dispose();
-    }
-    this.root.dispose();
-    this.assetService?.dispose();
     this._graphics?.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
@@ -851,7 +830,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes = [];
     this.renderPasses = [];
     this.particleSystems = [];
-    this._compositions = [];
   }
 
   private getTargetSize (parentEle: HTMLElement) {

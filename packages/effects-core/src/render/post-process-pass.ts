@@ -4,7 +4,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { GLSLVersion } from './shader';
 import { glContext } from '../gl';
 import { Material } from '../material';
-import { TextureLoadAction, type Texture } from '../texture';
+import type { Texture } from '../texture';
 import { Geometry } from './geometry';
 import { VertexBuffer } from './vertex-buffer';
 import { Mesh } from './mesh';
@@ -93,8 +93,12 @@ export class BloomPass extends RenderPass {
   }
 
   override execute (renderer: Renderer): void {
-    const baseWidth = renderer.getWidth();
-    const baseHeight = renderer.getHeight();
+    if (!renderer.renderingData.currentFrame.globalVolume?.bloom?.active) {
+      return;
+    }
+    const baseWidth = Math.max(1, renderer.getWidth());
+    const baseHeight = Math.max(1, renderer.getHeight());
+    const iterationCount = Math.max(1, Math.min(this.iterationCount, Math.floor(Math.log2(Math.min(baseWidth, baseHeight)))));
 
     // 1. Threshold pass - 提取高亮区域
     const threshold = renderer.renderingData.currentFrame.globalVolume?.bloom?.threshold ?? 1.0;
@@ -106,9 +110,9 @@ export class BloomPass extends RenderPass {
     let currentTexture = this.thresholdRT.getColorTextures()[0];
 
     // 2. Down sample passes
-    for (let i = 0; i < this.iterationCount; i++) {
-      const downWidth = Math.floor(baseWidth / Math.pow(2, i + 1));
-      const downHeight = Math.floor(baseHeight / Math.pow(2, i + 1));
+    for (let i = 0; i < iterationCount; i++) {
+      const downWidth = Math.max(1, Math.floor(baseWidth / Math.pow(2, i + 1)));
+      const downHeight = Math.max(1, Math.floor(baseHeight / Math.pow(2, i + 1)));
 
       // Horizontal pass
       const tempH = renderer.getTemporaryRT(`_BloomDownH${i}`, downWidth, downHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
@@ -132,7 +136,7 @@ export class BloomPass extends RenderPass {
     renderer.releaseTemporaryRT(this.thresholdRT);
 
     // 3. Up sample passes
-    for (let i = this.iterationCount - 1; i > 0; i--) {
+    for (let i = iterationCount - 1; i > 0; i--) {
       const upWidth = Math.floor(baseWidth / Math.pow(2, i - 1));
       const upHeight = Math.floor(baseHeight / Math.pow(2, i - 1));
 
@@ -205,8 +209,11 @@ export class ToneMappingPass extends RenderPass {
       },
     });
 
-    material.blending = false;
+    // Scene RT stores premultiplied color; preserve earlier compositions when presenting it.
+    material.blending = true;
+    material.blendFunction = [glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
     material.depthTest = false;
+    material.depthMask = false;
     material.culling = false;
 
     this.screenMesh = Mesh.create(engine, {
@@ -226,11 +233,6 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override execute (renderer: Renderer): void {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
     const globalVolume = renderer.renderingData.currentFrame.globalVolume;
 
     const bloom: spec.Bloom = {
@@ -263,17 +265,17 @@ export class ToneMappingPass extends RenderPass {
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
 
-    this.screenMesh.material.setFloat('_Brightness', Math.pow(2, colorAdjustments.brightness));
-    this.screenMesh.material.setFloat('_Saturation', (colorAdjustments.saturation * 0.01) + 1);
-    this.screenMesh.material.setFloat('_Contrast', (colorAdjustments.contrast * 0.01) + 1);
+    this.screenMesh.material.setFloat('_Brightness', colorAdjustments.active ? Math.pow(2, colorAdjustments.brightness) : 1);
+    this.screenMesh.material.setFloat('_Saturation', colorAdjustments.active ? (colorAdjustments.saturation * 0.01) + 1 : 1);
+    this.screenMesh.material.setFloat('_Contrast', colorAdjustments.active ? (colorAdjustments.contrast * 0.01) + 1 : 1);
 
     this.screenMesh.material.setInt('_UseBloom', Number(bloom.active));
     if (bloom.active) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloom.intensity);
     }
-    if (vignette.intensity > 0) {
-      this.screenMesh.material.setFloat('_VignetteIntensity', vignette.intensity);
+    this.screenMesh.material.setFloat('_VignetteIntensity', vignette.active ? vignette.intensity : 0);
+    if (vignette.active && vignette.intensity > 0) {
       this.screenMesh.material.setFloat('_VignetteSmoothness', vignette.smoothness);
       this.screenMesh.material.setFloat('_VignetteRoundness', vignette.roundness);
       this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
