@@ -1,7 +1,8 @@
-import type { Engine, GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
+import type { GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
+import { Engine } from '@galacean/effects-core';
 import { Renderer } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { GLFramebuffer, GLRenderbuffer, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -26,9 +27,9 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
     this.timeout('10s');
 
     before(() => {
-      engine = new GLEngine(canvas, { glType: framework });
+      engine = new Engine(canvas, { glType: framework });
       fakeRenderer = new Renderer(engine);
-      gl = (fakeRenderer.engine as GLEngine).gl;
+      gl = (fakeRenderer.engine.renderingDevice as RenderingDeviceWebGL).gl;
       gpu = engine.gpuCapability;
     });
 

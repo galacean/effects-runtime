@@ -583,23 +583,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.resetEndState();
   }
 
-  /** Renders this Composition content. Screen-space UI is rendered by Engine. */
-  render () {
-    this.renderContent();
-  }
-
-  /**
-   * Renders only the Composition scene content.
-   */
-  renderContent () {
-    this.renderer.renderScene(this.sceneRendering, {
-      camera: this.camera,
-      target: null,
-      globalVolume: this.globalVolume,
-      postProcessingEnabled: this.postProcessingEnabled,
-    });
-  }
-
   private shouldDispose () {
     return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }

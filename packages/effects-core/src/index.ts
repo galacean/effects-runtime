@@ -52,6 +52,8 @@ export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
 export * from './precompositions';
+export * from './graphics-server';
+export * from './rendering-device';
 
 registerPlugin('camera', CameraVFXItemLoader);
 registerPlugin('text', TextLoader);
@@ -62,3 +64,4 @@ registerPlugin('interact', InteractLoader);
 export const version = __VERSION__;
 
 logger.info(`Core version: ${version}.`);
+

@@ -1,11 +1,12 @@
+import { Engine } from '@galacean/effects-core';
 import { TextCache } from '@galacean/effects';
-import { GLEngine } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
 describe('core/text-cache', () => {
   it('uses engine pixel ratio as atlas resolution and premultiplies alpha on upload', () => {
-    const engine = new GLEngine(document.createElement('canvas'), { pixelRatio: 1 });
+    const engine = new Engine(document.createElement('canvas'), { pixelRatio: 1 });
     const cache = new TextCache(engine);
     const atlas1x = cache.getAtlas(20, 'Arial', 'normal', 'normal');
 

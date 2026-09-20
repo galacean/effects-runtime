@@ -1,11 +1,12 @@
-import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
+import type { Renderer, ShaderWithSource } from '@galacean/effects-core';
+import { Engine } from '@galacean/effects-core';
 import {
   SceneRendering, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion, Material,
 } from '@galacean/effects-core';
 import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
 import { Geometry } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
 const { expect, assert } = chai;
@@ -30,10 +31,10 @@ describe('webgl/gl-material', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
+    const glEngine = new Engine(canvas, { glType: 'webgl2' });
 
     renderer = glEngine.renderer;
-    gl = glEngine.gl;
+    gl = (glEngine.renderingDevice as RenderingDeviceWebGL).gl;
     engine = glEngine;
   });
 
@@ -49,7 +50,7 @@ describe('webgl/gl-material', () => {
   });
 
   afterEach(() => {
-    const sb = (renderer.engine as GLEngine).shaderLibrary;
+    const sb = (renderer.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     sb.dispose();
   });
@@ -108,7 +109,7 @@ describe('webgl/gl-material', () => {
 
     material.setInt('u_Test', 1);
     material.initialize();
-    material.setupStates((renderer.engine as GLEngine));
+    material.setupStates(renderer.engine);
 
     assert.equal(material.sampleAlphaToCoverage, false);
     assert.equal(material.blending, true);
@@ -146,7 +147,7 @@ describe('webgl/gl-material', () => {
   it('blending enabled with default parameters', () => {
     const material = generateMaterial(engine, shader, { blending: true }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
 
     expect(gl.isEnabled(gl.BLEND)).to.eql(true);
     assert.equal(gl.getParameter(gl.BLEND_SRC_RGB), glContext.ONE, 'src_rgb');
@@ -186,7 +187,7 @@ describe('webgl/gl-material', () => {
   it('cullFace disabled', () => {
     const material = generateMaterial(engine, shader, { cullFaceEnabled: false }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(false);
   });
 
@@ -194,7 +195,7 @@ describe('webgl/gl-material', () => {
   it('cullFace enable with default parameters', () => {
     const material = generateMaterial(engine, shader, { cullFaceEnabled: true }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
     expect(gl.getParameter(gl.CULL_FACE_MODE)).to.eql(glContext.FRONT);
     expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CCW);
@@ -204,7 +205,7 @@ describe('webgl/gl-material', () => {
   it('cullFace enable disabled with custom parameters', () => {
     const material = generateMaterial(engine, shader, { cullFaceEnabled: true, cullFace: glContext.FRONT_AND_BACK, frontFace: glContext.CW }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
     expect(gl.getParameter(gl.CULL_FACE_MODE)).to.eql(glContext.FRONT_AND_BACK);
     expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CCW);
@@ -221,7 +222,7 @@ describe('webgl/gl-material', () => {
   it('depthTest enable with default parameters', () => {
     const material = generateMaterial(engine, shader, { depthTest: true }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.DEPTH_TEST)).to.eql(true);
     // expect(gl.getParameter(gl.DEPTH_WRITEMASK)).to.eql(true);
     expect(gl.getParameter(gl.DEPTH_RANGE)).to.eql(new Float32Array([0., 1.]));
@@ -240,7 +241,7 @@ describe('webgl/gl-material', () => {
         depthFunc: glContext.ALWAYS,
       }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.DEPTH_TEST)).to.eql(true);
     expect(gl.getParameter(gl.DEPTH_WRITEMASK)).to.eql(false);
     expect(gl.getParameter(gl.DEPTH_RANGE)).to.eql(new Float32Array([0.4, 0.5]));
@@ -251,7 +252,7 @@ describe('webgl/gl-material', () => {
   it('stencilTest enable', () => {
     const material = generateMaterial(engine, shader, { stencilTest: false }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(false);
   });
 
@@ -259,7 +260,7 @@ describe('webgl/gl-material', () => {
   it('stencilTest enable with default parameters', () => {
     const material = generateMaterial(engine, shader, { stencilTest: true }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(true);
     //stencil func
     expect(gl.getParameter(gl.STENCIL_FUNC)).to.eql(glContext.ALWAYS);
@@ -295,7 +296,7 @@ describe('webgl/gl-material', () => {
         stencilOpZPass: [glContext.DECR, glContext.KEEP],
       }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(true);
     //stencil func
     expect(gl.getParameter(gl.STENCIL_FUNC)).to.eql(glContext.NEVER);
@@ -334,7 +335,7 @@ describe('webgl/gl-material', () => {
         // stencilOpBack: [glContext.INCR, glContext.INCR_WRAP, glContext.REPLACE],
       }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(true);
     //stencil func
     expect(gl.getParameter(gl.STENCIL_FUNC)).to.eql(glContext.EQUAL);
@@ -359,7 +360,7 @@ describe('webgl/gl-material', () => {
   it('sampleAlphaToCoverage disable', () => {
     const material = generateMaterial(engine, shader, { sampleAlphaToCoverage: false }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.SAMPLE_ALPHA_TO_COVERAGE)).to.eql(false);
   });
 
@@ -367,7 +368,7 @@ describe('webgl/gl-material', () => {
   it('sampleAlphaToCoverage enable', () => {
     const material = generateMaterial(engine, shader, { sampleAlphaToCoverage: true }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.isEnabled(gl.SAMPLE_ALPHA_TO_COVERAGE)).to.eql(true);
   });
 
@@ -375,7 +376,7 @@ describe('webgl/gl-material', () => {
   it('colorMask with default parameters', () => {
     const material = generateMaterial(engine, shader, {}, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([true, true, true, true]);
   });
 
@@ -383,7 +384,7 @@ describe('webgl/gl-material', () => {
   it('colorMask with custom parameters', () => {
     const material = generateMaterial(engine, shader, { colorMask: false }, renderer);
 
-    material.setupStates(renderer.engine as GLEngine);
+    material.setupStates(renderer.engine);
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([false, false, false, false]);
   });
 
@@ -492,14 +493,14 @@ describe('webgl/gl-material', () => {
   //     states: {},
   //   });
   //
-  //   material.initialize(renderer.engine as GLEngine);
-  //   material2initialize(renderer.engine as GLEngine);
+  //   material.initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
+  //   material2initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
   //   expect(material.shader).to.exist;
   //   expect(material.shader.initialized).to.true;
-  //   (renderer.engine as GLEngine as GLEngine).shaderLibrary.compileAllShaders();
-  //   // material2initialize(renderer.engine as GLEngine);
+  //   (renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
+  //   // material2initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
   //
-  //   console.log((renderer.engine as GLEngine as GLEngine).shaderLibrary.shaderResults);
+  //   console.log((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults);
   //
   //
   //    const program = material.shader.program
@@ -511,7 +512,7 @@ describe('webgl/gl-material', () => {
   //   //
   //   material.dispose();
   //   // material2.dispose();
-  //   expect((renderer.engine as GLEngine as GLEngine).shaderLibrary.shaderResults['test_001_shader']).to.exist;
+  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_001_shader']).to.exist;
   // });
   //
   // it('shared material will keep', async ()=> {
@@ -525,11 +526,11 @@ describe('webgl/gl-material', () => {
   //     states: {},
   //   });
   //
-  //   material.initialize(renderer.engine as GLEngine);
+  //   material.initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
   //
-  //   (renderer.engine as GLEngine as GLEngine).shaderLibrary.compileAllShaders();
+  //   (renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
   //   expect(material.shader).to.exist;
-  //   expect((renderer.engine as GLEngine as GLEngine).shaderLibrary.shaderResults['test_002_shader']).to.contains({ shared: true });
+  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.contains({ shared: true });
   //
   //   const program = material.getProgram();
   //
@@ -537,7 +538,7 @@ describe('webgl/gl-material', () => {
   //   expect(program?.shared).to.be.true;
   //
   //   material.dispose();
-  //   expect((renderer.engine as GLEngine as GLEngine).shaderLibrary.shaderResults['test_002_shader']).to.exist;
+  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.exist;
   // });
 
   // 使用二维数组给unfiorm赋值
@@ -1623,7 +1624,7 @@ function generateMesh (
 //   outColor += v4;
 // }
 // `;
-//   const engine = renderer.engine as GLEngine;
+//   const engine = renderer.engine.renderingDevice as RenderingDeviceWebGL;
 //   const material = new GLMaterial(engine, {
 //     shader: { vertex: vs, fragment: fs },
 //   });
@@ -1725,7 +1726,7 @@ function generateMaterial (
   material.cullFace = states.cullFace;
 
   material.initialize();
-  material.setupStates((renderer.engine as GLEngine));
+  material.setupStates(renderer.engine);
 
   return material;
 }

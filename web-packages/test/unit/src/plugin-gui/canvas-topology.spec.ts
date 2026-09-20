@@ -116,7 +116,7 @@ describe('plugin-gui/GUI topology', () => {
 
     composition.sceneTicking.update.tick = () => calls.push('scene:update');
     composition.sceneTicking.lateUpdate.tick = () => calls.push('scene:lateUpdate');
-    composition.renderContent = () => calls.push('scene:render');
+    composition.renderer.renderComposition = () => calls.push('scene:render');
     gui.windowRoot.update = () => calls.push('gui:update');
     gui.windowRoot.render = () => calls.push('gui:render');
     engine.mainLoop(16);

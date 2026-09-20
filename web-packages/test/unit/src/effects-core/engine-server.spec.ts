@@ -1,7 +1,6 @@
-import type { Engine, Scene } from '@galacean/effects';
-import { AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
-import { ThreeEngine } from '../../../../../packages/effects-threejs/src/three-engine';
-import { ThreeRenderer } from '../../../../../packages/effects-threejs/src/three-renderer';
+import type { Scene } from '@galacean/effects';
+import { Engine, RenderingDevice, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
+import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
 
@@ -66,7 +65,7 @@ describe('core/engine/servers', () => {
     composition.sceneTicking.update.tick = () => calls.push('composition:update');
     composition.sceneTicking.lateUpdate.tick = () => calls.push('composition:lateUpdate');
     composition.sceneTicking.preRender.tick = () => calls.push('composition:preRender');
-    composition.renderContent = () => calls.push('composition:render');
+    composition.renderer.renderComposition = () => calls.push('composition:render');
     engine.speed = 2;
     engine.mainLoop(50);
     engine.dispose();
@@ -193,7 +192,7 @@ describe('core/engine/servers', () => {
     composition.sceneTicking.lateUpdate.tick = () => calls.push('lateUpdate');
     composition.camera.updateMatrix = () => calls.push('camera');
     composition.sceneTicking.preRender.tick = dt => calls.push(`preRender:${dt}`);
-    composition.renderContent = () => calls.push('render');
+    composition.renderer.renderComposition = () => calls.push('render');
     engine.renderTargetPool.flush = () => calls.push('flush');
     engine.onDraw();
     expect(calls).to.deep.equal(['server:draw', 'camera', 'preRender:0', 'render', 'flush']);
@@ -210,8 +209,8 @@ describe('core/engine/servers', () => {
     for (const [index, composition] of [first, second].entries()) {
       composition.camera.updateMatrix = () => calls.push(`camera:${index}`);
       composition.sceneTicking.preRender.tick = () => calls.push(`prepare:${index}`);
-      composition.renderContent = () => calls.push(`scene:${index}`);
     }
+    engine.renderer.renderComposition = composition => calls.push(`scene:${[first, second].indexOf(composition)}`);
     engine.renderer.setFramebuffer = () => calls.push('framebuffer');
     engine.renderer.clear = () => calls.push('clear');
     const overlay = { render: () => calls.push('overlay') };
@@ -305,20 +304,29 @@ describe('core/engine/servers', () => {
     expect(() => engine.getServer(SceneServer)).to.throw('Engine server "SceneServer" is not registered.');
   });
 
-  it('creates the ThreeRenderer before servers initialize and keeps the same instance', () => {
+  it('creates the shared Renderer with a Three device before other servers initialize', () => {
     let renderer: Renderer | undefined;
 
     class Server extends EngineServer {
       override onInit () {
         renderer = this.engine.renderer;
-        expect(renderer).to.be.instanceOf(ThreeRenderer);
+        expect(renderer.constructor).to.equal(Renderer);
+        expect(this.engine.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
       }
     }
 
-    register('three-renderer', Server);
+    register('three-device', Server);
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2')!;
-    const engine = new ThreeEngine(gl, { manualRender: true });
+    const createDevice = RenderingDevice.create;
+    let engine: Engine;
+
+    try {
+      RenderingDevice.create = owner => new RenderingDeviceThree(owner);
+      engine = new Engine(canvas, { manualRender: true, ownsCanvas: false });
+    } finally {
+      RenderingDevice.create = createDevice;
+    }
 
     expect(engine.renderer).to.equal(renderer);
     engine.dispose();

@@ -1,4 +1,5 @@
-import type { Renderer, Engine, TextureFactorySourceFrom } from '@galacean/effects-core';
+import type { Renderer, TextureFactorySourceFrom } from '@galacean/effects-core';
+import { Engine } from '@galacean/effects-core';
 import { Material } from '@galacean/effects-core';
 import {
   TextureLoadAction, glContext, getDefaultTextureFactory, RenderPassAttachmentStorageType,
@@ -6,7 +7,8 @@ import {
   SceneRendering, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
 import { Geometry } from '@galacean/effects-core';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -25,11 +27,11 @@ describe('webgl/dispose', function () {
 
   before(() => {
     canvas = document.createElement('canvas');
-    const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
+    const glEngine = new Engine(canvas, { glType: 'webgl2' });
 
     renderer = glEngine.renderer;
     engine = glEngine;
-    gl = glEngine.gl;
+    gl = (glEngine.renderingDevice as RenderingDeviceWebGL).gl;
   });
 
   beforeEach(async () => {
@@ -37,7 +39,7 @@ describe('webgl/dispose', function () {
   });
 
   afterEach(() => {
-    const sb = (renderer.engine as GLEngine).shaderLibrary;
+    const sb = (renderer.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     sb.dispose();
     destroyMesh(result);

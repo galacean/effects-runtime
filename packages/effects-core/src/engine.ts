@@ -5,10 +5,10 @@ import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer, Renderer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, Renderer, RenderTargetPool, RenderingData } from './render';
+import { Graphics, RenderTargetPool, RenderingData } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
@@ -28,6 +28,8 @@ import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { getClassesDerivedFrom } from './decorators';
 import { EngineServer } from './engine-server';
+import type { RenderingDevice } from './rendering-device';
+import type { RestoreHandler } from './utils';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -87,10 +89,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   renderLevel?: SceneRenderLevel;
   whiteTexture: Texture;
   transparentTexture: Texture;
-  /**
-   * GPU 能力
-   */
-  gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
@@ -100,6 +98,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   renderErrors: Set<Error> = new Set();
   assetManagers: AssetManager[] = [];
   eventSystem: EventSystem;
+  renderingDevice: RenderingDevice;
   env = '';
   /**
    * 计时器
@@ -129,10 +128,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * Engine 是否拥有 canvas 的生命周期
    */
   readonly ownsCanvas: boolean;
-  /**
-   * WebGL 上下文是否处于丢失状态
-   */
-  protected contextWasLost = false;
+  readonly options: EngineOptions;
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
@@ -147,7 +143,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   private servers: EngineServer[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
-  private viewport?: [x: number, y: number, width: number, height: number];
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
     clearStencil: 0,
@@ -162,6 +157,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super();
+    this.options = options ?? {};
     this.canvas = canvas;
     this.env = options?.env ?? '';
     this.ownsCanvas = options?.ownsCanvas ?? true;
@@ -185,9 +181,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.assetLoader = new AssetLoader(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
-    this.renderer = this.createRenderer();
-
     this.initializeServers();
+
+    if (this.renderingDevice.gpuCapability) {
+      this.resize();
+    }
 
     PluginSystem.notifyEngineCreated(this);
   }
@@ -199,11 +197,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     return server as T;
   }
 
-  /** Called during base construction, before backend-specific fields are initialized. */
-  protected createRenderer (): Renderer {
-    return new Renderer(this);
-  }
-
   private initializeServers (): void {
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
     this.servers.sort((a, b) => a.order - b.order);
@@ -211,6 +204,17 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (const server of this.servers) {
       server.onInit();
     }
+  }
+
+  /**
+   * GPU 能力
+   */
+  get gpuCapability (): GPUCapability {
+    return this.renderingDevice.gpuCapability;
+  }
+
+  set gpuCapability (capability: GPUCapability) {
+    this.renderingDevice.gpuCapability = capability;
   }
 
   get compositions (): Composition[] {
@@ -338,7 +342,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   mainLoop (dt: number): void {
     // 上下文丢失/恢复期间跳过渲染，避免打到失效的 GL 上下文。
-    if (this.contextWasLost) {
+    if (this.renderingDevice.contextWasLost) {
       return;
     }
 
@@ -367,7 +371,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   /** Render current scene state without advancing timelines, Animator or scripts. */
   onDraw (): void {
-    if (this.contextWasLost || this.renderErrors.size > 0) {
+    if (this.renderingDevice.contextWasLost || this.renderErrors.size > 0) {
       return;
     }
 
@@ -445,15 +449,15 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    throw new Error('The active rendering backend does not provide vertex buffers.');
+    return this.renderingDevice.createVertexBuffer(data, options);
   }
 
   createDynamicVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    return this.createVertexBuffer(data, options);
+    return this.renderingDevice.createDynamicVertexBuffer(data, options);
   }
 
   createIndexBuffer (indices: IndicesArray, options: DataBufferOptions): DataBuffer {
-    throw new Error('The active rendering backend does not provide index buffers.');
+    return this.renderingDevice.createIndexBuffer(indices, options);
   }
 
   updateDynamicVertexBuffer (
@@ -462,7 +466,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     byteOffset = 0,
     byteLength?: number,
   ): void {
-    throw new Error('The active rendering backend cannot update vertex buffers.');
+    return this.renderingDevice.updateDynamicVertexBuffer(vertexBuffer, data, byteOffset, byteLength);
   }
 
   updateDynamicIndexBuffer (
@@ -470,14 +474,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     indices: IndicesArray,
     byteOffset = 0,
   ): void {
-    throw new Error('The active rendering backend cannot update index buffers.');
+    return this.renderingDevice.updateDynamicIndexBuffer(indexBuffer, indices, byteOffset);
   }
 
   /** @hide */
   releaseBuffer (buffer: DataBuffer): boolean {
-    buffer.references--;
-
-    return buffer.references === 0;
+    return this.renderingDevice.releaseBuffer(buffer);
   }
 
   /** @hide */
@@ -486,7 +488,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): void {
-    throw new Error('The active rendering backend cannot bind geometry buffers.');
+    return this.renderingDevice.bindBuffers(vertexBuffers, indexBuffer, effect);
   }
 
   /**
@@ -503,7 +505,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     indexCount: number,
     instanceCount?: number,
   ): void {
-    throw new Error('The active rendering backend cannot draw indexed primitives.');
+    return this.renderingDevice.drawElementsType(mode, indexOffset, indexCount, instanceCount);
   }
 
   /**
@@ -520,7 +522,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     vertexCount: number,
     instanceCount?: number,
   ): void {
-    throw new Error('The active rendering backend cannot draw primitives.');
+    return this.renderingDevice.drawArraysType(mode, vertexStart, vertexCount, instanceCount);
   }
 
   addTexture (tex: Texture) {
@@ -649,23 +651,19 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   getWidth (): number {
-    // OVERRIDE
-    return 0;
+    return this.renderingDevice.getWidth();
   }
 
   getHeight (): number {
-    // OVERRIDE
-    return 0;
+    return this.renderingDevice.getHeight();
   }
 
   getShaderLibrary (): ShaderLibrary | null {
-    //OVERRIDE
-
-    return null;
+    return this.renderingDevice.getShaderLibrary();
   }
 
   bindSystemFramebuffer () {
-    // OVERRIDE
+    return this.renderingDevice.bindSystemFramebuffer();
   }
 
   /**
@@ -678,108 +676,102 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * gl.viewport(0, 0, width, height);
    */
   setViewport (x: number, y: number, width: number, height: number) {
-    this.viewport = [x, y, width, height];
-    this.setViewportInternal(x, y, width, height);
+    return this.renderingDevice.setViewport(x, y, width, height);
   }
 
   /** Returns the viewport currently submitted to the graphics backend. */
   getViewport (): [x: number, y: number, width: number, height: number] {
-    return this.viewport ? [...this.viewport] : [0, 0, this.getWidth(), this.getHeight()];
-  }
-
-  /** Submits viewport state to the active graphics backend. */
-  protected setViewportInternal (x: number, y: number, width: number, height: number) {
-    // OVERRIDE
+    return this.renderingDevice.getViewport();
   }
 
   clear (action: RenderPassClearAction) {
-    // OVERRIDE
+    return this.renderingDevice.clear(action);
   }
 
   /*** 渲染状态控制 ***/
 
   setSampleAlphaToCoverage (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setSampleAlphaToCoverage(enable);
   }
 
   setBlending (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setBlending(enable);
   }
 
   setDepthTest (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setDepthTest(enable);
   }
 
   setStencilTest (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setStencilTest(enable);
   }
 
   setScissorTest (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setScissorTest(enable);
   }
 
   setScissor (x: number, y: number, width: number, height: number) {
-    // OVERRIDE
+    return this.renderingDevice.setScissor(x, y, width, height);
   }
 
   setCulling (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setCulling(enable);
   }
 
   setPolygonOffsetFill (enable: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.setPolygonOffsetFill(enable);
   }
 
   blendColor (r: number, g: number, b: number, a: number) {
-    // OVERRIDE
+    return this.renderingDevice.blendColor(r, g, b, a);
   }
 
   blendFuncSeparate (srcRGB: number, dstRGB: number, srcAlpha: number, dstAlpha: number) {
-    // OVERRIDE
+    return this.renderingDevice.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
   }
 
   blendEquationSeparate (modeRGB: number, modeAlpha: number) {
-    // OVERRIDE
+    return this.renderingDevice.blendEquationSeparate(modeRGB, modeAlpha);
   }
 
   colorMask (r: boolean, g: boolean, b: boolean, a: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.colorMask(r, g, b, a);
   }
 
   depthMask (flag: boolean) {
-    // OVERRIDE
+    return this.renderingDevice.depthMask(flag);
   }
 
   depthFunc (func: number) {
-    // OVERRIDE
+    return this.renderingDevice.depthFunc(func);
   }
 
   depthRange (near: number, far: number) {
-    // OVERRIDE
+    return this.renderingDevice.depthRange(near, far);
   }
 
   polygonOffset (factor: number, units: number) {
-    // OVERRIDE
+    return this.renderingDevice.polygonOffset(factor, units);
   }
 
   cullFace (mode: number) {
-    // OVERRIDE
+    return this.renderingDevice.cullFace(mode);
   }
 
   frontFace (mode: number) {
-    // OVERRIDE
+    return this.renderingDevice.frontFace(mode);
   }
 
   stencilMaskSeparate (face: number, mask: number) {
-    // OVERRIDE
+    return this.renderingDevice.stencilMaskSeparate(face, mask);
   }
 
   stencilFuncSeparate (face: number, func: number, ref: number, mask: number) {
-    // OVERRIDE
+    return this.renderingDevice.stencilFuncSeparate(face, func, ref, mask);
   }
 
   stencilOpSeparate (face: number, fail: number, zfail: number, zpass: number) {
-    // OVERRIDE
+    return this.renderingDevice.stencilOpSeparate(face, fail, zfail, zpass);
   }
 
   /**
@@ -798,11 +790,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (let i = this.servers.length - 1; i >= 0; i--) {
       this.servers[i].onBeforeExit();
     }
-
-    for (let i = this.servers.length - 1; i >= 0; i--) {
-      this.servers[i].onDispose();
-    }
-    this.servers = [];
 
     const info: string[] = [];
 
@@ -830,6 +817,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes.forEach(mesh => mesh.dispose());
     this.geometries.forEach(geo => geo.dispose());
     this.materials.forEach(mat => mat.dispose());
+    this.framebuffers.forEach(framebuffer => framebuffer.dispose());
+    this.renderbuffers.forEach(renderbuffer => renderbuffer.dispose());
     this.textures.forEach(tex => tex.dispose());
     this.assetManagers.forEach(assetManager => assetManager.dispose());
 
@@ -838,7 +827,24 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.geometries = [];
     this.meshes = [];
     this.renderPasses = [];
+    this.framebuffers = [];
+    this.renderbuffers = [];
     this.particleSystems = [];
+    this.renderTargetPool.dispose();
+
+    for (let i = this.servers.length - 1; i >= 0; i--) {
+      this.servers[i].onDispose();
+    }
+    this.servers = [];
+  }
+
+  /** @internal Rebuild engine-owned resources after the device restores shaders. */
+  restoreGraphicsResources (): void {
+    this.geometries.forEach(geo => geo.restore());
+    this.particleSystems.forEach(system => system.rebuild());
+    this.renderbuffers.forEach(resource => (resource as unknown as RestoreHandler).restore());
+    this.textures.forEach(resource => (resource as unknown as RestoreHandler).restore());
+    this.framebuffers.forEach(resource => (resource as unknown as RestoreHandler).restore());
   }
 
   private getTargetSize (parentEle: HTMLElement) {

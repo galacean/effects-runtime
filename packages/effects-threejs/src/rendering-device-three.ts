@@ -1,15 +1,13 @@
 import type {
-  Composition, DataBuffer, DataBufferOptions, EngineOptions, Geometry, IndicesArray, spec,
+  Composition, DataBuffer, DataBufferOptions, IndicesArray, spec,
 } from '@galacean/effects-core';
 import {
-  BufferDataType, Engine, GPUCapability, createTypedArray, getBytesPerElement,
+  BufferDataType, RenderingData, RenderingDevice, GPUCapability, createTypedArray, getBytesPerElement,
 } from '@galacean/effects-core';
 import * as THREE from 'three';
-import { ThreeRenderer } from './three-renderer';
 import { ThreeDataBuffer } from './three-data-buffer';
-import { disposeThreeGeometry } from './three-geometry';
 
-export interface ThreeEngineOptions {
+export interface RenderingDeviceThreeOptions {
   threeCamera?: THREE.Camera,
   composition: Composition,
   threeGroup: THREE.Group,
@@ -17,30 +15,55 @@ export interface ThreeEngineOptions {
 
 type BufferData = number[] | ArrayBuffer | ArrayBufferView;
 
-/**
- * 挂载着合成需要的全局对象等
- */
-export class ThreeEngine extends Engine {
+/** Adapts effects buffers and scene bindings to the host Three.js renderer. */
+export class RenderingDeviceThree extends RenderingDevice {
   threeCamera?: THREE.Camera;
   threeGroup: THREE.Group;
   composition: Composition;
 
-  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext, options?: EngineOptions) {
-    super(gl.canvas as HTMLCanvasElement, options);
-
-    this.gpuCapability = new GPUCapability(gl);
+  /** The host supplies its context after Engine construction, keeping canvas sizing with Three.js. */
+  setContext (context: WebGLRenderingContext | WebGL2RenderingContext): void {
+    this.gpuCapability = new GPUCapability(context);
   }
 
-  protected override createRenderer (): ThreeRenderer {
-    return new ThreeRenderer(this);
+  override getWidth (): number {
+    return this.engine.canvas.width;
   }
 
-  setOptions (threeEngineOptions: ThreeEngineOptions) {
-    const { threeCamera, threeGroup, composition } = threeEngineOptions;
+  override getHeight (): number {
+    return this.engine.canvas.height;
+  }
+
+  setOptions (options: RenderingDeviceThreeOptions) {
+    const { threeCamera, threeGroup, composition } = options;
 
     this.threeCamera = threeCamera;
     this.threeGroup = threeGroup;
     this.composition = composition;
+  }
+
+  renderComposition (composition: Composition): void {
+    const { engine } = this;
+    const { renderer } = engine;
+    const previousData = engine.renderingData;
+    const previousComposition = this.composition;
+    const data = new RenderingData({
+      camera: composition.camera,
+      target: null,
+      globalVolume: composition.globalVolume,
+      postProcessingEnabled: false,
+    });
+
+    engine.renderingData = data;
+    this.composition = composition;
+    try {
+      renderer.prepareRenderingData(composition.sceneRendering, data);
+      renderer.renderMeshes(data.renderList.objects);
+    } finally {
+      data.frameData.dispose();
+      engine.renderingData = previousData;
+      this.composition = previousComposition;
+    }
   }
 
   override createVertexBuffer (
@@ -146,11 +169,6 @@ export class ThreeEngine extends Engine {
     buffer.capacity = 0;
 
     return true;
-  }
-
-  override removeGeometry (geometry: Geometry): void {
-    disposeThreeGeometry(geometry);
-    super.removeGeometry(geometry);
   }
 }
 

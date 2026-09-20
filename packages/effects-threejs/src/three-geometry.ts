@@ -1,4 +1,4 @@
-import type { DataBuffer, Geometry, VertexBuffer } from '@galacean/effects-core';
+import type { DataBuffer, Engine, Geometry, VertexBuffer } from '@galacean/effects-core';
 import { getBytesPerElement } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeDataBuffer } from './three-data-buffer';
@@ -10,10 +10,16 @@ interface ThreeGeometryCache {
   resource: THREE.BufferGeometry,
 }
 
-const geometryCache = new WeakMap<Geometry, ThreeGeometryCache>();
+const geometryCaches = new WeakMap<Engine, Map<Geometry, ThreeGeometryCache>>();
 
 export function getThreeGeometry (source: Geometry): THREE.BufferGeometry {
   source.flush();
+  let geometryCache = geometryCaches.get(source.engine);
+
+  if (!geometryCache) {
+    geometryCache = new Map();
+    geometryCaches.set(source.engine, geometryCache);
+  }
   let cache = geometryCache.get(source);
   const attributeNames = source.getAttributeNames();
   const indexBuffer = source.getIndexBuffer();
@@ -80,9 +86,10 @@ function isCacheValid (
   return attributeNames.every(name => cache.vertexBuffers[name] === source.getVertexBuffer(name));
 }
 
-export function disposeThreeGeometry (source: Geometry): void {
-  const cache = geometryCache.get(source);
+/** Releases only the native geometries created for this display object's engine. */
+export function disposeThreeGeometries (engine: Engine): void {
+  const geometryCache = geometryCaches.get(engine);
 
-  cache?.resource.dispose();
-  geometryCache.delete(source);
+  geometryCache?.forEach(cache => cache.resource.dispose());
+  geometryCaches.delete(engine);
 }

@@ -1,19 +1,22 @@
 import type {
   Engine, GeometryMeshProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Material, Mesh, Texture, logger } from '@galacean/effects-core';
+import { Material, Mesh, Texture, RenderingDevice, logger } from '@galacean/effects-core';
 import { ThreeMaterial } from './material';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
+import { RenderingDeviceThree } from './rendering-device-three';
 
 export * from '@galacean/effects-core';
 export * from './material';
 export * from './three-composition';
 export * from './three-display-object';
-export * from './three-engine';
+export * from './rendering-device-three';
 export * from './three-texture';
 export * from './three-sprite-component';
 export * from './three-text-component';
+
+RenderingDevice.create = engine => new RenderingDeviceThree(engine);
 
 /**
  * 图片的创建方法

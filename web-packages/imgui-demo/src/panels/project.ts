@@ -387,7 +387,7 @@ export class Project extends EditorWindow {
             previewItem.rotate(0, 25, 0);
 
             this.previewPlayer.gotoAndStop(1);
-            composition.renderContent();
+            this.previewPlayer.engine.onDraw();
             iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
             this.assetLock.release();
 
@@ -517,4 +517,3 @@ export class Project extends EditorWindow {
     }
   }
 }
-

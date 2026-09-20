@@ -89,8 +89,18 @@ export class Renderer {
     this.clear(clearAction);
 
     for (const composition of compositions) {
-      composition.renderContent();
+      this.renderComposition(composition);
     }
+  }
+
+  /** Submits one scene without advancing its lifecycle or drawing screen-space UI. */
+  renderComposition (composition: Composition): void {
+    this.renderScene(composition.sceneRendering, {
+      camera: composition.camera,
+      target: null,
+      globalVolume: composition.globalVolume,
+      postProcessingEnabled: composition.postProcessingEnabled,
+    });
   }
 
   /**

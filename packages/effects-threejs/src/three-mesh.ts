@@ -5,7 +5,7 @@ import type {
 import { glContext, Mesh } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeMaterial } from './material';
-import type { ThreeEngine } from './three-engine';
+import type { RenderingDeviceThree } from './rendering-device-three';
 import { getThreeGeometry } from './three-geometry';
 
 /**
@@ -111,7 +111,7 @@ export class ThreeMesh extends Mesh implements Sortable {
 
   override onStart (): void {
     super.onStart();
-    (this.engine as ThreeEngine).threeGroup.add(this.mesh);
+    (this.engine.renderingDevice as RenderingDeviceThree).threeGroup.add(this.mesh);
   }
 
   /**

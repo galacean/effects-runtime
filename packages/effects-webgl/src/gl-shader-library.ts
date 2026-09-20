@@ -6,7 +6,7 @@ import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
-import type { GLEngine } from './gl-engine';
+import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 interface GLShaderCompileResult extends ShaderCompileResult {
   program?: WebGLProgram,
@@ -25,9 +25,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private cachedShaders: Record<string, GLShaderVariant> = {};
 
   constructor (
-    public engine: GLEngine
+    public device: RenderingDeviceWebGL
   ) {
-    this.glAsyncCompileExt = engine.gpuCapability.glAsyncCompileExt;
+    this.glAsyncCompileExt = device.gpuCapability.glAsyncCompileExt;
   }
 
   compileAllShaders (asyncCallback?: (results: ShaderCompileResult[]) => void) {
@@ -73,13 +73,13 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const shaderWithMacros = {
       ...shaderSource,
       vertex: ShaderFactory.genFinalShaderCode({
-        level: this.engine.gpuCapability.level,
+        level: this.device.gpuCapability.level,
         shaderType: ShaderType.vertex,
         shader: shaderSource.vertex,
         macros: mergedMacros,
       }),
       fragment: ShaderFactory.genFinalShaderCode({
-        level: this.engine.gpuCapability.level,
+        level: this.device.gpuCapability.level,
         shaderType: ShaderType.fragment,
         shader: shaderSource.fragment,
         macros: mergedMacros,
@@ -97,7 +97,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
       shared = true;
     }
-    this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.engine, {
+    this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.device.engine, {
       ...shaderWithMacros,
       vertex: shaderWithMacros.vertex,
       fragment: shaderWithMacros.fragment,
@@ -123,7 +123,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shared = true;
     }
 
-    const gl = this.engine.gl;
+    const gl = this.device.gl;
     const result: GLShaderCompileResult = { shared, status: ShaderCompileResultStatus.compiling };
     const linkProgram = this.createProgram(gl, vertex, fragment, result);
     const ext = this.glAsyncCompileExt;
@@ -141,7 +141,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       // console.log('compileShader ' + result.cacheId + ' ' + result.compileTime + ' ', shader.source);
     };
     const checkComplete = () => {
-      if (this.engine.disposed) {
+      if (this.device.disposed) {
         console.warn('The player is destroyed during the loadScene process. Please check the timing of calling loadScene and dispose. A common situation is that when calling loadScene, await is not added. This will cause dispose to be called before loadScene is completed.');
 
         return asyncCallback?.(result);
@@ -158,7 +158,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (program) {
         if (result.status !== ShaderCompileResultStatus.fail) {
           assignInspectorName(program, name);
-          const glProgram = new GLProgram(this.engine, program, shader.key);
+          const glProgram = new GLProgram(this.device, program, shader.key);
 
           // FIXME: 这个检测不能在这里调用，安卓上会有兼容性问题。要么开发版使用，要么移到Shader首次使用时
           gl.validateProgram(program);
@@ -296,7 +296,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   async restore (): Promise<void> {
-    const gl = this.engine.gl;
+    const gl = this.device.gl;
 
     // 上下文重建后扩展对象引用已失效，需要重新获取。
     this.glAsyncCompileExt = gl.getExtension('KHR_parallel_shader_compile');
@@ -334,8 +334,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       program.dispose();
     });
     this.programMap = {};
-    if (this.engine) {
-      const gl = this.engine.gl;
+    if (this.device) {
+      const gl = this.device.gl;
 
       this.glFragShaderMap.forEach(shader => {
         gl.deleteShader(shader);

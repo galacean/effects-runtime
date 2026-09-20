@@ -1,3 +1,5 @@
+import './rendering-device-three.spec';
+import './graphics-server.spec';
 import './gl-dispose.spec';
 import './gl-frame-buffer.spec';
 import './gl-context-lost.spec';

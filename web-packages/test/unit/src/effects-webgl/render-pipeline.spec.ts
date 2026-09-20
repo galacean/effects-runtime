@@ -1,10 +1,11 @@
 import {
-  ContextContainer, ContextItem, Composition, Player, PostProcessVolume, RenderPass, RendererComponent, TextureLoadAction,
+  Engine, RenderingDevice, ContextContainer, ContextItem, Composition, Player, PostProcessVolume, RenderPass, RendererComponent, TextureLoadAction,
   FilterMode, Material, RendererFeature, RenderPassEvent, RenderTextureFormat, VFXItem,
 } from '@galacean/effects';
 import type { Renderer, RenderingData } from '@galacean/effects';
-import type { GLEngine } from '@galacean/effects-webgl';
-import { ThreeRenderer } from '../../../../../packages/effects-threejs/src/three-renderer';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
+import { ThreeComposition } from '../../../../../packages/effects-threejs/src/three-composition';
 
 const { expect } = chai;
 
@@ -102,7 +103,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     it('uploads each scene camera uniforms to the GPU', () => {
       const first = new Composition(player.engine);
       const second = new Composition(player.engine);
-      const gl = (player.engine as GLEngine).gl;
+      const gl = (player.engine.renderingDevice as RenderingDeviceWebGL).gl;
       const material = new Material(player.engine, {
         shader: {
           vertex: `
@@ -161,10 +162,10 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
       first.postProcessingEnabled = second.postProcessingEnabled = true;
       renderer.renderRenderPass = pass => { seen[index].push(pass); execute(pass); };
-      first.render();
+      first.renderer.renderComposition(first);
       first.dispose();
       index = 1;
-      second.render();
+      second.renderer.renderComposition(second);
       expect(seen[0]).has.length(3);
       expect(seen[1]).deep.equals(seen[0]);
       for (const pass of seen[0]) {
@@ -219,21 +220,21 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       mesh.render = () => draws.push('extension');
       first.sceneRendering.addRenderer(mesh, 'extension');
       second.sceneRendering.addRenderer(mesh, 'extension');
-      first.render();
-      second.render();
+      first.renderer.renderComposition(first);
+      second.renderer.renderComposition(second);
       expect(creations).equals(1);
       expect(callbacks).equals(2);
       expect(draws).deep.equals(['extension']);
       feature.active = false;
-      first.render();
+      first.renderer.renderComposition(first);
       expect(draws).has.length(1);
       expect(callbacks).equals(2);
       feature.active = true;
-      first.render();
+      first.renderer.renderComposition(first);
       expect(draws).deep.equals(['extension', 'extension']);
       expect(creations).equals(1);
       renderer.enqueuePass(feature.pass);
-      second.render();
+      second.renderer.renderComposition(second);
       expect(draws).deep.equals(['extension', 'extension']);
       renderer.dispose();
       renderer.dispose();
@@ -288,7 +289,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         execute(pass);
       };
       composition.postProcessingEnabled = true;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(executed).deep.equals([
         'background', 'DrawObjectPass', 'after-objects-first', 'after-objects-second',
         'BloomPass', 'ToneMappingPass', 'after-post', 'overlay',
@@ -316,13 +317,13 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
       renderer.setFramebuffer(null);
       player.engine.setViewport(1, 2, 8, 12);
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(acquired.size).equals(0);
       expect(renderer.renderingData).equals(idle);
       expect(renderer.getFramebuffer()).equals(null);
       expect(renderer.getViewport()).deep.equals([1, 2, 8, 12]);
       composition.sceneRendering.removeRenderer(component);
-      expect(() => composition.render()).not.to.throw();
+      expect(() => composition.renderer.renderComposition(composition)).not.to.throw();
       expect(acquired.size).equals(0);
     });
 
@@ -367,22 +368,22 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
       component.render = renderer => cameras.push(renderer.renderingData.options!.camera);
       first.addItem(item);
-      first.render();
-      second.render();
+      first.renderer.renderComposition(first);
+      second.renderer.renderComposition(second);
       expect(cameras).deep.equals([first.camera]);
       second.addItem(item);
       cameras.length = 0;
-      first.render();
-      second.render();
+      first.renderer.renderComposition(first);
+      second.renderer.renderComposition(second);
       expect(cameras).deep.equals([second.camera]);
       component.enabled = false;
-      second.render();
+      second.renderer.renderComposition(second);
       expect(cameras).has.length(1);
     });
 
     it('reuses post-processing passes after resize and WebGL context restoration', async function () {
       this.timeout(5000);
-      const engine = player.engine as GLEngine;
+      const engine = player.engine.renderingDevice as RenderingDeviceWebGL;
       const extension = engine.gl.getExtension('WEBGL_lose_context');
 
       if (!extension) {
@@ -390,9 +391,9 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
         return;
       }
-      const composition = new Composition(engine);
+      const composition = new Composition(player.engine);
       const renderer = player.renderer;
-      const volume = new PostProcessVolume(engine);
+      const volume = new PostProcessVolume(player.engine);
       const passes = new Set<RenderPass>();
       const execute = renderer.renderRenderPass.bind(renderer);
 
@@ -403,20 +404,20 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       addDraw(composition, renderer => renderer.clear({
         colorAction: TextureLoadAction.clear, clearColor: [0, 1, 0, 1],
       }));
-      composition.render();
+      composition.renderer.renderComposition(composition);
       player.canvas.width = 17;
       player.canvas.height = 9;
-      composition.render();
-      const restored = new Promise<void>(resolve => engine.once('contextrestored', () => resolve()));
+      composition.renderer.renderComposition(composition);
+      const restored = new Promise<void>(resolve => player.engine.once('contextrestored', () => resolve()));
 
       player.canvas.addEventListener('webglcontextlost', () => {
         window.setTimeout(() => extension.restoreContext(), 0);
       }, { once: true });
       extension.loseContext();
       await restored;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(passes.size).equals(3);
-      expect(engine.renderErrors.size).equals(0);
+      expect(player.engine.renderErrors.size).equals(0);
       expect(engine.gl.getError()).equals(engine.gl.NO_ERROR);
       const pixel = new Uint8Array(4);
 
@@ -425,8 +426,17 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     });
 
     it('provides the same isolated inputs to the Three.js backend without native passes', () => {
-      const composition = new Composition(player.engine);
-      const renderer = new ThreeRenderer(player.engine);
+      const createDevice = RenderingDevice.create;
+      let engine: Engine;
+
+      try {
+        RenderingDevice.create = owner => new RenderingDeviceThree(owner);
+        engine = new Engine(document.createElement('canvas'), { manualRender: true, ownsCanvas: false });
+      } finally {
+        RenderingDevice.create = createDevice;
+      }
+      const composition = new ThreeComposition(engine);
+      const renderer = engine.renderer;
       let calls = 0;
 
       renderer.renderRenderPass = () => { throw new Error('unexpected native pass'); };
@@ -435,9 +445,19 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         expect(render.renderingData.options!.camera).equals(composition.camera);
         calls++;
       });
-      renderer.renderScene(composition.sceneRendering, { camera: composition.camera });
+      const previousData = engine.renderingData;
+      const device = engine.renderingDevice as RenderingDeviceThree;
+
+      device.renderComposition(composition);
+      expect(engine.renderingData).equals(previousData);
       expect(calls).equals(1);
-      renderer.dispose();
+      const previousComposition = device.composition;
+
+      renderer.renderMeshes = () => { throw new Error('render failed'); };
+      expect(() => device.renderComposition(composition)).to.throw('render failed');
+      expect(engine.renderingData).equals(previousData);
+      expect(device.composition).equals(previousComposition);
+      engine.dispose();
     });
   });
 }

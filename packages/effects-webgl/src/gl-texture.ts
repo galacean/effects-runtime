@@ -9,7 +9,7 @@ import {
   throwDestroyedError, canvasPool, logger, isPowerOfTwo,
 } from '@galacean/effects-core';
 import { assignInspectorName } from './gl-renderer-internal';
-import type { GLEngine } from './gl-engine';
+import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 const FORMAT_HALF_FLOAT: Record<string, number> = {
   [glContext.RGBA]: 34842, //RGBA16F
@@ -45,7 +45,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
    * 绑定当前 Texture 对象
    */
   bind (force?: boolean) {
-    (this.engine as GLEngine).bindTexture(this.target, this.textureBuffer, force);
+    (this.engine.renderingDevice as RenderingDeviceWebGL).bindTexture(this.target, this.textureBuffer, force);
   }
 
   /**
@@ -55,11 +55,9 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine;
+    this.engine.addTexture(this);
 
-    glEngine.addTexture(this);
-
-    const gl = (this.engine as GLEngine).gl;
+    const gl = (this.engine.renderingDevice as RenderingDeviceWebGL).gl;
     const { target = gl.TEXTURE_2D, name } = this.source;
 
     this.textureBuffer = gl.createTexture();
@@ -126,7 +124,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
 
     const target = this.target;
     const source = this.source;
-    const gl = (this.engine as GLEngine).gl;
+    const gl = (this.engine.renderingDevice as RenderingDeviceWebGL).gl;
     const { detail } = this.engine.gpuCapability;
     const { sourceType } = source;
     const { data } = source as Texture2DSourceOptionsData;
@@ -421,7 +419,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       return;
     }
     const target = this.target;
-    const gl = (this.engine as GLEngine).gl;
+    const gl = (this.engine.renderingDevice as RenderingDeviceWebGL).gl;
 
     if (gl && this.textureBuffer) {
       const data = new Uint8Array([255]);
@@ -475,8 +473,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   }
 
   restore (): void {
-    const glEngine = this.engine as GLEngine;
-    const gl = glEngine.gl;
+    const device = this.engine.renderingDevice as RenderingDeviceWebGL;
+    const gl = device.gl;
 
     // target 仅在 initialize() 时从 source 取值赋给实例字段；若纹理在丢失前尚未 initialize
     // （如内置纹理未被使用过），this.target 可能为空，需在此从 source 补全，避免 bind/update 时 INVALID target。
@@ -501,7 +499,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
      * dispose之后assignRenderer会报错
      */
     if (this.engine && this.textureBuffer) {
-      (this.engine as GLEngine).gl.deleteTexture(this.textureBuffer);
+      (this.engine.renderingDevice as RenderingDeviceWebGL).gl.deleteTexture(this.textureBuffer);
     }
     this.width = 0;
     this.height = 0;

@@ -2,7 +2,7 @@ import type { Engine, EffectsObject } from '@galacean/effects';
 import {
   Texture, Material, Shader, ShaderVariant, Geometry, AnimationClip,
 } from '@galacean/effects';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL, GLTexture } from '@galacean/effects-webgl';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';

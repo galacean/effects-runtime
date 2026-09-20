@@ -4,13 +4,13 @@ import type {
 
   Renderer } from '@galacean/effects-core';
 import {
-  Framebuffer, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, logger,
+  Framebuffer, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, RenderingDevice, logger,
 } from '@galacean/effects-core';
 import {
-  GLFramebuffer, GLRenderbuffer, GLTexture, GLEngine,
+  GLFramebuffer, GLRenderbuffer, GLTexture, RenderingDeviceWebGL,
 } from '@galacean/effects-webgl';
 
-export { GLEngine } from '@galacean/effects-webgl';
+export { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
 export * from './types';
 export * from './player';
@@ -67,8 +67,10 @@ Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
   return new GLFramebuffer(props, renderer);
 };
 
+RenderingDevice.create = engine => new RenderingDeviceWebGL(engine);
+
 Engine.create = (canvas: HTMLCanvasElement, options?: EngineOptions) => {
-  return new GLEngine(canvas, options);
+  return new Engine(canvas, options);
 };
 
 /**

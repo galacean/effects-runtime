@@ -56,10 +56,9 @@ export class ThreeComposition extends Composition {
 
   constructor (
     engine: Engine,
-    props: ThreeCompositionProps,
-    scene: Scene,
+    props: ThreeCompositionProps = {},
+    scene?: Scene,
   ) {
     super(engine, props, scene);
   }
-
 }

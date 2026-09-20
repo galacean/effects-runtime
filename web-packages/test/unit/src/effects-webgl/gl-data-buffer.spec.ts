@@ -1,20 +1,22 @@
+import { Engine } from '@galacean/effects-core';
 import { BufferDataType, BufferUsage, isWebGL2 } from '@galacean/effects-core';
-import { GLDataBuffer, GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { GLDataBuffer } from '@galacean/effects-webgl';
 import { getGL2, readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
 
 describe('webgl/gl-data-buffer', () => {
-  let engine: GLEngine;
+  let engine: Engine;
 
   before(() => {
     const gl = getGL2() as WebGL2RenderingContext;
 
-    engine = new GLEngine(gl.canvas as HTMLCanvasElement, { glType: 'webgl2' });
+    engine = new Engine(gl.canvas as HTMLCanvasElement, { glType: 'webgl2' });
   });
 
   after(() => {
-    const canvas = engine.gl.canvas as HTMLCanvasElement;
+    const canvas = (engine.renderingDevice as RenderingDeviceWebGL).gl.canvas as HTMLCanvasElement;
 
     engine.dispose();
     canvas.remove();
@@ -63,10 +65,10 @@ describe('webgl/gl-data-buffer', () => {
       new Uint16Array([7, 8]),
       Uint16Array.BYTES_PER_ELEMENT,
     );
-    if (isWebGL2(engine.gl)) {
+    if (isWebGL2((engine.renderingDevice as RenderingDeviceWebGL).gl)) {
       const result = new Uint16Array(4);
 
-      readBufferContents(engine.gl, buffer, result, 0, true);
+      readBufferContents((engine.renderingDevice as RenderingDeviceWebGL).gl, buffer, result, 0, true);
       expect(result).to.deep.equal(new Uint16Array([0, 7, 8, 3]));
     }
     engine.releaseBuffer(buffer);

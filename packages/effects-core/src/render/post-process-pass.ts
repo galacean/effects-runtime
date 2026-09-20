@@ -19,23 +19,16 @@ import { FilterMode, type Framebuffer, RenderTextureFormat } from './framebuffer
 // Bloom Pass - 包含阈值提取、高斯模糊（Down Sample 和 Up Sample）
 export class BloomPass extends RenderPass {
   private readonly iterationCount: number;
-  private initialized = false;
-  private thresholdMaterial!: Material;
-  private downSampleHMaterial!: Material;
-  private downSampleVMaterial!: Material;
-  private upSampleMaterial!: Material;
+  private thresholdMaterial: Material;
+  private downSampleHMaterial: Material;
+  private downSampleVMaterial: Material;
+  private upSampleMaterial: Material;
 
   constructor (renderer: Renderer, iterationCount = 4) {
     super(renderer);
     this.iterationCount = iterationCount;
     this.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
     this.name = 'BloomPass';
-  }
-
-  private initializeResources (): void {
-    if (this.initialized) {
-      return;
-    }
     const engine = this.renderer.engine;
 
     // Threshold material
@@ -85,8 +78,6 @@ export class BloomPass extends RenderPass {
     this.upSampleMaterial.blending = false;
     this.upSampleMaterial.depthTest = false;
     this.upSampleMaterial.culling = false;
-
-    this.initialized = true;
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
@@ -95,7 +86,6 @@ export class BloomPass extends RenderPass {
     if (!data.options?.globalVolume?.bloom?.active) {
       return;
     }
-    this.initializeResources();
     const sceneColor = resourceData.cameraColor!;
     const tempRTs: Framebuffer[] = [];
     const baseWidth = Math.max(1, sceneColor.getWidth());
@@ -171,9 +161,6 @@ export class BloomPass extends RenderPass {
   override onCameraCleanup (renderer: Renderer, data: RenderingData): void {
     const resourceData = data.frameData.get(ResourceData);
 
-    if (!this.initialized) {
-      return;
-    }
     const empty = renderer.engine.transparentTexture;
 
     this.thresholdMaterial.setTexture('_MainTex', empty);
@@ -191,31 +178,22 @@ export class BloomPass extends RenderPass {
     if (this.isDisposed) {
       return;
     }
-    if (this.initialized) {
-      this.thresholdMaterial.dispose();
-      this.downSampleHMaterial.dispose();
-      this.downSampleVMaterial.dispose();
-      this.upSampleMaterial.dispose();
-    }
+    this.thresholdMaterial.dispose();
+    this.downSampleHMaterial.dispose();
+    this.downSampleVMaterial.dispose();
+    this.upSampleMaterial.dispose();
     super.dispose(options);
   }
 }
 
 // 合并Bloom的高斯模糊结果，并应用ACES Tonemapping
 export class ToneMappingPass extends RenderPass {
-  private screenMesh!: Mesh;
-  private initialized = false;
+  private screenMesh: Mesh;
 
   constructor (renderer: Renderer) {
     super(renderer);
     this.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
     this.name = 'ToneMappingPass';
-  }
-
-  private initializeResources (): void {
-    if (this.initialized) {
-      return;
-    }
     const name = 'PostProcess';
     const engine = this.renderer.engine;
 
@@ -252,13 +230,11 @@ export class ToneMappingPass extends RenderPass {
       name, geometry, material,
       priority: 0,
     });
-    this.initialized = true;
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
     const resourceData = data.frameData.get(ResourceData);
 
-    this.initializeResources();
     renderer.setFramebuffer(data.options?.target ?? null);
 
     const globalVolume = data.options?.globalVolume;
@@ -312,9 +288,6 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override onCameraCleanup (renderer: Renderer): void {
-    if (!this.initialized) {
-      return;
-    }
     this.screenMesh.material.setTexture('_SceneTex', renderer.engine.transparentTexture);
     this.screenMesh.material.setTexture('_GaussianTex', renderer.engine.transparentTexture);
   }
@@ -323,9 +296,7 @@ export class ToneMappingPass extends RenderPass {
     if (this.isDisposed) {
       return;
     }
-    if (this.initialized) {
-      this.screenMesh.dispose();
-    }
+    this.screenMesh.dispose();
     super.dispose(options);
   }
 

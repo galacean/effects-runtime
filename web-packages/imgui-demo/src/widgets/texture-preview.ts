@@ -1,5 +1,5 @@
 import type { Texture } from '@galacean/effects';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL, GLTexture } from '@galacean/effects-webgl';
 import { ImGui, ImGui_Impl } from '../imgui';
 
 /**
@@ -69,9 +69,9 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
   // Path 3: 已初始化且 source 已被 release，只能跨 context readPixels
   if (
     !uploaded && obj.textureBuffer && obj.width > 0 && obj.height > 0 &&
-    obj.engine instanceof GLEngine
+    obj.engine.renderingDevice instanceof RenderingDeviceWebGL
   ) {
-    const engineGl = obj.engine.gl;
+    const engineGl = obj.engine.renderingDevice.gl;
 
     if (obj.target === engineGl.TEXTURE_2D) {
       const w = obj.width;

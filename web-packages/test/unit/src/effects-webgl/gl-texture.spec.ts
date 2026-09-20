@@ -1,10 +1,12 @@
+import { Engine } from '@galacean/effects-core';
 import type {
   Renderer,
   Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData, Texture2DSourceOptionsImage,
   Texture2DSourceOptionsImageMipmaps, TextureCubeSourceOptionsImage, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { GLTexture } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 import { registerKTX2Loader } from '@galacean/effects-plugin-ktx2';
 const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93b0;
@@ -14,13 +16,13 @@ describe('webgl/gl-texture', () => {
   let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let canvas: HTMLCanvasElement;
-  let engine: GLEngine;
+  let engine: Engine;
 
   before(() => {
     canvas = document.createElement('canvas');
-    engine = new GLEngine(canvas, { glType: 'webgl' });
+    engine = new Engine(canvas, { glType: 'webgl' });
     renderer = engine.renderer;
-    gl = engine.context.gl as WebGLRenderingContext;
+    gl = (engine.renderingDevice as RenderingDeviceWebGL).context.gl as WebGLRenderingContext;
     registerKTX2Loader();
   });
 
@@ -703,14 +705,14 @@ describe('webgl2/gl-texture', () => {
   let gl: WebGLRenderingContext;
   let renderer: Renderer;
   let imageHTMLElement: HTMLImageElement;
-  let engine: GLEngine;
+  let engine: Engine;
 
   before(() => {
     canvas = document.createElement('canvas');
-    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    engine = new Engine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer;
 
-    gl = engine.gl;
+    gl = (engine.renderingDevice as RenderingDeviceWebGL).gl;
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';
   });

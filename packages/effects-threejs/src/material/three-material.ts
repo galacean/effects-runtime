@@ -8,7 +8,7 @@ import {
   CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
   TEXTURE_UNIFORM_MAP,
 } from './three-material-util';
-import type { ThreeEngine } from '../three-engine';
+import type { RenderingDeviceThree } from '../rendering-device-three';
 
 type Matrix4 = math.Matrix4;
 type Vector2 = math.Vector2;
@@ -114,9 +114,9 @@ export class ThreeMaterial extends Material {
   }
 
   override use (render: Renderer, globalUniforms: GlobalUniforms): void {
-    const engine = this.engine as ThreeEngine;
-    const composition = engine.composition;
-    const threeCamera = engine.threeCamera;
+    const device = this.engine.renderingDevice as RenderingDeviceThree;
+    const composition = device.composition;
+    const threeCamera = device.threeCamera;
 
     for (const name in globalUniforms.textures) {
       const texture = (globalUniforms.textures[name] as ThreeTexture).texture;
