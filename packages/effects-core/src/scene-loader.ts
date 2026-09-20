@@ -15,7 +15,7 @@ import { PluginSystem } from './plugin-system';
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
     const last = performance.now();
-    const asyncShaderCompile = engine.gpuCapability?.detail?.asyncShaderCompile;
+    const asyncShaderCompile = engine.renderingDevice.gpuCapability?.detail?.asyncShaderCompile;
     const compositionIndex = engine.compositions.length;
 
     const assetManager = new AssetManager(options);
@@ -39,7 +39,7 @@ export class SceneLoader {
     const compileStart = performance.now();
 
     await new Promise(resolve => {
-      engine.getShaderLibrary()?.compileAllShaders(() => resolve(null));
+      engine.renderingDevice.getShaderLibrary()?.compileAllShaders(() => resolve(null));
     });
 
     const compileTime = performance.now() - compileStart;

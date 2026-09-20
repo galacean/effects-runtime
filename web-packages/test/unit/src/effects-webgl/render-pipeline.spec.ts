@@ -316,7 +316,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       const component = addDraw(composition, () => {});
 
       renderer.setFramebuffer(null);
-      player.engine.setViewport(1, 2, 8, 12);
+      player.engine.renderingDevice.setViewport(1, 2, 8, 12);
       composition.renderer.renderComposition(composition);
       expect(acquired.size).equals(0);
       expect(renderer.renderingData).equals(idle);

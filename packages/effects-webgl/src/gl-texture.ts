@@ -125,7 +125,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const target = this.target;
     const source = this.source;
     const gl = (this.engine.renderingDevice as RenderingDeviceWebGL).gl;
-    const { detail } = this.engine.gpuCapability;
+    const { detail } = this.engine.renderingDevice.gpuCapability;
     const { sourceType } = source;
     const { data } = source as Texture2DSourceOptionsData;
     const { cube } = source as TextureCubeSourceOptionsImage;
@@ -300,7 +300,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     options: TextureConfigOptions,
   ) {
     const { anisotropic = 4, wrapS = gl.CLAMP_TO_EDGE, wrapT = gl.CLAMP_TO_EDGE } = options;
-    const gpuCapability = this.engine.gpuCapability;
+    const gpuCapability = this.engine.renderingDevice.gpuCapability;
 
     if (this.target === gl.TEXTURE_2D) {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
@@ -348,7 +348,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     image: spec.HTMLImageLike,
   ): spec.vec2 {
     const { sourceType } = this.source;
-    const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
+    const maxSize = this.engine.renderingDevice.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
     let pooledCanvasAndContext: CanvasAndContext | undefined;
 

@@ -34,8 +34,8 @@ describe('webgl/graphics-server', () => {
         expect(device).to.be.instanceOf(RenderingDeviceWebGL);
         expect(device.engine).to.equal(this.engine);
         expect(device.gl.isContextLost()).to.equal(false);
-        expect(this.engine.getShaderLibrary()).to.equal(device.shaderLibrary);
-        expect(this.engine.gpuCapability).to.equal(device.gpuCapability);
+        expect(this.engine.renderingDevice.getShaderLibrary()).to.equal(device.shaderLibrary);
+        expect(this.engine.renderingDevice.gpuCapability).to.equal(device.gpuCapability);
         devices.push(device);
       }
     }

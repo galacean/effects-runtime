@@ -4,8 +4,7 @@ import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
-  DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer, Renderer,
+  Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
 import { Graphics, RenderTargetPool, RenderingData } from './render';
@@ -206,17 +205,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     }
   }
 
-  /**
-   * GPU 能力
-   */
-  get gpuCapability (): GPUCapability {
-    return this.renderingDevice.gpuCapability;
-  }
-
-  set gpuCapability (capability: GPUCapability) {
-    this.renderingDevice.gpuCapability = capability;
-  }
-
   get compositions (): Composition[] {
     return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
@@ -413,7 +401,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       if (canvasWidth > documentWidth * 2) {
         logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
       }
-      const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
+      const maxSize = this.env ? this.renderingDevice.gpuCapability.detail.maxTextureSize : 2048;
 
       if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
         logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);
@@ -435,10 +423,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setSize (width: number, height: number) {
-    if (this.getWidth() !== width || this.getHeight() !== height) {
+    if (this.renderingDevice.getWidth() !== width || this.renderingDevice.getHeight() !== height) {
       this.canvas.width = width;
       this.canvas.height = height;
-      this.setViewport(0, 0, width, height);
+      this.renderingDevice.setViewport(0, 0, width, height);
     }
 
     for (const composition of this._compositions) {
@@ -446,83 +434,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     }
 
     this.emit('resize', this);
-  }
-
-  createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    return this.renderingDevice.createVertexBuffer(data, options);
-  }
-
-  createDynamicVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    return this.renderingDevice.createDynamicVertexBuffer(data, options);
-  }
-
-  createIndexBuffer (indices: IndicesArray, options: DataBufferOptions): DataBuffer {
-    return this.renderingDevice.createIndexBuffer(indices, options);
-  }
-
-  updateDynamicVertexBuffer (
-    vertexBuffer: DataBuffer,
-    data: DataArray,
-    byteOffset = 0,
-    byteLength?: number,
-  ): void {
-    return this.renderingDevice.updateDynamicVertexBuffer(vertexBuffer, data, byteOffset, byteLength);
-  }
-
-  updateDynamicIndexBuffer (
-    indexBuffer: DataBuffer,
-    indices: IndicesArray,
-    byteOffset = 0,
-  ): void {
-    return this.renderingDevice.updateDynamicIndexBuffer(indexBuffer, indices, byteOffset);
-  }
-
-  /** @hide */
-  releaseBuffer (buffer: DataBuffer): boolean {
-    return this.renderingDevice.releaseBuffer(buffer);
-  }
-
-  /** @hide */
-  bindBuffers (
-    vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | null,
-    effect: ShaderVariant,
-  ): void {
-    return this.renderingDevice.bindBuffers(vertexBuffers, indexBuffer, effect);
-  }
-
-  /**
-   * 使用当前绑定的顶点和索引缓冲区绘制图元。
-   * @param mode - 图元类型
-   * @param indexOffset - 索引缓冲区中的字节偏移
-   * @param indexCount - 索引数量
-   * @param instanceCount - 实例数量
-   * @hide
-   */
-  drawElementsType (
-    mode: number,
-    indexOffset: number,
-    indexCount: number,
-    instanceCount?: number,
-  ): void {
-    return this.renderingDevice.drawElementsType(mode, indexOffset, indexCount, instanceCount);
-  }
-
-  /**
-   * 使用当前绑定的顶点缓冲区绘制图元。
-   * @param mode - 图元类型
-   * @param vertexStart - 起始顶点
-   * @param vertexCount - 顶点数量
-   * @param instanceCount - 实例数量
-   * @hide
-   */
-  drawArraysType (
-    mode: number,
-    vertexStart: number,
-    vertexCount: number,
-    instanceCount?: number,
-  ): void {
-    return this.renderingDevice.drawArraysType(mode, vertexStart, vertexCount, instanceCount);
   }
 
   addTexture (tex: Texture) {
@@ -648,130 +559,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   removeComposition (composition: Composition) {
     removeItem(this._compositions, composition);
-  }
-
-  getWidth (): number {
-    return this.renderingDevice.getWidth();
-  }
-
-  getHeight (): number {
-    return this.renderingDevice.getHeight();
-  }
-
-  getShaderLibrary (): ShaderLibrary | null {
-    return this.renderingDevice.getShaderLibrary();
-  }
-
-  bindSystemFramebuffer () {
-    return this.renderingDevice.bindSystemFramebuffer();
-  }
-
-  /**
-   * 用来设置视口，即指定从标准设备到窗口坐标的x、y仿射变换。
-   * @param x
-   * @param y
-   * @param width
-   * @param height
-   * example:
-   * gl.viewport(0, 0, width, height);
-   */
-  setViewport (x: number, y: number, width: number, height: number) {
-    return this.renderingDevice.setViewport(x, y, width, height);
-  }
-
-  /** Returns the viewport currently submitted to the graphics backend. */
-  getViewport (): [x: number, y: number, width: number, height: number] {
-    return this.renderingDevice.getViewport();
-  }
-
-  clear (action: RenderPassClearAction) {
-    return this.renderingDevice.clear(action);
-  }
-
-  /*** 渲染状态控制 ***/
-
-  setSampleAlphaToCoverage (enable: boolean) {
-    return this.renderingDevice.setSampleAlphaToCoverage(enable);
-  }
-
-  setBlending (enable: boolean) {
-    return this.renderingDevice.setBlending(enable);
-  }
-
-  setDepthTest (enable: boolean) {
-    return this.renderingDevice.setDepthTest(enable);
-  }
-
-  setStencilTest (enable: boolean) {
-    return this.renderingDevice.setStencilTest(enable);
-  }
-
-  setScissorTest (enable: boolean) {
-    return this.renderingDevice.setScissorTest(enable);
-  }
-
-  setScissor (x: number, y: number, width: number, height: number) {
-    return this.renderingDevice.setScissor(x, y, width, height);
-  }
-
-  setCulling (enable: boolean) {
-    return this.renderingDevice.setCulling(enable);
-  }
-
-  setPolygonOffsetFill (enable: boolean) {
-    return this.renderingDevice.setPolygonOffsetFill(enable);
-  }
-
-  blendColor (r: number, g: number, b: number, a: number) {
-    return this.renderingDevice.blendColor(r, g, b, a);
-  }
-
-  blendFuncSeparate (srcRGB: number, dstRGB: number, srcAlpha: number, dstAlpha: number) {
-    return this.renderingDevice.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
-  }
-
-  blendEquationSeparate (modeRGB: number, modeAlpha: number) {
-    return this.renderingDevice.blendEquationSeparate(modeRGB, modeAlpha);
-  }
-
-  colorMask (r: boolean, g: boolean, b: boolean, a: boolean) {
-    return this.renderingDevice.colorMask(r, g, b, a);
-  }
-
-  depthMask (flag: boolean) {
-    return this.renderingDevice.depthMask(flag);
-  }
-
-  depthFunc (func: number) {
-    return this.renderingDevice.depthFunc(func);
-  }
-
-  depthRange (near: number, far: number) {
-    return this.renderingDevice.depthRange(near, far);
-  }
-
-  polygonOffset (factor: number, units: number) {
-    return this.renderingDevice.polygonOffset(factor, units);
-  }
-
-  cullFace (mode: number) {
-    return this.renderingDevice.cullFace(mode);
-  }
-
-  frontFace (mode: number) {
-    return this.renderingDevice.frontFace(mode);
-  }
-
-  stencilMaskSeparate (face: number, mask: number) {
-    return this.renderingDevice.stencilMaskSeparate(face, mask);
-  }
-
-  stencilFuncSeparate (face: number, func: number, ref: number, mask: number) {
-    return this.renderingDevice.stencilFuncSeparate(face, func, ref, mask);
-  }
-
-  stencilOpSeparate (face: number, fail: number, zfail: number, zpass: number) {
-    return this.renderingDevice.stencilOpSeparate(face, fail, zfail, zpass);
   }
 
   /**

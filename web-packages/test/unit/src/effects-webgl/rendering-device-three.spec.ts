@@ -74,7 +74,7 @@ describe('threejs/rendering-device', () => {
     native.addEventListener('dispose', () => disposed++);
     expect(native.getAttribute('aPosition').count).equals(3);
     expect(native.index!.array).deep.equals(new Uint16Array([0, 1, 2]));
-    engine.updateDynamicIndexBuffer(geometry.getIndexBuffer()!, new Uint16Array([2, 1, 0]));
+    engine.renderingDevice.updateDynamicIndexBuffer(geometry.getIndexBuffer()!, new Uint16Array([2, 1, 0]));
     expect(getThreeGeometry(geometry)).equals(native);
     expect(native.index!.array).deep.equals(new Uint16Array([2, 1, 0]));
     geometry.dispose();

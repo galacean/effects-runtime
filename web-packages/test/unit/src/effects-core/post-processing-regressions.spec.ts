@@ -177,7 +177,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     for (const unsupported of [{ halfFloatTexture: 0 }, { halfFloatColorAttachment: false }, { halfFloatLinear: false }]) {
       it(`rejects unsupported HDR before allocating passes: ${Object.keys(unsupported)[0]}`, () => {
         const composition = createComposition();
-        const capability = player.engine.gpuCapability;
+        const capability = player.engine.renderingDevice.gpuCapability;
         const original = capability.detail;
 
         try {

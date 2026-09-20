@@ -258,20 +258,22 @@ export class MaterialState {
   }
 
   apply (engine: Engine) {
-    engine.setSampleAlphaToCoverage(this.sampleAlphaToCoverage);
-    engine.setBlending(this.blending);
-    engine.setDepthTest(this.depthTest);
-    engine.setStencilTest(this.stencilTest);
-    engine.setCulling(this.culling);
-    engine.setPolygonOffsetFill(this.polygonOffsetFill);
+    const device = engine.renderingDevice;
+
+    device.setSampleAlphaToCoverage(this.sampleAlphaToCoverage);
+    device.setBlending(this.blending);
+    device.setDepthTest(this.depthTest);
+    device.setStencilTest(this.stencilTest);
+    device.setCulling(this.culling);
+    device.setPolygonOffsetFill(this.polygonOffsetFill);
 
     if (this.stencilTest) {
-      engine.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
-      engine.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
-      engine.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
-      engine.stencilFuncSeparate(glContext.FRONT, this.stencilFunc[1], this.stencilRef[1], this.stencilMask[1]);
-      engine.stencilOpSeparate(glContext.BACK, this.stencilOpFail[0], this.stencilOpZFail[0], this.stencilOpZPass[0]);
-      engine.stencilOpSeparate(glContext.FRONT, this.stencilOpFail[1], this.stencilOpZFail[1], this.stencilOpZPass[1]);
+      device.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
+      device.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
+      device.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
+      device.stencilFuncSeparate(glContext.FRONT, this.stencilFunc[1], this.stencilRef[1], this.stencilMask[1]);
+      device.stencilOpSeparate(glContext.BACK, this.stencilOpFail[0], this.stencilOpZFail[0], this.stencilOpZPass[0]);
+      device.stencilOpSeparate(glContext.FRONT, this.stencilOpFail[1], this.stencilOpZFail[1], this.stencilOpZPass[1]);
     }
 
     if (this.blending) {
@@ -281,26 +283,26 @@ export class MaterialState {
         blendFunctionParameters,
       } = this;
 
-      engine.blendColor(blendColor[0], blendColor[1], blendColor[2], blendColor[3]);
-      engine.blendEquationSeparate(blendEquationParameters[0], blendEquationParameters[1]);
-      engine.blendFuncSeparate(blendFunctionParameters[0], blendFunctionParameters[1], blendFunctionParameters[2], blendFunctionParameters[3]);
+      device.blendColor(blendColor[0], blendColor[1], blendColor[2], blendColor[3]);
+      device.blendEquationSeparate(blendEquationParameters[0], blendEquationParameters[1]);
+      device.blendFuncSeparate(blendFunctionParameters[0], blendFunctionParameters[1], blendFunctionParameters[2], blendFunctionParameters[3]);
     }
 
-    engine.colorMask(this.colorMask[0], this.colorMask[1], this.colorMask[2], this.colorMask[3]);
+    device.colorMask(this.colorMask[0], this.colorMask[1], this.colorMask[2], this.colorMask[3]);
 
     if (this.depthTest) {
-      engine.depthMask(this.depthMask);
-      engine.depthFunc(this.depthFunc);
-      engine.depthRange(this.depthRange[0], this.depthRange[1]);
+      device.depthMask(this.depthMask);
+      device.depthFunc(this.depthFunc);
+      device.depthRange(this.depthRange[0], this.depthRange[1]);
     }
 
     if (this.culling) {
-      engine.cullFace(this.cullFace);
-      engine.frontFace(this.frontFace);
+      device.cullFace(this.cullFace);
+      device.frontFace(this.frontFace);
     }
 
     if (this.polygonOffsetFill) {
-      engine.polygonOffset(this.polygonOffset[0], this.polygonOffset[1]);
+      device.polygonOffset(this.polygonOffset[0], this.polygonOffset[1]);
     }
   }
 }

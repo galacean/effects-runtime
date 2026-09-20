@@ -45,7 +45,7 @@ export class ThreeMaterial extends Material {
     super(engine, props);
 
     const shader = props?.shader;
-    const level = engine.gpuCapability?.level ?? 1;
+    const level = engine.renderingDevice.gpuCapability?.level ?? 1;
 
     this.shader = new Shader(engine);
     this.shader.shaderData = {

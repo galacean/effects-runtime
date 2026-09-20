@@ -73,7 +73,7 @@ describe('webgl/geometry', () => {
       'aPosition',
       { size: 2 },
     );
-    const dataBuffer = engine.createVertexBuffer(new Float32Array([0, 1]), {
+    const dataBuffer = engine.renderingDevice.createVertexBuffer(new Float32Array([0, 1]), {
       usage: glContext.STATIC_DRAW,
       type: glContext.FLOAT,
       byteStride: 2 * Float32Array.BYTES_PER_ELEMENT,
@@ -104,15 +104,15 @@ describe('webgl/geometry', () => {
       byteStride: 0,
       instanceDivisor: 0,
     };
-    const small = engine.createIndexBuffer(new Int32Array([0, 1, 2]), options);
-    const large = engine.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
+    const small = engine.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 2]), options);
+    const large = engine.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
 
     expect(small.is32Bits).to.equal(false);
     expect(small.capacity).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
     expect(large.is32Bits).to.equal(true);
     expect(large.capacity).to.equal(3 * Uint32Array.BYTES_PER_ELEMENT);
-    engine.releaseBuffer(small);
-    engine.releaseBuffer(large);
+    engine.renderingDevice.releaseBuffer(small);
+    engine.renderingDevice.releaseBuffer(large);
   });
 
   it('shares one buffer between interleaved attribute views', () => {
@@ -197,13 +197,13 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.initialize();
-    const updateDynamicIndexBuffer = engine.updateDynamicIndexBuffer.bind(engine);
+    const updateDynamicIndexBuffer = engine.renderingDevice.updateDynamicIndexBuffer.bind(engine.renderingDevice);
     const indexBuffer = geometry.getIndexBuffer()!;
     const capacity = indexBuffer.capacity;
     let uploadedByteLength = 0;
     let uploadedByteOffset = 0;
 
-    engine.updateDynamicIndexBuffer = (indexBuffer, indices, byteOffset = 0) => {
+    engine.renderingDevice.updateDynamicIndexBuffer = (indexBuffer, indices, byteOffset = 0) => {
       uploadedByteLength = Array.isArray(indices)
         ? indices.length * Float32Array.BYTES_PER_ELEMENT
         : indices.byteLength;
@@ -457,7 +457,7 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.instanceCount = 2;
-    Object.defineProperty(engine.gpuCapability.detail, 'instanceDraw', { value: false });
+    Object.defineProperty(engine.renderingDevice.gpuCapability.detail, 'instanceDraw', { value: false });
     expect(() => engine.renderer.drawGeometry(
       geometry,
       math.Matrix4.IDENTITY,

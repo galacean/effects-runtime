@@ -225,7 +225,7 @@ export class Geometry extends Asset {
     if (this.indexBuffer) {
       const updatedData = indices.slice(offset, offset + data.length) as IndicesArray;
 
-      this.engine.updateDynamicIndexBuffer(
+      this.engine.renderingDevice.updateDynamicIndexBuffer(
         this.indexBuffer,
         updatedData,
         offset * (this.indexBuffer.is32Bits ? Uint32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT),
@@ -540,7 +540,7 @@ export class Geometry extends Asset {
     if (indices.length === 0 || this.indexBuffer) {
       return;
     }
-    this.indexBuffer = this.engine.createIndexBuffer(indices, {
+    this.indexBuffer = this.engine.renderingDevice.createIndexBuffer(indices, {
       usage: this.bufferUsage,
       type: this.getIndexType(),
       byteStride: 0,
@@ -553,7 +553,7 @@ export class Geometry extends Asset {
     if (!this.indexBuffer) {
       return;
     }
-    this.engine.releaseBuffer(this.indexBuffer);
+    this.engine.renderingDevice.releaseBuffer(this.indexBuffer);
     this.indexBuffer = undefined;
   }
 

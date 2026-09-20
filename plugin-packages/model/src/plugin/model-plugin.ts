@@ -53,7 +53,7 @@ export class ModelPlugin extends Plugin {
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode);
     // Add PBR and Unlit shader data
-    const isWebGL2 = engine.gpuCapability.level === 2;
+    const isWebGL2 = engine.renderingDevice.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();
     const unlitShaderCode = fetchUnlitShaderCode();
     const pbrShaderData: spec.ShaderData = {

@@ -67,7 +67,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   get gpuCapability () {
-    return this.engine.gpuCapability;
+    return this.engine.renderingDevice.gpuCapability;
   }
   /**
    * 当前播放的合成对象数组，请不要修改内容

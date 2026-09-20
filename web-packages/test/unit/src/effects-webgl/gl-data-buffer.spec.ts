@@ -23,7 +23,7 @@ describe('webgl/gl-data-buffer', () => {
   });
 
   it('creates a vertex buffer through the engine', () => {
-    const buffer = engine.createVertexBuffer(new Float32Array([1, 2, 3, 4]), {
+    const buffer = engine.renderingDevice.createVertexBuffer(new Float32Array([1, 2, 3, 4]), {
       usage: BufferUsage.Static,
       type: BufferDataType.Float,
       byteStride: 8,
@@ -33,34 +33,34 @@ describe('webgl/gl-data-buffer', () => {
     expect(buffer).to.be.an.instanceOf(GLDataBuffer);
     assert.isNotNull(buffer.underlyingResource);
     assert.equal(buffer.capacity, 4 * Float32Array.BYTES_PER_ELEMENT);
-    engine.releaseBuffer(buffer);
+    engine.renderingDevice.releaseBuffer(buffer);
   });
 
   it('rejects updates outside the allocated range', () => {
-    const buffer = engine.createDynamicVertexBuffer(new Float32Array(4), {
+    const buffer = engine.renderingDevice.createDynamicVertexBuffer(new Float32Array(4), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.Float,
       byteStride: 4,
       instanceDivisor: 0,
     });
 
-    expect(() => engine.updateDynamicVertexBuffer(
+    expect(() => engine.renderingDevice.updateDynamicVertexBuffer(
       buffer,
       new Float32Array([1, 2]),
       12,
     )).to.throw(RangeError);
-    engine.releaseBuffer(buffer);
+    engine.renderingDevice.releaseBuffer(buffer);
   });
 
   it('updates and reads a byte range', () => {
-    const buffer = engine.createIndexBuffer(new Uint16Array([0, 1, 2, 3]), {
+    const buffer = engine.renderingDevice.createIndexBuffer(new Uint16Array([0, 1, 2, 3]), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.UnsignedShort,
       byteStride: 0,
       instanceDivisor: 0,
     });
 
-    engine.updateDynamicIndexBuffer(
+    engine.renderingDevice.updateDynamicIndexBuffer(
       buffer,
       new Uint16Array([7, 8]),
       Uint16Array.BYTES_PER_ELEMENT,
@@ -71,6 +71,6 @@ describe('webgl/gl-data-buffer', () => {
       readBufferContents((engine.renderingDevice as RenderingDeviceWebGL).gl, buffer, result, 0, true);
       expect(result).to.deep.equal(new Uint16Array([0, 7, 8, 3]));
     }
-    engine.releaseBuffer(buffer);
+    engine.renderingDevice.releaseBuffer(buffer);
   });
 });
