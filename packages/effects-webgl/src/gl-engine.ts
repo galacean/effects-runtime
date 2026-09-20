@@ -547,7 +547,6 @@ export class GLEngine extends Engine {
     }
     super.dispose();
 
-    this.renderer.dispose();
     this.renderTargetPool.dispose();
     this.shaderLibrary?.dispose();
     this.context.dispose(this.ownsCanvas);
@@ -984,7 +983,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  override setViewport (x: number, y: number, width: number, height: number) {
+  protected override setViewportInternal (x: number, y: number, width: number, height: number) {
     this.set4('viewport', x, y, width, height);
   }
 

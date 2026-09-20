@@ -1,6 +1,6 @@
-import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, Renderer, Texture, VFXItem } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, RenderingData, Renderer, Texture, VFXItem } from '@galacean/effects';
 import {
-  RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
+  RenderPass, RenderPassEvent, RendererFeature, Mesh, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
   effectsClass, glContext, math, spec, PluginSystem,
   ParticleSystem,
@@ -142,15 +142,20 @@ export class GizmoComponent extends RendererComponent {
       return;
     }
 
-    const renderFrame = this.item.composition.renderFrame;
+    const sceneRendering = this.item.composition.sceneRendering;
+    const renderer = this.engine.renderer;
+
+    if (!renderer.rendererFeatures.some(feature => feature instanceof GizmoRendererFeature)) {
+      renderer.addRendererFeature(new GizmoRendererFeature());
+    }
 
     for (const mesh of this.meshes) {
       if (mesh.name === GeometryType.FloorGrid.toString() || mesh.name === 'Box') {
-        this.getFrontRenderPass(renderFrame).addMesh(mesh);
+        sceneRendering.addRenderer(mesh, frontRenderPassName);
       } else if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
-        this.getBehindRenderPass(renderFrame).addMesh(mesh);
+        sceneRendering.addRenderer(mesh, behindRenderPassName);
       } else {
-        this.getEditorRenderPass(renderFrame).addMesh(mesh);
+        sceneRendering.addRenderer(mesh, editorRenderPassName);
       }
     }
   }
@@ -161,15 +166,15 @@ export class GizmoComponent extends RendererComponent {
       return;
     }
 
-    const renderFrame = this.item.composition.renderFrame;
+    const sceneRendering = this.item.composition.sceneRendering;
 
     for (const mesh of this.meshes) {
       if (mesh.name === GeometryType.FloorGrid.toString() || mesh.name === 'Box') {
-        this.getFrontRenderPass(renderFrame).removeMesh(mesh);
+        sceneRendering.removeRenderer(mesh, frontRenderPassName);
       } else if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
-        this.getBehindRenderPass(renderFrame).removeMesh(mesh);
+        sceneRendering.removeRenderer(mesh, behindRenderPassName);
       } else {
-        this.getEditorRenderPass(renderFrame).removeMesh(mesh);
+        sceneRendering.removeRenderer(mesh, editorRenderPassName);
       }
     }
   }
@@ -190,9 +195,9 @@ export class GizmoComponent extends RendererComponent {
       gizmoMesh.dispose();
 
       if (gizmoMesh.name === GeometryType.FloorGrid.toString() || gizmoMesh.name === 'Box') {
-        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
+        composition.sceneRendering.removeRenderer(gizmoMesh, frontRenderPassName);
       } else {
-        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
+        composition.sceneRendering.removeRenderer(gizmoMesh, editorRenderPassName);
       }
     }
     if (this.contents) {
@@ -200,9 +205,9 @@ export class GizmoComponent extends RendererComponent {
         if (!mesh.isDestroyed) {
           mesh.dispose();
           if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
-            this.getBehindRenderPass(composition.renderFrame).removeMesh(mesh);
+            composition.sceneRendering.removeRenderer(mesh, behindRenderPassName);
           } else {
-            this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+            composition.sceneRendering.removeRenderer(mesh, editorRenderPassName);
           }
         }
       }
@@ -212,7 +217,7 @@ export class GizmoComponent extends RendererComponent {
       this.wireframeMeshes.forEach(mesh => {
         if (!mesh.isDestroyed) {
           destroyWireframeMesh(mesh);
-          this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+          composition.sceneRendering.removeRenderer(mesh, editorRenderPassName);
         }
       });
     } else {
@@ -220,7 +225,7 @@ export class GizmoComponent extends RendererComponent {
 
       if (wireframeMesh && !wireframeMesh.isDestroyed) {
         destroyWireframeMesh(wireframeMesh);
-        this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+        composition.sceneRendering.removeRenderer(wireframeMesh, editorRenderPassName);
       }
     }
 
@@ -486,7 +491,13 @@ export class GizmoComponent extends RendererComponent {
   }
 
   createParticleContent (item: VFXItem) {
-    const shape = item.getComponent(ParticleSystem).definition.shape;
+    const particleSystem = item.getComponent(ParticleSystem);
+
+    if (!particleSystem) {
+      return;
+    }
+
+    const shape = particleSystem.definition.shape;
     const engine = this.item.composition?.renderer.engine;
 
     assertExist(engine);
@@ -836,39 +847,6 @@ export class GizmoComponent extends RendererComponent {
     }
   };
 
-  getBehindRenderPass (pipeline: RenderFrame): RenderPass {
-    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === behindRenderPassName);
-
-    if (!rp) {
-      rp = new DrawGizmoBehindPass(pipeline.renderer);
-      pipeline.addRenderPass(rp);
-    }
-
-    return rp;
-  }
-
-  getEditorRenderPass (pipeline: RenderFrame): RenderPass {
-    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === editorRenderPassName);
-
-    if (!rp) {
-      rp = new DrawGizmoEditorPass(pipeline.renderer);
-      pipeline.addRenderPass(rp);
-    }
-
-    return rp;
-  }
-
-  getFrontRenderPass (pipeline: RenderFrame): RenderPass {
-    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === frontRenderPassName);
-
-    if (!rp) {
-      rp = new DrawGizmoFrontPass(pipeline.renderer);
-      pipeline.addRenderPass(rp);
-    }
-
-    return rp;
-  }
-
 }
 
 export enum CoordinateSpace {
@@ -876,39 +854,66 @@ export enum CoordinateSpace {
   World
 }
 
+class GizmoRendererFeature extends RendererFeature {
+  private passes: RenderPass[] = [];
+
+  override create (renderer: Renderer): void {
+    this.passes = [
+      new DrawGizmoFrontPass(renderer),
+      new DrawGizmoEditorPass(renderer),
+      new DrawGizmoBehindPass(renderer),
+    ];
+  }
+
+  override addRenderPasses (renderer: Renderer, data: RenderingData): void {
+    for (const pass of this.passes) {
+      if (data.renderList.groups.has(pass.name)) {
+        renderer.enqueuePass(pass);
+      }
+    }
+  }
+
+  override dispose (): void {
+    for (const pass of this.passes) {
+      pass.dispose();
+    }
+    this.passes.length = 0;
+  }
+}
+
 class DrawGizmoBehindPass extends RenderPass {
   constructor (renderer: Renderer) {
     super(renderer);
-    this.priority = RenderPassPriorityPostprocess + RenderPassPriorityPostprocess;
+    this.renderPassEvent = RenderPassEvent.AfterRendering;
     this.name = behindRenderPassName;
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, data: RenderingData): void {
     renderer.clear({ depthAction: TextureLoadAction.clear });
-    renderer.renderMeshes(this.meshes);
+    renderer.renderMeshes(data.renderList.groups.get(this.name) ?? []);
   }
 }
 
 class DrawGizmoFrontPass extends RenderPass {
   constructor (renderer: Renderer) {
     super(renderer);
-    this.priority = RenderPassPriorityPrepare + 2;
+    this.renderPassEvent = RenderPassEvent.BeforeRendering;
     this.name = frontRenderPassName;
   }
 
-  override execute (renderer: Renderer): void {
-    renderer.renderMeshes(this.meshes);
+  override execute (renderer: Renderer, data: RenderingData): void {
+    renderer.renderMeshes(data.renderList.groups.get(this.name) ?? []);
   }
 }
 
 class DrawGizmoEditorPass extends RenderPass {
   constructor (renderer: Renderer) {
     super(renderer);
-    this.priority = RenderPassPriorityPostprocess + 2;
+    this.renderPassEvent = RenderPassEvent.AfterRenderingObjects;
     this.name = editorRenderPassName;
   }
 
-  override execute (renderer: Renderer): void {
-    renderer.renderMeshes(this.meshes);
+  override execute (renderer: Renderer, data: RenderingData): void {
+    renderer.renderMeshes(data.renderList.groups.get(this.name) ?? []);
   }
 }

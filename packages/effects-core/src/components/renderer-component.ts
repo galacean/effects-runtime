@@ -66,11 +66,11 @@ export class RendererComponent extends Component {
   }
 
   override onEnable (): void {
-    this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
+    this.item.composition?.sceneRendering.addRenderer(this);
   }
 
   override onDisable (): void {
-    this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+    this.item.composition?.sceneRendering.removeRenderer(this);
   }
 
   override onParentChanged (): void {

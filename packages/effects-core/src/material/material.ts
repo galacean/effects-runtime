@@ -424,6 +424,10 @@ export class Material extends Asset implements Disposable {
       for (name in globalUniforms.matrices) {
         shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
       }
+      for (name in globalUniforms.textures) {
+        globalUniforms.textures[name].initialize();
+        shaderVariant.setTexture(name, globalUniforms.textures[name]);
+      }
     }
 
     for (name in this.textures) {

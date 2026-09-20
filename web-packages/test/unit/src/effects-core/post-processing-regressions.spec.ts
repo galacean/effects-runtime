@@ -1,4 +1,4 @@
-import { Composition, Player, PostProcessVolume, RenderFrame, TextureLoadAction } from '@galacean/effects';
+import { Composition, Player, PostProcessVolume, RendererComponent, TextureLoadAction } from '@galacean/effects';
 import type { Material } from '@galacean/effects';
 import type { GLEngine } from '@galacean/effects-webgl';
 
@@ -19,14 +19,17 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     function createComposition (postProcessingEnabled = false, volume?: PostProcessVolume) {
       const composition = new Composition(player.engine);
 
-      if (postProcessingEnabled) {
-        composition.renderFrame.dispose();
-        composition.renderFrame = new RenderFrame({
-          camera: composition.camera, renderer: player.renderer, postProcessingEnabled, globalVolume: volume,
-        });
-      }
+      composition.postProcessingEnabled = postProcessingEnabled;
+      composition.globalVolume = volume;
 
       return composition;
+    }
+
+    function setSceneDraw (composition: Composition, render: () => void) {
+      const component = new RendererComponent(player.engine);
+
+      component.render = render;
+      composition.sceneRendering.addRenderer(component);
     }
 
     function readPixel () {
@@ -46,13 +49,13 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         const second = createComposition(true);
         const renderer = player.renderer;
 
-        first.renderFrame.renderPasses[0].execute = () => renderer.clear({
+        setSceneDraw(first, () => renderer.clear({
           colorAction: TextureLoadAction.clear, clearColor: [1, 0, 0, 1],
-        });
+        }));
         if (translucent) {
-          second.renderFrame.renderPasses[0].execute = () => renderer.clear({
+          setSceneDraw(second, () => renderer.clear({
             colorAction: TextureLoadAction.clear, clearColor: [0, 0.5, 0, 0.5],
-          });
+          }));
         }
         renderer.renderCompositions([first, second], {
           colorAction: TextureLoadAction.clear, clearColor: [0, 0, 1, 1],
@@ -125,9 +128,9 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         return get(...args);
       };
       renderer.blit = (...args) => { blits++; blit(...args); };
-      composition.renderFrame.renderPasses[0].execute = () => renderer.clear({
+      setSceneDraw(composition, () => renderer.clear({
         colorAction: TextureLoadAction.clear, clearColor: [0, 1, 0, 1],
-      });
+      }));
       volume.bloom.active = true;
       composition.render();
       expect(blits).greaterThan(0);
@@ -147,7 +150,9 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       let material: Material | undefined;
 
       renderer.renderMeshes = meshes => {
-        if (renderer.renderingData.currentPass.name === 'ToneMappingPass') { material = meshes[0].material; }
+        const toneMappingMesh = meshes.find(mesh => mesh.name === 'PostProcess');
+
+        if (toneMappingMesh) { material = toneMappingMesh.material; }
         renderMeshes(meshes);
       };
       volume.colorAdjustments = { active: true, brightness: 2, saturation: 50, contrast: 50 };
@@ -177,12 +182,10 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
         try {
           capability.detail = { ...original, ...unsupported };
-          expect(() => new RenderFrame({
-            renderer: player.renderer, camera: composition.camera, postProcessingEnabled: true,
-          })).to.throw('color attachment and linear filtering support');
-          const frame = new RenderFrame({ renderer: player.renderer, camera: composition.camera });
-
-          frame.dispose();
+          composition.postProcessingEnabled = true;
+          expect(() => composition.render()).to.throw('color attachment and linear filtering support');
+          composition.postProcessingEnabled = false;
+          expect(() => composition.render()).not.to.throw();
         } finally {
           capability.detail = original;
         }

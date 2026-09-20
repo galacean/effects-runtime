@@ -1,19 +1,23 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec4 } from '@galacean/effects-specification';
-import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
-import type { Framebuffer } from '../render';
+import type { Renderer } from '../render';
 import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
-import type { Disposable, Sortable } from '../utils';
-import { addByOrder, DestroyOptions, removeItem } from '../utils';
+import type { Disposable } from '../utils';
+import type { RenderingData } from './rendering-data';
 import type { Renderbuffer } from './renderbuffer';
 
-export const RenderPassPriorityPrepare = 0;
-export const RenderPassPriorityNormal = 1000;
-export const RenderPassPriorityPostprocess = 3000;
+/** Pass execution stages. Passes at the same event retain enqueue order. */
+export enum RenderPassEvent {
+  BeforeRendering = 0,
+  BeforeRenderingObjects = 100,
+  AfterRenderingObjects = 200,
+  BeforeRenderingPostProcessing = 300,
+  AfterRenderingPostProcessing = 400,
+  AfterRendering = 500,
+}
 
 /**
  * RenderPass Attachment 存储类型
@@ -204,7 +208,6 @@ export enum RenderPassDestroyAttachmentType {
 }
 
 export type RenderPassDestroyOptions = {
-  meshes?: MeshDestroyOptions | DestroyOptions.keep,
   colorAttachment?: RenderPassDestroyAttachmentType,
   depthStencilAttachment?: RenderPassDestroyAttachmentType,
 };
@@ -214,22 +217,16 @@ let seed = 1;
 /**
  * RenderPass 抽象类
  */
-export class RenderPass implements Disposable, Sortable {
+export class RenderPass implements Disposable {
   /**
-   * 优先级
+   * 执行阶段，同阶段按入队顺序执行。
    */
-  priority: number = 0;
+  renderPassEvent: RenderPassEvent = RenderPassEvent.BeforeRendering;
   /**
    * 名称
    */
   name: string = 'RenderPass' + seed++;
-  /**
-   * 包含的 Mesh 列表
-   */
-  readonly meshes: RendererComponent[] = [];
-
   protected disposed = false;
-  protected framebuffer: Framebuffer | null = null;
   protected renderer: Renderer;
 
   constructor (renderer: Renderer) {
@@ -244,32 +241,17 @@ export class RenderPass implements Disposable, Sortable {
     return this.getViewport();
   }
 
-  addMesh (mesh: RendererComponent): void {
-    addByOrder(this.meshes, mesh);
-  }
-
-  removeMesh (mesh: RendererComponent): void {
-    removeItem(this.meshes, mesh);
-  }
-
   /**
-   * 配置当前pass的RT，在每帧渲染前调用
+   * 准备当前阶段的目标和参数并绘制，每次场景渲染调用一次
    */
-  configure (renderer: Renderer) {
+  execute (renderer: Renderer, data: RenderingData) {
     // OVERRIDE
   }
 
   /**
-   * 执行当前pass，每帧调用一次
+   * 本次场景的所有阶段结束后调用，用于清理借用的资源引用。
    */
-  execute (renderer: Renderer) {
-    // OVERRIDE
-  }
-
-  /**
-   * 每帧所有的pass渲染完后调用，用于清空临时的RT资源
-   */
-  onCameraCleanup (renderer: Renderer) {
+  onCameraCleanup (renderer: Renderer, data: RenderingData) {
     // OVERRIDE
   }
 
@@ -277,14 +259,7 @@ export class RenderPass implements Disposable, Sortable {
    * 获取当前视口大小，格式：[x偏移，y偏移，宽度，高度]
    */
   getViewport (): vec4 {
-    const ret = this.framebuffer?.viewport;
-
-    if (ret) {
-      return ret;
-    }
-    const renderer = this.renderer;
-
-    return renderer ? [0, 0, renderer.getWidth(), renderer.getHeight()] : [0, 0, 0, 0];
+    return this.renderer.getViewport();
   }
 
   /**
@@ -295,15 +270,6 @@ export class RenderPass implements Disposable, Sortable {
     if (this.disposed) {
       return;
     }
-    const destroyMeshOption = options?.meshes || undefined;
-
-    if (destroyMeshOption !== DestroyOptions.keep) {
-      this.meshes.forEach(mesh => {
-        (mesh as Mesh).dispose(destroyMeshOption);
-      });
-    }
-    this.meshes.length = 0;
-
     this.disposed = true;
   }
 }

@@ -1,5 +1,8 @@
+export * from './context-container';
+export * from './resource-data';
 export * from './create-copy-shader';
-export * from './render-frame';
+export * from './rendering-data';
+export * from './scene-rendering';
 export * from './renderbuffer';
 export * from './render-pass';
 export * from './render-target-pool';
@@ -12,6 +15,7 @@ export * from './buffer';
 export * from './vertex-buffer';
 export * from './framebuffer';
 export * from './renderer';
+export * from './renderer-feature';
 export * from './graphics';
 export * from './draw-object-pass';
 export * from './text-cache';

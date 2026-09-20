@@ -1,6 +1,6 @@
 import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
 import {
-  RenderFrame, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
+  SceneRendering, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion, Material,
 } from '@galacean/effects-core';
 import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
@@ -52,6 +52,34 @@ describe('webgl/gl-material', () => {
     const sb = (renderer.engine as GLEngine).shaderLibrary;
 
     sb.dispose();
+  });
+
+  it('binds a global texture as a shader sampler', () => {
+    const texture = generateTexture(engine);
+    const material = new Material(engine, {
+      shader: {
+        vertex: vs,
+        fragment: `precision highp float;
+        uniform sampler2D u_GlobalTexture;
+        void main() {
+          gl_FragColor = texture2D(u_GlobalTexture, vec2(0.5));
+        }`,
+      },
+    });
+    const globalUniforms = renderer.renderingData.globalUniforms;
+
+    renderer.setGlobalTexture('u_GlobalTexture', texture);
+    material.initialize();
+    material.use(renderer, globalUniforms);
+
+    expect(globalUniforms.samplers).deep.equals(['u_GlobalTexture']);
+    expect(globalUniforms.textures.u_GlobalTexture).equals(texture);
+    expect(material.hasUniform('u_GlobalTexture')).equals(true);
+
+    delete globalUniforms.textures.u_GlobalTexture;
+    globalUniforms.samplers.length = 0;
+    material.dispose();
+    texture.dispose();
   });
 
   // 使用自定义的material states
@@ -568,10 +596,7 @@ describe('webgl/gl-material', () => {
             drawCount: 6,
           }),
       });
-    const renderFrame = new RenderFrame({
-      renderer,
-      camera: new Camera(''),
-    });
+    const sceneRendering = new SceneRendering();
     const testData = [
       1, 2, 3, 4,
       1, 2, 3, 4,
@@ -588,10 +613,8 @@ describe('webgl/gl-material', () => {
     const data2 = mesh.material.getVector4Array('u_pos');
 
     expect(new Float32Array(data2)).to.eqls(new Float32Array(testData));
-    renderer.renderRenderFrame(renderFrame);
-    mesh.material.initialize();
-    mesh.geometry.initialize();
-    mesh.render(renderer);
+    sceneRendering.addRenderer(mesh);
+    renderer.renderScene(sceneRendering, { camera: new Camera('') });
 
     const material = mesh.material;
     const program = (material.shaderVariant as GLShaderVariant).program.program;
@@ -600,7 +623,7 @@ describe('webgl/gl-material', () => {
 
     expect(new Float32Array(valData)).to.eqls(new Float32Array([1, 2, 3, 4]));
 
-    renderFrame.dispose();
+    sceneRendering.clear();
   });
 
   // // 使用webgl2的struct进行uniform值设置 TODO: ubo目前还没完成

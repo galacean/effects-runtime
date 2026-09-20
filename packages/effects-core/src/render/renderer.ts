@@ -1,13 +1,20 @@
+import { ResourceData } from './resource-data';
 import type { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import type { Composition } from '../composition';
 import { Material } from '../material';
-import { addItem, removeItem, sortByOrder } from '../utils';
-import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
+import { addItem, removeItem } from '../utils';
+import { FilterMode, RenderTextureFormat } from './framebuffer';
+import type { Framebuffer } from './framebuffer';
 import { Geometry } from './geometry';
 import { VertexBuffer } from './vertex-buffer';
-import type { RenderFrame } from './render-frame';
+import { RenderingData } from './rendering-data';
+import type { RenderOptions } from './rendering-data';
+import { DrawObjectPass } from './draw-object-pass';
+import { BloomPass, ToneMappingPass } from './post-process-pass';
+import type { SceneRendering } from './scene-rendering';
+import type { RendererFeature } from './renderer-feature';
 import type { RenderPass, RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
 import type { Texture } from '../texture';
@@ -45,12 +52,13 @@ export class Renderer {
     return new Renderer(engine);
   }
 
-  /**
-  * 存放渲染需要用到的数据
-  */
-  // renderingData: RenderingData;
   protected currentFramebuffer: Framebuffer | null = null;
   protected disposed = false;
+  private readonly drawObjectPass: DrawObjectPass;
+  private readonly bloomPass: BloomPass;
+  private readonly toneMappingPass: ToneMappingPass;
+  private readonly features: RendererFeature[] = [];
+  private readonly activeRenderPassQueue: RenderPass[] = [];
 
   private readonly overlayRenderers: OverlayRenderer[] = [];
 
@@ -58,6 +66,13 @@ export class Renderer {
   private blitMaterial: Material | null = null;
 
   constructor (public engine: Engine) {
+    this.drawObjectPass = new DrawObjectPass(this);
+    this.bloomPass = new BloomPass(this, 7);
+    this.toneMappingPass = new ToneMappingPass(this);
+  }
+
+  get renderingData () {
+    return this.engine.renderingData;
   }
 
   /**
@@ -104,33 +119,38 @@ export class Renderer {
     }
   }
 
-  get renderingData () {
-    return this.engine.renderingData;
-  }
-
   setGlobalFloat (name: string, value: number) {
     this.checkGlobalUniform(name);
-    this.renderingData.currentFrame.globalUniforms.floats[name] = value;
+    this.renderingData.globalUniforms.floats[name] = value;
   }
 
   setGlobalVector4 (name: string, value: Vector4) {
     this.checkGlobalUniform(name);
-    this.renderingData.currentFrame.globalUniforms.vector4s[name] = value;
+    this.renderingData.globalUniforms.vector4s[name] = value;
   }
 
   setGlobalInt (name: string, value: number) {
     this.checkGlobalUniform(name);
-    this.renderingData.currentFrame.globalUniforms.ints[name] = value;
+    this.renderingData.globalUniforms.ints[name] = value;
   }
 
   setGlobalMatrix (name: string, value: Matrix4) {
     this.checkGlobalUniform(name);
-    this.renderingData.currentFrame.globalUniforms.matrices[name] = value;
+    this.renderingData.globalUniforms.matrices[name] = value;
   }
 
   setGlobalVector3 (name: string, value: Vector3) {
     this.checkGlobalUniform(name);
-    this.renderingData.currentFrame.globalUniforms.vector3s[name] = value;
+    this.renderingData.globalUniforms.vector3s[name] = value;
+  }
+
+  setGlobalTexture (name: string, texture: Texture) {
+    const globalUniforms = this.renderingData.globalUniforms;
+
+    if (!globalUniforms.samplers.includes(name)) {
+      globalUniforms.samplers.push(name);
+    }
+    globalUniforms.textures[name] = texture;
   }
 
   getFramebuffer (): Framebuffer {
@@ -151,6 +171,10 @@ export class Renderer {
 
   setViewport (x: number, y: number, width: number, height: number) {
     this.engine.setViewport(x, y, width, height);
+  }
+
+  getViewport (): [number, number, number, number] {
+    return this.engine.getViewport();
   }
 
   clear (action: RenderPassClearAction) {
@@ -174,50 +198,102 @@ export class Renderer {
     return this.engine.getShaderLibrary();
   }
 
-  renderRenderFrame (renderFrame: RenderFrame) {
-    const frame = renderFrame;
-    const passes = frame.renderPasses;
+  get rendererFeatures (): readonly RendererFeature[] {
+    return this.features;
+  }
 
+  /** Attach a feature for the lifetime of this renderer. */
+  addRendererFeature (feature: RendererFeature): void {
     if (this.disposed) {
-      console.error('Renderer is destroyed, target: GLRenderer.');
-
-      return;
+      throw new Error('Renderer is disposed.');
     }
-
-    frame.renderer.engine.getShaderLibrary()?.compileAllShaders();
-    frame.setup();
-
-    this.setFramebuffer(null);
-
-    const currentCamera = frame.camera;
-
-    this.renderingData.currentFrame = frame;
-    this.renderingData.currentCamera = currentCamera;
-
-    this.setGlobalMatrix('effects_MatrixInvV', currentCamera.getInverseViewMatrix());
-    this.setGlobalMatrix('effects_MatrixV', currentCamera.getViewMatrix());
-    this.setGlobalMatrix('effects_MatrixVP', currentCamera.getViewProjectionMatrix());
-    this.setGlobalMatrix('_MatrixP', currentCamera.getProjectionMatrix());
-    this.setGlobalVector3('effects_WorldSpaceCameraPos', currentCamera.position);
-
-    // 根据 priority 排序 pass
-    sortByOrder(passes);
-
-    for (const pass of passes) {
-      this.renderRenderPass(pass);
-    }
-
-    for (const pass of passes) {
-      pass.onCameraCleanup(this);
+    if (!this.features.includes(feature)) {
+      feature.create(this);
+      this.features.push(feature);
     }
   }
 
+  /** Add a pass to the current render queue. */
+  enqueuePass (pass: RenderPass): void {
+    this.activeRenderPassQueue.push(pass);
+  }
+
+  renderScene (scene: SceneRendering, options: RenderOptions): void {
+    if (this.disposed) {
+      return;
+    }
+    if (options.postProcessingEnabled) {
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = this.engine.gpuCapability.detail;
+
+      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear) {
+        throw new Error('Post processing requires half float textures with color attachment and linear filtering support.');
+      }
+    }
+
+    const previousTarget = this.getFramebuffer();
+    const previousViewport = this.getViewport();
+
+    const previousData = this.engine.renderingData;
+    const data = new RenderingData(options);
+    const resourceData = data.frameData.get(ResourceData);
+
+    this.activeRenderPassQueue.length = 0;
+    this.engine.renderingData = data;
+    this.prepareRenderingData(scene, data);
+    this.enqueuePass(this.drawObjectPass);
+
+    if (options.postProcessingEnabled) {
+      this.enqueuePass(this.bloomPass);
+      this.enqueuePass(this.toneMappingPass);
+    }
+    for (const feature of this.features) {
+      if (feature.active) {
+        feature.addRenderPasses(this, data);
+      }
+    }
+    this.activeRenderPassQueue.sort((a, b) => a.renderPassEvent - b.renderPassEvent);
+    this.getShaderLibrary()?.compileAllShaders();
+    let sceneTarget: Framebuffer | undefined;
+
+    if (options.postProcessingEnabled) {
+      const width = options.target?.viewport[2] ?? this.getWidth();
+      const height = options.target?.viewport[3] ?? this.getHeight();
+
+      sceneTarget = this.getTemporaryRT('DrawObjectPass', width, height, 16, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+      resourceData.cameraColor = sceneTarget.getColorTextures()[0];
+    }
+    this.setFramebuffer(sceneTarget ?? options.target ?? null);
+
+    for (const pass of this.activeRenderPassQueue) {
+      this.renderRenderPass(pass);
+    }
+    for (const pass of this.activeRenderPassQueue) {
+      pass.onCameraCleanup(this, data);
+    }
+    this.activeRenderPassQueue.length = 0;
+    if (sceneTarget) {
+      this.releaseTemporaryRT(sceneTarget);
+    }
+    data.frameData.dispose();
+    this.engine.renderingData = previousData;
+    this.setFramebuffer(previousTarget);
+    this.setViewport(...previousViewport);
+  }
+
+  /** Collects scene inputs and initializes uniforms for the current render. */
+  prepareRenderingData (scene: SceneRendering, data: RenderingData): void {
+    scene.collect(data);
+    const camera = data.options!.camera;
+
+    this.setGlobalMatrix('effects_MatrixInvV', camera.getInverseViewMatrix());
+    this.setGlobalMatrix('effects_MatrixV', camera.getViewMatrix());
+    this.setGlobalMatrix('effects_MatrixVP', camera.getViewProjectionMatrix());
+    this.setGlobalMatrix('_MatrixP', camera.getProjectionMatrix());
+    this.setGlobalVector3('effects_WorldSpaceCameraPos', camera.position);
+  }
+
   renderRenderPass (pass: RenderPass): void {
-    this.renderingData.currentPass = pass;
-    // 配置当前 renderer 的 RT
-    pass.configure(this);
-    // 执行当前 pass
-    pass.execute(this);
+    pass.execute(this, this.renderingData);
   }
 
   renderMeshes (meshes: RendererComponent[]) {
@@ -237,7 +313,7 @@ export class Renderer {
     material.setMatrix('effects_ObjectToWorld', matrix);
 
     try {
-      material.use(this, this.renderingData.currentFrame.globalUniforms);
+      material.use(this, this.renderingData.globalUniforms);
     } catch (e) {
       console.error(e);
       this.engine.renderErrors.add(e as Error);
@@ -351,6 +427,14 @@ export class Renderer {
       return;
     }
 
+    this.drawObjectPass.dispose();
+    this.bloomPass.dispose();
+    this.toneMappingPass.dispose();
+    for (const feature of this.features) {
+      feature.dispose();
+    }
+    this.features.length = 0;
+    this.activeRenderPassQueue.length = 0;
     this.overlayRenderers.length = 0;
     this.blitGeometry?.dispose();
     this.blitGeometry = null;
@@ -361,7 +445,7 @@ export class Renderer {
   }
 
   private checkGlobalUniform (name: string) {
-    const globalUniforms = this.renderingData.currentFrame.globalUniforms;
+    const globalUniforms = this.renderingData.globalUniforms;
 
     if (!globalUniforms.uniforms.includes(name)) {
       globalUniforms.uniforms.push(name);

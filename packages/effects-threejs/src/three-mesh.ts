@@ -129,7 +129,7 @@ export class ThreeMesh extends Mesh implements Sortable {
     }
     this.mesh.geometry = getThreeGeometry(this.geometry);
     this.material.setMatrix('effects_ObjectToWorld', this.worldMatrix);
-    this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
+    this.material.use(renderer, renderer.renderingData.globalUniforms);
   }
 
   /**

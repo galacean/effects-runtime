@@ -74,7 +74,7 @@ function setDatGUI (composition: Composition) {
   const VignetteFolder = gui.addFolder('Vignette');
   const ColorAdjustmentsFolder = gui.addFolder('ColorAdjustments');
 
-  const globalVolume = composition.renderFrame.globalVolume;
+  const globalVolume = composition.globalVolume;
 
   if (!globalVolume) {
     return;

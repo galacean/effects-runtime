@@ -98,7 +98,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     this.threeMesh.geometry = getThreeGeometry(this.geometry);
     this.material.setVector2('_Size', this.transform.size);
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
+    this.material.use(renderer, renderer.renderingData.globalUniforms);
   }
 
   override onDestroy (): void {

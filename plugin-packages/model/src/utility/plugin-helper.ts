@@ -342,9 +342,6 @@ export class WebGLHelper {
    */
   static deleteRenderPass (pass: RenderPass) {
     pass.dispose({
-      meshes: {
-        geometries: DestroyOptions.destroy,
-      },
       depthStencilAttachment: RenderPassDestroyAttachmentType.force,
       colorAttachment: RenderPassDestroyAttachmentType.force,
     });

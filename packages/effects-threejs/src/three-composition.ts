@@ -2,7 +2,7 @@ import type {
   Scene, ShaderLibrary, Transform, EventSystem, CompositionProps,
   Engine,
 } from '@galacean/effects-core';
-import { Composition, RendererComponent } from '@galacean/effects-core';
+import { Composition } from '@galacean/effects-core';
 import type THREE from 'three';
 
 /**
@@ -62,23 +62,4 @@ export class ThreeComposition extends Composition {
     super(engine, props, scene);
   }
 
-  override renderContent (): void {
-    const render = this.renderer;
-    const frame = this.renderFrame;
-
-    frame.renderPasses[0].meshes.length = 0;
-
-    const items = this.sceneRoot.getDescendants();
-
-    // 主合成元素
-    for (const vfxItem of items) {
-      const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-      for (const rendererComponent of rendererComponents) {
-        if (rendererComponent.isActiveAndEnabled) {
-          rendererComponent.render(render);
-        }
-      }
-    }
-  }
 }

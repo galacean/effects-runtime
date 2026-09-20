@@ -118,6 +118,16 @@ export class ThreeMaterial extends Material {
     const composition = engine.composition;
     const threeCamera = engine.threeCamera;
 
+    for (const name in globalUniforms.textures) {
+      const texture = (globalUniforms.textures[name] as ThreeTexture).texture;
+
+      if (this.material.uniforms[name]) {
+        this.material.uniforms[name].value = texture;
+      } else {
+        this.material.uniforms[name] = new THREE.Uniform(texture);
+      }
+    }
+
     if (threeCamera) {
       const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(threeCamera.projectionMatrix, threeCamera.matrixWorldInverse);
 

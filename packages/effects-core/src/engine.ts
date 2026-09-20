@@ -5,10 +5,10 @@ import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
-  RenderPassClearAction, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, Renderer, RenderTargetPool } from './render';
+import { Graphics, Renderer, RenderTargetPool, RenderingData } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
@@ -120,7 +120,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /**
    * 存放渲染需要用到的数据
    */
-  renderingData: RenderingData;
+  renderingData = new RenderingData();
   /**
    * 是否不处理上下文丢失恢复（构造期配置，默认 true）
    */
@@ -147,6 +147,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   private servers: EngineServer[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
+  private viewport?: [x: number, y: number, width: number, height: number];
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
     clearStencil: 0,
@@ -184,10 +185,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.assetLoader = new AssetLoader(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
-    this.renderingData = {
-      // @ts-expect-error
-      currentFrame: {},
-    };
     this.renderer = this.createRenderer();
 
     this.initializeServers();
@@ -681,6 +678,17 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * gl.viewport(0, 0, width, height);
    */
   setViewport (x: number, y: number, width: number, height: number) {
+    this.viewport = [x, y, width, height];
+    this.setViewportInternal(x, y, width, height);
+  }
+
+  /** Returns the viewport currently submitted to the graphics backend. */
+  getViewport (): [x: number, y: number, width: number, height: number] {
+    return this.viewport ? [...this.viewport] : [0, 0, this.getWidth(), this.getHeight()];
+  }
+
+  /** Submits viewport state to the active graphics backend. */
+  protected setViewportInternal (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
@@ -815,6 +823,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
+    this.renderer.dispose();
     this._graphics?.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
