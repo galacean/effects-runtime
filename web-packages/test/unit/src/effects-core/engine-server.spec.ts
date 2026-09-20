@@ -155,10 +155,17 @@ describe('core/engine/servers', () => {
     const other = createPlayer().engine;
     const assets = engine.getServer(AssetServer);
     const composition = new Composition(engine);
+    const manager = assets.createAssetManager({});
+    const disposeManager = manager.dispose.bind(manager);
     const disposeComposition = composition.dispose.bind(composition);
     const disposeAssets = assets.onDispose.bind(assets);
     const calls: string[] = [];
 
+    manager.dispose = () => {
+      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
+      calls.push('manager');
+      disposeManager();
+    };
     composition.dispose = () => {
       expect(engine.whiteTexture.isDestroyed).to.equal(false);
       expect(engine.transparentTexture.isDestroyed).to.equal(false);
@@ -172,7 +179,8 @@ describe('core/engine/servers', () => {
     };
     player.dispose();
     engine.dispose();
-    expect(calls).to.deep.equal(['scene', 'assets']);
+    expect(calls).to.deep.equal(['scene', 'assets', 'manager']);
+    expect(assets.assetManagers).to.have.length(0);
     expect(engine.whiteTexture.isDestroyed).to.equal(true);
     expect(engine.transparentTexture.isDestroyed).to.equal(true);
     expect(other.whiteTexture.isDestroyed).to.equal(false);
@@ -318,7 +326,7 @@ describe('core/engine/servers', () => {
       override onInit () {
         renderer = this.engine.renderer;
         expect(renderer.constructor).to.equal(Renderer);
-        expect(this.engine.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
+        expect(this.engine.graphicsServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
       }
     }
 

@@ -30,15 +30,15 @@ describe('plugin-gui/Graphics clip stack', () => {
     canvas.width = 200;
     canvas.height = 200;
     const scissorRects: number[][] = [];
-    const originalSetScissor = player.engine.renderingDevice.setScissor.bind(player.engine.renderingDevice);
+    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
 
-    player.engine.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
 
     try {
-      const graphics = player.engine.graphics;
+      const graphics = player.engine.renderingServer.graphics;
       const parent = new math.Matrix3().set(1, 0, 0, 0, 1, 0, 20, 10, 1);
       const child = new math.Matrix3().set(0, 1, 0, -1, 0, 0, 5, 0, 1);
 
@@ -54,7 +54,7 @@ describe('plugin-gui/Graphics clip stack', () => {
 
       expect(scissorRects[0]).deep.equals([40, 160, 10, 20]);
     } finally {
-      player.engine.renderingDevice.setScissor = originalSetScissor;
+      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
       player.dispose();
     }
   });
@@ -84,15 +84,15 @@ describe('plugin-gui/Graphics clip stack', () => {
     const scissorRects: number[][] = [];
     const drawScissorStates: boolean[] = [];
     let scissorEnabled = false;
-    const originalSetScissorTest = player.engine.renderingDevice.setScissorTest.bind(player.engine.renderingDevice);
-    const originalSetScissor = player.engine.renderingDevice.setScissor.bind(player.engine.renderingDevice);
+    const originalSetScissorTest = player.engine.graphicsServer.renderingDevice.setScissorTest.bind(player.engine.graphicsServer.renderingDevice);
+    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
     const originalDrawGeometry = player.engine.renderer.drawGeometry.bind(player.engine.renderer);
 
-    player.engine.renderingDevice.setScissorTest = enabled => {
+    player.engine.graphicsServer.renderingDevice.setScissorTest = enabled => {
       scissorEnabled = enabled;
       originalSetScissorTest(enabled);
     };
-    player.engine.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
@@ -120,8 +120,8 @@ describe('plugin-gui/Graphics clip stack', () => {
       expect(scissorRects[0][2]).greaterThan(40);
       expect(scissorEnabled).equals(false);
     } finally {
-      player.engine.renderingDevice.setScissorTest = originalSetScissorTest;
-      player.engine.renderingDevice.setScissor = originalSetScissor;
+      player.engine.graphicsServer.renderingDevice.setScissorTest = originalSetScissorTest;
+      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
       player.engine.renderer.drawGeometry = originalDrawGeometry;
       player.dispose();
     }
@@ -146,15 +146,15 @@ describe('plugin-gui/Graphics clip stack', () => {
     canvas.width = 200;
     canvas.height = 200;
     const scissorRects: number[][] = [];
-    const originalSetScissor = player.engine.renderingDevice.setScissor.bind(player.engine.renderingDevice);
+    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
 
-    player.engine.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
 
     try {
-      const graphics = player.engine.graphics;
+      const graphics = player.engine.renderingServer.graphics;
 
       graphics.begin();
       graphics.pushClipRect(10, 10, 50, 50);
@@ -172,7 +172,7 @@ describe('plugin-gui/Graphics clip stack', () => {
       expect(scissorRects[1][3]).equals(0);
       expect(scissorRects[2]).deep.equals(scissorRects[0]);
     } finally {
-      player.engine.renderingDevice.setScissor = originalSetScissor;
+      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
       player.dispose();
     }
   });
@@ -185,7 +185,7 @@ describe('plugin-gui/Graphics nine-patch command', () => {
       pixelRatio: 1,
       manualRender: true,
     });
-    const graphics = player.engine.graphics;
+    const graphics = player.engine.renderingServer.graphics;
     const texture = { width: 32, height: 32 } as Texture;
     const drawCounts: number[] = [];
     const drawTypes: string[] = [];

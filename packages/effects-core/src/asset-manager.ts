@@ -134,7 +134,7 @@ export class AssetManager implements Disposable {
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
-    const gpuInstance = renderer?.engine.renderingDevice.gpuCapability;
+    const gpuInstance = renderer?.engine.graphicsServer.renderingDevice.gpuCapability;
     const isKTX2Supported = gpuInstance?.detail.ktx2Support ?? false;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;

@@ -21,7 +21,7 @@ describe('webgl/renderer', () => {
   it('safe to call destroy', async () => {
     const engine = new Engine(glCanvas, { glType: 'webgl' });
     const renderer = engine.renderer;
-    const gl = (renderer.engine.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
         width: 3,

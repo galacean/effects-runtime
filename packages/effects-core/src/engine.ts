@@ -1,16 +1,16 @@
 import type * as spec from '@galacean/effects-specification';
 import { AssetServer } from './asset-server';
-import { SceneServer } from './scene-server';
+import { RenderingServer } from './rendering-server';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
-  Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer,
+  Geometry, Mesh, RenderPass, Renderer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, RenderTargetPool } from './render';
-import type { Scene, SceneRenderLevel } from './scene';
+import { RenderTargetPool } from './render';
+import type { SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
+import { generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { Ticker } from './ticker';
@@ -23,7 +23,7 @@ import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { getClassesDerivedFrom } from './decorators';
 import { EngineServer } from './engine-server';
-import type { RenderingDevice } from './rendering-device';
+import { GraphicsServer } from './graphics-server';
 import type { RestoreHandler } from './utils';
 
 export interface EngineOptions extends WebGLContextAttributes {
@@ -75,10 +75,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   displayScale = 1;
   offscreenMode = false;
   /**
-   * 渲染器
-   */
-  renderer: Renderer;
-  /**
    * 渲染等级
    */
   renderLevel?: SceneRenderLevel;
@@ -90,7 +86,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   renderErrors: Set<Error> = new Set();
   eventSystem: EventSystem;
-  renderingDevice: RenderingDevice;
+  graphicsServer: GraphicsServer;
+  renderingServer: RenderingServer;
   env = '';
   /**
    * 计时器
@@ -129,16 +126,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   private servers: EngineServer[] = [];
   private assetServer: AssetServer;
-  private sceneServer: SceneServer;
-  private _graphics: Graphics;
-  private clearAction: RenderPassClearAction = {
-    stencilAction: TextureLoadAction.clear,
-    clearStencil: 0,
-    depthAction: TextureLoadAction.clear,
-    clearDepth: 1,
-    colorAction: TextureLoadAction.clear,
-    clearColor: [0, 0, 0, 0],
-  };
 
   /**
    *
@@ -169,11 +156,22 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.initializeServers();
 
-    if (this.renderingDevice.gpuCapability) {
+    if (this.graphicsServer.renderingDevice.gpuCapability) {
       this.resize();
     }
 
     PluginSystem.notifyEngineCreated(this);
+  }
+
+  /**
+   * 渲染器
+   */
+  get renderer (): Renderer {
+    return this.renderingServer.renderer;
+  }
+
+  get disposed (): boolean {
+    return this._disposed;
   }
 
   /** Get a server registered before this engine was initialized. */
@@ -187,25 +185,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
     this.servers.sort((a, b) => a.order - b.order);
     this.assetServer = this.getServer(AssetServer);
-    this.sceneServer = this.getServer(SceneServer);
+    this.renderingServer = this.getServer(RenderingServer);
+    this.graphicsServer = this.getServer(GraphicsServer);
 
     for (const server of this.servers) {
       server.onInit();
     }
-  }
-
-  get graphics (): Graphics {
-    if (this._graphics) {
-      return this._graphics;
-    }
-
-    this._graphics = new Graphics(this);
-
-    return this._graphics;
-  }
-
-  get disposed (): boolean {
-    return this._disposed;
   }
 
   clearResources () {
@@ -234,21 +219,13 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     return result;
   }
 
-  removeInstance (id: string) {
-    delete this.objectInstance[id];
-  }
-
-  addPackageDatas (scene: Scene) {
-    this.assetServer.addPackageDatas(scene);
-  }
-
   runRenderLoop (renderFunction: (dt: number) => void): void {
     this.ticker?.add(renderFunction);
   }
 
   mainLoop (dt: number): void {
     // 上下文丢失/恢复期间跳过渲染，避免打到失效的 GL 上下文。
-    if (this.renderingDevice.contextWasLost) {
+    if (this.graphicsServer.renderingDevice.contextWasLost) {
       return;
     }
 
@@ -277,7 +254,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   /** Render current scene state without advancing timelines, Animator or scripts. */
   onDraw (): void {
-    if (this.renderingDevice.contextWasLost || this.renderErrors.size > 0) {
+    if (this.graphicsServer.renderingDevice.contextWasLost || this.renderErrors.size > 0) {
       return;
     }
 
@@ -285,9 +262,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       server.onDraw();
     }
 
-    this.renderer.renderCompositions(this.sceneServer.compositions, this.clearAction);
-    this.renderer.renderOverlays();
-    this.renderTargetPool.flush();
+    this.renderingServer.renderFrame();
   }
 
   /**
@@ -319,7 +294,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       if (canvasWidth > documentWidth * 2) {
         logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
       }
-      const maxSize = this.env ? this.renderingDevice.gpuCapability.detail.maxTextureSize : 2048;
+      const maxSize = this.env ? this.graphicsServer.renderingDevice.gpuCapability.detail.maxTextureSize : 2048;
 
       if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
         logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);
@@ -341,14 +316,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setSize (width: number, height: number) {
-    if (this.renderingDevice.getWidth() !== width || this.renderingDevice.getHeight() !== height) {
+    if (this.graphicsServer.renderingDevice.getWidth() !== width || this.graphicsServer.renderingDevice.getHeight() !== height) {
       this.canvas.width = width;
       this.canvas.height = height;
-      this.renderingDevice.setViewport(0, 0, width, height);
-    }
-
-    for (const composition of this.sceneServer.compositions) {
-      composition.camera.aspect = width / height;
+      this.graphicsServer.renderingDevice.setViewport(0, 0, width, height);
     }
 
     this.emit('resize', this);
@@ -485,6 +456,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.servers[i].onBeforeExit();
     }
 
+    // Release remaining engine-owned resources while the device is still alive.
     const info: string[] = [];
 
     if (this.renderPasses.length > 0) {
@@ -504,17 +476,13 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.renderer.dispose();
-    this._graphics?.dispose();
-
-    this.renderPasses.forEach(pass => pass.dispose());
-    this.meshes.forEach(mesh => mesh.dispose());
-    this.geometries.forEach(geo => geo.dispose());
-    this.materials.forEach(mat => mat.dispose());
-    this.framebuffers.forEach(framebuffer => framebuffer.dispose());
-    this.renderbuffers.forEach(renderbuffer => renderbuffer.dispose());
-    this.textures.forEach(tex => tex.dispose());
-    this.assetServer.assetManagers.forEach(assetManager => assetManager.dispose());
+    this.renderPasses.slice().forEach(pass => pass.dispose());
+    this.meshes.slice().forEach(mesh => mesh.dispose());
+    this.geometries.slice().forEach(geo => geo.dispose());
+    this.materials.slice().forEach(mat => mat.dispose());
+    this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
+    this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
+    this.textures.slice().forEach(tex => tex.dispose());
 
     this.textures = [];
     this.materials = [];

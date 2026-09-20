@@ -187,6 +187,8 @@ export class AssetServer extends EngineServer {
   }
 
   override onDispose (): void {
+    this.assetManagers.forEach(assetManager => assetManager.dispose());
+    this.assetManagers.length = 0;
     this.destroyBuiltinObjects();
   }
 }

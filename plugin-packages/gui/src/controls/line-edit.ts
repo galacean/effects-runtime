@@ -72,7 +72,7 @@ export class LineEdit extends TextInput {
     this.updateScrollOffset(contentWidth);
     const textX = this.getAlignedTextX(full.width, contentWidth, margins.left) - this.scrollOffset;
 
-    this.engine.graphics.pushClipRect(margins.left, margins.top, contentWidth, Math.max(0, this.height - margins.top - margins.bottom));
+    this.engine.renderingServer.graphics.pushClipRect(margins.left, margins.top, contentWidth, Math.max(0, this.height - margins.top - margins.bottom));
     if (display) {
       const [selectionStart, selectionEnd] = this.getSelectionRange();
       const prefix = this.measurePrefix(selectionStart);
@@ -86,7 +86,7 @@ export class LineEdit extends TextInput {
     } else {
       this.drawCaret(textX, textY, full.lineHeight);
     }
-    this.engine.graphics.popClipRect();
+    this.engine.renderingServer.graphics.popClipRect();
   }
 
   protected override getDisplayText (): string {

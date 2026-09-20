@@ -59,7 +59,7 @@ export class TextEdit extends TextInput {
     const [selectionStart, selectionEnd] = this.getSelectionRange();
     let textIndex = lines.slice(0, this.scrollLine).reduce((total, line) => total + line.length + 1, 0);
 
-    this.engine.graphics.pushClipRect(
+    this.engine.renderingServer.graphics.pushClipRect(
       margins.left, margins.top,
       Math.max(0, this.width - margins.left - margins.right),
       Math.max(0, this.height - margins.top - margins.bottom),
@@ -88,7 +88,7 @@ export class TextEdit extends TextInput {
       }
       textIndex += line.length + 1;
     }
-    this.engine.graphics.popClipRect();
+    this.engine.renderingServer.graphics.popClipRect();
   }
 
   override onMouseWheel (event: InputEventMouseButton): void {

@@ -66,11 +66,10 @@ describe('core/components/lifecycle', () => {
     parent.dispose();
   });
 
-  it('registers and unregisters through the object only once', () => {
+  it('keeps repeated object registration and unregistration idempotent', () => {
     const node = item('node');
 
     node.unregisterObject();
-    chai.spy.on(player.engine, 'removeInstance');
     node.registerObject();
     node.registerObject();
     expect(node.isRegistered).equals(true);
@@ -78,7 +77,6 @@ describe('core/components/lifecycle', () => {
     node.unregisterObject();
     node.unregisterObject();
     expect(node.isRegistered).equals(false);
-    expect(player.engine.removeInstance).to.have.been.called.once;
     expect(player.engine.objectInstance[node.getInstanceId()]).equals(undefined);
     node.dispose();
   });

@@ -34,7 +34,7 @@ describe('webgl/gl-material', () => {
     const glEngine = new Engine(canvas, { glType: 'webgl2' });
 
     renderer = glEngine.renderer;
-    gl = (glEngine.renderingDevice as RenderingDeviceWebGL).gl;
+    gl = (glEngine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
     engine = glEngine;
   });
 
@@ -50,7 +50,7 @@ describe('webgl/gl-material', () => {
   });
 
   afterEach(() => {
-    const sb = (renderer.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const sb = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     sb.dispose();
   });
@@ -493,14 +493,14 @@ describe('webgl/gl-material', () => {
   //     states: {},
   //   });
   //
-  //   material.initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
-  //   material2initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
+  //   material.initialize(renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL);
+  //   material2initialize(renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL);
   //   expect(material.shader).to.exist;
   //   expect(material.shader.initialized).to.true;
-  //   (renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
-  //   // material2initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
+  //   (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
+  //   // material2initialize(renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL);
   //
-  //   console.log((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults);
+  //   console.log((renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults);
   //
   //
   //    const program = material.shader.program
@@ -512,7 +512,7 @@ describe('webgl/gl-material', () => {
   //   //
   //   material.dispose();
   //   // material2.dispose();
-  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_001_shader']).to.exist;
+  //   expect((renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_001_shader']).to.exist;
   // });
   //
   // it('shared material will keep', async ()=> {
@@ -526,11 +526,11 @@ describe('webgl/gl-material', () => {
   //     states: {},
   //   });
   //
-  //   material.initialize(renderer.engine.renderingDevice as RenderingDeviceWebGL);
+  //   material.initialize(renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL);
   //
-  //   (renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
+  //   (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.compileAllShaders();
   //   expect(material.shader).to.exist;
-  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.contains({ shared: true });
+  //   expect((renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.contains({ shared: true });
   //
   //   const program = material.getProgram();
   //
@@ -538,7 +538,7 @@ describe('webgl/gl-material', () => {
   //   expect(program?.shared).to.be.true;
   //
   //   material.dispose();
-  //   expect((renderer.engine.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.exist;
+  //   expect((renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL as RenderingDeviceWebGL).shaderLibrary.shaderResults['test_002_shader']).to.exist;
   // });
 
   // 使用二维数组给unfiorm赋值
@@ -1624,7 +1624,7 @@ function generateMesh (
 //   outColor += v4;
 // }
 // `;
-//   const engine = renderer.engine.renderingDevice as RenderingDeviceWebGL;
+//   const engine = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
 //   const material = new GLMaterial(engine, {
 //     shader: { vertex: vs, fragment: fs },
 //   });

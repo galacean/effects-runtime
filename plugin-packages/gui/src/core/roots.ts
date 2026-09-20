@@ -146,7 +146,7 @@ export class CanvasContainer extends Control {
 
   protected override drawChildren (): void {
     this.sortCanvases();
-    const graphics = this.engine.graphics;
+    const graphics = this.engine.renderingServer.graphics;
 
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.width, this.height);
@@ -448,9 +448,9 @@ export class WindowRootControl extends RootControl {
     if (this.canvases.children.length === 0) {
       return;
     }
-    this.engine.graphics.begin();
+    this.engine.renderingServer.graphics.begin();
     this.drawInternal();
-    this.engine.graphics.end();
+    this.engine.renderingServer.graphics.end();
   }
 
   override update (deltaTime: number): void {

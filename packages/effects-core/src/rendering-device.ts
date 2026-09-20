@@ -41,8 +41,6 @@ export class RenderingDevice implements Disposable {
     this.engine.emit('contextrestored', this.engine);
   }
 
-  initialize (): void {}
-
   createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
     throw new Error('The active rendering backend does not provide vertex buffers.');
   }

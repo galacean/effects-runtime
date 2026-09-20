@@ -53,6 +53,7 @@ export * from './events';
 export * from './pass-render-level';
 export * from './precompositions';
 export * from './graphics-server';
+export * from './rendering-server';
 export * from './rendering-device';
 
 registerPlugin('camera', CameraVFXItemLoader);

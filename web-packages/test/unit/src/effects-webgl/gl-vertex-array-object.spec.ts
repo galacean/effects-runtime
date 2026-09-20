@@ -26,7 +26,7 @@ describe('webgl/gl-vertex-array-object', () => {
   let glRenderer;
 
   afterEach(() => {
-    const engine = renderer.engine.renderingDevice as RenderingDeviceWebGL;
+    const engine = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
 
     engine.dispose();
     (engine.context.canvas as HTMLCanvasElement)?.remove();
@@ -62,14 +62,14 @@ describe('webgl/gl-vertex-array-object', () => {
 
     geometry.initialize();
 
-    const shader = (glRenderer.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary.createShader({ vertex, fragment });
+    const shader = (glRenderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.createShader({ vertex, fragment });
 
-    (glRenderer.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shader);
+    (glRenderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shader);
     const result = shader.compileResult;
 
     expect(result.status).to.eql(ShaderCompileResultStatus.success);
     const glProgram = shader.program;
-    const gl = (glRenderer.engine.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (glRenderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
     // @ts-expect-error private
     const loc = glProgram.attribInfoMap['aPoint'].loc;
     // @ts-expect-error private
@@ -135,7 +135,7 @@ describe('webgl/gl-vertex-array-object', () => {
     });
 
     geometry.initialize();
-    const gl = (glRenderer.engine.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (glRenderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
     const bindFunc = chai.spy(gl.bindVertexArray);
 
     if ('bindVertexArray' in gl) {
@@ -158,7 +158,7 @@ describe('webgl/gl-vertex-array-object', () => {
       for (const instanced of [false, true]) {
         it(`unbinds after drawing and supports drawing again (${type}, indexed=${indexed}, instanced=${instanced})`, () => {
           renderer = createGLGPURenderer(type);
-          const engine = renderer.engine.renderingDevice as RenderingDeviceWebGL;
+          const engine = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
           const gl = engine.gl;
           const binding = type === 'webgl2'
             ? gl.VERTEX_ARRAY_BINDING
@@ -202,7 +202,7 @@ describe('webgl/gl-vertex-array-object', () => {
 
   it('bind buffers directly when vertex array objects are unavailable', () => {
     renderer = createGLGPURenderer('webgl');
-    const engine = renderer.engine.renderingDevice as RenderingDeviceWebGL;
+    const engine = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
     const capability = engine.gpuCapability.detail as { vertexArrayObject?: boolean };
     const bindBuffers = chai.spy(() => {});
 

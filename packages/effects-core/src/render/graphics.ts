@@ -401,7 +401,7 @@ export class Graphics {
 
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
-    this.engine.renderingDevice.setScissorTest(false);
+    this.engine.graphicsServer.renderingDevice.setScissorTest(false);
 
     // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标：(0, 0) 在左上角，(width, height) 在右下角，+Y 向下。
     const bounds = this.engine.canvas.getBoundingClientRect();
@@ -514,7 +514,7 @@ export class Graphics {
       if (clip) {
         this.applyClipRect(clip);
       } else {
-        this.engine.renderingDevice.setScissorTest(false);
+        this.engine.graphicsServer.renderingDevice.setScissorTest(false);
       }
     }
   }
@@ -525,7 +525,7 @@ export class Graphics {
   end (): void {
     this.flushBatch();
     this.clipStack = [];
-    this.engine.renderingDevice.setScissorTest(false);
+    this.engine.graphicsServer.renderingDevice.setScissorTest(false);
   }
 
   /**
@@ -553,8 +553,8 @@ export class Graphics {
     const right = Math.max(left, Math.min(framebufferWidth, Math.ceil((clip.x + clip.width) * scaleX)));
     const bottom = Math.max(top, Math.min(framebufferHeight, Math.ceil((clip.y + clip.height) * scaleY)));
 
-    this.engine.renderingDevice.setScissorTest(true);
-    this.engine.renderingDevice.setScissor(left, framebufferHeight - bottom, right - left, bottom - top);
+    this.engine.graphicsServer.renderingDevice.setScissorTest(true);
+    this.engine.graphicsServer.renderingDevice.setScissor(left, framebufferHeight - bottom, right - left, bottom - top);
   }
 
   private clipRectsEqual (left?: ClipRect, right?: ClipRect): boolean {

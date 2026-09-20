@@ -26,7 +26,7 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
 
     this.initialized = true;
     this.renderer = renderer;
-    this.buffer = (renderer.engine.renderingDevice as RenderingDeviceWebGL).gl.createRenderbuffer() as WebGLRenderbuffer;
+    this.buffer = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.createRenderbuffer() as WebGLRenderbuffer;
     renderer.engine.addRenderbuffer(this);
   }
 
@@ -37,7 +37,7 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
     if (!this.renderer) {
       return;
     }
-    const gl = (this.renderer.engine.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
 
     // 旧句柄已失效，直接重建。
     this.buffer = gl.createRenderbuffer() as WebGLRenderbuffer;
@@ -62,7 +62,7 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
     }
 
     if (width !== this.size[0] || height !== this.size[1]) {
-      const device = this.renderer.engine.renderingDevice as RenderingDeviceWebGL;
+      const device = this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
       const gl = device.gl;
 
       device.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
@@ -76,7 +76,7 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
 
   dispose () {
     if (this.renderer) {
-      const device = this.renderer.engine.renderingDevice as RenderingDeviceWebGL;
+      const device = this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
 
       device.deleteGLRenderbuffer(this);
       this.renderer.engine.removeRenderbuffer(this);

@@ -58,7 +58,7 @@ let allocateTimeout: any;
     isWebGLLost = false;
   });
 
-  const engine = player.renderer.engine.renderingDevice as RenderingDeviceWebGL;
+  const engine = player.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
   const gl = engine.gl;
   const ext = gl.getExtension('WEBGL_lose_context');
 

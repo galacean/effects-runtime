@@ -25,7 +25,7 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
     macros: newMacros,
     shared: true,
     name: name + '_wireframe',
-    glslVersion: engine.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    glslVersion: engine.graphicsServer.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
   };
   const material = Material.create(engine, materialOptions);
 
@@ -128,7 +128,7 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
     macros: newMacros,
     shared: true,
     name: (mesh.name ?? 'unamedmesh') + '_wireframe',
-    glslVersion: engine.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    glslVersion: engine.graphicsServer.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
   };
 
   const material = Material.create(engine, materialOptions);

@@ -75,7 +75,7 @@ describe('player/event', () => {
     });
     const lost = chai.spy();
     const restored = chai.spy();
-    const { gl } = (player.renderer.engine.renderingDevice as RenderingDeviceWebGL).context;
+    const { gl } = (player.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).context;
     const ext = gl?.getExtension('WEBGL_lose_context');
     const lostEvent = new Promise<void>(resolve => {
       player.on('webglcontextlost', () => {

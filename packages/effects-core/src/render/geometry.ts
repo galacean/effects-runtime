@@ -88,7 +88,7 @@ export class Geometry extends Asset {
   /** @hide */
   constructor (engine: Engine, props?: GeometryProps) {
     super(engine);
-    if (supportsVertexArrayObjects(engine.renderingDevice)) {
+    if (supportsVertexArrayObjects(engine.graphicsServer.renderingDevice)) {
       this.vertexArrayObjects = {};
     }
     if (props) {
@@ -225,7 +225,7 @@ export class Geometry extends Asset {
     if (this.indexBuffer) {
       const updatedData = indices.slice(offset, offset + data.length) as IndicesArray;
 
-      this.engine.renderingDevice.updateDynamicIndexBuffer(
+      this.engine.graphicsServer.renderingDevice.updateDynamicIndexBuffer(
         this.indexBuffer,
         updatedData,
         offset * (this.indexBuffer.is32Bits ? Uint32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT),
@@ -257,7 +257,7 @@ export class Geometry extends Asset {
   /** @hide */
   bind (shader: ShaderVariant): void {
     const vertexArrayObjects = this.vertexArrayObjects;
-    const device = this.engine.renderingDevice;
+    const device = this.engine.graphicsServer.renderingDevice;
 
     if (!vertexArrayObjects || !supportsVertexArrayObjects(device)) {
       device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
@@ -291,8 +291,8 @@ export class Geometry extends Asset {
     }
     const vertexArrayObject = vertexArrayObjects[key];
 
-    if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.renderingDevice)) {
-      this.engine.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
+    if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.graphicsServer.renderingDevice)) {
+      this.engine.graphicsServer.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
     }
     delete vertexArrayObjects[key];
   }
@@ -527,8 +527,8 @@ export class Geometry extends Asset {
     Object.keys(vertexArrayObjects).forEach(key => {
       const vertexArrayObject = vertexArrayObjects[key];
 
-      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.renderingDevice)) {
-        this.engine.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
+      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.graphicsServer.renderingDevice)) {
+        this.engine.graphicsServer.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
       }
     });
     this.vertexArrayObjects = {};
@@ -540,7 +540,7 @@ export class Geometry extends Asset {
     if (indices.length === 0 || this.indexBuffer) {
       return;
     }
-    this.indexBuffer = this.engine.renderingDevice.createIndexBuffer(indices, {
+    this.indexBuffer = this.engine.graphicsServer.renderingDevice.createIndexBuffer(indices, {
       usage: this.bufferUsage,
       type: this.getIndexType(),
       byteStride: 0,
@@ -553,7 +553,7 @@ export class Geometry extends Asset {
     if (!this.indexBuffer) {
       return;
     }
-    this.engine.renderingDevice.releaseBuffer(this.indexBuffer);
+    this.engine.graphicsServer.renderingDevice.releaseBuffer(this.indexBuffer);
     this.indexBuffer = undefined;
   }
 

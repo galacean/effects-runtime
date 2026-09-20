@@ -54,7 +54,7 @@ export abstract class EffectsObject {
       return;
     }
     this._isRegistered = false;
-    this.engine.removeInstance(this.guid);
+    delete this.engine.objectInstance[this.guid];
   }
 
   /**

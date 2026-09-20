@@ -32,47 +32,47 @@ export class GLShaderVariant extends ShaderVariant {
     }
     // 核心初始化都在 compileShader
     // 否则会出现编译了却没有初始化的情况
-    (this.engine.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(this);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(this);
   }
 
   setFloat (name: string, value: number) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setFloat(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setFloat(this.uniformLocations[name], value);
   }
   setInt (name: string, value: number) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setInt(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setInt(this.uniformLocations[name], value);
   }
   setFloats (name: string, value: number[]) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setFloats(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setFloats(this.uniformLocations[name], value);
   }
   setTexture (name: string, texture: Texture) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
   }
   setVector2 (name: string, value: Vector2) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setVector2(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setVector2(this.uniformLocations[name], value);
   }
   setVector3 (name: string, value: Vector3) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setVector3(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setVector3(this.uniformLocations[name], value);
   }
   setVector4 (name: string, value: Vector4) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setVector4(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setVector4(this.uniformLocations[name], value);
   }
   setColor (name: string, value: Color) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setColor(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setColor(this.uniformLocations[name], value);
   }
   setQuaternion (name: string, value: Quaternion) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setQuaternion(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setQuaternion(this.uniformLocations[name], value);
   }
   setMatrix (name: string, value: Matrix4) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setMatrix(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setMatrix(this.uniformLocations[name], value);
   }
   setMatrix3 (name: string, value: Matrix3) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setMatrix3(this.uniformLocations[name], value);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setMatrix3(this.uniformLocations[name], value);
   }
   setVector4Array (name: string, array: number[]) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setVector4Array(this.uniformLocations[name], array);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setVector4Array(this.uniformLocations[name], array);
   }
   setMatrixArray (name: string, array: number[]) {
-    (this.engine.renderingDevice as RenderingDeviceWebGL).setMatrixArray(this.uniformLocations[name], array);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).setMatrixArray(this.uniformLocations[name], array);
   }
 
   fillShaderInformation (uniformNames: string[], samplers: string[]) {
@@ -84,7 +84,7 @@ export class GLShaderVariant extends ShaderVariant {
     this.samplerList = samplerList.slice();
 
     uniformNames = uniformNames.concat(samplerList);
-    const avaliableUniforms = (this.engine.renderingDevice as RenderingDeviceWebGL).getUniforms(this.program.program, uniformNames);
+    const avaliableUniforms = (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).getUniforms(this.program.program, uniformNames);
 
     for (let i = 0; i < uniformNames.length; i++) {
       this.uniformLocations[uniformNames[i]] = avaliableUniforms[i];

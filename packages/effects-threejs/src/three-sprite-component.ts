@@ -87,7 +87,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
 
   override onStart (): void {
     super.onStart();
-    (this.engine.renderingDevice as RenderingDeviceThree).threeGroup.add(this.threeMesh);
+    (this.engine.graphicsServer.renderingDevice as RenderingDeviceThree).threeGroup.add(this.threeMesh);
   }
 
   override render (renderer: Renderer): void {

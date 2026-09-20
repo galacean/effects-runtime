@@ -16,14 +16,14 @@ describe('webgl/gl-data-buffer', () => {
   });
 
   after(() => {
-    const canvas = (engine.renderingDevice as RenderingDeviceWebGL).gl.canvas as HTMLCanvasElement;
+    const canvas = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.canvas as HTMLCanvasElement;
 
     engine.dispose();
     canvas.remove();
   });
 
   it('creates a vertex buffer through the engine', () => {
-    const buffer = engine.renderingDevice.createVertexBuffer(new Float32Array([1, 2, 3, 4]), {
+    const buffer = engine.graphicsServer.renderingDevice.createVertexBuffer(new Float32Array([1, 2, 3, 4]), {
       usage: BufferUsage.Static,
       type: BufferDataType.Float,
       byteStride: 8,
@@ -33,44 +33,44 @@ describe('webgl/gl-data-buffer', () => {
     expect(buffer).to.be.an.instanceOf(GLDataBuffer);
     assert.isNotNull(buffer.underlyingResource);
     assert.equal(buffer.capacity, 4 * Float32Array.BYTES_PER_ELEMENT);
-    engine.renderingDevice.releaseBuffer(buffer);
+    engine.graphicsServer.renderingDevice.releaseBuffer(buffer);
   });
 
   it('rejects updates outside the allocated range', () => {
-    const buffer = engine.renderingDevice.createDynamicVertexBuffer(new Float32Array(4), {
+    const buffer = engine.graphicsServer.renderingDevice.createDynamicVertexBuffer(new Float32Array(4), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.Float,
       byteStride: 4,
       instanceDivisor: 0,
     });
 
-    expect(() => engine.renderingDevice.updateDynamicVertexBuffer(
+    expect(() => engine.graphicsServer.renderingDevice.updateDynamicVertexBuffer(
       buffer,
       new Float32Array([1, 2]),
       12,
     )).to.throw(RangeError);
-    engine.renderingDevice.releaseBuffer(buffer);
+    engine.graphicsServer.renderingDevice.releaseBuffer(buffer);
   });
 
   it('updates and reads a byte range', () => {
-    const buffer = engine.renderingDevice.createIndexBuffer(new Uint16Array([0, 1, 2, 3]), {
+    const buffer = engine.graphicsServer.renderingDevice.createIndexBuffer(new Uint16Array([0, 1, 2, 3]), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.UnsignedShort,
       byteStride: 0,
       instanceDivisor: 0,
     });
 
-    engine.renderingDevice.updateDynamicIndexBuffer(
+    engine.graphicsServer.renderingDevice.updateDynamicIndexBuffer(
       buffer,
       new Uint16Array([7, 8]),
       Uint16Array.BYTES_PER_ELEMENT,
     );
-    if (isWebGL2((engine.renderingDevice as RenderingDeviceWebGL).gl)) {
+    if (isWebGL2((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl)) {
       const result = new Uint16Array(4);
 
-      readBufferContents((engine.renderingDevice as RenderingDeviceWebGL).gl, buffer, result, 0, true);
+      readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, buffer, result, 0, true);
       expect(result).to.deep.equal(new Uint16Array([0, 7, 8, 3]));
     }
-    engine.renderingDevice.releaseBuffer(buffer);
+    engine.graphicsServer.renderingDevice.releaseBuffer(buffer);
   });
 });

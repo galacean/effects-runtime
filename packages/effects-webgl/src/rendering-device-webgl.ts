@@ -1,5 +1,5 @@
 import type {
-  DataBuffer, DataBufferOptions, EngineOptions, IndicesArray, Nullable,
+  DataBuffer, DataBufferOptions, Engine, EngineOptions, IndicesArray, Nullable,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
 } from '@galacean/effects-core';
 import {
@@ -43,7 +43,9 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
-  override initialize (): void {
+  constructor (engine: Engine) {
+    super(engine);
+
     const { canvas, options: engineOptions } = this.engine;
     const options: EngineOptions = {
       preserveDrawingBuffer: undefined,

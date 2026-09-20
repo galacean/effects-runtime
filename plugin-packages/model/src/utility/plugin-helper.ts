@@ -362,7 +362,7 @@ export class WebGLHelper {
    * @returns
    */
   static isSupportFloatTexture (engine: Engine): boolean {
-    const capability = engine.renderingDevice.gpuCapability;
+    const capability = engine.graphicsServer.renderingDevice.gpuCapability;
 
     return capability.detail.floatTexture !== 0;
   }
@@ -372,7 +372,7 @@ export class WebGLHelper {
    * @returns
    */
   static isSupportHalfFloatTexture (engine: Engine): boolean {
-    const capability = engine.renderingDevice.gpuCapability;
+    const capability = engine.graphicsServer.renderingDevice.gpuCapability;
 
     return capability.detail.halfFloatTexture !== 0;
   }
@@ -403,7 +403,7 @@ export class MeshHelper {
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
     const geometry = Geometry.create(engine, MeshHelper.getPlaneGeometry());
-    const isWebGL2 = engine.renderingDevice.gpuCapability.level === 2;
+    const isWebGL2 = engine.graphicsServer.renderingDevice.gpuCapability.level === 2;
     const effectsMaterial = Material.create(
       engine,
       {

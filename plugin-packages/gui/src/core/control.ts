@@ -618,7 +618,7 @@ export class Control {
   }
 
   drawStyleBox (styleBox: StyleBox, x: number, y: number, width: number, height: number): void {
-    styleBox.draw(this.engine.graphics, { x, y, width, height });
+    styleBox.draw(this.engine.renderingServer.graphics, { x, y, width, height });
   }
 
   on<E extends keyof ControlEvent> (
@@ -1154,7 +1154,7 @@ export class Control {
     if (!this.visibleInHierarchy || this.disposed) {
       return;
     }
-    const graphics = this.engine.graphics;
+    const graphics = this.engine.renderingServer.graphics;
 
     graphics.pushTransform(this.getTransform2D());
     this.draw();
@@ -1163,11 +1163,11 @@ export class Control {
   }
 
   drawLine (x1: number, y1: number, x2: number, y2: number, color?: Color, thickness?: number): void {
-    this.engine.graphics.drawLine(x1, y1, x2, y2, color, thickness);
+    this.engine.renderingServer.graphics.drawLine(x1, y1, x2, y2, color, thickness);
   }
 
   drawPolyline (points: number[], color?: Color, thickness?: number): void {
-    this.engine.graphics.drawLines(points, color, thickness);
+    this.engine.renderingServer.graphics.drawLines(points, color, thickness);
   }
 
   drawBezier (
@@ -1175,64 +1175,64 @@ export class Control {
     x3: number, y3: number, x4: number, y4: number,
     color?: Color, thickness?: number,
   ): void {
-    this.engine.graphics.drawBezier(x1, y1, x2, y2, x3, y3, x4, y4, color, thickness);
+    this.engine.renderingServer.graphics.drawBezier(x1, y1, x2, y2, x3, y3, x4, y4, color, thickness);
   }
 
   drawTriangle (
     x1: number, y1: number, x2: number, y2: number, x3: number, y3: number,
     color?: Color, thickness?: number,
   ): void {
-    this.engine.graphics.drawTriangle(x1, y1, x2, y2, x3, y3, color, thickness);
+    this.engine.renderingServer.graphics.drawTriangle(x1, y1, x2, y2, x3, y3, color, thickness);
   }
 
   drawRect (x: number, y: number, width: number, height: number, color?: Color, thickness?: number): void {
-    this.engine.graphics.drawRectangle(x, y, width, height, color, thickness);
+    this.engine.renderingServer.graphics.drawRectangle(x, y, width, height, color, thickness);
   }
 
   drawCircle (cx: number, cy: number, radius: number, color?: Color, thickness?: number): void {
-    this.engine.graphics.drawCircle(cx, cy, radius, color, thickness);
+    this.engine.renderingServer.graphics.drawCircle(cx, cy, radius, color, thickness);
   }
 
   fillTriangle (
     x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color?: Color,
   ): void {
-    this.engine.graphics.fillTriangle(x1, y1, x2, y2, x3, y3, color);
+    this.engine.renderingServer.graphics.fillTriangle(x1, y1, x2, y2, x3, y3, color);
   }
 
   fillRect (x: number, y: number, width: number, height: number, color?: Color): void {
-    this.engine.graphics.fillRectangle(x, y, width, height, color);
+    this.engine.renderingServer.graphics.fillRectangle(x, y, width, height, color);
   }
 
   fillCircle (cx: number, cy: number, radius: number, color?: Color): void {
-    this.engine.graphics.fillCircle(cx, cy, radius, color);
+    this.engine.renderingServer.graphics.fillCircle(cx, cy, radius, color);
   }
 
   drawTexture (
     x: number, y: number, width: number, height: number,
     texture: Texture, region?: TextureRegion, color?: Color,
   ): void {
-    this.engine.graphics.drawTexture(x, y, width, height, texture, region, color);
+    this.engine.renderingServer.graphics.drawTexture(x, y, width, height, texture, region, color);
   }
 
   drawNinePatch (
     x: number, y: number, width: number, height: number,
     texture: Texture, options: NinePatchDrawOptions, color?: Color,
   ): void {
-    this.engine.graphics.drawNinePatch(x, y, width, height, texture, options, color);
+    this.engine.renderingServer.graphics.drawNinePatch(x, y, width, height, texture, options, color);
   }
 
   drawText (
     x: number, y: number, text: string, fontSize: number, color?: Color,
     fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
   ): void {
-    this.engine.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
+    this.engine.renderingServer.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
   }
 
   measureText (
     text: string, fontSize: number,
     fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
   ): TextMeasurement {
-    return this.engine.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
+    return this.engine.renderingServer.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   onMouseEnter (location: Vector2): void {}
@@ -1309,7 +1309,7 @@ export class Control {
   }
 
   protected drawChildren (): void {
-    const graphics = this.engine.graphics;
+    const graphics = this.engine.renderingServer.graphics;
 
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.width, this.height);

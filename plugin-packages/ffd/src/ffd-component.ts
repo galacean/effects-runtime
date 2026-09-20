@@ -20,7 +20,7 @@ export class FFDComponent extends Component {
   constructor (engine: Engine) {
     super(engine);
 
-    if (engine.renderingDevice.gpuCapability.detail.maxVertexUniforms < 256) {
+    if (engine.graphicsServer.renderingDevice.gpuCapability.detail.maxVertexUniforms < 256) {
       this.enableFFD = false;
     }
   }

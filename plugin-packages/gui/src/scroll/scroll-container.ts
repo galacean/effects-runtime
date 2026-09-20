@@ -397,7 +397,7 @@ export class ScrollContainer extends Container {
   }
 
   protected override drawChildren (): void {
-    const graphics = this.engine.graphics;
+    const graphics = this.engine.renderingServer.graphics;
 
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.viewportWidth, this.viewportHeight);

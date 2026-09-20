@@ -78,7 +78,7 @@ export class TrailMesh {
       matrix,
     } = props;
 
-    const { detail, level } = engine.renderingDevice.gpuCapability;
+    const { detail, level } = engine.graphicsServer.renderingDevice.gpuCapability;
     const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
     const keyFrameMeta = createKeyFrameMeta();
     const enableVertexTexture = detail.maxVertexTextures > 0;

@@ -153,7 +153,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     const style = new StyleBoxFlat();
     const borderColor = new math.Color(0.8, 0.2, 0.1, 1);
     const triangles: unknown[][] = [];
-    const graphics = player.engine.graphics;
+    const graphics = player.engine.renderingServer.graphics;
     const originalTriangle = graphics.fillTriangle;
 
     style.setBackgroundColor(new math.Color(0.1, 0.2, 0.3, 0));
@@ -384,7 +384,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect((flat as StyleBoxFlat).getCornerRadii()).deep.equals({ left: 9, top: 8, right: 7, bottom: 6 });
     const fillCalls: unknown[][] = [];
     const triangleCalls: unknown[][] = [];
-    const graphics = player.engine.graphics;
+    const graphics = player.engine.renderingServer.graphics;
     const originalFill = graphics.fillRectangle;
     const originalTriangle = graphics.fillTriangle;
 

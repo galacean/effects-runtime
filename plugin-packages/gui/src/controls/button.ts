@@ -168,7 +168,7 @@ export class Button extends BaseButton {
     const textY = textAreaY + (textHeight - text.lineHeight) * 0.5;
 
     if (this.clipText) {
-      this.engine.graphics.pushClipRect(left, top, width, height);
+      this.engine.renderingServer.graphics.pushClipRect(left, top, width, height);
     }
     try {
       if (this.icon) {
@@ -183,7 +183,7 @@ export class Button extends BaseButton {
       );
     } finally {
       if (this.clipText) {
-        this.engine.graphics.popClipRect();
+        this.engine.renderingServer.graphics.popClipRect();
       }
     }
   }
