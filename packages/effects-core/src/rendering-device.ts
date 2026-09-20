@@ -1,3 +1,4 @@
+import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
   DataArray, DataBuffer, DataBufferOptions, GPUCapability, IndicesArray,
@@ -31,7 +32,7 @@ export class RenderingDevice implements Disposable {
     if (!engine.doNotHandleContextLost) {
       this._contextWasLost = true;
     }
-    engine.compositions.forEach(comp => comp.lost(e));
+    engine.getServer(SceneServer).compositions.forEach(comp => comp.lost(e));
     engine.emit('contextlost', { engine, e });
   }
 

@@ -68,7 +68,7 @@ describe('core/engine/servers', () => {
     composition.renderer.renderComposition = () => calls.push('composition:render');
     engine.speed = 2;
     engine.mainLoop(50);
-    engine.dispose();
+    player.dispose();
     engine.dispose();
 
     expect(calls).to.deep.equal([
@@ -78,7 +78,7 @@ describe('core/engine/servers', () => {
       '-10:draw', '300:draw', 'composition:preRender', 'composition:render',
       '300:beforeExit', '-10:beforeExit', '300:dispose', '-10:dispose',
     ]);
-    expect(() => engine.getServer(Early)).to.throw('Engine server "Early" is not registered.');
+    expect(engine.getServer(Early)).to.equal(undefined);
   });
 
   it('keeps server instances separate for each engine and snapshots registrations', () => {
@@ -94,7 +94,7 @@ describe('core/engine/servers', () => {
     expect(first.getServer(Server)).not.to.equal(second.getServer(Server));
     expect(first.getServer(Server).engine).to.equal(first);
     expect(second.getServer(Server).engine).to.equal(second);
-    expect(() => first.getServer(LaterServer)).to.throw('Engine server "LaterServer" is not registered.');
+    expect(first.getServer(LaterServer)).to.equal(undefined);
     expect(second.getServer(LaterServer)).to.be.instanceOf(LaterServer);
   });
 
@@ -114,16 +114,16 @@ describe('core/engine/servers', () => {
     expect(first.root.composition).to.equal(first);
     first.setIndex(2);
     second.setIndex(1);
-    engine.addComposition(first);
-    expect(engine.compositions).to.deep.equal([second, first]);
+    server.addComposition(first);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second, first]);
     first.setIndex(0);
-    expect(engine.compositions).to.deep.equal([first, second]);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([first, second]);
     engine.setSize(200, 100);
     expect(first.camera.aspect).to.equal(2);
     expect(second.camera.aspect).to.equal(2);
     first.dispose();
-    expect(engine.compositions).to.deep.equal([second]);
-    expect(other.compositions).to.have.length(0);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second]);
+    expect(other.getServer(SceneServer).compositions).to.have.length(0);
   });
 
   it('initializes registered asset servers per engine and restores built-in object lookup', () => {
@@ -136,7 +136,11 @@ describe('core/engine/servers', () => {
 
     expect(assets).to.be.instanceOf(AssetServer);
     expect(assets).not.to.equal(other.getServer(AssetServer));
+    const previousData = assets.jsonSceneData;
+
     engine.clearResources();
+    expect(assets.jsonSceneData).not.to.equal(previousData);
+    expect(assets.jsonSceneData).to.deep.equal({});
     expect(engine.whiteTexture.isRegistered).to.equal(false);
     assets.prepareAssets(scene, {});
     expect(engine.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
@@ -146,7 +150,8 @@ describe('core/engine/servers', () => {
   });
 
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {
-    const engine = createPlayer().engine;
+    const player = createPlayer();
+    const engine = player.engine;
     const other = createPlayer().engine;
     const assets = engine.getServer(AssetServer);
     const composition = new Composition(engine);
@@ -161,17 +166,17 @@ describe('core/engine/servers', () => {
       disposeComposition();
     };
     assets.onDispose = () => {
-      expect(engine.compositions).to.have.length(0);
+      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
       calls.push('assets');
       disposeAssets();
     };
-    engine.dispose();
+    player.dispose();
     engine.dispose();
     expect(calls).to.deep.equal(['scene', 'assets']);
     expect(engine.whiteTexture.isDestroyed).to.equal(true);
     expect(engine.transparentTexture.isDestroyed).to.equal(true);
     expect(other.whiteTexture.isDestroyed).to.equal(false);
-    expect(() => engine.getServer(AssetServer)).to.throw('Engine server "AssetServer" is not registered.');
+    expect(engine.getServer(AssetServer)).to.equal(undefined);
   });
 
   it('redraws the scene without advancing update lifecycles', () => {
@@ -254,20 +259,21 @@ describe('core/engine/servers', () => {
     second.dispose();
   });
 
-  it('rejects offloaded scenes before advancing any server or composition', () => {
+  it('reports pending render errors before advancing any server or composition', () => {
     const calls: string[] = [];
 
     class Observer extends EngineServer {
       override onUpdate () { calls.push('server:update'); }
       override onDraw () { calls.push('server:draw'); }
     }
-    register('offloaded-observer', Observer);
+    register('render-error-observer', Observer);
     const engine = createPlayer().engine;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
     first.sceneTicking.update.tick = () => calls.push('composition:update');
-    second.textureOffloaded = true;
+    second.sceneTicking.update.tick = () => calls.push('second:update');
+    engine.renderErrors.add(new Error('render failed'));
     engine.on('rendererror', () => calls.push('rendererror'));
     engine.mainLoop(16);
     expect(calls).to.deep.equal(['rendererror']);
@@ -278,15 +284,16 @@ describe('core/engine/servers', () => {
 
     class Resources extends EngineServer {
       override onBeforeExit () {
-        expect(this.engine.compositions).to.have.length(0);
+        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
       }
       override onDispose () {
-        expect(this.engine.compositions).to.have.length(0);
+        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
         calls.push('resources');
       }
     }
     register('scene-resources', Resources);
-    const engine = createPlayer().engine;
+    const player = createPlayer();
+    const engine = player.engine;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
@@ -298,10 +305,10 @@ describe('core/engine/servers', () => {
         dispose();
       };
     }
-    engine.dispose();
+    player.dispose();
     engine.dispose();
     expect(calls).to.deep.equal(['scene:0', 'scene:1', 'resources']);
-    expect(() => engine.getServer(SceneServer)).to.throw('Engine server "SceneServer" is not registered.');
+    expect(engine.getServer(SceneServer)).to.equal(undefined);
   });
 
   it('creates the shared Renderer with a Three device before other servers initialize', () => {

@@ -1,3 +1,4 @@
+import { AssetServer } from './asset-server';
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
@@ -972,7 +973,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     if (VFXItem.isComposition(this)) {
       const refId = (this.definition as spec.CompositionItem).content.options.refId;
-      const compositionData = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
+      const compositionData = this.engine.getServer(AssetServer).findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
       if (!compositionData) {
         throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);

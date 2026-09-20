@@ -1,3 +1,4 @@
+import { AssetServer } from '@galacean/effects';
 import type { Engine, spec } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import { EffectsObject, base64ToFile } from '@galacean/effects';
@@ -82,7 +83,7 @@ export class AssetDatabase extends Database {
     }
 
     for (const objectData of packageData.exportObjects) {
-      this.engine.addEffectsObjectData(objectData);
+      this.engine.getServer(AssetServer).addEffectsObjectData(objectData);
     }
 
     const effectsPackage = new EffectsPackage();

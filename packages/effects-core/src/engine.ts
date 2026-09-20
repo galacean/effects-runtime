@@ -1,22 +1,18 @@
-import * as spec from '@galacean/effects-specification';
-import type { Database, SceneData } from './asset-loader';
-import { AssetLoader } from './asset-loader';
+import type * as spec from '@galacean/effects-specification';
+import { AssetServer } from './asset-server';
+import { SceneServer } from './scene-server';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
-import { Graphics, RenderTargetPool, RenderingData } from './render';
+import { Graphics, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
-import { EffectsPackage } from './effects-package';
-import { passRenderLevel } from './pass-render-level';
-import type { Composition } from './composition';
-import type { AssetManager } from './asset-manager';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
@@ -88,14 +84,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   renderLevel?: SceneRenderLevel;
   whiteTexture: Texture;
   transparentTexture: Texture;
-  jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
-  database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   /**
    * 渲染过程中错误队列
    */
   renderErrors: Set<Error> = new Set();
-  assetManagers: AssetManager[] = [];
   eventSystem: EventSystem;
   renderingDevice: RenderingDevice;
   env = '';
@@ -116,10 +109,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   renderTargetPool: RenderTargetPool;
   /**
-   * 存放渲染需要用到的数据
-   */
-  renderingData = new RenderingData();
-  /**
    * 是否不处理上下文丢失恢复（构造期配置，默认 true）
    */
   doNotHandleContextLost = true;
@@ -138,10 +127,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
-  private readonly _compositions: Composition[] = [];
   private servers: EngineServer[] = [];
+  private assetServer: AssetServer;
+  private sceneServer: SceneServer;
   private _graphics: Graphics;
-  private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
     clearStencil: 0,
@@ -163,7 +152,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.doNotHandleContextLost = options?.doNotHandleContextLost ?? true;
     this.name = options?.name ?? this.name;
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
-    this.jsonSceneData = {};
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
@@ -177,7 +165,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem.enabled = options?.interactive ?? false;
     this.eventSystem.bindListeners(this.canvas);
 
-    this.assetLoader = new AssetLoader(this);
     this.renderTargetPool = new RenderTargetPool(this);
 
     this.initializeServers();
@@ -199,14 +186,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   private initializeServers (): void {
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
     this.servers.sort((a, b) => a.order - b.order);
+    this.assetServer = this.getServer(AssetServer);
+    this.sceneServer = this.getServer(SceneServer);
 
     for (const server of this.servers) {
       server.onInit();
     }
-  }
-
-  get compositions (): Composition[] {
-    return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
 
   get graphics (): Graphics {
@@ -227,20 +212,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (const id of Object.keys(this.objectInstance)) {
       this.objectInstance[id].unregisterObject();
     }
-    this.jsonSceneData = {};
+    this.assetServer.jsonSceneData = {};
     this.objectInstance = {};
-  }
-
-  addEffectsObjectData (data: spec.EffectsObjectData) {
-    this.jsonSceneData[data.id] = data;
-  }
-
-  findEffectsObjectData (uuid: string) {
-    return this.jsonSceneData[uuid];
-  }
-
-  addInstance (effectsObject: EffectsObject) {
-    this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
   }
 
   /**
@@ -256,7 +229,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return this.objectInstance[guid.id] as T;
     }
 
-    const result = this.assetLoader.loadGUID<T>(guid);
+    const result = this.assetServer.loadGUID<T>(guid);
 
     return result;
   }
@@ -266,62 +239,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   addPackageDatas (scene: Scene) {
-    const { jsonScene, textureOptions = [] } = scene;
-    const {
-      items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [], miscs = [], compositions,
-    } = jsonScene;
-
-    for (const compositionData of compositions) {
-      this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
-    }
-    for (const vfxItemData of items) {
-      if (!passRenderLevel(vfxItemData.renderLevel, scene.renderLevel)) {
-        vfxItemData.components = [];
-        vfxItemData.type = spec.ItemType.null;
-      }
-      this.addEffectsObjectData(vfxItemData);
-    }
-    for (const materialData of materials) {
-      this.addEffectsObjectData(materialData);
-    }
-    for (const shaderData of shaders) {
-      this.addEffectsObjectData(shaderData);
-    }
-    for (const geometryData of geometries) {
-      this.addEffectsObjectData(geometryData);
-    }
-    for (const componentData of components) {
-      this.addEffectsObjectData(componentData);
-    }
-    for (const animationData of animations) {
-      this.addEffectsObjectData(animationData);
-    }
-    for (const miscData of miscs) {
-      this.addEffectsObjectData(miscData);
-    }
-    for (let i = 0; i < bins.length; i++) {
-      const binaryData = bins[i];
-      const binaryBuffer = scene.bins[i];
-
-      if (binaryData.dataType === spec.DataType.BinaryAsset) {
-        //@ts-expect-error
-        binaryData.buffer = binaryBuffer;
-        if (binaryData.id) {
-          this.addEffectsObjectData(binaryData);
-        }
-      } else {
-        const effectsPackage = new EffectsPackage();
-
-        effectsPackage.deserializeFromBinary(new Uint8Array(binaryBuffer));
-        for (const effectsObjectData of effectsPackage.exportObjectDatas) {
-          this.addEffectsObjectData(effectsObjectData);
-        }
-      }
-    }
-    for (const textureData of textureOptions) {
-      this.addEffectsObjectData(textureData as spec.EffectsObjectData);
-    }
+    this.assetServer.addPackageDatas(scene);
   }
 
   runRenderLoop (renderFunction: (dt: number) => void): void {
@@ -367,7 +285,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       server.onDraw();
     }
 
-    this.renderer.renderCompositions(this.compositions, this.clearAction);
+    this.renderer.renderCompositions(this.sceneServer.compositions, this.clearAction);
     this.renderer.renderOverlays();
     this.renderTargetPool.flush();
   }
@@ -429,7 +347,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.renderingDevice.setViewport(0, 0, width, height);
     }
 
-    for (const composition of this._compositions) {
+    for (const composition of this.sceneServer.compositions) {
       composition.camera.aspect = width / height;
     }
 
@@ -550,17 +468,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.renderbuffers, renderbuffer);
   }
 
-  addComposition (composition: Composition) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this._compositions, composition);
-  }
-
-  removeComposition (composition: Composition) {
-    removeItem(this._compositions, composition);
-  }
-
   /**
    * 销毁所有缓存的资源
    */
@@ -607,7 +514,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.framebuffers.forEach(framebuffer => framebuffer.dispose());
     this.renderbuffers.forEach(renderbuffer => renderbuffer.dispose());
     this.textures.forEach(tex => tex.dispose());
-    this.assetManagers.forEach(assetManager => assetManager.dispose());
+    this.assetServer.assetManagers.forEach(assetManager => assetManager.dispose());
 
     this.textures = [];
     this.materials = [];

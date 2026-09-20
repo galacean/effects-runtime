@@ -445,17 +445,17 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         expect(render.renderingData.options!.camera).equals(composition.camera);
         calls++;
       });
-      const previousData = engine.renderingData;
+      const previousData = engine.renderer.renderingData;
       const device = engine.renderingDevice as RenderingDeviceThree;
 
       device.renderComposition(composition);
-      expect(engine.renderingData).equals(previousData);
+      expect(engine.renderer.renderingData).equals(previousData);
       expect(calls).equals(1);
       const previousComposition = device.composition;
 
       renderer.renderMeshes = () => { throw new Error('render failed'); };
       expect(() => device.renderComposition(composition)).to.throw('render failed');
-      expect(engine.renderingData).equals(previousData);
+      expect(engine.renderer.renderingData).equals(previousData);
       expect(device.composition).equals(previousComposition);
       engine.dispose();
     });

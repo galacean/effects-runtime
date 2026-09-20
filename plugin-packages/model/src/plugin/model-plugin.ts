@@ -1,3 +1,4 @@
+import { AssetServer } from '@galacean/effects';
 import type { Scene, SceneLoadOptions, Composition, Engine, Component } from '@galacean/effects';
 import {
   VFXItem, Plugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
@@ -75,8 +76,8 @@ export class ModelPlugin extends Plugin {
       glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
 
-    engine.addEffectsObjectData(pbrShaderData);
-    engine.addEffectsObjectData(unlitShaderData);
+    engine.getServer(AssetServer).addEffectsObjectData(pbrShaderData);
+    engine.getServer(AssetServer).addEffectsObjectData(unlitShaderData);
   }
 
   /**

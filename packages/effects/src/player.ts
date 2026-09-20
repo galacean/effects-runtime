@@ -1,3 +1,4 @@
+import { SceneServer } from '@galacean/effects-core';
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene, MessageItem,
   Region, AssetManager, Composition, Renderer, Ticker,
@@ -73,11 +74,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 当前播放的合成对象数组，请不要修改内容
    */
   private get compositions () {
-    return this.engine.compositions;
+    return this.engine.getServer(SceneServer).compositions;
   }
 
   private get assetManagers () {
-    return this.engine.assetManagers;
+    return this.engine.getServer(AssetServer).assetManagers;
   }
 
   private get assetServer () {
@@ -425,8 +426,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       assetManager.dispose();
     }
 
-    this.engine.assetManagers = [];
-    const baseOrder = this.engine.compositions.length;
+    this.engine.getServer(AssetServer).assetManagers = [];
+    const baseOrder = this.engine.getServer(SceneServer).compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;
       const { source, options: compositionOptions } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });

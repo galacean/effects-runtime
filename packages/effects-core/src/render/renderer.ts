@@ -52,6 +52,9 @@ export class Renderer {
     return new Renderer(engine);
   }
 
+  /** Data for the current render invocation. */
+  renderingData = new RenderingData();
+
   protected currentFramebuffer: Framebuffer | null = null;
   protected disposed = false;
   private readonly drawObjectPass: DrawObjectPass;
@@ -69,10 +72,6 @@ export class Renderer {
     this.drawObjectPass = new DrawObjectPass(this);
     this.bloomPass = new BloomPass(this, 7);
     this.toneMappingPass = new ToneMappingPass(this);
-  }
-
-  get renderingData () {
-    return this.engine.renderingData;
   }
 
   /**
@@ -243,12 +242,12 @@ export class Renderer {
     const previousTarget = this.getFramebuffer();
     const previousViewport = this.getViewport();
 
-    const previousData = this.engine.renderingData;
+    const previousData = this.renderingData;
     const data = new RenderingData(options);
     const resourceData = data.frameData.get(ResourceData);
 
     this.activeRenderPassQueue.length = 0;
-    this.engine.renderingData = data;
+    this.renderingData = data;
     this.prepareRenderingData(scene, data);
     this.enqueuePass(this.drawObjectPass);
 
@@ -285,7 +284,7 @@ export class Renderer {
       this.releaseTemporaryRT(sceneTarget);
     }
     data.frameData.dispose();
-    this.engine.renderingData = previousData;
+    this.renderingData = previousData;
     this.setFramebuffer(previousTarget);
     this.setViewport(...previousViewport);
   }

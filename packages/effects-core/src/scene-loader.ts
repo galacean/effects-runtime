@@ -1,11 +1,7 @@
-import { AssetManager } from './asset-manager';
-import { AssetServer } from './asset-server';
-import { Composition } from './composition';
-import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
+import type { Composition } from './composition';
 import type { Engine } from './engine';
 import type { Scene, SceneLoadOptions } from './scene';
-import { logger } from './utils';
-import { PluginSystem } from './plugin-system';
+import { SceneServer } from './scene-server';
 
 /**
  * @hidden
@@ -14,59 +10,6 @@ import { PluginSystem } from './plugin-system';
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
-    const last = performance.now();
-    const asyncShaderCompile = engine.renderingDevice.gpuCapability?.detail?.asyncShaderCompile;
-    const compositionIndex = engine.compositions.length;
-
-    const assetManager = new AssetManager(options);
-
-    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    engine.assetManagers.push(assetManager);
-
-    const loadedScene = await assetManager.loadScene(scene, engine.renderer);
-
-    engine.clearResources();
-
-    // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
-    PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
-
-    engine.getServer(AssetServer).prepareAssets(loadedScene, loadedScene.assets);
-    engine.getServer(AssetServer).updateTextVariables(loadedScene, options.variables);
-
-    const composition = this.createComposition(loadedScene, engine, options);
-
-    composition.setIndex(compositionIndex);
-    const compileStart = performance.now();
-
-    await new Promise(resolve => {
-      engine.renderingDevice.getShaderLibrary()?.compileAllShaders(() => resolve(null));
-    });
-
-    const compileTime = performance.now() - compileStart;
-
-    engine.ticker?.start();
-
-    const compositionName = composition.name;
-    const firstFrameTime = performance.now() - last;
-
-    composition.statistic.compileTime = compileTime;
-    composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`First frame [${compositionName}]: ${firstFrameTime.toFixed(4)}ms.`);
-    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${compositionName}]: ${compileTime.toFixed(4)}ms.`);
-
-    return composition;
-  }
-
-  private static createComposition (scene: Scene, engine: Engine, options: SceneLoadOptions = {}): Composition {
-    const composition = new Composition(engine, {
-      ...options,
-    }, scene);
-
-    // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
-    if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      engine.getServer(AssetServer).createShaderVariant();
-    }
-
-    return composition;
+    return engine.getServer(SceneServer).loadScene(scene, options);
   }
 }

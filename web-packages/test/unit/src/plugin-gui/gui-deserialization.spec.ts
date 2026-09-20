@@ -1,3 +1,4 @@
+import { AssetServer } from '@galacean/effects';
 import { Player, VFXItem, effectsClass, getClass, math } from '@galacean/effects';
 import type { Engine, spec } from '@galacean/effects';
 import {
@@ -583,7 +584,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
       text: 'Confirm',
     });
 
-    player.engine.addEffectsObjectData(data);
+    player.engine.getServer(AssetServer).addEffectsObjectData(data);
     const component = player.engine.findObject<UIControl>({ id: componentId });
     const button = component.control as Button;
 

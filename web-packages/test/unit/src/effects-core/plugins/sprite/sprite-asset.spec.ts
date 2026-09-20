@@ -1,3 +1,4 @@
+import { AssetServer } from '@galacean/effects';
 import type { spec } from '@galacean/effects';
 import {
   Player, Sprite, SpriteComponent, SpriteRotation, Texture, generateGUID,
@@ -246,7 +247,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
       rotation: SpriteRotation.Rotate90,
     };
 
-    engine.addEffectsObjectData(data as spec.EffectsObjectData);
+    engine.getServer(AssetServer).addEffectsObjectData(data as spec.EffectsObjectData);
 
     const sprite = engine.findObject<Sprite>({ id: spriteID });
 

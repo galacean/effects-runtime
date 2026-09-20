@@ -6,6 +6,7 @@ import { Material } from './material';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
+import { AssetServer } from './asset-server';
 
 /**
  * @since 2.0.0
@@ -59,14 +60,14 @@ export class AssetLoader {
     }
 
     effectsObject.setInstanceId(effectsObjectData.id);
-    this.engine.addInstance(effectsObject);
+    this.engine.objectInstance[effectsObject.getInstanceId()] = effectsObject;
     SerializationHelper.deserialize(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
 
   private findData (uuid: string): spec.EffectsObjectData | undefined {
-    return this.engine.jsonSceneData[uuid];
+    return this.engine.getServer(AssetServer).findEffectsObjectData(uuid);
   }
 }
 

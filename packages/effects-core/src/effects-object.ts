@@ -45,7 +45,7 @@ export abstract class EffectsObject {
       return;
     }
     this._isRegistered = true;
-    this.engine.addInstance(this);
+    this.engine.objectInstance[this.guid] = this;
   }
 
   /** @internal */

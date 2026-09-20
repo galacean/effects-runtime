@@ -1,3 +1,4 @@
+import { AssetServer } from '@galacean/effects';
 import { Player, VFXItem } from '@galacean/effects';
 import { UICanvas, UIControl } from '@galacean/effects-plugin-gui';
 import '@galacean/effects-plugin-ffd';
@@ -22,7 +23,7 @@ export class GalaceanEffects {
 
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
-    GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
+    GalaceanEffects.player.renderer.engine.getServer(AssetServer).database = GalaceanEffects.assetDataBase;
     // @ts-expect-error
     GalaceanEffects.playURL({
       'playerVersion': {

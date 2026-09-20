@@ -45,7 +45,7 @@ export class RenderingDeviceThree extends RenderingDevice {
   renderComposition (composition: Composition): void {
     const { engine } = this;
     const { renderer } = engine;
-    const previousData = engine.renderingData;
+    const previousData = renderer.renderingData;
     const previousComposition = this.composition;
     const data = new RenderingData({
       camera: composition.camera,
@@ -54,14 +54,14 @@ export class RenderingDeviceThree extends RenderingDevice {
       postProcessingEnabled: false,
     });
 
-    engine.renderingData = data;
+    renderer.renderingData = data;
     this.composition = composition;
     try {
       renderer.prepareRenderingData(composition.sceneRendering, data);
       renderer.renderMeshes(data.renderList.objects);
     } finally {
       data.frameData.dispose();
-      engine.renderingData = previousData;
+      renderer.renderingData = previousData;
       this.composition = previousComposition;
     }
   }

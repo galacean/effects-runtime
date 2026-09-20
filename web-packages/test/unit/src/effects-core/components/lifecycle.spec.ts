@@ -70,12 +70,11 @@ describe('core/components/lifecycle', () => {
     const node = item('node');
 
     node.unregisterObject();
-    chai.spy.on(player.engine, 'addInstance');
     chai.spy.on(player.engine, 'removeInstance');
     node.registerObject();
     node.registerObject();
     expect(node.isRegistered).equals(true);
-    expect(player.engine.addInstance).to.have.been.called.once;
+    expect(player.engine.objectInstance[node.getInstanceId()]).equals(node);
     node.unregisterObject();
     node.unregisterObject();
     expect(node.isRegistered).equals(false);

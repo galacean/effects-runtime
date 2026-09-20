@@ -1,3 +1,4 @@
+import { SceneServer } from './scene-server';
 import * as spec from '@galacean/effects-specification';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
@@ -265,7 +266,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       onItemMessage,
     } = props ?? {};
 
-    this.engine.addComposition(this);
+    this.engine.getServer(SceneServer).addComposition(this);
 
     let sourceContent: spec.CompositionData | null = null;
 
@@ -752,7 +753,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     PluginSystem.notifyCompositionDestroy(this);
 
     this.dispose = noop;
-    this.renderer.engine.removeComposition(this);
+    this.renderer.engine.getServer(SceneServer).removeComposition(this);
 
     if (this.engine.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
