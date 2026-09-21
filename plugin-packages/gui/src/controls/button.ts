@@ -297,7 +297,7 @@ export class Button extends BaseButton {
       this.text = data.text;
     }
     if (data.icon !== undefined) {
-      this.icon = data.icon ? this.engine.findObject<Texture>(data.icon) : null;
+      this.icon = data.icon ? this.engine.effectsObjectServer.findObject<Texture>(data.icon) : null;
     }
     if (data.flat !== undefined) {
       this.flat = data.flat;

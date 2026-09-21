@@ -249,7 +249,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
 
     engine.getServer(AssetServer).addEffectsObjectData(data as spec.EffectsObjectData);
 
-    const sprite = engine.findObject<Sprite>({ id: spriteID });
+    const sprite = engine.effectsObjectServer.findObject<Sprite>({ id: spriteID });
 
     expect(sprite, 'deserialized sprite').to.be.instanceOf(Sprite);
     // fromData 用 findObject 解析，texture 是 Texture 实例而非裸 {id}

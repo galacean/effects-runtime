@@ -13,6 +13,7 @@ import { AssetManager } from './asset-manager';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import { SceneServer } from './scene-server';
+import { generateEmptyTexture, generateWhiteTexture } from './texture';
 
 /** Engine-owned asset preparation and built-in resource lifecycle. */
 @effectsClass('AssetServer')
@@ -29,8 +30,11 @@ export class AssetServer extends EngineServer {
   }
 
   override onInit (): void {
-    this.builtinObjects.push(this.engine.whiteTexture);
-    this.builtinObjects.push(this.engine.transparentTexture);
+    const { engine } = this;
+
+    engine.whiteTexture = generateWhiteTexture(engine);
+    engine.transparentTexture = generateEmptyTexture(engine);
+    this.builtinObjects.push(engine.whiteTexture, engine.transparentTexture);
   }
 
   /**
@@ -73,6 +77,10 @@ export class AssetServer extends EngineServer {
 
   findEffectsObjectData (uuid: string) {
     return this.jsonSceneData[uuid];
+  }
+
+  clearSceneData (): void {
+    this.jsonSceneData = {};
   }
 
   loadGUID<T> (guid: spec.DataPath): T {
@@ -169,8 +177,8 @@ export class AssetServer extends EngineServer {
 
   // TODO Material 单独存表, 加速查询
   createShaderVariant () {
-    for (const guid of Object.keys(this.engine.objectInstance)) {
-      const effectsObject = this.engine.objectInstance[guid];
+    for (const guid of Object.keys(this.engine.effectsObjectServer.objectInstance)) {
+      const effectsObject = this.engine.effectsObjectServer.objectInstance[guid];
 
       if (effectsObject instanceof Material) {
         effectsObject.createShaderVariant();

@@ -58,7 +58,7 @@ export class RendererComponent extends Component {
   override fromData (data: RendererComponentData): void {
     super.fromData(data);
     if (data.materials !== undefined) {
-      this.materials = data.materials.map(material => this.engine.findObject<Material>(material));
+      this.materials = data.materials.map(material => this.engine.effectsObjectServer.findObject<Material>(material));
     }
     if (data._priority !== undefined) {
       this._priority = data._priority;

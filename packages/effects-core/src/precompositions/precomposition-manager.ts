@@ -19,7 +19,7 @@ export class PrecompositionManager {
     const options = precomposition.options;
     const engine = composition.engine;
 
-    engine.clearResources();
+    engine.effectsObjectServer.clearResources();
 
     // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
     PluginSystem.notifyAssetsLoadFinish(scene, options, engine);

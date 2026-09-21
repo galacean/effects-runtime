@@ -1,5 +1,5 @@
 import type { Scene } from '@galacean/effects';
-import { Engine, RenderingDevice, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -138,15 +138,48 @@ describe('core/engine/servers', () => {
     expect(assets).not.to.equal(other.getServer(AssetServer));
     const previousData = assets.jsonSceneData;
 
-    engine.clearResources();
+    engine.effectsObjectServer.clearResources();
     expect(assets.jsonSceneData).not.to.equal(previousData);
     expect(assets.jsonSceneData).to.deep.equal({});
     expect(engine.whiteTexture.isRegistered).to.equal(false);
     assets.prepareAssets(scene, {});
-    expect(engine.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
-    expect(engine.objectInstance[engine.transparentTexture.getInstanceId()]).to.equal(engine.transparentTexture);
-    expect(other.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(other.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.transparentTexture.getInstanceId()]).to.equal(engine.transparentTexture);
+    expect(other.effectsObjectServer.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(other.whiteTexture);
     expect(other.whiteTexture).not.to.equal(engine.whiteTexture);
+  });
+
+  it('owns object lookup per engine and preserves lookup behavior after clearing', () => {
+    register('objects-alias', EffectsObjectServer);
+    const engine = createPlayer().engine;
+    const other = createPlayer().engine;
+    const server = engine.getServer(EffectsObjectServer);
+    const assets = engine.getServer(AssetServer);
+    const texture = engine.whiteTexture;
+    const path = { id: texture.getInstanceId() };
+    let loads = 0;
+
+    expect(server).to.equal(engine.effectsObjectServer);
+    expect(server).not.to.equal(other.effectsObjectServer);
+    assets.loadGUID = <T>() => {
+      loads++;
+
+      return texture as T;
+    };
+    expect(server.findObject(path)).to.equal(texture);
+    expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
+    expect(loads).to.equal(0);
+
+    server.clearResources();
+    expect(texture.isRegistered).to.equal(false);
+    expect(texture.isDestroyed).to.equal(false);
+    expect(other.effectsObjectServer.findObject(path)).to.equal(other.whiteTexture);
+    expect(server.findObject(path)).to.equal(texture);
+    expect(loads).to.equal(1);
+
+    texture.registerObject();
+    expect(server.findObject(path)).to.equal(texture);
+    expect(loads).to.equal(1);
   });
 
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {

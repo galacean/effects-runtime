@@ -585,7 +585,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
     });
 
     player.engine.getServer(AssetServer).addEffectsObjectData(data);
-    const component = player.engine.findObject<UIControl>({ id: componentId });
+    const component = player.engine.effectsObjectServer.findObject<UIControl>({ id: componentId });
     const button = component.control as Button;
 
     expect(component.item).equals(item);

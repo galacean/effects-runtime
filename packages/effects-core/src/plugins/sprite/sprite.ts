@@ -54,7 +54,7 @@ export class Sprite extends Asset {
     super.fromData(data);
     // findObject 对 Texture 实例原样返回，对 {id} 解析为 Texture 实例，
     // 兼容反序列化（data.texture 为 {id}）与手动构造（data.texture 为 Texture 实例）两条路径。
-    this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : this.engine.whiteTexture;
+    this.texture = data.texture ? this.engine.effectsObjectServer.findObject<Texture>(data.texture) : this.engine.whiteTexture;
     this.rect = data.rect ?? [0, 0, 1, 1];
     this.rotation = data.rotation ?? SpriteRotation.None;
   }

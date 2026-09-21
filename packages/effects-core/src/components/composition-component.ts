@@ -346,16 +346,16 @@ export class CompositionComponent extends Component {
     super.fromData(data);
 
     if (data.items !== undefined) {
-      this.items = data.items.map(item => this.engine.findObject<VFXItem>(item));
+      this.items = data.items.map(item => this.engine.effectsObjectServer.findObject<VFXItem>(item));
     }
     if (data.sceneBindings !== undefined) {
       this.sceneBindings = data.sceneBindings.map(binding => ({
-        key: this.engine.findObject<TrackAsset>(binding.key),
-        value: this.engine.findObject<VFXItem>(binding.value),
+        key: this.engine.effectsObjectServer.findObject<TrackAsset>(binding.key),
+        value: this.engine.effectsObjectServer.findObject<VFXItem>(binding.value),
       }));
     }
     if (data.timelineAsset !== undefined) {
-      this.timelineAsset = this.engine.findObject<TimelineAsset>(data.timelineAsset);
+      this.timelineAsset = this.engine.effectsObjectServer.findObject<TimelineAsset>(data.timelineAsset);
     }
 
     this._timelineInstance = null;

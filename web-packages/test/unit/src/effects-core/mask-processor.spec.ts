@@ -336,7 +336,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should handle references array with single forward mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,
@@ -349,7 +349,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should handle references array with single reverse mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,

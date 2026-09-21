@@ -162,13 +162,13 @@ export class TrackAsset extends PlayableAsset {
         if (clipData.start !== undefined) { clip.start = clipData.start; }
         if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
         if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
-        clip.asset = this.engine.findObject<PlayableAsset>(clipData.asset);
+        clip.asset = this.engine.effectsObjectServer.findObject<PlayableAsset>(clipData.asset);
 
         return clip;
       });
     }
     if (data.children !== undefined) {
-      this.children = data.children.map(child => this.engine.findObject<TrackAsset>(child));
+      this.children = data.children.map(child => this.engine.effectsObjectServer.findObject<TrackAsset>(child));
     }
     for (const child of this.children) {
       child.parent = this;

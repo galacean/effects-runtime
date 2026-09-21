@@ -745,7 +745,7 @@ export class Material extends Asset implements Disposable {
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
-      const texture = this.engine.findObject<Texture>(textureProperties.texture);
+      const texture = this.engine.effectsObjectServer.findObject<Texture>(textureProperties.texture);
 
       // TODO 纹理通过 id 加入场景数据
       this.setTexture(name, texture);
@@ -758,7 +758,7 @@ export class Material extends Asset implements Disposable {
     }
 
     if (data.shader) {
-      const shader = this.engine.findObject<Shader>(data.shader);
+      const shader = this.engine.effectsObjectServer.findObject<Shader>(data.shader);
 
       if (shader) {
         this.shader = shader;

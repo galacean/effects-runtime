@@ -1,7 +1,5 @@
-import type * as spec from '@galacean/effects-specification';
-import { AssetServer } from './asset-server';
+import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
-import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
   Geometry, Mesh, RenderPass, Renderer,
@@ -10,9 +8,8 @@ import type { Framebuffer, Renderbuffer } from './render';
 import { RenderTargetPool } from './render';
 import type { SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
+import { addItem, getPixelRatio, logger, removeItem } from './utils';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
@@ -80,7 +77,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   renderLevel?: SceneRenderLevel;
   whiteTexture: Texture;
   transparentTexture: Texture;
-  objectInstance: Record<string, EffectsObject>;
   /**
    * 渲染过程中错误队列
    */
@@ -88,6 +84,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   eventSystem: EventSystem;
   graphicsServer: GraphicsServer;
   renderingServer: RenderingServer;
+  effectsObjectServer: EffectsObjectServer;
   env = '';
   /**
    * 计时器
@@ -125,7 +122,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected particleSystems: ParticleSystem[] = [];
 
   private servers: EngineServer[] = [];
-  private assetServer: AssetServer;
 
   /**
    *
@@ -139,9 +135,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.doNotHandleContextLost = options?.doNotHandleContextLost ?? true;
     this.name = options?.name ?? this.name;
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
-    this.objectInstance = {};
-    this.whiteTexture = generateWhiteTexture(this);
-    this.transparentTexture = generateEmptyTexture(this);
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
@@ -184,39 +177,13 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   private initializeServers (): void {
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
     this.servers.sort((a, b) => a.order - b.order);
-    this.assetServer = this.getServer(AssetServer);
     this.renderingServer = this.getServer(RenderingServer);
     this.graphicsServer = this.getServer(GraphicsServer);
+    this.effectsObjectServer = this.getServer(EffectsObjectServer);
 
     for (const server of this.servers) {
       server.onInit();
     }
-  }
-
-  clearResources () {
-    for (const id of Object.keys(this.objectInstance)) {
-      this.objectInstance[id].unregisterObject();
-    }
-    this.assetServer.jsonSceneData = {};
-    this.objectInstance = {};
-  }
-
-  /**
-   * @ignore
-   */
-  findObject<T> (guid: spec.DataPath): T {
-    // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
-    if (!(isPlainObject(guid))) {
-      return guid as T;
-    }
-
-    if (this.objectInstance[guid.id]) {
-      return this.objectInstance[guid.id] as T;
-    }
-
-    const result = this.assetServer.loadGUID<T>(guid);
-
-    return result;
   }
 
   runRenderLoop (renderFunction: (dt: number) => void): void {

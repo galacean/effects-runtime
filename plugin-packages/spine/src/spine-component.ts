@@ -142,13 +142,13 @@ export class SpineComponent extends RendererComponent implements Maskable {
         ...data.resource,
         atlas: {
           ...data.resource.atlas,
-          bins: this.engine.findObject<BinaryAsset>(data.resource.atlas.bins),
+          bins: this.engine.effectsObjectServer.findObject<BinaryAsset>(data.resource.atlas.bins),
         },
         skeleton: {
           ...data.resource.skeleton,
-          bins: this.engine.findObject<BinaryAsset>(data.resource.skeleton.bins),
+          bins: this.engine.effectsObjectServer.findObject<BinaryAsset>(data.resource.skeleton.bins),
         },
-        images: data.resource.images.map(image => this.engine.findObject<Texture>(image)),
+        images: data.resource.images.map(image => this.engine.effectsObjectServer.findObject<Texture>(image)),
       };
     }
     if (data.cache !== undefined) {

@@ -165,7 +165,7 @@ export class NinePatchRect extends Control {
   override fromData (data: spec.NinePatchRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {
-      this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;
+      this.texture = data.texture ? this.engine.effectsObjectServer.findObject<Texture>(data.texture) : null;
     }
     if (data.regionRect !== undefined) {
       this.setRegionRect(

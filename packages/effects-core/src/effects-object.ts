@@ -45,7 +45,7 @@ export abstract class EffectsObject {
       return;
     }
     this._isRegistered = true;
-    this.engine.objectInstance[this.guid] = this;
+    this.engine.effectsObjectServer.registerObject(this);
   }
 
   /** @internal */
@@ -54,7 +54,7 @@ export abstract class EffectsObject {
       return;
     }
     this._isRegistered = false;
-    delete this.engine.objectInstance[this.guid];
+    this.engine.effectsObjectServer.unregisterObject(this);
   }
 
   /**

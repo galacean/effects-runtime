@@ -60,7 +60,6 @@ export class AssetLoader {
     }
 
     effectsObject.setInstanceId(effectsObjectData.id);
-    this.engine.objectInstance[effectsObject.getInstanceId()] = effectsObject;
     SerializationHelper.deserialize(effectsObjectData, effectsObject);
 
     return effectsObject as T;

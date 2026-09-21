@@ -968,7 +968,7 @@ export class ParticleSystem extends Component implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
       forceTarget,
-      diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
+      diffuse: renderer.texture ? this.engine.effectsObjectServer.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
       anchor,
     };
@@ -1049,7 +1049,7 @@ export class ParticleSystem extends Component implements Maskable {
         maxTrailCount: options.maxCount,
         pointCountPerTrail: Math.round(trails.maxPointPerTrail) || 32,
         blending: trails.blending,
-        texture: trails.texture ? this.engine.findObject(trails.texture) : undefined,
+        texture: trails.texture ? this.engine.effectsObjectServer.findObject(trails.texture) : undefined,
         opacityOverLifetime: createValueGetter(trails.opacityOverLifetime || 1),
         widthOverTrail: createValueGetter(trails.widthOverTrail || 1),
         // order: vfxItem.listIndex + (trails.orderOffset || 0),

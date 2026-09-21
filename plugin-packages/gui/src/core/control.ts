@@ -1750,7 +1750,7 @@ export class Control {
     for (const name of Object.keys(data.icons ?? {})) {
       const value = data.icons![name];
 
-      this.setThemeIconOverride(name, value ? this.engine.findObject<Texture>(value) : null);
+      this.setThemeIconOverride(name, value ? this.engine.effectsObjectServer.findObject<Texture>(value) : null);
     }
     for (const name of Object.keys(data.styleBoxes ?? {})) {
       this.setThemeStyleBoxOverride(name, styleBoxFromData(this.engine, data.styleBoxes![name]));

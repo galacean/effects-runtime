@@ -112,7 +112,7 @@ export class ThreeDisplayObject extends THREE.Group {
 
         const engine = this.engine;
 
-        engine.clearResources();
+        engine.effectsObjectServer.clearResources();
 
         // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
         PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);

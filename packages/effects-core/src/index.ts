@@ -11,6 +11,7 @@ export * from './binary-asset';
 export * from './asset-loader';
 export * from './asset-manager';
 export * from './asset-server';
+export * from './effects-object-server';
 export * from './camera';
 export * from './canvas-pool';
 export * from './components';
