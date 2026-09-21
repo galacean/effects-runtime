@@ -241,7 +241,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     const data = {
       id: spriteID,
       dataType: 'Sprite' as unknown as spec.DataType,
-      texture: { id: engine.whiteTexture.getInstanceId() },
+      texture: { id: engine.assetServer.whiteTexture.getInstanceId() },
       rect: [0.1, 0.2, 0.3, 0.4] as spec.vec4,
       rotation: SpriteRotation.Rotate90,
     };
@@ -253,7 +253,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     expect(sprite, 'deserialized sprite').to.be.instanceOf(Sprite);
     // fromData 用 findObject 解析，texture 是 Texture 实例而非裸 {id}
     expect(sprite.texture, 'deserialized texture').to.be.instanceOf(Texture);
-    expect(sprite.texture).to.equal(engine.whiteTexture);
+    expect(sprite.texture).to.equal(engine.assetServer.whiteTexture);
     expect(sprite.rect).to.eql([0.1, 0.2, 0.3, 0.4]);
     expect(sprite.rotation).to.eql(1);
   });

@@ -235,7 +235,7 @@ export class TextComponentBase {
   protected disposeTextTexture (): void {
     const texture = this.renderer.texture;
 
-    if (texture && texture !== this.engine.whiteTexture) {
+    if (texture && texture !== this.engine.assetServer.whiteTexture) {
       texture.dispose();
     }
   }

@@ -611,7 +611,7 @@ export class Graphics {
       material = this.currentBatchType === 'text'
         ? this.textMaterial
         : this.currentBatchType === 'ninePatch' ? this.ninePatchMaterial : this.texturedMaterial;
-      const tex = this.currentBatchTexture ?? this.engine.whiteTexture;
+      const tex = this.currentBatchTexture ?? this.engine.assetServer.whiteTexture;
 
       material.setTexture('uMainTexture', tex);
     } else {

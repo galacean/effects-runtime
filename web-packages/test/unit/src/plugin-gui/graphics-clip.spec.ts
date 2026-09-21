@@ -234,11 +234,11 @@ describe('plugin-gui/Graphics nine-patch command', () => {
 
     player.engine.renderer.drawGeometry = originalDrawGeometry;
     graphics.begin();
-    graphics.drawNinePatch(0, 0, 10, 10, player.engine.whiteTexture, {
+    graphics.drawNinePatch(0, 0, 10, 10, player.engine.assetServer.whiteTexture, {
       sourceX: 0,
       sourceY: 0,
-      sourceWidth: player.engine.whiteTexture.width,
-      sourceHeight: player.engine.whiteTexture.height,
+      sourceWidth: player.engine.assetServer.whiteTexture.width,
+      sourceHeight: player.engine.assetServer.whiteTexture.height,
       marginLeft: 0,
       marginTop: 0,
       marginRight: 0,

@@ -282,8 +282,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
 
       this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
-      this.engine.renderLevel = scene.renderLevel;
-
       if (reusable) {
         scene.consumed = true;
       }

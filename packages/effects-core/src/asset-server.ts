@@ -14,10 +14,13 @@ import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import { SceneServer } from './scene-server';
 import { generateEmptyTexture, generateWhiteTexture } from './texture';
+import type { Texture } from './texture';
 
 /** Engine-owned asset preparation and built-in resource lifecycle. */
 @effectsClass('AssetServer')
 export class AssetServer extends EngineServer {
+  whiteTexture: Texture;
+  transparentTexture: Texture;
   jsonSceneData: SceneData = {};
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   assetManagers: AssetManager[] = [];
@@ -32,9 +35,9 @@ export class AssetServer extends EngineServer {
   override onInit (): void {
     const { engine } = this;
 
-    engine.whiteTexture = generateWhiteTexture(engine);
-    engine.transparentTexture = generateEmptyTexture(engine);
-    this.builtinObjects.push(engine.whiteTexture, engine.transparentTexture);
+    this.whiteTexture = generateWhiteTexture(engine);
+    this.transparentTexture = generateEmptyTexture(engine);
+    this.builtinObjects.push(this.whiteTexture, this.transparentTexture);
   }
 
   /**

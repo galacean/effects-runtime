@@ -23,6 +23,11 @@ export class DisplayServer extends EngineServer {
 
   override onInit (): void {
     this.renderingDevice = RenderingDevice.create(this.engine);
+    // Initialize dimensions before consumers read them in their onInit hooks.
+    // Host-backed devices (Three.js) receive their context later and own sizing.
+    if (this.renderingDevice.gpuCapability) {
+      this.resize();
+    }
   }
 
   override onDispose (): void {

@@ -1,4 +1,4 @@
-import { DisplayServer, Engine, Player } from '@galacean/effects';
+import { DisplayServer, Engine, EngineServer, Player, effectsClass, effectsClassStore } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -49,6 +49,29 @@ describe('core/engine/display-server', () => {
     expect(first.displayServer.displayScale).to.equal(0.5);
     expect(first.displayServer.offscreenMode).to.equal(true);
     expect(second.displayServer.pixelRatio).to.equal(2);
+  });
+
+  it('initializes dimensions before later services subscribe to changes', () => {
+    let initialSize: number[] = [];
+    let notifications = 0;
+
+    class Observer extends EngineServer {
+      override onInit (): void {
+        initialSize = [this.engine.canvas.width, this.engine.canvas.height];
+        this.engine.on('resize', () => notifications++);
+      }
+    }
+    effectsClass('test-display-initial-size')(Observer);
+    try {
+      const engine = createEngine(301, 201, 1.5);
+
+      expect(initialSize).to.deep.equal([452, 302]);
+      expect(notifications).to.equal(0);
+      engine.displayServer.setSize(200, 100);
+      expect(notifications).to.equal(1);
+    } finally {
+      delete effectsClassStore['test-display-initial-size'];
+    }
   });
 
   it('preserves initial container sizing, aspect fitting, scaling and DPR rounding', () => {

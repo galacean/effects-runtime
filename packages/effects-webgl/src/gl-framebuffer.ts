@@ -260,7 +260,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
     // TODO 不在bind中设置viewport
     state.setViewport(x, y, width, height);
-    const whiteTexture = this.renderer.engine.whiteTexture as GLTexture;
+    const whiteTexture = this.renderer.engine.assetServer.whiteTexture as GLTexture;
     const whiteWebGLTexture = whiteTexture.textureBuffer;
 
     // in case frame texture loop

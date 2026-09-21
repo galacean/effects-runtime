@@ -576,7 +576,7 @@ export class VideoComponent extends MaskableGraphic {
 
       this.videoSeeking = true;
       if (clearTexture) {
-        this.material.setTexture('_MainTex', this.engine.transparentTexture);
+        this.material.setTexture('_MainTex', this.engine.assetServer.transparentTexture);
       }
       this.video!.addEventListener('seeked', () => {
         this.videoSeeking = false;

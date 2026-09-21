@@ -69,8 +69,8 @@ describe('webgl/gl-context-lost', () => {
       engine = createEngine(false);
       gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
       // Engine 构造已创建内置纹理，但需 initialize 才有 GL 句柄。
-      (engine.whiteTexture as GLTexture).initialize();
-      (engine.transparentTexture as GLTexture).initialize();
+      (engine.assetServer.whiteTexture as GLTexture).initialize();
+      (engine.assetServer.transparentTexture as GLTexture).initialize();
     });
 
     it('纹理 GPU 句柄在 restore 后被重建', async function () {

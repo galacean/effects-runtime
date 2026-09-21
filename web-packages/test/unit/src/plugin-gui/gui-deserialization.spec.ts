@@ -122,7 +122,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
   });
 
   it('restores common and concrete properties for every registered type', () => {
-    const texture = player.engine.whiteTexture;
+    const texture = player.engine.assetServer.whiteTexture;
     const texturePath = { id: texture.getInstanceId() };
     const common = {
       anchorMin: [0, 0],
@@ -672,7 +672,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
   function buttonCase (
     type: 'Button' | 'Checkbox' | 'CheckButton',
     texturePath: { id: string },
-    texture: Engine['whiteTexture'],
+    texture: Engine['assetServer']['whiteTexture'],
   ): DeserializationCase {
     return {
       type,

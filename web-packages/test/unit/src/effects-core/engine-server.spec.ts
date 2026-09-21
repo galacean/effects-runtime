@@ -144,12 +144,12 @@ describe('core/engine/servers', () => {
     assets.clearSceneData();
     expect(assets.jsonSceneData).not.to.equal(previousData);
     expect(assets.jsonSceneData).to.deep.equal({});
-    expect(engine.whiteTexture.isRegistered).to.equal(false);
+    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(false);
     assets.prepareAssets(scene, {});
-    expect(engine.effectsObjectServer.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
-    expect(engine.effectsObjectServer.objectInstance[engine.transparentTexture.getInstanceId()]).to.equal(engine.transparentTexture);
-    expect(other.effectsObjectServer.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(other.whiteTexture);
-    expect(other.whiteTexture).not.to.equal(engine.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
+    expect(other.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(other.assetServer.whiteTexture);
+    expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
   });
 
   it('owns object lookup per engine and preserves lookup behavior after clearing', () => {
@@ -158,7 +158,7 @@ describe('core/engine/servers', () => {
     const other = createPlayer().engine;
     const server = engine.getServer(EffectsObjectServer);
     const assets = engine.assetServer;
-    const texture = engine.whiteTexture;
+    const texture = engine.assetServer.whiteTexture;
     const path = { id: texture.getInstanceId() };
     let loads = 0;
 
@@ -176,7 +176,7 @@ describe('core/engine/servers', () => {
     server.clearObjectInstances();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
-    expect(other.effectsObjectServer.findObject(path)).to.equal(other.whiteTexture);
+    expect(other.effectsObjectServer.findObject(path)).to.equal(other.assetServer.whiteTexture);
     expect(server.findObject(path)).to.equal(texture);
     expect(loads).to.equal(1);
 
@@ -245,8 +245,8 @@ describe('core/engine/servers', () => {
       disposeManager();
     };
     composition.dispose = () => {
-      expect(engine.whiteTexture.isDestroyed).to.equal(false);
-      expect(engine.transparentTexture.isDestroyed).to.equal(false);
+      expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(false);
+      expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(false);
       calls.push('scene');
       disposeComposition();
     };
@@ -259,9 +259,9 @@ describe('core/engine/servers', () => {
     engine.dispose();
     expect(calls).to.deep.equal(['scene', 'assets', 'manager']);
     expect(assets.assetManagers).to.have.length(0);
-    expect(engine.whiteTexture.isDestroyed).to.equal(true);
-    expect(engine.transparentTexture.isDestroyed).to.equal(true);
-    expect(other.whiteTexture.isDestroyed).to.equal(false);
+    expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(true);
+    expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(true);
+    expect(other.assetServer.whiteTexture.isDestroyed).to.equal(false);
     expect(engine.getServer(AssetServer)).to.equal(undefined);
   });
 

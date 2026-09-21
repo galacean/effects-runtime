@@ -3,8 +3,6 @@ import { AssetServer } from './asset-server';
 import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
 import type { Renderer } from './render';
-import type { SceneRenderLevel } from './scene';
-import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
@@ -59,14 +57,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
 
   name = 'NewEngine';
+  env = '';
   speed = 1;
   canvas: HTMLCanvasElement;
-  /**
-   * 渲染等级
-   */
-  renderLevel?: SceneRenderLevel;
-  whiteTexture: Texture;
-  transparentTexture: Texture;
+  options: EngineOptions;
   /**
    * 渲染过程中错误队列
    */
@@ -78,13 +72,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   displayServer: DisplayServer;
   assetServer: AssetServer;
 
-  env = '';
   /**
    * 计时器
    * 手动渲染 `manualRender=true` 时不创建计时器
    */
   ticker: Ticker | null = null;
-  readonly options: EngineOptions;
   protected _disposed = false;
 
   private servers: EngineServer[] = [];
@@ -109,10 +101,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem.bindListeners(this.canvas);
 
     this.initializeServers();
-
-    if (this.displayServer.renderingDevice.gpuCapability) {
-      this.displayServer.resize();
-    }
 
     PluginSystem.notifyEngineCreated(this);
   }

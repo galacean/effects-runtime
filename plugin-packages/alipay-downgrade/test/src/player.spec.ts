@@ -21,13 +21,12 @@ describe('Player downgrade', () => {
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
     try {
-      const comp = await player.loadScene(JSON.parse(json), {
+      await player.loadScene(JSON.parse(json), {
         pluginData: {
           downgrade,
         },
       });
 
-      expect(comp.getEngine().renderLevel).to.equal(spec.RenderLevel.S);
       playerFunc();
     } catch (e) {
       catchFunc();
@@ -61,13 +60,12 @@ describe('Player downgrade', () => {
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
     try {
-      const comp = await player.loadScene(JSON.parse(json), {
+      await player.loadScene(JSON.parse(json), {
         pluginData: {
           downgrade,
         },
       });
 
-      expect(comp.getEngine().renderLevel).to.equal(spec.RenderLevel.S);
       playerFunc();
     } catch (e) {
       catchFunc();
@@ -87,13 +85,12 @@ describe('Player downgrade', () => {
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
     try {
-      const comp = await player.loadScene(JSON.parse(json), {
+      await player.loadScene(JSON.parse(json), {
         pluginData: {
           downgrade,
         },
       });
 
-      expect(comp.getEngine().renderLevel).to.equal(spec.RenderLevel.A);
       playerFunc();
     } catch (e) {
       catchFunc();
@@ -128,4 +125,3 @@ describe('Player downgrade', () => {
     expect(playerFunc).not.to.have.been.called();
   });
 });
-

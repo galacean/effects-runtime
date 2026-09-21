@@ -161,7 +161,7 @@ export class BloomPass extends RenderPass {
   override onCameraCleanup (renderer: Renderer, data: RenderingData): void {
     const resourceData = data.frameData.get(ResourceData);
 
-    const empty = renderer.engine.transparentTexture;
+    const empty = renderer.engine.assetServer.transparentTexture;
 
     this.thresholdMaterial.setTexture('_MainTex', empty);
     this.downSampleHMaterial.setTexture('_MainTex', empty);
@@ -288,8 +288,8 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override onCameraCleanup (renderer: Renderer): void {
-    this.screenMesh.material.setTexture('_SceneTex', renderer.engine.transparentTexture);
-    this.screenMesh.material.setTexture('_GaussianTex', renderer.engine.transparentTexture);
+    this.screenMesh.material.setTexture('_SceneTex', renderer.engine.assetServer.transparentTexture);
+    this.screenMesh.material.setTexture('_GaussianTex', renderer.engine.assetServer.transparentTexture);
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
