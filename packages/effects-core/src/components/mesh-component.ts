@@ -91,7 +91,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
     super.fromData(data);
 
     if (data.geometry !== undefined) {
-      this.geometry = this.engine.effectsObjectServer.findObject<Geometry>(data.geometry);
+      this.geometry = this.findObject<Geometry>(data.geometry);
     }
 
     const maskOptions = data.mask;

@@ -196,7 +196,7 @@ export class PositionConstraint extends Component {
     for (const targetData of data.targets) {
       const constraintTarget = new ConstraintTarget();
 
-      constraintTarget.target = this.engine.effectsObjectServer.findObject(targetData.target);
+      constraintTarget.target = this.findObject(targetData.target);
       constraintTarget.weight = targetData.weight;
       this.targets.push(constraintTarget);
     }

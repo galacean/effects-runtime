@@ -39,6 +39,11 @@ export abstract class EffectsObject {
     return this._isRegistered;
   }
 
+  /** Resolve an object reference in this engine, loading serialized data if needed. */
+  findObject<T> (dataPath: spec.DataPath): T {
+    return this.engine.effectsObjectServer.findObject<T>(dataPath);
+  }
+
   /** @internal */
   registerObject (): void {
     if (this._isRegistered) {

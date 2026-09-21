@@ -18,7 +18,7 @@ export class TimelineAsset extends Asset {
   override fromData (data: spec.TimelineAssetData): void {
     super.fromData(data);
     if (data.tracks !== undefined) {
-      this.tracks = data.tracks.map(track => this.engine.effectsObjectServer.findObject<TrackAsset>(track));
+      this.tracks = data.tracks.map(track => this.findObject<TrackAsset>(track));
       this.invalidate();
     }
   }

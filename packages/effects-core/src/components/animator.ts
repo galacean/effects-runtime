@@ -149,6 +149,6 @@ export class Animator extends Component {
   }
 
   override fromData (data: spec.AnimatorData): void {
-    this.graphAsset = this.engine.effectsObjectServer.findObject<AnimationGraphAsset>(data.graphAsset);
+    this.graphAsset = this.findObject<AnimationGraphAsset>(data.graphAsset);
   }
 }

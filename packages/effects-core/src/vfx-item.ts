@@ -786,7 +786,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.refreshGUIDRecursive();
-    const newItem = this.engine.effectsObjectServer.findObject<VFXItem>({ id: this.definition.id });
+    const newItem = this.findObject<VFXItem>({ id: this.definition.id });
 
     newItem.refreshGUIDRecursive();
     this.refreshGUIDRecursive(previousObjectIDMap);
@@ -1003,14 +1003,14 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     if (data.components) {
       for (const componentPath of data.components) {
-        const component = this.engine.effectsObjectServer.findObject<Component>(componentPath);
+        const component = this.findObject<Component>(componentPath);
 
         this.components.push(component);
       }
     }
 
     for (const child of data.children ?? []) {
-      const childItem = this.engine.effectsObjectServer.findObject<VFXItem>(child);
+      const childItem = this.findObject<VFXItem>(child);
 
       childItem.setParent(this);
     }
@@ -1084,14 +1084,14 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.setInstanceId(compositionData.id);
 
     for (const componentPath of compositionData.components) {
-      const component = this.engine.effectsObjectServer.findObject<Component>(componentPath);
+      const component = this.findObject<Component>(componentPath);
 
       component.item = this;
       this.components.push(component);
     }
 
     for (const child of compositionData.children ?? []) {
-      const childItem = this.engine.effectsObjectServer.findObject<VFXItem>(child);
+      const childItem = this.findObject<VFXItem>(child);
 
       childItem.setParent(this);
     }

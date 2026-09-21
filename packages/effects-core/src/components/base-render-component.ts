@@ -327,7 +327,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ? this.engine.effectsObjectServer.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
+      texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,

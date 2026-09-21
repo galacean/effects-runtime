@@ -35,7 +35,7 @@ export class SpritePropertyPlayableAsset extends PlayableAsset {
     for (let i = 0; i < items.length; i++) {
       const [t, ref] = items[i];
 
-      referenceCurveData.push([t, this.engine.effectsObjectServer.findObject<Sprite>(ref)]);
+      referenceCurveData.push([t, this.findObject<Sprite>(ref)]);
     }
     this.curveData[1] = referenceCurveData;
   }

@@ -760,7 +760,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ? this.engine.effectsObjectServer.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
+      texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,
@@ -921,7 +921,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         paint = {
           type: paintData.type,
-          texture: this.engine.effectsObjectServer.findObject<Texture>(paintData.texture),
+          texture: this.findObject<Texture>(paintData.texture),
           scaleMode: paintData.scaleMode,
           scalingFactor: paintData.scalingFactor ?? 1,
           opacity: paintData.opacity ?? 1,

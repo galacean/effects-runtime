@@ -268,7 +268,7 @@ export class SpriteComponent extends MaskableGraphic {
 
     // 单 split / 新数据流：引用 Sprite 资产，渲染读 this.sprite
     if (data.sprite) {
-      const sprite = this.engine.effectsObjectServer.findObject<Sprite>(data.sprite);
+      const sprite = this.findObject<Sprite>(data.sprite);
 
       if (sprite) {
         this.applySpriteToRenderer(sprite);
@@ -277,7 +277,7 @@ export class SpriteComponent extends MaskableGraphic {
 
     this.textureSheetAnimation = data.textureSheetAnimation;
 
-    const geometry = data.geometry ? this.engine.effectsObjectServer.findObject<Geometry>(data.geometry) : this.defaultGeometry;
+    const geometry = data.geometry ? this.findObject<Geometry>(data.geometry) : this.defaultGeometry;
     const splits = data.splits;
 
     if (splits && splits.length > 1) {

@@ -1,5 +1,5 @@
 import type { Scene } from '@galacean/effects';
-import { Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -171,18 +171,39 @@ describe('core/engine/servers', () => {
     };
     expect(server.findObject(path)).to.equal(texture);
     expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
+    expect(texture.findObject<Texture>(path)).to.equal(texture);
+    expect(texture.findObject<Texture>(texture as unknown as typeof path)).to.equal(texture);
+    expect(other.assetServer.whiteTexture.findObject<Texture>(path)).to.equal(other.assetServer.whiteTexture);
     expect(loads).to.equal(0);
 
     server.clearObjectInstances();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
     expect(other.effectsObjectServer.findObject(path)).to.equal(other.assetServer.whiteTexture);
-    expect(server.findObject(path)).to.equal(texture);
+    expect(texture.findObject<Texture>(path)).to.equal(texture);
     expect(loads).to.equal(1);
 
     texture.registerObject();
     expect(server.findObject(path)).to.equal(texture);
     expect(loads).to.equal(1);
+  });
+
+  it('preserves item name searches alongside inherited object reference lookup', () => {
+    const engine = createPlayer().engine;
+    const parent = new VFXItem(engine);
+    const child = new VFXItem(engine);
+
+    parent.name = 'parent';
+    child.name = 'child';
+    child.setParent(parent);
+
+    expect(parent.find('parent')).to.equal(parent);
+    expect(parent.find('child')).to.equal(child);
+    expect(parent.find('missing')).to.equal(undefined);
+    expect(parent.findObject<VFXItem>({ id: child.getInstanceId() })).to.equal(child);
+    expect(parent.findObject<Texture>({ id: engine.assetServer.whiteTexture.getInstanceId() })).to.equal(engine.assetServer.whiteTexture);
+    parent.dispose();
+    child.dispose();
   });
 
   it('preserves live resources across lookup resets until their owners or the server dispose them', () => {

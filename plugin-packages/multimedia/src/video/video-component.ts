@@ -165,7 +165,7 @@ export class VideoComponent extends MaskableGraphic {
     this.transparent = transparent;
 
     if (video) {
-      const videoAsset = this.engine.effectsObjectServer.findObject<DataAsset<HTMLVideoElement>>(video);
+      const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
 
       if (videoAsset) {
         this.video = videoAsset.data;
