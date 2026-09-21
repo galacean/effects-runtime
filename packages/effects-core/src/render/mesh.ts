@@ -148,10 +148,6 @@ export class Mesh extends RendererComponent implements Disposable {
     }
     this.destroyed = true;
 
-    if (this.engine !== undefined) {
-      this.engine.removeMesh(this);
-    }
-
     super.dispose();
   }
 }

@@ -2,7 +2,7 @@ import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
 import type { Material } from './material';
 import type {
-  Geometry, Mesh, RenderPass, Renderer,
+  Geometry, Renderer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
 import { RenderTargetPool } from './render';
@@ -115,8 +115,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
-  protected meshes: Mesh[] = [];
-  protected renderPasses: RenderPass[] = [];
   protected framebuffers: Framebuffer[] = [];
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
@@ -350,34 +348,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.particleSystems, particleSystem);
   }
 
-  addMesh (mesh: Mesh) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.meshes, mesh);
-  }
-
-  removeMesh (mesh: Mesh) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.meshes, mesh);
-  }
-
-  addRenderPass (pass: RenderPass) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.renderPasses, pass);
-  }
-
-  removeRenderPass (pass: RenderPass) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.renderPasses, pass);
-  }
-
   addFramebuffer (framebuffer: Framebuffer) {
     if (this.disposed) {
       return;
@@ -426,12 +396,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     // Release remaining engine-owned resources while the device is still alive.
     const info: string[] = [];
 
-    if (this.renderPasses.length > 0) {
-      info.push(`Pass ${this.renderPasses.length}`);
-    }
-    if (this.meshes.length > 0) {
-      info.push(`Mesh ${this.meshes.length}`);
-    }
     if (this.geometries.length > 0) {
       info.push(`Geom ${this.geometries.length}`);
     }
@@ -443,8 +407,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.renderPasses.slice().forEach(pass => pass.dispose());
-    this.meshes.slice().forEach(mesh => mesh.dispose());
     this.geometries.slice().forEach(geo => geo.dispose());
     this.materials.slice().forEach(mat => mat.dispose());
     this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
@@ -454,8 +416,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.textures = [];
     this.materials = [];
     this.geometries = [];
-    this.meshes = [];
-    this.renderPasses = [];
     this.framebuffers = [];
     this.renderbuffers = [];
     this.particleSystems = [];
