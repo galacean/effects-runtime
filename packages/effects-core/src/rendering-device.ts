@@ -83,7 +83,7 @@ export class RenderingDevice implements Disposable {
   /** Restore attachment storage before rebuilding framebuffer attachments. */
   restoreGraphicsResources (): void {
     this.renderbuffers.forEach(resource => resource.restore());
-    this.engine.restoreGraphicsResources();
+    this.engine.effectsObjectServer.restoreGraphicsResources();
     this.framebuffers.forEach(resource => resource.restore());
   }
 

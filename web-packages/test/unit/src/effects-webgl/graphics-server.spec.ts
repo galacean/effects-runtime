@@ -72,14 +72,20 @@ describe('webgl/graphics-server', () => {
 
     engines.push(engine);
     const disposeRenderer = engine.renderer.dispose.bind(engine.renderer);
-    const disposePool = engine.renderTargetPool.dispose.bind(engine.renderTargetPool);
+    const disposeObjects = engine.effectsObjectServer.onDispose.bind(engine.effectsObjectServer);
+    const disposePool = engine.renderingServer.renderTargetPool.dispose.bind(engine.renderingServer.renderTargetPool);
 
     engine.renderer.dispose = () => {
       expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
       calls.push('resources');
       disposeRenderer();
     };
-    engine.renderTargetPool.dispose = () => {
+    engine.effectsObjectServer.onDispose = () => {
+      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      calls.push('objects');
+      disposeObjects();
+    };
+    engine.renderingServer.renderTargetPool.dispose = () => {
       expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
       calls.push('remaining-resources');
       disposePool();
@@ -87,6 +93,6 @@ describe('webgl/graphics-server', () => {
     engine.dispose();
     engine.dispose();
     expect(engine.graphicsServer.renderingDevice.disposed).to.equal(true);
-    expect(calls).to.deep.equal(['initialize', 'remaining-resources', 'server', 'resources', 'device']);
+    expect(calls).to.deep.equal(['initialize', 'server', 'resources', 'remaining-resources', 'objects', 'device']);
   });
 });

@@ -1,5 +1,5 @@
 import type { Scene } from '@galacean/effects';
-import { Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -15,8 +15,8 @@ describe('core/engine/servers', () => {
     effectsClass(key)(server);
   }
 
-  function createPlayer () {
-    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+  function createPlayer (doNotHandleContextLost = true) {
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true, doNotHandleContextLost });
 
     players.push(player);
 
@@ -182,6 +182,48 @@ describe('core/engine/servers', () => {
     expect(loads).to.equal(1);
   });
 
+  it('preserves live resources across lookup resets until their owners or the server dispose them', () => {
+    const player = createPlayer(false);
+    const engine = player.engine;
+    const server = engine.effectsObjectServer;
+    const texture = Texture.createWithData(engine);
+    const geometry = new Geometry(engine, {
+      attributes: { aPosition: { data: new Float32Array([0, 0, 1, 0, 0, 1]), size: 2 } },
+      drawCount: 3,
+    });
+
+    texture.initialize();
+    geometry.initialize();
+    server.clearResources();
+    expect(texture.isRegistered).to.equal(false);
+    expect(geometry.isRegistered).to.equal(false);
+    expect(texture.isDestroyed).to.equal(false);
+    expect(geometry.isDisposed()).to.equal(false);
+
+    let restores = 0;
+
+    geometry.restore = () => { restores++; };
+    server.restoreGraphicsResources();
+    expect(restores).to.equal(1);
+    geometry.dispose();
+    server.restoreGraphicsResources();
+    expect(restores).to.equal(1);
+
+    let disposals = 0;
+    const disposeTexture = texture.dispose.bind(texture);
+
+    texture.dispose = () => {
+      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      disposals++;
+      disposeTexture();
+    };
+    player.dispose();
+    engine.dispose();
+    expect(texture.isDestroyed).to.equal(true);
+    expect(disposals).to.equal(1);
+    expect(server.objectInstance).to.deep.equal({});
+  });
+
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {
     const player = createPlayer();
     const engine = player.engine;
@@ -239,7 +281,7 @@ describe('core/engine/servers', () => {
     composition.camera.updateMatrix = () => calls.push('camera');
     composition.sceneTicking.preRender.tick = dt => calls.push(`preRender:${dt}`);
     composition.renderer.renderComposition = () => calls.push('render');
-    engine.renderTargetPool.flush = () => calls.push('flush');
+    engine.renderingServer.renderTargetPool.flush = () => calls.push('flush');
     engine.onDraw();
     expect(calls).to.deep.equal(['server:draw', 'camera', 'preRender:0', 'render', 'flush']);
   });
@@ -263,7 +305,7 @@ describe('core/engine/servers', () => {
 
     engine.renderer.addOverlayRenderer(overlay);
 
-    engine.renderTargetPool.flush = () => calls.push('flush');
+    engine.renderingServer.renderTargetPool.flush = () => calls.push('flush');
     engine.onDraw();
     expect(calls).to.deep.equal([
       'camera:1', 'prepare:1', 'camera:0', 'prepare:0',

@@ -3,6 +3,7 @@ import type { Engine } from './engine';
 import { EngineServer } from './engine-server';
 import { Graphics } from './render/graphics';
 import { Renderer } from './render/renderer';
+import { RenderTargetPool } from './render/render-target-pool';
 import type { RenderPassClearAction } from './render/render-pass';
 import { SceneServer } from './scene-server';
 import { TextureLoadAction } from './texture';
@@ -11,6 +12,8 @@ import { TextureLoadAction } from './texture';
 @effectsClass('RenderingServer')
 export class RenderingServer extends EngineServer {
   renderer: Renderer;
+  /** @internal */
+  renderTargetPool: RenderTargetPool;
   private _graphics?: Graphics;
   private disposed = false;
   private readonly clearAction: RenderPassClearAction = {
@@ -36,6 +39,7 @@ export class RenderingServer extends EngineServer {
   }
 
   override onInit (): void {
+    this.renderTargetPool = new RenderTargetPool(this.engine);
     this.renderer = Renderer.create(this.engine);
   }
 
@@ -45,7 +49,7 @@ export class RenderingServer extends EngineServer {
 
     this.renderer.renderCompositions(scenes.compositions, this.clearAction);
     this.renderer.renderOverlays();
-    this.engine.renderTargetPool.flush();
+    this.renderTargetPool.flush();
   }
 
   override onDispose (): void {
@@ -56,5 +60,6 @@ export class RenderingServer extends EngineServer {
     this._graphics?.dispose();
     this._graphics = undefined;
     this.renderer.dispose();
+    this.renderTargetPool.dispose();
   }
 }

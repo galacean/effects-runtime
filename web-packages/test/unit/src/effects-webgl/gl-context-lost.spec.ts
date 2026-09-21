@@ -97,7 +97,7 @@ describe('webgl/gl-context-lost', () => {
 
       expect(after).to.not.equal(before);
       expect(after).to.be.instanceOf(WebGLTexture);
-      engine.removeTexture(tex);
+      engine.effectsObjectServer.removeTexture(tex);
       tex.dispose();
     }).timeout(8000);
 
@@ -198,7 +198,7 @@ describe('webgl/gl-context-lost', () => {
         },
       } as unknown as import('@galacean/effects-core').ParticleSystem;
 
-      engine.addParticleSystem(particleSystem);
+      engine.effectsObjectServer.addParticleSystem(particleSystem);
       await emulateContextLoss(engine);
       await emulateContextLoss(engine);
       const restored = new Float32Array(data.length);
@@ -206,7 +206,7 @@ describe('webgl/gl-context-lost', () => {
       readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
       expect(restored).to.deep.equal(data);
       expect(particleBufferUploads).to.equal(1);
-      engine.removeParticleSystem(particleSystem);
+      engine.effectsObjectServer.removeParticleSystem(particleSystem);
       geometry.dispose();
     }).timeout(8000);
 
@@ -235,7 +235,7 @@ describe('webgl/gl-context-lost', () => {
       await emulateContextLoss(engine);
       expect(tex.textureBuffer).to.be.instanceOf(WebGLTexture);
 
-      engine.removeTexture(tex);
+      engine.effectsObjectServer.removeTexture(tex);
       tex.dispose();
     }).timeout(15000);
   });
@@ -259,7 +259,7 @@ describe('webgl/gl-context-lost', () => {
 
       // 默认模式 release 后 source.data 被释放。
       expect((tex.source as any).data).to.be.undefined;
-      engine.removeTexture(tex);
+      engine.effectsObjectServer.removeTexture(tex);
       tex.dispose();
     });
   });
@@ -297,7 +297,7 @@ describe('webgl/gl-context-lost', () => {
 
       // opt-in 模式 release 不释放源数据。
       expect((tex.source as any).data).to.not.be.undefined;
-      engine.removeTexture(tex);
+      engine.effectsObjectServer.removeTexture(tex);
       tex.dispose();
     });
   });

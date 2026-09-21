@@ -363,11 +363,11 @@ export class Renderer {
     filter: FilterMode,
     format: RenderTextureFormat,
   ): Framebuffer {
-    return this.engine.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
+    return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
   }
 
   releaseTemporaryRT (rt: Framebuffer): void {
-    this.engine.renderTargetPool.release(rt);
+    this.engine.renderingServer.renderTargetPool.release(rt);
   }
 
   /**

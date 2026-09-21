@@ -128,7 +128,7 @@ export class VideoComponent extends MaskableGraphic {
       }
     });
 
-    this.engine.removeTexture(oldTexture);
+    this.engine.effectsObjectServer.removeTexture(oldTexture);
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;

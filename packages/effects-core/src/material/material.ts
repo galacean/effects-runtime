@@ -356,7 +356,7 @@ export class Material extends Asset implements Disposable {
     if (this.initialized) {
       return;
     }
-    engine.addMaterial(this);
+    engine.effectsObjectServer.addMaterial(this);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
@@ -859,7 +859,7 @@ export class Material extends Asset implements Disposable {
     this.destroyed = true;
 
     if (this.engine !== undefined) {
-      this.engine.removeMaterial(this);
+      this.engine.effectsObjectServer.removeMaterial(this);
     }
 
     super.dispose();

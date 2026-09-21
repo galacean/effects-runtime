@@ -153,7 +153,7 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
-    engine.addParticleSystem(this);
+    engine.effectsObjectServer.addParticleSystem(this);
     this.maskManager = new MaskProcessor();
 
     if (props) {
@@ -449,7 +449,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override dispose (): void {
-    this.engine.removeParticleSystem(this);
+    this.engine.effectsObjectServer.removeParticleSystem(this);
     super.dispose();
   }
 

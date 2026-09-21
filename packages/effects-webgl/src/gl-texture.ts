@@ -55,7 +55,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.initialized) {
       return;
     }
-    this.engine.addTexture(this);
+    this.engine.effectsObjectServer.addTexture(this);
 
     const gl = (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
     const { target = gl.TEXTURE_2D, name } = this.source;
@@ -511,7 +511,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.initialize = throwDestroyedError as unknown as () => void;
 
     if (this.engine !== undefined) {
-      this.engine.removeTexture(this);
+      this.engine.effectsObjectServer.removeTexture(this);
     }
 
     super.dispose();

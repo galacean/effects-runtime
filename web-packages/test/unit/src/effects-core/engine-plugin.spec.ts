@@ -25,7 +25,7 @@ describe('core/engine/plugin-engine-lifetime', () => {
     composition.sceneTicking.lateUpdate.tick = () => order.push('composition-lateupdate');
     composition.sceneTicking.preRender.tick = () => order.push('composition-prerender');
     composition.renderer.renderComposition = () => order.push('composition-render');
-    player.engine.renderTargetPool.flush = () => order.push('pool-flush');
+    player.engine.renderingServer.renderTargetPool.flush = () => order.push('pool-flush');
 
     player.engine.mainLoop(16);
 

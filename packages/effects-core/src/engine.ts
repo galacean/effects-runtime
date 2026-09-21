@@ -1,18 +1,13 @@
 import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
-import type { Material } from './material';
-import type {
-  Geometry, Renderer,
-} from './render';
-import { RenderTargetPool } from './render';
+import type { Renderer } from './render';
 import type { SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, getPixelRatio, logger, removeItem } from './utils';
+import { getPixelRatio, logger } from './utils';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
-import type { ParticleSystem } from './plugins/particle/particle-system';
 import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
@@ -20,7 +15,6 @@ import { EventEmitter } from './events';
 import { getClassesDerivedFrom } from './decorators';
 import { EngineServer } from './engine-server';
 import { GraphicsServer } from './graphics-server';
-import type { RestoreHandler } from './utils';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -96,12 +90,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   pixelRatio: number;
   /**
-   * @hidden
-   * Internal utility.
-   * Not part of the public API — do not rely on this in your code.
-   */
-  renderTargetPool: RenderTargetPool;
-  /**
    * 是否不处理上下文丢失恢复（构造期配置，默认 true）
    */
   doNotHandleContextLost = true;
@@ -111,10 +99,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   readonly ownsCanvas: boolean;
   readonly options: EngineOptions;
   protected _disposed = false;
-  protected textures: Texture[] = [];
-  protected materials: Material[] = [];
-  protected geometries: Geometry[] = [];
-  protected particleSystems: ParticleSystem[] = [];
 
   private servers: EngineServer[] = [];
 
@@ -139,8 +123,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
     this.eventSystem.enabled = options?.interactive ?? false;
     this.eventSystem.bindListeners(this.canvas);
-
-    this.renderTargetPool = new RenderTargetPool(this);
 
     this.initializeServers();
 
@@ -287,52 +269,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.emit('resize', this);
   }
 
-  addTexture (tex: Texture) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.textures, tex);
-  }
-
-  removeTexture (tex: Texture) {
-    removeItem(this.textures, tex);
-  }
-
-  addMaterial (mat: Material) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.materials, mat);
-  }
-
-  removeMaterial (mat: Material) {
-    removeItem(this.materials, mat);
-  }
-
-  addGeometry (geo: Geometry) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.geometries, geo);
-  }
-
-  removeGeometry (geo: Geometry) {
-    removeItem(this.geometries, geo);
-  }
-
-  /** @internal */
-  addParticleSystem (particleSystem: ParticleSystem): void {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.particleSystems, particleSystem);
-  }
-
-  /** @internal */
-  removeParticleSystem (particleSystem: ParticleSystem): void {
-    removeItem(this.particleSystems, particleSystem);
-  }
-
   /**
    * 销毁所有缓存的资源
    */
@@ -350,41 +286,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.servers[i].onBeforeExit();
     }
 
-    // Release remaining engine-owned resources while the device is still alive.
-    const info: string[] = [];
-
-    if (this.geometries.length > 0) {
-      info.push(`Geom ${this.geometries.length}`);
-    }
-    if (this.textures.length > 0) {
-      info.push(`Tex ${this.textures.length}`);
-    }
-
-    if (info.length > 0) {
-      logger.warn(`Release GPU memory: ${info.join(', ')}.`);
-    }
-
-    this.geometries.slice().forEach(geo => geo.dispose());
-    this.materials.slice().forEach(mat => mat.dispose());
-    this.textures.slice().forEach(tex => tex.dispose());
-
-    this.textures = [];
-    this.materials = [];
-    this.geometries = [];
-    this.particleSystems = [];
-    this.renderTargetPool.dispose();
-
     for (let i = this.servers.length - 1; i >= 0; i--) {
       this.servers[i].onDispose();
     }
     this.servers = [];
-  }
-
-  /** @internal Rebuild engine-owned resources after the device restores shaders. */
-  restoreGraphicsResources (): void {
-    this.geometries.forEach(geo => geo.restore());
-    this.particleSystems.forEach(system => system.rebuild());
-    this.textures.forEach(resource => (resource as unknown as RestoreHandler).restore());
   }
 
   private getTargetSize (parentEle: HTMLElement) {

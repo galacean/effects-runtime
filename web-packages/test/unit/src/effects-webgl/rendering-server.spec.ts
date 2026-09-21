@@ -26,6 +26,8 @@ describe('webgl/rendering-server', () => {
     expect(server).not.to.equal(second.renderingServer);
     expect(server.renderer).to.equal(first.renderer);
     expect(server.renderer.engine).to.equal(first);
+    expect(server.renderTargetPool.engine).to.equal(first);
+    expect(server.renderTargetPool).not.to.equal(second.renderingServer.renderTargetPool);
     expect(server.renderer).not.to.equal(second.renderer);
     expect(server.graphics).to.be.instanceOf(Graphics);
     expect(server.graphics).to.equal(first.renderingServer.graphics);

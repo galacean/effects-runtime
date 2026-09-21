@@ -305,7 +305,7 @@ export class Geometry extends Asset {
       buffer.create();
     });
     this.createIndexBuffer();
-    this.engine.addGeometry(this);
+    this.engine.effectsObjectServer.addGeometry(this);
     this.initialized = true;
     this.options = undefined;
   }
@@ -404,7 +404,7 @@ export class Geometry extends Asset {
     this.drawStart = 0;
     this.drawCount = 0;
     if (this.initialized) {
-      this.engine.removeGeometry(this);
+      this.engine.effectsObjectServer.removeGeometry(this);
     }
     this.initialized = false;
     this.disposed = true;
@@ -513,7 +513,7 @@ export class Geometry extends Asset {
     this.vertexBuffers = {};
     this.indices = new Uint16Array(0);
     if (wasInitialized) {
-      this.engine.removeGeometry(this);
+      this.engine.effectsObjectServer.removeGeometry(this);
       this.initialized = false;
     }
   }
