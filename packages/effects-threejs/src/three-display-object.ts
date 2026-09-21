@@ -1,5 +1,5 @@
 import type {
-  EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer,
+  InputServer, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer,
 } from '@galacean/effects-core';
 import { Engine, isWebGL2, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -10,7 +10,7 @@ import type { RenderingDeviceThree } from './rendering-device-three';
 export type ThreeDisplayObjectOptions = {
   width: number,
   height: number,
-  event?: EventSystem,
+  event?: InputServer,
   camera?: THREE.Camera,
 };
 

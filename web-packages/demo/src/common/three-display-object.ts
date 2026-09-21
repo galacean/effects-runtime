@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { EventSystem, EVENT_TYPE_CLICK, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
+import { EVENT_TYPE_CLICK, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
 
 export function createThreePlayer (options) {
   const { container, renderFramework = 'webgl' } = options;
@@ -74,9 +74,9 @@ export async function renderbyThreeDisplayObject (player, json) {
   // 防止 event 重复创建
   if (currentComposition.name !== sceneName) {
     // 注册事件系统 不需要响应点击时可以不进行注册
-    event = new EventSystem(renderer.domElement);
+    event = displayObject.engine.inputServer;
 
-    event.bindListeners();
+    event.enabled = true;
     event.addEventListener(EVENT_TYPE_CLICK, handleClick);
     currentComposition.event = event;
   }

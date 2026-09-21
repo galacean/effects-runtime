@@ -1,5 +1,5 @@
 import type {
-  Scene, ShaderLibrary, Transform, EventSystem, CompositionProps,
+  Scene, ShaderLibrary, Transform, InputServer, CompositionProps,
   Engine,
 } from '@galacean/effects-core';
 import { Composition } from '@galacean/effects-core';
@@ -17,7 +17,7 @@ export interface CompositionBaseProps {
    * 画布高度
    */
   height?: number,
-  event?: EventSystem,
+  event?: InputServer,
   /**
    * 播放速度
    */

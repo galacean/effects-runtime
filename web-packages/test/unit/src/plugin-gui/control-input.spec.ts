@@ -362,7 +362,7 @@ describe('plugin-gui/input', () => {
     });
     let pointerY = 0;
 
-    player.engine.eventSystem.addEventListener('touchstart', event => {
+    player.engine.inputServer.addEventListener('touchstart', event => {
       pointerY = event.y;
     });
     player.canvas.dispatchEvent(new MouseEvent('mousedown', {
@@ -393,7 +393,7 @@ describe('plugin-gui/input', () => {
     expect(event.isAccepted()).equals(false);
   });
 
-  it('receives standardized EventSystem input and consumes accepted native events', () => {
+  it('receives standardized InputServer input and consumes accepted native events', () => {
     player.canvas.getBoundingClientRect = canvasRect;
     const control = addControl(
       composition.sceneRoot,
@@ -402,7 +402,7 @@ describe('plugin-gui/input', () => {
     );
     let input: InputEvent | null = null;
 
-    player.engine.eventSystem.on('input', event => {
+    player.engine.inputServer.on('input', event => {
       input = event;
     });
     const nativeEvent = new MouseEvent('mousedown', {
@@ -422,15 +422,15 @@ describe('plugin-gui/input', () => {
     expect(control.log).deep.equals(['down:10,10']);
   });
 
-  it('clears acceptance before EventSystem input dispatch', () => {
+  it('clears acceptance before InputServer input dispatch', () => {
     const event = new InputEvent();
     let acceptedDuringDispatch = true;
 
     event.accept();
-    player.engine.eventSystem.on('input', input => {
+    player.engine.inputServer.on('input', input => {
       acceptedDuringDispatch = input.isAccepted();
     });
-    const handled = (player.engine.eventSystem as unknown as {
+    const handled = (player.engine.inputServer as unknown as {
       pushInput: (input: InputEvent) => boolean,
     }).pushInput(event);
 
@@ -441,16 +441,16 @@ describe('plugin-gui/input', () => {
   it('emits canvas focus and blur events exactly once', () => {
     const focusEvents: string[] = [];
 
-    player.engine.eventSystem.on('canvasFocus', () => focusEvents.push('in'));
-    player.engine.eventSystem.on('canvasBlur', () => focusEvents.push('out'));
+    player.engine.inputServer.on('canvasFocus', () => focusEvents.push('in'));
+    player.engine.inputServer.on('canvasBlur', () => focusEvents.push('out'));
 
     player.canvas.dispatchEvent(new Event('focus'));
     player.canvas.dispatchEvent(new Event('blur'));
     expect(focusEvents).deep.equals(['in', 'out']);
 
     focusEvents.length = 0;
-    player.engine.eventSystem.enabled = false;
-    player.engine.eventSystem.bindListeners(null);
+    player.engine.inputServer.enabled = false;
+    player.engine.inputServer.bindListeners(null);
     expect(focusEvents).deep.equals([]);
   });
 
@@ -546,7 +546,7 @@ describe('plugin-gui/input', () => {
     player.canvas.getBoundingClientRect = canvasRect;
     const inputs: InputEvent[] = [];
 
-    player.engine.eventSystem.on('input', event => inputs.push(event));
+    player.engine.inputServer.on('input', event => inputs.push(event));
     player.canvas.dispatchEvent(nativeTouchEvent('touchstart', [
       { identifier: 1, clientX: 20, clientY: 30 },
       { identifier: 2, clientX: 30, clientY: 40 },
@@ -606,11 +606,11 @@ describe('plugin-gui/input', () => {
     expect(windowRoot.guiIsDragSuccessful()).equals(true);
   });
 
-  it('keeps EventSystem disposal silent and lets GUIServer clean up independently', () => {
+  it('keeps InputServer disposal silent and lets GUIServer clean up independently', () => {
     const guiWindow = player.engine.getServer(GUIServer);
 
     chai.spy.on(guiWindow.windowRoot, 'cancelPointerInput');
-    player.engine.eventSystem.dispose();
+    player.engine.inputServer.dispose();
     expect(guiWindow.windowRoot.cancelPointerInput).to.not.have.been.called();
 
     chai.spy.on(guiWindow.windowRoot, 'render');

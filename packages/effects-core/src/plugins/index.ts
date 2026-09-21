@@ -2,7 +2,6 @@ export * from './plugin';
 export * from './camera/camera-controller-node';
 export * from './camera/camera-vfx-item-loader';
 export * from './interact/click-handler';
-export * from './interact/event-system';
 export * from './interact/interact-loader';
 export * from './interact/interact-mesh';
 export * from './interact/interact-vfx-item';

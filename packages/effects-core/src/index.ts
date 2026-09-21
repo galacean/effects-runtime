@@ -25,6 +25,7 @@ export * from './effects-object';
 export * from './engine';
 export * from './engine-server';
 export * from './display-server';
+export * from './input-server';
 export * from './scene-server';
 export * from './input';
 export {
@@ -66,4 +67,3 @@ registerPlugin('interact', InteractLoader);
 export const version = __VERSION__;
 
 logger.info(`Core version: ${version}.`);
-

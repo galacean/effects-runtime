@@ -2,11 +2,11 @@ import { DisplayServer } from './display-server';
 import { AssetServer } from './asset-server';
 import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
+import { InputServer } from './input-server';
 import type { Renderer } from './render';
 import type { Disposable } from './utils';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
-import { EventSystem } from './plugins';
 import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { EventEmitter } from './events';
@@ -61,24 +61,24 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   speed = 1;
   canvas: HTMLCanvasElement;
   options: EngineOptions;
-  /**
-   * 渲染过程中错误队列
-   */
-  renderErrors: Set<Error> = new Set();
-  eventSystem: EventSystem;
-
-  renderingServer: RenderingServer;
-  effectsObjectServer: EffectsObjectServer;
-  displayServer: DisplayServer;
-  assetServer: AssetServer;
 
   /**
    * 计时器
    * 手动渲染 `manualRender=true` 时不创建计时器
    */
   ticker: Ticker | null = null;
-  protected _disposed = false;
+  /**
+   * 渲染过程中错误队列
+   */
+  renderErrors: Set<Error> = new Set();
 
+  renderingServer: RenderingServer;
+  effectsObjectServer: EffectsObjectServer;
+  displayServer: DisplayServer;
+  inputServer: InputServer;
+  assetServer: AssetServer;
+
+  private _disposed = false;
   private servers: EngineServer[] = [];
 
   /**
@@ -95,10 +95,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.ticker = new Ticker(options?.fps);
       this.runRenderLoop(this.mainLoop.bind(this));
     }
-
-    this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
-    this.eventSystem.enabled = options?.interactive ?? false;
-    this.eventSystem.bindListeners(this.canvas);
 
     this.initializeServers();
 
@@ -127,6 +123,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
     this.servers.sort((a, b) => a.order - b.order);
     this.displayServer = this.getServer(DisplayServer);
+    this.inputServer = this.getServer(InputServer);
     this.renderingServer = this.getServer(RenderingServer);
     this.effectsObjectServer = this.getServer(EffectsObjectServer);
     this.assetServer = this.getServer(AssetServer);
@@ -192,7 +189,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this._disposed = true;
 
     this.ticker?.stop();
-    this.eventSystem?.dispose();
     PluginSystem.notifyEngineDestroy(this);
 
     for (let i = this.servers.length - 1; i >= 0; i--) {

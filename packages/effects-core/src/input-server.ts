@@ -1,8 +1,10 @@
-import { SceneServer } from '../../scene-server';
+import { effectsClass } from './decorators';
+import { EngineServer } from './engine-server';
+import { SceneServer } from './scene-server';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Composition } from '../../composition';
-import type { Engine } from '../../engine';
-import { EventEmitter } from '../../events';
+import type { Composition } from './composition';
+import type { Engine } from './engine';
+import { EventEmitter } from './events';
 import {
   InputEvent,
   InputEventKey,
@@ -13,10 +15,10 @@ import {
   KeyLocation,
   MouseButton,
   MouseButtonMask,
-} from '../../input';
-import type { Disposable } from '../../utils';
-import { addItem, removeItem } from '../../utils';
-import { PointerEventData, type Region } from './click-handler';
+} from './input';
+import type { Disposable } from './utils';
+import { addItem, removeItem } from './utils';
+import { PointerEventData, type Region } from './plugins/interact/click-handler';
 
 export const EVENT_TYPE_CLICK = 'click';
 export const EVENT_TYPE_TOUCH_START = 'touchstart';
@@ -63,13 +65,22 @@ type NativeHandler = {
   options?: AddEventListenerOptions | boolean,
 };
 
-export type EventSystemEvent = {
+export type InputServerEvent = {
   input: [event: InputEvent],
   canvasFocus: [],
   canvasBlur: [],
 };
 
-export class EventSystem extends EventEmitter<EventSystemEvent> implements Disposable {
+/** Engine-owned input, including native events and composition interaction. */
+@effectsClass('InputServer')
+export class InputServer extends EngineServer implements Disposable {
+  private readonly events = new EventEmitter<InputServerEvent>();
+  readonly on = this.events.on;
+  readonly off = this.events.off;
+  readonly once = this.events.once;
+  readonly emit = this.events.emit;
+  readonly getListeners = this.events.getListeners;
+  allowPropagation: boolean;
   skipPointerMovePicking = true;
   private readonly emulateMouseFromTouch = true;
   private readonly emulateTouchFromMouse = false;
@@ -93,11 +104,22 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
   private addedTabIndex = false;
   private addedOutlineStyle = false;
 
-  constructor (
-    public engine: Engine,
-    public allowPropagation = false,
-  ) {
-    super();
+  constructor (engine: Engine) {
+    super(engine, -1000);
+    this.allowPropagation = engine.options.notifyTouch ?? false;
+    this.enabled = engine.options.interactive ?? false;
+  }
+
+  override onInit (): void {
+    this.bindListeners(this.engine.canvas);
+  }
+
+  override onBeforeExit (): void {
+    this.bindListeners(null);
+  }
+
+  override onDispose (): void {
+    this.dispose();
   }
 
   get enabled (): boolean {

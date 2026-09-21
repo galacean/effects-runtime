@@ -8,7 +8,8 @@ import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
-import type { EventSystem, Region } from './plugins';
+import type { InputServer } from './input-server';
+import type { Region } from './plugins';
 import { PlayState } from './plugins';
 import { SceneRendering } from './render';
 import type { Scene } from './scene';
@@ -181,7 +182,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 鼠标和触屏处理系统
    */
-  readonly event?: EventSystem;
+  readonly event?: InputServer;
   /**
    * 当前合成名称
    */
@@ -342,7 +343,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
     this.rootComposition.startTime = sourceContent?.startTime ?? 0;
-    this.event = engine.eventSystem;
+    this.event = engine.inputServer;
     this.statistic = {
       loadStart: scene?.startTime ?? 0,
       loadTime: scene?.totalTime ?? 0,

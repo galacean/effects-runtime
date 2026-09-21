@@ -1,5 +1,5 @@
 import type { vec3 } from '@galacean/effects-specification';
-import type { TouchEventType } from './event-system';
+import type { TouchEventType } from '../../input-server';
 
 export interface DragEventType extends TouchEventType {
   cameraParam?: {

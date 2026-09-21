@@ -46,11 +46,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 是否跳过指针移动时的拾取检测, 开启后可以减少移动时的性能消耗，但会导致 pointermove 事件无法触发
    */
   get skipPointerMovePicking () {
-    return this.engine.eventSystem.skipPointerMovePicking;
+    return this.engine.inputServer.skipPointerMovePicking;
   }
 
   set skipPointerMovePicking (value: boolean) {
-    this.engine.eventSystem.skipPointerMovePicking = value;
+    this.engine.inputServer.skipPointerMovePicking = value;
   }
 
   /**
@@ -85,8 +85,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return this.engine.assetServer;
   }
 
-  private get event () {
-    return this.engine.eventSystem;
+  get event () {
+    return this.engine.inputServer;
   }
 
   private get displayAspect () {
