@@ -1,4 +1,3 @@
-import { AssetServer } from '@galacean/effects';
 import type { Player } from '@galacean/effects';
 import { generateGUID, glContext, loadImage, math, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
@@ -180,7 +179,7 @@ export class Project extends EditorWindow {
     this.title = 'Project';
     this.open();
     this.previewPlayer = createPreviewPlayer();
-    this.previewPlayer.renderer.engine.getServer(AssetServer).database = new AssetDatabase(this.previewPlayer.renderer.engine);
+    this.previewPlayer.renderer.engine.assetServer.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     void this.createIconTexture(folderIcon).then(texture=>{
       if (texture) {
         this.folderIcon = texture;
@@ -395,7 +394,7 @@ export class Project extends EditorWindow {
             break;
           }
           case 'Texture':{
-            await (GalaceanEffects.player.renderer.engine.getServer(AssetServer).database as AssetDatabase).convertImageData(packageData);
+            await (GalaceanEffects.player.renderer.engine.assetServer.database as AssetDatabase).convertImageData(packageData);
             //@ts-expect-error
             iconTexture = await this.createIconTexture(packageData.exportObjects[0].image);
           }

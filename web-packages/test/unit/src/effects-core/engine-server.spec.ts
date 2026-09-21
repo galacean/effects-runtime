@@ -131,14 +131,17 @@ describe('core/engine/servers', () => {
     register('asset-alias', AssetServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer);
+    const assets = engine.assetServer;
     const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
 
     expect(assets).to.be.instanceOf(AssetServer);
-    expect(assets).not.to.equal(other.getServer(AssetServer));
+    expect(engine.assetServer).to.equal(engine.getServer(AssetServer));
+    expect(assets).not.to.equal(other.assetServer);
     const previousData = assets.jsonSceneData;
 
-    engine.effectsObjectServer.clearResources();
+    engine.effectsObjectServer.clearObjectInstances();
+    expect(assets.jsonSceneData).to.equal(previousData);
+    assets.clearSceneData();
     expect(assets.jsonSceneData).not.to.equal(previousData);
     expect(assets.jsonSceneData).to.deep.equal({});
     expect(engine.whiteTexture.isRegistered).to.equal(false);
@@ -154,7 +157,7 @@ describe('core/engine/servers', () => {
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
     const server = engine.getServer(EffectsObjectServer);
-    const assets = engine.getServer(AssetServer);
+    const assets = engine.assetServer;
     const texture = engine.whiteTexture;
     const path = { id: texture.getInstanceId() };
     let loads = 0;
@@ -170,7 +173,7 @@ describe('core/engine/servers', () => {
     expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
     expect(loads).to.equal(0);
 
-    server.clearResources();
+    server.clearObjectInstances();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
     expect(other.effectsObjectServer.findObject(path)).to.equal(other.whiteTexture);
@@ -194,7 +197,7 @@ describe('core/engine/servers', () => {
 
     texture.initialize();
     geometry.initialize();
-    server.clearResources();
+    server.clearObjectInstances();
     expect(texture.isRegistered).to.equal(false);
     expect(geometry.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
@@ -228,7 +231,7 @@ describe('core/engine/servers', () => {
     const player = createPlayer();
     const engine = player.engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer);
+    const assets = engine.assetServer;
     const composition = new Composition(engine);
     const manager = assets.createAssetManager({});
     const disposeManager = manager.dispose.bind(manager);

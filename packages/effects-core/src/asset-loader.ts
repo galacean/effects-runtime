@@ -6,7 +6,6 @@ import { Material } from './material';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
-import { AssetServer } from './asset-server';
 
 /**
  * @since 2.0.0
@@ -66,7 +65,7 @@ export class AssetLoader {
   }
 
   private findData (uuid: string): spec.EffectsObjectData | undefined {
-    return this.engine.getServer(AssetServer).findEffectsObjectData(uuid);
+    return this.engine.assetServer.findEffectsObjectData(uuid);
   }
 }
 

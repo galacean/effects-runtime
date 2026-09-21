@@ -1,5 +1,4 @@
 import type * as spec from '@galacean/effects-specification';
-import { AssetServer } from './asset-server';
 import { effectsClass } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
@@ -121,11 +120,10 @@ export class EffectsObjectServer extends EngineServer {
   }
 
   /** Reset the current lookup context without disposing the objects or GPU resources. */
-  clearResources (): void {
+  clearObjectInstances (): void {
     for (const id of Object.keys(this.objectInstance)) {
       this.objectInstance[id].unregisterObject();
     }
-    this.engine.getServer(AssetServer).clearSceneData();
     this.objectInstance = {};
   }
 
@@ -139,6 +137,6 @@ export class EffectsObjectServer extends EngineServer {
       return this.objectInstance[guid.id] as T;
     }
 
-    return this.engine.getServer(AssetServer).loadGUID<T>(guid);
+    return this.engine.assetServer.loadGUID<T>(guid);
   }
 }

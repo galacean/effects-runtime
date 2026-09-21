@@ -5,7 +5,7 @@ import type {
   PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
-  isArray, spec, assertExist, SceneLoader, AssetServer,
+  isArray, spec, assertExist, SceneLoader,
 } from '@galacean/effects-core';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
@@ -78,11 +78,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   private get assetManagers () {
-    return this.engine.getServer(AssetServer).assetManagers;
+    return this.engine.assetServer.assetManagers;
   }
 
   private get assetServer () {
-    return this.engine.getServer(AssetServer);
+    return this.engine.assetServer;
   }
 
   private get event () {
@@ -426,7 +426,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       assetManager.dispose();
     }
 
-    this.engine.getServer(AssetServer).assetManagers = [];
+    this.engine.assetServer.assetManagers = [];
     const baseOrder = this.engine.getServer(SceneServer).compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;

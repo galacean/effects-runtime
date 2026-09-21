@@ -1,7 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import { ItemType, DataType } from '@galacean/effects-specification';
 import type { Engine } from './engine';
-import { AssetServer } from './asset-server';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import type { Scene, SceneLoadOptions } from './scene';
@@ -54,16 +53,17 @@ export class SceneServer extends EngineServer {
     const compositionIndex = this.compositions.length;
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    const assetManager = engine.getServer(AssetServer).createAssetManager(options);
+    const assetManager = engine.assetServer.createAssetManager(options);
 
     const loadedScene = await assetManager.loadScene(scene, engine.renderer);
 
-    engine.effectsObjectServer.clearResources();
+    engine.effectsObjectServer.clearObjectInstances();
+    engine.assetServer.clearSceneData();
 
     // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
     PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
 
-    engine.getServer(AssetServer).prepareAssets(loadedScene, loadedScene.assets);
+    engine.assetServer.prepareAssets(loadedScene, loadedScene.assets);
     this.updateTextVariables(loadedScene, options.variables);
 
     const composition = this.createComposition(loadedScene, options);
@@ -98,7 +98,7 @@ export class SceneServer extends EngineServer {
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
     if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      engine.getServer(AssetServer).createShaderVariant();
+      engine.assetServer.createShaderVariant();
     }
 
     return composition;
@@ -122,7 +122,7 @@ export class SceneServer extends EngineServer {
         }
 
         item.components.forEach(({ id }) => {
-          const componentData = this.engine.getServer(AssetServer).findEffectsObjectData(id) as spec.TextComponentData;
+          const componentData = this.engine.assetServer.findEffectsObjectData(id) as spec.TextComponentData;
 
           if (componentData?.dataType === DataType.TextComponent || componentData?.dataType === DataType.RichTextComponent) {
             componentData.options.text = textVariable;

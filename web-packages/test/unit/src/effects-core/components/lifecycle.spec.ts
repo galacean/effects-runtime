@@ -104,7 +104,7 @@ describe('core/components/lifecycle', () => {
   it('keeps registration flags consistent when clearing the engine lookup table', () => {
     const node = item('node');
 
-    player.engine.effectsObjectServer.clearResources();
+    player.engine.effectsObjectServer.clearObjectInstances();
     expect(node.isRegistered).equals(false);
     expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
     node.registerObject();
