@@ -336,7 +336,7 @@ export class TextComponent extends MaskableGraphic {
     const hasEffect = (padL | padR | padT | padB) !== 0;
 
     // 限制 fontScale，确保纹理尺寸不超过 maxTextureSize / 2
-    const maxTexSize = this.engine.graphicsServer.renderingDevice.gpuCapability.detail.maxTextureSize / 2;
+    const maxTexSize = this.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize / 2;
     const logicalWidth = hasEffect ? baseWidth + padL + padR : baseWidth;
     const logicalHeight = hasEffect ? baseHeight + padT + padB : baseHeight;
     const maxLogical = Math.max(logicalWidth, logicalHeight, 1);

@@ -31,7 +31,7 @@ describe('webgl/dispose', function () {
 
     renderer = glEngine.renderer;
     engine = glEngine;
-    gl = (glEngine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    gl = (glEngine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
   });
 
   beforeEach(async () => {
@@ -39,7 +39,7 @@ describe('webgl/dispose', function () {
   });
 
   afterEach(() => {
-    const sb = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const sb = (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     sb.dispose();
     destroyMesh(result);

@@ -111,7 +111,7 @@ export class ThreeMesh extends Mesh implements Sortable {
 
   override onStart (): void {
     super.onStart();
-    (this.engine.graphicsServer.renderingDevice as RenderingDeviceThree).threeGroup.add(this.mesh);
+    (this.engine.displayServer.renderingDevice as RenderingDeviceThree).threeGroup.add(this.mesh);
   }
 
   /**

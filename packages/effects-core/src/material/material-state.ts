@@ -258,7 +258,7 @@ export class MaterialState {
   }
 
   apply (engine: Engine) {
-    const device = engine.graphicsServer.renderingDevice;
+    const device = engine.displayServer.renderingDevice;
 
     device.setSampleAlphaToCoverage(this.sampleAlphaToCoverage);
     device.setBlending(this.blending);

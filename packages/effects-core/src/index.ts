@@ -24,6 +24,7 @@ export * from './downloader';
 export * from './effects-object';
 export * from './engine';
 export * from './engine-server';
+export * from './display-server';
 export * from './scene-server';
 export * from './input';
 export {
@@ -53,7 +54,6 @@ export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
 export * from './precompositions';
-export * from './graphics-server';
 export * from './rendering-server';
 export * from './rendering-device';
 

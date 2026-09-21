@@ -118,7 +118,7 @@ describe('core/engine/servers', () => {
     expect(engine.getServer(SceneServer).compositions).to.deep.equal([second, first]);
     first.setIndex(0);
     expect(engine.getServer(SceneServer).compositions).to.deep.equal([first, second]);
-    engine.setSize(200, 100);
+    engine.displayServer.setSize(200, 100);
     expect(first.camera.aspect).to.equal(2);
     expect(second.camera.aspect).to.equal(2);
     first.dispose();
@@ -216,7 +216,7 @@ describe('core/engine/servers', () => {
     const disposeTexture = texture.dispose.bind(texture);
 
     texture.dispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       disposals++;
       disposeTexture();
     };
@@ -404,12 +404,16 @@ describe('core/engine/servers', () => {
       override onInit () {
         renderer = this.engine.renderer;
         expect(renderer.constructor).to.equal(Renderer);
-        expect(this.engine.graphicsServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
+        expect(this.engine.displayServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
       }
     }
 
     register('three-device', Server);
     const canvas = document.createElement('canvas');
+
+    canvas.width = 333;
+    canvas.height = 111;
+
     const gl = canvas.getContext('webgl2')!;
     const createDevice = RenderingDevice.create;
     let engine: Engine;
@@ -421,6 +425,8 @@ describe('core/engine/servers', () => {
       RenderingDevice.create = createDevice;
     }
 
+    expect([canvas.width, canvas.height]).to.deep.equal([333, 111]);
+    expect(canvas.style.width).to.equal('');
     expect(engine.renderer).to.equal(renderer);
     engine.dispose();
     gl.getExtension('WEBGL_lose_context')?.loseContext();

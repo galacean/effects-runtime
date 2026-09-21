@@ -113,7 +113,7 @@ export class Shader extends Asset {
         shaderMacros.push([key, macros[key]]);
       }
     }
-    const shaderVariant = this.engine.graphicsServer.renderingDevice.getShaderLibrary()!.createShader(this.shaderData, shaderMacros);
+    const shaderVariant = this.engine.displayServer.renderingDevice.getShaderLibrary()!.createShader(this.shaderData, shaderMacros);
 
     shaderVariant.shader = this;
 

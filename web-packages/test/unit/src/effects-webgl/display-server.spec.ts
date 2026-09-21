@@ -1,16 +1,16 @@
-import { Engine, EngineServer, GraphicsServer, RenderingDevice, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Engine, EngineServer, DisplayServer, RenderingDevice, effectsClass, effectsClassStore } from '@galacean/effects';
 import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-describe('webgl/graphics-server', () => {
+describe('webgl/display-server', () => {
   const engines: Engine[] = [];
   const createDevice = RenderingDevice.create;
 
   afterEach(() => {
     RenderingDevice.create = createDevice;
     engines.splice(0).forEach(engine => engine.dispose());
-    delete effectsClassStore['test-graphics-observer'];
+    delete effectsClassStore['test-display-observer'];
   });
 
   function createEngine () {
@@ -26,20 +26,20 @@ describe('webgl/graphics-server', () => {
 
     class Observer extends EngineServer {
       override onInit (): void {
-        const device = this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+        const device = this.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
         expect(this.engine.constructor).to.equal(Engine);
-        expect(this.engine.getServer(GraphicsServer)).to.be.instanceOf(GraphicsServer);
+        expect(this.engine.getServer(DisplayServer)).to.be.instanceOf(DisplayServer);
         expect(device).to.be.instanceOf(RenderingDevice);
         expect(device).to.be.instanceOf(RenderingDeviceWebGL);
         expect(device.engine).to.equal(this.engine);
         expect(device.gl.isContextLost()).to.equal(false);
-        expect(this.engine.graphicsServer.renderingDevice.getShaderLibrary()).to.equal(device.shaderLibrary);
-        expect(this.engine.graphicsServer.renderingDevice.gpuCapability).to.equal(device.gpuCapability);
+        expect(this.engine.displayServer.renderingDevice.getShaderLibrary()).to.equal(device.shaderLibrary);
+        expect(this.engine.displayServer.renderingDevice.gpuCapability).to.equal(device.gpuCapability);
         devices.push(device);
       }
     }
-    effectsClass('test-graphics-observer')(Observer);
+    effectsClass('test-display-observer')(Observer);
     createEngine();
     createEngine();
     expect(devices).to.have.length(2);
@@ -51,7 +51,7 @@ describe('webgl/graphics-server', () => {
 
     class Observer extends EngineServer {
       override onDispose (): void {
-        expect(this.engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+        expect(this.engine.displayServer.renderingDevice.disposed).to.equal(false);
         calls.push('server');
       }
     }
@@ -66,7 +66,7 @@ describe('webgl/graphics-server', () => {
         super.dispose();
       }
     }
-    effectsClass('test-graphics-observer')(Observer);
+    effectsClass('test-display-observer')(Observer);
     RenderingDevice.create = owner => new Device(owner);
     const engine = new Engine(document.createElement('canvas'), { manualRender: true });
 
@@ -76,23 +76,23 @@ describe('webgl/graphics-server', () => {
     const disposePool = engine.renderingServer.renderTargetPool.dispose.bind(engine.renderingServer.renderTargetPool);
 
     engine.renderer.dispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       calls.push('resources');
       disposeRenderer();
     };
     engine.effectsObjectServer.onDispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       calls.push('objects');
       disposeObjects();
     };
     engine.renderingServer.renderTargetPool.dispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       calls.push('remaining-resources');
       disposePool();
     };
     engine.dispose();
     engine.dispose();
-    expect(engine.graphicsServer.renderingDevice.disposed).to.equal(true);
+    expect(engine.displayServer.renderingDevice.disposed).to.equal(true);
     expect(calls).to.deep.equal(['initialize', 'server', 'resources', 'remaining-resources', 'objects', 'device']);
   });
 });

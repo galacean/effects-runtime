@@ -19,7 +19,7 @@ describe('webgl/geometry', () => {
   });
 
   afterEach(() => {
-    const canvas = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.canvas as HTMLCanvasElement;
+    const canvas = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.canvas as HTMLCanvasElement;
 
     engine.dispose();
     canvas.remove();
@@ -46,8 +46,8 @@ describe('webgl/geometry', () => {
     const staticResult = new Float32Array(2);
     const dynamicResult = new Float32Array(2);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, staticBuffer.getBuffer()!, staticResult);
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, dynamicBuffer.getBuffer()!, dynamicResult);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, staticBuffer.getBuffer()!, staticResult);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, dynamicBuffer.getBuffer()!, dynamicResult);
     expect(staticResult).to.deep.equal(new Float32Array([0, 1]));
     expect(dynamicResult).to.deep.equal(new Float32Array([2, 3]));
     staticBuffer.dispose();
@@ -60,7 +60,7 @@ describe('webgl/geometry', () => {
     buffer.updateDirectly(new Uint16Array([9]), 1);
     const result = new Uint16Array(4);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
     expect(result).to.deep.equal(new Uint16Array([0, 1, 9, 3]));
     expect(buffer.getData()).to.equal(undefined);
     buffer.dispose();
@@ -73,7 +73,7 @@ describe('webgl/geometry', () => {
       'aPosition',
       { size: 2 },
     );
-    const dataBuffer = engine.graphicsServer.renderingDevice.createVertexBuffer(new Float32Array([0, 1]), {
+    const dataBuffer = engine.displayServer.renderingDevice.createVertexBuffer(new Float32Array([0, 1]), {
       usage: glContext.STATIC_DRAW,
       type: glContext.FLOAT,
       byteStride: 2 * Float32Array.BYTES_PER_ELEMENT,
@@ -104,15 +104,15 @@ describe('webgl/geometry', () => {
       byteStride: 0,
       instanceDivisor: 0,
     };
-    const small = engine.graphicsServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 2]), options);
-    const large = engine.graphicsServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
+    const small = engine.displayServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 2]), options);
+    const large = engine.displayServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
 
     expect(small.is32Bits).to.equal(false);
     expect(small.capacity).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
     expect(large.is32Bits).to.equal(true);
     expect(large.capacity).to.equal(3 * Uint32Array.BYTES_PER_ELEMENT);
-    engine.graphicsServer.renderingDevice.releaseBuffer(small);
-    engine.graphicsServer.renderingDevice.releaseBuffer(large);
+    engine.displayServer.renderingDevice.releaseBuffer(small);
+    engine.displayServer.renderingDevice.releaseBuffer(large);
   });
 
   it('shares one buffer between interleaved attribute views', () => {
@@ -164,7 +164,7 @@ describe('webgl/geometry', () => {
     geometry.flush();
     const result = new Float32Array(8);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, dataBuffer, result);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, dataBuffer, result);
     expect(dataBuffer.capacity).to.equal(capacity);
     expect(result).to.deep.equal(new Float32Array([8, 9, 2, 3, 9, 8, 6, 7]));
     geometry.dispose();
@@ -197,13 +197,13 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.initialize();
-    const updateDynamicIndexBuffer = engine.graphicsServer.renderingDevice.updateDynamicIndexBuffer.bind(engine.graphicsServer.renderingDevice);
+    const updateDynamicIndexBuffer = engine.displayServer.renderingDevice.updateDynamicIndexBuffer.bind(engine.displayServer.renderingDevice);
     const indexBuffer = geometry.getIndexBuffer()!;
     const capacity = indexBuffer.capacity;
     let uploadedByteLength = 0;
     let uploadedByteOffset = 0;
 
-    engine.graphicsServer.renderingDevice.updateDynamicIndexBuffer = (indexBuffer, indices, byteOffset = 0) => {
+    engine.displayServer.renderingDevice.updateDynamicIndexBuffer = (indexBuffer, indices, byteOffset = 0) => {
       uploadedByteLength = Array.isArray(indices)
         ? indices.length * Float32Array.BYTES_PER_ELEMENT
         : indices.byteLength;
@@ -214,7 +214,7 @@ describe('webgl/geometry', () => {
     geometry.setIndexSubData(3, new Uint16Array([0, 2, 1]));
     const result = new Uint16Array(6);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, indexBuffer, result, 0, true);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, indexBuffer, result, 0, true);
     expect(indexBuffer.capacity).to.equal(capacity);
     expect(uploadedByteLength).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
     expect(uploadedByteOffset).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
@@ -235,7 +235,7 @@ describe('webgl/geometry', () => {
     expect(geometry.getIndexType()).to.equal(glContext.UNSIGNED_INT);
     const result = new Uint32Array(3);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getIndexBuffer()!, result, 0, true);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getIndexBuffer()!, result, 0, true);
     expect(result).to.deep.equal(new Uint32Array([0, 1, 2]));
     geometry.dispose();
   });
@@ -266,7 +266,7 @@ describe('webgl/geometry', () => {
     expect(buffer.isDisposed).to.equal(false);
     const result = new Float32Array(8);
 
-    readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
     expect(result).to.deep.equal(data);
     shared.dispose();
     expect(buffer.isDisposed).to.equal(true);
@@ -291,15 +291,15 @@ describe('webgl/geometry', () => {
 
   it('disposes cached vertex array objects when the layout changes', () => {
     const geometry = createGeometry(engine);
-    const resource = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
-    const releaseVertexArrayObject = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject.bind(engine.graphicsServer.renderingDevice);
+    const resource = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
+    const releaseVertexArrayObject = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject.bind(engine.displayServer.renderingDevice);
     let released = false;
 
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = vertexArrayObject => {
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = vertexArrayObject => {
       released = vertexArrayObject === resource;
       releaseVertexArrayObject(vertexArrayObject);
     };
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => resource;
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => resource;
     geometry.bind({ key: 'test-program' } as ShaderVariant);
     geometry.setIndexData(new Uint32Array([0, 1, 2]));
     expect(released).to.equal(true);
@@ -308,15 +308,15 @@ describe('webgl/geometry', () => {
 
   it('disposes cached vertex array objects when vertex data changes', () => {
     const geometry = createGeometry(engine);
-    const resource = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
-    const releaseVertexArrayObject = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject.bind(engine.graphicsServer.renderingDevice);
+    const resource = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
+    const releaseVertexArrayObject = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject.bind(engine.displayServer.renderingDevice);
     let released = false;
 
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = vertexArrayObject => {
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = vertexArrayObject => {
       released = vertexArrayObject === resource;
       releaseVertexArrayObject(vertexArrayObject);
     };
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => resource;
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => resource;
     geometry.bind({ key: 'test-program' } as ShaderVariant);
     geometry.setAttributeSubData('aPosition', 0, new Float32Array([1, 2]));
     expect(released).to.equal(true);
@@ -325,15 +325,15 @@ describe('webgl/geometry', () => {
 
   it('discards cached vertex array objects without releasing them during restore', () => {
     const geometry = createGeometry(engine);
-    const resource = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
+    const resource = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
     let released = false;
     let recorded = 0;
 
     geometry.initialize();
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = () => {
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = () => {
       released = true;
     };
-    (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => {
+    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => {
       recorded++;
 
       return resource;
@@ -347,7 +347,7 @@ describe('webgl/geometry', () => {
   });
 
   it('keeps indexed drawStart in bytes', () => {
-    const gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     const originalDrawElements = gl.drawElements;
     const offsets: number[] = [];
     const types: number[] = [];
@@ -400,7 +400,7 @@ describe('webgl/geometry', () => {
   });
 
   it('draws unindexed sub-mesh ranges through the renderer', () => {
-    const gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     const originalDrawArrays = gl.drawArrays;
     const calls: number[][] = [];
     const geometry = new Geometry(engine, {
@@ -433,7 +433,7 @@ describe('webgl/geometry', () => {
   });
 
   it('protects a cached vertex array while creating another geometry', () => {
-    const gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     const material = createMaterialStub();
     const firstGeometry = createGeometry(engine);
     const secondGeometry = createGeometry(engine);
@@ -457,7 +457,7 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.instanceCount = 2;
-    Object.defineProperty(engine.graphicsServer.renderingDevice.gpuCapability.detail, 'instanceDraw', { value: false });
+    Object.defineProperty(engine.displayServer.renderingDevice.gpuCapability.detail, 'instanceDraw', { value: false });
     expect(() => engine.renderer.drawGeometry(
       geometry,
       math.Matrix4.IDENTITY,

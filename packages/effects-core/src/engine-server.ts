@@ -3,7 +3,8 @@ import type { Engine } from './engine';
 /**
  * Engine-owned server. Register subclasses with `@effectsClass` before creating
  * an engine. Each engine creates and initializes its own instances in the Engine
- * constructor. GraphicsServer initializes the device, then RenderingServer creates the renderer
+ * constructor.
+ * DisplayServer initializes the device, then RenderingServer creates the renderer
  * before other built-in servers initialize.
  */
 export abstract class EngineServer {

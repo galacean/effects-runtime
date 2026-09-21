@@ -173,29 +173,29 @@ export class Renderer {
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
       this.currentFramebuffer = null;
-      this.engine.graphicsServer.renderingDevice.bindSystemFramebuffer();
+      this.engine.displayServer.renderingDevice.bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
   }
 
   setViewport (x: number, y: number, width: number, height: number) {
-    this.engine.graphicsServer.renderingDevice.setViewport(x, y, width, height);
+    this.engine.displayServer.renderingDevice.setViewport(x, y, width, height);
   }
 
   getViewport (): [number, number, number, number] {
-    return this.engine.graphicsServer.renderingDevice.getViewport();
+    return this.engine.displayServer.renderingDevice.getViewport();
   }
 
   clear (action: RenderPassClearAction) {
-    this.engine.graphicsServer.renderingDevice.clear(action);
+    this.engine.displayServer.renderingDevice.clear(action);
   }
 
   getWidth (): number {
-    return this.engine.graphicsServer.renderingDevice.getWidth();
+    return this.engine.displayServer.renderingDevice.getWidth();
   }
 
   getHeight (): number {
-    return this.engine.graphicsServer.renderingDevice.getHeight();
+    return this.engine.displayServer.renderingDevice.getHeight();
   }
 
   /**
@@ -204,7 +204,7 @@ export class Renderer {
    * @returns
    */
   getShaderLibrary (): ShaderLibrary | null {
-    return this.engine.graphicsServer.renderingDevice.getShaderLibrary();
+    return this.engine.displayServer.renderingDevice.getShaderLibrary();
   }
 
   get rendererFeatures (): readonly RendererFeature[] {
@@ -232,7 +232,7 @@ export class Renderer {
       return;
     }
     if (options.postProcessingEnabled) {
-      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = this.engine.graphicsServer.renderingDevice.gpuCapability.detail;
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
 
       if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear) {
         throw new Error('Post processing requires half float textures with color attachment and linear filtering support.');
@@ -349,9 +349,9 @@ export class Renderer {
     const instanceCount = geometry.instanceCount || undefined;
 
     if (indexBuffer) {
-      this.engine.graphicsServer.renderingDevice.drawElementsType(geometry.mode, offset, count, instanceCount);
+      this.engine.displayServer.renderingDevice.drawElementsType(geometry.mode, offset, count, instanceCount);
     } else {
-      this.engine.graphicsServer.renderingDevice.drawArraysType(geometry.mode, offset, count, instanceCount);
+      this.engine.displayServer.renderingDevice.drawArraysType(geometry.mode, offset, count, instanceCount);
     }
   }
 

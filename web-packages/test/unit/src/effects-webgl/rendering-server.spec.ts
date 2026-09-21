@@ -43,7 +43,7 @@ describe('webgl/rendering-server', () => {
     const disposeScene = composition.dispose.bind(composition);
     const disposeGraphics = graphics.dispose.bind(graphics);
     const disposeRenderer = server.renderer.dispose.bind(server.renderer);
-    const disposeDevice = engine.graphicsServer.renderingDevice.dispose.bind(engine.graphicsServer.renderingDevice);
+    const disposeDevice = engine.displayServer.renderingDevice.dispose.bind(engine.displayServer.renderingDevice);
 
     composition.dispose = () => {
       expect(server.graphics).to.equal(graphics);
@@ -51,16 +51,16 @@ describe('webgl/rendering-server', () => {
       disposeScene();
     };
     graphics.dispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       calls.push('graphics');
       disposeGraphics();
     };
     server.renderer.dispose = () => {
-      expect(engine.graphicsServer.renderingDevice.disposed).to.equal(false);
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
       calls.push('renderer');
       disposeRenderer();
     };
-    engine.graphicsServer.renderingDevice.dispose = () => {
+    engine.displayServer.renderingDevice.dispose = () => {
       calls.push('device');
       disposeDevice();
     };

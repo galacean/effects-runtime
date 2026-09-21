@@ -29,8 +29,8 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
     before(() => {
       engine = new Engine(canvas, { glType: framework });
       fakeRenderer = new Renderer(engine);
-      gl = (fakeRenderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
-      gpu = engine.graphicsServer.renderingDevice.gpuCapability;
+      gl = (fakeRenderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
+      gpu = engine.displayServer.renderingDevice.gpuCapability;
     });
 
     after(() => {

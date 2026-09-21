@@ -68,7 +68,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   get gpuCapability () {
-    return this.engine.graphicsServer.renderingDevice.gpuCapability;
+    return this.engine.displayServer.renderingDevice.gpuCapability;
   }
   /**
    * 当前播放的合成对象数组，请不要修改内容
@@ -90,37 +90,37 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   private get displayAspect () {
-    return this.engine.displayAspect;
+    return this.engine.displayServer.displayAspect;
   }
 
   private set displayAspect (value: number) {
-    this.engine.displayAspect = value;
+    this.engine.displayServer.displayAspect = value;
   }
 
   private get displayScale () {
-    return this.engine.displayScale;
+    return this.engine.displayServer.displayScale;
   }
 
   private set displayScale (value: number) {
-    this.engine.displayScale = value;
+    this.engine.displayServer.displayScale = value;
   }
 
   private get offscreenMode () {
-    return this.engine.offscreenMode;
+    return this.engine.displayServer.offscreenMode;
   }
 
   private set offscreenMode (value: boolean) {
-    this.engine.offscreenMode = value;
+    this.engine.displayServer.offscreenMode = value;
   }
   /**
    * 播放器的像素比
    */
   private get pixelRatio () {
-    return this.engine.pixelRatio;
+    return this.engine.displayServer.pixelRatio;
   }
 
   private set pixelRatio (value: number) {
-    this.engine.pixelRatio = value;
+    this.engine.displayServer.pixelRatio = value;
   }
 
   /**
@@ -190,7 +190,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         doNotHandleContextLost,
         ownsCanvas,
       });
-      this.engine.offscreenMode = true;
+      this.engine.displayServer.offscreenMode = true;
 
       // Bind engine events
       this.engine.on('rendererror', (e: Event | Error) => {
@@ -600,7 +600,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 将播放器重新和父容器大小对齐
    */
   resize () {
-    this.engine.resize();
+    this.engine.displayServer.resize();
   }
 
   /**
@@ -657,7 +657,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.canvas instanceof HTMLCanvasElement) {
       // TODO: 数据模版下掉可以由文本模块单独管理
       canvasPool.dispose();
-      if (this.engine.ownsCanvas) {
+      if (this.engine.displayServer.ownsCanvas) {
         // canvas will become a cry emoji in Android if still in dom
         if (this.canvas.parentNode) {
           this.canvas.parentNode.removeChild(this.canvas);

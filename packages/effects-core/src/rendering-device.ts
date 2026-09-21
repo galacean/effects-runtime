@@ -11,6 +11,8 @@ import { addItem, removeItem } from './utils';
 export class RenderingDevice implements Disposable {
   static create: (engine: Engine) => RenderingDevice = engine => new RenderingDevice(engine);
 
+  /** 是否不处理上下文丢失恢复（构造期配置，默认 true）。 */
+  doNotHandleContextLost: boolean;
   gpuCapability: GPUCapability;
   protected _disposed = false;
   private framebuffers: Framebuffer[] = [];
@@ -18,7 +20,9 @@ export class RenderingDevice implements Disposable {
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
 
-  constructor (readonly engine: Engine) {}
+  constructor (readonly engine: Engine) {
+    this.doNotHandleContextLost = engine.options.doNotHandleContextLost ?? true;
+  }
 
   get disposed (): boolean {
     return this._disposed;
@@ -32,7 +36,7 @@ export class RenderingDevice implements Disposable {
   protected handleContextLost (e: Event): void {
     const { engine } = this;
 
-    if (!engine.doNotHandleContextLost) {
+    if (!this.doNotHandleContextLost) {
       this._contextWasLost = true;
     }
     engine.getServer(SceneServer).compositions.forEach(comp => comp.lost(e));

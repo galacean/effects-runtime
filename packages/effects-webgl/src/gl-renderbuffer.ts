@@ -26,7 +26,7 @@ export class GLRenderbuffer extends Renderbuffer {
 
     this.initialized = true;
     this.renderer = renderer;
-    const device = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+    const device = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
     this.buffer = device.gl.createRenderbuffer() as WebGLRenderbuffer;
     device.addRenderbuffer(this);
@@ -39,7 +39,7 @@ export class GLRenderbuffer extends Renderbuffer {
     if (!this.renderer) {
       return;
     }
-    const gl = (this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
 
     // 旧句柄已失效，直接重建。
     this.buffer = gl.createRenderbuffer() as WebGLRenderbuffer;
@@ -64,7 +64,7 @@ export class GLRenderbuffer extends Renderbuffer {
     }
 
     if (width !== this.size[0] || height !== this.size[1]) {
-      const device = this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+      const device = this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
       const gl = device.gl;
 
       device.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
@@ -78,7 +78,7 @@ export class GLRenderbuffer extends Renderbuffer {
 
   dispose () {
     if (this.renderer) {
-      const device = this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+      const device = this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
       device.deleteGLRenderbuffer(this);
       device.removeRenderbuffer(this);

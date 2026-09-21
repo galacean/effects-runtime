@@ -21,7 +21,7 @@ window.addEventListener('message', async event => {
         speed,
       });
 
-      console.debug(`pre-player 渲染模式：${player.renderer.engine.graphicsServer.renderingDevice.gpuCapability.type}`);
+      console.debug(`pre-player 渲染模式：${player.renderer.engine.displayServer.renderingDevice.gpuCapability.type}`);
       compatibleCalculateItem(scene);
       void player.gotoAndPlay(currentTime);
 

@@ -68,7 +68,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
     this.context.addRestoreHandler({
       restore: async () => {
-        if (this.engine.doNotHandleContextLost) {
+        if (this.doNotHandleContextLost) {
           this.handleContextRestored();
 
           return;
@@ -532,7 +532,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     super.dispose();
 
     this.shaderLibrary?.dispose();
-    this.context.dispose(this.engine.ownsCanvas);
+    this.context.dispose(this.engine.displayServer.ownsCanvas);
     this.reset();
   }
 

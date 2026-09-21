@@ -15,7 +15,7 @@ describe('core/text-cache', () => {
     expect(atlas1x.canvas.height).to.equal(512);
     expect(atlas1x.texture.source.premultiplyAlpha).to.be.true;
 
-    engine.pixelRatio = 2;
+    engine.displayServer.pixelRatio = 2;
     const atlas2x = cache.getAtlas(20, 'Arial', 'normal', 'normal');
 
     expect(atlas2x).not.to.equal(atlas1x);

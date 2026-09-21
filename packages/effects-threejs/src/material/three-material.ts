@@ -45,7 +45,7 @@ export class ThreeMaterial extends Material {
     super(engine, props);
 
     const shader = props?.shader;
-    const level = engine.graphicsServer.renderingDevice.gpuCapability?.level ?? 1;
+    const level = engine.displayServer.renderingDevice.gpuCapability?.level ?? 1;
 
     this.shader = new Shader(engine);
     this.shader.shaderData = {
@@ -114,7 +114,7 @@ export class ThreeMaterial extends Material {
   }
 
   override use (render: Renderer, globalUniforms: GlobalUniforms): void {
-    const device = this.engine.graphicsServer.renderingDevice as RenderingDeviceThree;
+    const device = this.engine.displayServer.renderingDevice as RenderingDeviceThree;
     const composition = device.composition;
     const threeCamera = device.threeCamera;
 

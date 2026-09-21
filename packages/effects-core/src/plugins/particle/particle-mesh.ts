@@ -156,14 +156,14 @@ export class ParticleMesh implements ParticleMeshData {
       renderMode = 0,
       diffuse = this.ownTexture(Texture.createWithData(engine)),
     } = props;
-    const { detail } = engine.graphicsServer.renderingDevice.gpuCapability;
+    const { detail } = engine.displayServer.renderingDevice.gpuCapability;
     const { halfFloatTexture, maxVertexUniforms } = detail;
     const macros: ShaderMacros = [
       // spec.RenderMode
       ['RENDER_MODE', +renderMode],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
-    const { level } = engine.graphicsServer.renderingDevice.gpuCapability;
+    const { level } = engine.displayServer.renderingDevice.gpuCapability;
     const vertexKeyFrameMeta = createKeyFrameMeta();
     const fragmentKeyFrameMeta = createKeyFrameMeta();
     const enableVertexTexture = maxVertexUniforms > 0;

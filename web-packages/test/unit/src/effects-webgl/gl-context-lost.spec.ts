@@ -21,7 +21,7 @@ function onceContextRestored (engine: Engine): Promise<void> {
  */
 function emulateContextLoss (engine: Engine): Promise<void> {
   const restored = onceContextRestored(engine);
-  const ext = ((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+  const ext = ((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
 
   engine.canvas.addEventListener('webglcontextlost', () => {
     window.setTimeout(() => ext?.restoreContext(), 0);
@@ -35,7 +35,7 @@ function emulateContextLoss (engine: Engine): Promise<void> {
  * 是否具备真实上下文丢失/恢复的测试条件（需要 WEBGL_lose_context 扩展）。
  */
 function canEmulateContextLoss (engine: Engine): boolean {
-  return !!((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+  return !!((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
 }
 
 describe('webgl/gl-context-lost', () => {
@@ -67,7 +67,7 @@ describe('webgl/gl-context-lost', () => {
   describe('opt-in 自动恢复（doNotHandleContextLost=false）', () => {
     beforeEach(() => {
       engine = createEngine(false);
-      gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
+      gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
       // Engine 构造已创建内置纹理，但需 initialize 才有 GL 句柄。
       (engine.whiteTexture as GLTexture).initialize();
       (engine.transparentTexture as GLTexture).initialize();
@@ -115,7 +115,7 @@ describe('webgl/gl-context-lost', () => {
       precision highp float;
       out vec4 outColor;
       void main(){ outColor = vec4(1.0,0.0,0.0,1.0); }`;
-      const library = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+      const library = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
       const id = library.addShader({ vertex: vs, fragment: fs, name: 'restore-test' });
       const variant = (library as any).cachedShaders[id] as GLShaderVariant;
 
@@ -161,8 +161,8 @@ describe('webgl/gl-context-lost', () => {
       const vertices = new Float32Array(6);
       const indices = new Uint16Array(3);
 
-      readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, vertexBuffer.getBuffer()!, vertices);
-      readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getIndexBuffer()!, indices, 0, true);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, vertexBuffer.getBuffer()!, vertices);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getIndexBuffer()!, indices, 0, true);
       expect(vertices).to.deep.equal(new Float32Array([0, 0, 1, 0, 0, 1]));
       expect(indices).to.deep.equal(new Uint16Array([0, 1, 2]));
       geometry.dispose();
@@ -203,7 +203,7 @@ describe('webgl/gl-context-lost', () => {
       await emulateContextLoss(engine);
       const restored = new Float32Array(data.length);
 
-      readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
       expect(restored).to.deep.equal(data);
       expect(particleBufferUploads).to.equal(1);
       engine.effectsObjectServer.removeParticleSystem(particleSystem);
@@ -243,7 +243,7 @@ describe('webgl/gl-context-lost', () => {
   describe('默认模式（doNotHandleContextLost=true）', () => {
     beforeEach(() => {
       engine = createEngine(true);
-      gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
+      gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
     });
 
     it('release 释放 CPU 源数据（默认内存优先）', () => {
@@ -266,7 +266,7 @@ describe('webgl/gl-context-lost', () => {
 
   it('销毁 Engine 时可保留外部 canvas 的 WebGL context', function () {
     engine = createEngine(true, false);
-    gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
+    gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
     if (!canEmulateContextLoss(engine)) {
       this.skip();
 
@@ -280,7 +280,7 @@ describe('webgl/gl-context-lost', () => {
   describe('opt-in 模式 CPU 数据保留', () => {
     beforeEach(() => {
       engine = createEngine(false);
-      gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
+      gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
     });
 
     it('release 保留 CPU 源数据（opt-in 可恢复）', () => {

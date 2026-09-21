@@ -60,7 +60,7 @@ describe('webgl/gl-shader-library', () => {
   });
 
   it('create material shader from shaderlib', async () => {
-    const shaderLib = (rendererGL2.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const shaderLib = (rendererGL2.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
@@ -68,7 +68,7 @@ describe('webgl/gl-shader-library', () => {
       glslVersion: GLSLVersion.GLSL3,
     });
 
-    (rendererGL2.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shader);
+    (rendererGL2.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shader);
     const program = shader.program;
 
     expect(program).not.eql(null);
@@ -76,7 +76,7 @@ describe('webgl/gl-shader-library', () => {
   });
 
   it('shader cache by string hash', async () => {
-    const shaderLib = (rendererGL2.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const shaderLib = (rendererGL2.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
     const sameShader: ShaderWithSource = {
       vertex: vs,
       fragment: fs,
@@ -92,14 +92,14 @@ describe('webgl/gl-shader-library', () => {
 
   // it('compile shader after destroy program with ShaderLib::deleteShader(cacheId: number)', async () => {
   // TODO 目前删除方式改变，待补充。
-  // const shaderLib = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+  // const shaderLib = (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
   // const shaderId = shaderLib.addShader({
   //   vertex: vs,
   //   fragment: fs,
   //   macros: [['HAS_TEXTURE', 1.0]],
   // });
 
-  // (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shaderId);
+  // (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shaderId);
   // let program = (shaderLib).getProgram(shaderId);
 
   // expect(program).not.eql(null);
@@ -127,7 +127,7 @@ describe('webgl/gl-shader-library', () => {
 
   it('compile shader async', function (done) {
     const engine = new Engine(webgl2Canvas, { glType: 'webgl2' });
-    const shaderLib = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const shaderLib = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
@@ -147,7 +147,7 @@ describe('webgl/gl-shader-library', () => {
   });
 
   it('compile shader async work if no extension', function (done) {
-    const glEngine = rendererGL2.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+    const glEngine = rendererGL2.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     const shaderLib = glEngine.shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
@@ -172,7 +172,7 @@ describe('webgl/gl-shader-library', () => {
     const canvas = document.createElement('canvas');
     const engine = new Engine(canvas, { glType: 'webgl2' });
     const renderer = engine.renderer;
-    const shaderLib = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const shaderLib = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     shaderLib.addShader({
       vertex: vs,
@@ -196,7 +196,7 @@ describe('webgl/gl-shader-library', () => {
     const canvas = document.createElement('canvas');
     const engine = new Engine(canvas, { glType: 'webgl2' });
     const renderer = engine.renderer;
-    const shaderLib = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
+    const shaderLib = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
 
     shaderLib.addShader({
       vertex: vs,

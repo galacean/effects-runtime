@@ -59,7 +59,7 @@ describe('core/material//mask-ref-manager', () => {
   });
 
   afterEach(() => {
-    (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.dispose();
+    (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.dispose();
   });
 
   after(() => {

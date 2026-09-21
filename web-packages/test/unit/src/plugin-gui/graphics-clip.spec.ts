@@ -30,9 +30,9 @@ describe('plugin-gui/Graphics clip stack', () => {
     canvas.width = 200;
     canvas.height = 200;
     const scissorRects: number[][] = [];
-    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
+    const originalSetScissor = player.engine.displayServer.renderingDevice.setScissor.bind(player.engine.displayServer.renderingDevice);
 
-    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.displayServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
@@ -54,7 +54,7 @@ describe('plugin-gui/Graphics clip stack', () => {
 
       expect(scissorRects[0]).deep.equals([40, 160, 10, 20]);
     } finally {
-      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
+      player.engine.displayServer.renderingDevice.setScissor = originalSetScissor;
       player.dispose();
     }
   });
@@ -84,15 +84,15 @@ describe('plugin-gui/Graphics clip stack', () => {
     const scissorRects: number[][] = [];
     const drawScissorStates: boolean[] = [];
     let scissorEnabled = false;
-    const originalSetScissorTest = player.engine.graphicsServer.renderingDevice.setScissorTest.bind(player.engine.graphicsServer.renderingDevice);
-    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
+    const originalSetScissorTest = player.engine.displayServer.renderingDevice.setScissorTest.bind(player.engine.displayServer.renderingDevice);
+    const originalSetScissor = player.engine.displayServer.renderingDevice.setScissor.bind(player.engine.displayServer.renderingDevice);
     const originalDrawGeometry = player.engine.renderer.drawGeometry.bind(player.engine.renderer);
 
-    player.engine.graphicsServer.renderingDevice.setScissorTest = enabled => {
+    player.engine.displayServer.renderingDevice.setScissorTest = enabled => {
       scissorEnabled = enabled;
       originalSetScissorTest(enabled);
     };
-    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.displayServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
@@ -120,8 +120,8 @@ describe('plugin-gui/Graphics clip stack', () => {
       expect(scissorRects[0][2]).greaterThan(40);
       expect(scissorEnabled).equals(false);
     } finally {
-      player.engine.graphicsServer.renderingDevice.setScissorTest = originalSetScissorTest;
-      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
+      player.engine.displayServer.renderingDevice.setScissorTest = originalSetScissorTest;
+      player.engine.displayServer.renderingDevice.setScissor = originalSetScissor;
       player.engine.renderer.drawGeometry = originalDrawGeometry;
       player.dispose();
     }
@@ -146,9 +146,9 @@ describe('plugin-gui/Graphics clip stack', () => {
     canvas.width = 200;
     canvas.height = 200;
     const scissorRects: number[][] = [];
-    const originalSetScissor = player.engine.graphicsServer.renderingDevice.setScissor.bind(player.engine.graphicsServer.renderingDevice);
+    const originalSetScissor = player.engine.displayServer.renderingDevice.setScissor.bind(player.engine.displayServer.renderingDevice);
 
-    player.engine.graphicsServer.renderingDevice.setScissor = (x, y, width, height) => {
+    player.engine.displayServer.renderingDevice.setScissor = (x, y, width, height) => {
       scissorRects.push([x, y, width, height]);
       originalSetScissor(x, y, width, height);
     };
@@ -172,7 +172,7 @@ describe('plugin-gui/Graphics clip stack', () => {
       expect(scissorRects[1][3]).equals(0);
       expect(scissorRects[2]).deep.equals(scissorRects[0]);
     } finally {
-      player.engine.graphicsServer.renderingDevice.setScissor = originalSetScissor;
+      player.engine.displayServer.renderingDevice.setScissor = originalSetScissor;
       player.dispose();
     }
   });

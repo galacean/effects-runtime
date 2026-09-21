@@ -45,7 +45,7 @@ describe('player/event', () => {
     document.body.appendChild(container);
     player = new Player({ canvas, manualRender: true });
 
-    expect(player.engine.ownsCanvas).to.equal(false);
+    expect(player.engine.displayServer.ownsCanvas).to.equal(false);
 
     player.dispose();
 
@@ -62,7 +62,7 @@ describe('player/event', () => {
     player = new Player({ container, manualRender: true });
     const canvas = player.canvas;
 
-    expect(player.engine.ownsCanvas).to.equal(true);
+    expect(player.engine.displayServer.ownsCanvas).to.equal(true);
     player.dispose();
 
     expect(canvas.parentNode).to.equal(null);
@@ -75,7 +75,7 @@ describe('player/event', () => {
     });
     const lost = chai.spy();
     const restored = chai.spy();
-    const { gl } = (player.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).context;
+    const { gl } = (player.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).context;
     const ext = gl?.getExtension('WEBGL_lose_context');
     const lostEvent = new Promise<void>(resolve => {
       player.on('webglcontextlost', () => {

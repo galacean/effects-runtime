@@ -103,7 +103,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     it('uploads each scene camera uniforms to the GPU', () => {
       const first = new Composition(player.engine);
       const second = new Composition(player.engine);
-      const gl = (player.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+      const gl = (player.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
       const material = new Material(player.engine, {
         shader: {
           vertex: `
@@ -316,7 +316,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       const component = addDraw(composition, () => {});
 
       renderer.setFramebuffer(null);
-      player.engine.graphicsServer.renderingDevice.setViewport(1, 2, 8, 12);
+      player.engine.displayServer.renderingDevice.setViewport(1, 2, 8, 12);
       composition.renderer.renderComposition(composition);
       expect(acquired.size).equals(0);
       expect(renderer.renderingData).equals(idle);
@@ -383,7 +383,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
     it('reuses post-processing passes after resize and WebGL context restoration', async function () {
       this.timeout(5000);
-      const engine = player.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+      const engine = player.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
       const extension = engine.gl.getExtension('WEBGL_lose_context');
 
       if (!extension) {
@@ -446,7 +446,7 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         calls++;
       });
       const previousData = engine.renderer.renderingData;
-      const device = engine.graphicsServer.renderingDevice as RenderingDeviceThree;
+      const device = engine.displayServer.renderingDevice as RenderingDeviceThree;
 
       device.renderComposition(composition);
       expect(engine.renderer.renderingData).equals(previousData);

@@ -38,7 +38,7 @@ async function renderThreeSprite () {
   });
   const engine = new Engine(renderer.domElement, { ownsCanvas: false, manualRender: true });
 
-  (engine.graphicsServer.renderingDevice as RenderingDeviceThree).setContext(renderer.getContext());
+  (engine.displayServer.renderingDevice as RenderingDeviceThree).setContext(renderer.getContext());
   const res = await assetManager.loadScene(json);
 
   const options = res.textureOptions[0];

@@ -61,7 +61,7 @@ export class ThreeDisplayObject extends THREE.Group {
       ownsCanvas: false,
       manualRender: true,
     });
-    const device = this.engine.graphicsServer.renderingDevice as RenderingDeviceThree;
+    const device = this.engine.displayServer.renderingDevice as RenderingDeviceThree;
 
     device.setContext(context);
     device.threeGroup = this;
@@ -161,7 +161,7 @@ export class ThreeDisplayObject extends THREE.Group {
     composition.on('end', () => {
       this.dispatchEvent({ type: 'end', composition });
     });
-    (this.engine.graphicsServer.renderingDevice as RenderingDeviceThree).setOptions({
+    (this.engine.displayServer.renderingDevice as RenderingDeviceThree).setOptions({
       threeCamera: this.camera,
       threeGroup: this,
       composition,
@@ -210,7 +210,7 @@ export class ThreeDisplayObject extends THREE.Group {
     for (const composition of compositions) {
       composition.camera.updateMatrix();
       composition.sceneTicking.preRender.tick(0);
-      (this.engine.graphicsServer.renderingDevice as RenderingDeviceThree).renderComposition(composition);
+      (this.engine.displayServer.renderingDevice as RenderingDeviceThree).renderComposition(composition);
     }
   }
 }

@@ -34,13 +34,13 @@ describe('webgl/gl-mesh', () => {
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
 
-    expect((material.shaderVariant as GLShaderVariant).program.device).to.eql(engine.graphicsServer.renderingDevice);
+    expect((material.shaderVariant as GLShaderVariant).program.device).to.eql(engine.displayServer.renderingDevice);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);
     expect(resultGeom.engine.renderer).not.eql(null);
     if (gpubuffer?.getBuffer()) {
-      readBufferContents((engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl, gpubuffer.getBuffer()!, buffer);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, gpubuffer.getBuffer()!, buffer);
     }
     expect(buffer).to.eql(new Float32Array([0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5]));
 

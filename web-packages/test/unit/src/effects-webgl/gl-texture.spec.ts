@@ -22,7 +22,7 @@ describe('webgl/gl-texture', () => {
     canvas = document.createElement('canvas');
     engine = new Engine(canvas, { glType: 'webgl' });
     renderer = engine.renderer;
-    gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).context.gl as WebGLRenderingContext;
+    gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).context.gl as WebGLRenderingContext;
     registerKTX2Loader();
   });
 
@@ -712,7 +712,7 @@ describe('webgl2/gl-texture', () => {
     engine = new Engine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer;
 
-    gl = (engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';
   });

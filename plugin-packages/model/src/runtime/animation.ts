@@ -173,7 +173,7 @@ export class PSkin extends PObject {
 
   private getTextureDataMode (jointCount: number, engine: Engine): TextureDataMode {
     const uniformsRequiredForMostFeatures = 25;
-    const detail = engine.graphicsServer.renderingDevice.gpuCapability.detail;
+    const detail = engine.displayServer.renderingDevice.gpuCapability.detail;
     const availableJointUniforms = detail.maxVertexUniforms - uniformsRequiredForMostFeatures;
     const uniformsRequiredPerJoint = 8;
 

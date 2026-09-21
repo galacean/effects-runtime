@@ -108,13 +108,13 @@ export class Buffer implements Disposable {
 
     if (!this.buffer) {
       this.buffer = this.updatable
-        ? this.engine.graphicsServer.renderingDevice.createDynamicVertexBuffer(data, options)
-        : this.engine.graphicsServer.renderingDevice.createVertexBuffer(data, options);
+        ? this.engine.displayServer.renderingDevice.createDynamicVertexBuffer(data, options)
+        : this.engine.displayServer.renderingDevice.createVertexBuffer(data, options);
       if (this.updatable) {
         this.data = data;
       }
     } else if (this.updatable) {
-      this.engine.graphicsServer.renderingDevice.updateDynamicVertexBuffer(this.buffer, data);
+      this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(this.buffer, data);
       this.data = data;
     }
   }
@@ -132,7 +132,7 @@ export class Buffer implements Disposable {
     if (!this.buffer || !this.updatable) {
       return;
     }
-    this.engine.graphicsServer.renderingDevice.updateDynamicVertexBuffer(
+    this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(
       this.buffer,
       data,
       useBytes ? offset : offset * Float32Array.BYTES_PER_ELEMENT,
@@ -159,8 +159,8 @@ export class Buffer implements Disposable {
         const options = this.getDataBufferOptions();
 
         this.buffer = this.updatable
-          ? this.engine.graphicsServer.renderingDevice.createDynamicVertexBuffer(capacity, options)
-          : this.engine.graphicsServer.renderingDevice.createVertexBuffer(capacity, options);
+          ? this.engine.displayServer.renderingDevice.createDynamicVertexBuffer(capacity, options)
+          : this.engine.displayServer.renderingDevice.createVertexBuffer(capacity, options);
       } else {
         this.buffer = undefined;
       }
@@ -190,7 +190,7 @@ export class Buffer implements Disposable {
     if (!this.buffer) {
       return;
     }
-    if (this.engine.graphicsServer.renderingDevice.releaseBuffer(this.buffer)) {
+    if (this.engine.displayServer.renderingDevice.releaseBuffer(this.buffer)) {
       this.data = undefined;
       this.buffer = undefined;
       this._isDisposed = true;

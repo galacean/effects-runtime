@@ -69,9 +69,9 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
   // Path 3: 已初始化且 source 已被 release，只能跨 context readPixels
   if (
     !uploaded && obj.textureBuffer && obj.width > 0 && obj.height > 0 &&
-    obj.engine.graphicsServer.renderingDevice instanceof RenderingDeviceWebGL
+    obj.engine.displayServer.renderingDevice instanceof RenderingDeviceWebGL
   ) {
-    const engineGl = obj.engine.graphicsServer.renderingDevice.gl;
+    const engineGl = obj.engine.displayServer.renderingDevice.gl;
 
     if (obj.target === engineGl.TEXTURE_2D) {
       const w = obj.width;

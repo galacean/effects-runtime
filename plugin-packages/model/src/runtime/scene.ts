@@ -252,7 +252,7 @@ export class PSceneManager {
   }
 
   private initGlobalState (opts: PSceneOptions) {
-    const capbility = this.engine.graphicsServer.renderingDevice.gpuCapability;
+    const capbility = this.engine.displayServer.renderingDevice.gpuCapability;
     const globalState = PGlobalState.getInstance();
 
     globalState.reset();

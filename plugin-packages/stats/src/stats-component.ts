@@ -13,7 +13,7 @@ export class StatsComponent extends Component {
   monitor: Monitor;
 
   init (options: Required<StatsOptions>): void {
-    const gl = (this.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
 
     this.monitor = new Monitor(gl, options);
   }

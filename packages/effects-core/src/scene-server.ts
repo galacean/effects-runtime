@@ -49,7 +49,7 @@ export class SceneServer extends EngineServer {
   async loadScene (scene: Scene.LoadType, options: SceneLoadOptions = {}): Promise<Composition> {
     const { engine } = this;
     const last = performance.now();
-    const asyncShaderCompile = engine.graphicsServer.renderingDevice.gpuCapability?.detail?.asyncShaderCompile;
+    const asyncShaderCompile = engine.displayServer.renderingDevice.gpuCapability?.detail?.asyncShaderCompile;
     const compositionIndex = this.compositions.length;
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
@@ -72,7 +72,7 @@ export class SceneServer extends EngineServer {
     const compileStart = performance.now();
 
     await new Promise(resolve => {
-      engine.graphicsServer.renderingDevice.getShaderLibrary()?.compileAllShaders(() => resolve(null));
+      engine.displayServer.renderingDevice.getShaderLibrary()?.compileAllShaders(() => resolve(null));
     });
 
     const compileTime = performance.now() - compileStart;

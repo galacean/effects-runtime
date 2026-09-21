@@ -36,7 +36,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     } = props;
 
     this.renderer = renderer;
-    this.device = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+    this.device = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
     this.name = name;

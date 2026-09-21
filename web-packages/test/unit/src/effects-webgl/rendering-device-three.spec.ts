@@ -22,7 +22,7 @@ describe('threejs/rendering-device', () => {
     try {
       RenderingDevice.create = owner => new RenderingDeviceThree(owner);
       engine = new Engine(canvas, { manualRender: true, ownsCanvas: false });
-      (engine.graphicsServer.renderingDevice as RenderingDeviceThree).setContext(gl);
+      (engine.displayServer.renderingDevice as RenderingDeviceThree).setContext(gl);
     } finally {
       RenderingDevice.create = createDevice;
     }
@@ -37,7 +37,7 @@ describe('threejs/rendering-device', () => {
   it('uses the shared engine and renderer without clearing or resizing the host canvas', () => {
     expect(engine.constructor).equals(Engine);
     expect(engine.renderer.constructor).equals(Renderer);
-    expect(engine.graphicsServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
+    expect(engine.displayServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
     expect(engine.renderer.getWidth()).equals(31);
     expect(engine.renderer.getHeight()).equals(17);
     engine.onDraw();
@@ -74,7 +74,7 @@ describe('threejs/rendering-device', () => {
     native.addEventListener('dispose', () => disposed++);
     expect(native.getAttribute('aPosition').count).equals(3);
     expect(native.index!.array).deep.equals(new Uint16Array([0, 1, 2]));
-    engine.graphicsServer.renderingDevice.updateDynamicIndexBuffer(geometry.getIndexBuffer()!, new Uint16Array([2, 1, 0]));
+    engine.displayServer.renderingDevice.updateDynamicIndexBuffer(geometry.getIndexBuffer()!, new Uint16Array([2, 1, 0]));
     expect(getThreeGeometry(geometry)).equals(native);
     expect(native.index!.array).deep.equals(new Uint16Array([2, 1, 0]));
     geometry.dispose();
@@ -83,6 +83,6 @@ describe('threejs/rendering-device', () => {
     disposeThreeGeometries(engine);
     disposeThreeGeometries(engine);
     expect(disposed).equals(1);
-    expect(engine.graphicsServer.renderingDevice.disposed).equals(true);
+    expect(engine.displayServer.renderingDevice.disposed).equals(true);
   });
 });
