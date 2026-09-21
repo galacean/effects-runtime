@@ -4,7 +4,6 @@ import type { Material } from './material';
 import type {
   Geometry, Renderer,
 } from './render';
-import type { Framebuffer, Renderbuffer } from './render';
 import { RenderTargetPool } from './render';
 import type { SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
@@ -58,7 +57,7 @@ export type EngineEvent = {
 };
 
 /**
- * Engine 基类，负责维护所有 GPU 资源的管理及销毁
+ * Engine 基类，负责服务及引擎资源的管理和销毁
  */
 export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /**
@@ -115,8 +114,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
-  protected framebuffers: Framebuffer[] = [];
-  protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
   private servers: EngineServer[] = [];
@@ -298,9 +295,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   removeTexture (tex: Texture) {
-    if (this.disposed) {
-      return;
-    }
     removeItem(this.textures, tex);
   }
 
@@ -312,9 +306,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   removeMaterial (mat: Material) {
-    if (this.disposed) {
-      return;
-    }
     removeItem(this.materials, mat);
   }
 
@@ -326,9 +317,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   removeGeometry (geo: Geometry) {
-    if (this.disposed) {
-      return;
-    }
     removeItem(this.geometries, geo);
   }
 
@@ -342,38 +330,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   /** @internal */
   removeParticleSystem (particleSystem: ParticleSystem): void {
-    if (this.disposed) {
-      return;
-    }
     removeItem(this.particleSystems, particleSystem);
-  }
-
-  addFramebuffer (framebuffer: Framebuffer) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.framebuffers, framebuffer);
-  }
-
-  removeFramebuffer (framebuffer: Framebuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.framebuffers, framebuffer);
-  }
-
-  addRenderbuffer (renderbuffer: Renderbuffer) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.renderbuffers, renderbuffer);
-  }
-
-  removeRenderbuffer (renderbuffer: Renderbuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.renderbuffers, renderbuffer);
   }
 
   /**
@@ -409,15 +366,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.geometries.slice().forEach(geo => geo.dispose());
     this.materials.slice().forEach(mat => mat.dispose());
-    this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
-    this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
     this.textures.slice().forEach(tex => tex.dispose());
 
     this.textures = [];
     this.materials = [];
     this.geometries = [];
-    this.framebuffers = [];
-    this.renderbuffers = [];
     this.particleSystems = [];
     this.renderTargetPool.dispose();
 
@@ -431,9 +384,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   restoreGraphicsResources (): void {
     this.geometries.forEach(geo => geo.restore());
     this.particleSystems.forEach(system => system.rebuild());
-    this.renderbuffers.forEach(resource => (resource as unknown as RestoreHandler).restore());
     this.textures.forEach(resource => (resource as unknown as RestoreHandler).restore());
-    this.framebuffers.forEach(resource => (resource as unknown as RestoreHandler).restore());
   }
 
   private getTargetSize (parentEle: HTMLElement) {

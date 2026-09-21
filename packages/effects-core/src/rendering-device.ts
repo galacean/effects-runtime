@@ -1,10 +1,11 @@
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
-  DataArray, DataBuffer, DataBufferOptions, GPUCapability, IndicesArray,
+  DataArray, DataBuffer, DataBufferOptions, Framebuffer, GPUCapability, IndicesArray, Renderbuffer,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import type { Disposable } from './utils';
+import { addItem, removeItem } from './utils';
 
 /** Per-engine graphics device. Backends own GPU commands, state and context here. */
 export class RenderingDevice implements Disposable {
@@ -12,6 +13,8 @@ export class RenderingDevice implements Disposable {
 
   gpuCapability: GPUCapability;
   protected _disposed = false;
+  private framebuffers: Framebuffer[] = [];
+  private renderbuffers: Renderbuffer[] = [];
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
 
@@ -49,7 +52,51 @@ export class RenderingDevice implements Disposable {
     return 0;
   }
 
+  addFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.framebuffers, framebuffer);
+  }
+
+  removeFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.framebuffers, framebuffer);
+  }
+
+  addRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.renderbuffers, renderbuffer);
+  }
+
+  removeRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.renderbuffers, renderbuffer);
+  }
+
+  /** Restore attachment storage before rebuilding framebuffer attachments. */
+  restoreGraphicsResources (): void {
+    this.renderbuffers.forEach(resource => resource.restore());
+    this.engine.restoreGraphicsResources();
+    this.framebuffers.forEach(resource => resource.restore());
+  }
+
   dispose (): void {
+    if (this.disposed) {
+      return;
+    }
+    // Resource deletion needs a live device and context. Disposing a framebuffer
+    // can also dispose and unregister its attachments.
+    this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
+    this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
+    this.framebuffers = [];
+    this.renderbuffers = [];
     this._disposed = true;
   }
 

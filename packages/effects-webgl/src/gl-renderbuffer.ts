@@ -1,8 +1,8 @@
 import type { RenderbufferProps, Renderer } from '@galacean/effects-core';
-import { throwDestroyedError, Renderbuffer, logger, type RestoreHandler } from '@galacean/effects-core';
+import { throwDestroyedError, Renderbuffer, logger } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
-export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
+export class GLRenderbuffer extends Renderbuffer {
   buffer: WebGLRenderbuffer | null;
 
   private initialized = false;
@@ -26,14 +26,16 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
 
     this.initialized = true;
     this.renderer = renderer;
-    this.buffer = (renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL).gl.createRenderbuffer() as WebGLRenderbuffer;
-    renderer.engine.addRenderbuffer(this);
+    const device = renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
+
+    this.buffer = device.gl.createRenderbuffer() as WebGLRenderbuffer;
+    device.addRenderbuffer(this);
   }
 
   /**
    * 上下文恢复后重建 renderbuffer 句柄并重新分配存储。
    */
-  restore (): void {
+  override restore (): void {
     if (!this.renderer) {
       return;
     }
@@ -79,7 +81,7 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
       const device = this.renderer.engine.graphicsServer.renderingDevice as RenderingDeviceWebGL;
 
       device.deleteGLRenderbuffer(this);
-      this.renderer.engine.removeRenderbuffer(this);
+      device.removeRenderbuffer(this);
       this.renderer = null;
       this.buffer = null;
     }

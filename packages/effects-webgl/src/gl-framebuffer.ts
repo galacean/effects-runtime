@@ -1,5 +1,5 @@
 import type {
-  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, RestoreHandler, Texture,
+  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, Texture,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
@@ -12,7 +12,7 @@ import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 let seed = 1;
 
-export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHandler {
+export class GLFramebuffer extends Framebuffer implements Disposable {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
   depthStencilRenderbuffer?: GLRenderbuffer;
   depthTexture?: GLTexture;
@@ -117,7 +117,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     }
     if (willUseFbo) {
       this.fbo = this.device.createGLFramebuffer(this.name) as WebGLFramebuffer;
-      this.renderer.engine.addFramebuffer(this);
+      this.device.addFramebuffer(this);
     }
 
     switch (storageType) {
@@ -351,11 +351,11 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
 
   /**
    * 上下文恢复后重建 framebuffer 句柄。
-   * 内部 renderbuffer 由中央 renderbuffers 列表统一恢复，此处不重复处理。
+   * 内部 renderbuffer 由RenderingDevice 的 renderbuffers 列表统一恢复，此处不重复处理。
    * 附件纹理由各自 GLTexture.restore 恢复，此处仅重置 ready 并清空附件缓存，
    * 让下次 bind 用各纹理的最新句柄重新挂载。
    */
-  restore (): void {
+  override restore (): void {
     if (!this.fbo) {
       return;
     }
@@ -367,7 +367,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
 
   override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
     if (this.renderer) {
-      this.renderer.engine.removeFramebuffer(this);
+      this.device.removeFramebuffer(this);
       this.device.deleteGLFramebuffer(this);
       delete this.fbo;
       const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;

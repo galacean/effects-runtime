@@ -87,7 +87,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
           this.initGLContext();
           // 3. 重建 shader（先于其它资源：纹理/几何上传可能依赖 shader）。
           await this.shaderLibrary.restore();
-          this.engine.restoreGraphicsResources();
+          this.restoreGraphicsResources();
 
           if (isIOS() && this.engine.canvas) {
             this.engine.canvas.style.display = 'none';

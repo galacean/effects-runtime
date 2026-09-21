@@ -1,4 +1,5 @@
 import type { Texture } from '../texture';
+import type { RestoreHandler } from '../utils';
 import type { Renderbuffer } from './renderbuffer';
 import type { RenderPassAttachmentStorageType, RenderPassDepthStencilAttachmentOptions } from './render-pass';
 import type { RenderPassDestroyAttachmentType, RenderPassStoreAction } from './render-pass';
@@ -25,7 +26,7 @@ export enum RenderTextureFormat {
 /**
  *
  */
-export class Framebuffer {
+export class Framebuffer implements RestoreHandler {
   depthStencilStorageType: RenderPassAttachmentStorageType;
   name: string;
   viewport: [x: number, y: number, width: number, height: number];
@@ -74,6 +75,10 @@ export class Framebuffer {
   getColorTextures (): Texture[] {
     // OVERRIDE
     return [];
+  }
+
+  restore (): void {
+    // OVERRIDE
   }
 
   dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
