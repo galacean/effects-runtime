@@ -36,10 +36,13 @@ describe('core/engine/input-server', () => {
     const player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
 
     try {
+      //@ts-expect-error
       expect(player.event).to.equal(player.engine.inputServer);
+      //@ts-expect-error
       player.event.enabled = true;
       expect(player.interactive).to.equal(true);
       player.skipPointerMovePicking = false;
+      //@ts-expect-error
       expect(player.event.skipPointerMovePicking).to.equal(false);
     } finally {
       player.dispose();

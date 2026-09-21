@@ -96,7 +96,17 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.runRenderLoop(this.mainLoop.bind(this));
     }
 
-    this.initializeServers();
+    this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
+    this.servers.sort((a, b) => a.order - b.order);
+    this.displayServer = this.getServer(DisplayServer);
+    this.inputServer = this.getServer(InputServer);
+    this.renderingServer = this.getServer(RenderingServer);
+    this.effectsObjectServer = this.getServer(EffectsObjectServer);
+    this.assetServer = this.getServer(AssetServer);
+
+    for (const server of this.servers) {
+      server.onInit();
+    }
 
     PluginSystem.notifyEngineCreated(this);
   }
@@ -117,20 +127,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     const server = this.servers.find(server => server.constructor === constructor) as T | undefined;
 
     return server as T;
-  }
-
-  private initializeServers (): void {
-    this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
-    this.servers.sort((a, b) => a.order - b.order);
-    this.displayServer = this.getServer(DisplayServer);
-    this.inputServer = this.getServer(InputServer);
-    this.renderingServer = this.getServer(RenderingServer);
-    this.effectsObjectServer = this.getServer(EffectsObjectServer);
-    this.assetServer = this.getServer(AssetServer);
-
-    for (const server of this.servers) {
-      server.onInit();
-    }
   }
 
   runRenderLoop (renderFunction: (dt: number) => void): void {

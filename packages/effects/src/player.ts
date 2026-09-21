@@ -85,7 +85,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return this.engine.assetServer;
   }
 
-  get event () {
+  private get event () {
     return this.engine.inputServer;
   }
 
