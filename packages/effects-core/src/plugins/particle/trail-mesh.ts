@@ -56,6 +56,7 @@ export class TrailMesh {
 
   private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
+  private readonly ownedTextures: Texture[] = [];
   private readonly attributeData = new Map<Buffer, Float32Array>();
 
   constructor (
@@ -97,12 +98,12 @@ export class TrailMesh {
     if (colorOverLifetime) {
       macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1;
-      uniformValues.uColorOverLifetime = Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime));
+      uniformValues.uColorOverLifetime = this.ownTexture(Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime)));
     }
     if (colorOverTrail) {
       macros.push(['COLOR_OVER_TRAIL', true]);
       shaderCacheId |= 1 << 2;
-      uniformValues.uColorOverTrail = Texture.createWithData(engine, imageDataFromGradient(colorOverTrail));
+      uniformValues.uColorOverTrail = this.ownTexture(Texture.createWithData(engine, imageDataFromGradient(colorOverTrail)));
     }
     if (useAttributeTrailStart) {
       macros.push(['ATTR_TRAIL_START', 1]);
@@ -121,7 +122,7 @@ export class TrailMesh {
     if (enableVertexTexture && lookUpTexture) {
       const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
 
-      uniformValues.uVCurveValueTexture = tex;
+      uniformValues.uVCurveValueTexture = this.ownTexture(tex);
     } else {
       uniformValues.uVCurveValues = ValueGetter.getAllData(keyFrameMeta);
     }
@@ -194,7 +195,7 @@ export class TrailMesh {
         // priority: order,
       }
     );
-    const uMaskTex = texture ?? Texture.createWithData(engine);
+    const uMaskTex = texture ?? this.ownTexture(Texture.createWithData(engine));
 
     Object.keys(uniformValues).map(name => {
       const value = uniformValues[name];
@@ -434,6 +435,19 @@ export class TrailMesh {
 
     target.set(data, offset);
     this.geometry.setAttributeSubData(name, offset, data);
+  }
+
+  dispose (): void {
+    this.mesh.dispose();
+    this.ownedTextures.forEach(texture => texture.dispose());
+    this.ownedTextures.length = 0;
+    this.attributeData.clear();
+  }
+
+  private ownTexture (texture: Texture): Texture {
+    this.ownedTextures.push(texture);
+
+    return texture;
   }
 
   /**

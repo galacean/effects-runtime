@@ -435,7 +435,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   override onDestroy (): void {
     if (this.item && this.item.composition) {
-      this.meshes.forEach(mesh => mesh.dispose());
+      this.renderer?.disposeMeshes();
     }
   }
 
@@ -984,13 +984,7 @@ export class ParticleSystem extends Component implements Maskable {
         if (color[0] === spec.ValueType.GRADIENT_COLOR) {
           particleMeshProps.colorOverLifetime.color = (colorOverLifetime.color as spec.GradientColor)[1];
         } else if (color[0] === spec.ValueType.RGBA_COLOR) {
-          particleMeshProps.colorOverLifetime.color = Texture.createWithData(
-            this.engine,
-            {
-              data: new Uint8Array(color[1] as unknown as number[]),
-              width: 1,
-              height: 1,
-            });
+          particleMeshProps.colorOverLifetime.color = new Uint8Array(color[1] as unknown as number[]);
         } else if (color instanceof Texture) {
           particleMeshProps.colorOverLifetime.color = color;
         }
