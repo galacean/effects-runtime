@@ -1,13 +1,25 @@
-import { Buffer, Engine, Geometry, Renderer, RenderingDevice } from '@galacean/effects';
+import type { TextureSourceOptions, spec } from '@galacean/effects';
+import { Asset, Buffer, Engine, Geometry, Renderer, RenderingDevice, Texture, TextureSourceType, VertexBuffer, glContext } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import type { ThreeDataBuffer } from '../../../../../packages/effects-threejs/src/three-data-buffer';
 import { getThreeGeometry, disposeThreeGeometries } from '../../../../../packages/effects-threejs/src/three-geometry';
+
+import { GPUTextureThree } from '../../../../../packages/effects-threejs/src/gpu-texture-three';
+import { ThreeMaterial } from '../../../../../packages/effects-threejs/src/material/three-material';
 
 const { expect } = chai;
 
 describe('threejs/rendering-device', () => {
   let engine: Engine;
   let gl: WebGL2RenderingContext;
+
+  function createTexture (source: TextureSourceOptions): Texture {
+    const texture = new Texture(engine, source);
+
+    texture.initialize();
+
+    return texture;
+  }
 
   beforeEach(() => {
     const canvas = document.createElement('canvas');
@@ -49,6 +61,115 @@ describe('threejs/rendering-device', () => {
     expect(gl.isContextLost()).equals(false);
   });
 
+  it('composes a texture asset with a device-created Three texture resource', () => {
+    const device = engine.displayServer.renderingDevice;
+    const unallocated = device.createTexture() as GPUTextureThree;
+
+    expect(unallocated).to.be.instanceOf(GPUTextureThree);
+    expect(unallocated).not.to.be.instanceOf(Asset);
+    expect(unallocated.texture).to.equal(undefined);
+    unallocated.dispose();
+
+    const data = new Uint8Array([12, 34, 56, 255]);
+    const texture = createTexture({ data: { width: 1, height: 1, data }, flipY: true, minFilter: glContext.LINEAR });
+    const gpu = texture.getGPUTexture() as GPUTextureThree;
+    const native = gpu.texture;
+
+    expect(texture.constructor).equals(Texture);
+    expect(native).to.have.property('isDataTexture', true);
+    expect(native.image.data).equals(data);
+    expect(native.flipY).equals(true);
+    expect(native.minFilter).equals(GPUTextureThree.toThreeJsTextureFilter(glContext.LINEAR));
+    expect(native.version).equals(1);
+    expect(texture.width).equals(1);
+    texture.initialize();
+    expect(gpu.texture).equals(native);
+    texture.dispose();
+    expect(gl.isContextLost()).equals(false);
+  });
+
+  it('replaces native textures on update and keeps material bindings borrowed', () => {
+    const texture = createTexture({ data: { width: 1, height: 1, data: new Uint8Array(4) }, flipY: true });
+    const gpu = texture.getGPUTexture() as GPUTextureThree;
+    const oldTexture = gpu.texture;
+    const material = new ThreeMaterial(engine);
+    let oldDisposed = 0;
+    let replacementDisposed = 0;
+
+    oldTexture.addEventListener('dispose', () => oldDisposed++);
+    material.setTexture('_MainTex', texture);
+    expect(material.getTexture('_MainTex')).equals(texture);
+    expect(material.material.uniforms._MainTex.value).equals(oldTexture);
+    texture.updateSource({ data: { width: 2, height: 1, data: new Uint8Array(8) } });
+    expect(oldDisposed).equals(1);
+    expect(texture.getGPUTexture()).equals(gpu);
+    expect(gpu.texture).not.equals(oldTexture);
+    expect(gpu.texture.flipY).equals(true);
+    expect(texture.width).equals(2);
+    gpu.texture.addEventListener('dispose', () => replacementDisposed++);
+    material.setTexture('_MainTex', texture);
+    expect(material.material.uniforms._MainTex.value).equals(gpu.texture);
+    material.onSetUniformValue('_MainTex', texture);
+    expect(material.material.uniforms._MainTex.value).equals(gpu.texture);
+    material.dispose();
+    expect(replacementDisposed).equals(0);
+    texture.dispose();
+    expect(replacementDisposed).equals(1);
+    expect(gl.isContextLost()).equals(false);
+  });
+
+  it('initializes a deserialized texture through the material entry point', () => {
+    const texture = new Texture(engine);
+    const canvas = document.createElement('canvas');
+
+    canvas.width = 3;
+    canvas.height = 2;
+    texture.fromData({ id: 'three-texture-asset', image: canvas } as unknown as spec.EffectsObjectData);
+    const material = new ThreeMaterial(engine);
+
+    material.setTexture('_MainTex', texture);
+    const native = (texture.getGPUTexture() as GPUTextureThree).texture;
+
+    expect(material.material.uniforms._MainTex.value).equals(native);
+    expect(texture.getInstanceId()).equals('three-texture-asset');
+    expect(native.image).equals(canvas);
+    expect(texture.width).equals(3);
+    expect(texture.height).equals(2);
+    texture.initialize();
+    expect((texture.getGPUTexture() as GPUTextureThree).texture).equals(native);
+    material.dispose();
+    texture.dispose();
+  });
+
+  it('preserves the default, compressed, video and framebuffer native texture types', async () => {
+    const blank = createTexture({});
+    const compressed = createTexture({
+      sourceType: TextureSourceType.compressed,
+      mipmaps: [{ width: 4, height: 4, data: new Uint8Array(16) }],
+    });
+    const video = createTexture({ video: document.createElement('video') });
+    const framebuffer = createTexture({
+      sourceType: TextureSourceType.framebuffer,
+      data: { width: 8, height: 4 },
+    });
+
+    expect((blank.getGPUTexture() as GPUTextureThree).texture.image.data).deep.equals(new Uint8Array(4).fill(255));
+    expect((compressed.getGPUTexture() as GPUTextureThree).texture).to.have.property('isCompressedTexture', true);
+    expect(compressed.width).equals(4);
+    const nativeVideo = (video.getGPUTexture() as GPUTextureThree).texture;
+
+    expect(nativeVideo).to.have.property('isVideoTexture', true);
+    await video.uploadCurrentVideoFrame();
+    expect((video.getGPUTexture() as GPUTextureThree).texture).equals(nativeVideo);
+    expect((framebuffer.getGPUTexture() as GPUTextureThree).texture).to.have.property('isFramebufferTexture', true);
+    expect(framebuffer.width).equals(8);
+    expect(framebuffer.height).equals(4);
+    blank.dispose();
+    compressed.dispose();
+    video.dispose();
+    framebuffer.dispose();
+  });
+
   it('creates and updates native Three buffers through the engine device', () => {
     const buffer = new Buffer(engine, new Float32Array([0, 1, 2, 3]), true, 2);
     const dataBuffer = buffer.getBuffer() as ThreeDataBuffer;
@@ -60,6 +181,23 @@ describe('threejs/rendering-device', () => {
     expect(native.version).equals(1);
     buffer.dispose();
     expect(dataBuffer.resource).equals(undefined);
+  });
+
+  it('uses the vertex binding stride for tightly packed buffers', () => {
+    const geometry = new Geometry(engine);
+    const positions = new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0]);
+
+    geometry.setVerticesBuffer(new VertexBuffer(engine, positions, 'aPos', { size: 3 }));
+    const attribute = getThreeGeometry(geometry).getAttribute('aPos');
+
+    if (!('getX' in attribute)) {
+      throw new Error('Expected a CPU-backed vertex attribute.');
+    }
+
+    expect(attribute.count).equals(3);
+    expect([attribute.getX(1), attribute.getY(1), attribute.getZ(1)]).deep.equals([-0.5, -0.5, 0]);
+    expect([attribute.getX(2), attribute.getY(2), attribute.getZ(2)]).deep.equals([0.5, 0.5, 0]);
+    geometry.dispose();
   });
 
   it('preserves native geometry attributes and index updates and disposes its cache once', () => {

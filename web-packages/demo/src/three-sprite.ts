@@ -1,6 +1,6 @@
 // @ts-nocheck
-import type { RenderingDeviceThree } from '@galacean/effects-threejs';
-import { AssetManager, ThreeTexture, setConfig, PLAYER_OPTIONS_ENV_EDITOR, Engine } from '@galacean/effects-threejs';
+import type { RenderingDeviceThree, GPUTextureThree } from '@galacean/effects-threejs';
+import { AssetManager, Texture, setConfig, PLAYER_OPTIONS_ENV_EDITOR, Engine } from '@galacean/effects-threejs';
 import { createThreePlayer, renderbyThreeDisplayObject } from './common/three-display-object';
 import inspireList from './assets/inspire-list';
 
@@ -42,7 +42,7 @@ async function renderThreeSprite () {
   const res = await assetManager.loadScene(json);
 
   const options = res.textureOptions[0];
-  const texture = new ThreeTexture(engine, options);
+  const texture = Texture.create(engine, options);
 
   scene.add(getDataTextureMesh());
   scene.add(await getNormalTextureMesh(texture));
@@ -93,7 +93,7 @@ function getDataTextureMesh () {
 // 使用 @galacean/effects-core assetmanager加载的图片创建texture
 async function getNormalTextureMesh (texture) {
   // 加载纹理
-  const material = new THREE.SpriteMaterial({ map: texture.texture, color: 0xffffff });
+  const material = new THREE.SpriteMaterial({ map: (texture.getGPUTexture() as GPUTextureThree).texture, color: 0xffffff });
   const mesh = new THREE.Sprite(material);
 
   mesh.position.set(0, 0, 0);
@@ -137,7 +137,7 @@ function getRawShaderMesh (texture) {
     fragmentShader,
   });
 
-  shaderMaterial.uniforms.uTexture.value = texture.texture;
+  shaderMaterial.uniforms.uTexture.value = (texture.getGPUTexture() as GPUTextureThree).texture;
   const gg = new THREE.BufferGeometry();
   const POINTS = 4;
   const vertices = new Float32Array([
@@ -222,7 +222,7 @@ function getRawShaderMeshWithUbo (texture) {
   viewDataGroup.add(new THREE.Uniform(new THREE.Matrix4())); // model Matrix
 
   shaderMaterial.uniformsGroups = [viewDataGroup];
-  shaderMaterial.uniforms.uTexture.value = texture.texture;
+  shaderMaterial.uniforms.uTexture.value = (texture.getGPUTexture() as GPUTextureThree).texture;
   const gg = new THREE.BufferGeometry();
   const POINTS = 4;
   const vertices = new Float32Array([

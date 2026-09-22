@@ -42,6 +42,9 @@ export function getThreeGeometry (source: Geometry): THREE.BufferGeometry {
         return;
       }
       vertexBuffers[name] = vertexBuffer;
+      // A tightly packed buffer may only specify its stride on the vertex binding.
+      nativeBuffer.stride = vertexBuffer.getStrideSize();
+      nativeBuffer.count = nativeBuffer.array.length / nativeBuffer.stride;
       geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(
         nativeBuffer,
         vertexBuffer.getSize(),

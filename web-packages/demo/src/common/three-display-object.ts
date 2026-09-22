@@ -69,8 +69,6 @@ export async function renderbyThreeDisplayObject (player, json) {
 
   const { currentComposition } = displayObject;
 
-  renderer.render(scene, camera);
-
   // 防止 event 重复创建
   if (currentComposition.name !== sceneName) {
     // 注册事件系统 不需要响应点击时可以不进行注册

@@ -6,6 +6,7 @@ import {
 } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeDataBuffer } from './three-data-buffer';
+import { GPUTextureThree } from './gpu-texture-three';
 
 export interface RenderingDeviceThreeOptions {
   threeCamera?: THREE.Camera,
@@ -64,6 +65,10 @@ export class RenderingDeviceThree extends RenderingDevice {
       renderer.renderingData = previousData;
       this.composition = previousComposition;
     }
+  }
+
+  override createTexture (): GPUTextureThree {
+    return new GPUTextureThree(this);
   }
 
   override createVertexBuffer (
