@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   glContext, nearestPowerOfTwo, GPUTexture, TextureSourceType, isWebGL2,
-  canvasPool, logger, isPowerOfTwo, throwDestroyedError,
+  canvasPool, logger, isPowerOfTwo,
 } from '@galacean/effects-core';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
@@ -30,23 +30,28 @@ const FORMAT_FLOAT: Record<string, number> = {
 
 export class GPUTextureWebGL extends GPUTexture {
   textureBuffer: WebGLTexture | null;
-  target: GLenum;
+  target: GLenum = 0;
 
   private sourceType?: TextureSourceType;
 
   bind (force?: boolean): void {
+    if (!this.textureBuffer) {
+      return;
+    }
     (this.device as RenderingDeviceWebGL).bindTexture(this.target, this.textureBuffer, force);
   }
 
-  override initialize (source: TextureSourceOptions): void {
+  protected override onInitialize (source: TextureSourceOptions): void {
     const gl = (this.device as RenderingDeviceWebGL).gl;
     const { target = gl.TEXTURE_2D, name } = source;
 
     this.textureBuffer = gl.createTexture();
+    if (!this.textureBuffer) {
+      throw new Error('Failed to create a WebGL texture.');
+    }
     assignInspectorName(this.textureBuffer, name);
     this.target = target;
     this.update(source);
-    this.initialized = true;
   }
 
   override update (source: TextureSourceOptions, sourceOptions: TextureSourceOptions = source) {
@@ -61,7 +66,7 @@ export class GPUTextureWebGL extends GPUTexture {
     this.sourceType = source.sourceType;
     const target = this.target;
     const gl = (this.device as RenderingDeviceWebGL).gl;
-    const { detail } = this.device.gpuCapability;
+    const { detail } = (this.device as RenderingDeviceWebGL).gpuCapability;
     const { sourceType } = source;
     const { data } = source as Texture2DSourceOptionsData;
     const { cube } = source as TextureCubeSourceOptionsImage;
@@ -236,7 +241,7 @@ export class GPUTextureWebGL extends GPUTexture {
     options: TextureConfigOptions,
   ) {
     const { anisotropic = 4, wrapS = gl.CLAMP_TO_EDGE, wrapT = gl.CLAMP_TO_EDGE } = options;
-    const gpuCapability = this.device.gpuCapability;
+    const gpuCapability = (this.device as RenderingDeviceWebGL).gpuCapability;
 
     if (this.target === gl.TEXTURE_2D) {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
@@ -272,7 +277,7 @@ export class GPUTextureWebGL extends GPUTexture {
     image: spec.HTMLImageLike,
   ): spec.vec2 {
     const sourceType = this.sourceType;
-    const maxSize = this.device.gpuCapability.detail.maxTextureSize ?? 2048;
+    const maxSize = (this.device as RenderingDeviceWebGL).gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
     let pooledCanvasAndContext: CanvasAndContext | undefined;
 
@@ -368,29 +373,22 @@ export class GPUTextureWebGL extends GPUTexture {
   }
 
   override restore (source: TextureSourceOptions): void {
-    const gl = (this.device as RenderingDeviceWebGL).gl;
-
-    if (this.target === undefined) {
-      this.target = source.target ?? gl.TEXTURE_2D;
-    }
-    this.textureBuffer = gl.createTexture();
-    assignInspectorName(this.textureBuffer, source.name);
-    this.initialized = false;
-    this.update(source);
-    this.initialized = true;
+    this.initialize(source);
   }
 
-  override dispose (): void {
+  protected override onReleaseGPU (): void {
     if (this.textureBuffer) {
-      (this.device as RenderingDeviceWebGL).gl.deleteTexture(this.textureBuffer);
+      const device = this.device as RenderingDeviceWebGL;
+
+      device.invalidateTexture(this.textureBuffer);
+      if (!device.gl.isContextLost()) {
+        device.gl.deleteTexture(this.textureBuffer);
+      }
     }
     this.textureBuffer = null;
-    this.width = this.height = 0;
-    this.destroyed = true;
-    this.update = () => {
-      logger.error('This texture has been destroyed.');
-    };
-    this.initialize = throwDestroyedError as unknown as () => void;
+    this.target = 0;
+    this.sourceType = undefined;
+    super.onReleaseGPU();
   }
 
 }

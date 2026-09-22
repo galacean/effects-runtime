@@ -1,4 +1,5 @@
 import './rendering-device-three.spec';
+import './gpu-resource.spec';
 import './display-server.spec';
 import './rendering-server.spec';
 import './gl-dispose.spec';

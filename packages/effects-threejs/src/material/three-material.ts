@@ -397,7 +397,7 @@ export class ThreeMaterial extends Material {
   }
   override setTexture (name: string, texture: Texture): void {
     texture.initialize();
-    this.setUniform(name, (texture.getGPUTexture() as GPUTextureThree).texture);
+    this.setUniform(name, (texture.getGPUTexture() as GPUTextureThree).texture!);
     this.textures[name] = texture;
   }
 

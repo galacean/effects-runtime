@@ -13,7 +13,7 @@ export class GPUTextureThree extends GPUTexture {
   /**
    * THREE 纹理对象
    */
-  texture: THREE.Texture;
+  texture: THREE.Texture | undefined;
 
   /**
    * 将 WebGL 纹理过滤器枚举类型映射到 THREE 纹理过滤器枚举类型
@@ -45,10 +45,9 @@ export class GPUTextureThree extends GPUTexture {
     }
   }
 
-  override initialize (source: TextureSourceOptions): void {
+  protected override onInitialize (source: TextureSourceOptions): void {
     this.texture = this.createTextureByType(source);
     this.texture.needsUpdate = true;
-    this.initialized = true;
   }
 
   override update (source: TextureSourceOptions, options: TextureSourceOptions = source): void {
@@ -61,13 +60,16 @@ export class GPUTextureThree extends GPUTexture {
     if (source.sourceType === TextureSourceType.video && options !== source) {
       return;
     }
-    this.texture.dispose();
     this.initialize({ ...source, ...options } as TextureSourceOptions);
   }
 
   // VideoTexture and the host renderer manage frame uploads and context recovery.
   override offloadData (): void {}
-  override restore (): void {}
+  override restore (source: TextureSourceOptions): void {
+    if (!this.initialized) {
+      this.initialize(source);
+    }
+  }
 
   /**
    * 组装纹理选项
@@ -105,11 +107,12 @@ export class GPUTextureThree extends GPUTexture {
   /**
    * 释放纹理占用的内存
    */
-  override dispose (): void {
+  protected override onReleaseGPU (): void {
     if (this.texture) {
       this.texture.dispose();
     }
-    this.destroyed = true;
+    this.texture = undefined;
+    super.onReleaseGPU();
   }
 
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
@@ -199,4 +202,3 @@ export class GPUTextureThree extends GPUTexture {
   }
 
 }
-

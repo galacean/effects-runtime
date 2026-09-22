@@ -40,7 +40,6 @@ export class Texture extends Asset {
   protected destroyed = false;
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
-  private initialized = false;
 
   /**
    * 创建一个新的 Texture 对象。
@@ -138,7 +137,7 @@ export class Texture extends Asset {
   }
 
   async uploadCurrentVideoFrame (): Promise<boolean> {
-    if (this.source.sourceType === TextureSourceType.video && this.source.video && this.initialized) {
+    if (this.source.sourceType === TextureSourceType.video && this.source.video && this.gpuTexture?.isInitialized) {
       this.update({ video: this.source.video });
 
       return true;
@@ -153,7 +152,7 @@ export class Texture extends Asset {
    * @override
    */
   offloadData (): void {
-    if (!this.initialized || !getDefaultTextureFactory().canOffloadTexture(this.source.sourceFrom)) {
+    if (!this.gpuTexture?.isInitialized || !getDefaultTextureFactory().canOffloadTexture(this.source.sourceFrom)) {
       return;
     }
     this.gpuTexture?.offloadData();
@@ -197,7 +196,7 @@ export class Texture extends Asset {
    * @override
    */
   initialize (): void {
-    if (this.initialized) {
+    if (this.gpuTexture?.isInitialized) {
       return;
     }
     this.engine.effectsObjectServer.addTexture(this);
@@ -206,7 +205,6 @@ export class Texture extends Asset {
     gpuTexture.initialize(this.source);
     this.syncSize();
     this.release();
-    this.initialized = true;
   }
 
   getGPUTexture (): GPUTexture {
@@ -229,7 +227,6 @@ export class Texture extends Asset {
   restore (): void {
     this.getGPUTexture().restore(this.source);
     this.syncSize();
-    this.initialized = true;
   }
 
   override fromData (data: spec.EffectsObjectData): void {

@@ -1,4 +1,5 @@
 import type { GPUTexture } from './texture/gpu-texture';
+import type { GPUResource } from './gpu-resource';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
@@ -16,6 +17,7 @@ export class RenderingDevice implements Disposable {
   doNotHandleContextLost: boolean;
   gpuCapability: GPUCapability;
   protected _disposed = false;
+  private resources: GPUResource[] = [];
   private framebuffers: Framebuffer[] = [];
   private renderbuffers: Renderbuffer[] = [];
   private _contextWasLost = false;
@@ -29,6 +31,16 @@ export class RenderingDevice implements Disposable {
     return this._disposed;
   }
 
+  /** @internal */
+  addResource (resource: GPUResource): void {
+    addItem(this.resources, resource);
+  }
+
+  /** @internal */
+  removeResource (resource: GPUResource): void {
+    removeItem(this.resources, resource);
+  }
+
   /** Whether rendering is suspended while the graphics context is being restored. */
   get contextWasLost (): boolean {
     return this._contextWasLost;
@@ -39,6 +51,9 @@ export class RenderingDevice implements Disposable {
 
     if (!this.doNotHandleContextLost) {
       this._contextWasLost = true;
+      for (const resource of this.resources.slice()) {
+        resource.releaseGPU();
+      }
     }
     engine.getServer(SceneServer).compositions.forEach(comp => comp.lost(e));
     engine.emit('contextlost', { engine, e });
@@ -104,6 +119,10 @@ export class RenderingDevice implements Disposable {
     this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
     this.framebuffers = [];
     this.renderbuffers = [];
+    for (const resource of this.resources.slice()) {
+      resource.onDeviceDispose();
+    }
+    this.resources.length = 0;
     this._disposed = true;
   }
 

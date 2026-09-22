@@ -439,10 +439,21 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     this.gl.bindVertexArray(null);
   }
 
-  deleteGPUTexture (texture: GPUTextureWebGL) {
-    if (texture.textureBuffer && !this.disposed) {
-      this.gl.deleteTexture(texture.textureBuffer);
-      texture.textureBuffer = null;
+  /** Forget bindings invalidated by deleting a texture or losing its context. */
+  invalidateTexture (texture: WebGLTexture): void {
+    for (const unit in this.currentTextureBinding) {
+      const bindings = this.currentTextureBinding[unit];
+
+      for (const target in bindings) {
+        if (bindings[target] === texture) {
+          delete bindings[target];
+        }
+      }
+    }
+    for (const unit in this.textureUnitDict) {
+      if (this.textureUnitDict[unit] === texture) {
+        delete this.textureUnitDict[unit];
+      }
     }
   }
 

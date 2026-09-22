@@ -108,23 +108,6 @@ describe('webgl/gl-texture', () => {
     }
   });
 
-  it('preserves the allocation on upload failure until the owner disposes it', () => {
-    const texture = new Texture(engine, { data: { width: 1, height: 1, data: new Uint8Array(4) } });
-    const gpu = texture.getGPUTexture() as GPUTextureWebGL;
-    const upload = gl.texImage2D;
-
-    gl.texImage2D = () => { throw new Error('upload failed'); };
-    try {
-      expect(() => texture.initialize()).to.throw('upload failed');
-      expect(gpu.textureBuffer).to.be.instanceOf(WebGLTexture);
-      expect(gpu.isInitialized).to.equal(false);
-    } finally {
-      gl.texImage2D = upload;
-      texture.dispose();
-    }
-    expect(gpu.textureBuffer).to.equal(null);
-  });
-
   it('load binary cube texture', async () => {
     const cube = await getDefaultTextureFactory().loadSource({
       type: TextureSourceType.mipmaps,

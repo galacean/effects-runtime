@@ -33,6 +33,7 @@ export {
   getStandardJSON, normalizeColor,
 } from './fallback';
 export * from './gl';
+export * from './gpu-resource';
 export * from './material';
 export * from './math';
 export * from './paas-texture-cache';

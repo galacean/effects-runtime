@@ -73,7 +73,7 @@ describe('threejs/rendering-device', () => {
     const data = new Uint8Array([12, 34, 56, 255]);
     const texture = createTexture({ data: { width: 1, height: 1, data }, flipY: true, minFilter: glContext.LINEAR });
     const gpu = texture.getGPUTexture() as GPUTextureThree;
-    const native = gpu.texture;
+    const native = gpu.texture!;
 
     expect(texture.constructor).equals(Texture);
     expect(native).to.have.property('isDataTexture', true);
@@ -91,7 +91,7 @@ describe('threejs/rendering-device', () => {
   it('replaces native textures on update and keeps material bindings borrowed', () => {
     const texture = createTexture({ data: { width: 1, height: 1, data: new Uint8Array(4) }, flipY: true });
     const gpu = texture.getGPUTexture() as GPUTextureThree;
-    const oldTexture = gpu.texture;
+    const oldTexture = gpu.texture!;
     const material = new ThreeMaterial(engine);
     let oldDisposed = 0;
     let replacementDisposed = 0;
@@ -104,11 +104,13 @@ describe('threejs/rendering-device', () => {
     expect(oldDisposed).equals(1);
     expect(texture.getGPUTexture()).equals(gpu);
     expect(gpu.texture).not.equals(oldTexture);
-    expect(gpu.texture.flipY).equals(true);
+    expect(gpu.texture!.flipY).equals(true);
     expect(texture.width).equals(2);
-    gpu.texture.addEventListener('dispose', () => replacementDisposed++);
+    gpu.texture!.addEventListener('dispose', () => replacementDisposed++);
     material.setTexture('_MainTex', texture);
     expect(material.material.uniforms._MainTex.value).equals(gpu.texture);
+    texture.initialize();
+    expect(replacementDisposed).equals(0);
     material.onSetUniformValue('_MainTex', texture);
     expect(material.material.uniforms._MainTex.value).equals(gpu.texture);
     material.dispose();
@@ -116,6 +118,78 @@ describe('threejs/rendering-device', () => {
     texture.dispose();
     expect(replacementDisposed).equals(1);
     expect(gl.isContextLost()).equals(false);
+  });
+
+  it('releases and reinitializes Three textures without unregistering the resource', () => {
+    const device = engine.displayServer.renderingDevice;
+    const baseline = device['resources'].length;
+    const gpu = device.createTexture() as GPUTextureThree;
+    const source: TextureSourceOptions = { data: { width: 2, height: 1, data: new Uint8Array(8) } };
+
+    gpu.initialize(source);
+    const native = gpu.texture!;
+    let nativeDisposals = 0;
+    let releases = 0;
+
+    native.addEventListener('dispose', () => nativeDisposals++);
+    const unsubscribe = gpu.on('releasing', () => {
+      expect(gpu.texture).equals(native);
+      expect(gpu.device).equals(device);
+      expect(nativeDisposals).equals(0);
+      releases++;
+    });
+
+    gpu.releaseGPU();
+    gpu.releaseGPU();
+    unsubscribe();
+    expect(releases).equals(1);
+    expect(nativeDisposals).equals(1);
+    expect(gpu.texture).equals(undefined);
+    expect(gpu.width).equals(0);
+    expect(gpu.height).equals(0);
+    expect(gpu.isInitialized).equals(false);
+    expect(gpu.device).equals(device);
+    expect(device['resources'].length).equals(baseline + 1);
+    gpu.initialize(source);
+    expect(gpu.texture).not.equals(native);
+    expect(gpu.isInitialized).equals(true);
+    gpu.dispose();
+    gpu.dispose();
+    expect(gpu.device).equals(null);
+    expect(device['resources'].length).equals(baseline);
+  });
+
+  it('detaches remaining Three textures on device close and leaves the host context usable', () => {
+    const device = engine.displayServer.renderingDevice;
+    const texture = createTexture({ data: { width: 1, height: 1, data: new Uint8Array(4) } });
+    const gpu = texture.getGPUTexture() as GPUTextureThree;
+    const native = gpu.texture!;
+    const unused = device.createTexture();
+    let nativeDisposals = 0;
+
+    native.addEventListener('dispose', () => {
+      expect(gpu.device).equals(device);
+      nativeDisposals++;
+    });
+    device.dispose();
+    expect(device['resources'].length).equals(0);
+    expect(gpu.device).equals(null);
+    expect(unused.device).equals(null);
+    expect(gpu.isDestroyed).equals(false);
+    expect(gpu.texture).equals(undefined);
+    texture.dispose();
+    unused.dispose();
+    device.dispose();
+    expect(nativeDisposals).equals(1);
+    expect(gl.isContextLost()).equals(false);
+    expect(gl.canvas.width).equals(31);
+    expect(gl.canvas.height).equals(17);
+    gl.clearColor(0, 1, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const pixel = new Uint8Array(4);
+
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    expect(Array.from(pixel)).deep.equals([0, 255, 0, 255]);
   });
 
   it('initializes a deserialized texture through the material entry point', () => {
@@ -128,7 +202,7 @@ describe('threejs/rendering-device', () => {
     const material = new ThreeMaterial(engine);
 
     material.setTexture('_MainTex', texture);
-    const native = (texture.getGPUTexture() as GPUTextureThree).texture;
+    const native = (texture.getGPUTexture() as GPUTextureThree).texture!;
 
     expect(material.material.uniforms._MainTex.value).equals(native);
     expect(texture.getInstanceId()).equals('three-texture-asset');
@@ -153,7 +227,7 @@ describe('threejs/rendering-device', () => {
       data: { width: 8, height: 4 },
     });
 
-    expect((blank.getGPUTexture() as GPUTextureThree).texture.image.data).deep.equals(new Uint8Array(4).fill(255));
+    expect((blank.getGPUTexture() as GPUTextureThree).texture!.image.data).deep.equals(new Uint8Array(4).fill(255));
     expect((compressed.getGPUTexture() as GPUTextureThree).texture).to.have.property('isCompressedTexture', true);
     expect(compressed.width).equals(4);
     const nativeVideo = (video.getGPUTexture() as GPUTextureThree).texture;
