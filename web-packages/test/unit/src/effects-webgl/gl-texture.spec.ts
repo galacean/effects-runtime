@@ -1,3 +1,5 @@
+import type { GPUTextureWebGL } from '@galacean/effects-webgl';
+import { Texture } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import type {
   Renderer,
@@ -6,7 +8,7 @@ import type {
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLTexture } from '@galacean/effects-webgl';
+
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 import { registerKTX2Loader } from '@galacean/effects-plugin-ktx2';
 const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93b0;
@@ -40,6 +42,89 @@ describe('webgl/gl-texture', () => {
     gl = null;
   });
 
+  it('keeps asset identity separate from lazy GPU allocation', () => {
+    const texture = new Texture(engine, {
+      data: { width: 1, height: 1, data: new Uint8Array([12, 34, 56, 255]) },
+    });
+    const gpu = texture.getGPUTexture() as GPUTextureWebGL;
+    const id = texture.getInstanceId();
+
+    expect(gpu).not.to.be.instanceOf(Texture);
+    expect(gpu.textureBuffer).to.equal(undefined);
+    texture.initialize();
+    const handle = gpu.textureBuffer;
+
+    texture.initialize();
+    expect(texture.getGPUTexture()).to.equal(gpu);
+    expect(texture.getInstanceId()).to.equal(id);
+    expect(gpu.textureBuffer).to.equal(handle);
+    expect(gl.isTexture(handle)).to.equal(true);
+    const previousFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+    const framebuffer = gl.createFramebuffer();
+    const pixel = new Uint8Array(4);
+
+    try {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, handle, 0);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      expect(Array.from(pixel)).to.deep.equal([12, 34, 56, 255]);
+      texture.updateSource({ data: { width: 1, height: 1, data: new Uint8Array([78, 90, 12, 255]) } });
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      expect(Array.from(pixel)).to.deep.equal([78, 90, 12, 255]);
+      expect(gpu.textureBuffer).to.equal(handle);
+    } finally {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+      gl.deleteFramebuffer(framebuffer);
+    }
+    texture.dispose();
+    texture.dispose();
+    expect(gpu.textureBuffer).to.equal(null);
+    expect(gl.isTexture(handle)).to.equal(false);
+    expect(() => texture.update({})).not.to.throw();
+    expect(() => texture.updateSource({ flipY: true })).not.to.throw();
+    expect(texture.source.flipY).to.equal(true);
+    expect(() => texture.initialize()).to.throw('Destroyed item cannot be used again.');
+    expect(() => gpu.initialize({})).to.throw();
+  });
+
+  it('preserves source-based updates and upload-time source mutation', () => {
+    const device = engine.displayServer.renderingDevice;
+    const previous = device.doNotHandleContextLost;
+    const sourceData = { width: 1, height: 1, data: new Uint8Array(4) };
+    const texture = new Texture(engine, { data: sourceData });
+
+    device.doNotHandleContextLost = false;
+    try {
+      texture.initialize();
+      texture.update({ data: { width: 2, height: 2, data: new Uint8Array(16) }, flipY: true });
+      expect(texture.width).to.equal(1);
+      expect(texture.height).to.equal(1);
+      expect((texture.source as Texture2DSourceOptionsData).data).to.equal(sourceData);
+      expect(texture.source.flipY).to.equal(false);
+      expect(texture.source.premultiplyAlpha).to.equal(false);
+    } finally {
+      texture.dispose();
+      device.doNotHandleContextLost = previous;
+    }
+  });
+
+  it('preserves the allocation on upload failure until the owner disposes it', () => {
+    const texture = new Texture(engine, { data: { width: 1, height: 1, data: new Uint8Array(4) } });
+    const gpu = texture.getGPUTexture() as GPUTextureWebGL;
+    const upload = gl.texImage2D;
+
+    gl.texImage2D = () => { throw new Error('upload failed'); };
+    try {
+      expect(() => texture.initialize()).to.throw('upload failed');
+      expect(gpu.textureBuffer).to.be.instanceOf(WebGLTexture);
+      expect(gpu.isInitialized).to.equal(false);
+    } finally {
+      gl.texImage2D = upload;
+      texture.dispose();
+    }
+    expect(gpu.textureBuffer).to.equal(null);
+  });
+
   it('load binary cube texture', async () => {
     const cube = await getDefaultTextureFactory().loadSource({
       type: TextureSourceType.mipmaps,
@@ -59,7 +144,7 @@ describe('webgl/gl-texture', () => {
       mipmaps: [[[0, 24661], [24664, 26074], [50740, 26845], [77588, 24422], [102012, 24461], [126476, 27099]], [[153576, 7699], [161276, 7819], [169096, 8919], [178016, 7004], [185020, 7657], [192680, 8515]], [[201196, 2305], [203504, 2388], [205892, 2789], [208684, 2147], [210832, 2351], [213184, 2541]], [[215728, 755], [216484, 810], [217296, 902], [218200, 727], [218928, 775], [219704, 835]], [[220540, 292], [220832, 301], [221136, 317], [221456, 285], [221744, 301], [222048, 307]], [[222356, 147], [222504, 147], [222652, 149], [222804, 149], [222956, 149], [223108, 149]], [[223260, 96], [223356, 96], [223452, 96], [223548, 97], [223648, 97], [223748, 97]], [[223848, 83], [223932, 83], [224016, 83], [224100, 83], [224184, 83], [224268, 83]]],
     });
     gl.getError();//clear last error
-    const texture = new GLTexture(engine, cube);
+    const texture = new Texture(engine, cube);
 
     texture.initialize();
     expect(gl.getError()).to.eql(0);
@@ -106,7 +191,7 @@ describe('webgl/gl-texture', () => {
 
     cpuDecodeTimes.png = performance.now() - start;
     start = performance.now();
-    const texPNG = new GLTexture(engine, retPNG);
+    const texPNG = new Texture(engine, retPNG);
 
     texPNG.initialize();
     gpuUploadTimes.png = performance.now() - start;
@@ -120,7 +205,7 @@ describe('webgl/gl-texture', () => {
 
     cpuDecodeTimes.webp = performance.now() - start;
     start = performance.now();
-    const texWebP = new GLTexture(engine, retWebP);
+    const texWebP = new Texture(engine, retWebP);
 
     texWebP.initialize();
     gpuUploadTimes.webp = performance.now() - start;
@@ -134,7 +219,7 @@ describe('webgl/gl-texture', () => {
 
     cpuDecodeTimes.ktx2 = performance.now() - start;
     start = performance.now();
-    const texKTX2 = new GLTexture(engine, retKTX2);
+    const texKTX2 = new Texture(engine, retKTX2);
 
     texKTX2.initialize();
     gpuUploadTimes.ktx2 = performance.now() - start;
@@ -207,7 +292,7 @@ describe('webgl/gl-texture', () => {
   it('create GL Texture 2D with one pixel value [255, 100, 50, 0]', () => {
     const writePixelData = [255, 100, 50, 0];
     const buffer = new Uint8Array([1, 2, ...writePixelData, 3, 4]);
-    const texture = new GLTexture(engine, {
+    const texture = new Texture(engine, {
       data: { width: 1, height: 1, data: new Uint8Array(buffer.buffer, 2 * Uint8Array.BYTES_PER_ELEMENT, 4) },
       format: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
@@ -242,7 +327,7 @@ describe('webgl/gl-texture', () => {
     const writePixelData = [255, 100, 50, 0];
     const buffer = new Uint8Array([1, 2, ...writePixelData, 3, 4]);
     const data = { width: 1, height: 1, data: new Uint8Array(buffer.buffer, 2 * Uint8Array.BYTES_PER_ELEMENT, 4) };
-    const texture = new GLTexture(engine, {
+    const texture = new Texture(engine, {
       cube: [data, data, data, data, data, data],
       sourceType: TextureSourceType.data,
       format: gl.RGBA,
@@ -264,7 +349,7 @@ describe('webgl/gl-texture', () => {
     expect(texture.source.type).is.eql(gl.UNSIGNED_BYTE);
     expect(texture.source.target).is.eql(gl.TEXTURE_CUBE_MAP);
     expect((texture.source as Texture2DSourceOptionsData).data).is.undefined;
-    expect(texture.textureBuffer).is.eql(gl.getParameter(gl.TEXTURE_BINDING_CUBE_MAP));
+    expect((texture.getGPUTexture() as GPUTextureWebGL).textureBuffer).is.eql(gl.getParameter(gl.TEXTURE_BINDING_CUBE_MAP));
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(true);
   });
 
@@ -279,7 +364,7 @@ describe('webgl/gl-texture', () => {
       type: TextureSourceType.image,
       url: 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*drkFS6EDl_8AAAAAAAAAAAAAARQnAQ',
     }) as Texture2DSourceOptionsImage;
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     expect(texOptions.image).is.instanceof(HTMLImageElement);
     expect(texOptions.image?.width).is.eql(128);
@@ -322,7 +407,7 @@ describe('webgl/gl-texture', () => {
       type: TextureSourceType.mipmaps,
       urls: [mipmap0, mipmap1, mipmap2, mipmap3, mipmap4],
     }, filter);
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     expect(texture.source.target).is.eql(gl.TEXTURE_2D);
     texture.initialize();
@@ -333,7 +418,7 @@ describe('webgl/gl-texture', () => {
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(true);
     expect((texture.source as Texture2DSourceOptionsImageMipmaps).mipmaps).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([64, 64]);
-    checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_2D, filter);
+    checkTextureBinding(gl, (texture.getGPUTexture() as GPUTextureWebGL).textureBuffer, gl.TEXTURE_2D, filter);
   });
 
   it('create GL TextureCube mipmap images', async () => {
@@ -356,7 +441,7 @@ describe('webgl/gl-texture', () => {
       target: gl.TEXTURE_CUBE_MAP,
       maps,
     }, filter);
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     expect(texture.source.target).is.eql(gl.TEXTURE_CUBE_MAP);
     texture.initialize();
@@ -367,7 +452,7 @@ describe('webgl/gl-texture', () => {
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
     expect((texture.source as Texture2DSourceOptionsImageMipmaps).mipmaps).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([64, 64]);
-    checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
+    checkTextureBinding(gl, (texture.getGPUTexture() as GPUTextureWebGL).textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
   });
 
   it('create GL TextureCube pot cube image', async () => {
@@ -384,7 +469,7 @@ describe('webgl/gl-texture', () => {
       target: gl.TEXTURE_CUBE_MAP,
       map: [image, image, image, image, image, image],
     }, filter);
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     expect(texture.source.target).is.eql(gl.TEXTURE_CUBE_MAP);
     texture.initialize();
@@ -395,7 +480,7 @@ describe('webgl/gl-texture', () => {
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
     expect((texture.source as TextureCubeSourceOptionsImage).cube).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([128, 128]);
-    checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
+    checkTextureBinding(gl, (texture.getGPUTexture() as GPUTextureWebGL).textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
   });
 
   function checkTextureBinding (
@@ -435,7 +520,7 @@ describe('webgl/gl-texture', () => {
       type: TextureSourceType.image,
       url: 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*WBQXT6fanRgAAAAAAAAAAAAAARQnAQ',
     });
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
     const image = (texOptions as Texture2DSourceOptionsImage).image;
 
     expect(image).is.instanceof(HTMLImageElement);
@@ -481,7 +566,7 @@ describe('webgl/gl-texture', () => {
       wrapS: gl.MIRRORED_REPEAT,
       wrapT: gl.REPEAT,
     });
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
     const image = (texOptions as Texture2DSourceOptionsImage).image;
 
     expect(image).is.instanceof(HTMLImageElement);
@@ -529,10 +614,11 @@ describe('webgl/gl-texture', () => {
       wrapS: gl.MIRRORED_REPEAT,
       wrapT: gl.REPEAT,
     });
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     texture.initialize();
-    const glTex = texture.textureBuffer;
+    const gpuTexture = texture.getGPUTexture() as GPUTextureWebGL;
+    const glTex = gpuTexture.textureBuffer;
 
     expect(glTex).to.be.an.instanceof(WebGLTexture);
     const spy = chai.spy(() => {
@@ -542,7 +628,7 @@ describe('webgl/gl-texture', () => {
     texture.dispose();
     expect(getTextureMemory(texture, {})).to.eql(0);
     expect(spy).to.been.called.with(glTex);
-    expect(texture.textureBuffer).to.not.exist;
+    expect(gpuTexture.textureBuffer).to.not.exist;
     expect(texture.isDestroyed).to.equal(true);
   });
 
@@ -551,7 +637,7 @@ describe('webgl/gl-texture', () => {
       type: TextureSourceType.image,
       url: 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*drkFS6EDl_8AAAAAAAAAAAAAARQnAQ',
     });
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     texture.initialize();
     let gpuInfo = getTextureGPUInfo(texture, texOptions);
@@ -582,7 +668,7 @@ describe('webgl/gl-texture', () => {
     texOptions.premultiplyAlpha = true;
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
     expect(gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL)).to.eql(false);
-    new GLTexture(engine, texOptions).initialize();
+    new Texture(engine, texOptions).initialize();
     expect(gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL)).to.eql(true);
   });
 
@@ -595,7 +681,7 @@ describe('webgl/gl-texture', () => {
     texOptions.premultiplyAlpha = true;
     texOptions.generateMipmap = true;
 
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
     const spy = chai.spy(() => { });
 
     gl.generateMipmap = spy;
@@ -619,7 +705,7 @@ describe('webgl/gl-texture', () => {
       cube: [image, image, image, image, image, image],
       generateMipmap: true,
     } as TextureSourceOptions;
-    const tex = new GLTexture(engine, texOptions);
+    const tex = new Texture(engine, texOptions);
     const spy = chai.spy(() => { });
 
     gl.generateMipmap = spy;
@@ -656,7 +742,7 @@ describe('webgl/gl-texture', () => {
     expect(cube).to.be.an('array').with.lengthOf(6);
     expect(!!texOptions.keepImageSource).to.be.false;
 
-    const texture = new GLTexture(engine, texOptions);
+    const texture = new Texture(engine, texOptions);
 
     texture.initialize();
 
@@ -668,14 +754,14 @@ describe('webgl/gl-texture', () => {
 
 function bindFramebuffer (
   gl: WebGLRenderingContext,
-  texture: GLTexture,
+  texture: Texture,
   callback: (gl: WebGLRenderingContext) => void,
 ) {
   const framebuffer = gl.createFramebuffer();
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   // attach texture to framebuffer
-  const glTexture = texture.textureBuffer;
+  const glTexture = (texture.getGPUTexture() as GPUTextureWebGL).textureBuffer;
 
   if (glTexture) {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glTexture, 0);
@@ -731,7 +817,7 @@ describe('webgl2/gl-texture', () => {
   });
 
   it('GLTexture2D default value', () => {
-    const defaultTexture = new GLTexture(engine, {
+    const defaultTexture = new Texture(engine, {
       sourceType: TextureSourceType.framebuffer,
       data: { width: 0, height: 0 },
     });
@@ -739,14 +825,14 @@ describe('webgl2/gl-texture', () => {
     defaultTexture.initialize();
     assert.equal(defaultTexture.width, 0);
     assert.equal(defaultTexture.height, 0);
-    expect(defaultTexture.textureBuffer).is.instanceof(WebGLTexture);
+    expect((defaultTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer).is.instanceof(WebGLTexture);
 
     defaultTexture.dispose();
   });
 
   it('create GLTexture2D with one pixel value [255, 100, 50, 0]', () => {
     const writePixelData = new Uint8Array([255, 100, 50, 0]);
-    const onePixelTexture2D = new GLTexture(engine, {
+    const onePixelTexture2D = new Texture(engine, {
       format: gl.RGBA,
       internalFormat: gl.RGBA,
       data: { data: writePixelData, width: 1, height: 1 },
@@ -757,7 +843,7 @@ describe('webgl2/gl-texture', () => {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     // attach texture to framebuffer
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, onePixelTexture2D.textureBuffer, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (onePixelTexture2D.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0);
     const canRead = (gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE);
 
     const gpuInfo = getTextureGPUInfo(onePixelTexture2D, {});
@@ -781,7 +867,7 @@ describe('webgl2/gl-texture', () => {
   });
 
   it('create GLTexture2D from HTMLImageElement', () => {
-    const imgeElementTexture = new GLTexture(engine, { image: imageHTMLElement });
+    const imgeElementTexture = new Texture(engine, { image: imageHTMLElement });
 
     imgeElementTexture.initialize();
     imgeElementTexture.dispose();

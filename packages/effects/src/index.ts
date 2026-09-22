@@ -7,7 +7,7 @@ import {
   Framebuffer, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, RenderingDevice, logger,
 } from '@galacean/effects-core';
 import {
-  GLFramebuffer, GLRenderbuffer, GLTexture, RenderingDeviceWebGL,
+  GLFramebuffer, GLRenderbuffer, RenderingDeviceWebGL,
 } from '@galacean/effects-webgl';
 
 export { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -17,7 +17,7 @@ export * from './player';
 export { isCanvasUsedByPlayer, getPlayerByCanvas, getActivePlayers } from './player-map';
 
 Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
-  return new GLTexture(engine, props);
+  return new Texture(engine, props);
 };
 
 Texture.createWithData = (
@@ -36,7 +36,7 @@ Texture.createWithData = (
     flipY = false,
     generateMipmap = false,
   } = options as TextureSourceOptions;
-  const tex = new GLTexture(
+  const tex = new Texture(
     engine,
     {
       data,

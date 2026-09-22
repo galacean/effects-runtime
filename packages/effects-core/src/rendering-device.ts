@@ -1,3 +1,4 @@
+import type { GPUTexture } from './texture/gpu-texture';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
@@ -47,6 +48,8 @@ export class RenderingDevice implements Disposable {
     this._contextWasLost = false;
     this.engine.emit('contextrestored', this.engine);
   }
+
+  createTexture (): GPUTexture { throw new Error('The active backend does not provide textures.'); }
 
   createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
     throw new Error('The active rendering backend does not provide vertex buffers.');

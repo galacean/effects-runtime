@@ -1,13 +1,13 @@
 import type {
-  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, Texture,
+  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
-  isWebGL2, addItem, Framebuffer, glContext, RenderPassAttachmentStorageType,
+  isWebGL2, addItem, Framebuffer, Texture, glContext, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
 } from '@galacean/effects-core';
 import { GLRenderbuffer } from './gl-renderbuffer';
-import { GLTexture } from './gl-texture';
+import type { GPUTextureWebGL } from './gpu-texture-webgl';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 let seed = 1;
@@ -15,9 +15,9 @@ let seed = 1;
 export class GLFramebuffer extends Framebuffer implements Disposable {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
   depthStencilRenderbuffer?: GLRenderbuffer;
-  depthTexture?: GLTexture;
-  stencilTexture?: GLTexture;
-  colorTextures: GLTexture[];
+  depthTexture?: Texture;
+  stencilTexture?: Texture;
+  colorTextures: Texture[];
   fbo?: WebGLFramebuffer;
   device: RenderingDeviceWebGL;
 
@@ -80,16 +80,16 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
       tex.initialize();
       tex.update({ data });
-      addItem(this.attachmentTextures, tex.textureBuffer);
+      addItem(this.attachmentTextures, (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     });
 
     if (this.stencilTexture) {
-      addItem(this.attachmentTextures, this.stencilTexture.textureBuffer);
+      addItem(this.attachmentTextures, (this.stencilTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     }
 
     if (this.depthTexture) {
       this.depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
-      addItem(this.attachmentTextures, this.depthTexture.textureBuffer);
+      addItem(this.attachmentTextures, (this.depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     }
   }
 
@@ -106,11 +106,11 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       throw new Error('Multiple color attachments not support.');
     }
 
-    const optDepthStencilTex: GLTexture | undefined = props.depthStencilAttachment?.texture as GLTexture;
+    const optDepthStencilTex: Texture | undefined = props.depthStencilAttachment?.texture as Texture;
     const readableDepthStencilTextures = gpuCapability.detail.readableDepthStencilTextures;
     const { storageType, storage } = depthStencilAttachment;
 
-    this.colorTextures = props.attachments.slice() as GLTexture[];
+    this.colorTextures = props.attachments.slice();
 
     if (!willUseFbo && storageType !== RenderPassAttachmentStorageType.none) {
       throw new Error('Use depth stencil attachment without color attachments.');
@@ -177,7 +177,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         if (!readableDepthStencilTextures) {
           throw new Error('Depth texture is not support in framebuffer.');
         }
-        this.depthTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
+        this.depthTexture = optDepthStencilTex ?? new Texture(this.renderer.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_COMPONENT,
           internalFormat: gpuCapability.internalFormatDepth16,
@@ -191,7 +191,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         if (!readableDepthStencilTextures) {
           throw new Error('Depth stencil texture is not support in framebuffer.');
         }
-        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
+        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new Texture(this.renderer.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_STENCIL,
           internalFormat: gpuCapability.internalFormatDepth24_stencil8,
@@ -260,8 +260,9 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
     // TODO 不在bind中设置viewport
     state.setViewport(x, y, width, height);
-    const whiteTexture = this.renderer.engine.assetServer.whiteTexture as GLTexture;
-    const whiteWebGLTexture = whiteTexture.textureBuffer;
+    const whiteTexture = this.renderer.engine.assetServer.whiteTexture;
+    const whiteGPUTexture = whiteTexture.getGPUTexture() as GPUTextureWebGL;
+    const whiteWebGLTexture = whiteGPUTexture.textureBuffer;
 
     // in case frame texture loop
     Object.keys(state.textureUnitDict).forEach(unit => {
@@ -273,14 +274,14 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         this.attachmentTextures.includes(texture)
       ) {
         state.activeTexture(+unit);
-        whiteTexture.bind();
+        whiteGPUTexture.bind();
       }
     });
 
     // FIXME: 没有pipeline对象的临时方案
     for (let i = 0; i < 4; i++) {
       state.activeTexture(gl.TEXTURE0 + i);
-      whiteTexture.bind();
+      whiteGPUTexture.bind();
     }
 
     if (this.ready) {
@@ -299,7 +300,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
       const attachment = depthTexture && stencilTexture ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
 
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, depthTexture.textureBuffer, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, (depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0);
     }
     this.resetColorTextures(this.colorTextures);
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
@@ -312,7 +313,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   }
 
   override resetColorTextures (colorTextures?: Texture[]) {
-    const colors = colorTextures as GLTexture[];
+    const colors = colorTextures as Texture[];
     const gl = this.device.gl;
     const gpuCapability = this.device.gpuCapability;
     const viewport = this.viewport;
@@ -332,7 +333,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       const data = { width, height, data: new Uint8Array(0) };
 
       tex.update({ data });
-      gpuCapability.framebufferTexture2D(gl, gl.FRAMEBUFFER, index, gl.TEXTURE_2D, tex.textureBuffer);
+      gpuCapability.framebufferTexture2D(gl, gl.FRAMEBUFFER, index, gl.TEXTURE_2D, (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer);
       buffers.push(true);
     });
     gpuCapability.drawBuffers(gl, buffers);
@@ -352,7 +353,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   /**
    * 上下文恢复后重建 framebuffer 句柄。
    * 内部 renderbuffer 由RenderingDevice 的 renderbuffers 列表统一恢复，此处不重复处理。
-   * 附件纹理由各自 GLTexture.restore 恢复，此处仅重置 ready 并清空附件缓存，
+   * 附件纹理由各自 Texture.restore 恢复，此处仅重置 ready 并清空附件缓存，
    * 让下次 bind 用各纹理的最新句柄重新挂载。
    */
   override restore (): void {

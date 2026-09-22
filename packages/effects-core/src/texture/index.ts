@@ -1,3 +1,4 @@
+export * from './gpu-texture';
 export * from './utils';
 export * from './texture';
 export * from './texture-factory';

@@ -3,7 +3,7 @@ import type {
   Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
   Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions, spec,
 } from '@galacean/effects-core';
-import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
+import { Asset, glContext, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
 
 /**
@@ -73,7 +73,10 @@ export class ThreeTexture extends Texture {
    * 更新纹理数据
    * @param options - 纹理选项
    */
-  updateSource (options: TextureSourceOptions) {
+  // Three.js allocates the native texture in the constructor.
+  override initialize (): void {}
+
+  override updateSource (options: TextureSourceOptions) {
     this.texture.dispose();
     this.texture = this.createTextureByType(options);
 
@@ -119,7 +122,8 @@ export class ThreeTexture extends Texture {
   override dispose () {
     this.texture.dispose();
 
-    super.dispose();
+    // Keep the existing Three.js asset lifecycle until its GPU extraction.
+    Asset.prototype.dispose.call(this);
   }
 
   /**
@@ -127,7 +131,7 @@ export class ThreeTexture extends Texture {
    * @param data - 图层设置
    */
   override fromData (data: spec.EffectsObjectData): void {
-    super.fromData(data);
+    Asset.prototype.fromData.call(this, data);
 
     this.texture = this.createTextureByType(data as unknown as TextureSourceOptions);
     this.texture.needsUpdate = true;

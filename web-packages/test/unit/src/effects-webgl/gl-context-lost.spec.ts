@@ -1,7 +1,9 @@
+import type { GPUTextureWebGL } from '@galacean/effects-webgl';
+import { Texture } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { BufferUsage, Geometry, glContext, TextureSourceType } from '@galacean/effects-core';
 import type { GLShaderVariant, RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLTexture } from '@galacean/effects-webgl';
+
 import { readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
@@ -69,8 +71,8 @@ describe('webgl/gl-context-lost', () => {
       engine = createEngine(false);
       gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl as WebGLRenderingContext;
       // Engine 构造已创建内置纹理，但需 initialize 才有 GL 句柄。
-      (engine.assetServer.whiteTexture as GLTexture).initialize();
-      (engine.assetServer.transparentTexture as GLTexture).initialize();
+      (engine.assetServer.whiteTexture).initialize();
+      (engine.assetServer.transparentTexture).initialize();
     });
 
     it('纹理 GPU 句柄在 restore 后被重建', async function () {
@@ -80,7 +82,7 @@ describe('webgl/gl-context-lost', () => {
         return;
       }
 
-      const tex = new GLTexture(engine, {
+      const tex = new Texture(engine, {
         sourceType: TextureSourceType.data,
         data: { width: 2, height: 2, data: new Uint8Array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]) },
         format: glContext.RGBA,
@@ -89,11 +91,11 @@ describe('webgl/gl-context-lost', () => {
       });
 
       tex.initialize();
-      const before = tex.textureBuffer;
+      const before = (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer;
 
       await emulateContextLoss(engine);
 
-      const after = tex.textureBuffer;
+      const after = (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer;
 
       expect(after).to.not.equal(before);
       expect(after).to.be.instanceOf(WebGLTexture);
@@ -217,7 +219,7 @@ describe('webgl/gl-context-lost', () => {
         return;
       }
 
-      const tex = new GLTexture(engine, {
+      const tex = new Texture(engine, {
         sourceType: TextureSourceType.data,
         data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) },
         format: glContext.RGBA,
@@ -229,11 +231,11 @@ describe('webgl/gl-context-lost', () => {
 
       // 第一次丢失恢复
       await emulateContextLoss(engine);
-      expect(tex.textureBuffer).to.be.instanceOf(WebGLTexture);
+      expect((tex.getGPUTexture() as GPUTextureWebGL).textureBuffer).to.be.instanceOf(WebGLTexture);
 
       // 第二次丢失恢复（验证永久保留 CPU 数据策略）
       await emulateContextLoss(engine);
-      expect(tex.textureBuffer).to.be.instanceOf(WebGLTexture);
+      expect((tex.getGPUTexture() as GPUTextureWebGL).textureBuffer).to.be.instanceOf(WebGLTexture);
 
       engine.effectsObjectServer.removeTexture(tex);
       tex.dispose();
@@ -247,7 +249,7 @@ describe('webgl/gl-context-lost', () => {
     });
 
     it('release 释放 CPU 源数据（默认内存优先）', () => {
-      const tex = new GLTexture(engine, {
+      const tex = new Texture(engine, {
         sourceType: TextureSourceType.data,
         data: { width: 2, height: 2, data: new Uint8Array(16) },
         format: glContext.RGBA,
@@ -285,7 +287,7 @@ describe('webgl/gl-context-lost', () => {
 
     it('release 保留 CPU 源数据（opt-in 可恢复）', () => {
       const data = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255]);
-      const tex = new GLTexture(engine, {
+      const tex = new Texture(engine, {
         sourceType: TextureSourceType.data,
         data: { width: 2, height: 2, data },
         format: glContext.RGBA,

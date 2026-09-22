@@ -1,5 +1,5 @@
-import type { Material, Texture } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
+import type { Material } from '@galacean/effects';
+import { Texture, EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
 import { UIControl } from '@galacean/effects-plugin-gui';
 import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { editorWindow, menuItem } from '../core/decorators';
@@ -9,7 +9,7 @@ import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
 import { Editor } from '../custom-editors/editor';
-import { GLTexture } from '@galacean/effects-webgl';
+
 import type { FileNode } from '../core/file-node';
 import { GalaceanEffects } from '../ge';
 
@@ -274,7 +274,7 @@ export class Inspector extends EditorWindow {
       } else if (type === '2D') {
         const texture = glMaterial.getTexture(uniformName);
 
-        if (texture instanceof GLTexture) {
+        if (texture instanceof Texture) {
           let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
 
           if (!__inspectorTexture && texture.definition.image) {
@@ -286,7 +286,7 @@ export class Inspector extends EditorWindow {
           ImGui.Button(inspectorName + '##' + uniformName, new ImGui.Vec2(100, 100));
         }
         if (ImGui.BeginDragDropTarget()) {
-          const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
+          const payload = ImGui.AcceptDragDropPayload(Texture.name);
 
           if (payload && payload.Data) {
 

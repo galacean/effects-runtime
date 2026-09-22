@@ -1,4 +1,5 @@
-import { GLTexture } from '@galacean/effects-webgl';
+import { Texture } from '@galacean/effects-core';
+
 import { ImGui, ImGui_Impl } from '../imgui';
 
 function access (object: any, property: string) {
@@ -223,7 +224,7 @@ export class EditorGUILayout {
     }
 
     ImGui.PushID(`ObjectField_${label}_${property}`);
-    if (targetObject instanceof GLTexture) {
+    if (targetObject instanceof Texture) {
       let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
 
       if (!__inspectorTexture && targetObject.definition.image) {

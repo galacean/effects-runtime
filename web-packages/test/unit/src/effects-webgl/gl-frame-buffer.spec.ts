@@ -1,9 +1,10 @@
+import { Texture } from '@galacean/effects-core';
 import type { GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { Renderer } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLFramebuffer, GLRenderbuffer, GLTexture } from '@galacean/effects-webgl';
+import { GLFramebuffer, GLRenderbuffer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -54,7 +55,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
           colorAction: TextureStoreAction.clear,
         },
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -78,7 +79,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -115,7 +116,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const storageType = RenderPassAttachmentStorageType.depth_16_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -147,7 +148,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const storageType = RenderPassAttachmentStorageType.stencil_8_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -182,7 +183,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer0 = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -196,7 +197,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -231,7 +232,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -244,7 +245,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const texture = framebuffer.depthTexture;
 
-      expect(texture).is.instanceof(GLTexture);
+      expect(texture).is.instanceof(Texture);
       expect(texture?.width).is.equal(256);
       expect(texture?.height).is.eql(256);
       expect(texture?.source.format).is.eql(gl.DEPTH_COMPONENT);
@@ -263,7 +264,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         expect(() => new GLFramebuffer({
           storeAction: {},
           attachments: [
-            new GLTexture(engine, {
+            new Texture(engine, {
               ...colorTexOptions,
               data: { width: 256, height: 256 },
             } as TextureSourceOptions),
@@ -281,7 +282,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, {
+          new Texture(engine, {
             ...colorTexOptions,
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
@@ -295,7 +296,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const texture = framebuffer.depthTexture;
 
       expect(texture).is.not.undefined;
-      expect(texture).is.instanceof(GLTexture);
+      expect(texture).is.instanceof(Texture);
       expect(texture?.width).is.equal(256);
       expect(texture?.height).is.eql(256);
       expect(texture?.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
@@ -309,7 +310,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, colorTexOptions as TextureSourceOptions)],
+        attachments: [new Texture(engine, colorTexOptions as TextureSourceOptions)],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 100, 100],
       }, fakeRenderer);
@@ -319,7 +320,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const texture = framebuffer.colorTextures[0];
 
       expect(texture).is.not.undefined;
-      expect(texture).is.instanceof(GLTexture);
+      expect(texture).is.instanceof(Texture);
       expect(texture.width).is.equal(100);
       expect(texture.height).is.eql(100);
       expect(texture.source.format).is.eql(gl.RGBA, 'format');
@@ -338,7 +339,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const storageType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, colorTexOptions as TextureSourceOptions)],
+        attachments: [new Texture(engine, colorTexOptions as TextureSourceOptions)],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 100, 100],
       }, fakeRenderer);
@@ -348,7 +349,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const color = framebuffer.colorTextures[0];
 
       expect(color).is.not.undefined;
-      expect(color).is.instanceof(GLTexture);
+      expect(color).is.instanceof(Texture);
       expect(color.width).is.equal(100);
       expect(color.height).is.eql(100);
       expect(color.source.format).is.eql(gl.RGBA, 'format');
@@ -356,7 +357,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       expect(color.source.type).is.eql(gl.UNSIGNED_BYTE, 'type');
       const depth = framebuffer.depthTexture;
 
-      expect(depth).is.instanceof(GLTexture);
+      expect(depth).is.instanceof(Texture);
       expect(depth?.width).is.equal(100);
       expect(depth?.height).is.eql(100);
       expect(depth?.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
@@ -383,9 +384,9 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       }] as TextureSourceOptions[];
       const framebuffer = new GLFramebuffer({
         attachments: [
-          new GLTexture(engine, colorOptions[0]),
-          new GLTexture(engine, colorOptions[1]),
-          new GLTexture(engine, colorOptions[2]),
+          new Texture(engine, colorOptions[0]),
+          new Texture(engine, colorOptions[1]),
+          new Texture(engine, colorOptions[2]),
         ],
         storeAction: {
           colorAction: TextureStoreAction.clear,
@@ -422,7 +423,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, colorOptions as TextureSourceOptions),
+          new Texture(engine, colorOptions as TextureSourceOptions),
         ],
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -448,7 +449,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, colorOptions as TextureSourceOptions),
+          new Texture(engine, colorOptions as TextureSourceOptions),
         ],
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);

@@ -7,7 +7,7 @@ import {
   glContext, isIOS, logger, toBufferView,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
-import type { GLTexture } from './gl-texture';
+import { GPUTextureWebGL } from './gpu-texture-webgl';
 import { GLContextManager } from './gl-context-manager';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
@@ -170,6 +170,8 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   override getShaderLibrary (): ShaderLibrary | null {
     return this.shaderLibrary;
   }
+
+  override createTexture (): GPUTextureWebGL { return new GPUTextureWebGL(this); }
 
   override createVertexBuffer (
     data: BufferData | number,
@@ -437,7 +439,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     this.gl.bindVertexArray(null);
   }
 
-  deleteGLTexture (texture: GLTexture) {
+  deleteGPUTexture (texture: GPUTextureWebGL) {
     if (texture.textureBuffer && !this.disposed) {
       this.gl.deleteTexture(texture.textureBuffer);
       texture.textureBuffer = null;
@@ -1124,7 +1126,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     if (!uniform) { return; }
     // 必须走 this.activeTexture / this.bindTexture 包装，以保持 activeTextureIndex / currentTextureBinding 缓存一致。
     // 否则后续 engine.bindTexture(sameTex) 会因缓存判定相同而跳过实际绑定，导致 texImage2D 写到错误纹理
-    const glTex = texture as GLTexture;
+    const glTex = texture.getGPUTexture() as GPUTextureWebGL;
 
     this.activeTexture(this.gl.TEXTURE0 + channel);
     this.bindTexture(glTex.target, glTex.textureBuffer);
