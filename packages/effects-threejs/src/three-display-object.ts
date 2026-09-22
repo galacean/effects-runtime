@@ -1,15 +1,16 @@
 import type {
-  EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, Engine,
+  InputServer, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer,
 } from '@galacean/effects-core';
-import { AssetServer, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
+import { Engine, isWebGL2, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
-import { ThreeEngine } from './three-engine';
+import { disposeThreeGeometries } from './three-geometry';
+import type { RenderingDeviceThree } from './rendering-device-three';
 
 export type ThreeDisplayObjectOptions = {
   width: number,
   height: number,
-  event?: EventSystem,
+  event?: InputServer,
   camera?: THREE.Camera,
 };
 
@@ -55,8 +56,17 @@ export class ThreeDisplayObject extends THREE.Group {
 
     const { width, height, camera } = options;
 
-    this.engine = new ThreeEngine(context);
-    this.assetServer = this.engine.getServer(AssetServer);
+    this.engine = new Engine(context.canvas as HTMLCanvasElement, {
+      glType: isWebGL2(context) ? 'webgl2' : 'webgl',
+      ownsCanvas: false,
+      manualRender: true,
+    });
+    const device = this.engine.displayServer.renderingDevice as RenderingDeviceThree;
+
+    device.setContext(context);
+    device.threeGroup = this;
+    device.threeCamera = camera;
+    this.assetServer = this.engine.assetServer;
     this.width = width;
     this.height = height;
     this.camera = camera;
@@ -102,7 +112,8 @@ export class ThreeDisplayObject extends THREE.Group {
 
         const engine = this.engine;
 
-        engine.clearResources();
+        engine.effectsObjectServer.clearObjectInstances();
+        this.assetServer.clearSceneData();
 
         // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
         PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);
@@ -150,7 +161,7 @@ export class ThreeDisplayObject extends THREE.Group {
     composition.on('end', () => {
       this.dispatchEvent({ type: 'end', composition });
     });
-    (this.renderer.engine as ThreeEngine).setOptions({
+    (this.engine.displayServer.renderingDevice as RenderingDeviceThree).setOptions({
       threeCamera: this.camera,
       threeGroup: this,
       composition,
@@ -159,6 +170,14 @@ export class ThreeDisplayObject extends THREE.Group {
     this.compositions.push(composition);
 
     return composition;
+  }
+
+  dispose (): void {
+    this.engine.dispose();
+    disposeThreeGeometries(this.engine);
+    this.compositions.length = 0;
+    this.clear();
+    this.removeFromParent();
   }
 
   pause () {
@@ -191,7 +210,7 @@ export class ThreeDisplayObject extends THREE.Group {
     for (const composition of compositions) {
       composition.camera.updateMatrix();
       composition.sceneTicking.preRender.tick(0);
-      composition.render();
+      (this.engine.displayServer.renderingDevice as RenderingDeviceThree).renderComposition(composition);
     }
   }
 }

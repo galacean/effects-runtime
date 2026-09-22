@@ -801,7 +801,7 @@ export class Theme {
     for (const name of Object.keys(icons)) {
       const value = icons[name];
 
-      this.setIcon(type, name, value ? engine.findObject<Texture>(value) : null);
+      this.setIcon(type, name, value ? engine.effectsObjectServer.findObject<Texture>(value) : null);
     }
     for (const name of Object.keys(styleBoxes)) {this.setStyleBox(type, name, styleBoxFromData(engine, styleBoxes[name]));}
   }
@@ -879,7 +879,7 @@ export function styleBoxFromData (engine: Engine, data: spec.StyleBoxData): Styl
   } else if (data.type === 'texture') {
     const texture = new StyleBoxTexture();
 
-    texture.texture = data.texture ? engine.findObject<Texture>(data.texture) : null;
+    texture.texture = data.texture ? engine.effectsObjectServer.findObject<Texture>(data.texture) : null;
     if (data.sourceRect) {texture.setSourceRect(data.sourceRect.position[0], data.sourceRect.position[1], data.sourceRect.size[0], data.sourceRect.size[1]);}
     const patch = marginsFromData(data.patchMargins);
 

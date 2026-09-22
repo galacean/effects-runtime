@@ -1,37 +1,34 @@
+import { ResourceData } from './resource-data';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { GLSLVersion } from './shader';
 import { glContext } from '../gl';
 import { Material } from '../material';
-import type { Texture } from '../texture';
 import { Geometry } from './geometry';
 import { VertexBuffer } from './vertex-buffer';
 import { Mesh } from './mesh';
-import { getTextureSize } from './render-frame';
+import { getTextureSize } from './rendering-data';
+import type { RenderingData } from './rendering-data';
 import type { RenderPassDestroyOptions } from './render-pass';
-import { RenderTargetHandle, RenderPass } from './render-pass';
+import { RenderPass, RenderPassEvent } from './render-pass';
 import type { Renderer } from './renderer';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
 import { FilterMode, type Framebuffer, RenderTextureFormat } from './framebuffer';
 
 // Bloom Pass - 包含阈值提取、高斯模糊（Down Sample 和 Up Sample）
 export class BloomPass extends RenderPass {
-  sceneTextureHandle: RenderTargetHandle;
-
   private readonly iterationCount: number;
   private thresholdMaterial: Material;
   private downSampleHMaterial: Material;
   private downSampleVMaterial: Material;
   private upSampleMaterial: Material;
-  private tempRTs: Framebuffer[] = [];
-  private thresholdRT: Framebuffer;
-  private mainTexture: Texture;
 
   constructor (renderer: Renderer, iterationCount = 4) {
     super(renderer);
     this.iterationCount = iterationCount;
-
+    this.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+    this.name = 'BloomPass';
     const engine = this.renderer.engine;
 
     // Threshold material
@@ -81,33 +78,30 @@ export class BloomPass extends RenderPass {
     this.upSampleMaterial.blending = false;
     this.upSampleMaterial.depthTest = false;
     this.upSampleMaterial.culling = false;
-
-    this.priority = 5000;
-    this.name = 'BloomPass';
   }
 
-  override configure (renderer: Renderer): void {
-    // 获取场景纹理用于 ToneMappingPass
-    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
-    this.sceneTextureHandle.texture = this.mainTexture;
-  }
+  override execute (renderer: Renderer, data: RenderingData): void {
+    const resourceData = data.frameData.get(ResourceData);
 
-  override execute (renderer: Renderer): void {
-    if (!renderer.renderingData.currentFrame.globalVolume?.bloom?.active) {
+    if (!data.options?.globalVolume?.bloom?.active) {
       return;
     }
-    const baseWidth = Math.max(1, renderer.getWidth());
-    const baseHeight = Math.max(1, renderer.getHeight());
+    const sceneColor = resourceData.cameraColor!;
+    const tempRTs: Framebuffer[] = [];
+    const baseWidth = Math.max(1, sceneColor.getWidth());
+    const baseHeight = Math.max(1, sceneColor.getHeight());
     const iterationCount = Math.max(1, Math.min(this.iterationCount, Math.floor(Math.log2(Math.min(baseWidth, baseHeight)))));
 
     // 1. Threshold pass - 提取高亮区域
-    const threshold = renderer.renderingData.currentFrame.globalVolume?.bloom?.threshold ?? 1.0;
+    const threshold = data.options?.globalVolume?.bloom?.threshold ?? 1.0;
 
-    this.thresholdRT = renderer.getTemporaryRT('_BloomThreshold', baseWidth, baseHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+    const thresholdRT = renderer.getTemporaryRT('_BloomThreshold', baseWidth, baseHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+
     this.thresholdMaterial.setFloat('_Threshold', threshold);
-    renderer.blit(this.mainTexture, this.thresholdRT, this.thresholdMaterial);
+    renderer.blit(sceneColor, thresholdRT, this.thresholdMaterial);
 
-    let currentTexture = this.thresholdRT.getColorTextures()[0];
+    let currentRT = thresholdRT;
+    let currentTexture = currentRT.getColorTextures()[0];
 
     // 2. Down sample passes
     for (let i = 0; i < iterationCount; i++) {
@@ -128,12 +122,13 @@ export class BloomPass extends RenderPass {
 
       // 释放 H pass RT，保留 V pass RT 用于 up sample
       renderer.releaseTemporaryRT(tempH);
-      this.tempRTs.push(tempV);
-      currentTexture = tempV.getColorTextures()[0];
+      tempRTs.push(tempV);
+      currentRT = tempV;
+      currentTexture = currentRT.getColorTextures()[0];
     }
 
     // 释放 threshold RT
-    renderer.releaseTemporaryRT(this.thresholdRT);
+    renderer.releaseTemporaryRT(thresholdRT);
 
     // 3. Up sample passes
     for (let i = iterationCount - 1; i > 0; i--) {
@@ -143,30 +138,46 @@ export class BloomPass extends RenderPass {
       const tempUp = renderer.getTemporaryRT(`_BloomUp${i}`, upWidth, upHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
 
       // 获取下一层的 down sample 结果
-      const downSampleTexture = this.tempRTs[i - 1].getColorTextures()[0];
+      const downSampleTexture = tempRTs[i - 1].getColorTextures()[0];
 
       this.upSampleMaterial.setTexture('_GaussianDownTex', downSampleTexture);
       this.upSampleMaterial.setVector2('_GaussianDownTextureSize', getTextureSize(downSampleTexture));
       renderer.blit(currentTexture, tempUp, this.upSampleMaterial);
 
-      currentTexture = tempUp.getColorTextures()[0];
-      this.tempRTs.push(tempUp);
+      currentRT = tempUp;
+      currentTexture = currentRT.getColorTextures()[0];
+      tempRTs.push(tempUp);
     }
 
-    // 设置最终输出到当前 framebuffer
-    renderer.setFramebuffer(this.tempRTs[this.tempRTs.length - 1]);
+    // Keep the final output until camera cleanup so later passes can sample it.
+    resourceData.bloom = currentRT;
+    for (const rt of tempRTs) {
+      if (rt !== currentRT) {
+        renderer.releaseTemporaryRT(rt);
+      }
+    }
   }
 
-  override onCameraCleanup (renderer: Renderer): void {
-    // 释放所有临时 RT
-    for (let i = 0; i < this.tempRTs.length; i++) {
-      renderer.releaseTemporaryRT(this.tempRTs[i]);
-    }
+  override onCameraCleanup (renderer: Renderer, data: RenderingData): void {
+    const resourceData = data.frameData.get(ResourceData);
 
-    this.tempRTs = [];
+    const empty = renderer.engine.assetServer.transparentTexture;
+
+    this.thresholdMaterial.setTexture('_MainTex', empty);
+    this.downSampleHMaterial.setTexture('_MainTex', empty);
+    this.downSampleVMaterial.setTexture('_MainTex', empty);
+    this.upSampleMaterial.setTexture('_MainTex', empty);
+    this.upSampleMaterial.setTexture('_GaussianDownTex', empty);
+    if (resourceData.bloom) {
+      renderer.releaseTemporaryRT(resourceData.bloom);
+      resourceData.bloom = undefined;
+    }
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
+    if (this.isDisposed) {
+      return;
+    }
     this.thresholdMaterial.dispose();
     this.downSampleHMaterial.dispose();
     this.downSampleVMaterial.dispose();
@@ -178,15 +189,14 @@ export class BloomPass extends RenderPass {
 // 合并Bloom的高斯模糊结果，并应用ACES Tonemapping
 export class ToneMappingPass extends RenderPass {
   private screenMesh: Mesh;
-  private sceneTextureHandle: RenderTargetHandle;
-  private mainTexture: Texture;
 
-  constructor (renderer: Renderer, sceneTextureHandle?: RenderTargetHandle) {
+  constructor (renderer: Renderer) {
     super(renderer);
+    this.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+    this.name = 'ToneMappingPass';
     const name = 'PostProcess';
     const engine = this.renderer.engine;
 
-    this.sceneTextureHandle = sceneTextureHandle ? sceneTextureHandle : new RenderTargetHandle(engine);
     const geometry = Geometry.create(engine, {
       name,
       mode: glContext.TRIANGLE_STRIP,
@@ -220,20 +230,14 @@ export class ToneMappingPass extends RenderPass {
       name, geometry, material,
       priority: 0,
     });
-    this.priority = 5000;
-    this.name = 'ToneMappingPass';
   }
 
-  override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
-    if (!this.sceneTextureHandle.texture) {
-      this.sceneTextureHandle.texture = this.mainTexture;
-    }
-    renderer.setFramebuffer(null);
-  }
+  override execute (renderer: Renderer, data: RenderingData): void {
+    const resourceData = data.frameData.get(ResourceData);
 
-  override execute (renderer: Renderer): void {
-    const globalVolume = renderer.renderingData.currentFrame.globalVolume;
+    renderer.setFramebuffer(data.options?.target ?? null);
+
+    const globalVolume = data.options?.globalVolume;
 
     const bloom: spec.Bloom = {
       threshold: 0,
@@ -263,17 +267,15 @@ export class ToneMappingPass extends RenderPass {
       ...globalVolume?.tonemapping,
     };
 
-    this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
+    this.screenMesh.material.setTexture('_SceneTex', resourceData.cameraColor!);
+    this.screenMesh.material.setTexture('_GaussianTex', resourceData.bloom?.getColorTextures()[0] ?? resourceData.cameraColor!);
+    this.screenMesh.material.setFloat('_BloomIntensity', bloom.active ? bloom.intensity : 0);
 
     this.screenMesh.material.setFloat('_Brightness', colorAdjustments.active ? Math.pow(2, colorAdjustments.brightness) : 1);
     this.screenMesh.material.setFloat('_Saturation', colorAdjustments.active ? (colorAdjustments.saturation * 0.01) + 1 : 1);
     this.screenMesh.material.setFloat('_Contrast', colorAdjustments.active ? (colorAdjustments.contrast * 0.01) + 1 : 1);
 
     this.screenMesh.material.setInt('_UseBloom', Number(bloom.active));
-    if (bloom.active) {
-      this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
-      this.screenMesh.material.setFloat('_BloomIntensity', bloom.intensity);
-    }
     this.screenMesh.material.setFloat('_VignetteIntensity', vignette.active ? vignette.intensity : 0);
     if (vignette.active && vignette.intensity > 0) {
       this.screenMesh.material.setFloat('_VignetteSmoothness', vignette.smoothness);
@@ -284,4 +286,18 @@ export class ToneMappingPass extends RenderPass {
     this.screenMesh.material.setInt('_UseToneMapping', Number(tonemapping.active));
     renderer.renderMeshes([this.screenMesh]);
   }
+
+  override onCameraCleanup (renderer: Renderer): void {
+    this.screenMesh.material.setTexture('_SceneTex', renderer.engine.assetServer.transparentTexture);
+    this.screenMesh.material.setTexture('_GaussianTex', renderer.engine.assetServer.transparentTexture);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    if (this.isDisposed) {
+      return;
+    }
+    this.screenMesh.dispose();
+    super.dispose(options);
+  }
+
 }

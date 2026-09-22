@@ -1,8 +1,8 @@
 import type {
-  Scene, ShaderLibrary, Transform, EventSystem, CompositionProps,
+  Scene, ShaderLibrary, Transform, InputServer, CompositionProps,
   Engine,
 } from '@galacean/effects-core';
-import { Composition, RendererComponent } from '@galacean/effects-core';
+import { Composition } from '@galacean/effects-core';
 import type THREE from 'three';
 
 /**
@@ -17,7 +17,7 @@ export interface CompositionBaseProps {
    * 画布高度
    */
   height?: number,
-  event?: EventSystem,
+  event?: InputServer,
   /**
    * 播放速度
    */
@@ -56,29 +56,9 @@ export class ThreeComposition extends Composition {
 
   constructor (
     engine: Engine,
-    props: ThreeCompositionProps,
-    scene: Scene,
+    props: ThreeCompositionProps = {},
+    scene?: Scene,
   ) {
     super(engine, props, scene);
-  }
-
-  override renderContent (): void {
-    const render = this.renderer;
-    const frame = this.renderFrame;
-
-    frame.renderPasses[0].meshes.length = 0;
-
-    const items = this.sceneRoot.getDescendants();
-
-    // 主合成元素
-    for (const vfxItem of items) {
-      const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-      for (const rendererComponent of rendererComponents) {
-        if (rendererComponent.isActiveAndEnabled) {
-          rendererComponent.render(render);
-        }
-      }
-    }
   }
 }

@@ -2,7 +2,7 @@ import type { Renderer } from '@galacean/effects-core';
 import { SpriteComponent, effectsClass, glContext, spec } from '@galacean/effects-core';
 import type { ThreeMaterial } from './material';
 import * as THREE from 'three';
-import type { ThreeEngine } from './three-engine';
+import type { RenderingDeviceThree } from './rendering-device-three';
 import { getThreeGeometry } from './three-geometry';
 
 @effectsClass(spec.DataType.SpriteComponent)
@@ -87,7 +87,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
 
   override onStart (): void {
     super.onStart();
-    (this.engine as ThreeEngine).threeGroup.add(this.threeMesh);
+    (this.engine.displayServer.renderingDevice as RenderingDeviceThree).threeGroup.add(this.threeMesh);
   }
 
   override render (renderer: Renderer): void {
@@ -98,7 +98,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     this.threeMesh.geometry = getThreeGeometry(this.geometry);
     this.material.setVector2('_Size', this.transform.size);
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
+    this.material.use(renderer, renderer.renderingData.globalUniforms);
   }
 
   override onDestroy (): void {

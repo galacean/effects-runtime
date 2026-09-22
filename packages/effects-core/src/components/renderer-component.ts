@@ -58,7 +58,7 @@ export class RendererComponent extends Component {
   override fromData (data: RendererComponentData): void {
     super.fromData(data);
     if (data.materials !== undefined) {
-      this.materials = data.materials.map(material => this.engine.findObject<Material>(material));
+      this.materials = data.materials.map(material => this.findObject<Material>(material));
     }
     if (data._priority !== undefined) {
       this._priority = data._priority;
@@ -66,11 +66,11 @@ export class RendererComponent extends Component {
   }
 
   override onEnable (): void {
-    this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
+    this.item.composition?.sceneRendering.addRenderer(this);
   }
 
   override onDisable (): void {
-    this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+    this.item.composition?.sceneRendering.removeRenderer(this);
   }
 
   override onParentChanged (): void {

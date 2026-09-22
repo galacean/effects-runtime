@@ -1,9 +1,9 @@
 import type { Engine } from '@galacean/effects';
-import { EventSystem } from '@galacean/effects';
+import { InputServer } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('core/interact/event-system', () => {
+describe('core/engine/input-server/canvas', () => {
   it('supports a mini-program canvas without DOM attribute and style methods', () => {
     const listeners = new Map<string, EventListener[]>();
     const canvas = {
@@ -41,11 +41,11 @@ describe('core/interact/event-system', () => {
         };
       },
     } as unknown as HTMLCanvasElement;
-    const eventSystem = new EventSystem({ compositions: [] } as unknown as Engine);
+    const inputServer = new InputServer({ options: {} } as Engine);
 
-    expect(() => eventSystem.bindListeners(canvas)).not.to.throw();
+    expect(() => inputServer.bindListeners(canvas)).not.to.throw();
     expect(listeners.get('touchstart')).to.have.length(1);
-    expect(() => eventSystem.dispose()).not.to.throw();
+    expect(() => inputServer.dispose()).not.to.throw();
     expect(listeners.get('touchstart')).to.have.length(0);
   });
 });

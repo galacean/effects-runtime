@@ -39,13 +39,18 @@ export abstract class EffectsObject {
     return this._isRegistered;
   }
 
+  /** Resolve an object reference in this engine, loading serialized data if needed. */
+  findObject<T> (dataPath: spec.DataPath): T {
+    return this.engine.effectsObjectServer.findObject<T>(dataPath);
+  }
+
   /** @internal */
   registerObject (): void {
     if (this._isRegistered) {
       return;
     }
     this._isRegistered = true;
-    this.engine.addInstance(this);
+    this.engine.effectsObjectServer.registerObject(this);
   }
 
   /** @internal */
@@ -54,7 +59,7 @@ export abstract class EffectsObject {
       return;
     }
     this._isRegistered = false;
-    this.engine.removeInstance(this.guid);
+    this.engine.effectsObjectServer.unregisterObject(this);
   }
 
   /**

@@ -1,10 +1,11 @@
+import { SceneServer } from '@galacean/effects-core';
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene, MessageItem,
   Region, AssetManager, Composition, Renderer, Ticker,
   PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
-  isArray, spec, assertExist, SceneLoader, AssetServer,
+  isArray, spec, assertExist, SceneLoader,
 } from '@galacean/effects-core';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
@@ -45,11 +46,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 是否跳过指针移动时的拾取检测, 开启后可以减少移动时的性能消耗，但会导致 pointermove 事件无法触发
    */
   get skipPointerMovePicking () {
-    return this.engine.eventSystem.skipPointerMovePicking;
+    return this.engine.inputServer.skipPointerMovePicking;
   }
 
   set skipPointerMovePicking (value: boolean) {
-    this.engine.eventSystem.skipPointerMovePicking = value;
+    this.engine.inputServer.skipPointerMovePicking = value;
   }
 
   /**
@@ -67,59 +68,59 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   get gpuCapability () {
-    return this.engine.gpuCapability;
+    return this.engine.displayServer.renderingDevice.gpuCapability;
   }
   /**
    * 当前播放的合成对象数组，请不要修改内容
    */
   private get compositions () {
-    return this.engine.compositions;
+    return this.engine.getServer(SceneServer).compositions;
   }
 
   private get assetManagers () {
-    return this.engine.assetManagers;
+    return this.engine.assetServer.assetManagers;
   }
 
   private get assetServer () {
-    return this.engine.getServer(AssetServer);
+    return this.engine.assetServer;
   }
 
   private get event () {
-    return this.engine.eventSystem;
+    return this.engine.inputServer;
   }
 
   private get displayAspect () {
-    return this.engine.displayAspect;
+    return this.engine.displayServer.displayAspect;
   }
 
   private set displayAspect (value: number) {
-    this.engine.displayAspect = value;
+    this.engine.displayServer.displayAspect = value;
   }
 
   private get displayScale () {
-    return this.engine.displayScale;
+    return this.engine.displayServer.displayScale;
   }
 
   private set displayScale (value: number) {
-    this.engine.displayScale = value;
+    this.engine.displayServer.displayScale = value;
   }
 
   private get offscreenMode () {
-    return this.engine.offscreenMode;
+    return this.engine.displayServer.offscreenMode;
   }
 
   private set offscreenMode (value: boolean) {
-    this.engine.offscreenMode = value;
+    this.engine.displayServer.offscreenMode = value;
   }
   /**
    * 播放器的像素比
    */
   private get pixelRatio () {
-    return this.engine.pixelRatio;
+    return this.engine.displayServer.pixelRatio;
   }
 
   private set pixelRatio (value: number) {
-    this.engine.pixelRatio = value;
+    this.engine.displayServer.pixelRatio = value;
   }
 
   /**
@@ -189,7 +190,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         doNotHandleContextLost,
         ownsCanvas,
       });
-      this.engine.offscreenMode = true;
+      this.engine.displayServer.offscreenMode = true;
 
       // Bind engine events
       this.engine.on('rendererror', (e: Event | Error) => {
@@ -425,8 +426,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       assetManager.dispose();
     }
 
-    this.engine.assetManagers = [];
-    const baseOrder = this.engine.compositions.length;
+    this.engine.assetServer.assetManagers = [];
+    const baseOrder = this.engine.getServer(SceneServer).compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;
       const { source, options: compositionOptions } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });
@@ -599,7 +600,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 将播放器重新和父容器大小对齐
    */
   resize () {
-    this.engine.resize();
+    this.engine.displayServer.resize();
   }
 
   /**
@@ -656,7 +657,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.canvas instanceof HTMLCanvasElement) {
       // TODO: 数据模版下掉可以由文本模块单独管理
       canvasPool.dispose();
-      if (this.engine.ownsCanvas) {
+      if (this.engine.displayServer.ownsCanvas) {
         // canvas will become a cry emoji in Android if still in dom
         if (this.canvas.parentNode) {
           this.canvas.parentNode.removeChild(this.canvas);

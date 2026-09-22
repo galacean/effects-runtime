@@ -128,7 +128,7 @@ export class VideoComponent extends MaskableGraphic {
       }
     });
 
-    this.engine.removeTexture(oldTexture);
+    this.engine.effectsObjectServer.removeTexture(oldTexture);
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
@@ -165,7 +165,7 @@ export class VideoComponent extends MaskableGraphic {
     this.transparent = transparent;
 
     if (video) {
-      const videoAsset = this.engine.findObject<DataAsset<HTMLVideoElement>>(video);
+      const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
 
       if (videoAsset) {
         this.video = videoAsset.data;
@@ -576,7 +576,7 @@ export class VideoComponent extends MaskableGraphic {
 
       this.videoSeeking = true;
       if (clearTexture) {
-        this.material.setTexture('_MainTex', this.engine.transparentTexture);
+        this.material.setTexture('_MainTex', this.engine.assetServer.transparentTexture);
       }
       this.video!.addEventListener('seeked', () => {
         this.videoSeeking = false;

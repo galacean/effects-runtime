@@ -1,3 +1,4 @@
+import type { RenderingDevice } from '../rendering-device';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
 import type { Engine } from '../engine';
@@ -46,7 +47,7 @@ let geometryId = 1;
 
 type VertexArrayObject = object;
 
-interface VertexArrayObjectEngine {
+interface VertexArrayObjectDevice {
   recordVertexArrayObject: (
     vertexBuffers: Record<string, VertexBuffer>,
     indexBuffer: DataBuffer | null,
@@ -87,7 +88,7 @@ export class Geometry extends Asset {
   /** @hide */
   constructor (engine: Engine, props?: GeometryProps) {
     super(engine);
-    if (supportsVertexArrayObjects(engine)) {
+    if (supportsVertexArrayObjects(engine.displayServer.renderingDevice)) {
       this.vertexArrayObjects = {};
     }
     if (props) {
@@ -224,7 +225,7 @@ export class Geometry extends Asset {
     if (this.indexBuffer) {
       const updatedData = indices.slice(offset, offset + data.length) as IndicesArray;
 
-      this.engine.updateDynamicIndexBuffer(
+      this.engine.displayServer.renderingDevice.updateDynamicIndexBuffer(
         this.indexBuffer,
         updatedData,
         offset * (this.indexBuffer.is32Bits ? Uint32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT),
@@ -256,17 +257,17 @@ export class Geometry extends Asset {
   /** @hide */
   bind (shader: ShaderVariant): void {
     const vertexArrayObjects = this.vertexArrayObjects;
-    const engine = this.engine;
+    const device = this.engine.displayServer.renderingDevice;
 
-    if (!vertexArrayObjects || !supportsVertexArrayObjects(engine)) {
-      engine.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
+    if (!vertexArrayObjects || !supportsVertexArrayObjects(device)) {
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
 
       return;
     }
     let vertexArrayObject: VertexArrayObject | undefined = vertexArrayObjects[shader.key];
 
     if (!vertexArrayObject) {
-      vertexArrayObject = engine.recordVertexArrayObject(
+      vertexArrayObject = device.recordVertexArrayObject(
         this.vertexBuffers,
         this.indexBuffer ?? null,
         shader,
@@ -276,9 +277,9 @@ export class Geometry extends Asset {
       }
     }
     if (vertexArrayObject) {
-      engine.bindVertexArrayObject(vertexArrayObject, this.indexBuffer ?? null);
+      device.bindVertexArrayObject(vertexArrayObject, this.indexBuffer ?? null);
     } else {
-      engine.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
     }
   }
 
@@ -290,8 +291,8 @@ export class Geometry extends Asset {
     }
     const vertexArrayObject = vertexArrayObjects[key];
 
-    if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine)) {
-      this.engine.releaseVertexArrayObject(vertexArrayObject);
+    if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.displayServer.renderingDevice)) {
+      this.engine.displayServer.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
     }
     delete vertexArrayObjects[key];
   }
@@ -304,7 +305,7 @@ export class Geometry extends Asset {
       buffer.create();
     });
     this.createIndexBuffer();
-    this.engine.addGeometry(this);
+    this.engine.effectsObjectServer.addGeometry(this);
     this.initialized = true;
     this.options = undefined;
   }
@@ -403,7 +404,7 @@ export class Geometry extends Asset {
     this.drawStart = 0;
     this.drawCount = 0;
     if (this.initialized) {
-      this.engine.removeGeometry(this);
+      this.engine.effectsObjectServer.removeGeometry(this);
     }
     this.initialized = false;
     this.disposed = true;
@@ -512,7 +513,7 @@ export class Geometry extends Asset {
     this.vertexBuffers = {};
     this.indices = new Uint16Array(0);
     if (wasInitialized) {
-      this.engine.removeGeometry(this);
+      this.engine.effectsObjectServer.removeGeometry(this);
       this.initialized = false;
     }
   }
@@ -526,8 +527,8 @@ export class Geometry extends Asset {
     Object.keys(vertexArrayObjects).forEach(key => {
       const vertexArrayObject = vertexArrayObjects[key];
 
-      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine)) {
-        this.engine.releaseVertexArrayObject(vertexArrayObject);
+      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.displayServer.renderingDevice)) {
+        this.engine.displayServer.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
       }
     });
     this.vertexArrayObjects = {};
@@ -539,7 +540,7 @@ export class Geometry extends Asset {
     if (indices.length === 0 || this.indexBuffer) {
       return;
     }
-    this.indexBuffer = this.engine.createIndexBuffer(indices, {
+    this.indexBuffer = this.engine.displayServer.renderingDevice.createIndexBuffer(indices, {
       usage: this.bufferUsage,
       type: this.getIndexType(),
       byteStride: 0,
@@ -552,7 +553,7 @@ export class Geometry extends Asset {
     if (!this.indexBuffer) {
       return;
     }
-    this.engine.releaseBuffer(this.indexBuffer);
+    this.engine.displayServer.renderingDevice.releaseBuffer(this.indexBuffer);
     this.indexBuffer = undefined;
   }
 
@@ -574,15 +575,15 @@ function isTypedArray (value: unknown): value is spec.TypedArray {
   return ArrayBuffer.isView(value) && !(value instanceof DataView);
 }
 
-function hasVertexArrayObjectMethods (engine: Engine): engine is Engine & VertexArrayObjectEngine {
-  const candidate = engine as Engine & Partial<VertexArrayObjectEngine>;
+function hasVertexArrayObjectMethods (engine: RenderingDevice): engine is RenderingDevice & VertexArrayObjectDevice {
+  const candidate = engine as RenderingDevice & Partial<VertexArrayObjectDevice>;
 
   return typeof candidate.recordVertexArrayObject === 'function'
     && typeof candidate.bindVertexArrayObject === 'function'
     && typeof candidate.releaseVertexArrayObject === 'function';
 }
 
-function supportsVertexArrayObjects (engine: Engine): engine is Engine & VertexArrayObjectEngine {
+function supportsVertexArrayObjects (engine: RenderingDevice): engine is RenderingDevice & VertexArrayObjectDevice {
   return engine.gpuCapability?.detail.vertexArrayObject === true
     && hasVertexArrayObjectMethods(engine);
 }

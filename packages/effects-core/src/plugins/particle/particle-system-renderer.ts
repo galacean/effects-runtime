@@ -66,6 +66,16 @@ export class ParticleSystemRenderer extends RendererComponent {
     }
   }
 
+  override onDestroy (): void {
+    this.disposeMeshes();
+  }
+
+  /** @internal */
+  disposeMeshes (): void {
+    this.particleMesh?.dispose();
+    this.trailMesh?.dispose();
+  }
+
   /**
    * @internal
    */

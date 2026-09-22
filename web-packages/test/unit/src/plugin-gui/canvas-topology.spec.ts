@@ -1,3 +1,4 @@
+import { SceneServer } from '@galacean/effects';
 import {
   Composition,
   CompositionComponent,
@@ -95,7 +96,7 @@ describe('plugin-gui/GUI topology', () => {
       }
 
       override onEngineDestroy (engine: Player['engine']): void {
-        expect(engine.compositions).length(1);
+        expect(engine.getServer(SceneServer).compositions).length(1);
         expect(engine.getServer(GUIServer).windowRoot.isDisposed).equals(false);
       }
     }
@@ -116,7 +117,7 @@ describe('plugin-gui/GUI topology', () => {
 
     composition.sceneTicking.update.tick = () => calls.push('scene:update');
     composition.sceneTicking.lateUpdate.tick = () => calls.push('scene:lateUpdate');
-    composition.renderContent = () => calls.push('scene:render');
+    composition.renderer.renderComposition = () => calls.push('scene:render');
     gui.windowRoot.update = () => calls.push('gui:update');
     gui.windowRoot.render = () => calls.push('gui:render');
     engine.mainLoop(16);
@@ -139,7 +140,7 @@ describe('plugin-gui/GUI topology', () => {
       calls.push('dispose');
       dispose();
     };
-    engine.dispose();
+    player.dispose();
     engine.dispose();
     expect(calls).deep.equals(['dispose']);
     gui.windowRoot.update = () => calls.push('update');
@@ -148,8 +149,8 @@ describe('plugin-gui/GUI topology', () => {
     gui.windowRoot.onCanvasBlur = () => calls.push('blur');
     gui.windowRoot.pushInput = () => calls.push('input');
     engine.emit('resize', engine);
-    engine.eventSystem.emit('canvasBlur');
-    engine.eventSystem.emit('input', new InputEventMouseButton());
+    engine.inputServer.emit('canvasBlur');
+    engine.inputServer.emit('input', new InputEventMouseButton());
     expect(calls).deep.equals(['dispose']);
   });
 
@@ -183,7 +184,7 @@ describe('plugin-gui/GUI topology', () => {
     first.sceneRoot.getComponent(UICanvas).order = 10;
     second.sceneRoot.getComponent(UICanvas).order = -5;
     engine.getServer(GUIServer).windowRoot.canvases.sortCanvases();
-    expect(engine.compositions).deep.equals([second, first]);
+    expect(engine.getServer(SceneServer).compositions).deep.equals([second, first]);
     expect(first.sceneRoot.getComponent(UICanvas).order).equals(10);
     expect(second.sceneRoot.getComponent(UICanvas).order).equals(-5);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children.indexOf(second.sceneRoot.getComponent(UICanvas).rootControl))
@@ -205,8 +206,8 @@ describe('plugin-gui/GUI topology', () => {
     expect(secondRoot.isDisposed).equals(true);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(firstRoot);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(secondRoot);
-    expect(engine.compositions).not.includes(first);
-    expect(engine.compositions).not.includes(second);
+    expect(engine.getServer(SceneServer).compositions).not.includes(first);
+    expect(engine.getServer(SceneServer).compositions).not.includes(second);
   });
 
   it('injects the default canvas before later plugin creation hooks', () => {

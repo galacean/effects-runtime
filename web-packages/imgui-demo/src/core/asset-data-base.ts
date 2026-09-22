@@ -82,7 +82,7 @@ export class AssetDatabase extends Database {
     }
 
     for (const objectData of packageData.exportObjects) {
-      this.engine.addEffectsObjectData(objectData);
+      this.engine.assetServer.addEffectsObjectData(objectData);
     }
 
     const effectsPackage = new EffectsPackage();
@@ -90,7 +90,7 @@ export class AssetDatabase extends Database {
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
     for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(await this.engine.findObject(objectData));
+      effectsPackage.exportObjects.push(await this.engine.effectsObjectServer.findObject(objectData));
     }
 
     return effectsPackage;

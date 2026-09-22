@@ -217,7 +217,7 @@ export abstract class Component extends EffectsObject {
   override fromData (data: ComponentData): void {
     super.fromData(data);
     if (data.item !== undefined) {
-      this.item = this.engine.findObject<VFXItem>(data.item);
+      this.item = this.findObject<VFXItem>(data.item);
     }
     if (data._enabled !== undefined) {
       this._enabled = data._enabled;

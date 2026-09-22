@@ -1,5 +1,5 @@
 import type { Disposable } from '@galacean/effects-core';
-import type { GLEngine } from './gl-engine';
+import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 export interface ProgramAttributeInfo {
   readonly name: string,
@@ -23,24 +23,24 @@ export class GLProgram implements Disposable {
   private attributeNames: string[];
 
   constructor (
-    public engine: GLEngine,
+    public device: RenderingDeviceWebGL,
     public readonly program: WebGLProgram,
     public readonly key: string,
   ) {
-    this.engine.useProgram(program);
+    this.device.useProgram(program);
 
     this.attribInfoMap = this.createAttribMap();
     this.attributeNames = Object.keys(this.attribInfoMap);
 
-    this.engine.useProgram(null);
+    this.device.useProgram(null);
     //gl.activeTexture(gl.TEXTURE0);
-    //this.engine.activeTexture(gl.TEXTURE0);
+    //this.device.activeTexture(gl.TEXTURE0);
     //emptyTexture2D.bind();
     //this.uniformInfoMap = uniformMap;
   }
 
   bind () {
-    this.engine.useProgram(this.program);
+    this.device.useProgram(this.program);
   }
 
   /**
@@ -60,7 +60,7 @@ export class GLProgram implements Disposable {
   }
 
   createAttribMap () {
-    const { gl } = this.engine;
+    const { gl } = this.device;
     const program = this.program;
     const attribMap: Record<string, ProgramAttributeInfo> = {};
     const num = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
@@ -82,8 +82,8 @@ export class GLProgram implements Disposable {
   }
 
   dispose () {
-    if (this.engine) {
-      this.engine.gl.deleteProgram(this.program);
+    if (this.device) {
+      this.device.gl.deleteProgram(this.program);
     }
   }
 }

@@ -153,7 +153,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     const style = new StyleBoxFlat();
     const borderColor = new math.Color(0.8, 0.2, 0.1, 1);
     const triangles: unknown[][] = [];
-    const graphics = player.engine.graphics;
+    const graphics = player.engine.renderingServer.graphics;
     const originalTriangle = graphics.fillTriangle;
 
     style.setBackgroundColor(new math.Color(0.1, 0.2, 0.3, 0));
@@ -315,7 +315,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('loads Theme and overrides data and draws Flat and Texture StyleBoxes', () => {
-    const texturePath = { id: player.engine.whiteTexture.getInstanceId() };
+    const texturePath = { id: player.engine.assetServer.whiteTexture.getInstanceId() };
     const theme = Theme.fromData(player.engine, {
       types: {
         Label: {
@@ -364,13 +364,13 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(label.getThemeFontSize('fontSize')).equals(20);
     expect(label.getThemeColor('fontColor').toArray()).deep.equals([0.3, 0.4, 0.5, 1]);
     expect(label.getThemeStyleBox('test').getMinimumSize().toArray()).deep.equals([12, 14]);
-    expect(label.getThemeIcon('testIcon')).equals(player.engine.whiteTexture);
+    expect(label.getThemeIcon('testIcon')).equals(player.engine.assetServer.whiteTexture);
     expect((label.getThemeStyleBox('testTexture') as StyleBoxTexture).texture)
-      .equals(player.engine.whiteTexture);
-    expect(theme.getIcon('Button', 'icon')).equals(player.engine.whiteTexture);
+      .equals(player.engine.assetServer.whiteTexture);
+    expect(theme.getIcon('Button', 'icon')).equals(player.engine.assetServer.whiteTexture);
     const dataTextureStyle = theme.getStyleBox('Button', 'textured') as StyleBoxTexture;
 
-    expect(dataTextureStyle.texture).equals(player.engine.whiteTexture);
+    expect(dataTextureStyle.texture).equals(player.engine.assetServer.whiteTexture);
     expect(dataTextureStyle.getSourceRect()).deep.equals({ x: 2, y: 3, width: 4, height: 5 });
     expect(dataTextureStyle.getPatchMargins()).deep.equals({ left: 1, top: 2, right: 3, bottom: 4 });
     expect(dataTextureStyle.getMinimumSize().toArray()).deep.equals([12, 14]);
@@ -384,7 +384,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect((flat as StyleBoxFlat).getCornerRadii()).deep.equals({ left: 9, top: 8, right: 7, bottom: 6 });
     const fillCalls: unknown[][] = [];
     const triangleCalls: unknown[][] = [];
-    const graphics = player.engine.graphics;
+    const graphics = player.engine.renderingServer.graphics;
     const originalFill = graphics.fillRectangle;
     const originalTriangle = graphics.fillTriangle;
 

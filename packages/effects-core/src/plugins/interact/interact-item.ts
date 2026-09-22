@@ -5,7 +5,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { trianglesFromRect } from '../../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from './click-handler';
 import { HitTestType } from './click-handler';
-import type { EventSystem, TouchEventType } from './event-system';
+import type { InputServer, TouchEventType } from '../../input-server';
 import { InteractMesh } from './interact-mesh';
 import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
@@ -250,7 +250,7 @@ export class InteractComponent extends RendererComponent {
     this.item.composition.camera.position = new Vector3(nx, ny, depth);
   }
 
-  beginDragTarget (options: spec.DragInteractOption, eventSystem: EventSystem) {
+  beginDragTarget (options: spec.DragInteractOption, inputServer: InputServer) {
     if (options.target !== 'camera') {
       return;
     }
@@ -302,13 +302,13 @@ export class InteractComponent extends RendererComponent {
     };
 
     Object.keys(handlerMap).forEach(name => {
-      eventSystem.addEventListener(name, handlerMap[name]);
+      inputServer.addEventListener(name, handlerMap[name]);
     });
 
     handlerMap.touchmove({ dx: 0, dy: 0, width: 1, height: 1 } as TouchEventType);
     this.item.getComponent(InteractComponent).endDragTarget = () => {
       Object.keys(handlerMap).forEach(name => {
-        eventSystem.removeEventListener(name, handlerMap[name]);
+        inputServer.removeEventListener(name, handlerMap[name]);
       });
     };
   }

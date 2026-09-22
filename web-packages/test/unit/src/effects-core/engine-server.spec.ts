@@ -1,7 +1,6 @@
-import type { Engine, Scene } from '@galacean/effects';
-import { AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, effectsClass, effectsClassStore } from '@galacean/effects';
-import { ThreeEngine } from '../../../../../packages/effects-threejs/src/three-engine';
-import { ThreeRenderer } from '../../../../../packages/effects-threejs/src/three-renderer';
+import type { Scene } from '@galacean/effects';
+import { Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
+import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
 
@@ -16,8 +15,8 @@ describe('core/engine/servers', () => {
     effectsClass(key)(server);
   }
 
-  function createPlayer () {
-    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+  function createPlayer (doNotHandleContextLost = true) {
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true, doNotHandleContextLost });
 
     players.push(player);
 
@@ -66,10 +65,10 @@ describe('core/engine/servers', () => {
     composition.sceneTicking.update.tick = () => calls.push('composition:update');
     composition.sceneTicking.lateUpdate.tick = () => calls.push('composition:lateUpdate');
     composition.sceneTicking.preRender.tick = () => calls.push('composition:preRender');
-    composition.renderContent = () => calls.push('composition:render');
+    composition.renderer.renderComposition = () => calls.push('composition:render');
     engine.speed = 2;
     engine.mainLoop(50);
-    engine.dispose();
+    player.dispose();
     engine.dispose();
 
     expect(calls).to.deep.equal([
@@ -79,7 +78,7 @@ describe('core/engine/servers', () => {
       '-10:draw', '300:draw', 'composition:preRender', 'composition:render',
       '300:beforeExit', '-10:beforeExit', '300:dispose', '-10:dispose',
     ]);
-    expect(() => engine.getServer(Early)).to.throw('Engine server "Early" is not registered.');
+    expect(engine.getServer(Early)).to.equal(undefined);
   });
 
   it('keeps server instances separate for each engine and snapshots registrations', () => {
@@ -95,7 +94,7 @@ describe('core/engine/servers', () => {
     expect(first.getServer(Server)).not.to.equal(second.getServer(Server));
     expect(first.getServer(Server).engine).to.equal(first);
     expect(second.getServer(Server).engine).to.equal(second);
-    expect(() => first.getServer(LaterServer)).to.throw('Engine server "LaterServer" is not registered.');
+    expect(first.getServer(LaterServer)).to.equal(undefined);
     expect(second.getServer(LaterServer)).to.be.instanceOf(LaterServer);
   });
 
@@ -115,16 +114,16 @@ describe('core/engine/servers', () => {
     expect(first.root.composition).to.equal(first);
     first.setIndex(2);
     second.setIndex(1);
-    engine.addComposition(first);
-    expect(engine.compositions).to.deep.equal([second, first]);
+    server.addComposition(first);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second, first]);
     first.setIndex(0);
-    expect(engine.compositions).to.deep.equal([first, second]);
-    engine.setSize(200, 100);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([first, second]);
+    engine.displayServer.setSize(200, 100);
     expect(first.camera.aspect).to.equal(2);
     expect(second.camera.aspect).to.equal(2);
     first.dispose();
-    expect(engine.compositions).to.deep.equal([second]);
-    expect(other.compositions).to.have.length(0);
+    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second]);
+    expect(other.getServer(SceneServer).compositions).to.have.length(0);
   });
 
   it('initializes registered asset servers per engine and restores built-in object lookup', () => {
@@ -132,47 +131,159 @@ describe('core/engine/servers', () => {
     register('asset-alias', AssetServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer);
+    const assets = engine.assetServer;
     const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
 
     expect(assets).to.be.instanceOf(AssetServer);
-    expect(assets).not.to.equal(other.getServer(AssetServer));
-    engine.clearResources();
-    expect(engine.whiteTexture.isRegistered).to.equal(false);
+    expect(engine.assetServer).to.equal(engine.getServer(AssetServer));
+    expect(assets).not.to.equal(other.assetServer);
+    const previousData = assets.jsonSceneData;
+
+    engine.effectsObjectServer.clearObjectInstances();
+    expect(assets.jsonSceneData).to.equal(previousData);
+    assets.clearSceneData();
+    expect(assets.jsonSceneData).not.to.equal(previousData);
+    expect(assets.jsonSceneData).to.deep.equal({});
+    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(false);
     assets.prepareAssets(scene, {});
-    expect(engine.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(engine.whiteTexture);
-    expect(engine.objectInstance[engine.transparentTexture.getInstanceId()]).to.equal(engine.transparentTexture);
-    expect(other.objectInstance[engine.whiteTexture.getInstanceId()]).to.equal(other.whiteTexture);
-    expect(other.whiteTexture).not.to.equal(engine.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
+    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
+    expect(other.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(other.assetServer.whiteTexture);
+    expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
+  });
+
+  it('owns object lookup per engine and preserves lookup behavior after clearing', () => {
+    register('objects-alias', EffectsObjectServer);
+    const engine = createPlayer().engine;
+    const other = createPlayer().engine;
+    const server = engine.getServer(EffectsObjectServer);
+    const assets = engine.assetServer;
+    const texture = engine.assetServer.whiteTexture;
+    const path = { id: texture.getInstanceId() };
+    let loads = 0;
+
+    expect(server).to.equal(engine.effectsObjectServer);
+    expect(server).not.to.equal(other.effectsObjectServer);
+    assets.loadGUID = <T>() => {
+      loads++;
+
+      return texture as T;
+    };
+    expect(server.findObject(path)).to.equal(texture);
+    expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
+    expect(texture.findObject<Texture>(path)).to.equal(texture);
+    expect(texture.findObject<Texture>(texture as unknown as typeof path)).to.equal(texture);
+    expect(other.assetServer.whiteTexture.findObject<Texture>(path)).to.equal(other.assetServer.whiteTexture);
+    expect(loads).to.equal(0);
+
+    server.clearObjectInstances();
+    expect(texture.isRegistered).to.equal(false);
+    expect(texture.isDestroyed).to.equal(false);
+    expect(other.effectsObjectServer.findObject(path)).to.equal(other.assetServer.whiteTexture);
+    expect(texture.findObject<Texture>(path)).to.equal(texture);
+    expect(loads).to.equal(1);
+
+    texture.registerObject();
+    expect(server.findObject(path)).to.equal(texture);
+    expect(loads).to.equal(1);
+  });
+
+  it('preserves item name searches alongside inherited object reference lookup', () => {
+    const engine = createPlayer().engine;
+    const parent = new VFXItem(engine);
+    const child = new VFXItem(engine);
+
+    parent.name = 'parent';
+    child.name = 'child';
+    child.setParent(parent);
+
+    expect(parent.find('parent')).to.equal(parent);
+    expect(parent.find('child')).to.equal(child);
+    expect(parent.find('missing')).to.equal(undefined);
+    expect(parent.findObject<VFXItem>({ id: child.getInstanceId() })).to.equal(child);
+    expect(parent.findObject<Texture>({ id: engine.assetServer.whiteTexture.getInstanceId() })).to.equal(engine.assetServer.whiteTexture);
+    parent.dispose();
+    child.dispose();
+  });
+
+  it('preserves live resources across lookup resets until their owners or the server dispose them', () => {
+    const player = createPlayer(false);
+    const engine = player.engine;
+    const server = engine.effectsObjectServer;
+    const texture = Texture.createWithData(engine);
+    const geometry = new Geometry(engine, {
+      attributes: { aPosition: { data: new Float32Array([0, 0, 1, 0, 0, 1]), size: 2 } },
+      drawCount: 3,
+    });
+
+    texture.initialize();
+    geometry.initialize();
+    server.clearObjectInstances();
+    expect(texture.isRegistered).to.equal(false);
+    expect(geometry.isRegistered).to.equal(false);
+    expect(texture.isDestroyed).to.equal(false);
+    expect(geometry.isDisposed()).to.equal(false);
+
+    let restores = 0;
+
+    geometry.restore = () => { restores++; };
+    server.restoreGraphicsResources();
+    expect(restores).to.equal(1);
+    geometry.dispose();
+    server.restoreGraphicsResources();
+    expect(restores).to.equal(1);
+
+    let disposals = 0;
+    const disposeTexture = texture.dispose.bind(texture);
+
+    texture.dispose = () => {
+      expect(engine.displayServer.renderingDevice.disposed).to.equal(false);
+      disposals++;
+      disposeTexture();
+    };
+    player.dispose();
+    engine.dispose();
+    expect(texture.isDestroyed).to.equal(true);
+    expect(disposals).to.equal(1);
+    expect(server.objectInstance).to.deep.equal({});
   });
 
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {
-    const engine = createPlayer().engine;
+    const player = createPlayer();
+    const engine = player.engine;
     const other = createPlayer().engine;
-    const assets = engine.getServer(AssetServer);
+    const assets = engine.assetServer;
     const composition = new Composition(engine);
+    const manager = assets.createAssetManager({});
+    const disposeManager = manager.dispose.bind(manager);
     const disposeComposition = composition.dispose.bind(composition);
     const disposeAssets = assets.onDispose.bind(assets);
     const calls: string[] = [];
 
+    manager.dispose = () => {
+      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
+      calls.push('manager');
+      disposeManager();
+    };
     composition.dispose = () => {
-      expect(engine.whiteTexture.isDestroyed).to.equal(false);
-      expect(engine.transparentTexture.isDestroyed).to.equal(false);
+      expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(false);
+      expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(false);
       calls.push('scene');
       disposeComposition();
     };
     assets.onDispose = () => {
-      expect(engine.compositions).to.have.length(0);
+      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
       calls.push('assets');
       disposeAssets();
     };
+    player.dispose();
     engine.dispose();
-    engine.dispose();
-    expect(calls).to.deep.equal(['scene', 'assets']);
-    expect(engine.whiteTexture.isDestroyed).to.equal(true);
-    expect(engine.transparentTexture.isDestroyed).to.equal(true);
-    expect(other.whiteTexture.isDestroyed).to.equal(false);
-    expect(() => engine.getServer(AssetServer)).to.throw('Engine server "AssetServer" is not registered.');
+    expect(calls).to.deep.equal(['scene', 'assets', 'manager']);
+    expect(assets.assetManagers).to.have.length(0);
+    expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(true);
+    expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(true);
+    expect(other.assetServer.whiteTexture.isDestroyed).to.equal(false);
+    expect(engine.getServer(AssetServer)).to.equal(undefined);
   });
 
   it('redraws the scene without advancing update lifecycles', () => {
@@ -193,8 +304,8 @@ describe('core/engine/servers', () => {
     composition.sceneTicking.lateUpdate.tick = () => calls.push('lateUpdate');
     composition.camera.updateMatrix = () => calls.push('camera');
     composition.sceneTicking.preRender.tick = dt => calls.push(`preRender:${dt}`);
-    composition.renderContent = () => calls.push('render');
-    engine.renderTargetPool.flush = () => calls.push('flush');
+    composition.renderer.renderComposition = () => calls.push('render');
+    engine.renderingServer.renderTargetPool.flush = () => calls.push('flush');
     engine.onDraw();
     expect(calls).to.deep.equal(['server:draw', 'camera', 'preRender:0', 'render', 'flush']);
   });
@@ -210,15 +321,15 @@ describe('core/engine/servers', () => {
     for (const [index, composition] of [first, second].entries()) {
       composition.camera.updateMatrix = () => calls.push(`camera:${index}`);
       composition.sceneTicking.preRender.tick = () => calls.push(`prepare:${index}`);
-      composition.renderContent = () => calls.push(`scene:${index}`);
     }
+    engine.renderer.renderComposition = composition => calls.push(`scene:${[first, second].indexOf(composition)}`);
     engine.renderer.setFramebuffer = () => calls.push('framebuffer');
     engine.renderer.clear = () => calls.push('clear');
     const overlay = { render: () => calls.push('overlay') };
 
     engine.renderer.addOverlayRenderer(overlay);
 
-    engine.renderTargetPool.flush = () => calls.push('flush');
+    engine.renderingServer.renderTargetPool.flush = () => calls.push('flush');
     engine.onDraw();
     expect(calls).to.deep.equal([
       'camera:1', 'prepare:1', 'camera:0', 'prepare:0',
@@ -255,20 +366,21 @@ describe('core/engine/servers', () => {
     second.dispose();
   });
 
-  it('rejects offloaded scenes before advancing any server or composition', () => {
+  it('reports pending render errors before advancing any server or composition', () => {
     const calls: string[] = [];
 
     class Observer extends EngineServer {
       override onUpdate () { calls.push('server:update'); }
       override onDraw () { calls.push('server:draw'); }
     }
-    register('offloaded-observer', Observer);
+    register('render-error-observer', Observer);
     const engine = createPlayer().engine;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
     first.sceneTicking.update.tick = () => calls.push('composition:update');
-    second.textureOffloaded = true;
+    second.sceneTicking.update.tick = () => calls.push('second:update');
+    engine.renderErrors.add(new Error('render failed'));
     engine.on('rendererror', () => calls.push('rendererror'));
     engine.mainLoop(16);
     expect(calls).to.deep.equal(['rendererror']);
@@ -279,15 +391,16 @@ describe('core/engine/servers', () => {
 
     class Resources extends EngineServer {
       override onBeforeExit () {
-        expect(this.engine.compositions).to.have.length(0);
+        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
       }
       override onDispose () {
-        expect(this.engine.compositions).to.have.length(0);
+        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
         calls.push('resources');
       }
     }
     register('scene-resources', Resources);
-    const engine = createPlayer().engine;
+    const player = createPlayer();
+    const engine = player.engine;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
@@ -299,27 +412,42 @@ describe('core/engine/servers', () => {
         dispose();
       };
     }
-    engine.dispose();
+    player.dispose();
     engine.dispose();
     expect(calls).to.deep.equal(['scene:0', 'scene:1', 'resources']);
-    expect(() => engine.getServer(SceneServer)).to.throw('Engine server "SceneServer" is not registered.');
+    expect(engine.getServer(SceneServer)).to.equal(undefined);
   });
 
-  it('creates the ThreeRenderer before servers initialize and keeps the same instance', () => {
+  it('creates the shared Renderer with a Three device before other servers initialize', () => {
     let renderer: Renderer | undefined;
 
     class Server extends EngineServer {
       override onInit () {
         renderer = this.engine.renderer;
-        expect(renderer).to.be.instanceOf(ThreeRenderer);
+        expect(renderer.constructor).to.equal(Renderer);
+        expect(this.engine.displayServer.renderingDevice).to.be.instanceOf(RenderingDeviceThree);
       }
     }
 
-    register('three-renderer', Server);
+    register('three-device', Server);
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2')!;
-    const engine = new ThreeEngine(gl, { manualRender: true });
 
+    canvas.width = 333;
+    canvas.height = 111;
+
+    const gl = canvas.getContext('webgl2')!;
+    const createDevice = RenderingDevice.create;
+    let engine: Engine;
+
+    try {
+      RenderingDevice.create = owner => new RenderingDeviceThree(owner);
+      engine = new Engine(canvas, { manualRender: true, ownsCanvas: false });
+    } finally {
+      RenderingDevice.create = createDevice;
+    }
+
+    expect([canvas.width, canvas.height]).to.deep.equal([333, 111]);
+    expect(canvas.style.width).to.equal('');
     expect(engine.renderer).to.equal(renderer);
     engine.dispose();
     gl.getExtension('WEBGL_lose_context')?.loseContext();

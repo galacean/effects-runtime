@@ -59,28 +59,25 @@ describe('core/components/lifecycle', () => {
     expect(events).deep.equals(['parent:awake', 'child:awake']);
     for (const object of [parent, child, parentProbe, childProbe]) {
       expect(object.isRegistered).equals(true);
-      expect(player.engine.objectInstance[object.getInstanceId()]).equals(object);
+      expect(player.engine.effectsObjectServer.objectInstance[object.getInstanceId()]).equals(object);
     }
     parent.initializeHierarchy();
     expect(events).deep.equals(['parent:awake', 'child:awake']);
     parent.dispose();
   });
 
-  it('registers and unregisters through the object only once', () => {
+  it('keeps repeated object registration and unregistration idempotent', () => {
     const node = item('node');
 
     node.unregisterObject();
-    chai.spy.on(player.engine, 'addInstance');
-    chai.spy.on(player.engine, 'removeInstance');
     node.registerObject();
     node.registerObject();
     expect(node.isRegistered).equals(true);
-    expect(player.engine.addInstance).to.have.been.called.once;
+    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(node);
     node.unregisterObject();
     node.unregisterObject();
     expect(node.isRegistered).equals(false);
-    expect(player.engine.removeInstance).to.have.been.called.once;
-    expect(player.engine.objectInstance[node.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
     node.dispose();
   });
 
@@ -92,27 +89,27 @@ describe('core/components/lifecycle', () => {
 
     node.setInstanceId(registeredID);
     expect(node.isRegistered).equals(true);
-    expect(player.engine.objectInstance[originalID]).equals(undefined);
-    expect(player.engine.objectInstance[registeredID]).equals(node);
+    expect(player.engine.effectsObjectServer.objectInstance[originalID]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(node);
     node.unregisterObject();
     node.setInstanceId(unregisteredID);
     expect(node.isRegistered).equals(false);
-    expect(player.engine.objectInstance[registeredID]).equals(undefined);
-    expect(player.engine.objectInstance[unregisteredID]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(undefined);
     node.registerObject();
-    expect(player.engine.objectInstance[unregisteredID]).equals(node);
+    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(node);
     node.dispose();
   });
 
   it('keeps registration flags consistent when clearing the engine lookup table', () => {
     const node = item('node');
 
-    player.engine.clearResources();
+    player.engine.effectsObjectServer.clearObjectInstances();
     expect(node.isRegistered).equals(false);
-    expect(player.engine.objectInstance[node.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
     node.registerObject();
     expect(node.isRegistered).equals(true);
-    expect(player.engine.objectInstance[node.getInstanceId()]).equals(node);
+    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(node);
     node.dispose();
   });
 
@@ -572,7 +569,7 @@ describe('core/components/lifecycle', () => {
     expect(probe.isDuringPlay).equals(false);
     expect(probe.isRegistered).equals(false);
     expect(node.components).not.includes(probe);
-    expect(player.engine.objectInstance[probe.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[probe.getInstanceId()]).equals(undefined);
   });
 
   it('ends the parent before its children, then ends its attached components', () => {
@@ -639,7 +636,7 @@ describe('core/components/lifecycle', () => {
     expect(probe.isDuringPlay).equals(false);
     expect(probe.isAwakeCalled).equals(true);
     expect(probe.isEnableCalled).equals(true);
-    expect(player.engine.objectInstance[probe.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectInstance[probe.getInstanceId()]).equals(undefined);
     probe.dispose();
     expect(events).deep.equals(['node:disable', 'node:destroy']);
   });

@@ -786,7 +786,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.refreshGUIDRecursive();
-    const newItem = this.engine.findObject<VFXItem>({ id: this.definition.id });
+    const newItem = this.findObject<VFXItem>({ id: this.definition.id });
 
     newItem.refreshGUIDRecursive();
     this.refreshGUIDRecursive(previousObjectIDMap);
@@ -972,7 +972,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     if (VFXItem.isComposition(this)) {
       const refId = (this.definition as spec.CompositionItem).content.options.refId;
-      const compositionData = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
+      const compositionData = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
       if (!compositionData) {
         throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
@@ -1003,14 +1003,14 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     if (data.components) {
       for (const componentPath of data.components) {
-        const component = this.engine.findObject<Component>(componentPath);
+        const component = this.findObject<Component>(componentPath);
 
         this.components.push(component);
       }
     }
 
     for (const child of data.children ?? []) {
-      const childItem = this.engine.findObject<VFXItem>(child);
+      const childItem = this.findObject<VFXItem>(child);
 
       childItem.setParent(this);
     }
@@ -1084,14 +1084,14 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.setInstanceId(compositionData.id);
 
     for (const componentPath of compositionData.components) {
-      const component = this.engine.findObject<Component>(componentPath);
+      const component = this.findObject<Component>(componentPath);
 
       component.item = this;
       this.components.push(component);
     }
 
     for (const child of compositionData.children ?? []) {
-      const childItem = this.engine.findObject<VFXItem>(child);
+      const childItem = this.findObject<VFXItem>(child);
 
       childItem.setParent(this);
     }

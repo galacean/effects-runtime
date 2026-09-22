@@ -1,13 +1,14 @@
-import { spec, GLEngine, TextComponent, TextLayout, TextStyle, VFXItem } from '@galacean/effects';
+import { Engine } from '@galacean/effects-core';
+import { spec, RenderingDeviceWebGL, TextComponent, TextLayout, TextStyle, VFXItem } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/plugins/text/text-item', () => {
-  let engine: GLEngine;
+  let engine: Engine;
   let textComponent: TextComponent;
 
   beforeEach(() => {
-    engine = new GLEngine(document.createElement('canvas'));
+    engine = new Engine(document.createElement('canvas'));
     textComponent = new VFXItem(engine).addComponent(TextComponent);
   });
 

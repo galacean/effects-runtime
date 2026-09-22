@@ -44,8 +44,8 @@ export class GUIServer extends EngineServer {
     this.windowRoot = new WindowRootControl(engine);
     engine.renderer.addOverlayRenderer(this.overlayRenderer);
     engine.on('resize', this.resizeWindowRoot);
-    engine.eventSystem.on('input', this.pushInput);
-    engine.eventSystem.on('canvasBlur', this.onCanvasBlur);
+    engine.inputServer.on('input', this.pushInput);
+    engine.inputServer.on('canvasBlur', this.onCanvasBlur);
     this.resizeWindowRoot();
   }
 
@@ -56,8 +56,8 @@ export class GUIServer extends EngineServer {
     this.disposed = true;
     this.engine.renderer.removeOverlayRenderer(this.overlayRenderer);
     this.engine.off('resize', this.resizeWindowRoot);
-    this.engine.eventSystem.off('input', this.pushInput);
-    this.engine.eventSystem.off('canvasBlur', this.onCanvasBlur);
+    this.engine.inputServer.off('input', this.pushInput);
+    this.engine.inputServer.off('canvasBlur', this.onCanvasBlur);
     this.windowRoot.dispose();
   }
 }

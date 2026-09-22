@@ -342,9 +342,6 @@ export class WebGLHelper {
    */
   static deleteRenderPass (pass: RenderPass) {
     pass.dispose({
-      meshes: {
-        geometries: DestroyOptions.destroy,
-      },
       depthStencilAttachment: RenderPassDestroyAttachmentType.force,
       colorAttachment: RenderPassDestroyAttachmentType.force,
     });
@@ -365,7 +362,7 @@ export class WebGLHelper {
    * @returns
    */
   static isSupportFloatTexture (engine: Engine): boolean {
-    const capability = engine.gpuCapability;
+    const capability = engine.displayServer.renderingDevice.gpuCapability;
 
     return capability.detail.floatTexture !== 0;
   }
@@ -375,7 +372,7 @@ export class WebGLHelper {
    * @returns
    */
   static isSupportHalfFloatTexture (engine: Engine): boolean {
-    const capability = engine.gpuCapability;
+    const capability = engine.displayServer.renderingDevice.gpuCapability;
 
     return capability.detail.halfFloatTexture !== 0;
   }
@@ -406,7 +403,7 @@ export class MeshHelper {
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
     const geometry = Geometry.create(engine, MeshHelper.getPlaneGeometry());
-    const isWebGL2 = engine.gpuCapability.level === 2;
+    const isWebGL2 = engine.displayServer.renderingDevice.gpuCapability.level === 2;
     const effectsMaterial = Material.create(
       engine,
       {

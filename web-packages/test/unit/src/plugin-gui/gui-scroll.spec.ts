@@ -229,9 +229,9 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     second.drawInternal = () => drawOrder.push('second');
     scroll.getHScrollBar().drawInternal = () => drawOrder.push('horizontal');
     scroll.getVScrollBar().drawInternal = () => drawOrder.push('vertical');
-    player.engine.graphics.begin();
+    player.engine.renderingServer.graphics.begin();
     scroll.drawChildrenForTest();
-    player.engine.graphics.end();
+    player.engine.renderingServer.graphics.end();
     expect(drawOrder).deep.equals(['second', 'first', 'vertical', 'horizontal']);
     const event = mouseButton(94, 60, MouseButton.Left);
 

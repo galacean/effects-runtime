@@ -126,7 +126,7 @@ export class Label extends Control {
     let y = this.getTextStartY(layout, gap);
 
     if (clipped) {
-      this.engine.graphics.pushClipRect(0, 0, this.width, this.height);
+      this.engine.renderingServer.graphics.pushClipRect(0, 0, this.width, this.height);
     }
     try {
       for (let i = 0; i < layout.lines.length; i++) {
@@ -145,7 +145,7 @@ export class Label extends Control {
       }
     } finally {
       if (clipped) {
-        this.engine.graphics.popClipRect();
+        this.engine.renderingServer.graphics.popClipRect();
       }
     }
   }

@@ -243,7 +243,7 @@ export class TextCache {
   private resolution: number;
 
   constructor (private engine: Engine) {
-    this.resolution = engine.pixelRatio;
+    this.resolution = engine.displayServer.pixelRatio;
   }
 
   /**
@@ -255,8 +255,8 @@ export class TextCache {
     fontWeight: FontWeight,
     fontStyle: FontStyle,
   ): GlyphAtlas {
-    // 字形 atlas 跟随 Engine.pixelRatio。
-    const resolution = this.engine.pixelRatio;
+    // 字形 atlas 跟随 DisplayServer.pixelRatio。
+    const resolution = this.engine.displayServer.pixelRatio;
 
     if (resolution !== this.resolution) {
       this.clear();

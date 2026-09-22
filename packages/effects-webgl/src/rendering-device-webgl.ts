@@ -1,9 +1,9 @@
 import type {
-  DataBuffer, DataBufferOptions, EngineOptions, IndicesArray, Nullable,
+  DataBuffer, DataBufferOptions, Engine, EngineOptions, IndicesArray, Nullable,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
 } from '@galacean/effects-core';
 import {
-  Engine, GPUCapability, TextureLoadAction, assertExist,
+  RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
   glContext, isIOS, logger, toBufferView,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
@@ -26,13 +26,13 @@ type Quaternion = math.Quaternion;
 
 const INSTANCE_DRAW_ERROR = 'Instanced drawing is not supported by the current graphics context.';
 
-export class GLEngine extends Engine {
+export class RenderingDeviceWebGL extends RenderingDevice {
   textureUnitDict: Record<string, WebGLTexture | null>;
   shaderLibrary: GLShaderLibrary;
   gl: WebGL2RenderingContext;
   context: GLContextManager;
 
-  private readonly maxTextureCount: number;
+  private maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
@@ -43,9 +43,11 @@ export class GLEngine extends Engine {
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
-  constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
-    super(canvas, options);
-    options = {
+  constructor (engine: Engine) {
+    super(engine);
+
+    const { canvas, options: engineOptions } = this.engine;
+    const options: EngineOptions = {
       preserveDrawingBuffer: undefined,
       alpha: true,
       stencil: true,
@@ -53,26 +55,21 @@ export class GLEngine extends Engine {
       depth: true,
       premultipliedAlpha: true,
       glType: 'webgl2',
-      ...options,
+      ...engineOptions,
     };
 
     this.context = new GLContextManager(canvas, options.glType, options);
     this.context.addLostHandler({
       lost: e => {
-        // 仅恢复模式启用帧短路标志。
-        if (!this.doNotHandleContextLost) {
-          this.contextWasLost = true;
-        }
-        this.compositions.forEach(comp => comp.lost(e));
+        this.handleContextLost(e);
         logger.error(`WebGL context lost. Event target: ${e.target}.`);
-        this.emit('contextlost', { engine: this, e });
       },
     });
 
     this.context.addRestoreHandler({
       restore: async () => {
         if (this.doNotHandleContextLost) {
-          this.emit('contextrestored', this);
+          this.handleContextRestored();
 
           return;
         }
@@ -90,29 +87,19 @@ export class GLEngine extends Engine {
           this.initGLContext();
           // 3. 重建 shader（先于其它资源：纹理/几何上传可能依赖 shader）。
           await this.shaderLibrary.restore();
-          // 4. 重建几何顶点缓冲
-          this.geometries.forEach(geo => geo.restore());
-          // 5. 从粒子系统保留的数据重建动态缓冲内容
-          this.particleSystems.forEach(particleSystem => particleSystem.rebuild());
-          // 6. 重建 renderbuffer
-          this.renderbuffers.forEach(rb => (rb as GLRenderbuffer).restore());
-          // 7. 重建纹理
-          this.textures.forEach(tex => (tex as GLTexture).restore());
-          // 8. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
-          this.framebuffers.forEach(fb => (fb as GLFramebuffer).restore());
+          this.restoreGraphicsResources();
 
-          if (isIOS() && this.canvas) {
-            this.canvas.style.display = 'none';
+          if (isIOS() && this.engine.canvas) {
+            this.engine.canvas.style.display = 'none';
             window.setTimeout(() => {
-              this.canvas.style.display = '';
+              this.engine.canvas.style.display = '';
             }, 0);
           }
         } catch (e) {
-          this.renderErrors.add(e as Error);
+          this.engine.renderErrors.add(e as Error);
         } finally {
           // 无论重建成功、部分失败还是 gl 不可用，都复位标志并通知宿主，避免 mainLoop 永久短路。
-          this.contextWasLost = false;
-          this.emit('contextrestored', this);
+          this.handleContextRestored();
         }
       },
     });
@@ -125,9 +112,6 @@ export class GLEngine extends Engine {
     this.initGLContext();
     this.shaderLibrary = new GLShaderLibrary(this);
     this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
-
-    // resize need gl renderer initialized
-    this.resize();
   }
 
   protected initGLContext (): void {
@@ -547,10 +531,8 @@ export class GLEngine extends Engine {
     }
     super.dispose();
 
-    this.renderer.dispose();
-    this.renderTargetPool.dispose();
     this.shaderLibrary?.dispose();
-    this.context.dispose(this.ownsCanvas);
+    this.context.dispose(this.engine.displayServer.ownsCanvas);
     this.reset();
   }
 
@@ -984,7 +966,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  override setViewport (x: number, y: number, width: number, height: number) {
+  protected override setViewportInternal (x: number, y: number, width: number, height: number) {
     this.set4('viewport', x, y, width, height);
   }
 

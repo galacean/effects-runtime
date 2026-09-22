@@ -8,7 +8,7 @@ import {
   CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
   TEXTURE_UNIFORM_MAP,
 } from './three-material-util';
-import type { ThreeEngine } from '../three-engine';
+import type { RenderingDeviceThree } from '../rendering-device-three';
 
 type Matrix4 = math.Matrix4;
 type Vector2 = math.Vector2;
@@ -45,7 +45,7 @@ export class ThreeMaterial extends Material {
     super(engine, props);
 
     const shader = props?.shader;
-    const level = engine.gpuCapability?.level ?? 1;
+    const level = engine.displayServer.renderingDevice.gpuCapability?.level ?? 1;
 
     this.shader = new Shader(engine);
     this.shader.shaderData = {
@@ -114,9 +114,19 @@ export class ThreeMaterial extends Material {
   }
 
   override use (render: Renderer, globalUniforms: GlobalUniforms): void {
-    const engine = this.engine as ThreeEngine;
-    const composition = engine.composition;
-    const threeCamera = engine.threeCamera;
+    const device = this.engine.displayServer.renderingDevice as RenderingDeviceThree;
+    const composition = device.composition;
+    const threeCamera = device.threeCamera;
+
+    for (const name in globalUniforms.textures) {
+      const texture = (globalUniforms.textures[name] as ThreeTexture).texture;
+
+      if (this.material.uniforms[name]) {
+        this.material.uniforms[name].value = texture;
+      } else {
+        this.material.uniforms[name] = new THREE.Uniform(texture);
+      }
+    }
 
     if (threeCamera) {
       const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(threeCamera.projectionMatrix, threeCamera.matrixWorldInverse);

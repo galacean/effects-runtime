@@ -1,5 +1,7 @@
+import { Engine } from '@galacean/effects-core';
 import { TextureSourceType, RenderPass } from '@galacean/effects-core';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -17,9 +19,9 @@ describe('webgl/renderer', () => {
   });
 
   it('safe to call destroy', async () => {
-    const engine = new GLEngine(glCanvas, { glType: 'webgl' });
+    const engine = new Engine(glCanvas, { glType: 'webgl' });
     const renderer = engine.renderer;
-    const gl = (renderer.engine as GLEngine).gl;
+    const gl = (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
         width: 3,

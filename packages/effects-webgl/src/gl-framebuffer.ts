@@ -1,5 +1,5 @@
 import type {
-  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, RestoreHandler, Texture,
+  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, Texture,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
@@ -8,18 +8,18 @@ import {
 } from '@galacean/effects-core';
 import { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
-import type { GLEngine } from './gl-engine';
+import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 let seed = 1;
 
-export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHandler {
+export class GLFramebuffer extends Framebuffer implements Disposable {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
   depthStencilRenderbuffer?: GLRenderbuffer;
   depthTexture?: GLTexture;
   stencilTexture?: GLTexture;
   colorTextures: GLTexture[];
   fbo?: WebGLFramebuffer;
-  engine: GLEngine;
+  device: RenderingDeviceWebGL;
 
   readonly renderer: Renderer;
 
@@ -36,7 +36,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     } = props;
 
     this.renderer = renderer;
-    this.engine = renderer.engine as GLEngine;
+    this.device = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
     this.name = name;
@@ -95,7 +95,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
 
   private updateProps (props: FramebufferProps) {
     const renderer = this.renderer;
-    const gpuCapability = this.engine.gpuCapability;
+    const gpuCapability = this.device.gpuCapability;
     const depthStencilAttachment = props.depthStencilAttachment ?? { storageType: RenderPassAttachmentStorageType.none };
     const willUseFbo = props.attachments.length > 0;
     let separateDepthStencil = true;
@@ -116,8 +116,8 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
       throw new Error('Use depth stencil attachment without color attachments.');
     }
     if (willUseFbo) {
-      this.fbo = this.engine.createGLFramebuffer(this.name) as WebGLFramebuffer;
-      this.engine.addFramebuffer(this);
+      this.fbo = this.device.createGLFramebuffer(this.name) as WebGLFramebuffer;
+      this.device.addFramebuffer(this);
     }
 
     switch (storageType) {
@@ -177,7 +177,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
         if (!readableDepthStencilTextures) {
           throw new Error('Depth texture is not support in framebuffer.');
         }
-        this.depthTexture = optDepthStencilTex ?? new GLTexture(this.engine, {
+        this.depthTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_COMPONENT,
           internalFormat: gpuCapability.internalFormatDepth16,
@@ -191,7 +191,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
         if (!readableDepthStencilTextures) {
           throw new Error('Depth stencil texture is not support in framebuffer.');
         }
-        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new GLTexture(this.engine, {
+        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_STENCIL,
           internalFormat: gpuCapability.internalFormatDepth24_stencil8,
@@ -212,7 +212,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     storeAction: RenderPassStoreAction,
     separateDepthStencil: boolean,
   ): GLenum[] | undefined {
-    const gl = this.engine.gl;
+    const gl = this.device.gl;
     const colorLen = this.colorTextures.length;
 
     if (storeAction && isWebGL2(gl) && colorLen > 0) {
@@ -238,13 +238,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     const attachments = this.storeInvalidAttachments;
 
     if (attachments?.length) {
-      const gl = this.engine.gl;
+      const gl = this.device.gl;
 
       if (isWebGL2(gl)) {
         gl.invalidateFramebuffer(gl.FRAMEBUFFER, attachments);
       }
     }
-    this.engine.bindSystemFramebuffer();
+    this.device.bindSystemFramebuffer();
   }
 
   override bind () {
@@ -252,15 +252,15 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
       return;
     }
 
-    const gl = this.engine.gl;
-    const state = this.engine;
+    const gl = this.device.gl;
+    const state = this.device;
     const [x, y, width, height] = this.viewport;
 
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
     // TODO 不在bind中设置viewport
     state.setViewport(x, y, width, height);
-    const whiteTexture = this.renderer.engine.whiteTexture as GLTexture;
+    const whiteTexture = this.renderer.engine.assetServer.whiteTexture as GLTexture;
     const whiteWebGLTexture = whiteTexture.textureBuffer;
 
     // in case frame texture loop
@@ -313,8 +313,8 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
 
   override resetColorTextures (colorTextures?: Texture[]) {
     const colors = colorTextures as GLTexture[];
-    const gl = this.engine.gl;
-    const gpuCapability = this.engine.gpuCapability;
+    const gl = this.device.gl;
+    const gpuCapability = this.device.gpuCapability;
     const viewport = this.viewport;
     const buffers: boolean[] = [];
 
@@ -324,7 +324,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
       }
       this.colorTextures = colors.slice();
     }
-    this.engine.activeTexture(gl.TEXTURE0);
+    this.device.activeTexture(gl.TEXTURE0);
 
     this.colorTextures.forEach((tex, index) => {
       const width = viewport[2];
@@ -351,24 +351,24 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
 
   /**
    * 上下文恢复后重建 framebuffer 句柄。
-   * 内部 renderbuffer 由中央 renderbuffers 列表统一恢复，此处不重复处理。
+   * 内部 renderbuffer 由RenderingDevice 的 renderbuffers 列表统一恢复，此处不重复处理。
    * 附件纹理由各自 GLTexture.restore 恢复，此处仅重置 ready 并清空附件缓存，
    * 让下次 bind 用各纹理的最新句柄重新挂载。
    */
-  restore (): void {
+  override restore (): void {
     if (!this.fbo) {
       return;
     }
     // 旧 fbo 已随上下文丢失失效，直接重建。
-    this.fbo = this.engine.createGLFramebuffer(this.name) as WebGLFramebuffer;
+    this.fbo = this.device.createGLFramebuffer(this.name) as WebGLFramebuffer;
     this.ready = false;
     this.attachmentTextures.length = 0;
   }
 
   override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
     if (this.renderer) {
-      this.engine.removeFramebuffer(this);
-      this.engine.deleteGLFramebuffer(this);
+      this.device.removeFramebuffer(this);
+      this.device.deleteGLFramebuffer(this);
       delete this.fbo;
       const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
 

@@ -1,6 +1,7 @@
+import { Engine } from '@galacean/effects-core';
 import type { Renderer, ShaderVariant } from '@galacean/effects-core';
 import { Geometry, glContext, ShaderCompileResultStatus } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -25,7 +26,7 @@ describe('webgl/gl-vertex-array-object', () => {
   let glRenderer;
 
   afterEach(() => {
-    const engine = renderer.engine as GLEngine;
+    const engine = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
     engine.dispose();
     (engine.context.canvas as HTMLCanvasElement)?.remove();
@@ -37,7 +38,7 @@ describe('webgl/gl-vertex-array-object', () => {
     renderer = createGLGPURenderer('webgl');
     glRenderer = renderer;
     const engine = renderer.engine;
-    const geometry = new Geometry(engine, {
+    const geometry = new Geometry(renderer.engine, {
       name: 'vao1',
       drawCount: 3,
       drawStart: 0,
@@ -61,14 +62,14 @@ describe('webgl/gl-vertex-array-object', () => {
 
     geometry.initialize();
 
-    const shader = (glRenderer.engine as GLEngine).shaderLibrary.createShader({ vertex, fragment });
+    const shader = (glRenderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.createShader({ vertex, fragment });
 
-    (glRenderer.engine as GLEngine).shaderLibrary.compileShader(shader);
+    (glRenderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.compileShader(shader);
     const result = shader.compileResult;
 
     expect(result.status).to.eql(ShaderCompileResultStatus.success);
     const glProgram = shader.program;
-    const gl = (glRenderer.engine as GLEngine).gl;
+    const gl = (glRenderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     // @ts-expect-error private
     const loc = glProgram.attribInfoMap['aPoint'].loc;
     // @ts-expect-error private
@@ -111,7 +112,7 @@ describe('webgl/gl-vertex-array-object', () => {
     renderer = createGLGPURenderer('webgl2');
     glRenderer = renderer;
     const engine = renderer.engine;
-    const geometry = new Geometry(engine, {
+    const geometry = new Geometry(renderer.engine, {
       name: 'vao2',
       drawCount: 3,
       drawStart: 0,
@@ -134,7 +135,7 @@ describe('webgl/gl-vertex-array-object', () => {
     });
 
     geometry.initialize();
-    const gl = (glRenderer.engine as GLEngine).gl;
+    const gl = (glRenderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
     const bindFunc = chai.spy(gl.bindVertexArray);
 
     if ('bindVertexArray' in gl) {
@@ -157,12 +158,12 @@ describe('webgl/gl-vertex-array-object', () => {
       for (const instanced of [false, true]) {
         it(`unbinds after drawing and supports drawing again (${type}, indexed=${indexed}, instanced=${instanced})`, () => {
           renderer = createGLGPURenderer(type);
-          const engine = renderer.engine as GLEngine;
+          const engine = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
           const gl = engine.gl;
           const binding = type === 'webgl2'
             ? gl.VERTEX_ARRAY_BINDING
             : gl.getExtension('OES_vertex_array_object')!.VERTEX_ARRAY_BINDING_OES;
-          const geometry = new Geometry(engine, {
+          const geometry = new Geometry(renderer.engine, {
             attributes: {
               aPoint: { size: 2, stride: 16, data: new Float32Array([-1, -1, 0, 1, 1, -1, 0, 1, 0, 1, 0, 1]) },
               aTexCoord: { size: 2, stride: 16, offset: 8, dataSource: 'aPoint' },
@@ -201,13 +202,13 @@ describe('webgl/gl-vertex-array-object', () => {
 
   it('bind buffers directly when vertex array objects are unavailable', () => {
     renderer = createGLGPURenderer('webgl');
-    const engine = renderer.engine as GLEngine;
+    const engine = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     const capability = engine.gpuCapability.detail as { vertexArrayObject?: boolean };
     const bindBuffers = chai.spy(() => {});
 
     capability.vertexArrayObject = false;
     engine.bindBuffers = bindBuffers;
-    const geometry = new Geometry(engine, { attributes: {} });
+    const geometry = new Geometry(renderer.engine, { attributes: {} });
 
     geometry.bind({ key: 'direct-binding' } as unknown as ShaderVariant);
     expect(bindBuffers).to.have.been.called.once;
@@ -217,7 +218,7 @@ describe('webgl/gl-vertex-array-object', () => {
 function createGLGPURenderer (type: 'webgl' | 'webgl2') {
   const gl = type === 'webgl' ? getGL() : getGL2();
   const canvas = gl!.canvas as HTMLCanvasElement;
-  const engine = new GLEngine(canvas, { glType: type });
+  const engine = new Engine(canvas, { glType: type });
 
   return engine.renderer;
 }

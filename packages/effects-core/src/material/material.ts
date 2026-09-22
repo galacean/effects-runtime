@@ -356,7 +356,7 @@ export class Material extends Asset implements Disposable {
     if (this.initialized) {
       return;
     }
-    engine.addMaterial(this);
+    engine.effectsObjectServer.addMaterial(this);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
@@ -423,6 +423,10 @@ export class Material extends Asset implements Disposable {
       }
       for (name in globalUniforms.matrices) {
         shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
+      }
+      for (name in globalUniforms.textures) {
+        globalUniforms.textures[name].initialize();
+        shaderVariant.setTexture(name, globalUniforms.textures[name]);
       }
     }
 
@@ -741,7 +745,7 @@ export class Material extends Asset implements Disposable {
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
-      const texture = this.engine.findObject<Texture>(textureProperties.texture);
+      const texture = this.findObject<Texture>(textureProperties.texture);
 
       // TODO 纹理通过 id 加入场景数据
       this.setTexture(name, texture);
@@ -754,7 +758,7 @@ export class Material extends Asset implements Disposable {
     }
 
     if (data.shader) {
-      const shader = this.engine.findObject<Shader>(data.shader);
+      const shader = this.findObject<Shader>(data.shader);
 
       if (shader) {
         this.shader = shader;
@@ -855,7 +859,7 @@ export class Material extends Asset implements Disposable {
     this.destroyed = true;
 
     if (this.engine !== undefined) {
-      this.engine.removeMaterial(this);
+      this.engine.effectsObjectServer.removeMaterial(this);
     }
 
     super.dispose();

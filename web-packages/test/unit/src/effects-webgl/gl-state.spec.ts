@@ -1,5 +1,6 @@
+import { Engine } from '@galacean/effects-core';
 import type { Renderer } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
@@ -7,12 +8,12 @@ describe('webgl/gl-state', () => {
   let canvas: HTMLCanvasElement;
   let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
-  let engine: GLEngine;
+  let engine: Engine;
 
   before(() => {
     canvas = document.createElement('canvas');
     gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
-    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    engine = new Engine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer;
   });
 
@@ -27,40 +28,40 @@ describe('webgl/gl-state', () => {
     gl = null;
   });
 
-  it('GLEngine default value', () => {
+  it('WebGL default value', () => {
     const state = engine;
 
     // gl.DITHER是为了验证glEngine是否初始化了
-    assert.equal(state.get('gl.DITHER'), null);
+    assert.equal((state.displayServer.renderingDevice as RenderingDeviceWebGL).get('gl.DITHER'), null);
   });
 
-  it('GLEngine framebuffer and depth function test ', () => {
+  it('WebGL framebuffer and depth function test ', () => {
     const state = engine;
     //framebuffer
     const framebuffer = gl.createFramebuffer();
 
-    state.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     assert.equal(gl.getParameter(gl.FRAMEBUFFER_BINDING), framebuffer, 'fbo');
-    state.bindSystemFramebuffer();
+    state.displayServer.renderingDevice.bindSystemFramebuffer();
     assert.equal(gl.getParameter(gl.FRAMEBUFFER_BINDING), null, 'fbo null');
     //end framebuffer
     //clear
     gl.clearColor(1, 1, 1, 1);
-    state.gl.clear(gl.COLOR_BUFFER_BIT);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).gl.clear(gl.COLOR_BUFFER_BIT);
     expect(gl.getParameter(gl.COLOR_CLEAR_VALUE)).deep.equals(new Float32Array([1, 1, 1, 1]));
     //clear depth
-    state.clearDepth(1);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).clearDepth(1);
     assert.equal(gl.getParameter(gl.DEPTH_CLEAR_VALUE), 1, 'DEPTH_CLEAR_VALUE');
     //depth func
-    state.enable(gl.DEPTH_TEST);
-    state.depthFunc(gl.NEVER);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).enable(gl.DEPTH_TEST);
+    state.displayServer.renderingDevice.depthFunc(gl.NEVER);
     assert.equal(gl.getParameter(gl.DEPTH_FUNC), gl.NEVER, 'DEPTH_FUNC');
     //depth mash
-    state.depthMask(false);
+    state.displayServer.renderingDevice.depthMask(false);
     assert.equal(gl.getParameter(gl.DEPTH_WRITEMASK), false);
 
     //depth range
-    state.depthRange(0.2, 0.6);
+    state.displayServer.renderingDevice.depthRange(0.2, 0.6);
     expect(gl.getParameter(gl.DEPTH_RANGE)).deep.equals(new Float32Array([0.2, 0.6]));
     //depth end
 
@@ -70,50 +71,50 @@ describe('webgl/gl-state', () => {
     const state = engine;
 
     //stencil start
-    state.clearStencil(1.0);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).clearStencil(1.0);
     assert.equal(gl.getParameter(gl.STENCIL_CLEAR_VALUE), 1.0);
     //stencli mask
-    state.stencilMask(110101);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).stencilMask(110101);
     assert.equal(gl.getParameter(gl.STENCIL_WRITEMASK), 110101);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_WRITEMASK), 110101);
     assert.equal(gl.getParameter(gl.STENCIL_BITS), 0);
 
     //stencilfunc
-    state.stencilFunc(gl.LESS, 0.1, 0b1110011);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).stencilFunc(gl.LESS, 0.1, 0b1110011);
     assert.equal(gl.getParameter(gl.STENCIL_FUNC), gl.LESS);
     //stencilFuncSeparate
-    state.stencilFuncSeparate(gl.BACK, gl.NEVER, 0.2, 1110011);
+    state.displayServer.renderingDevice.stencilFuncSeparate(gl.BACK, gl.NEVER, 0.2, 1110011);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_VALUE_MASK), 1110011);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_FUNC), gl.NEVER);
     //stencilMaskSeparate
-    state.stencilMaskSeparate(gl.FRONT, 111001);
+    state.displayServer.renderingDevice.stencilMaskSeparate(gl.FRONT, 111001);
     assert.equal(gl.getParameter(gl.STENCIL_WRITEMASK), 111001);
     //stencilOp
-    state.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_FAIL), gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_PASS_DEPTH_PASS), gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_PASS_DEPTH_FAIL), gl.KEEP);
     //stencilOpSeparate
-    state.stencilOpSeparate(gl.BACK, gl.KEEP, gl.DECR_WRAP, gl.KEEP);
+    state.displayServer.renderingDevice.stencilOpSeparate(gl.BACK, gl.KEEP, gl.DECR_WRAP, gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_FAIL), gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_PASS_DEPTH_PASS), gl.KEEP);
     assert.equal(gl.getParameter(gl.STENCIL_BACK_PASS_DEPTH_FAIL), gl.DECR_WRAP);
 
     //cull face
-    state.cullFace(gl.BACK);
+    state.displayServer.renderingDevice.cullFace(gl.BACK);
     assert.equal(gl.getParameter(gl.CULL_FACE_MODE), gl.BACK);
     //frontFace
-    state.frontFace(gl.CCW);
+    state.displayServer.renderingDevice.frontFace(gl.CCW);
   });
 
   it('color function test', () => {
     const state = engine;
 
-    state.clearColor(1.0, 1.0, 0.8, 1.0);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).clearColor(1.0, 1.0, 0.8, 1.0);
     expect(gl.getParameter(gl.COLOR_CLEAR_VALUE)).deep.equal(new Float32Array([1.0, 1.0, 0.8, 1.0]));
 
     //color mask
-    state.colorMask(true, true, false, false);
+    state.displayServer.renderingDevice.colorMask(true, true, false, false);
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).deep.equal([true, true, false, false]);
   });
 
@@ -121,20 +122,20 @@ describe('webgl/gl-state', () => {
     const state = engine;
 
     //blend color
-    state.blendColor(0, 0.5, 1, 1);
+    state.displayServer.renderingDevice.blendColor(0, 0.5, 1, 1);
     expect(gl.getParameter(gl.BLEND_COLOR)).deep.equal(new Float32Array([0, 0.5, 1, 1]));
 
     //blendFunc
-    state.blendFunc(gl.SRC_COLOR, gl.DST_COLOR);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).blendFunc(gl.SRC_COLOR, gl.DST_COLOR);
     assert.equal(gl.getParameter(gl.BLEND_SRC_RGB), gl.SRC_COLOR);
     //blendFuncSeparate
-    state.blendFuncSeparate(gl.SRC_COLOR, gl.DST_COLOR, gl.ONE, gl.ZERO);
+    state.displayServer.renderingDevice.blendFuncSeparate(gl.SRC_COLOR, gl.DST_COLOR, gl.ONE, gl.ZERO);
     assert.equal(gl.getParameter(gl.BLEND_SRC_RGB), gl.SRC_COLOR);
     //blendEquation
-    state.blendEquation(gl.FUNC_ADD);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).blendEquation(gl.FUNC_ADD);
     assert.equal(gl.getParameter(gl.BLEND_EQUATION_RGB), gl.FUNC_ADD);
     //blendEquationSeparate
-    state.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_SUBTRACT);
+    state.displayServer.renderingDevice.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_SUBTRACT);
     assert.equal(gl.getParameter(gl.BLEND_EQUATION_RGB), gl.FUNC_REVERSE_SUBTRACT);
     assert.equal(gl.getParameter(gl.BLEND_EQUATION_ALPHA), gl.FUNC_SUBTRACT);
   });
@@ -147,13 +148,13 @@ describe('webgl/gl-state', () => {
     //bind texture
     const texture = gl.createTexture();
 
-    state.bindTexture(gl.TEXTURE_2D, texture);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).bindTexture(gl.TEXTURE_2D, texture);
     assert.equal(gl.getParameter(gl.TEXTURE_BINDING_2D), texture);
     //gl.pixelStorei(gl.PACK_ALIGNMENT, 4);
-    state.setPixelStorei(gl.PACK_ALIGNMENT, 4);
+    (state.displayServer.renderingDevice as RenderingDeviceWebGL).setPixelStorei(gl.PACK_ALIGNMENT, 4);
     assert.equal(gl.getParameter(gl.PACK_ALIGNMENT), 4);
     //viewport
-    state.setViewport(0, 0, 900, 800);
+    state.displayServer.renderingDevice.setViewport(0, 0, 900, 800);
     expect(gl.getParameter(gl.VIEWPORT)).deep.equals(new Int32Array([0, 0, 900, 800]));
   });
 

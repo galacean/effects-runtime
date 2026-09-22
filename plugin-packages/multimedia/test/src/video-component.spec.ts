@@ -105,7 +105,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     const duration = videoComponent.getDuration();
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(duration).to.equal(videoAsset.duration);
 
@@ -175,7 +175,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setCurrentTime(3);
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(videoAsset.currentTime).to.equal(3);
     composition.dispose();
@@ -209,7 +209,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setLoop(true);
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(videoAsset.loop).to.equal(true);
     composition.dispose();
@@ -243,7 +243,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setMuted(true);
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(videoAsset.muted).to.equal(true);
     composition.dispose();
@@ -277,7 +277,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setVolume(0.5);
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(videoAsset.volume).to.equal(0.5);
     composition.dispose();
@@ -311,7 +311,7 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setPlaybackRate(0.5);
     //@ts-expect-error
-    const videoAsset = videoComponent.engine.objectInstance[options.id].data;
+    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
 
     expect(videoAsset.playbackRate).to.equal(0.5);
     composition.dispose();

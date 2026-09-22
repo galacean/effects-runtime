@@ -1,14 +1,15 @@
+import { Engine } from '@galacean/effects-core';
 import type { MaterialProps, Renderer } from '@galacean/effects';
 import { Geometry, Mesh, glContext, math, Material } from '@galacean/effects';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { readBufferContents } from './gl-utils';
 
 const { expect } = chai;
 
 describe('webgl/gl-mesh', () => {
   let canvas = document.createElement('canvas');
-  const engine = new GLEngine(canvas, { glType: 'webgl2' });
+  const engine = new Engine(canvas, { glType: 'webgl2' });
   let renderer = engine.renderer;
 
   after(() => {
@@ -33,13 +34,13 @@ describe('webgl/gl-mesh', () => {
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
 
-    expect((material.shaderVariant as GLShaderVariant).program.engine).to.eql(engine);
+    expect((material.shaderVariant as GLShaderVariant).program.device).to.eql(engine.displayServer.renderingDevice);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);
     expect(resultGeom.engine.renderer).not.eql(null);
     if (gpubuffer?.getBuffer()) {
-      readBufferContents(engine.gl, gpubuffer.getBuffer()!, buffer);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, gpubuffer.getBuffer()!, buffer);
     }
     expect(buffer).to.eql(new Float32Array([0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5]));
 

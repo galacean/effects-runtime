@@ -1,6 +1,6 @@
-import { Composition, Player, PostProcessVolume, RenderFrame, TextureLoadAction } from '@galacean/effects';
+import { Composition, Player, PostProcessVolume, RendererComponent, TextureLoadAction } from '@galacean/effects';
 import type { Material } from '@galacean/effects';
-import type { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -19,18 +19,21 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
     function createComposition (postProcessingEnabled = false, volume?: PostProcessVolume) {
       const composition = new Composition(player.engine);
 
-      if (postProcessingEnabled) {
-        composition.renderFrame.dispose();
-        composition.renderFrame = new RenderFrame({
-          camera: composition.camera, renderer: player.renderer, postProcessingEnabled, globalVolume: volume,
-        });
-      }
+      composition.postProcessingEnabled = postProcessingEnabled;
+      composition.globalVolume = volume;
 
       return composition;
     }
 
+    function setSceneDraw (composition: Composition, render: () => void) {
+      const component = new RendererComponent(player.engine);
+
+      component.render = render;
+      composition.sceneRendering.addRenderer(component);
+    }
+
     function readPixel () {
-      const gl = (player.engine as GLEngine).gl;
+      const gl = (player.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
       const pixel = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
@@ -46,13 +49,13 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         const second = createComposition(true);
         const renderer = player.renderer;
 
-        first.renderFrame.renderPasses[0].execute = () => renderer.clear({
+        setSceneDraw(first, () => renderer.clear({
           colorAction: TextureLoadAction.clear, clearColor: [1, 0, 0, 1],
-        });
+        }));
         if (translucent) {
-          second.renderFrame.renderPasses[0].execute = () => renderer.clear({
+          setSceneDraw(second, () => renderer.clear({
             colorAction: TextureLoadAction.clear, clearColor: [0, 0.5, 0, 0.5],
-          });
+          }));
         }
         renderer.renderCompositions([first, second], {
           colorAction: TextureLoadAction.clear, clearColor: [0, 0, 1, 1],
@@ -125,15 +128,15 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         return get(...args);
       };
       renderer.blit = (...args) => { blits++; blit(...args); };
-      composition.renderFrame.renderPasses[0].execute = () => renderer.clear({
+      setSceneDraw(composition, () => renderer.clear({
         colorAction: TextureLoadAction.clear, clearColor: [0, 1, 0, 1],
-      });
+      }));
       volume.bloom.active = true;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(blits).greaterThan(0);
       volume.bloom.active = false;
       blits = bloomTargets = 0;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(blits).equals(0);
       expect(bloomTargets).equals(0);
       expect(readPixel()).deep.equals([0, 255, 0, 255]);
@@ -147,42 +150,42 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       let material: Material | undefined;
 
       renderer.renderMeshes = meshes => {
-        if (renderer.renderingData.currentPass.name === 'ToneMappingPass') { material = meshes[0].material; }
+        const toneMappingMesh = meshes.find(mesh => mesh.name === 'PostProcess');
+
+        if (toneMappingMesh) { material = toneMappingMesh.material; }
         renderMeshes(meshes);
       };
       volume.colorAdjustments = { active: true, brightness: 2, saturation: 50, contrast: 50 };
       volume.vignette = { active: true, intensity: 1, smoothness: 1, roundness: 1 };
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(material?.getFloat('_Brightness')).equals(4);
       expect(material?.getFloat('_VignetteIntensity')).equals(1);
       volume.colorAdjustments.active = false;
       volume.vignette.active = false;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(material?.getFloat('_Brightness')).equals(1);
       expect(material?.getFloat('_Saturation')).equals(1);
       expect(material?.getFloat('_Contrast')).equals(1);
       expect(material?.getFloat('_VignetteIntensity')).equals(0);
       volume.vignette.active = true;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       volume.vignette.intensity = 0;
-      composition.render();
+      composition.renderer.renderComposition(composition);
       expect(material?.getFloat('_VignetteIntensity')).equals(0);
     });
 
     for (const unsupported of [{ halfFloatTexture: 0 }, { halfFloatColorAttachment: false }, { halfFloatLinear: false }]) {
       it(`rejects unsupported HDR before allocating passes: ${Object.keys(unsupported)[0]}`, () => {
         const composition = createComposition();
-        const capability = player.engine.gpuCapability;
+        const capability = player.engine.displayServer.renderingDevice.gpuCapability;
         const original = capability.detail;
 
         try {
           capability.detail = { ...original, ...unsupported };
-          expect(() => new RenderFrame({
-            renderer: player.renderer, camera: composition.camera, postProcessingEnabled: true,
-          })).to.throw('color attachment and linear filtering support');
-          const frame = new RenderFrame({ renderer: player.renderer, camera: composition.camera });
-
-          frame.dispose();
+          composition.postProcessingEnabled = true;
+          expect(() => composition.renderer.renderComposition(composition)).to.throw('color attachment and linear filtering support');
+          composition.postProcessingEnabled = false;
+          expect(() => composition.renderer.renderComposition(composition)).not.to.throw();
         } finally {
           capability.detail = original;
         }

@@ -1,4 +1,3 @@
-import { AssetServer } from '../asset-server';
 import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
 import { PluginSystem } from '../plugin-system';
@@ -19,13 +18,14 @@ export class PrecompositionManager {
     const options = precomposition.options;
     const engine = composition.engine;
 
-    engine.clearResources();
+    engine.effectsObjectServer.clearObjectInstances();
+    engine.assetServer.clearSceneData();
 
     // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
     PluginSystem.notifyAssetsLoadFinish(scene, options, engine);
 
-    engine.getServer(AssetServer).prepareAssets(scene, scene.assets);
-    engine.getServer(AssetServer).updateTextVariables(scene, options.variables);
+    engine.assetServer.prepareAssets(scene, scene.assets);
+    engine.assetServer.updateTextVariables(scene, options.variables);
 
     composition.createTexturesFromData(scene.textureOptions);
 

@@ -1,4 +1,4 @@
-import type { Disposable } from '../utils';
+import type { Disposable, RestoreHandler } from '../utils';
 import type { RenderPassAttachmentStorageType } from './render-pass';
 
 export interface RenderbufferProps {
@@ -7,7 +7,7 @@ export interface RenderbufferProps {
   attachment: GLenum,
 }
 
-export abstract class Renderbuffer implements Disposable {
+export abstract class Renderbuffer implements Disposable, RestoreHandler {
   readonly size: [x: number, y: number] = [0, 0];
   readonly multiSample = 1;
   readonly storageType: RenderPassAttachmentStorageType;
@@ -31,6 +31,8 @@ export abstract class Renderbuffer implements Disposable {
   }
 
   abstract setSize (width: number, height: number): void;
+
+  abstract restore (): void;
 
   abstract dispose (): void;
 }

@@ -153,7 +153,7 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
-    engine.addParticleSystem(this);
+    engine.effectsObjectServer.addParticleSystem(this);
     this.maskManager = new MaskProcessor();
 
     if (props) {
@@ -435,7 +435,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   override onDestroy (): void {
     if (this.item && this.item.composition) {
-      this.meshes.forEach(mesh => mesh.dispose());
+      this.renderer?.disposeMeshes();
     }
   }
 
@@ -449,7 +449,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override dispose (): void {
-    this.engine.removeParticleSystem(this);
+    this.engine.effectsObjectServer.removeParticleSystem(this);
     super.dispose();
   }
 
@@ -968,7 +968,7 @@ export class ParticleSystem extends Component implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
       forceTarget,
-      diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
+      diffuse: renderer.texture ? this.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
       anchor,
     };
@@ -984,13 +984,7 @@ export class ParticleSystem extends Component implements Maskable {
         if (color[0] === spec.ValueType.GRADIENT_COLOR) {
           particleMeshProps.colorOverLifetime.color = (colorOverLifetime.color as spec.GradientColor)[1];
         } else if (color[0] === spec.ValueType.RGBA_COLOR) {
-          particleMeshProps.colorOverLifetime.color = Texture.createWithData(
-            this.engine,
-            {
-              data: new Uint8Array(color[1] as unknown as number[]),
-              width: 1,
-              height: 1,
-            });
+          particleMeshProps.colorOverLifetime.color = new Uint8Array(color[1] as unknown as number[]);
         } else if (color instanceof Texture) {
           particleMeshProps.colorOverLifetime.color = color;
         }
@@ -1049,7 +1043,7 @@ export class ParticleSystem extends Component implements Maskable {
         maxTrailCount: options.maxCount,
         pointCountPerTrail: Math.round(trails.maxPointPerTrail) || 32,
         blending: trails.blending,
-        texture: trails.texture ? this.engine.findObject(trails.texture) : undefined,
+        texture: trails.texture ? this.findObject(trails.texture) : undefined,
         opacityOverLifetime: createValueGetter(trails.opacityOverLifetime || 1),
         widthOverTrail: createValueGetter(trails.widthOverTrail || 1),
         // order: vfxItem.listIndex + (trails.orderOffset || 0),

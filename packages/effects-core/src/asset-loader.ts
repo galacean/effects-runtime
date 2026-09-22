@@ -59,14 +59,13 @@ export class AssetLoader {
     }
 
     effectsObject.setInstanceId(effectsObjectData.id);
-    this.engine.addInstance(effectsObject);
     SerializationHelper.deserialize(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
 
   private findData (uuid: string): spec.EffectsObjectData | undefined {
-    return this.engine.jsonSceneData[uuid];
+    return this.engine.assetServer.findEffectsObjectData(uuid);
   }
 }
 

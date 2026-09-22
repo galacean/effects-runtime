@@ -771,7 +771,7 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    engine.addPackageDatas({ jsonScene } as Scene);
+    engine.assetServer.addPackageDatas({ jsonScene } as Scene);
 
     const animComp = new AnimationComponent(engine);
 
@@ -1117,7 +1117,7 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      engine.addPackageDatas({ jsonScene } as Scene);
+      engine.assetServer.addPackageDatas({ jsonScene } as Scene);
       //
       expect(itemList[1].type).to.eql('mesh');
       const itemMesh = new VFXItem(engine);

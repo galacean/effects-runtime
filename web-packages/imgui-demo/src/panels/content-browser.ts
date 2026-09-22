@@ -2,7 +2,7 @@ import type { Engine, EffectsObject } from '@galacean/effects';
 import {
   Texture, Material, Shader, ShaderVariant, Geometry, AnimationClip,
 } from '@galacean/effects';
-import { GLEngine, GLTexture } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL, GLTexture } from '@galacean/effects-webgl';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
@@ -157,7 +157,7 @@ export class ContentBrowser extends EditorWindow {
   }
 
   private collectAssets (engine: Engine): void {
-    const keys = Object.keys(engine.objectInstance);
+    const keys = Object.keys(engine.effectsObjectServer.objectInstance);
 
     if (keys.length === this.cachedObjectCount) {
       return;
@@ -173,7 +173,7 @@ export class ContentBrowser extends EditorWindow {
     this.totalCount = 0;
 
     for (const guid of keys) {
-      const obj = engine.objectInstance[guid];
+      const obj = engine.effectsObjectServer.objectInstance[guid];
 
       if (!obj) { continue; }
       const cat = this.classifyObject(obj);

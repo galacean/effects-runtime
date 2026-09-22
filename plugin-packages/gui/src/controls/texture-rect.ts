@@ -208,7 +208,7 @@ export class TextureRect extends Control {
   override fromData (data: spec.TextureRectData): void {
     super.fromData(data);
     if (data.texture !== undefined) {
-      this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;
+      this.texture = data.texture ? this.engine.effectsObjectServer.findObject<Texture>(data.texture) : null;
     }
     if (data.expandMode !== undefined) {
       this.expandMode = data.expandMode;

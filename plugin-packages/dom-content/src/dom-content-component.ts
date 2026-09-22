@@ -122,7 +122,7 @@ export class DomContentComponent extends MaskableGraphic {
   private disposeOwnTexture (): void {
     const texture = this.renderer.texture;
 
-    if (texture && texture !== this.engine.whiteTexture) {
+    if (texture && texture !== this.engine.assetServer.whiteTexture) {
       texture.dispose();
     }
   }

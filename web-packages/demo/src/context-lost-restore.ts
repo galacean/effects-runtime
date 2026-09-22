@@ -1,4 +1,4 @@
-import type { GLEngine } from '@galacean/effects';
+import type { RenderingDeviceWebGL } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
@@ -58,7 +58,7 @@ let allocateTimeout: any;
     isWebGLLost = false;
   });
 
-  const engine = player.renderer.engine as GLEngine;
+  const engine = player.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
   const gl = engine.gl;
   const ext = gl.getExtension('WEBGL_lose_context');
 

@@ -56,7 +56,7 @@ export interface ParticleMeshData {
     target: spec.vec3,
   },
   colorOverLifetime?: {
-    color?: number[][] | Texture,
+    color?: number[][] | Texture | Uint8Array,
     opacity?: ValueGetter<number>,
     separateAxes?: boolean,
   },
@@ -138,6 +138,7 @@ export class ParticleMesh implements ParticleMeshData {
   private cachedRotationMatrix = new Matrix3();
   private cachedLinearMove = new Vector3();
   private tempMatrix3 = new Matrix3();
+  private readonly ownedTextures: Texture[] = [];
   private readonly attributeData = new Map<Buffer, Float32Array>();
 
   VERT_MAX_KEY_FRAME_COUNT = 0;
@@ -153,16 +154,16 @@ export class ParticleMesh implements ParticleMeshData {
       gravity, forceTarget, side, occlusion, anchor, blending,
       transparentOcclusion,
       renderMode = 0,
-      diffuse = Texture.createWithData(engine),
+      diffuse = this.ownTexture(Texture.createWithData(engine)),
     } = props;
-    const { detail } = engine.gpuCapability;
+    const { detail } = engine.displayServer.renderingDevice.gpuCapability;
     const { halfFloatTexture, maxVertexUniforms } = detail;
     const macros: ShaderMacros = [
       // spec.RenderMode
       ['RENDER_MODE', +renderMode],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
-    const { level } = engine.gpuCapability;
+    const { level } = engine.displayServer.renderingDevice.gpuCapability;
     const vertexKeyFrameMeta = createKeyFrameMeta();
     const fragmentKeyFrameMeta = createKeyFrameMeta();
     const enableVertexTexture = maxVertexUniforms > 0;
@@ -189,7 +190,12 @@ export class ParticleMesh implements ParticleMeshData {
     if (colorOverLifetime?.color) {
       macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1 << 4;
-      uniformValues.uColorOverLifetime = colorOverLifetime.color instanceof Texture ? colorOverLifetime.color : Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime.color));
+      const color = colorOverLifetime.color;
+
+      uniformValues.uColorOverLifetime = color instanceof Texture ? color : this.ownTexture(Texture.createWithData(
+        engine,
+        color instanceof Uint8Array ? { data: color, width: 1, height: 1 } : imageDataFromGradient(color),
+      ));
     }
     if (colorOverLifetime?.opacity) {
       uniformValues.uOpacityOverLifetimeValue = colorOverLifetime.opacity.toUniform(vertexKeyFrameMeta);
@@ -266,7 +272,7 @@ export class ParticleMesh implements ParticleMeshData {
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
-      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, ValueGetter.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
+      uniformValues.uFCurveValueTexture = this.ownTexture(generateHalfFloatTexture(engine, ValueGetter.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1));
     } else {
       uniformValues.uFCurveValues = ValueGetter.getAllData(fragmentKeyFrameMeta);
     }
@@ -275,7 +281,7 @@ export class ParticleMesh implements ParticleMeshData {
     if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
       const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
 
-      uniformValues.uVCurveValueTexture = tex;
+      uniformValues.uVCurveValueTexture = this.ownTexture(tex);
       vertex_lookup_texture = 1;
     } else {
       uniformValues.uVCurveValues = ValueGetter.getAllData(vertexKeyFrameMeta);
@@ -868,6 +874,19 @@ export class ParticleMesh implements ParticleMeshData {
 
     target.set(data, offset);
     this.geometry.setAttributeSubData(name, offset, data);
+  }
+
+  dispose (): void {
+    this.mesh.dispose();
+    this.ownedTextures.forEach(texture => texture.dispose());
+    this.ownedTextures.length = 0;
+    this.attributeData.clear();
+  }
+
+  private ownTexture (texture: Texture): Texture {
+    this.ownedTextures.push(texture);
+
+    return texture;
   }
 
   /**

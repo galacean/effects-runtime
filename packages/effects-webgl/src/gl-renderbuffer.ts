@@ -1,8 +1,8 @@
 import type { RenderbufferProps, Renderer } from '@galacean/effects-core';
-import { throwDestroyedError, Renderbuffer, logger, type RestoreHandler } from '@galacean/effects-core';
-import type { GLEngine } from './gl-engine';
+import { throwDestroyedError, Renderbuffer, logger } from '@galacean/effects-core';
+import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
-export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
+export class GLRenderbuffer extends Renderbuffer {
   buffer: WebGLRenderbuffer | null;
 
   private initialized = false;
@@ -26,18 +26,20 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
 
     this.initialized = true;
     this.renderer = renderer;
-    this.buffer = (renderer.engine as GLEngine).gl.createRenderbuffer() as WebGLRenderbuffer;
-    renderer.engine.addRenderbuffer(this);
+    const device = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+
+    this.buffer = device.gl.createRenderbuffer() as WebGLRenderbuffer;
+    device.addRenderbuffer(this);
   }
 
   /**
    * 上下文恢复后重建 renderbuffer 句柄并重新分配存储。
    */
-  restore (): void {
+  override restore (): void {
     if (!this.renderer) {
       return;
     }
-    const gl = (this.renderer.engine as GLEngine).gl;
+    const gl = (this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
 
     // 旧句柄已失效，直接重建。
     this.buffer = gl.createRenderbuffer() as WebGLRenderbuffer;
@@ -62,10 +64,10 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
     }
 
     if (width !== this.size[0] || height !== this.size[1]) {
-      const engine = this.renderer.engine as GLEngine;
-      const gl = engine.gl;
+      const device = this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+      const gl = device.gl;
 
-      engine.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
+      device.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
       if (width && height) {
         gl.renderbufferStorage(gl.RENDERBUFFER, this.format, this.size[0] = width, this.size[1] = height);
       } else {
@@ -76,10 +78,10 @@ export class GLRenderbuffer extends Renderbuffer implements RestoreHandler {
 
   dispose () {
     if (this.renderer) {
-      const engine = this.renderer.engine as GLEngine;
+      const device = this.renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
-      engine.deleteGLRenderbuffer(this);
-      engine.removeRenderbuffer(this);
+      device.deleteGLRenderbuffer(this);
+      device.removeRenderbuffer(this);
       this.renderer = null;
       this.buffer = null;
     }

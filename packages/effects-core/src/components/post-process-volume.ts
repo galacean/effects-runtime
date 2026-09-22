@@ -57,7 +57,7 @@ export class PostProcessVolume extends Component {
     const composition = this.item.composition;
 
     if (composition) {
-      composition.renderFrame.globalVolume = this;
+      composition.globalVolume = this;
     }
   }
 }

@@ -179,7 +179,7 @@ export class Project extends EditorWindow {
     this.title = 'Project';
     this.open();
     this.previewPlayer = createPreviewPlayer();
-    this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
+    this.previewPlayer.renderer.engine.assetServer.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     void this.createIconTexture(folderIcon).then(texture=>{
       if (texture) {
         this.folderIcon = texture;
@@ -387,14 +387,14 @@ export class Project extends EditorWindow {
             previewItem.rotate(0, 25, 0);
 
             this.previewPlayer.gotoAndStop(1);
-            this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
+            this.previewPlayer.engine.onDraw();
             iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
             this.assetLock.release();
 
             break;
           }
           case 'Texture':{
-            await (GalaceanEffects.player.renderer.engine.database as AssetDatabase).convertImageData(packageData);
+            await (GalaceanEffects.player.renderer.engine.assetServer.database as AssetDatabase).convertImageData(packageData);
             //@ts-expect-error
             iconTexture = await this.createIconTexture(packageData.exportObjects[0].image);
           }
@@ -517,4 +517,3 @@ export class Project extends EditorWindow {
     }
   }
 }
-

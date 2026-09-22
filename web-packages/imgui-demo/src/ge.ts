@@ -22,7 +22,7 @@ export class GalaceanEffects {
 
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
-    GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
+    GalaceanEffects.player.renderer.engine.assetServer.database = GalaceanEffects.assetDataBase;
     // @ts-expect-error
     GalaceanEffects.playURL({
       'playerVersion': {

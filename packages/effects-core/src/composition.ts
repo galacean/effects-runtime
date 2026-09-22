@@ -1,4 +1,6 @@
+import { SceneServer } from './scene-server';
 import * as spec from '@galacean/effects-specification';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
@@ -6,9 +8,10 @@ import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
-import type { EventSystem, Region } from './plugins';
+import type { InputServer } from './input-server';
+import type { Region } from './plugins';
 import { PlayState } from './plugins';
-import { RenderFrame } from './render';
+import { SceneRendering } from './render';
 import type { Scene } from './scene';
 import { TextureLoadAction, type Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
@@ -110,7 +113,7 @@ export interface CompositionProps {
 /**
  * 合成抽象类：核心对象，通常一个场景只包含一个合成，可能会有多个合成。
  * 合成中包含了相关的 Item 元素，支持对 Item 元素的创建、更新和销毁。
- * 也负责 Item 相关的动画播放控制，和持有渲染帧数据。
+ * 也负责 Item 相关的动画播放控制，和持有场景渲染数据。
  */
 export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   /**
@@ -118,9 +121,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   sceneTicking = new SceneTicking();
   /**
-   * 当前帧的渲染数据对象
+   * 场景渲染对象登记
    */
-  renderFrame: RenderFrame;
+  readonly sceneRendering = new SceneRendering();
+  readonly editorTransform = new Vector4(1, 1, 0, 0);
   /**
    * 动画播放速度
    */
@@ -178,7 +182,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 鼠标和触屏处理系统
    */
-  readonly event?: EventSystem;
+  readonly event?: InputServer;
   /**
    * 当前合成名称
    */
@@ -263,7 +267,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       onItemMessage,
     } = props ?? {};
 
-    this.engine.addComposition(this);
+    this.engine.getServer(SceneServer).addComposition(this);
 
     let sourceContent: spec.CompositionData | null = null;
 
@@ -279,8 +283,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
 
       this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
-      this.engine.renderLevel = scene.renderLevel;
-
       if (reusable) {
         scene.consumed = true;
       }
@@ -341,7 +343,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
     this.rootComposition.startTime = sourceContent?.startTime ?? 0;
-    this.event = engine.eventSystem;
+    this.event = engine.inputServer;
     this.statistic = {
       loadStart: scene?.startTime ?? 0,
       loadTime: scene?.totalTime ?? 0,
@@ -364,8 +366,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (onItemMessage) {
       this.onItemMessage = onItemMessage;
     }
-
-    this.createRenderFrame();
 
     PluginSystem.notifyCompositionCreated(this, scene);
     this.root.initializeHierarchy();
@@ -555,18 +555,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   *
-   */
-  createRenderFrame () {
-    this.renderFrame = new RenderFrame({
-      camera: this.camera,
-      renderer: this.renderer,
-      globalVolume: this.globalVolume,
-      postProcessingEnabled: this.postProcessingEnabled,
-    });
-  }
-
-  /**
    * 跳到指定时间点（不做任何播放行为）
    * @param time - 相对 startTime 的时间
    */
@@ -595,18 +583,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.resetEndState();
   }
 
-  /** Renders this Composition content. Screen-space UI is rendered by Engine. */
-  render () {
-    this.renderContent();
-  }
-
-  /**
-   * Renders only the Composition scene content.
-   */
-  renderContent () {
-    this.renderer.renderRenderFrame(this.renderFrame);
-  }
-
   private shouldDispose () {
     return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
@@ -616,7 +592,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   createTexturesFromData (textureDataList: Record<string, any>[]) {
     for (const textureData of textureDataList) {
-      const texture = this.engine.findObject<Texture>({ id: textureData.id });
+      const texture = this.engine.effectsObjectServer.findObject<Texture>({ id: textureData.id });
 
       texture.initialize();
       this._textures.push(texture);
@@ -639,7 +615,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @returns
    */
   getHitTestRay (x: number, y: number): Ray {
-    const { x: a, y: b, z: c, w: d } = this.renderFrame.editorTransform;
+    const { x: a, y: b, z: c, w: d } = this.editorTransform;
 
     return setRayFromCamera((x - c) / a, (y - d) / b, this.camera);
   }
@@ -772,12 +748,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.videos = [];
 
-    // FIXME: 注意这里增加了renderFrame销毁
-    this.renderFrame.dispose();
+    this.sceneRendering.clear();
     PluginSystem.notifyCompositionDestroy(this);
 
     this.dispose = noop;
-    this.renderer.engine.removeComposition(this);
+    this.renderer.engine.getServer(SceneServer).removeComposition(this);
 
     if (this.engine.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
@@ -801,7 +776,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param dy - y偏移量
    */
   setEditorTransform (scale: number, dx: number, dy: number) {
-    this.renderFrame.editorTransform.set(scale, scale, dx, dy);
+    this.editorTransform.set(scale, scale, dx, dy);
   }
 
   /**

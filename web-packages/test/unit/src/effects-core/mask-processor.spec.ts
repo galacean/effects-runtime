@@ -1,6 +1,7 @@
-import type { Engine, Renderer } from '@galacean/effects-core';
+import type { Renderer } from '@galacean/effects-core';
+import { Engine } from '@galacean/effects-core';
 import { Geometry, MaskProcessor, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -47,7 +48,7 @@ describe('core/material//mask-ref-manager', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
+    const glEngine = new Engine(canvas, { glType: 'webgl2' });
 
     engine = glEngine;
     renderer = glEngine.renderer;
@@ -58,7 +59,7 @@ describe('core/material//mask-ref-manager', () => {
   });
 
   afterEach(() => {
-    (renderer.engine as GLEngine).shaderLibrary.dispose();
+    (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary.dispose();
   });
 
   after(() => {
@@ -335,7 +336,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should handle references array with single forward mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,
@@ -348,7 +349,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should handle references array with single reverse mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,

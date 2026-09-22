@@ -1,4 +1,4 @@
-import type { GLEngine } from '@galacean/effects';
+import type { RenderingDeviceWebGL } from '@galacean/effects';
 import { Component } from '@galacean/effects';
 import { Monitor } from './monitor';
 import type { StatsOptions } from './stats';
@@ -13,7 +13,7 @@ export class StatsComponent extends Component {
   monitor: Monitor;
 
   init (options: Required<StatsOptions>): void {
-    const gl = (this.engine as GLEngine).gl;
+    const gl = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
 
     this.monitor = new Monitor(gl, options);
   }

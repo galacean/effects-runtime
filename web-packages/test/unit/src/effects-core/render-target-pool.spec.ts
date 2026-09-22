@@ -1,6 +1,7 @@
-import type { Engine, Renderer } from '@galacean/effects-core';
+import type { Renderer } from '@galacean/effects-core';
+import { Engine } from '@galacean/effects-core';
 import { RenderTargetPool, FilterMode, RenderTextureFormat } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -12,7 +13,7 @@ describe('effects-core/render-target-pool', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    engine = new GLEngine(canvas, { glType: 'webgl' });
+    engine = new Engine(canvas, { glType: 'webgl' });
     renderer = engine.renderer;
     pool = new RenderTargetPool(engine);
   });

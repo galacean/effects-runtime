@@ -26,7 +26,7 @@ export class Preview extends EditorWindow {
     this.title = 'Preview';
     this.previewPlayer = createPreviewPlayer();
     this.previewPlayer.ticker?.add(this.updateRenderTexture);
-    this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
+    this.previewPlayer.renderer.engine.assetServer.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     this.cameraController = new OrbitController();
   }
 

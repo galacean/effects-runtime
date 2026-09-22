@@ -105,7 +105,7 @@ export class MaskProcessor {
         continue;
       }
 
-      const maskable = engine.findObject<Maskable>(maskPath);
+      const maskable = engine.effectsObjectServer.findObject<Maskable>(maskPath);
 
       if (!maskable) {
         console.warn(`Mask reference not found: ${JSON.stringify(maskPath)}. Skipping.`);

@@ -1,5 +1,6 @@
 // @ts-nocheck
-import { AssetManager, ThreeTexture, setConfig, PLAYER_OPTIONS_ENV_EDITOR, ThreeEngine } from '@galacean/effects-threejs';
+import type { RenderingDeviceThree } from '@galacean/effects-threejs';
+import { AssetManager, ThreeTexture, setConfig, PLAYER_OPTIONS_ENV_EDITOR, Engine } from '@galacean/effects-threejs';
 import { createThreePlayer, renderbyThreeDisplayObject } from './common/three-display-object';
 import inspireList from './assets/inspire-list';
 
@@ -35,7 +36,9 @@ async function renderThreeSprite () {
   const assetManager = new AssetManager({
     pendingCompile: true,
   });
-  const engine = new ThreeEngine(renderer.getContext());
+  const engine = new Engine(renderer.domElement, { ownsCanvas: false, manualRender: true });
+
+  (engine.displayServer.renderingDevice as RenderingDeviceThree).setContext(renderer.getContext());
   const res = await assetManager.loadScene(json);
 
   const options = res.textureOptions[0];
