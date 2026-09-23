@@ -1,13 +1,9 @@
-import type * as spec from '@galacean/effects-specification';
 import type { vec4 } from '@galacean/effects-specification';
-import type { Engine } from '../engine';
-import { glContext } from '../gl';
 import type { Renderer } from '../render';
-import type { TextureConfigOptions, TextureLoadAction } from '../texture';
-import { Texture, TextureSourceType } from '../texture';
+import type { Texture, TextureLoadAction } from '../texture';
 import type { Disposable } from '../utils';
+import type { GPUResource } from '../gpu-resource';
 import type { RenderingData } from './rendering-data';
-import type { GPURenderbuffer } from './gpu-renderbuffer';
 
 /** Pass execution stages. Passes at the same event retain enqueue order. */
 export enum RenderPassEvent {
@@ -72,116 +68,10 @@ export interface RenderPassStoreAction {
   stencilAction?: TextureStoreAction,
 }
 
-export interface RenderPassColorAttachmentTextureOptions extends spec.TextureFormatOptions, TextureConfigOptions {
-  size?: [x: number, y: number],
-}
-
-/**
- * RenderPass ColorAttachment 选项
- */
-export interface RenderPassColorAttachmentOptions {
-  size?: [x: number, y: number],
-  name?: string,
-  /**
-   * ColorAttachment 的纹理参数
-   */
-  texture?: Texture | RenderPassColorAttachmentTextureOptions,
-  /**
-   * ColorAttachment 的 Buffer 参数
-   */
-  buffer?: GPURenderbuffer,
-  /**
-   * WebGL2 下 GPURenderbuffer 超采数目。默认是0，即不启用超采。
-   * @default 0
-   */
-  multiSample?: number,
-  /**
-   * 是否持久的对象
-   */
-  persistent?: boolean,
-}
-
-export class RenderTargetHandle implements Disposable {
-  texture: Texture;
-  readonly textureOptions?: RenderPassColorAttachmentTextureOptions;
-  readonly externalTexture: boolean;
-  protected destroyed = false;
-
-  constructor (engine: Engine, options?: RenderPassColorAttachmentOptions) {
-    if (!options) {
-      return;
-    }
-    const { texture, size } = options;
-
-    if (texture instanceof Texture) {
-      this.texture = texture;
-      this.externalTexture = true;
-    } else if (texture) {
-      const {
-        wrapT, wrapS, minFilter, magFilter, internalFormat,
-        format = glContext.RGBA,
-        type = glContext.UNSIGNED_BYTE,
-      } = texture;
-
-      this.externalTexture = false;
-      this.textureOptions = {
-        size,
-        format,
-        type,
-        internalFormat: internalFormat || format,
-        wrapT,
-        wrapS,
-        minFilter,
-        magFilter,
-        name: options.name,
-      };
-      this.texture = Texture.create(
-        engine,
-        {
-          ...this.textureOptions,
-          sourceType: TextureSourceType.framebuffer,
-          data: { width: size![0], height: size![1] },
-        }
-      );
-    } else {
-      //throw new Error('Color attachment must use texture.');
-    }
-  }
-
-  dispose (): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.texture.dispose();
-    this.destroyed = true;
-  }
-
-  get isDestroyed () {
-    return this.destroyed;
-  }
-
-  get storageType () {
-    return RenderPassAttachmentStorageType.color;
-  }
-
-  get size (): [x: number, y: number] {
-    const tex = this.texture;
-
-    return tex ? [tex.getWidth(), tex.getHeight()] : [0, 0];
-  }
-
-  get width (): number {
-    return this.texture.getWidth() || 0;
-  }
-
-  get height (): number {
-    return this.texture.getHeight() || 0;
-  }
-}
-
 export interface RenderPassDepthStencilAttachmentOptions {
   storageType: RenderPassAttachmentStorageType,
-  storage?: GPURenderbuffer,
+  /** Backend-owned attachment storage to share between framebuffers. */
+  storage?: GPUResource,
   texture?: Texture,
 }
 

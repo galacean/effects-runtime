@@ -1,16 +1,17 @@
 import type {
   GPUBuffer, Engine, EngineOptions, IndicesArray, Nullable,
-  FramebufferProps, RenderbufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
+  FramebufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
-  glContext, isIOS, logger, toBufferView,
+  glContext, isIOS, logger, toBufferView, addItem, removeItem,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import { GPUTextureWebGL } from './gpu-texture-webgl';
 import { GLContextManager } from './gl-context-manager';
 import { GPUFramebufferWebGL } from './gpu-framebuffer-webgl';
 import { GPURenderbufferWebGL } from './gpu-renderbuffer-webgl';
+import type { RenderbufferPropsWebGL } from './gpu-renderbuffer-webgl';
 import { GPUBufferWebGL } from './gpu-buffer-webgl';
 import { GPUProgramWebGL } from './gpu-program-webgl';
 
@@ -36,6 +37,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
+  private renderbuffers: GPURenderbufferWebGL[] = [];
   private currentIndexBuffer: GPUBuffer | null = null;
   private currentVertexArrayObject: WebGLVertexArrayObject | null = null;
   private vaoRecordInProgress = false;
@@ -176,8 +178,23 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     return new GPUFramebufferWebGL(this, props);
   }
 
-  override createRenderbuffer (props: RenderbufferProps): GPURenderbufferWebGL {
+  createRenderbuffer (props: RenderbufferPropsWebGL): GPURenderbufferWebGL {
     return new GPURenderbufferWebGL(this, props);
+  }
+
+  addRenderbuffer (renderbuffer: GPURenderbufferWebGL): void {
+    if (!this.disposed) {
+      addItem(this.renderbuffers, renderbuffer);
+    }
+  }
+
+  removeRenderbuffer (renderbuffer: GPURenderbufferWebGL): void {
+    removeItem(this.renderbuffers, renderbuffer);
+  }
+
+  override restoreGraphicsResources (): void {
+    this.renderbuffers.forEach(resource => resource.restore());
+    super.restoreGraphicsResources();
   }
 
   override createBuffer (): GPUBufferWebGL { return new GPUBufferWebGL(this); }
@@ -462,6 +479,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
       return;
     }
     super.dispose();
+    this.renderbuffers.length = 0;
 
     this.shaderLibrary?.dispose();
     this.context.dispose(this.engine.displayServer.ownsCanvas);

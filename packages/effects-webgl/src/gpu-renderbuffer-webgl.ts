@@ -1,10 +1,29 @@
-import { throwDestroyedError, GPURenderbuffer, logger } from '@galacean/effects-core';
+import { GPUResource, throwDestroyedError, logger } from '@galacean/effects-core';
+import type { RenderPassAttachmentStorageType, RestoreHandler } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
-export class GPURenderbufferWebGL extends GPURenderbuffer {
+export interface RenderbufferPropsWebGL {
+  storageType: RenderPassAttachmentStorageType,
+  format: GLenum,
+  attachment: GLenum,
+}
+
+export class GPURenderbufferWebGL extends GPUResource implements RestoreHandler {
+  readonly size: [x: number, y: number] = [0, 0];
+  readonly multiSample = 1;
+  readonly storageType: RenderPassAttachmentStorageType;
+  readonly format: GLenum;
+  readonly attachment: GLenum;
   buffer: WebGLRenderbuffer | null = null;
 
-  override initialize (): void {
+  constructor (device: RenderingDeviceWebGL, props: RenderbufferPropsWebGL) {
+    super(device);
+    this.storageType = props.storageType;
+    this.format = props.format;
+    this.attachment = props.attachment;
+  }
+
+  initialize (): void {
     if (this.destroyed) {
       throwDestroyedError();
     }
@@ -23,7 +42,7 @@ export class GPURenderbufferWebGL extends GPURenderbuffer {
   /**
    * 上下文恢复后重建 renderbuffer 句柄并重新分配存储。
    */
-  override restore (): void {
+  restore (): void {
     if (!this.device) {
       return;
     }
@@ -38,7 +57,7 @@ export class GPURenderbufferWebGL extends GPURenderbuffer {
     this.setSize(targetWidth, targetHeight);
   }
 
-  override setSize (width: number, height: number) {
+  setSize (width: number, height: number) {
     if (!this.initialized) {
       logger.error('Can\'t set size for uninitialized render buffer.');
 
@@ -60,6 +79,20 @@ export class GPURenderbufferWebGL extends GPURenderbuffer {
         logger.error(`Invalid render buffer size: ${width}x${height}.`);
       }
     }
+  }
+
+  override dispose (): void {
+    const device = this.device as RenderingDeviceWebGL | null;
+
+    super.dispose();
+    device?.removeRenderbuffer(this);
+  }
+
+  override onDeviceDispose (): void {
+    const device = this.device as RenderingDeviceWebGL | null;
+
+    super.onDeviceDispose();
+    device?.removeRenderbuffer(this);
   }
 
   protected override onReleaseGPU (): void {

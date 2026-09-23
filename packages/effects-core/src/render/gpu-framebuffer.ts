@@ -1,6 +1,5 @@
 import type { Texture } from '../texture';
 import type { RestoreHandler } from '../utils';
-import type { GPURenderbuffer } from './gpu-renderbuffer';
 import type { RenderPassAttachmentStorageType, RenderPassDepthStencilAttachmentOptions } from './render-pass';
 import type { RenderPassDestroyAttachmentType, RenderPassStoreAction } from './render-pass';
 import { GPUResource } from '../gpu-resource';
@@ -50,16 +49,6 @@ export abstract class GPUFramebuffer extends GPUResource implements RestoreHandl
 
   bind () {
     // OVERRIDE
-  }
-
-  get stencilStorage (): GPURenderbuffer | undefined {
-    // OVERRIDE
-    return undefined;
-  }
-
-  get depthStorage (): GPURenderbuffer | undefined {
-    // OVERRIDE
-    return undefined;
   }
 
   getDepthTexture (): Texture | undefined {

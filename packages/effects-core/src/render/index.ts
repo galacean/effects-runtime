@@ -3,7 +3,6 @@ export * from './resource-data';
 export * from './create-copy-shader';
 export * from './rendering-data';
 export * from './scene-rendering';
-export * from './gpu-renderbuffer';
 export * from './render-pass';
 export * from './render-target-pool';
 export * from './shader';

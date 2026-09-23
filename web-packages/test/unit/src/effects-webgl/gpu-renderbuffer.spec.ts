@@ -1,5 +1,5 @@
 import {
-  Engine, GPUResource, GPURenderbuffer, RenderPassAttachmentStorageType,
+  Engine, GPUResource, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, Texture, TextureSourceType,
 } from '@galacean/effects-core';
 import { GPURenderbufferWebGL } from '@galacean/effects-webgl';
@@ -34,7 +34,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       const resource = createResource();
 
       expect(resource).instanceOf(GPUResource);
-      expect(resource).instanceOf(GPURenderbuffer);
       expect(resource).instanceOf(GPURenderbufferWebGL);
       expect(resource.buffer).equals(null);
       expect(device['resources'].length).equals(count + 1);
@@ -92,6 +91,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(deletions).equals(1);
       expect(resource.buffer).equals(null);
       expect(resource.device).equals(null);
+      expect(device['renderbuffers']).not.includes(resource);
       resource.dispose();
       resource.dispose();
       expect(deletions).equals(1);

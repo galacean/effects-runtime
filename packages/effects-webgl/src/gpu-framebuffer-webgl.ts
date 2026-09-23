@@ -1,5 +1,5 @@
 import type {
-  FramebufferProps, GPURenderbuffer, RenderPassStoreAction,
+  FramebufferProps, RenderPassStoreAction,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
@@ -70,7 +70,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
     device.addFramebuffer(this);
   }
 
-  override get stencilStorage (): GPURenderbuffer | undefined {
+  get stencilStorage (): GPURenderbufferWebGL | undefined {
     const storageType = this.depthStencilStorageType;
 
     if (storageType !== RenderPassAttachmentStorageType.depth_16_opaque) {
@@ -78,7 +78,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
     }
   }
 
-  override get depthStorage (): GPURenderbuffer | undefined {
+  get depthStorage (): GPURenderbufferWebGL | undefined {
     if (this.depthStencilStorageType !== RenderPassAttachmentStorageType.stencil_8_opaque) {
       return this.depthStencilRenderbuffer;
     }
