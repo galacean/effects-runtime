@@ -1,8 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { canUseBOM, isIOS } from '../utils';
 
-export * from './create-gl-context';
-export * from './gpu-time';
+export type GLType = 'webgl' | 'webgl2';
 
 export const initErrors: string[] = [];
 export const glContext: WebGL2RenderingContext = {} as WebGL2RenderingContext;
