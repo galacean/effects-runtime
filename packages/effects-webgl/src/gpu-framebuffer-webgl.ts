@@ -6,7 +6,7 @@ import {
   isWebGL2, addItem, GPUFramebuffer, Texture, glContext, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
 } from '@galacean/effects-core';
-import { assignInspectorName } from './gl-renderer-internal';
+import { assignInspectorName } from './debug-utils';
 import { GPURenderbufferWebGL } from './gpu-renderbuffer-webgl';
 import type { GPUTextureWebGL } from './gpu-texture-webgl';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';

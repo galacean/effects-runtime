@@ -1,7 +1,7 @@
 import type { GPUBufferDescription, IndicesArray } from '@galacean/effects-core';
 import { GPUBuffer, toBufferView } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
-import { assignInspectorName } from './gl-renderer-internal';
+import { assignInspectorName } from './debug-utils';
 
 export class GPUBufferWebGL extends GPUBuffer {
   private buffer: WebGLBuffer | null = null;

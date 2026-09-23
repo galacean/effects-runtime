@@ -1,4 +1,4 @@
-export * from './gl-renderer-internal';
+export * from './debug-utils';
 export * from './gpu-renderbuffer-webgl';
 export * from './gpu-texture-webgl';
 export * from './gpu-framebuffer-webgl';

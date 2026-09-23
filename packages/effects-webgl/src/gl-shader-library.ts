@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, ShaderType, ShaderFactory, ShaderVariant } from '@galacean/effects-core';
 import type { GPUProgramWebGL } from './gpu-program-webgl';
-import { assignInspectorName } from './gl-renderer-internal';
+import { assignInspectorName } from './debug-utils';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 interface GLShaderCompileResult extends ShaderCompileResult {

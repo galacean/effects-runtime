@@ -8,7 +8,7 @@ import {
   glContext, nearestPowerOfTwo, GPUTexture, TextureSourceType, isWebGL2,
   canvasPool, logger, isPowerOfTwo,
 } from '@galacean/effects-core';
-import { assignInspectorName } from './gl-renderer-internal';
+import { assignInspectorName } from './debug-utils';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 const FORMAT_HALF_FLOAT: Record<string, number> = {
