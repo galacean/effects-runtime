@@ -36,7 +36,6 @@ export * from './gl';
 export * from './gpu-resource';
 export * from './material';
 export * from './math';
-export * from './paas-texture-cache';
 export * from './plugin-system';
 export * from './scene-loader';
 export * from './plugins';
