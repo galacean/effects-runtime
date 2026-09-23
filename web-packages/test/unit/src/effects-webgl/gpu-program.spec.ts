@@ -1,4 +1,4 @@
-import { Engine, GPUProgram, GPUResource, ShaderCompileResultStatus } from '@galacean/effects-core';
+import { Engine, GPUProgram, GPUResource, ShaderCompileResultStatus, ShaderVariant, Asset, spec } from '@galacean/effects-core';
 import { GPUProgramWebGL } from '@galacean/effects-webgl';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
@@ -127,20 +127,73 @@ describe('webgl/gpu-program', () => {
 
     expect(library.createShader({ vertex, fragment, shared: true })).equals(shared);
     shared.initialize();
-    const sharedNative = shared.program.program;
+    const sharedNative = (shared.program as GPUProgramWebGL).program;
 
     shared.dispose();
     expect(gl.isProgram(sharedNative)).equals(true);
     const privateVariant = library.createShader({ vertex, fragment });
 
     privateVariant.initialize();
-    const privateNative = privateVariant.program.program;
+    const privateNative = (privateVariant.program as GPUProgramWebGL).program;
 
     privateVariant.dispose();
     expect(gl.isProgram(privateNative)).equals(false);
     library.dispose();
     expect(gl.isProgram(sharedNative)).equals(false);
     expect(device['resources'].filter(resource => resource instanceof GPUProgram)).length(0);
+  });
+
+  it('keeps asset identity and shared uniform/sampler ordering when delegating to the program', () => {
+    const source = {
+      vertex,
+      fragment: `precision mediump float;
+        uniform float uValue;
+        uniform sampler2D uFirst;
+        uniform sampler2D uSecond;
+        void main() {
+          gl_FragColor = (texture2D(uFirst, vec2(0.0)) + texture2D(uSecond, vec2(0.0))) * uValue;
+        }`,
+      shared: true,
+    };
+    const variant = device.shaderLibrary.createShader(source);
+    const shared = device.shaderLibrary.createShader(source);
+    const id = variant.getInstanceId();
+
+    expect(variant).instanceOf(ShaderVariant);
+    expect(variant).instanceOf(Asset);
+    expect(shared).equals(variant);
+    variant.initialize();
+    variant.bind();
+    const program = (variant.program as GPUProgramWebGL).program!;
+    const texture = engine.assetServer.whiteTexture;
+
+    texture.initialize();
+    const samplers = ['unused', 'uSecond', 'uFirst'];
+
+    variant.fillShaderInformation(['uValue'], samplers);
+    expect(samplers).deep.equals(['unused', 'uSecond', 'uFirst']);
+    variant.setFloat('uValue', 0.5);
+    variant.setTexture('uFirst', texture);
+    variant.setTexture('uSecond', texture);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uValue')!)).equals(0.5);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uSecond')!)).equals(0);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uFirst')!)).equals(1);
+
+    // A later fill still updates sampler order while retaining previously queried uniforms.
+    shared.fillShaderInformation([], ['uFirst', 'uSecond']);
+    shared.setFloat('uValue', 0.25);
+    shared.setTexture('uFirst', texture);
+    shared.setTexture('uSecond', texture);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uValue')!)).equals(0.25);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uFirst')!)).equals(0);
+    expect(gl.getUniform(program, gl.getUniformLocation(program, 'uSecond')!)).equals(1);
+    variant.toData();
+    expect(variant.definition).deep.equals({
+      dataType: spec.DataType.Shader,
+      id,
+      vertex: variant.source.vertex,
+      fragment: variant.source.fragment,
+    });
   });
 
   it('unregisters a linked resource when the existing validation path fails', () => {

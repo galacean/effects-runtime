@@ -6,4 +6,3 @@ export * from './gpu-buffer-webgl';
 export * from './gpu-program-webgl';
 export * from './gl-shader-library';
 export * from './rendering-device-webgl';
-export * from './gl-shader';

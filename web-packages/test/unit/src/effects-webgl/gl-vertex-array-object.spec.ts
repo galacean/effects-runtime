@@ -1,7 +1,7 @@
 import { Engine } from '@galacean/effects-core';
 import type { Renderer, ShaderVariant } from '@galacean/effects-core';
 import { Geometry, glContext, ShaderCompileResultStatus } from '@galacean/effects-core';
-import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import type { RenderingDeviceWebGL, GPUProgramWebGL } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -176,7 +176,7 @@ describe('webgl/gl-vertex-array-object', () => {
           engine.shaderLibrary.compileShader(shader);
           expect(shader.compileResult.status).to.equal(ShaderCompileResultStatus.success);
           geometry.initialize();
-          engine.useProgram(shader.program.program);
+          engine.useProgram((shader.program as GPUProgramWebGL).program);
 
           for (let draw = 0; draw < 2; draw++) {
             geometry.bind(shader);

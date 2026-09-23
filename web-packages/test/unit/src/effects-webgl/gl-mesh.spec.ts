@@ -1,7 +1,6 @@
 import { Engine } from '@galacean/effects-core';
 import type { MaterialProps, Renderer } from '@galacean/effects';
 import { Geometry, Mesh, glContext, math, Material } from '@galacean/effects';
-import type { GLShaderVariant } from '@galacean/effects-webgl';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { readBufferContents } from './gl-utils';
 
@@ -34,7 +33,7 @@ describe('webgl/gl-mesh', () => {
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
 
-    expect((material.shaderVariant as GLShaderVariant).program.device).to.eql(engine.displayServer.renderingDevice);
+    expect(material.shaderVariant.program.device).to.eql(engine.displayServer.renderingDevice);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);

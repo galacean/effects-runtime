@@ -1,8 +1,9 @@
 import type { GPUTextureWebGL } from '@galacean/effects-webgl';
 import { Texture } from '@galacean/effects-core';
+import type { ShaderVariant } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { BufferUsage, Geometry, glContext, TextureSourceType } from '@galacean/effects-core';
-import type { GLShaderVariant, RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import type { GPUProgramWebGL, RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 import { readBufferContents } from './gl-utils';
 
@@ -112,24 +113,26 @@ describe('webgl/gl-context-lost', () => {
 
       const vs = `#version 300 es
       layout(location=0) in vec2 aPosition;
-      void main(){ gl_Position = vec4(aPosition,0.0,1.0); }`;
+      uniform float uOffset;
+      void main(){ gl_Position = vec4(aPosition + vec2(uOffset),0.0,1.0); }`;
       const fs = `#version 300 es
       precision highp float;
       out vec4 outColor;
       void main(){ outColor = vec4(1.0,0.0,0.0,1.0); }`;
       const library = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
       const id = library.addShader({ vertex: vs, fragment: fs, name: 'restore-test' });
-      const variant = (library as any).cachedShaders[id] as GLShaderVariant;
+      const variant = (library as any).cachedShaders[id] as ShaderVariant;
 
       variant.initialize();
-      const beforeResource = variant.program;
+      variant.fillShaderInformation(['uOffset'], []);
+      const beforeResource = variant.program as GPUProgramWebGL;
       const beforeProgram = beforeResource.program;
       const device = engine.displayServer.renderingDevice as RenderingDeviceWebGL;
       const resourceCount = device['resources'].length;
 
       await emulateContextLoss(engine);
 
-      const afterProgram = variant.program?.program;
+      const afterProgram = (variant.program as GPUProgramWebGL)?.program;
 
       expect(afterProgram).to.not.equal(beforeProgram);
       expect(afterProgram).to.be.instanceOf(WebGLProgram);
@@ -138,6 +141,10 @@ describe('webgl/gl-context-lost', () => {
       expect(device['resources']).to.not.include(beforeResource);
       expect(device['resources'].length).to.equal(resourceCount);
       expect(variant.initialized).to.equal(true);
+      variant.bind();
+      variant.setFloat('uOffset', 0.5);
+      expect(gl.getUniform(afterProgram!, gl.getUniformLocation(afterProgram!, 'uOffset')!)).to.equal(0.5);
+      expect(gl.getError()).to.equal(gl.NO_ERROR);
     }).timeout(8000);
 
     it('几何缓冲区在 restore 后被重建', async function () {

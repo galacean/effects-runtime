@@ -12,7 +12,6 @@ import { GLContextManager } from './gl-context-manager';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
-import type { GLShaderVariant } from './gl-shader';
 import { GPUBufferWebGL } from './gpu-buffer-webgl';
 import { GPUProgramWebGL } from './gpu-program-webgl';
 
@@ -267,7 +266,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     vertexLayout?: GPUVertexLayout,
   ): void {
     const gl = this.gl;
-    const program = (effect as GLShaderVariant).program;
+    const program = effect.program;
     const attributes = program.getAttributesNames();
 
     vertexLayout ??= this.getVertexLayout(vertexBuffers);

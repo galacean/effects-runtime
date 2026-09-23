@@ -5,7 +5,7 @@ import {
   SceneRendering, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion, Material,
 } from '@galacean/effects-core';
-import type { GLShaderVariant } from '@galacean/effects-webgl';
+import type { GPUProgramWebGL } from '@galacean/effects-webgl';
 import { Geometry } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
@@ -470,8 +470,8 @@ describe('webgl/gl-material', () => {
 
     expect(texArr).to.deep.equals(texture2);
     expect((texture2.getGPUTexture() as GPUTextureWebGL).textureBuffer).to.be.an.instanceof(WebGLTexture);
-    expect((material.shaderVariant as GLShaderVariant).initialized).to.be.true;
-    expect((material.shaderVariant as GLShaderVariant).compileResult.status).to.eql(1);
+    expect(material.shaderVariant.initialized).to.be.true;
+    expect(material.shaderVariant.compileResult.status).to.eql(1);
 
     material.dispose();
   });
@@ -619,7 +619,7 @@ describe('webgl/gl-material', () => {
     renderer.renderScene(sceneRendering, { camera: new Camera('') });
 
     const material = mesh.material;
-    const program = (material.shaderVariant as GLShaderVariant).program.program!;
+    const program = (material.shaderVariant.program as GPUProgramWebGL).program!;
     const loc = gl.getUniformLocation(program, 'u_pos')!;
     const valData = gl.getUniform(program, loc);
 
