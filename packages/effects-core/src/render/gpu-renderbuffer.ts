@@ -1,4 +1,6 @@
-import type { Disposable, RestoreHandler } from '../utils';
+import type { RestoreHandler } from '../utils';
+import { GPUResource } from '../gpu-resource';
+import type { RenderingDevice } from '../rendering-device';
 import type { RenderPassAttachmentStorageType } from './render-pass';
 
 export interface RenderbufferProps {
@@ -7,18 +9,15 @@ export interface RenderbufferProps {
   attachment: GLenum,
 }
 
-export abstract class Renderbuffer implements Disposable, RestoreHandler {
+export abstract class GPURenderbuffer extends GPUResource implements RestoreHandler {
   readonly size: [x: number, y: number] = [0, 0];
   readonly multiSample = 1;
   readonly storageType: RenderPassAttachmentStorageType;
   readonly format: GLenum;
   readonly attachment: GLenum;
 
-  protected destroyed = false;
-
-  static create: (props: RenderbufferProps) => Renderbuffer;
-
-  constructor (props: RenderbufferProps) {
+  constructor (device: RenderingDevice, props: RenderbufferProps) {
+    super(device);
     const { storageType, format, attachment } = props;
 
     this.storageType = storageType;
@@ -26,14 +25,10 @@ export abstract class Renderbuffer implements Disposable, RestoreHandler {
     this.attachment = attachment;
   }
 
-  get isDestroyed (): boolean {
-    return this.destroyed;
-  }
+  abstract initialize (): void;
 
   abstract setSize (width: number, height: number): void;
 
   abstract restore (): void;
-
-  abstract dispose (): void;
 }
 

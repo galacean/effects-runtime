@@ -4,7 +4,7 @@ import { Engine } from '@galacean/effects-core';
 import { Renderer } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLFramebuffer, GLRenderbuffer } from '@galacean/effects-webgl';
+import { GLFramebuffer, GPURenderbufferWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -100,7 +100,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.DEPTH_STENCIL_ATTACHMENT, gl.COLOR_ATTACHMENT0]);
       }
-      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GPURenderbufferWebGL);
       expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
@@ -132,7 +132,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.DEPTH_ATTACHMENT]);
       }
-      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GPURenderbufferWebGL);
       expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType, 'depthStencilRenderbuffer?.storageType');
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const depthStorage = framebuffer.depthStorage;
@@ -166,7 +166,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.STENCIL_ATTACHMENT, gl.COLOR_ATTACHMENT0]);
       }
-      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GPURenderbufferWebGL);
       expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
@@ -210,7 +210,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       }, fakeRenderer);
 
       framebuffer.bind();
-      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GPURenderbufferWebGL);
       expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;

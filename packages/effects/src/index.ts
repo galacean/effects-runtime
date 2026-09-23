@@ -1,13 +1,13 @@
 import type {
-  GeometryMeshProps, FramebufferProps, RenderbufferProps,
+  GeometryMeshProps, FramebufferProps,
   TextureDataType, TextureSourceOptions, EngineOptions,
 
   Renderer } from '@galacean/effects-core';
 import {
-  Framebuffer, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, RenderingDevice, logger,
+  Framebuffer, glContext, imageDataFromColor, Mesh, Texture, TextureSourceType, Engine, RenderingDevice, logger,
 } from '@galacean/effects-core';
 import {
-  GLFramebuffer, GLRenderbuffer, RenderingDeviceWebGL,
+  GLFramebuffer, RenderingDeviceWebGL,
 } from '@galacean/effects-webgl';
 
 export { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -57,10 +57,6 @@ Texture.createWithData = (
 
 Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new Mesh(engine, props);
-};
-
-Renderbuffer.create = (props: RenderbufferProps) => {
-  return new GLRenderbuffer(props);
 };
 
 Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {

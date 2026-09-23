@@ -1,6 +1,6 @@
 import type {
   GPUBuffer, Engine, EngineOptions, IndicesArray, Nullable,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
+  RenderbufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
@@ -11,7 +11,7 @@ import { GPUTextureWebGL } from './gpu-texture-webgl';
 import { GLContextManager } from './gl-context-manager';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
-import type { GLRenderbuffer } from './gl-renderbuffer';
+import { GPURenderbufferWebGL } from './gpu-renderbuffer-webgl';
 import { GPUBufferWebGL } from './gpu-buffer-webgl';
 import { GPUProgramWebGL } from './gpu-program-webgl';
 
@@ -172,6 +172,10 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   }
 
   override createTexture (): GPUTextureWebGL { return new GPUTextureWebGL(this); }
+
+  override createRenderbuffer (props: RenderbufferProps): GPURenderbufferWebGL {
+    return new GPURenderbufferWebGL(this, props);
+  }
 
   override createBuffer (): GPUBufferWebGL { return new GPUBufferWebGL(this); }
 
@@ -386,10 +390,11 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     }
   }
 
-  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
-    if (renderbuffer && !this.disposed) {
-      this.gl.deleteRenderbuffer(renderbuffer.buffer);
-      renderbuffer.buffer = null;
+  invalidateRenderbuffer (buffer: WebGLRenderbuffer): void {
+    for (const target in this.currentRenderbuffer) {
+      if (this.currentRenderbuffer[target] === buffer) {
+        this.currentRenderbuffer[target] = null;
+      }
     }
   }
 

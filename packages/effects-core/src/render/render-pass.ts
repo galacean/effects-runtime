@@ -7,7 +7,7 @@ import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable } from '../utils';
 import type { RenderingData } from './rendering-data';
-import type { Renderbuffer } from './renderbuffer';
+import type { GPURenderbuffer } from './gpu-renderbuffer';
 
 /** Pass execution stages. Passes at the same event retain enqueue order. */
 export enum RenderPassEvent {
@@ -89,9 +89,9 @@ export interface RenderPassColorAttachmentOptions {
   /**
    * ColorAttachment 的 Buffer 参数
    */
-  buffer?: Renderbuffer,
+  buffer?: GPURenderbuffer,
   /**
-   * WebGL2 下 Renderbuffer 超采数目。默认是0，即不启用超采。
+   * WebGL2 下 GPURenderbuffer 超采数目。默认是0，即不启用超采。
    * @default 0
    */
   multiSample?: number,
@@ -181,7 +181,7 @@ export class RenderTargetHandle implements Disposable {
 
 export interface RenderPassDepthStencilAttachmentOptions {
   storageType: RenderPassAttachmentStorageType,
-  storage?: Renderbuffer,
+  storage?: GPURenderbuffer,
   texture?: Texture,
 }
 

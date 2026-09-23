@@ -3,9 +3,10 @@ import type { GPUResource } from './gpu-resource';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
-  DataArray, GPUBuffer, GPUProgram, Framebuffer, GPUCapability, IndicesArray, Renderbuffer,
+  DataArray, GPUBuffer, GPUProgram, Framebuffer, GPUCapability, IndicesArray, RenderbufferProps,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexElement,
 } from './render';
+import { GPURenderbuffer } from './render/gpu-renderbuffer';
 import { GPUVertexLayout } from './render/gpu-vertex-layout';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
@@ -21,7 +22,7 @@ export class RenderingDevice implements Disposable {
   private resources: GPUResource[] = [];
   private readonly vertexLayouts = new Map<string, GPUVertexLayout>();
   private framebuffers: Framebuffer[] = [];
-  private renderbuffers: Renderbuffer[] = [];
+  private renderbuffers: GPURenderbuffer[] = [];
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
 
@@ -41,6 +42,9 @@ export class RenderingDevice implements Disposable {
   /** @internal */
   removeResource (resource: GPUResource): void {
     removeItem(this.resources, resource);
+    if (resource instanceof GPURenderbuffer) {
+      removeItem(this.renderbuffers, resource);
+    }
   }
 
   /** Whether rendering is suspended while the graphics context is being restored. */
@@ -67,6 +71,8 @@ export class RenderingDevice implements Disposable {
   }
 
   createTexture (): GPUTexture { throw new Error('The active backend does not provide textures.'); }
+
+  createRenderbuffer (props: RenderbufferProps): GPURenderbuffer { throw new Error('The active backend does not provide renderbuffers.'); }
 
   createBuffer (): GPUBuffer { throw new Error('The active backend does not provide buffers.'); }
 
@@ -132,18 +138,11 @@ export class RenderingDevice implements Disposable {
     removeItem(this.framebuffers, framebuffer);
   }
 
-  addRenderbuffer (renderbuffer: Renderbuffer) {
+  addRenderbuffer (renderbuffer: GPURenderbuffer) {
     if (this.disposed) {
       return;
     }
     addItem(this.renderbuffers, renderbuffer);
-  }
-
-  removeRenderbuffer (renderbuffer: Renderbuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.renderbuffers, renderbuffer);
   }
 
   /** Restore attachment storage before rebuilding framebuffer attachments. */
@@ -160,7 +159,6 @@ export class RenderingDevice implements Disposable {
     // Resource deletion needs a live device and context. Disposing a framebuffer
     // can also dispose and unregister its attachments.
     this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
-    this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
     this.framebuffers = [];
     this.renderbuffers = [];
     for (const layout of this.vertexLayouts.values()) {
