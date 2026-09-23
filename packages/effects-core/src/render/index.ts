@@ -11,6 +11,7 @@ export * from './gpu-capability';
 export * from './mesh';
 export * from './geometry';
 export * from './gpu-buffer';
+export * from './gpu-program';
 export * from './vertex-element';
 export * from './gpu-vertex-layout';
 export * from './vertex-element-type';

@@ -122,7 +122,10 @@ describe('webgl/gl-context-lost', () => {
       const variant = (library as any).cachedShaders[id] as GLShaderVariant;
 
       variant.initialize();
-      const beforeProgram = variant.program?.program;
+      const beforeResource = variant.program;
+      const beforeProgram = beforeResource.program;
+      const device = engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+      const resourceCount = device['resources'].length;
 
       await emulateContextLoss(engine);
 
@@ -130,6 +133,10 @@ describe('webgl/gl-context-lost', () => {
 
       expect(afterProgram).to.not.equal(beforeProgram);
       expect(afterProgram).to.be.instanceOf(WebGLProgram);
+      expect(beforeResource.program).to.equal(null);
+      expect(beforeResource.device).to.equal(null);
+      expect(device['resources']).to.not.include(beforeResource);
+      expect(device['resources'].length).to.equal(resourceCount);
       expect(variant.initialized).to.equal(true);
     }).timeout(8000);
 

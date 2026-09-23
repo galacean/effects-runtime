@@ -3,7 +3,7 @@ import type { GPUResource } from './gpu-resource';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
-  DataArray, GPUBuffer, Framebuffer, GPUCapability, IndicesArray, Renderbuffer,
+  DataArray, GPUBuffer, GPUProgram, Framebuffer, GPUCapability, IndicesArray, Renderbuffer,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexElement,
 } from './render';
 import { GPUVertexLayout } from './render/gpu-vertex-layout';
@@ -69,6 +69,8 @@ export class RenderingDevice implements Disposable {
   createTexture (): GPUTexture { throw new Error('The active backend does not provide textures.'); }
 
   createBuffer (): GPUBuffer { throw new Error('The active backend does not provide buffers.'); }
+
+  createProgram (key: string): GPUProgram { throw new Error('The active backend does not provide programs.'); }
 
   /** @hide Creates a layout; shared lookup is handled by getVertexLayout. */
   createVertexLayout (elements: readonly VertexElement[], strides: readonly number[]): GPUVertexLayout {

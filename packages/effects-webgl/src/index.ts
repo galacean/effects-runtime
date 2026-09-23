@@ -3,6 +3,7 @@ export * from './gl-renderbuffer';
 export * from './gpu-texture-webgl';
 export * from './gl-framebuffer';
 export * from './gpu-buffer-webgl';
+export * from './gpu-program-webgl';
 export * from './gl-shader-library';
 export * from './rendering-device-webgl';
 export * from './gl-shader';

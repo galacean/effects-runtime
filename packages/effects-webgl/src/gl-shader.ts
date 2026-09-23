@@ -1,6 +1,6 @@
 import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math } from '@galacean/effects-core';
 import { spec, ShaderVariant } from '@galacean/effects-core';
-import type { GLProgram } from './gl-program';
+import type { GPUProgramWebGL } from './gpu-program-webgl';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 type Color = math.Color;
@@ -12,7 +12,7 @@ type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
 export class GLShaderVariant extends ShaderVariant {
-  program: GLProgram;
+  program: GPUProgramWebGL;
   compileResult: ShaderCompileResult;
   initialized = false;
   uniformLocations: Record<string, WebGLUniformLocation | null> = {};
@@ -84,7 +84,7 @@ export class GLShaderVariant extends ShaderVariant {
     this.samplerList = samplerList.slice();
 
     uniformNames = uniformNames.concat(samplerList);
-    const avaliableUniforms = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).getUniforms(this.program.program, uniformNames);
+    const avaliableUniforms = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).getUniforms(this.program.program!, uniformNames);
 
     for (let i = 0; i < uniformNames.length; i++) {
       this.uniformLocations[uniformNames[i]] = avaliableUniforms[i];

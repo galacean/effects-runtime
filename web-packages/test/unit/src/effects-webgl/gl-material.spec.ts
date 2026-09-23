@@ -619,7 +619,7 @@ describe('webgl/gl-material', () => {
     renderer.renderScene(sceneRendering, { camera: new Camera('') });
 
     const material = mesh.material;
-    const program = (material.shaderVariant as GLShaderVariant).program.program;
+    const program = (material.shaderVariant as GLShaderVariant).program.program!;
     const loc = gl.getUniformLocation(program, 'u_pos')!;
     const valData = gl.getUniform(program, loc);
 

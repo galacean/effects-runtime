@@ -14,6 +14,7 @@ import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
 import type { GLShaderVariant } from './gl-shader';
 import { GPUBufferWebGL } from './gpu-buffer-webgl';
+import { GPUProgramWebGL } from './gpu-program-webgl';
 
 type Color = math.Color;
 type BufferData = number[] | ArrayBuffer | ArrayBufferView;
@@ -174,6 +175,8 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   override createTexture (): GPUTextureWebGL { return new GPUTextureWebGL(this); }
 
   override createBuffer (): GPUBufferWebGL { return new GPUBufferWebGL(this); }
+
+  override createProgram (key: string): GPUProgramWebGL { return new GPUProgramWebGL(this, key); }
 
   override updateDynamicVertexBuffer (
     vertexBuffer: GPUBuffer,
@@ -610,6 +613,13 @@ export class RenderingDeviceWebGL extends RenderingDevice {
    */
   useProgram (program: WebGLProgram | null) {
     this.set1('useProgram', program);
+  }
+
+  /** Forget a released program without changing the current GL binding. */
+  invalidateProgram (program: WebGLProgram): void {
+    if (this.glCapabilityCache.useProgram === program) {
+      delete this.glCapabilityCache.useProgram;
+    }
   }
 
   /*** depth start ***/

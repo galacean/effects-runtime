@@ -7,6 +7,7 @@ import './gl-frame-buffer.spec';
 import './gl-context-lost.spec';
 import './geometry.spec';
 import './gpu-buffer.spec';
+import './gpu-program.spec';
 import './gpu-vertex-layout.spec';
 import './gl-material.spec';
 import './gl-mesh.spec';

@@ -1,4 +1,4 @@
-import type { Disposable } from '@galacean/effects-core';
+import { GPUProgram } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 export interface ProgramAttributeInfo {
@@ -18,50 +18,47 @@ export interface ProgramUniformInfo {
   readonly textureIndex: number,
   readonly isTexture: boolean,
 }
-export class GLProgram implements Disposable {
-  private attribInfoMap: Record<string, ProgramAttributeInfo>;
-  private attributeNames: string[];
+export class GPUProgramWebGL extends GPUProgram {
+  program: WebGLProgram | null = null;
 
-  constructor (
-    public device: RenderingDeviceWebGL,
-    public readonly program: WebGLProgram,
-    public readonly key: string,
-  ) {
-    this.device.useProgram(program);
+  private attribInfoMap: Record<string, ProgramAttributeInfo> = {};
+  private attributeNames: string[] = [];
 
+  initialize (program: WebGLProgram): void {
+    this.releaseGPU();
+    this.program = program;
+    const device = this.device as RenderingDeviceWebGL;
+
+    device.useProgram(program);
     this.attribInfoMap = this.createAttribMap();
     this.attributeNames = Object.keys(this.attribInfoMap);
-
-    this.device.useProgram(null);
-    //gl.activeTexture(gl.TEXTURE0);
-    //this.device.activeTexture(gl.TEXTURE0);
-    //emptyTexture2D.bind();
-    //this.uniformInfoMap = uniformMap;
+    device.useProgram(null);
+    this.initialized = true;
   }
 
-  bind () {
-    this.device.useProgram(this.program);
+  override bind (): void {
+    (this.device as RenderingDeviceWebGL).useProgram(this.program);
   }
 
   /**
-   * @internal
+   * @hide
    */
-  getAttributesNames (): readonly string[] {
+  override getAttributesNames (): readonly string[] {
     return this.attributeNames;
   }
 
   /**
-   * @internal
+   * @hide
    */
-  getAttributeLocation (index: number): number {
+  override getAttributeLocation (index: number): number {
     const name = this.attributeNames[index];
 
     return name === undefined ? -1 : this.attribInfoMap[name].loc;
   }
 
-  createAttribMap () {
-    const { gl } = this.device;
-    const program = this.program;
+  private createAttribMap () {
+    const { gl } = this.device as RenderingDeviceWebGL;
+    const program = this.program!;
     const attribMap: Record<string, ProgramAttributeInfo> = {};
     const num = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
 
@@ -81,9 +78,15 @@ export class GLProgram implements Disposable {
     return attribMap;
   }
 
-  dispose () {
-    if (this.device) {
-      this.device.gl.deleteProgram(this.program);
+  protected override onReleaseGPU (): void {
+    const device = this.device as RenderingDeviceWebGL;
+
+    device.invalidateProgram(this.program!);
+    if (!device.gl.isContextLost()) {
+      device.gl.deleteProgram(this.program);
     }
+    this.program = null;
+    this.attribInfoMap = {};
+    this.attributeNames = [];
   }
 }
