@@ -212,12 +212,10 @@ export class SharedGeometry extends Geometry {
       drawCount: options.drawCount ?? 0,
       mode: options.mode ?? 0,
     });
-    source.getAttributeNames().forEach(name => {
-      const vertexBuffer = source.getVertexBuffer(name);
+    const layout = source.getVertexLayout();
 
-      if (vertexBuffer) {
-        this.setVerticesBuffer(vertexBuffer);
-      }
-    });
+    if (layout) {
+      this.setVertexBuffers(source.getVertexBuffers(), layout);
+    }
   }
 }

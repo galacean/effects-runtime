@@ -39,8 +39,8 @@ describe('webgl/gl-mesh', () => {
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);
     expect(resultGeom.engine.renderer).not.eql(null);
-    if (gpubuffer?.getBuffer()) {
-      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, gpubuffer.getBuffer()!, buffer);
+    if (gpubuffer) {
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, gpubuffer, buffer);
     }
     expect(buffer).to.eql(new Float32Array([0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5]));
 

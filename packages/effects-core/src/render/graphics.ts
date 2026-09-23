@@ -6,6 +6,7 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
 import { VertexBuffer } from './vertex-buffer';
+import { BufferUsage } from './gpu-buffer';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
@@ -631,15 +632,10 @@ export class Graphics {
   }
 
   private updateAttributeData (geometry: Geometry, name: string, data: Float32Array, size: number): void {
-    const dataBuffer = geometry.getVertexBuffer(name)?.getBuffer();
+    const buffer = geometry.getAttributeBuffer(name);
 
-    if (dataBuffer && data.byteLength > dataBuffer.capacity) {
-      geometry.setVerticesBuffer(new VertexBuffer(
-        this.engine,
-        data,
-        name,
-        { updatable: true, size },
-      ));
+    if (!buffer || data.byteLength > buffer.capacity) {
+      geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
 
       return;
     }

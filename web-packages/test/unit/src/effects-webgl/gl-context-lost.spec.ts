@@ -152,25 +152,29 @@ describe('webgl/gl-context-lost', () => {
       });
 
       geometry.initialize();
-      const vertexBuffer = geometry.getVertexBuffer('aPosition')!;
-      const beforeVertex = vertexBuffer.getBuffer()!.underlyingResource;
+      const gpuBuffer = geometry.getAttributeBuffer('aPosition')!;
+      const device = engine.displayServer.renderingDevice;
+      const bufferCount = device['resources'].length;
+      const beforeVertex = gpuBuffer.underlyingResource;
       const beforeIndex = geometry.getIndexBuffer()!.underlyingResource;
 
       await emulateContextLoss(engine);
 
-      expect(vertexBuffer.getBuffer()!.underlyingResource).to.not.equal(beforeVertex);
+      expect(gpuBuffer).equals(gpuBuffer);
+      expect(device['resources'].length).equals(bufferCount);
+      expect(gpuBuffer.underlyingResource).to.not.equal(beforeVertex);
       expect(geometry.getIndexBuffer()!.underlyingResource).to.not.equal(beforeIndex);
       const vertices = new Float32Array(6);
       const indices = new Uint16Array(3);
 
-      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, vertexBuffer.getBuffer()!, vertices);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, gpuBuffer, vertices);
       readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getIndexBuffer()!, indices, 0, true);
       expect(vertices).to.deep.equal(new Float32Array([0, 0, 1, 0, 0, 1]));
       expect(indices).to.deep.equal(new Uint16Array([0, 1, 2]));
       geometry.dispose();
     }).timeout(8000);
 
-    it('粒子系统在 geometry restore 后重建动态缓冲内容', async function () {
+    it('Geometry 在连续上下文恢复后保留局部更新内容', async function () {
       if (!canEmulateContextLoss(engine)) {
         this.skip();
 
@@ -186,29 +190,15 @@ describe('webgl/gl-context-lost', () => {
       });
 
       geometry.initialize();
-      const buffer = geometry.getAttributeBuffer('aPosition')!;
 
       data.set([2, 3], 0);
       geometry.setAttributeSubData('aPosition', 0, new Float32Array([2, 3]));
-      let particleBufferUploads = 0;
-      const particleSystem = {
-        rebuild: () => {
-          if (!buffer.getData()) {
-            particleBufferUploads++;
-            buffer.update(data);
-          }
-        },
-      } as unknown as import('@galacean/effects-core').ParticleSystem;
-
-      engine.effectsObjectServer.addParticleSystem(particleSystem);
       await emulateContextLoss(engine);
       await emulateContextLoss(engine);
       const restored = new Float32Array(data.length);
 
-      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getAttributeBuffer('aPosition')!, restored);
       expect(restored).to.deep.equal(data);
-      expect(particleBufferUploads).to.equal(1);
-      engine.effectsObjectServer.removeParticleSystem(particleSystem);
       geometry.dispose();
     }).timeout(8000);
 

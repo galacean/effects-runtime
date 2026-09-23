@@ -1,6 +1,6 @@
 import type {
-  DataBuffer, DataBufferOptions, Engine, EngineOptions, IndicesArray, Nullable,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
+  GPUBuffer, Engine, EngineOptions, IndicesArray, Nullable,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
@@ -13,7 +13,7 @@ import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
 import type { GLShaderVariant } from './gl-shader';
-import { GLDataBuffer } from './gl-data-buffer';
+import { GPUBufferWebGL } from './gpu-buffer-webgl';
 
 type Color = math.Color;
 type BufferData = number[] | ArrayBuffer | ArrayBufferView;
@@ -37,7 +37,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
-  private currentIndexBuffer: DataBuffer | null = null;
+  private currentIndexBuffer: GPUBuffer | null = null;
   private currentVertexArrayObject: WebGLVertexArrayObject | null = null;
   private vaoRecordInProgress = false;
   private activeTextureIndex: number;
@@ -173,67 +173,10 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
   override createTexture (): GPUTextureWebGL { return new GPUTextureWebGL(this); }
 
-  override createVertexBuffer (
-    data: BufferData | number,
-    options: DataBufferOptions,
-  ): GLDataBuffer {
-    const resource = this.gl.createBuffer();
-
-    if (!resource) {
-      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
-    }
-    const buffer = new GLDataBuffer(resource);
-    const view = typeof data === 'number' ? undefined : toBufferView(data);
-    const byteLength = typeof data === 'number' ? data : view!.byteLength;
-
-    assignInspectorName(resource, options.label);
-    this.bindArrayBuffer(buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, Math.max(byteLength, 1), options.usage);
-    if (view && byteLength > 0) {
-      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, view);
-    }
-    this.bindArrayBuffer(null);
-    buffer.capacity = byteLength;
-    buffer.references = 1;
-
-    return buffer;
-  }
-
-  override createDynamicVertexBuffer (
-    data: BufferData | number,
-    options: DataBufferOptions,
-  ): GLDataBuffer {
-    return this.createVertexBuffer(data, options);
-  }
-
-  override createIndexBuffer (
-    indices: IndicesArray,
-    options: DataBufferOptions,
-  ): GLDataBuffer {
-    const data = this.normalizeIndexData(indices);
-    const resource = this.gl.createBuffer();
-
-    if (!resource) {
-      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
-    }
-    const buffer = new GLDataBuffer(resource);
-
-    assignInspectorName(resource, options.label);
-    this.bindIndexBuffer(buffer);
-    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, Math.max(data.byteLength, 1), options.usage);
-    if (data.byteLength > 0) {
-      this.gl.bufferSubData(this.gl.ELEMENT_ARRAY_BUFFER, 0, data);
-    }
-    this.bindIndexBuffer(null);
-    buffer.capacity = data.byteLength;
-    buffer.references = 1;
-    buffer.is32Bits = data instanceof Uint32Array;
-
-    return buffer;
-  }
+  override createBuffer (): GPUBufferWebGL { return new GPUBufferWebGL(this); }
 
   override updateDynamicVertexBuffer (
-    vertexBuffer: DataBuffer,
+    vertexBuffer: GPUBuffer,
     data: BufferData,
     byteOffset = 0,
     byteLength?: number,
@@ -253,7 +196,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   }
 
   override updateDynamicIndexBuffer (
-    indexBuffer: DataBuffer,
+    indexBuffer: GPUBuffer,
     indices: IndicesArray,
     byteOffset = 0,
   ): void {
@@ -272,29 +215,21 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   }
 
   /** @hide */
-  override releaseBuffer (buffer: DataBuffer): boolean {
-    buffer.references--;
-    if (buffer.references !== 0) {
-      return false;
-    }
-    if (!this.disposed) {
-      this.gl.deleteBuffer(buffer.underlyingResource as WebGLBuffer);
-    }
-    buffer.capacity = 0;
-
-    return true;
-  }
-
-  /** @hide */
   releaseVertexArrayObject (vertexArrayObject: WebGLVertexArrayObject): void {
-    this.gl.deleteVertexArray(vertexArrayObject);
+    if (this.currentVertexArrayObject === vertexArrayObject) {
+      this.unbindVertexArrayObject();
+    }
+    if (!this.gl.isContextLost()) {
+      this.gl.deleteVertexArray(vertexArrayObject);
+    }
   }
 
   /** @hide */
   recordVertexArrayObject (
-    vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | null,
+    vertexBuffers: readonly (GPUBuffer | null)[],
+    indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
+    vertexLayout?: GPUVertexLayout,
   ): WebGLVertexArrayObject | undefined {
     const vertexArrayObject = this.gl.createVertexArray() ?? undefined;
 
@@ -303,7 +238,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     }
     this.vaoRecordInProgress = true;
     this.bindVertexArrayObject(vertexArrayObject, null);
-    this.bindVertexBuffersAttributes(vertexBuffers, effect);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect, vertexLayout);
     this.bindIndexBuffer(indexBuffer);
     this.vaoRecordInProgress = false;
     this.bindVertexArrayObject(null, null);
@@ -313,23 +248,26 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
   /** @hide */
   override bindBuffers (
-    vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | null,
+    vertexBuffers: readonly (GPUBuffer | null)[],
+    indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
+    vertexLayout?: GPUVertexLayout,
   ): void {
     this.bindVertexArrayObject(null, null);
-    this.bindVertexBuffersAttributes(vertexBuffers, effect);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect, vertexLayout);
     this.bindIndexBuffer(indexBuffer);
   }
 
   private bindVertexBuffersAttributes (
-    vertexBuffers: Record<string, VertexBuffer>,
+    vertexBuffers: readonly (GPUBuffer | null)[],
     effect: ShaderVariant,
+    vertexLayout?: GPUVertexLayout,
   ): void {
     const gl = this.gl;
     const program = (effect as GLShaderVariant).program;
     const attributes = program.getAttributesNames();
 
+    vertexLayout ??= this.getVertexLayout(vertexBuffers);
     for (let index = 0; index < attributes.length; index++) {
       const location = program.getAttributeLocation(index);
 
@@ -337,33 +275,30 @@ export class RenderingDeviceWebGL extends RenderingDevice {
         continue;
       }
       const name = attributes[index];
-      const attribute = vertexBuffers[name];
+      const attribute = vertexLayout?.getElement(name);
 
       if (!attribute) {
         continue;
       }
-      const buffer = attribute.getBuffer();
+      const buffer = vertexBuffers[attribute.slot];
 
-      if (!buffer) {
-        throw new Error(`Failed to find a buffer named '${attribute.getKind() || name}'. Please ensure the buffer is correctly initialized and bound.`);
-      }
       this.bindArrayBuffer(buffer);
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(
         location,
-        attribute.getSize(),
+        attribute.size,
         attribute.type,
         attribute.normalized,
-        attribute.byteStride,
+        vertexLayout!.getStride(attribute.slot),
         attribute.byteOffset,
       );
-      if (attribute.getInstanceDivisor() > 0) {
-        gl.vertexAttribDivisor(location, attribute.getInstanceDivisor());
+      if (attribute.divisor > 0) {
+        gl.vertexAttribDivisor(location, attribute.divisor);
       }
     }
   }
 
-  bindArrayBuffer (buffer: DataBuffer | null): void {
+  bindArrayBuffer (buffer: GPUBuffer | null): void {
     if (!this.vaoRecordInProgress) {
       this.unbindVertexArrayObject();
     }
@@ -373,7 +308,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     );
   }
 
-  protected bindIndexBuffer (buffer: DataBuffer | null): void {
+  bindIndexBuffer (buffer: GPUBuffer | null): void {
     if (!this.vaoRecordInProgress) {
       this.unbindVertexArrayObject();
     }
@@ -382,27 +317,6 @@ export class RenderingDeviceWebGL extends RenderingDevice {
       this.gl.ELEMENT_ARRAY_BUFFER,
       buffer?.underlyingResource as WebGLBuffer | undefined ?? null,
     );
-  }
-
-  private normalizeIndexData (indices: IndicesArray): Uint16Array | Uint32Array {
-    if (indices instanceof Uint16Array) {
-      return indices;
-    }
-    const supports32Bits = this.gpuCapability.isWebGL2
-      || this.gpuCapability.detail.intIndexElementBuffer;
-
-    if (supports32Bits) {
-      if (indices instanceof Uint32Array) {
-        return indices;
-      }
-      for (let i = 0; i < indices.length; i++) {
-        if (indices[i] >= 65535) {
-          return new Uint32Array(indices);
-        }
-      }
-    }
-
-    return new Uint16Array(indices);
   }
 
   createGLFramebuffer (name?: string): WebGLFramebuffer | null {
@@ -420,7 +334,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
   /** @hide */
   bindVertexArrayObject (
     vertexArrayObject: WebGLVertexArrayObject | null,
-    indexBuffer: DataBuffer | null,
+    indexBuffer: GPUBuffer | null,
   ): void {
     this.currentIndexBuffer = indexBuffer;
     if (this.currentVertexArrayObject === vertexArrayObject) {
@@ -437,6 +351,12 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     this.currentVertexArrayObject = null;
     this.currentIndexBuffer = null;
     this.gl.bindVertexArray(null);
+  }
+
+  invalidateBuffer (buffer: GPUBuffer): void {
+    if (this.currentIndexBuffer === buffer) {
+      this.bindIndexBuffer(null);
+    }
   }
 
   /** Forget bindings invalidated by deleting a texture or losing its context. */

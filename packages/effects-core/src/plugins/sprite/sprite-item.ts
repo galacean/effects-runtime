@@ -9,7 +9,7 @@ import type { FrameContext } from '../timeline';
 import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
-import { VertexBuffer } from '../../render';
+import { BufferUsage, VertexBuffer } from '../../render';
 import { rotateVec2 } from '../../shape';
 import { MaskableGraphic, EffectComponent } from '../../components';
 import type { Sprite } from './sprite';
@@ -368,16 +368,10 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
-    const vertexBuffer = this.geometry.getVertexBuffer(name);
-    const dataBuffer = vertexBuffer?.getBuffer();
+    const buffer = this.geometry.getAttributeBuffer(name);
 
-    if (!vertexBuffer || (dataBuffer && data.byteLength > dataBuffer.capacity)) {
-      this.geometry.setVerticesBuffer(new VertexBuffer(
-        this.engine,
-        data,
-        name,
-        { updatable: true, size },
-      ));
+    if (!buffer || data.byteLength > buffer.capacity) {
+      this.geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
 
       return;
     }

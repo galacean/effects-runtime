@@ -1298,14 +1298,14 @@ export class GeometryBoxProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionAttrib = getAttributeLayout(geometry, VertexBuffer.PositionKind);
     const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
+    const jointAttrib = getAttributeLayout(geometry, VertexBuffer.JointsKind);
+    const weightAttrib = getAttributeLayout(geometry, VertexBuffer.WeightsKind);
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
       const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
@@ -1450,14 +1450,14 @@ export class HitTestingProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionAttrib = getAttributeLayout(geometry, VertexBuffer.PositionKind);
     const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
+    const jointAttrib = getAttributeLayout(geometry, VertexBuffer.JointsKind);
+    const weightAttrib = getAttributeLayout(geometry, VertexBuffer.WeightsKind);
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
       const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
@@ -1977,7 +1977,7 @@ export class CheckerHelper {
    * @returns
    */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
-    const dataAttrib = getAttributeLayout(v.getVertexBuffer(name));
+    const dataAttrib = getAttributeLayout(v, name);
 
     if (dataAttrib === undefined) { return; }
     const dataArray = v.getAttributeData(name);
@@ -2315,16 +2315,18 @@ export class CheckerHelper {
   }
 }
 
-function getAttributeLayout (vertexBuffer?: VertexBuffer): AttributeLayout | undefined {
+function getAttributeLayout (geometry: Geometry, name: string): AttributeLayout | undefined {
+  const vertexBuffer = geometry.getVertexElement(name);
+
   if (!vertexBuffer) {
     return;
   }
 
   return {
     type: vertexBuffer.type,
-    size: vertexBuffer.getSize(),
+    size: vertexBuffer.size,
     offset: vertexBuffer.byteOffset,
-    stride: vertexBuffer.byteStride,
+    stride: geometry.getAttributeStride(name),
     normalize: vertexBuffer.normalized,
   };
 }

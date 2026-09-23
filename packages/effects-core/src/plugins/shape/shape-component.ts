@@ -9,7 +9,7 @@ import type { Engine } from '../../engine';
 import type { Maskable, MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
 import type { Renderer } from '../../render';
-import { GLSLVersion, Geometry, VertexBuffer } from '../../render';
+import { BufferUsage, GLSLVersion, Geometry, VertexBuffer } from '../../render';
 import type { GradientValue, StrokeAttributes } from '../../math';
 import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
@@ -516,15 +516,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
-    const dataBuffer = this.geometry.getVertexBuffer(name)?.getBuffer();
+    const buffer = this.geometry.getAttributeBuffer(name);
 
-    if (dataBuffer && data.byteLength > dataBuffer.capacity) {
-      this.geometry.setVerticesBuffer(new VertexBuffer(
-        this.engine,
-        data,
-        name,
-        { updatable: true, size },
-      ));
+    if (!buffer || data.byteLength > buffer.capacity) {
+      this.geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
 
       return;
     }

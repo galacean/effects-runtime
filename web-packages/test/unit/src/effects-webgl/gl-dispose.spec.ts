@@ -83,7 +83,7 @@ describe('webgl/dispose', function () {
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
     expect(geom.isDisposed()).to.be.true;
-    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.vertexBuffers).to.eql([]);
     expect(geom.getAttributeNames()).to.eql([]);
     scene.clear();
   });
@@ -116,7 +116,7 @@ describe('webgl/dispose', function () {
 
     expect(mesh.material).to.eql(material);
     expect(geom.isDisposed()).to.be.true;
-    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.vertexBuffers).to.eql([]);
     expect(geom.getAttributeNames()).to.eql([]);
     expect(texture).to.eql(texture);
 

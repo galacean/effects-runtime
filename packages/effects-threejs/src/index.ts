@@ -12,6 +12,7 @@ export * from './three-composition';
 export * from './three-display-object';
 export * from './rendering-device-three';
 export * from './gpu-texture-three';
+export { GPUBufferThree } from './gpu-buffer-three';
 export * from './three-sprite-component';
 export * from './three-text-component';
 

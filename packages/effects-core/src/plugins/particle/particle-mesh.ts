@@ -19,7 +19,7 @@ import {
   RandomValue,
 } from '../../math';
 import type {
-  Attribute, Buffer, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
+  Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
 } from '../../render';
 import {
   BufferUsage, GLSLVersion, Geometry, Mesh, VertexBuffer,
@@ -139,7 +139,6 @@ export class ParticleMesh implements ParticleMeshData {
   private cachedLinearMove = new Vector3();
   private tempMatrix3 = new Matrix3();
   private readonly ownedTextures: Texture[] = [];
-  private readonly attributeData = new Map<Buffer, Float32Array>();
 
   VERT_MAX_KEY_FRAME_COUNT = 0;
 
@@ -382,14 +381,6 @@ export class ParticleMesh implements ParticleMeshData {
     this.anchor = anchor;
     this.mesh = mesh;
     this.geometry = mesh.firstGeometry();
-    this.geometry.getAttributeNames().forEach(name => {
-      const vertexBuffer = this.geometry.getVertexBuffer(name);
-      const data = this.geometry.getAttributeData(name);
-
-      if (vertexBuffer && data instanceof Float32Array) {
-        this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
-      }
-    });
     this.forceTarget = forceTarget;
     this.sizeOverLifetime = sizeOverLifetime;
     this.speedOverLifetime = speedOverLifetime;
@@ -853,8 +844,7 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   private getAttributeData (name: string): Float32Array {
-    const vertexBuffer = this.geometry.getVertexBuffer(name);
-    const data = vertexBuffer && this.attributeData.get(vertexBuffer.getWrapperBuffer());
+    const data = this.geometry.getAttributeData(name) as Float32Array | undefined;
 
     assertExist(data);
 
@@ -862,17 +852,10 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   private setAttributeData (name: string, data: Float32Array) {
-    const vertexBuffer = this.geometry.getVertexBuffer(name);
-
-    assertExist(vertexBuffer);
-    this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
     this.geometry.setAttributeData(name, data);
   }
 
   private setAttributeSubData (name: string, offset: number, data: Float32Array) {
-    const target = this.getAttributeData(name);
-
-    target.set(data, offset);
     this.geometry.setAttributeSubData(name, offset, data);
   }
 
@@ -880,27 +863,12 @@ export class ParticleMesh implements ParticleMeshData {
     this.mesh.dispose();
     this.ownedTextures.forEach(texture => texture.dispose());
     this.ownedTextures.length = 0;
-    this.attributeData.clear();
   }
 
   private ownTexture (texture: Texture): Texture {
     this.ownedTextures.push(texture);
 
     return texture;
-  }
-
-  /**
-   * @internal
-   */
-  rebuild (): void {
-    if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
-      return;
-    }
-    this.attributeData.forEach((data, buffer) => {
-      if (!buffer.getData()) {
-        buffer.update(data);
-      }
-    });
   }
 
   private expandArray (array: Float32Array, newSize: number): Float32Array {

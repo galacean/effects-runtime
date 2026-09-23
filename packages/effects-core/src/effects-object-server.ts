@@ -5,7 +5,6 @@ import type { Engine } from './engine';
 import { EngineServer } from './engine-server';
 import type { Material } from './material';
 import type { Geometry } from './render/geometry';
-import type { ParticleSystem } from './plugins/particle/particle-system';
 import type { Texture } from './texture';
 import type { RestoreHandler } from './utils';
 import { addItem, isPlainObject, logger, removeItem } from './utils';
@@ -19,7 +18,6 @@ export class EffectsObjectServer extends EngineServer {
   private textures: Texture[] = [];
   private materials: Material[] = [];
   private geometries: Geometry[] = [];
-  private particleSystems: ParticleSystem[] = [];
 
   constructor (engine: Engine) {
     // Dispose after rendering services and before the graphics device.
@@ -59,23 +57,9 @@ export class EffectsObjectServer extends EngineServer {
     removeItem(this.geometries, geo);
   }
 
-  /** @internal */
-  addParticleSystem (particleSystem: ParticleSystem): void {
-    if (this.engine.disposed) {
-      return;
-    }
-    addItem(this.particleSystems, particleSystem);
-  }
-
-  /** @internal */
-  removeParticleSystem (particleSystem: ParticleSystem): void {
-    removeItem(this.particleSystems, particleSystem);
-  }
-
   /** @internal Rebuild engine-owned resources after the device restores shaders. */
   restoreGraphicsResources (): void {
     this.geometries.forEach(geo => geo.restore());
-    this.particleSystems.forEach(system => system.rebuild());
     this.textures.forEach(resource => (resource as unknown as RestoreHandler).restore());
   }
 
@@ -101,7 +85,6 @@ export class EffectsObjectServer extends EngineServer {
     this.textures = [];
     this.materials = [];
     this.geometries = [];
-    this.particleSystems = [];
 
     for (const id of Object.keys(this.objectInstance)) {
       this.objectInstance[id].unregisterObject();

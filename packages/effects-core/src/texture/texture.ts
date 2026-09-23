@@ -136,14 +136,10 @@ export class Texture extends Asset {
     return this.height || 0;
   }
 
-  async uploadCurrentVideoFrame (): Promise<boolean> {
+  uploadCurrentVideoFrame (): void {
     if (this.source.sourceType === TextureSourceType.video && this.source.video && this.gpuTexture?.isInitialized) {
       this.update({ video: this.source.video });
-
-      return true;
     }
-
-    return false;
   }
 
   /**
