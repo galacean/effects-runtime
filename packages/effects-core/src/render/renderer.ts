@@ -8,7 +8,7 @@ import { addItem, removeItem } from '../utils';
 import { FilterMode, RenderTextureFormat } from './framebuffer';
 import type { Framebuffer } from './framebuffer';
 import { Geometry } from './geometry';
-import { VertexBuffer } from './vertex-buffer';
+import { VertexElementType } from './vertex-element-type';
 import { RenderingData } from './rendering-data';
 import type { RenderOptions } from './rendering-data';
 import { DrawObjectPass } from './draw-object-pass';
@@ -382,7 +382,7 @@ export class Renderer {
       this.blitGeometry = Geometry.create(this.engine, {
         mode: glContext.TRIANGLE_STRIP,
         attributes: {
-          [VertexBuffer.PositionKind]: {
+          [VertexElementType.Position]: {
             type: glContext.FLOAT,
             size: 2,
             data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),

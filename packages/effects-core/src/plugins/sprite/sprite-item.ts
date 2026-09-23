@@ -9,7 +9,7 @@ import type { FrameContext } from '../timeline';
 import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
-import { BufferUsage, VertexBuffer } from '../../render';
+import { BufferUsage, VertexElementType } from '../../render';
 import { rotateVec2 } from '../../shape';
 import { MaskableGraphic, EffectComponent } from '../../components';
 import type { Sprite } from './sprite';
@@ -224,8 +224,8 @@ export class SpriteComponent extends MaskableGraphic {
     const height = isRotate90 ? w : h;
     const angle = isRotate90 ? -Math.PI / 2 : 0;
 
-    const aUV = geometry.getAttributeData(VertexBuffer.UVKind);
-    const aPos = geometry.getAttributeData(VertexBuffer.PositionKind);
+    const aUV = geometry.getAttributeData(VertexElementType.TexCoord0);
+    const aPos = geometry.getAttributeData(VertexElementType.Position);
     const indices = geometry.getIndexData();
 
     const tempPosition: spec.vec2 = [0, 0];
@@ -247,8 +247,8 @@ export class SpriteComponent extends MaskableGraphic {
         aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
       }
 
-      this.updateAttributeData(VertexBuffer.PositionKind, aPos.slice(), 3);
-      this.updateAttributeData(VertexBuffer.UVKind, aUV.slice(), 2);
+      this.updateAttributeData(VertexElementType.Position, aPos.slice(), 3);
+      this.updateAttributeData(VertexElementType.TexCoord0, aUV.slice(), 2);
       this.geometry.setIndexData(indices.slice());
       this.geometry.setDrawCount(indices.length);
     }
@@ -361,9 +361,9 @@ export class SpriteComponent extends MaskableGraphic {
         index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
       }
     }
-    this.updateAttributeData(VertexBuffer.PositionKind, new Float32Array(position), 3);
+    this.updateAttributeData(VertexElementType.Position, new Float32Array(position), 3);
     geometry.setIndexData(new Uint16Array(index));
-    this.updateAttributeData(VertexBuffer.UVKind, new Float32Array(aUV), 2);
+    this.updateAttributeData(VertexElementType.TexCoord0, new Float32Array(aUV), 2);
     geometry.setDrawCount(index.length);
   }
 

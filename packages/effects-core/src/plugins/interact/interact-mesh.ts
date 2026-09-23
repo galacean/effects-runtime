@@ -7,7 +7,7 @@ import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import { createValueGetter } from '../../math';
 import type { ShaderMacros } from '../../render';
-import { GLSLVersion, Geometry, Mesh, VertexBuffer } from '../../render';
+import { GLSLVersion, Geometry, Mesh, VertexElementType } from '../../render';
 import type { Transform } from '../../transform';
 
 const vertex = `
@@ -125,7 +125,7 @@ export class InteractMesh {
       this.engine,
       {
         attributes: {
-          [VertexBuffer.PositionKind]: {
+          [VertexElementType.Position]: {
             size: 2,
             offset: 0,
             stride: 2 * Float32Array.BYTES_PER_ELEMENT,

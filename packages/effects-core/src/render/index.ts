@@ -13,7 +13,7 @@ export * from './geometry';
 export * from './gpu-buffer';
 export * from './vertex-element';
 export * from './gpu-vertex-layout';
-export * from './vertex-buffer';
+export * from './vertex-element-type';
 export * from './framebuffer';
 export * from './renderer';
 export * from './renderer-feature';

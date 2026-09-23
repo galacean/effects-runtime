@@ -8,7 +8,7 @@ import {
 } from './gpu-buffer';
 import type { VertexElement } from './vertex-element';
 import type { GPUVertexLayout } from './gpu-vertex-layout';
-import { VertexBuffer } from './vertex-buffer';
+import { VertexElementType } from './vertex-element-type';
 import type { ShaderVariant } from './shader';
 
 export type GeometryDrawMode = number;
@@ -456,9 +456,9 @@ export class Geometry extends Asset {
       const normalChannel = data.vertexData.channels[2];
 
       props.attributes = {
-        [VertexBuffer.PositionKind]: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
-        [VertexBuffer.UVKind]: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
-        [VertexBuffer.NormalKind]: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
+        [VertexElementType.Position]: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
+        [VertexElementType.TexCoord0]: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
+        [VertexElementType.Normal]: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
       };
     }
     if (data.indexFormat !== spec.IndexFormatType.None) {
@@ -825,17 +825,17 @@ function decodeBase64ToArrayBuffer (value: string): ArrayBuffer {
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {
-  POSITION: VertexBuffer.PositionKind,
-  TEXCOORD0: VertexBuffer.UVKind,
-  TEXCOORD_0: VertexBuffer.UVKind,
-  TEXCOORD1: VertexBuffer.UV2Kind,
-  NORMAL: VertexBuffer.NormalKind,
-  TANGENT: VertexBuffer.TangentKind,
-  COLOR: VertexBuffer.ColorKind,
-  JOINTS: VertexBuffer.JointsKind,
-  JOINTS_0: VertexBuffer.JointsKind,
-  WEIGHTS: VertexBuffer.WeightsKind,
-  WEIGHTS_0: VertexBuffer.WeightsKind,
+  POSITION: VertexElementType.Position,
+  TEXCOORD0: VertexElementType.TexCoord0,
+  TEXCOORD_0: VertexElementType.TexCoord0,
+  TEXCOORD1: VertexElementType.TexCoord1,
+  NORMAL: VertexElementType.Normal,
+  TANGENT: VertexElementType.Tangent,
+  COLOR: VertexElementType.Color,
+  JOINTS: VertexElementType.BlendIndices,
+  JOINTS_0: VertexElementType.BlendIndices,
+  WEIGHTS: VertexElementType.BlendWeights,
+  WEIGHTS_0: VertexElementType.BlendWeights,
   POSITION_BS0: 'aTargetPosition0',
   POSITION_BS1: 'aTargetPosition1',
   POSITION_BS2: 'aTargetPosition2',
