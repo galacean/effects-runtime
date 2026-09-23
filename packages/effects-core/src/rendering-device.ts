@@ -3,9 +3,10 @@ import type { GPUResource } from './gpu-resource';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
-  DataArray, GPUBuffer, GPUProgram, Framebuffer, GPUCapability, IndicesArray, RenderbufferProps,
+  DataArray, GPUBuffer, GPUProgram, FramebufferProps, GPUCapability, IndicesArray, RenderbufferProps,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexElement,
 } from './render';
+import { GPUFramebuffer } from './render/gpu-framebuffer';
 import { GPURenderbuffer } from './render/gpu-renderbuffer';
 import { GPUVertexLayout } from './render/gpu-vertex-layout';
 import type { Disposable } from './utils';
@@ -21,7 +22,7 @@ export class RenderingDevice implements Disposable {
   protected _disposed = false;
   private resources: GPUResource[] = [];
   private readonly vertexLayouts = new Map<string, GPUVertexLayout>();
-  private framebuffers: Framebuffer[] = [];
+  private framebuffers: GPUFramebuffer[] = [];
   private renderbuffers: GPURenderbuffer[] = [];
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
@@ -42,6 +43,9 @@ export class RenderingDevice implements Disposable {
   /** @internal */
   removeResource (resource: GPUResource): void {
     removeItem(this.resources, resource);
+    if (resource instanceof GPUFramebuffer) {
+      removeItem(this.framebuffers, resource);
+    }
     if (resource instanceof GPURenderbuffer) {
       removeItem(this.renderbuffers, resource);
     }
@@ -71,6 +75,8 @@ export class RenderingDevice implements Disposable {
   }
 
   createTexture (): GPUTexture { throw new Error('The active backend does not provide textures.'); }
+
+  createFramebuffer (props: FramebufferProps): GPUFramebuffer { throw new Error('The active backend does not provide framebuffers.'); }
 
   createRenderbuffer (props: RenderbufferProps): GPURenderbuffer { throw new Error('The active backend does not provide renderbuffers.'); }
 
@@ -124,18 +130,11 @@ export class RenderingDevice implements Disposable {
     return 0;
   }
 
-  addFramebuffer (framebuffer: Framebuffer) {
+  addFramebuffer (framebuffer: GPUFramebuffer) {
     if (this.disposed) {
       return;
     }
     addItem(this.framebuffers, framebuffer);
-  }
-
-  removeFramebuffer (framebuffer: Framebuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.framebuffers, framebuffer);
   }
 
   addRenderbuffer (renderbuffer: GPURenderbuffer) {

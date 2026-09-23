@@ -9,6 +9,7 @@ import './geometry.spec';
 import './gpu-buffer.spec';
 import './gpu-program.spec';
 import './gpu-renderbuffer.spec';
+import './gpu-framebuffer.spec';
 import './gpu-vertex-layout.spec';
 import './gl-material.spec';
 import './gl-mesh.spec';

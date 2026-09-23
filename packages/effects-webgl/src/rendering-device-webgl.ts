@@ -1,6 +1,6 @@
 import type {
   GPUBuffer, Engine, EngineOptions, IndicesArray, Nullable,
-  RenderbufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
+  FramebufferProps, RenderbufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
@@ -9,8 +9,7 @@ import {
 import { GLShaderLibrary } from './gl-shader-library';
 import { GPUTextureWebGL } from './gpu-texture-webgl';
 import { GLContextManager } from './gl-context-manager';
-import { assignInspectorName } from './gl-renderer-internal';
-import type { GLFramebuffer } from './gl-framebuffer';
+import { GPUFramebufferWebGL } from './gpu-framebuffer-webgl';
 import { GPURenderbufferWebGL } from './gpu-renderbuffer-webgl';
 import { GPUBufferWebGL } from './gpu-buffer-webgl';
 import { GPUProgramWebGL } from './gpu-program-webgl';
@@ -173,6 +172,10 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
   override createTexture (): GPUTextureWebGL { return new GPUTextureWebGL(this); }
 
+  override createFramebuffer (props: FramebufferProps): GPUFramebufferWebGL {
+    return new GPUFramebufferWebGL(this, props);
+  }
+
   override createRenderbuffer (props: RenderbufferProps): GPURenderbufferWebGL {
     return new GPURenderbufferWebGL(this, props);
   }
@@ -325,18 +328,6 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     );
   }
 
-  createGLFramebuffer (name?: string): WebGLFramebuffer | null {
-    const fbo = this.gl.createFramebuffer();
-
-    if (fbo) {
-      assignInspectorName(fbo, name, name);
-    } else {
-      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
-    }
-
-    return fbo;
-  }
-
   /** @hide */
   bindVertexArrayObject (
     vertexArrayObject: WebGLVertexArrayObject | null,
@@ -383,10 +374,11 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     }
   }
 
-  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
-    if (framebuffer && !this.disposed) {
-      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
-      delete framebuffer.fbo;
+  invalidateFramebuffer (framebuffer: WebGLFramebuffer): void {
+    for (const target in this.currentFramebuffer) {
+      if (this.currentFramebuffer[target] === framebuffer) {
+        this.currentFramebuffer[target] = null;
+      }
     }
   }
 

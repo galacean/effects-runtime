@@ -2,7 +2,7 @@ import {
   Engine, GPUResource, GPURenderbuffer, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, Texture, TextureSourceType,
 } from '@galacean/effects-core';
-import { GLFramebuffer, GPURenderbufferWebGL } from '@galacean/effects-webgl';
+import { GPURenderbufferWebGL } from '@galacean/effects-webgl';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -108,7 +108,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       const resource = createResource();
 
       resource.initialize();
-      const framebuffer = new GLFramebuffer({
+      const framebuffer = device.createFramebuffer({
         attachments: [new Texture(engine, {
           sourceType: TextureSourceType.framebuffer,
           data: { width: 16, height: 16 },
@@ -116,11 +116,14 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         depthStencilAttachment: { storageType: resource.storageType, storage: resource },
         viewport: [0, 0, 16, 16],
         storeAction: {},
-      }, engine.renderer);
+      });
+
+      framebuffer.initialize();
 
       framebuffer.bind();
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).equals(gl.FRAMEBUFFER_COMPLETE);
       const native = resource.buffer;
+      const nativeFramebuffer = framebuffer.fbo;
       const count = device['resources'].length;
       const restored = new Promise<void>(resolve => engine.once('contextrestored', () => resolve()));
 
@@ -131,6 +134,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       await restored;
       framebuffer.bind();
       expect(resource.buffer).not.equals(native);
+      expect(framebuffer.fbo).not.equals(nativeFramebuffer);
       expect(resource.size).deep.equals([16, 16]);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).equals(gl.FRAMEBUFFER_COMPLETE);
       expect(gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME)).equals(resource.buffer);

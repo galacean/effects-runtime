@@ -14,7 +14,7 @@ import type { RenderPassDestroyOptions } from './render-pass';
 import { RenderPass, RenderPassEvent } from './render-pass';
 import type { Renderer } from './renderer';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
-import { FilterMode, type Framebuffer, RenderTextureFormat } from './framebuffer';
+import { FilterMode, type GPUFramebuffer, RenderTextureFormat } from './gpu-framebuffer';
 
 // Bloom Pass - 包含阈值提取、高斯模糊（Down Sample 和 Up Sample）
 export class BloomPass extends RenderPass {
@@ -87,7 +87,7 @@ export class BloomPass extends RenderPass {
       return;
     }
     const sceneColor = resourceData.cameraColor!;
-    const tempRTs: Framebuffer[] = [];
+    const tempRTs: GPUFramebuffer[] = [];
     const baseWidth = Math.max(1, sceneColor.getWidth());
     const baseHeight = Math.max(1, sceneColor.getHeight());
     const iterationCount = Math.max(1, Math.min(this.iterationCount, Math.floor(Math.log2(Math.min(baseWidth, baseHeight)))));

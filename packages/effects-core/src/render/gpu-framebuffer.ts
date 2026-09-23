@@ -3,7 +3,7 @@ import type { RestoreHandler } from '../utils';
 import type { GPURenderbuffer } from './gpu-renderbuffer';
 import type { RenderPassAttachmentStorageType, RenderPassDepthStencilAttachmentOptions } from './render-pass';
 import type { RenderPassDestroyAttachmentType, RenderPassStoreAction } from './render-pass';
-import type { Renderer } from './renderer';
+import { GPUResource } from '../gpu-resource';
 
 export interface FramebufferProps {
   attachments: Texture[],
@@ -26,7 +26,7 @@ export enum RenderTextureFormat {
 /**
  *
  */
-export class Framebuffer implements RestoreHandler {
+export abstract class GPUFramebuffer extends GPUResource implements RestoreHandler {
   depthStencilStorageType: RenderPassAttachmentStorageType;
   name: string;
   viewport: [x: number, y: number, width: number, height: number];
@@ -34,7 +34,7 @@ export class Framebuffer implements RestoreHandler {
   externalStorage: boolean;
   storeAction: RenderPassStoreAction;
 
-  static create: (props: FramebufferProps, renderer: Renderer) => Framebuffer;
+  abstract initialize (): void;
 
   resize (x: number, y: number, width: number, height: number) {
     // OVERRIDE
@@ -81,7 +81,7 @@ export class Framebuffer implements RestoreHandler {
     // OVERRIDE
   }
 
-  dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
-    // OVERRIDE
+  override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
+    super.dispose();
   }
 }

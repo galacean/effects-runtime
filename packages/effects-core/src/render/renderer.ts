@@ -5,8 +5,8 @@ import type { Engine } from '../engine';
 import type { Composition } from '../composition';
 import { Material } from '../material';
 import { addItem, removeItem } from '../utils';
-import { FilterMode, RenderTextureFormat } from './framebuffer';
-import type { Framebuffer } from './framebuffer';
+import { FilterMode, RenderTextureFormat } from './gpu-framebuffer';
+import type { GPUFramebuffer } from './gpu-framebuffer';
 import { Geometry } from './geometry';
 import { VertexElementType } from './vertex-element-type';
 import { RenderingData } from './rendering-data';
@@ -55,7 +55,7 @@ export class Renderer {
   /** Data for the current render invocation. */
   renderingData = new RenderingData();
 
-  protected currentFramebuffer: Framebuffer | null = null;
+  protected currentFramebuffer: GPUFramebuffer | null = null;
   protected disposed = false;
   private readonly drawObjectPass: DrawObjectPass;
   private readonly bloomPass: BloomPass;
@@ -162,11 +162,11 @@ export class Renderer {
     globalUniforms.textures[name] = texture;
   }
 
-  getFramebuffer (): Framebuffer {
-    return this.currentFramebuffer as Framebuffer;
+  getFramebuffer (): GPUFramebuffer {
+    return this.currentFramebuffer as GPUFramebuffer;
   }
 
-  setFramebuffer (framebuffer: Framebuffer | null) {
+  setFramebuffer (framebuffer: GPUFramebuffer | null) {
     if (framebuffer) {
       this.currentFramebuffer = framebuffer;
       this.currentFramebuffer.bind();
@@ -262,7 +262,7 @@ export class Renderer {
     }
     this.activeRenderPassQueue.sort((a, b) => a.renderPassEvent - b.renderPassEvent);
     this.getShaderLibrary()?.compileAllShaders();
-    let sceneTarget: Framebuffer | undefined;
+    let sceneTarget: GPUFramebuffer | undefined;
 
     if (options.postProcessingEnabled) {
       const width = options.target?.viewport[2] ?? this.getWidth();
@@ -362,21 +362,21 @@ export class Renderer {
     depthBuffer: number,
     filter: FilterMode,
     format: RenderTextureFormat,
-  ): Framebuffer {
+  ): GPUFramebuffer {
     return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
   }
 
-  releaseTemporaryRT (rt: Framebuffer): void {
+  releaseTemporaryRT (rt: GPUFramebuffer): void {
     this.engine.renderingServer.renderTargetPool.release(rt);
   }
 
   /**
-   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * 将源纹理复制到目标 GPUFramebuffer，可使用自定义材质进行处理
    * @param source - 源纹理
-   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param destination - 目标 GPUFramebuffer，如果为 null 则渲染到屏幕
    * @param material - 可选的自定义材质，不传则使用默认复制材质
    */
-  blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+  blit (source: Texture, destination: GPUFramebuffer | null, material?: Material): void {
     // 懒加载创建 blit geometry
     if (!this.blitGeometry) {
       this.blitGeometry = Geometry.create(this.engine, {

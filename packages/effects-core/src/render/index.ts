@@ -15,7 +15,7 @@ export * from './gpu-program';
 export * from './vertex-element';
 export * from './gpu-vertex-layout';
 export * from './vertex-element-type';
-export * from './framebuffer';
+export * from './gpu-framebuffer';
 export * from './renderer';
 export * from './renderer-feature';
 export * from './graphics';
