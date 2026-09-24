@@ -42,13 +42,15 @@ export function getThreeGeometry (source: Geometry): THREE.BufferGeometry {
       if (!(nativeBuffer instanceof THREE.InterleavedBuffer)) {
         return;
       }
-      // Layout slots select both the buffer and its byte stride.
-      nativeBuffer.stride = vertexLayout.getStride(slot) / getBytesPerElement(element.type);
+      const bytesPerElement = (nativeBuffer.array as unknown as { BYTES_PER_ELEMENT: number }).BYTES_PER_ELEMENT;
+
+      // Three.js expresses stride and offset in backing-array elements.
+      nativeBuffer.stride = vertexLayout.getStride(slot) / bytesPerElement;
       nativeBuffer.count = nativeBuffer.array.length / nativeBuffer.stride;
       geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(
         nativeBuffer,
         element.size,
-        element.byteOffset / (nativeBuffer.array as unknown as { BYTES_PER_ELEMENT: number }).BYTES_PER_ELEMENT,
+        element.byteOffset / bytesPerElement,
         element.normalized,
       ));
     });

@@ -174,7 +174,7 @@ describe('webgl/gl-context-lost', () => {
 
       await emulateContextLoss(engine);
 
-      expect(gpuBuffer).equals(gpuBuffer);
+      expect(geometry.getAttributeBuffer('aPosition')).equals(gpuBuffer);
       expect(device['resources'].length).equals(bufferCount);
       expect(gpuBuffer.underlyingResource).to.not.equal(beforeVertex);
       expect(geometry.getIndexBuffer()!.underlyingResource).to.not.equal(beforeIndex);
