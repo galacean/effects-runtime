@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { Color, Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import { Asset } from '../asset';
+import type { GPUProgram } from './gpu-program';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { Texture } from '../texture';
@@ -63,8 +64,14 @@ export interface SharedShaderWithSource {
 
 export type ShaderWithSource = SharedShaderWithSource;
 
-export abstract class ShaderVariant extends Asset {
+export class ShaderVariant extends Asset {
   shader: Shader;
+  program: GPUProgram;
+  compileResult: ShaderCompileResult;
+  initialized = false;
+
+  private uniformsNames: string[] = [];
+  private samplerList: string[] = [];
 
   constructor (
     engine: Engine,
@@ -75,30 +82,99 @@ export abstract class ShaderVariant extends Asset {
   }
 
   initialize (): void {
-    // OVERRIDE
+    if (this.initialized) {
+      return;
+    }
+    this.engine.displayServer.renderingDevice.getShaderLibrary()!.compileShader(this);
   }
 
-  // uniform 设置接口
-  abstract setFloat (name: string, value: number): void;
-  abstract setInt (name: string, value: number): void;
-  abstract setFloats (name: string, value: number[]): void;
-  abstract setTexture (name: string, texture: Texture): void;
-  abstract setVector2 (name: string, value: Vector2): void;
-  abstract setVector3 (name: string, value: Vector3): void;
-  abstract setVector4 (name: string, value: Vector4): void;
-  abstract setColor (name: string, value: Color): void;
-  abstract setQuaternion (name: string, value: Quaternion): void;
-  abstract setMatrix (name: string, value: Matrix4): void;
-  abstract setMatrix3 (name: string, value: Matrix3): void;
-  abstract setVector4Array (name: string, array: number[]): void;
-  abstract setMatrixArray (name: string, array: number[]): void;
+  setFloat (name: string, value: number) {
+    this.program.setFloat(name, value);
+  }
+  setInt (name: string, value: number) {
+    this.program.setInt(name, value);
+  }
+  setFloats (name: string, value: number[]) {
+    this.program.setFloats(name, value);
+  }
+  setTexture (name: string, texture: Texture) {
+    this.program.setTexture(name, texture);
+  }
+  setVector2 (name: string, value: Vector2) {
+    this.program.setVector2(name, value);
+  }
+  setVector3 (name: string, value: Vector3) {
+    this.program.setVector3(name, value);
+  }
+  setVector4 (name: string, value: Vector4) {
+    this.program.setVector4(name, value);
+  }
+  setColor (name: string, value: Color) {
+    this.program.setColor(name, value);
+  }
+  setQuaternion (name: string, value: Quaternion) {
+    this.program.setQuaternion(name, value);
+  }
+  setMatrix (name: string, value: Matrix4) {
+    this.program.setMatrix(name, value);
+  }
+  setMatrix3 (name: string, value: Matrix3) {
+    this.program.setMatrix3(name, value);
+  }
+  setVector4Array (name: string, array: number[]) {
+    this.program.setVector4Array(name, array);
+  }
+  setMatrixArray (name: string, array: number[]) {
+    this.program.setMatrixArray(name, array);
+  }
 
-  // shader 信息填充（uniform location 查找）
-  abstract fillShaderInformation (uniformNames: string[], samplers: string[]): void;
+  fillShaderInformation (uniformNames: string[], samplers: string[]): void {
+    // Keep the original names so locations can be queried again after restoration.
+    this.uniformsNames = uniformNames.slice();
+    this.samplerList = samplers.slice();
+    this.program.fillShaderInformation(uniformNames, samplers);
+  }
 
-  // program 绑定与就绪检查
-  abstract bind (): void;
-  abstract isReady (): boolean;
+  /** @hide */
+  resetForContextRestore (): void {
+    this.initialized = false;
+  }
+
+  /** @hide Refill locations using the cached names after compilation. */
+  refillUniforms () {
+    if (!this.initialized || !this.program) {
+      return;
+    }
+    if (this.uniformsNames.length > 0 || this.samplerList.length > 0) {
+      this.fillShaderInformation(this.uniformsNames, this.samplerList);
+    }
+  }
+
+  override toData (): void {
+    const shaderData = this.definition as spec.ShaderData;
+
+    shaderData.dataType = spec.DataType.Shader;
+    shaderData.id = this.guid;
+    shaderData.vertex = this.source.vertex;
+    shaderData.fragment = this.source.fragment;
+  }
+
+  override dispose () {
+    if (this.compileResult && this.compileResult.shared) {
+      return;
+    }
+    this.program?.dispose();
+
+    super.dispose();
+  }
+
+  bind () {
+    this.program.bind();
+  }
+
+  isReady () {
+    return !!this.program;
+  }
 }
 
 @effectsClass(spec.DataType.Shader)
@@ -131,6 +207,8 @@ export interface ShaderLibrary {
   readonly shaderResults: { [cacheId: string]: ShaderCompileResult },
 
   addShader (shader: ShaderWithSource): void,
+
+  compileShader (shader: ShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void): void,
 
   createShader (shaderSource: ShaderWithSource, macros?: ShaderMacros): ShaderVariant,
 

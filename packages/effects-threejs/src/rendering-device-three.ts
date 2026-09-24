@@ -1,11 +1,12 @@
 import type {
-  Composition, DataBuffer, DataBufferOptions, IndicesArray, spec,
+  Composition, GPUBuffer, IndicesArray, spec,
 } from '@galacean/effects-core';
 import {
-  BufferDataType, RenderingData, RenderingDevice, GPUCapability, createTypedArray, getBytesPerElement,
+  BufferDataType, RenderingData, RenderingDevice, GPUCapability,
 } from '@galacean/effects-core';
-import * as THREE from 'three';
-import { ThreeDataBuffer } from './three-data-buffer';
+import type * as THREE from 'three';
+import { GPUBufferThree, toTypedArray } from './gpu-buffer-three';
+import { GPUTextureThree } from './gpu-texture-three';
 
 export interface RenderingDeviceThreeOptions {
   threeCamera?: THREE.Camera,
@@ -66,41 +67,16 @@ export class RenderingDeviceThree extends RenderingDevice {
     }
   }
 
-  override createVertexBuffer (
-    data: BufferData | number,
-    options: DataBufferOptions,
-  ): ThreeDataBuffer {
-    const typedData = toTypedArray(data, options.type);
-    const stride = options.byteStride > 0
-      ? options.byteStride / typedData.BYTES_PER_ELEMENT
-      : 1;
-    const resource = options.instanceDivisor > 0
-      ? new THREE.InstancedInterleavedBuffer(typedData, stride, options.instanceDivisor)
-      : new THREE.InterleavedBuffer(typedData, stride);
-
-    return createDataBuffer(resource, typedData.byteLength);
+  override createTexture (): GPUTextureThree {
+    return new GPUTextureThree(this);
   }
 
-  override createDynamicVertexBuffer (
-    data: BufferData | number,
-    options: DataBufferOptions,
-  ): ThreeDataBuffer {
-    return this.createVertexBuffer(data, options);
-  }
-
-  override createIndexBuffer (
-    indices: IndicesArray,
-  ): ThreeDataBuffer {
-    const data = normalizeIndexData(indices);
-    const buffer = createDataBuffer(new THREE.BufferAttribute(data, 1), data.byteLength);
-
-    buffer.is32Bits = data instanceof Uint32Array;
-
-    return buffer;
+  override createBuffer (): GPUBufferThree {
+    return new GPUBufferThree(this);
   }
 
   override updateDynamicVertexBuffer (
-    vertexBuffer: DataBuffer,
+    vertexBuffer: GPUBuffer,
     data: BufferData,
     byteOffset = 0,
     byteLength?: number,
@@ -110,7 +86,7 @@ export class RenderingDeviceThree extends RenderingDevice {
     if (byteLength !== undefined && byteLength < view.byteLength) {
       view = new Uint8Array(view.buffer, view.byteOffset, byteLength);
     }
-    const resource = (vertexBuffer as ThreeDataBuffer).resource;
+    const resource = (vertexBuffer as GPUBufferThree).resource;
 
     if (!resource) {
       return;
@@ -131,7 +107,7 @@ export class RenderingDeviceThree extends RenderingDevice {
   }
 
   override updateDynamicIndexBuffer (
-    indexBuffer: DataBuffer,
+    indexBuffer: GPUBuffer,
     indices: IndicesArray,
     byteOffset = 0,
   ): void {
@@ -139,7 +115,7 @@ export class RenderingDeviceThree extends RenderingDevice {
       ? indices instanceof Uint32Array ? indices : new Uint32Array(indices)
       : indices instanceof Uint16Array ? indices : new Uint16Array(indices);
 
-    const resource = (indexBuffer as ThreeDataBuffer).resource;
+    const resource = (indexBuffer as GPUBufferThree).resource;
 
     if (!resource) {
       return;
@@ -158,67 +134,4 @@ export class RenderingDeviceThree extends RenderingDevice {
     resource.updateRange.count = data.length;
     resource.needsUpdate = true;
   }
-
-  /** @hide */
-  override releaseBuffer (buffer: DataBuffer): boolean {
-    buffer.references--;
-    if (buffer.references !== 0) {
-      return false;
-    }
-    (buffer as ThreeDataBuffer).resource = undefined;
-    buffer.capacity = 0;
-
-    return true;
-  }
-}
-
-function toTypedArray (data: BufferData | number, type: number): spec.TypedArray {
-  if (typeof data === 'number') {
-    return createTypedArray(type, data / getBytesPerElement(type));
-  }
-  if (Array.isArray(data)) {
-    const result = createTypedArray(type, data.length);
-
-    result.set(data);
-
-    return result;
-  }
-  if (data instanceof ArrayBuffer) {
-    const length = data.byteLength / getBytesPerElement(type);
-    const result = createTypedArray(type, length);
-
-    new Uint8Array(result.buffer).set(new Uint8Array(data));
-
-    return result;
-  }
-  if (data instanceof DataView) {
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  }
-
-  return data as spec.TypedArray;
-}
-
-function normalizeIndexData (indices: IndicesArray): Uint16Array | Uint32Array {
-  if (indices instanceof Uint16Array || indices instanceof Uint32Array) {
-    return indices;
-  }
-  for (let i = 0; i < indices.length; i++) {
-    if (indices[i] >= 65535) {
-      return new Uint32Array(indices);
-    }
-  }
-
-  return new Uint16Array(indices);
-}
-
-function createDataBuffer (
-  resource: THREE.InterleavedBuffer | THREE.BufferAttribute,
-  capacity: number,
-): ThreeDataBuffer {
-  const buffer = new ThreeDataBuffer(resource);
-
-  buffer.capacity = capacity;
-  buffer.references = 1;
-
-  return buffer;
 }

@@ -1,10 +1,9 @@
 import type {
   Engine, GeometryMeshProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Material, Mesh, Texture, RenderingDevice, logger } from '@galacean/effects-core';
+import { Material, Mesh, Texture, TextureSourceType, RenderingDevice, logger } from '@galacean/effects-core';
 import { ThreeMaterial } from './material';
 import { ThreeMesh } from './three-mesh';
-import { ThreeTexture } from './three-texture';
 import { RenderingDeviceThree } from './rendering-device-three';
 
 export * from '@galacean/effects-core';
@@ -12,7 +11,8 @@ export * from './material';
 export * from './three-composition';
 export * from './three-display-object';
 export * from './rendering-device-three';
-export * from './three-texture';
+export * from './gpu-texture-three';
+export { GPUBufferThree } from './gpu-buffer-three';
 export * from './three-sprite-component';
 export * from './three-text-component';
 
@@ -25,7 +25,13 @@ RenderingDevice.create = engine => new RenderingDeviceThree(engine);
  * @returns THREE 中的抽象图片对象
  */
 Texture.create = (engine: Engine, options?: TextureSourceOptions) => {
-  return new ThreeTexture(engine, undefined, options) as Texture;
+  const texture = new Texture(engine, options ?? {});
+
+  if (options) {
+    texture.initialize();
+  }
+
+  return texture;
 };
 
 /**
@@ -36,7 +42,15 @@ Texture.create = (engine: Engine, options?: TextureSourceOptions) => {
  * @returns THREE 中的抽象图片对象
  */
 Texture.createWithData = (engine: Engine, data?: TextureDataType, options?: Record<string, any>) => {
-  return new ThreeTexture(engine, data, options as TextureSourceOptions) as Texture;
+  const texture = new Texture(engine, data ? {
+    ...options,
+    sourceType: TextureSourceType.data,
+    data,
+  } : options ?? {});
+
+  texture.initialize();
+
+  return texture;
 };
 
 /**

@@ -1,3 +1,5 @@
+import type { GPUTexture } from './gpu-texture';
+import { getDefaultTextureFactory } from './texture-factory';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
 import { TextureSourceType } from './types';
@@ -5,14 +7,15 @@ import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, T
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { loadImage, loadVideo } from '../downloader';
-import { generateGUID } from '../utils';
+import { generateGUID, throwDestroyedError } from '../utils';
+import { logger } from '../utils/logger';
 
 let seed = 1;
 
 /**
- * Texture 抽象类
+ * Texture 资产，组合后端 GPUTexture。
  */
-export abstract class Texture extends Asset {
+export class Texture extends Asset {
   /**
    * Texture 名称
    */
@@ -36,6 +39,7 @@ export abstract class Texture extends Asset {
 
   protected destroyed = false;
   protected offloaded: boolean;
+  private gpuTexture?: GPUTexture;
 
   /**
    * 创建一个新的 Texture 对象。
@@ -106,9 +110,12 @@ export abstract class Texture extends Asset {
     options?: Record<string, any>,
   ) => Texture;
 
-  constructor (engine: Engine) {
+  constructor (engine: Engine, source?: TextureSourceOptions) {
     super(engine);
     this.id = 'Tex' + seed++;
+    if (source) {
+      this.fromData(source as unknown as spec.EffectsObjectData);
+    }
   }
 
   get isDestroyed (): boolean {
@@ -129,8 +136,10 @@ export abstract class Texture extends Asset {
     return this.height || 0;
   }
 
-  uploadCurrentVideoFrame () {
-    // OVERRIDE
+  uploadCurrentVideoFrame (): void {
+    if (this.source.sourceType === TextureSourceType.video && this.source.video && this.gpuTexture?.isInitialized) {
+      this.update({ video: this.source.video });
+    }
   }
 
   /**
@@ -138,30 +147,140 @@ export abstract class Texture extends Asset {
    * 注意：该方法只释放资源，并不销毁 GPU textureBuffer 对象。
    * @override
    */
-  offloadData () {
-    // OVERRIDE
+  offloadData (): void {
+    if (!this.gpuTexture?.isInitialized || !getDefaultTextureFactory().canOffloadTexture(this.source.sourceFrom)) {
+      return;
+    }
+    this.gpuTexture?.offloadData();
+    this.syncSize();
+    this.offloaded = true;
   }
 
   /**
    * 重新加载 Texture  GPU 资源。
    * @override
    */
-  reloadData () {
-    // OVERRIDE
+  async reloadData (): Promise<void> {
+    if (this.offloaded) {
+      await getDefaultTextureFactory().reload(this);
+    }
   }
 
   /**
    * 更新 Texture 源数据。
    * @param options - 创建 Texture 选项
    */
-  abstract updateSource (options: TextureSourceOptions): void;
+  updateSource (options: TextureSourceOptions): void {
+    this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
+    this.sourceType = this.source.sourceType;
+    this.sourceFrom = this.source.sourceFrom;
+    this.update(this.source);
+  }
+
+  update (options: TextureSourceOptions): void {
+    if (!this.gpuTexture) {
+      this.width = this.height = 0;
+
+      return;
+    }
+    this.gpuTexture.update(this.source, options);
+    this.syncSize();
+  }
 
   /**
    * 初始化 GPU 资源
    * @override
    */
   initialize (): void {
-    // OVERRIDE
+    if (this.gpuTexture?.isInitialized) {
+      return;
+    }
+    this.engine.effectsObjectServer.addTexture(this);
+    const gpuTexture = this.getGPUTexture();
+
+    gpuTexture.initialize(this.source);
+    this.syncSize();
+    this.release();
+  }
+
+  getGPUTexture (): GPUTexture {
+    if (!this.gpuTexture) {
+      this.gpuTexture = this.engine.displayServer.renderingDevice.createTexture();
+      this.gpuTexture.width = this.width;
+      this.gpuTexture.height = this.height;
+    }
+
+    return this.gpuTexture;
+  }
+
+  private syncSize (): void {
+    if (this.gpuTexture) {
+      this.width = this.gpuTexture.width;
+      this.height = this.gpuTexture.height;
+    }
+  }
+
+  restore (): void {
+    this.getGPUTexture().restore(this.source);
+    this.syncSize();
+  }
+
+  override fromData (data: spec.EffectsObjectData): void {
+    super.fromData(data);
+    this.source = this.assembleOptions(data as unknown as TextureSourceOptions);
+    this.sourceType = this.source.sourceType;
+    this.sourceFrom = this.source.sourceFrom;
+    this.name = this.source.name ?? '';
+  }
+
+  clone (): Texture {
+    const texture = new Texture(this.engine, this.source);
+
+    texture.sourceFrom = this.sourceFrom;
+    texture.sourceType = this.sourceType;
+    texture.width = this.width;
+    texture.height = this.height;
+
+    return texture;
+  }
+
+  /** Release upload sources only when context restoration is disabled. */
+  release (): void {
+    if (!this.engine.displayServer.renderingDevice.doNotHandleContextLost) {
+      return;
+    }
+    const source = this.source as unknown as Record<string, unknown>;
+
+    switch (this.source.sourceType) {
+      case TextureSourceType.image:
+        delete source.image;
+        delete source.cube;
+
+        break;
+      case TextureSourceType.data:
+        delete source.data;
+
+        break;
+      case TextureSourceType.compressed:
+      case TextureSourceType.mipmaps:
+        delete source.mipmaps;
+
+        break;
+    }
+  }
+
+  override dispose (): void {
+    this.gpuTexture?.dispose();
+    this.width = this.height = 0;
+    this.destroyed = true;
+    this.update = () => {
+      logger.error('This texture has been destroyed.');
+    };
+    this.initialize = throwDestroyedError as unknown as () => void;
+    if (this.engine !== undefined) {
+      this.engine.effectsObjectServer.removeTexture(this);
+    }
+    super.dispose();
   }
 
   protected assembleOptions (options: TextureSourceOptions): TextureSourceOptions {

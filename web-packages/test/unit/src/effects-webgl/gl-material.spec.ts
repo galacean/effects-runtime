@@ -1,10 +1,11 @@
+import type { GPUTextureWebGL } from '@galacean/effects-webgl';
 import type { Renderer, ShaderWithSource } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import {
   SceneRendering, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion, Material,
 } from '@galacean/effects-core';
-import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
+import type { GPUProgramWebGL } from '@galacean/effects-webgl';
 import { Geometry } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
@@ -454,8 +455,8 @@ describe('webgl/gl-material', () => {
         fragment: fs,
       },
     });
-    const texture = generateTexture(engine) as GLTexture;
-    const texture2 = generateTexture(engine) as GLTexture;
+    const texture = generateTexture(engine);
+    const texture2 = generateTexture(engine);
 
     // @ts-expect-error
     expect(texture.gl).to.not.exist;
@@ -464,13 +465,13 @@ describe('webgl/gl-material', () => {
     expect(material.shaderVariant).to.eql(undefined);
 
     material.initialize();
-    expect(texture.textureBuffer).to.be.an.instanceof(WebGLTexture);
+    expect((texture.getGPUTexture() as GPUTextureWebGL).textureBuffer).to.be.an.instanceof(WebGLTexture);
     const texArr = material.getTexture('u_TexArr');
 
     expect(texArr).to.deep.equals(texture2);
-    expect(texture2.textureBuffer).to.be.an.instanceof(WebGLTexture);
-    expect((material.shaderVariant as GLShaderVariant).initialized).to.be.true;
-    expect((material.shaderVariant as GLShaderVariant).compileResult.status).to.eql(1);
+    expect((texture2.getGPUTexture() as GPUTextureWebGL).textureBuffer).to.be.an.instanceof(WebGLTexture);
+    expect(material.shaderVariant.initialized).to.be.true;
+    expect(material.shaderVariant.compileResult.status).to.eql(1);
 
     material.dispose();
   });
@@ -618,7 +619,7 @@ describe('webgl/gl-material', () => {
     renderer.renderScene(sceneRendering, { camera: new Camera('') });
 
     const material = mesh.material;
-    const program = (material.shaderVariant as GLShaderVariant).program.program;
+    const program = (material.shaderVariant.program as GPUProgramWebGL).program!;
     const loc = gl.getUniformLocation(program, 'u_pos')!;
     const valData = gl.getUniform(program, loc);
 

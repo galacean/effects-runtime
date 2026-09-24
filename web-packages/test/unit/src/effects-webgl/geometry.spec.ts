@@ -1,10 +1,10 @@
 import { Engine } from '@galacean/effects-core';
 import type { Material, ShaderVariant } from '@galacean/effects-core';
 import {
-  Buffer, BufferUsage, Geometry, VertexBuffer, glContext, math,
+  BufferUsage, Geometry, glContext, math,
 } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLDataBuffer } from '@galacean/effects-webgl';
+import { GPUBufferWebGL } from '@galacean/effects-webgl';
 import { getGL2, readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
@@ -25,76 +25,91 @@ describe('webgl/geometry', () => {
     canvas.remove();
   });
 
-  it('creates buffers immediately unless creation is postponed', () => {
-    const immediate = new Buffer(engine, new Float32Array([0, 1]), false, 2);
-    const postponed = new Buffer(engine, new Float32Array([0, 1]), false, 2, true);
+  it('creates owned GPU buffers directly and unregisters them on disposal', () => {
+    const device = engine.displayServer.renderingDevice;
+    const bufferCount = () => device['resources'].filter(resource => resource instanceof GPUBufferWebGL).length;
+    const baseline = bufferCount();
+    const geometry = createGeometry(engine);
+    const buffer = geometry.getAttributeBuffer('aPosition')!;
 
-    expect(immediate.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
-    expect(postponed.getBuffer()).to.equal(undefined);
-    postponed.create();
-    expect(postponed.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
-    immediate.dispose();
-    postponed.dispose();
+    expect(buffer).to.be.an.instanceOf(GPUBufferWebGL);
+    expect(bufferCount()).equals(baseline + 1);
+    geometry.initialize();
+    expect(bufferCount()).equals(baseline + 2);
+    geometry.dispose();
+    geometry.dispose();
+    expect(buffer.isDestroyed).equals(true);
+    expect(bufferCount()).equals(baseline);
   });
 
-  it('updates only updatable buffers', () => {
-    const staticBuffer = new Buffer(engine, new Float32Array([0, 1]), false, 2);
-    const dynamicBuffer = new Buffer(engine, new Float32Array([0, 1]), true, 2);
+  it('updates only dynamic geometry buffers', () => {
+    const staticGeometry = new Geometry(engine, {
+      attributes: { aPosition: { data: new Float32Array([0, 1]), size: 2 } },
+    });
+    const dynamicGeometry = new Geometry(engine, {
+      attributes: { aPosition: { data: new Float32Array([0, 1]), size: 2 } },
+      bufferUsage: BufferUsage.Dynamic,
+    });
 
-    staticBuffer.update(new Float32Array([2, 3]));
-    dynamicBuffer.update(new Float32Array([2, 3]));
+    staticGeometry.setAttributeData('aPosition', new Float32Array([2, 3]));
+    dynamicGeometry.setAttributeData('aPosition', new Float32Array([2, 3]));
     const staticResult = new Float32Array(2);
     const dynamicResult = new Float32Array(2);
+    const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
 
-    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, staticBuffer.getBuffer()!, staticResult);
-    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, dynamicBuffer.getBuffer()!, dynamicResult);
+    readBufferContents(gl, staticGeometry.getAttributeBuffer('aPosition')!, staticResult);
+    readBufferContents(gl, dynamicGeometry.getAttributeBuffer('aPosition')!, dynamicResult);
     expect(staticResult).to.deep.equal(new Float32Array([0, 1]));
     expect(dynamicResult).to.deep.equal(new Float32Array([2, 3]));
-    staticBuffer.dispose();
-    dynamicBuffer.dispose();
+    staticGeometry.dispose();
+    dynamicGeometry.dispose();
   });
 
-  it('uses float units for direct update offsets and releases partial CPU data', () => {
-    const buffer = new Buffer(engine, new Uint16Array([0, 1, 2, 3]), true, 2);
+  it('preserves float offset units and retains updated CPU data', () => {
+    const data = new Uint16Array([0, 1, 2, 3]);
+    const geometry = new Geometry(engine, {
+      attributes: { aPosition: { data, size: 2 } },
+      bufferUsage: BufferUsage.Dynamic,
+    });
 
-    buffer.updateDirectly(new Uint16Array([9]), 1);
+    geometry.setAttributeSubData('aPosition', 1, new Uint16Array([9]));
     const result = new Uint16Array(4);
 
-    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getAttributeBuffer('aPosition')!, result);
     expect(result).to.deep.equal(new Uint16Array([0, 1, 9, 3]));
-    expect(buffer.getData()).to.equal(undefined);
-    buffer.dispose();
+    expect(geometry.getAttributeData('aPosition')).equals(data);
+    expect(data).to.deep.equal(result);
+    geometry.dispose();
   });
 
-  it('creates vertex buffers from raw and native buffer data', () => {
-    const raw = new VertexBuffer(
-      engine,
-      new Float32Array([0, 1, 2, 3]),
-      'aPosition',
-      { size: 2 },
-    );
-    const dataBuffer = engine.displayServer.renderingDevice.createVertexBuffer(new Float32Array([0, 1]), {
-      usage: glContext.STATIC_DRAW,
-      type: glContext.FLOAT,
-      byteStride: 2 * Float32Array.BYTES_PER_ELEMENT,
-      instanceDivisor: 0,
-    });
-    const native = new VertexBuffer(engine, dataBuffer, 'aUV', { size: 2 });
+  it('borrows external buffers by default and supports explicit ownership transfer', () => {
+    const owner = createGeometry(engine);
+    const buffer = owner.getAttributeBuffer('aPosition')!;
+    const borrowed = new Geometry(engine);
 
-    expect(raw.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
-    expect(native.getBuffer()).to.equal(dataBuffer);
-    raw.dispose();
-    native.dispose();
-  });
+    borrowed.setVertexBuffers(owner.getVertexBuffers(), owner.getVertexLayout());
+    borrowed.dispose();
+    expect(buffer.isDestroyed).equals(false);
+    owner.dispose();
+    expect(buffer.isDestroyed).equals(true);
 
-  it('keeps ownership in buffers that create vertex buffer views', () => {
-    const buffer = new Buffer(engine, new Float32Array([0, 1]), false, 2);
-    const vertexBuffer = buffer.createVertexBuffer('aPosition', 0, 2);
+    const transferred = engine.displayServer.renderingDevice.createBuffer();
+    const geometry = new Geometry(engine);
 
-    vertexBuffer.dispose();
-    expect(buffer.isDisposed).to.equal(false);
-    buffer.dispose();
-    expect(buffer.isDisposed).to.equal(true);
+    geometry.setVertexBuffers([transferred, transferred], engine.displayServer.renderingDevice.getVertexLayout([
+      { name: 'aPosition', slot: 0, type: glContext.FLOAT, size: 2, byteOffset: 0, normalized: false, divisor: 0 },
+      { name: 'aUV', slot: 1, type: glContext.FLOAT, size: 2, byteOffset: 0, normalized: false, divisor: 0 },
+    ], [8, 8]), true);
+    let disposals = 0;
+    const dispose = transferred.dispose.bind(transferred);
+
+    transferred.dispose = () => {
+      disposals++;
+      dispose();
+    };
+    geometry.dispose();
+    geometry.dispose();
+    expect(disposals).equals(1);
   });
 
   it('normalizes index data to 16 or 32 bits', () => {
@@ -104,24 +119,28 @@ describe('webgl/geometry', () => {
       byteStride: 0,
       instanceDivisor: 0,
     };
-    const small = engine.displayServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 2]), options);
-    const large = engine.displayServer.renderingDevice.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
+    const small = engine.displayServer.renderingDevice.createBuffer();
+    const large = engine.displayServer.renderingDevice.createBuffer();
+
+    small.initialize({ ...options, data: new Int32Array([0, 1, 2]), index: true });
+    large.initialize({ ...options, data: new Int32Array([0, 1, 65535]), index: true });
 
     expect(small.is32Bits).to.equal(false);
     expect(small.capacity).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
     expect(large.is32Bits).to.equal(true);
     expect(large.capacity).to.equal(3 * Uint32Array.BYTES_PER_ELEMENT);
-    engine.displayServer.renderingDevice.releaseBuffer(small);
-    engine.displayServer.renderingDevice.releaseBuffer(large);
+    small.dispose();
+    large.dispose();
   });
 
   it('shares one buffer between interleaved attribute views', () => {
     const geometry = createGeometry(engine);
-    const position = geometry.getVertexBuffer('aPosition')!;
-    const uv = geometry.getVertexBuffer('aUV')!;
+    const position = geometry.getVertexElement('aPosition')!;
+    const uv = geometry.getVertexElement('aUV')!;
 
-    assert.strictEqual(position.getWrapperBuffer(), uv.getWrapperBuffer());
-    expect(position.byteStride).to.equal(4 * Float32Array.BYTES_PER_ELEMENT);
+    assert.strictEqual(position.slot, uv.slot);
+    assert.strictEqual(geometry.getAttributeBuffer('aPosition'), geometry.getAttributeBuffer('aUV'));
+    expect(geometry.getVertexLayout()!.getStride(position.slot)).to.equal(4 * Float32Array.BYTES_PER_ELEMENT);
     expect(uv.byteOffset).to.equal(2 * Float32Array.BYTES_PER_ELEMENT);
     geometry.dispose();
   });
@@ -131,24 +150,14 @@ describe('webgl/geometry', () => {
 
     geometry.initialize();
     const sharedBuffer = geometry.getAttributeBuffer('aPosition')!;
-    const dataBuffer = sharedBuffer.getBuffer();
+    const dataBuffer = sharedBuffer;
 
-    geometry.setVerticesBuffer(new VertexBuffer(
-      engine,
-      new Float32Array([0, 1, 2, 3]),
-      'aUV',
-      { size: 2 },
-    ));
-    expect(sharedBuffer.isDisposed).to.equal(false);
-    expect(geometry.getVertexBuffer('aPosition')!.getBuffer()).to.equal(dataBuffer);
+    geometry.setAttribute('aUV', { data: new Float32Array([0, 1, 2, 3]), size: 2 });
+    expect(sharedBuffer.isDestroyed).to.equal(false);
+    expect(geometry.getAttributeBuffer('aPosition')!).to.equal(dataBuffer);
 
-    geometry.setVerticesBuffer(new VertexBuffer(
-      engine,
-      new Float32Array([0, 1, 2, 3]),
-      'aPosition',
-      { size: 2 },
-    ));
-    expect(sharedBuffer.isDisposed).to.equal(true);
+    geometry.setAttribute('aPosition', { data: new Float32Array([0, 1, 2, 3]), size: 2 });
+    expect(sharedBuffer.isDestroyed).to.equal(true);
     geometry.dispose();
   });
 
@@ -156,7 +165,7 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.flush();
-    const dataBuffer = geometry.getVertexBuffer('aPosition')!.getBuffer()!;
+    const dataBuffer = geometry.getAttributeBuffer('aPosition')!;
     const capacity = dataBuffer.capacity;
 
     geometry.setAttributeSubData('aPosition', 0, new Float32Array([8, 9]));
@@ -178,7 +187,7 @@ describe('webgl/geometry', () => {
     const capacity = buffer.capacity;
 
     geometry.setAttributeSubData('aPosition', 0, new Float32Array([9, 8]));
-    expect(buffer.getData()).to.equal(undefined);
+    expect(geometry.getAttributeData('aPosition')).to.deep.equal(new Float32Array([9, 8, 2, 3, 4, 5, 6, 7]));
     geometry.restore();
     expect(buffer.capacity).to.equal(capacity);
     geometry.dispose();
@@ -228,7 +237,7 @@ describe('webgl/geometry', () => {
     geometry.flush();
     const previous = geometry.getIndexBuffer();
 
-    expect(previous).to.be.an.instanceOf(GLDataBuffer);
+    expect(previous).to.be.an.instanceOf(GPUBufferWebGL);
     assert.strictEqual(geometry.getIndexData(), geometry.getIndexData());
     geometry.setIndexData(new Uint32Array([0, 1, 2]));
     assert.notStrictEqual(geometry.getIndexBuffer(), previous);
@@ -249,43 +258,62 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
-  it('keeps shared buffers alive until the last geometry is disposed', () => {
+  it('leaves externally shared buffers and their restoration to the owner', () => {
     const data = new Float32Array([0, 1, 2, 3, 4, 5, 6, 7]);
-    const buffer = new Buffer(engine, data, false, 2);
-    const vertexBuffer = new VertexBuffer(engine, buffer, 'aPosition', {
-      size: 2,
-      takeBufferOwnership: true,
-    });
-    const source = new Geometry(engine, { attributes: {}, drawCount: 4 });
-    const shared = new Geometry(engine, { attributes: {}, drawCount: 4 });
+    const buffer = engine.displayServer.renderingDevice.createBuffer();
+    const description = { data, usage: BufferUsage.Static, type: glContext.FLOAT, byteStride: 8, instanceDivisor: 0 };
 
-    source.setVerticesBuffer(vertexBuffer);
-    shared.setVerticesBuffer(vertexBuffer);
+    buffer.initialize(description);
+    const layout = engine.displayServer.renderingDevice.getVertexLayout([
+      { name: 'aPosition', slot: 0, type: glContext.FLOAT, size: 2, byteOffset: 0, normalized: false, divisor: 0 },
+    ], [8]);
+    const first = new Geometry(engine, { attributes: {}, drawCount: 4 });
+    const second = new Geometry(engine, { attributes: {}, drawCount: 4 });
 
-    source.dispose();
-    expect(buffer.isDisposed).to.equal(false);
+    first.setVertexBuffers([buffer], layout);
+    second.setVertexBuffers([buffer], layout);
+    first.initialize();
+    second.initialize();
+    buffer.releaseGPU();
+    first.restore();
+    second.restore();
+    expect(buffer.underlyingResource).equals(null);
+    buffer.initialize(description);
+    first.dispose();
+    expect(buffer.isDestroyed).equals(false);
     const result = new Float32Array(8);
 
-    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, buffer.getBuffer()!, result);
+    readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, buffer, result);
     expect(result).to.deep.equal(data);
-    shared.dispose();
-    expect(buffer.isDisposed).to.equal(true);
+    second.dispose();
+    expect(buffer.isDestroyed).equals(false);
+    buffer.dispose();
+    expect(buffer.isDestroyed).equals(true);
   });
 
-  it('restores buffer capacity when CPU data is unavailable', () => {
+  it('restores shared CPU contents after partial updates without replacing the GPUBuffer', () => {
     const geometry = createGeometry(engine);
 
     geometry.initialize();
     const buffer = geometry.getAttributeBuffer('aPosition')!;
-    const previousDataBuffer = buffer.getBuffer()!;
-    const capacity = previousDataBuffer.capacity;
+    const capacity = buffer.capacity;
+    const device = engine.displayServer.renderingDevice;
+    const baseline = device['resources'].length;
+    const handle = buffer.underlyingResource;
+    const cpuData = geometry.getAttributeData('aPosition');
 
-    buffer.updateDirectly(new Float32Array([0]), 0, 1);
+    geometry.setAttributeSubData('aUV', 2, new Float32Array([9, 8]));
     geometry.restore();
+    const result = new Float32Array(8);
 
-    assert.notStrictEqual(buffer.getBuffer(), previousDataBuffer);
-    expect(buffer.getBuffer()!.capacity).to.equal(capacity);
-    expect(buffer.getData()).to.equal(undefined);
+    readBufferContents((device as RenderingDeviceWebGL).gl, buffer, result);
+    expect(result).deep.equals(new Float32Array([0, 1, 9, 8, 4, 5, 6, 7]));
+    assert.strictEqual(geometry.getAttributeBuffer('aPosition'), buffer);
+    assert.strictEqual(geometry.getAttributeData('aPosition'), cpuData);
+    assert.strictEqual(geometry.getAttributeData('aUV'), cpuData);
+    assert.notStrictEqual(buffer.underlyingResource, handle);
+    expect(device['resources'].length).equals(baseline);
+    expect(buffer.capacity).to.equal(capacity);
     geometry.dispose();
   });
 

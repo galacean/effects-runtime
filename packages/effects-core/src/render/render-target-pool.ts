@@ -1,11 +1,11 @@
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Texture, TextureSourceType } from '../texture';
-import { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
+import { FilterMode, type GPUFramebuffer, RenderTextureFormat } from './gpu-framebuffer';
 import { RenderPassAttachmentStorageType } from './render-pass';
 
 interface Entry {
-  RT: Framebuffer,
+  RT: GPUFramebuffer,
   lastFrameReleased: number,
   descriptionHash: string,
   isOccupied: boolean,
@@ -48,7 +48,7 @@ export class RenderTargetPool {
     depthBuffer = 0,
     filter = FilterMode.Linear,
     format = RenderTextureFormat.RGBA32,
-  ): Framebuffer {
+  ): GPUFramebuffer {
     // 使用参数计算 hash 值作为缓存 key
     const hash = `${width}_${height}_${depthBuffer}_${filter}_${format}`;
 
@@ -93,13 +93,15 @@ export class RenderTargetPool {
       type: textureType,
     });
 
-    const newFramebuffer = Framebuffer.create({
+    const newFramebuffer = this.engine.displayServer.renderingDevice.createFramebuffer({
       name,
       storeAction: {},
       viewport: [0, 0, width, height],
       attachments: [colorAttachment],
       depthStencilAttachment: { storageType: depthType },
-    }, this.engine.renderer);
+    });
+
+    newFramebuffer.initialize();
 
     const entry: Entry = {
       RT: newFramebuffer,
@@ -115,9 +117,9 @@ export class RenderTargetPool {
 
   /**
    * 释放 RenderTarget，使其可以被复用
-   * @param rt - 要释放的 Framebuffer
+   * @param rt - 要释放的 GPUFramebuffer
    */
-  release (rt: Framebuffer): void {
+  release (rt: GPUFramebuffer): void {
     for (const entry of this.temporaryRTs) {
       if (entry.RT === rt) {
         entry.isOccupied = false;

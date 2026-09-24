@@ -1,6 +1,6 @@
 // // @ts-nocheck
-// import { TextureLoadAction, TextureSourceType, glContext, Camera } from '@galacean/effects-core';
-// import { Geometry, GLMaterial, GLMesh, GLRenderFrame, GLTexture, GLRenderPass, GLRenderer } from '@galacean/effects-webgl';
+// import { Texture, TextureLoadAction, TextureSourceType, glContext, Camera } from '@galacean/effects-core';
+// import { Geometry, GLMaterial, GLMesh, GLRenderFrame, GLRenderPass, GLRenderer } from '@galacean/effects-webgl';
 
 // const { assert, expect } = chai;
 
@@ -276,7 +276,7 @@
 //       },
 //     });
 //     const textures = [
-//       new GLTexture({
+//       new Texture({
 //         sourceType: TextureSourceType.data,
 //         data: {
 //           width: 1,
@@ -284,7 +284,7 @@
 //           data: new Uint8Array(4),
 //         },
 //       }),
-//       new GLTexture({
+//       new Texture({
 //         sourceType: TextureSourceType.data,
 //         data: {
 //           width: 1,
@@ -293,7 +293,7 @@
 //         },
 //       }),
 //     ];
-//     const uTex = new GLTexture({
+//     const uTex = new Texture({
 //       sourceType: TextureSourceType.data,
 //       data: {
 //         width: 1,

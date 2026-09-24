@@ -1,5 +1,6 @@
-import type { Texture } from '@galacean/effects';
-import { RenderingDeviceWebGL, GLTexture } from '@galacean/effects-webgl';
+import type { GPUTextureWebGL } from '@galacean/effects-webgl';
+import { Texture } from '@galacean/effects';
+import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { ImGui, ImGui_Impl } from '../imgui';
 
 /**
@@ -13,7 +14,7 @@ export type TexturePreview = { tex: WebGLTexture, uv0: ImGui.Vec2, uv1: ImGui.Ve
 export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null {
   const imguiGl = ImGui_Impl.gl;
 
-  if (!imguiGl || !(obj instanceof GLTexture)) { return null; }
+  if (!imguiGl || !(obj instanceof Texture)) { return null; }
 
   // 命中缓存（缓存了 ImGui context 的 WebGLTexture 和该纹理来源对应的翻转标记）
   const cachedTex = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
@@ -68,12 +69,12 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
 
   // Path 3: 已初始化且 source 已被 release，只能跨 context readPixels
   if (
-    !uploaded && obj.textureBuffer && obj.width > 0 && obj.height > 0 &&
-    obj.engine.displayServer.renderingDevice instanceof RenderingDeviceWebGL
+    !uploaded && obj.engine.displayServer.renderingDevice instanceof RenderingDeviceWebGL &&
+    (obj.getGPUTexture() as GPUTextureWebGL).textureBuffer && obj.width > 0 && obj.height > 0
   ) {
     const engineGl = obj.engine.displayServer.renderingDevice.gl;
 
-    if (obj.target === engineGl.TEXTURE_2D) {
+    if ((obj.getGPUTexture() as GPUTextureWebGL).target === engineGl.TEXTURE_2D) {
       const w = obj.width;
       const h = obj.height;
       const pixels = new Uint8Array(w * h * 4);
@@ -84,7 +85,7 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
         engineGl.bindFramebuffer(engineGl.FRAMEBUFFER, fbo);
         engineGl.framebufferTexture2D(
           engineGl.FRAMEBUFFER, engineGl.COLOR_ATTACHMENT0,
-          engineGl.TEXTURE_2D, obj.textureBuffer, 0,
+          engineGl.TEXTURE_2D, (obj.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0,
         );
         if (engineGl.checkFramebufferStatus(engineGl.FRAMEBUFFER) === engineGl.FRAMEBUFFER_COMPLETE) {
           engineGl.readPixels(0, 0, w, h, engineGl.RGBA, engineGl.UNSIGNED_BYTE, pixels);

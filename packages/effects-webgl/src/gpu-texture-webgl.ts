@@ -1,14 +1,14 @@
 import type {
-  CanvasAndContext, Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  CanvasAndContext, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec,
 } from '@galacean/effects-core';
 import {
-  getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
-  throwDestroyedError, canvasPool, logger, isPowerOfTwo,
+  glContext, nearestPowerOfTwo, GPUTexture, TextureSourceType, isWebGL2,
+  canvasPool, logger, isPowerOfTwo,
 } from '@galacean/effects-core';
-import { assignInspectorName } from './gl-renderer-internal';
+import { assignInspectorName } from './debug-utils';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 const FORMAT_HALF_FLOAT: Record<string, number> = {
@@ -28,104 +28,45 @@ const FORMAT_FLOAT: Record<string, number> = {
   [glContext.LUMINANCE]: 33326, //R32F
 };
 
-export class GLTexture extends Texture implements Disposable, RestoreHandler {
+export class GPUTextureWebGL extends GPUTexture {
   textureBuffer: WebGLTexture | null;
-  target: GLenum;
+  target: GLenum = 0;
 
-  private initialized = false;
+  private sourceType?: TextureSourceType;
 
-  constructor (engine: Engine, source?: TextureSourceOptions) {
-    super(engine);
-    if (source) {
-      this.fromData(source as unknown as spec.EffectsObjectData);
-    }
-  }
-
-  /**
-   * 绑定当前 Texture 对象
-   */
-  bind (force?: boolean) {
-    (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).bindTexture(this.target, this.textureBuffer, force);
-  }
-
-  /**
-   * 初始化 Texture 的 GPU 资源
-   */
-  override initialize (): void {
-    if (this.initialized) {
+  bind (force?: boolean): void {
+    if (!this.textureBuffer) {
       return;
     }
-    this.engine.effectsObjectServer.addTexture(this);
+    (this.device as RenderingDeviceWebGL).bindTexture(this.target, this.textureBuffer, force);
+  }
 
-    const gl = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
-    const { target = gl.TEXTURE_2D, name } = this.source;
+  protected override onInitialize (source: TextureSourceOptions): void {
+    const gl = (this.device as RenderingDeviceWebGL).gl;
+    const { target = gl.TEXTURE_2D, name } = source;
 
     this.textureBuffer = gl.createTexture();
+    if (!this.textureBuffer) {
+      throw new Error('Failed to create a WebGL texture.');
+    }
     assignInspectorName(this.textureBuffer, name);
     this.target = target;
-    this.update(this.source);
-    this.release();
-    this.initialized = true;
+    this.update(source);
   }
 
-  clone (): GLTexture {
-    const clonedTexture = new GLTexture(this.engine, this.source);
-
-    clonedTexture.sourceFrom = this.sourceFrom;
-    clonedTexture.sourceType = this.sourceType;
-    clonedTexture.width = this.width;
-    clonedTexture.height = this.height;
-
-    return clonedTexture;
-  }
-
-  release () {
-    // 仅在不处理上下文恢复（默认 doNotHandleContextLost=true）时释放 CPU 端像素源以节省内存。
-    // 启用恢复时保留源数据，供 GLTexture.restore 重新上传，实现离线可用的就地重建。
-    if (!this.engine.displayServer.renderingDevice.doNotHandleContextLost) {
-      return;
-    }
-
-    const { sourceType } = this.source;
-
-    switch (sourceType) {
-      case TextureSourceType.image:
-        // @ts-expect-error
-        delete (this.source as Texture2DSourceOptionsImage).image;
-        // @ts-expect-error
-        delete (this.source as TextureCubeSourceOptionsImage).cube;
-
-        break;
-      case TextureSourceType.data:
-        // @ts-expect-error
-        delete (this.source as Texture2DSourceOptionsData).data;
-
-        break;
-      case TextureSourceType.compressed:
-        // @ts-expect-error
-        delete this.source.mipmaps;
-
-        break;
-      case TextureSourceType.mipmaps:
-        // @ts-expect-error
-        delete this.source.mipmaps;
-
-        break;
-    }
-  }
-
-  update (sourceOptions: TextureSourceOptions) {
-    if (!this.engine || !this.textureBuffer) {
+  override update (source: TextureSourceOptions, sourceOptions: TextureSourceOptions = source) {
+    // Sources are borrowed for this upload, never retained by the GPU resource.
+    if (!this.textureBuffer) {
       this.width = 0;
       this.height = 0;
 
       return;
     }
 
+    this.sourceType = source.sourceType;
     const target = this.target;
-    const source = this.source;
-    const gl = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
-    const { detail } = this.engine.displayServer.renderingDevice.gpuCapability;
+    const gl = (this.device as RenderingDeviceWebGL).gl;
+    const { detail } = (this.device as RenderingDeviceWebGL).gpuCapability;
     const { sourceType } = source;
     const { data } = source as Texture2DSourceOptionsData;
     const { cube } = source as TextureCubeSourceOptionsImage;
@@ -300,7 +241,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     options: TextureConfigOptions,
   ) {
     const { anisotropic = 4, wrapS = gl.CLAMP_TO_EDGE, wrapT = gl.CLAMP_TO_EDGE } = options;
-    const gpuCapability = this.engine.displayServer.renderingDevice.gpuCapability;
+    const gpuCapability = (this.device as RenderingDeviceWebGL).gpuCapability;
 
     if (this.target === gl.TEXTURE_2D) {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
@@ -326,18 +267,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
   }
 
-  override fromData (data: spec.EffectsObjectData): void {
-    super.fromData(data);
-    const source = data as unknown as TextureSourceOptions;
-    const options = this.assembleOptions(source);
-    const { sourceType, sourceFrom, name = '' } = options;
-
-    this.source = options;
-    this.sourceType = sourceType;
-    this.sourceFrom = sourceFrom;
-    this.name = name;
-  }
-
   private texImage2D (
     gl: WebGLRenderingContext | WebGL2RenderingContext,
     target: GLenum,
@@ -347,8 +276,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: spec.HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType } = this.source;
-    const maxSize = this.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize ?? 2048;
+    const sourceType = this.sourceType;
+    const maxSize = (this.device as RenderingDeviceWebGL).gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
     let pooledCanvasAndContext: CanvasAndContext | undefined;
 
@@ -408,18 +337,12 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     return [width, height];
   }
 
-  override async reloadData (): Promise<void> {
-    if (this.offloaded) {
-      await getDefaultTextureFactory().reload(this);
-    }
-  }
-
   override offloadData () {
-    if (!(this.initialized && getDefaultTextureFactory().canOffloadTexture(this.source.sourceFrom))) {
+    if (!this.initialized) {
       return;
     }
     const target = this.target;
-    const gl = (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const gl = (this.device as RenderingDeviceWebGL).gl;
 
     if (gl && this.textureBuffer) {
       const data = new Uint8Array([255]);
@@ -446,76 +369,28 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       this.width = 1;
       this.height = 1;
     }
-    this.offloaded = true;
+
   }
 
-  override async uploadCurrentVideoFrame () {
-    if (
-      this.source.sourceType === TextureSourceType.video &&
-      this.source.video &&
-      this.initialized
-    ) {
+  override restore (source: TextureSourceOptions): void {
+    this.initialize(source);
+  }
 
-      this.update({ video: this.source.video });
+  protected override onReleaseGPU (): void {
+    if (this.textureBuffer) {
+      const device = this.device as RenderingDeviceWebGL;
 
-      return true;
+      device.invalidateTexture(this.textureBuffer);
+      if (!device.gl.isContextLost()) {
+        device.gl.deleteTexture(this.textureBuffer);
+      }
     }
-
-    return false;
-  }
-
-  updateSource (opts: TextureSourceOptions): void {
-    // @ts-expect-error
-    this.source = this.assembleOptions({ ...this.source, ...opts });
-    this.sourceType = this.source.sourceType;
-    this.sourceFrom = this.source.sourceFrom;
-    this.update(this.source);
-  }
-
-  restore (): void {
-    const device = this.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
-    const gl = device.gl;
-
-    // target 仅在 initialize() 时从 source 取值赋给实例字段；若纹理在丢失前尚未 initialize
-    // （如内置纹理未被使用过），this.target 可能为空，需在此从 source 补全，避免 bind/update 时 INVALID target。
-    if (this.target === undefined) {
-      const { target = gl.TEXTURE_2D } = this.source;
-
-      this.target = target;
-    }
-
-    // 旧句柄已随上下文丢失失效，无需 delete，直接重建。
-    this.textureBuffer = gl.createTexture();
-    assignInspectorName(this.textureBuffer, this.source.name);
-    this.initialized = false;
-    // opt-in 模式下 release 不释放 CPU 源数据，image/cube/data/compressed/mipmaps 源恒在，直接重新上传即可。
-    this.update(this.source);
-    this.initialized = true;
-  }
-
-  override dispose (): void {
-    /**
-     * 原先Player是允许多次调用dispose，并且不会报错
-     * dispose之后assignRenderer会报错
-     */
-    if (this.engine && this.textureBuffer) {
-      (this.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.deleteTexture(this.textureBuffer);
-    }
-    this.width = 0;
-    this.height = 0;
     this.textureBuffer = null;
-    this.destroyed = true;
-    this.update = () => {
-      logger.error('This texture has been destroyed.');
-    };
-    this.initialize = throwDestroyedError as unknown as () => void;
-
-    if (this.engine !== undefined) {
-      this.engine.effectsObjectServer.removeTexture(this);
-    }
-
-    super.dispose();
+    this.target = 0;
+    this.sourceType = undefined;
+    super.onReleaseGPU();
   }
+
 }
 
 function resizeImageByCanvas (

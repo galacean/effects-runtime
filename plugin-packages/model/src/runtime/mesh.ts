@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItem, Renderer, Geometry } from '@galacean/effects';
-import { spec, Material, GLSLVersion, VertexBuffer } from '@galacean/effects';
+import { spec, Material, GLSLVersion, VertexElementType } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState } from './common';
 import { PEntity } from './object';
@@ -16,12 +16,12 @@ import type { ModelMeshComponent } from '../plugin/model-item';
 
 type Box3 = math.Box3;
 const uvKinds = [
-  VertexBuffer.UVKind,
-  VertexBuffer.UV2Kind,
-  VertexBuffer.UV3Kind,
-  VertexBuffer.UV4Kind,
-  VertexBuffer.UV5Kind,
-  VertexBuffer.UV6Kind,
+  VertexElementType.TexCoord0,
+  VertexElementType.TexCoord1,
+  VertexElementType.TexCoord2,
+  VertexElementType.TexCoord3,
+  VertexElementType.TexCoord4,
+  VertexElementType.TexCoord5,
 ] as const;
 
 /**
@@ -1080,7 +1080,7 @@ export class PGeometry {
    * @returns
    */
   isCompressed (): boolean {
-    const positionAttrib = this.geometry.getAttributeData(VertexBuffer.PositionKind);
+    const positionAttrib = this.geometry.getAttributeData(VertexElementType.Position);
 
     if (positionAttrib === undefined) {
       return false;
@@ -1096,7 +1096,7 @@ export class PGeometry {
    * @returns
    */
   hasPositions (): boolean {
-    return this.hasAttribute(VertexBuffer.PositionKind);
+    return this.hasAttribute(VertexElementType.Position);
   }
 
   /**
@@ -1104,7 +1104,7 @@ export class PGeometry {
    * @returns
    */
   hasNormals (): boolean {
-    return this.hasAttribute(VertexBuffer.NormalKind);
+    return this.hasAttribute(VertexElementType.Normal);
   }
 
   /**
@@ -1112,7 +1112,7 @@ export class PGeometry {
    * @returns
    */
   hasTangents (): boolean {
-    return this.hasAttribute(VertexBuffer.TangentKind);
+    return this.hasAttribute(VertexElementType.Tangent);
   }
 
   /**
@@ -1131,7 +1131,7 @@ export class PGeometry {
    * @returns
    */
   hasColors (): boolean {
-    return this.hasAttribute(VertexBuffer.ColorKind);
+    return this.hasAttribute(VertexElementType.Color);
   }
 
   /**
@@ -1139,7 +1139,7 @@ export class PGeometry {
    * @returns
    */
   hasJoints (): boolean {
-    return this.hasAttribute(VertexBuffer.JointsKind);
+    return this.hasAttribute(VertexElementType.BlendIndices);
   }
 
   /**
@@ -1147,7 +1147,7 @@ export class PGeometry {
    * @returns
    */
   hasWeights (): boolean {
-    return this.hasAttribute(VertexBuffer.WeightsKind);
+    return this.hasAttribute(VertexElementType.BlendWeights);
   }
 }
 

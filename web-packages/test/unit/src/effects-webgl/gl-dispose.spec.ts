@@ -1,3 +1,4 @@
+import { Texture } from '@galacean/effects-core';
 import type { Renderer, TextureFactorySourceFrom } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { Material } from '@galacean/effects-core';
@@ -8,7 +9,6 @@ import {
 } from '@galacean/effects-core';
 import { Geometry } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -83,7 +83,7 @@ describe('webgl/dispose', function () {
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
     expect(geom.isDisposed()).to.be.true;
-    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.vertexBuffers).to.eql([]);
     expect(geom.getAttributeNames()).to.eql([]);
     scene.clear();
   });
@@ -116,7 +116,7 @@ describe('webgl/dispose', function () {
 
     expect(mesh.material).to.eql(material);
     expect(geom.isDisposed()).to.be.true;
-    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.vertexBuffers).to.eql([]);
     expect(geom.getAttributeNames()).to.eql([]);
     expect(texture).to.eql(texture);
 
@@ -268,7 +268,7 @@ async function createTexture (engine: Engine, needCompressed = false) {
     url: 'https://mdn.alipayobjects.com/mars/afts/img/A*xMfUTYUbALcAAAAAAAAAAAAADlB4AQ/original',
   };
   const ret = await getDefaultTextureFactory().loadSource(source);
-  const texture = new GLTexture(engine, ret);
+  const texture = new Texture(engine, ret);
 
   return texture;
 }
