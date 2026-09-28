@@ -25,6 +25,7 @@ import './text-cache.spec';
 import './transform.spec';
 import './utils.spec';
 import './event-emitter.spec';
+import './tags.spec';
 import './render-target-pool.spec';
 import './mask-processor.spec';
 import './plugins/dom-content';
