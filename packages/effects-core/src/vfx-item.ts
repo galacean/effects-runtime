@@ -20,6 +20,7 @@ import type {
 } from './plugins';
 import { HitTestType } from './plugins';
 import { Transform } from './transform';
+import { Tag } from './tags';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
 
@@ -77,6 +78,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素绑定的组件列表
    */
   components: Component[] = [];
+  /** 元素的标签列表，序列化时保存为名称。 */
+  tags: Tag[] = [];
   /**
    * @internal
    */
@@ -750,6 +753,40 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.assignWorldTRS(pos);
 
     return pos;
+  }
+
+  /** 是否有标签。 */
+  hasTag (): boolean;
+  /** 是否包含指定标签（精确匹配）。 */
+  hasTag (tag: Tag): boolean;
+  /** 是否包含指定名称的标签（精确匹配）。 */
+  hasTag (tag: string): boolean;
+  hasTag (tag?: Tag | string): boolean {
+    return tag === undefined ? this.tags.length > 0 : this.tags.some(value => value.equals(tag));
+  }
+
+  /** 添加标签，忽略重复标签。 */
+  addTag (tag: Tag): void {
+    if (!this.hasTag(tag)) {
+      this.tags.push(new Tag(tag.index));
+    }
+  }
+
+  /** 为当前元素及所有后代元素添加标签。 */
+  addTagRecursive (tag: Tag): void {
+    for (const child of this.children) {
+      child.addTagRecursive(tag);
+    }
+    this.addTag(tag);
+  }
+
+  /** 移除第一个精确匹配的标签。 */
+  removeTag (tag: Tag): void {
+    const index = this.tags.findIndex(value => value.equals(tag));
+
+    if (index !== -1) {
+      this.tags.splice(index, 1);
+    }
   }
 
   find (name: string): VFXItem | undefined {
