@@ -33,20 +33,22 @@ function bindEventListeners () {
     iframeList.forEach(iframe => {
       iframe.contentWindow?.location.reload();
     });
-    handleInit();
   };
-  // TODO: 是否有用？
-  handleResume();
 }
 
 function handleInit () {
   iframeList.forEach(iframe => {
-    iframe.onload = () => {
+    const init = () => {
       iframe.contentWindow?.postMessage({
         type: 'init',
         playerOptions,
       }, window.origin);
     };
+
+    iframe.onload = init;
+    if (iframe.contentDocument?.readyState === 'complete') {
+      init();
+    }
   });
 }
 
@@ -59,14 +61,6 @@ async function handlePlay (url: string) {
       json,
       currentTime,
       speed,
-    }, window.origin);
-  });
-}
-
-function handleResume () {
-  iframeList.forEach(iframe => {
-    iframe.contentWindow?.postMessage({
-      type: 'resume',
     }, window.origin);
   });
 }

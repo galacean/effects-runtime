@@ -2,10 +2,9 @@ import type {
   Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMacros, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/effects-core';
-import { GLProgram } from './gl-program';
-import { GLShaderVariant } from './gl-shader';
-import { assignInspectorName } from './gl-renderer-internal';
+import { ShaderCompileResultStatus, ShaderType, ShaderFactory, ShaderVariant } from '@galacean/effects-core';
+import type { GPUProgramWebGL } from './gpu-program-webgl';
+import { assignInspectorName } from './debug-utils';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 interface GLShaderCompileResult extends ShaderCompileResult {
@@ -18,11 +17,11 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   readonly shaderResults: Record<string, ShaderCompileResult> = {};
 
   private glAsyncCompileExt: KHR_parallel_shader_compile | null;
-  private programMap: Record<string, GLProgram> = {};
+  private programMap: Record<string, GPUProgramWebGL> = {};
   private glVertShaderMap = new Map<number, WebGLShader>();
   private glFragShaderMap = new Map<number, WebGLShader>();
   private shaderAllDone = false;
-  private cachedShaders: Record<string, GLShaderVariant> = {};
+  private cachedShaders: Record<string, ShaderVariant> = {};
 
   constructor (
     public device: RenderingDeviceWebGL
@@ -97,7 +96,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
       shared = true;
     }
-    this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.device.engine, {
+    this.cachedShaders[shaderCacheId] = new ShaderVariant(this.device.engine, {
       ...shaderWithMacros,
       vertex: shaderWithMacros.vertex,
       fragment: shaderWithMacros.fragment,
@@ -114,7 +113,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     return this.cachedShaders[shaderCacheId];
   }
 
-  compileShader (shader: GLShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
+  compileShader (shader: ShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
     const { shared: sourceShared, vertex, fragment, name } = shader.source;
     const { cacheId } = shader.source;
     let shared = false;
@@ -128,7 +127,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const linkProgram = this.createProgram(gl, vertex, fragment, result);
     const ext = this.glAsyncCompileExt;
     const startTime = performance.now();
-    const setupProgram = (glProgram: GLProgram) => {
+    const setupProgram = (glProgram: GPUProgramWebGL) => {
       result.status = ShaderCompileResultStatus.success;
       result.compileTime = performance.now() - startTime;
       shader.program = glProgram;
@@ -158,7 +157,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (program) {
         if (result.status !== ShaderCompileResultStatus.fail) {
           assignInspectorName(program, name);
-          const glProgram = new GLProgram(this.device, program, shader.key);
+          const glProgram = this.device.createProgram(shader.key);
+
+          glProgram.initialize(program);
 
           // FIXME: 这个检测不能在这里调用，安卓上会有兼容性问题。要么开发版使用，要么移到Shader首次使用时
           gl.validateProgram(program);
@@ -182,7 +183,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
                 '\nfragment:\n',
                 fragment
               );
-              gl.deleteProgram(program);
+              glProgram.dispose();
             }
           } else {
             setupProgram(glProgram);
@@ -300,7 +301,10 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
 
     // 上下文重建后扩展对象引用已失效，需要重新获取。
     this.glAsyncCompileExt = gl.getExtension('KHR_parallel_shader_compile');
-    // 清空与旧上下文绑定的 GPU 句柄缓存。
+    // 旧分配已在上下文丢失时释放，这里注销不再复用的程序对象。
+    for (const key in this.programMap) {
+      this.programMap[key].dispose();
+    }
     this.programMap = {};
     this.glVertShaderMap = new Map<number, WebGLShader>();
     this.glFragShaderMap = new Map<number, WebGLShader>();

@@ -1,4 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
+import { GPUResource } from '../gpu-resource';
+import type { GPUVertexLayout } from './gpu-vertex-layout';
 
 export type DataArray = number[] | ArrayBuffer | ArrayBufferView;
 
@@ -22,24 +24,44 @@ export enum BufferDataType {
   Float = 0x1406,
 }
 
-export interface DataBufferOptions {
+export interface GPUBufferOptions {
   usage: number,
   type: number,
   byteStride: number,
   instanceDivisor: number,
   label?: string,
+  vertexLayout?: GPUVertexLayout,
 }
 
-/**
- * 后端缓冲区的最小抽象，只保存资源状态。
- */
-export class DataBuffer {
-  references = 0;
+export type GPUBufferDescription = GPUBufferOptions & (
+  | { data: DataArray | number, index?: false }
+  | { data: IndicesArray, index: true }
+);
+
+/** GPU buffer allocation; CPU data and ownership remain with its callers. */
+export abstract class GPUBuffer extends GPUResource {
   capacity = 0;
   is32Bits = false;
+  byteStride = 0;
+  vertexLayout?: GPUVertexLayout;
 
-  get underlyingResource (): unknown {
-    return null;
+  abstract get underlyingResource (): unknown;
+
+  initialize (description: GPUBufferDescription): void {
+    this.releaseGPU();
+    this.byteStride = description.byteStride;
+    this.vertexLayout = description.vertexLayout;
+    this.onInitialize(description);
+    this.initialized = true;
+  }
+
+  protected abstract onInitialize (description: GPUBufferDescription): void;
+
+  protected override onReleaseGPU (): void {
+    this.capacity = 0;
+    this.is32Bits = false;
+    this.byteStride = 0;
+    this.vertexLayout = undefined;
   }
 }
 

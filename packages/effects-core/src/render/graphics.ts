@@ -5,7 +5,8 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
-import { VertexBuffer } from './vertex-buffer';
+import { VertexElementType } from './vertex-element-type';
+import { BufferUsage } from './gpu-buffer';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
@@ -113,7 +114,7 @@ export class Graphics {
   constructor (private engine: Engine) {
     this.geometry = Geometry.create(this.engine, {
       attributes: {
-        [VertexBuffer.PositionKind]: {
+        [VertexElementType.Position]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([
@@ -123,7 +124,7 @@ export class Graphics {
             0.5, -0.5, //右下
           ]),
         },
-        [VertexBuffer.ColorKind]: {
+        [VertexElementType.Color]: {
           type: glContext.FLOAT,
           size: 4,
           data: new Float32Array([
@@ -133,7 +134,7 @@ export class Graphics {
             1, 1, 1, 1,
           ]),
         },
-        [VertexBuffer.UVKind]: {
+        [VertexElementType.TexCoord0]: {
           size: 2,
           offset: 0,
           type: glContext.FLOAT,
@@ -147,17 +148,17 @@ export class Graphics {
     });
     this.ninePatchGeometry = Geometry.create(this.engine, {
       attributes: {
-        [VertexBuffer.PositionKind]: {
+        [VertexElementType.Position]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array(8),
         },
-        [VertexBuffer.ColorKind]: {
+        [VertexElementType.Color]: {
           type: glContext.FLOAT,
           size: 4,
           data: new Float32Array(16),
         },
-        [VertexBuffer.UVKind]: {
+        [VertexElementType.TexCoord0]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array(8),
@@ -584,9 +585,9 @@ export class Graphics {
 
     const geometry = this.currentBatchType === 'ninePatch' ? this.ninePatchGeometry : this.geometry;
 
-    this.updateAttributeData(geometry, VertexBuffer.PositionKind, verticesArray, 2);
-    this.updateAttributeData(geometry, VertexBuffer.ColorKind, colorsArray, 4);
-    this.updateAttributeData(geometry, VertexBuffer.UVKind, uvsArray, 2);
+    this.updateAttributeData(geometry, VertexElementType.Position, verticesArray, 2);
+    this.updateAttributeData(geometry, VertexElementType.Color, colorsArray, 4);
+    this.updateAttributeData(geometry, VertexElementType.TexCoord0, uvsArray, 2);
     if (this.currentBatchType === 'ninePatch') {
       this.updateAttributeData(
         geometry, NINE_PATCH_DRAW_SOURCE_SIZE, new Float32Array(this.ninePatchDrawSourceSizes), 4,
@@ -631,15 +632,10 @@ export class Graphics {
   }
 
   private updateAttributeData (geometry: Geometry, name: string, data: Float32Array, size: number): void {
-    const dataBuffer = geometry.getVertexBuffer(name)?.getBuffer();
+    const buffer = geometry.getAttributeBuffer(name);
 
-    if (dataBuffer && data.byteLength > dataBuffer.capacity) {
-      geometry.setVerticesBuffer(new VertexBuffer(
-        this.engine,
-        data,
-        name,
-        { updatable: true, size },
-      ));
+    if (!buffer || data.byteLength > buffer.capacity) {
+      geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
 
       return;
     }

@@ -6,7 +6,7 @@ import type {
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
   TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
-  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion, VertexBuffer,
+  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion, VertexElementType,
 } from '@galacean/effects';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -438,26 +438,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        [VertexBuffer.PositionKind]: {
+        [VertexElementType.Position]: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        [VertexBuffer.UVKind]: {
+        [VertexElementType.TexCoord0]: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: VertexBuffer.PositionKind,
+          dataSource: VertexElementType.Position,
         },
-        [VertexBuffer.NormalKind]: {
+        [VertexElementType.Normal]: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: VertexBuffer.PositionKind,
+          dataSource: VertexElementType.Position,
         },
       },
       drawStart: 0,
@@ -884,13 +884,13 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return VertexBuffer.PositionKind;
-      case 'NORMAL': return VertexBuffer.NormalKind;
-      case 'TANGENT': return VertexBuffer.TangentKind;
-      case 'TEXCOORD_0': return VertexBuffer.UVKind;
-      case 'TEXCOORD_1': return VertexBuffer.UV2Kind;
-      case 'JOINTS_0': return VertexBuffer.JointsKind;
-      case 'WEIGHTS_0': return VertexBuffer.WeightsKind;
+      case 'POSITION': return VertexElementType.Position;
+      case 'NORMAL': return VertexElementType.Normal;
+      case 'TANGENT': return VertexElementType.Tangent;
+      case 'TEXCOORD_0': return VertexElementType.TexCoord0;
+      case 'TEXCOORD_1': return VertexElementType.TexCoord1;
+      case 'JOINTS_0': return VertexElementType.BlendIndices;
+      case 'WEIGHTS_0': return VertexElementType.BlendWeights;
     }
 
     if (!name.startsWith('a')) {
@@ -1298,18 +1298,18 @@ export class GeometryBoxProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
-    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry, VertexElementType.Position);
+    const positionArray = geometry.getAttributeData(VertexElementType.Position) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
+    const jointAttrib = getAttributeLayout(geometry, VertexElementType.BlendIndices);
+    const weightAttrib = getAttributeLayout(geometry, VertexElementType.BlendWeights);
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
-      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexElementType.BlendIndices) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexElementType.BlendWeights) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1450,18 +1450,18 @@ export class HitTestingProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
-    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry, VertexElementType.Position);
+    const positionArray = geometry.getAttributeData(VertexElementType.Position) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
+    const jointAttrib = getAttributeLayout(geometry, VertexElementType.BlendIndices);
+    const weightAttrib = getAttributeLayout(geometry, VertexElementType.BlendWeights);
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
-      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexElementType.BlendIndices) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexElementType.BlendWeights) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1977,7 +1977,7 @@ export class CheckerHelper {
    * @returns
    */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
-    const dataAttrib = getAttributeLayout(v.getVertexBuffer(name));
+    const dataAttrib = getAttributeLayout(v, name);
 
     if (dataAttrib === undefined) { return; }
     const dataArray = v.getAttributeData(name);
@@ -2315,16 +2315,18 @@ export class CheckerHelper {
   }
 }
 
-function getAttributeLayout (vertexBuffer?: VertexBuffer): AttributeLayout | undefined {
+function getAttributeLayout (geometry: Geometry, name: string): AttributeLayout | undefined {
+  const vertexBuffer = geometry.getVertexElement(name);
+
   if (!vertexBuffer) {
     return;
   }
 
   return {
     type: vertexBuffer.type,
-    size: vertexBuffer.getSize(),
+    size: vertexBuffer.size,
     offset: vertexBuffer.byteOffset,
-    stride: vertexBuffer.byteStride,
+    stride: geometry.getAttributeStride(name),
     normalize: vertexBuffer.normalized,
   };
 }

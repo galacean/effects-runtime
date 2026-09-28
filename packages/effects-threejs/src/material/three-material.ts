@@ -3,7 +3,7 @@ import type {
   GlobalUniforms, Renderer } from '@galacean/effects-core';
 import { math, Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
-import type { ThreeTexture } from '../three-texture';
+import type { GPUTextureThree } from '../gpu-texture-three';
 import {
   CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
   TEXTURE_UNIFORM_MAP,
@@ -103,7 +103,10 @@ export class ThreeMaterial extends Material {
     let texture;
 
     if (TEXTURE_UNIFORM_MAP.includes(name)) {
-      texture = (value as ThreeTexture).texture;
+      const asset = value as Texture;
+
+      asset.initialize();
+      texture = (asset.getGPUTexture() as GPUTextureThree).texture;
     }
 
     if (this.material.uniforms[name]) {
@@ -119,7 +122,10 @@ export class ThreeMaterial extends Material {
     const threeCamera = device.threeCamera;
 
     for (const name in globalUniforms.textures) {
-      const texture = (globalUniforms.textures[name] as ThreeTexture).texture;
+      const asset = globalUniforms.textures[name];
+
+      asset.initialize();
+      const texture = (asset.getGPUTexture() as GPUTextureThree).texture;
 
       if (this.material.uniforms[name]) {
         this.material.uniforms[name].value = texture;
@@ -390,7 +396,8 @@ export class ThreeMaterial extends Material {
     return this.textures[name];
   }
   override setTexture (name: string, texture: Texture): void {
-    this.setUniform(name, (texture as ThreeTexture).texture);
+    texture.initialize();
+    this.setUniform(name, (texture.getGPUTexture() as GPUTextureThree).texture!);
     this.textures[name] = texture;
   }
 

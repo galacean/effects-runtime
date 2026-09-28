@@ -1,4 +1,4 @@
-import type { DataBuffer } from '@galacean/effects-core';
+import type { GPUBuffer } from '@galacean/effects-core';
 
 export function getGL () {
   const glCanvas = document.createElement('canvas');
@@ -26,7 +26,7 @@ export function getGL2 () {
 
 export function readBufferContents (
   gl: WebGL2RenderingContext,
-  dataBuffer: DataBuffer,
+  dataBuffer: GPUBuffer,
   destination: ArrayBufferView,
   byteOffset = 0,
   indexBuffer = false,

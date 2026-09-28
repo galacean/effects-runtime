@@ -9,8 +9,8 @@ import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
-import type { Buffer, GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
-import { GLSLVersion, Geometry, Mesh, VertexBuffer } from '../../render';
+import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
+import { GLSLVersion, Geometry, Mesh, VertexElementType } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
 import { assertExist, imageDataFromGradient } from '../../utils';
@@ -57,7 +57,6 @@ export class TrailMesh {
   private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
   private readonly ownedTextures: Texture[] = [];
-  private readonly attributeData = new Map<Buffer, Float32Array>();
 
   constructor (
     engine: Engine,
@@ -147,10 +146,10 @@ export class TrailMesh {
     const v12 = 12 * bpe;
     const geometryOptions: GeometryProps = {
       attributes: {
-        [VertexBuffer.ColorKind]: { size: 4, stride: v12, data: new Float32Array(maxVertexCount * 12) },
-        aSeed: { size: 1, stride: v12, offset: 4 * bpe, dataSource: VertexBuffer.ColorKind },
-        aInfo: { size: 3, stride: v12, offset: 5 * bpe, dataSource: VertexBuffer.ColorKind },
-        [VertexBuffer.PositionKind]: { size: 4, stride: v12, offset: 8 * bpe, dataSource: VertexBuffer.ColorKind },
+        [VertexElementType.Color]: { size: 4, stride: v12, data: new Float32Array(maxVertexCount * 12) },
+        aSeed: { size: 1, stride: v12, offset: 4 * bpe, dataSource: VertexElementType.Color },
+        aInfo: { size: 3, stride: v12, offset: 5 * bpe, dataSource: VertexElementType.Color },
+        [VertexElementType.Position]: { size: 4, stride: v12, offset: 8 * bpe, dataSource: VertexElementType.Color },
         //
         aTime: { size: 1, data: new Float32Array(maxVertexCount) },
         //
@@ -237,14 +236,6 @@ export class TrailMesh {
       this.mesh.worldMatrix = matrix;
     }
     this.geometry = mesh.firstGeometry();
-    this.geometry.getAttributeNames().forEach(name => {
-      const vertexBuffer = this.geometry.getVertexBuffer(name);
-      const data = this.geometry.getAttributeData(name);
-
-      if (vertexBuffer && data instanceof Float32Array) {
-        this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
-      }
-    });
     this.trailCursors = new Uint16Array(maxTrailCount);
   }
 
@@ -302,7 +293,7 @@ export class TrailMesh {
     colorData.set(positionData, 20);
     colorData[23] = -0.5 * size;
 
-    this.setAttributeSubData(VertexBuffer.ColorKind, pointStartIndex * 24, colorData);
+    this.setAttributeSubData(VertexElementType.Color, pointStartIndex * 24, colorData);
 
     if (previousIndex >= 0) {
       const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as Vector3;
@@ -358,7 +349,7 @@ export class TrailMesh {
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.getAttributeData(VertexBuffer.ColorKind);
+      const data = this.getAttributeData(VertexElementType.Color);
 
       out.x = data[startIndex];
       out.y = data[1 + startIndex];
@@ -414,8 +405,7 @@ export class TrailMesh {
   }
 
   private getAttributeData (name: string): Float32Array {
-    const vertexBuffer = this.geometry.getVertexBuffer(name);
-    const data = vertexBuffer && this.attributeData.get(vertexBuffer.getWrapperBuffer());
+    const data = this.geometry.getAttributeData(name) as Float32Array | undefined;
 
     assertExist(data);
 
@@ -423,17 +413,10 @@ export class TrailMesh {
   }
 
   private setAttributeData (name: string, data: Float32Array) {
-    const vertexBuffer = this.geometry.getVertexBuffer(name);
-
-    assertExist(vertexBuffer);
-    this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
     this.geometry.setAttributeData(name, data);
   }
 
   private setAttributeSubData (name: string, offset: number, data: Float32Array) {
-    const target = this.getAttributeData(name);
-
-    target.set(data, offset);
     this.geometry.setAttributeSubData(name, offset, data);
   }
 
@@ -441,27 +424,12 @@ export class TrailMesh {
     this.mesh.dispose();
     this.ownedTextures.forEach(texture => texture.dispose());
     this.ownedTextures.length = 0;
-    this.attributeData.clear();
   }
 
   private ownTexture (texture: Texture): Texture {
     this.ownedTextures.push(texture);
 
     return texture;
-  }
-
-  /**
-   * @internal
-   */
-  rebuild (): void {
-    if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
-      return;
-    }
-    this.attributeData.forEach((data, buffer) => {
-      if (!buffer.getData()) {
-        buffer.update(data);
-      }
-    });
   }
 
 }

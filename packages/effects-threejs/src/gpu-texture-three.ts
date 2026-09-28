@@ -1,19 +1,19 @@
 import type {
-  Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions, spec,
+  Texture2DSourceOptionsVideo, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
+import { glContext, GPUTexture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
 
 /**
- * THREE 抽象纹理类
+ * Three.js 纹理资源，原生 Renderer 和上下文仍由宿主管理。
  */
-export class ThreeTexture extends Texture {
+export class GPUTextureThree extends GPUTexture {
   /**
    * THREE 纹理对象
    */
-  texture: THREE.Texture;
+  texture: THREE.Texture | undefined;
 
   /**
    * 将 WebGL 纹理过滤器枚举类型映射到 THREE 纹理过滤器枚举类型
@@ -45,39 +45,30 @@ export class ThreeTexture extends Texture {
     }
   }
 
-  /**
-   * 构造函数
-   * @param data - 纹理数据
-   * @param options - 纹理选项
-   */
-  constructor (engine: Engine, data?: TextureDataType, options: TextureSourceOptions = {}) {
-    super(engine);
-    if (data) {
-      const { width = 1, height = 1 } = data;
-
-      this.texture = this.createTextureByType({
-        ...options as Texture2DSourceOptionsData,
-        sourceType: TextureSourceType.data,
-        data,
-      });
-      this.width = width;
-      this.height = height;
-    } else {
-      this.texture = this.createTextureByType(options);
-    }
+  protected override onInitialize (source: TextureSourceOptions): void {
+    this.texture = this.createTextureByType(source);
     this.texture.needsUpdate = true;
-    this.source = {};
   }
 
-  /**
-   * 更新纹理数据
-   * @param options - 纹理选项
-   */
-  updateSource (options: TextureSourceOptions) {
-    this.texture.dispose();
-    this.texture = this.createTextureByType(options);
+  override update (source: TextureSourceOptions, options: TextureSourceOptions = source): void {
+    if (!this.texture) {
+      this.width = this.height = 0;
 
-    this.texture.needsUpdate = true;
+      return;
+    }
+    // VideoTexture already refreshes its image through the host renderer.
+    if (source.sourceType === TextureSourceType.video && options !== source) {
+      return;
+    }
+    this.initialize({ ...source, ...options } as TextureSourceOptions);
+  }
+
+  // VideoTexture and the host renderer manage frame uploads and context recovery.
+  override offloadData (): void {}
+  override restore (source: TextureSourceOptions): void {
+    if (!this.initialized) {
+      this.initialize(source);
+    }
   }
 
   /**
@@ -85,7 +76,7 @@ export class ThreeTexture extends Texture {
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
    */
-  override assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
+  private assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
     const { target = glContext.TEXTURE_2D } = options;
 
     if (!options.sourceType) {
@@ -106,31 +97,22 @@ export class ThreeTexture extends Texture {
       target,
       format: THREE.RGBAFormat,
       type: THREE.UnsignedByteType,
-      minFilter: ThreeTexture.toThreeJsTextureFilter(options.minFilter),
-      magFilter: ThreeTexture.toThreeJsTextureFilter(options.magFilter),
-      wrapS: ThreeTexture.toThreeJsTextureWrap(options.wrapS),
-      wrapT: ThreeTexture.toThreeJsTextureWrap(options.wrapT),
+      minFilter: GPUTextureThree.toThreeJsTextureFilter(options.minFilter),
+      magFilter: GPUTextureThree.toThreeJsTextureFilter(options.magFilter),
+      wrapS: GPUTextureThree.toThreeJsTextureWrap(options.wrapS),
+      wrapT: GPUTextureThree.toThreeJsTextureWrap(options.wrapT),
     };
   }
 
   /**
    * 释放纹理占用的内存
    */
-  override dispose () {
-    this.texture.dispose();
-
-    super.dispose();
-  }
-
-  /**
-   * 通过图层设置创建贴图
-   * @param data - 图层设置
-   */
-  override fromData (data: spec.EffectsObjectData): void {
-    super.fromData(data);
-
-    this.texture = this.createTextureByType(data as unknown as TextureSourceOptions);
-    this.texture.needsUpdate = true;
+  protected override onReleaseGPU (): void {
+    if (this.texture) {
+      this.texture.dispose();
+    }
+    this.texture = undefined;
+    super.onReleaseGPU();
   }
 
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
@@ -149,7 +131,6 @@ export class ThreeTexture extends Texture {
     let { format } = assembleOptions;
     let texture: THREE.Texture | undefined = undefined;
 
-    this.sourceType = sourceType;
     if (sourceType === TextureSourceType.data) {
       const { data } = options as Texture2DSourceOptionsData;
 
@@ -212,7 +193,6 @@ export class ThreeTexture extends Texture {
       texture.wrapT = THREE.MirroredRepeatWrapping;
       this.width = this.height = 1;
     }
-    this.source = options;
     if (texture) {
       texture.flipY = !!flipY;
 
@@ -222,4 +202,3 @@ export class ThreeTexture extends Texture {
   }
 
 }
-

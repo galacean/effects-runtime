@@ -1,11 +1,11 @@
-import type { DataBuffer, Engine, Geometry, VertexBuffer } from '@galacean/effects-core';
+import type { GPUBuffer, Engine, Geometry, GPUVertexLayout } from '@galacean/effects-core';
 import { getBytesPerElement } from '@galacean/effects-core';
 import * as THREE from 'three';
-import type { ThreeDataBuffer } from './three-data-buffer';
+import type { GPUBufferThree } from './gpu-buffer-three';
 
 interface ThreeGeometryCache {
-  vertexBuffers: Record<string, VertexBuffer>,
-  indexBuffer?: DataBuffer,
+  vertexLayout?: GPUVertexLayout,
+  indexBuffer?: GPUBuffer,
   instanced: boolean,
   resource: THREE.BufferGeometry,
 }
@@ -21,41 +21,46 @@ export function getThreeGeometry (source: Geometry): THREE.BufferGeometry {
     geometryCaches.set(source.engine, geometryCache);
   }
   let cache = geometryCache.get(source);
-  const attributeNames = source.getAttributeNames();
+  const vertexLayout = source.getVertexLayout();
   const indexBuffer = source.getIndexBuffer();
   const instanced = source.instanceCount > 0;
 
-  if (!cache || !isCacheValid(source, cache, attributeNames, indexBuffer, instanced)) {
-    cache?.resource.dispose();
+  if (!cache || !isCacheValid(source, cache, vertexLayout, indexBuffer, instanced)) {
+    if (cache) {
+      cache.resource.dispose();
+    }
     const geometry = instanced
       ? new THREE.InstancedBufferGeometry()
       : new THREE.BufferGeometry();
-    const vertexBuffers: Record<string, VertexBuffer> = {};
 
     geometry.name = source.name;
-    attributeNames.forEach(name => {
-      const vertexBuffer = source.getVertexBuffer(name);
-      const dataBuffer = vertexBuffer?.getBuffer() as ThreeDataBuffer | undefined;
+    vertexLayout?.elements.forEach(element => {
+      const { name, slot } = element;
+      const dataBuffer = source.getVertexBuffers()[slot] as GPUBufferThree | null;
       const nativeBuffer = dataBuffer?.resource;
 
-      if (!vertexBuffer || !(nativeBuffer instanceof THREE.InterleavedBuffer)) {
+      if (!(nativeBuffer instanceof THREE.InterleavedBuffer)) {
         return;
       }
-      vertexBuffers[name] = vertexBuffer;
+      const bytesPerElement = (nativeBuffer.array as unknown as { BYTES_PER_ELEMENT: number }).BYTES_PER_ELEMENT;
+
+      // Three.js expresses stride and offset in backing-array elements.
+      nativeBuffer.stride = vertexLayout.getStride(slot) / bytesPerElement;
+      nativeBuffer.count = nativeBuffer.array.length / nativeBuffer.stride;
       geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(
         nativeBuffer,
-        vertexBuffer.getSize(),
-        vertexBuffer.byteOffset / (nativeBuffer.array as unknown as { BYTES_PER_ELEMENT: number }).BYTES_PER_ELEMENT,
-        vertexBuffer.normalized,
+        element.size,
+        element.byteOffset / bytesPerElement,
+        element.normalized,
       ));
     });
-    const indexDataBuffer = indexBuffer as ThreeDataBuffer | undefined;
-    const nativeIndex = indexDataBuffer?.resource;
+    const indexGPUBuffer = indexBuffer as GPUBufferThree | undefined;
+    const nativeIndex = indexGPUBuffer?.resource;
 
     if (nativeIndex instanceof THREE.BufferAttribute) {
       geometry.setIndex(nativeIndex);
     }
-    cache = { vertexBuffers, indexBuffer, instanced, resource: geometry };
+    cache = { vertexLayout, indexBuffer, instanced, resource: geometry };
     geometryCache.set(source, cache);
   }
   if (cache.resource instanceof THREE.InstancedBufferGeometry) {
@@ -73,17 +78,25 @@ export function getThreeGeometry (source: Geometry): THREE.BufferGeometry {
 function isCacheValid (
   source: Geometry,
   cache: ThreeGeometryCache,
-  attributeNames: string[],
-  indexBuffer: DataBuffer | undefined,
+  vertexLayout: GPUVertexLayout | undefined,
+  indexBuffer: GPUBuffer | undefined,
   instanced: boolean,
 ): boolean {
   if (cache.indexBuffer !== indexBuffer
+    || cache.resource.index !== ((indexBuffer as GPUBufferThree | undefined)?.resource ?? null)
     || cache.instanced !== instanced
-    || Object.keys(cache.vertexBuffers).length !== attributeNames.length) {
+    || cache.vertexLayout !== vertexLayout
+    || Object.keys(cache.resource.attributes).length !== (vertexLayout?.elements.length ?? 0)) {
     return false;
   }
 
-  return attributeNames.every(name => cache.vertexBuffers[name] === source.getVertexBuffer(name));
+  return vertexLayout?.elements.every(element => {
+    const buffer = source.getVertexBuffers()[element.slot] as GPUBufferThree | null;
+    const attribute = cache.resource.getAttribute(element.name);
+
+    return attribute instanceof THREE.InterleavedBufferAttribute
+      && attribute.data === buffer?.resource;
+  }) ?? true;
 }
 
 /** Releases only the native geometries created for this display object's engine. */

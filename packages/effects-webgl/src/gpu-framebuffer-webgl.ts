@@ -1,50 +1,76 @@
 import type {
-  Disposable, FramebufferProps, Renderbuffer, Renderer, RenderPassStoreAction, Texture,
+  FramebufferProps, RenderPassStoreAction,
   Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
-  isWebGL2, addItem, Framebuffer, glContext, RenderPassAttachmentStorageType,
+  isWebGL2, addItem, GPUFramebuffer, Texture, glContext, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
 } from '@galacean/effects-core';
-import { GLRenderbuffer } from './gl-renderbuffer';
-import { GLTexture } from './gl-texture';
+import { assignInspectorName } from './debug-utils';
+import { GPURenderbufferWebGL } from './gpu-renderbuffer-webgl';
+import type { GPUTextureWebGL } from './gpu-texture-webgl';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
 let seed = 1;
 
-export class GLFramebuffer extends Framebuffer implements Disposable {
+export class GPUFramebufferWebGL extends GPUFramebuffer {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
-  depthStencilRenderbuffer?: GLRenderbuffer;
-  depthTexture?: GLTexture;
-  stencilTexture?: GLTexture;
-  colorTextures: GLTexture[];
+  depthStencilRenderbuffer?: GPURenderbufferWebGL;
+  depthTexture?: Texture;
+  stencilTexture?: Texture;
+  colorTextures: Texture[] = [];
   fbo?: WebGLFramebuffer;
-  device: RenderingDeviceWebGL;
-
-  readonly renderer: Renderer;
+  private props?: FramebufferProps;
+  private readonly useFbo: boolean;
 
   private readonly attachmentTextures: WebGLTexture[] = [];
 
   constructor (
+    device: RenderingDeviceWebGL,
     props: FramebufferProps,
-    renderer: Renderer,
   ) {
-    super();
+    super(device);
     const {
       depthStencilAttachment, viewport, storeAction,
-      name = `GLFramebuffer${seed++}`,
+      name = `GPUFramebufferWebGL${seed++}`,
     } = props;
 
-    this.renderer = renderer;
-    this.device = renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+    this.props = props;
+    this.useFbo = props.attachments.length > 0;
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
     this.name = name;
     this.storeAction = storeAction;
-    this.updateProps(props);
   }
 
-  override get stencilStorage (): Renderbuffer | undefined {
+  override initialize (): void {
+    if (this.initialized) {
+      return;
+    }
+    if (this.props) {
+      this.updateProps(this.props);
+      this.props = undefined;
+    } else if (this.useFbo) {
+      this.createAllocation();
+    }
+  }
+
+  private createAllocation (): void {
+    const device = this.device as RenderingDeviceWebGL;
+
+    const fbo = device.gl.createFramebuffer();
+
+    if (fbo) {
+      assignInspectorName(fbo, this.name, this.name);
+    } else {
+      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${device.gl.isContextLost()}`);
+    }
+    this.fbo = fbo;
+    this.initialized = true;
+    device.addFramebuffer(this);
+  }
+
+  get stencilStorage (): GPURenderbufferWebGL | undefined {
     const storageType = this.depthStencilStorageType;
 
     if (storageType !== RenderPassAttachmentStorageType.depth_16_opaque) {
@@ -52,7 +78,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     }
   }
 
-  override get depthStorage (): Renderbuffer | undefined {
+  get depthStorage (): GPURenderbufferWebGL | undefined {
     if (this.depthStencilStorageType !== RenderPassAttachmentStorageType.stencil_8_opaque) {
       return this.depthStencilRenderbuffer;
     }
@@ -80,24 +106,23 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
       tex.initialize();
       tex.update({ data });
-      addItem(this.attachmentTextures, tex.textureBuffer);
+      addItem(this.attachmentTextures, (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     });
 
     if (this.stencilTexture) {
-      addItem(this.attachmentTextures, this.stencilTexture.textureBuffer);
+      addItem(this.attachmentTextures, (this.stencilTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     }
 
     if (this.depthTexture) {
       this.depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
-      addItem(this.attachmentTextures, this.depthTexture.textureBuffer);
+      addItem(this.attachmentTextures, (this.depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     }
   }
 
   private updateProps (props: FramebufferProps) {
-    const renderer = this.renderer;
-    const gpuCapability = this.device.gpuCapability;
+    const gpuCapability = (this.device as RenderingDeviceWebGL).gpuCapability;
     const depthStencilAttachment = props.depthStencilAttachment ?? { storageType: RenderPassAttachmentStorageType.none };
-    const willUseFbo = props.attachments.length > 0;
+    const willUseFbo = this.useFbo;
     let separateDepthStencil = true;
 
     this.externalStorage = false;
@@ -106,70 +131,72 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       throw new Error('Multiple color attachments not support.');
     }
 
-    const optDepthStencilTex: GLTexture | undefined = props.depthStencilAttachment?.texture as GLTexture;
+    const optDepthStencilTex: Texture | undefined = props.depthStencilAttachment?.texture as Texture;
     const readableDepthStencilTextures = gpuCapability.detail.readableDepthStencilTextures;
     const { storageType, storage } = depthStencilAttachment;
 
-    this.colorTextures = props.attachments.slice() as GLTexture[];
+    this.colorTextures = props.attachments.slice();
 
     if (!willUseFbo && storageType !== RenderPassAttachmentStorageType.none) {
       throw new Error('Use depth stencil attachment without color attachments.');
     }
     if (willUseFbo) {
-      this.fbo = this.device.createGLFramebuffer(this.name) as WebGLFramebuffer;
-      this.device.addFramebuffer(this);
+      this.createAllocation();
     }
 
     switch (storageType) {
       case RenderPassAttachmentStorageType.depth_stencil_opaque:
         if (storage) {
-          if (storage instanceof GLRenderbuffer) {
+          if (storage instanceof GPURenderbufferWebGL) {
             this.depthStencilRenderbuffer = storage;
             this.externalStorage = true;
           } else {
             throw new Error('Invalid depth stencil attachment storage.');
           }
         } else {
-          this.depthStencilRenderbuffer = new GLRenderbuffer({
+          this.depthStencilRenderbuffer = (this.device as RenderingDeviceWebGL).createRenderbuffer({
             format: glContext.DEPTH_STENCIL,
             attachment: glContext.DEPTH_STENCIL_ATTACHMENT,
             storageType,
-          }, renderer);
+          });
+          this.depthStencilRenderbuffer.initialize();
         }
         separateDepthStencil = false;
 
         break;
       case RenderPassAttachmentStorageType.depth_16_opaque:
         if (storage) {
-          if (storage instanceof GLRenderbuffer) {
+          if (storage instanceof GPURenderbufferWebGL) {
             this.depthStencilRenderbuffer = storage;
             this.externalStorage = true;
           } else {
             throw new Error('Invalid depth attachment storage.');
           }
         } else {
-          this.depthStencilRenderbuffer = new GLRenderbuffer({
+          this.depthStencilRenderbuffer = (this.device as RenderingDeviceWebGL).createRenderbuffer({
             attachment: glContext.DEPTH_ATTACHMENT,
             format: glContext.DEPTH_COMPONENT16,
             storageType,
-          }, renderer);
+          });
+          this.depthStencilRenderbuffer.initialize();
         }
 
         break;
       case RenderPassAttachmentStorageType.stencil_8_opaque:
         if (storage) {
-          if (storage instanceof GLRenderbuffer) {
+          if (storage instanceof GPURenderbufferWebGL) {
             this.depthStencilRenderbuffer = storage;
             this.externalStorage = true;
           } else {
             throw new Error('Invalid stencil attachment storage.');
           }
         } else {
-          this.depthStencilRenderbuffer = new GLRenderbuffer({
+          this.depthStencilRenderbuffer = (this.device as RenderingDeviceWebGL).createRenderbuffer({
             attachment: glContext.STENCIL_ATTACHMENT,
             format: glContext.STENCIL_INDEX8,
             storageType,
-          }, renderer);
+          });
+          this.depthStencilRenderbuffer.initialize();
         }
 
         break;
@@ -177,7 +204,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         if (!readableDepthStencilTextures) {
           throw new Error('Depth texture is not support in framebuffer.');
         }
-        this.depthTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
+        this.depthTexture = optDepthStencilTex ?? new Texture(this.device!.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_COMPONENT,
           internalFormat: gpuCapability.internalFormatDepth16,
@@ -191,7 +218,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         if (!readableDepthStencilTextures) {
           throw new Error('Depth stencil texture is not support in framebuffer.');
         }
-        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new GLTexture(this.renderer.engine, {
+        this.depthTexture = this.stencilTexture = optDepthStencilTex ?? new Texture(this.device!.engine, {
           sourceType: TextureSourceType.framebuffer,
           format: glContext.DEPTH_STENCIL,
           internalFormat: gpuCapability.internalFormatDepth24_stencil8,
@@ -212,7 +239,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     storeAction: RenderPassStoreAction,
     separateDepthStencil: boolean,
   ): GLenum[] | undefined {
-    const gl = this.device.gl;
+    const gl = (this.device as RenderingDeviceWebGL).gl;
     const colorLen = this.colorTextures.length;
 
     if (storeAction && isWebGL2(gl) && colorLen > 0) {
@@ -238,13 +265,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     const attachments = this.storeInvalidAttachments;
 
     if (attachments?.length) {
-      const gl = this.device.gl;
+      const gl = (this.device as RenderingDeviceWebGL).gl;
 
       if (isWebGL2(gl)) {
         gl.invalidateFramebuffer(gl.FRAMEBUFFER, attachments);
       }
     }
-    this.device.bindSystemFramebuffer();
+    (this.device as RenderingDeviceWebGL).bindSystemFramebuffer();
   }
 
   override bind () {
@@ -252,16 +279,17 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       return;
     }
 
-    const gl = this.device.gl;
-    const state = this.device;
+    const gl = (this.device as RenderingDeviceWebGL).gl;
+    const state = this.device as RenderingDeviceWebGL;
     const [x, y, width, height] = this.viewport;
 
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
     // TODO 不在bind中设置viewport
     state.setViewport(x, y, width, height);
-    const whiteTexture = this.renderer.engine.assetServer.whiteTexture as GLTexture;
-    const whiteWebGLTexture = whiteTexture.textureBuffer;
+    const whiteTexture = this.device!.engine.assetServer.whiteTexture;
+    const whiteGPUTexture = whiteTexture.getGPUTexture() as GPUTextureWebGL;
+    const whiteWebGLTexture = whiteGPUTexture.textureBuffer;
 
     // in case frame texture loop
     Object.keys(state.textureUnitDict).forEach(unit => {
@@ -273,14 +301,14 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         this.attachmentTextures.includes(texture)
       ) {
         state.activeTexture(+unit);
-        whiteTexture.bind();
+        whiteGPUTexture.bind();
       }
     });
 
     // FIXME: 没有pipeline对象的临时方案
     for (let i = 0; i < 4; i++) {
       state.activeTexture(gl.TEXTURE0 + i);
-      whiteTexture.bind();
+      whiteGPUTexture.bind();
     }
 
     if (this.ready) {
@@ -299,7 +327,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
       const attachment = depthTexture && stencilTexture ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
 
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, depthTexture.textureBuffer, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, (depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0);
     }
     this.resetColorTextures(this.colorTextures);
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
@@ -312,9 +340,9 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   }
 
   override resetColorTextures (colorTextures?: Texture[]) {
-    const colors = colorTextures as GLTexture[];
-    const gl = this.device.gl;
-    const gpuCapability = this.device.gpuCapability;
+    const colors = colorTextures as Texture[];
+    const gl = (this.device as RenderingDeviceWebGL).gl;
+    const gpuCapability = (this.device as RenderingDeviceWebGL).gpuCapability;
     const viewport = this.viewport;
     const buffers: boolean[] = [];
 
@@ -324,7 +352,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       }
       this.colorTextures = colors.slice();
     }
-    this.device.activeTexture(gl.TEXTURE0);
+    (this.device as RenderingDeviceWebGL).activeTexture(gl.TEXTURE0);
 
     this.colorTextures.forEach((tex, index) => {
       const width = viewport[2];
@@ -332,7 +360,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       const data = { width, height, data: new Uint8Array(0) };
 
       tex.update({ data });
-      gpuCapability.framebufferTexture2D(gl, gl.FRAMEBUFFER, index, gl.TEXTURE_2D, tex.textureBuffer);
+      gpuCapability.framebufferTexture2D(gl, gl.FRAMEBUFFER, index, gl.TEXTURE_2D, (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer);
       buffers.push(true);
     });
     gpuCapability.drawBuffers(gl, buffers);
@@ -352,44 +380,55 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   /**
    * 上下文恢复后重建 framebuffer 句柄。
    * 内部 renderbuffer 由RenderingDevice 的 renderbuffers 列表统一恢复，此处不重复处理。
-   * 附件纹理由各自 GLTexture.restore 恢复，此处仅重置 ready 并清空附件缓存，
+   * 附件纹理由各自 Texture.restore 恢复，此处仅重置 ready 并清空附件缓存，
    * 让下次 bind 用各纹理的最新句柄重新挂载。
    */
   override restore (): void {
-    if (!this.fbo) {
+    if (!this.device || !this.useFbo) {
       return;
     }
-    // 旧 fbo 已随上下文丢失失效，直接重建。
-    this.fbo = this.device.createGLFramebuffer(this.name) as WebGLFramebuffer;
+    this.releaseGPU();
+    this.initialize();
+  }
+
+  protected override onReleaseGPU (): void {
+    const device = this.device as RenderingDeviceWebGL;
+
+    device.invalidateFramebuffer(this.fbo!);
+    if (!device.gl.isContextLost()) {
+      device.gl.deleteFramebuffer(this.fbo!);
+    }
+    this.fbo = undefined;
     this.ready = false;
     this.attachmentTextures.length = 0;
   }
 
   override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
-    if (this.renderer) {
-      this.device.removeFramebuffer(this);
-      this.device.deleteGLFramebuffer(this);
-      delete this.fbo;
-      const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
-
-      if (
-        clearAttachment === RenderPassDestroyAttachmentType.force || (
-          clearAttachment === RenderPassDestroyAttachmentType.keepExternal &&
-          !this.externalStorage
-        )
-      ) {
-        this.depthStencilRenderbuffer?.dispose();
-        this.depthTexture?.dispose();
-      }
-
-      for (const texture of this.colorTextures) {
-        texture.dispose();
-      }
-
-      this.stencilTexture?.dispose();
-
-      // @ts-expect-error safe to assign
-      this.renderer = this.stencilRenderbuffer = this.depthStencilRenderbuffer = null;
+    if (this.destroyed) {
+      return;
     }
+    super.dispose();
+    const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
+
+    if (
+      clearAttachment === RenderPassDestroyAttachmentType.force || (
+        clearAttachment === RenderPassDestroyAttachmentType.keepExternal &&
+        !this.externalStorage
+      )
+    ) {
+      this.depthStencilRenderbuffer?.dispose();
+      this.depthTexture?.dispose();
+    }
+
+    for (const texture of this.colorTextures) {
+      texture.dispose();
+    }
+
+    this.stencilTexture?.dispose();
+
+    this.depthStencilRenderbuffer = undefined;
+    this.depthTexture = this.stencilTexture = undefined;
+    this.colorTextures = [];
+    this.props = undefined;
   }
 }

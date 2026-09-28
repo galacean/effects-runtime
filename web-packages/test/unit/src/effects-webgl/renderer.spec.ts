@@ -1,7 +1,7 @@
+import { Texture } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { TextureSourceType, RenderPass } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -22,7 +22,7 @@ describe('webgl/renderer', () => {
     const engine = new Engine(glCanvas, { glType: 'webgl' });
     const renderer = engine.renderer;
     const gl = (renderer.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
-    const texture = new GLTexture(renderer.engine, {
+    const texture = new Texture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
         width: 3,
         height: 3,

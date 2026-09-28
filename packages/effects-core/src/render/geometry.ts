@@ -2,12 +2,13 @@ import type { RenderingDevice } from '../rendering-device';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
 import type { Engine } from '../engine';
-import { Buffer } from './buffer';
-import type { DataBuffer, IndexData, IndicesArray } from './data-buffer';
+import type { GPUBuffer, GPUBufferOptions, IndexData, IndicesArray } from './gpu-buffer';
 import {
   BufferDataType, BufferUsage, createTypedArray, getBytesPerElement, getDataType,
-} from './data-buffer';
-import { VertexBuffer } from './vertex-buffer';
+} from './gpu-buffer';
+import type { VertexElement } from './vertex-element';
+import type { GPUVertexLayout } from './gpu-vertex-layout';
+import { VertexElementType } from './vertex-element-type';
 import type { ShaderVariant } from './shader';
 
 export type GeometryDrawMode = number;
@@ -43,19 +44,25 @@ export interface SkinProps {
   inverseBindMatrices?: number[],
 }
 
+interface GeometryBufferData {
+  data: spec.TypedArray,
+  options: GPUBufferOptions,
+}
+
 let geometryId = 1;
 
 type VertexArrayObject = object;
 
 interface VertexArrayObjectDevice {
   recordVertexArrayObject: (
-    vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | null,
+    vertexBuffers: readonly (GPUBuffer | null)[],
+    indexBuffer: GPUBuffer | null,
     shader: ShaderVariant,
+    vertexLayout?: GPUVertexLayout,
   ) => VertexArrayObject | undefined,
   bindVertexArrayObject: (
     vertexArrayObject: VertexArrayObject,
-    indexBuffer: DataBuffer | null,
+    indexBuffer: GPUBuffer | null,
   ) => void,
   releaseVertexArrayObject: (vertexArrayObject: VertexArrayObject) => void,
 }
@@ -73,12 +80,15 @@ export class Geometry extends Asset {
   /** @hide */
   instanceCount = 0;
 
-  private vertexBuffers: Record<string, VertexBuffer> = {};
+  private vertexBuffers: (GPUBuffer | null)[] = [];
+  private vertexLayout?: GPUVertexLayout;
+  private readonly ownedBuffers = new Set<GPUBuffer>();
+  private readonly bufferData = new Map<GPUBuffer, GeometryBufferData>();
   private indices: IndexData = new Uint16Array(0);
   private drawCount = 0;
   private drawStart = 0;
   private skin: SkinProps = {};
-  private indexBuffer?: DataBuffer;
+  private indexBuffer?: GPUBuffer;
   private disposed = false;
   private initialized = false;
   private options?: GeometryProps;
@@ -116,76 +126,154 @@ export class Geometry extends Asset {
   }
 
   /** @hide */
-  getVertexBuffer (name: string): VertexBuffer | undefined {
-    return this.vertexBuffers[name];
+  getVertexElement (name: string): VertexElement | undefined {
+    return this.vertexLayout?.getElement(name);
   }
 
-  /**
-   * @internal
-   */
-  getVertexBuffers (): Readonly<Record<string, VertexBuffer>> {
+  /** @hide */
+  getVertexLayout (): GPUVertexLayout | undefined {
+    return this.vertexLayout;
+  }
+
+  /** @hide */
+  getVertexBuffers (): readonly (GPUBuffer | null)[] {
     return this.vertexBuffers;
   }
 
-  /** @hide */
-  setVerticesBuffer (vertexBuffer: VertexBuffer, disposeExistingBuffer = true): void {
-    const kind = vertexBuffer.getKind();
-    const current = this.vertexBuffers[kind];
-
-    if (current && disposeExistingBuffer) {
-      current.dispose();
-    }
-    if (vertexBuffer.ownsBuffer) {
-      vertexBuffer.buffer.increaseReferences();
-    }
-    this.vertexBuffers[kind] = vertexBuffer;
+  /**
+   * Bind buffers by slot with a separate layout. External buffers are borrowed by default.
+   * @hide
+   */
+  setVertexBuffers (
+    buffers: readonly (GPUBuffer | null)[],
+    layout = this.engine.displayServer.renderingDevice.getVertexLayout(buffers),
+    takeBufferOwnership = false,
+  ): void {
     this.disposeVertexArrayObjects();
+    this.vertexBuffers = buffers.slice();
+    this.vertexLayout = layout;
+    if (takeBufferOwnership) {
+      for (const buffer of buffers) {
+        if (buffer) {
+          this.ownedBuffers.add(buffer);
+        }
+      }
+    }
+    for (const buffer of this.ownedBuffers) {
+      this.releaseUnusedBuffer(buffer);
+    }
+  }
+
+  /**
+   * Creates an owned buffer and retains its CPU data for queries and restoration.
+   * @hide
+   */
+  setAttribute (name: string, attribute: spec.AttributeWithData & { data: spec.TypedArray }, usage = this.bufferUsage): void {
+    const device = this.engine.displayServer.renderingDevice;
+    const type = attribute.type ?? getDataType(attribute.data);
+    const byteStride = attribute.stride || attribute.size * getBytesPerElement(type);
+    const element: VertexElement = {
+      name,
+      slot: 0,
+      type,
+      size: attribute.size,
+      byteOffset: attribute.offset ?? 0,
+      normalized: attribute.normalize ?? false,
+      divisor: attribute.instanceDivisor ?? 0,
+    };
+    const buffer = this.createVertexBuffer(attribute.data, {
+      usage, type, byteStride, instanceDivisor: element.divisor, label: name,
+      vertexLayout: device.getVertexLayout([element], [byteStride]),
+    });
+    const elements = this.vertexLayout?.elements.slice() ?? [];
+    const buffers = this.vertexBuffers.slice();
+    const strides = buffers.map((item, slot) => this.vertexLayout?.getStride(slot) ?? item?.byteStride ?? 0);
+    const previousIndex = elements.findIndex(item => item.name === name);
+
+    if (previousIndex !== -1) {
+      const previousSlot = elements[previousIndex].slot;
+
+      if (!elements.some((item, index) => index !== previousIndex && item.slot === previousSlot)) {
+        buffers[previousSlot] = null;
+      }
+    }
+    let slot = buffers.indexOf(null);
+
+    if (slot === -1) {
+      slot = buffers.length;
+    }
+    buffers[slot] = buffer;
+    strides[slot] = byteStride;
+    if (previousIndex === -1) {
+      elements.push({ ...element, slot });
+    } else {
+      elements[previousIndex] = { ...element, slot };
+    }
+    this.setVertexBuffers(buffers, device.getVertexLayout(elements, strides));
   }
 
   /** @hide */
-  getAttributeBuffer (name: string): Buffer | undefined {
-    return this.vertexBuffers[name]?.getWrapperBuffer();
+  getAttributeBuffer (name: string): GPUBuffer | undefined {
+    const element = this.getVertexElement(name);
+
+    return element ? this.vertexBuffers[element.slot] ?? undefined : undefined;
   }
 
   getAttributeData (name: string): spec.TypedArray | undefined {
-    return this.vertexBuffers[name]?.getData() as spec.TypedArray | undefined;
+    const buffer = this.getAttributeBuffer(name);
+
+    return buffer ? this.bufferData.get(buffer)?.data : undefined;
   }
 
   setAttributeData (name: string, data: spec.TypedArray): void {
-    const vertexBuffer = this.vertexBuffers[name];
+    const buffer = this.getAttributeBuffer(name);
+    const source = buffer && this.bufferData.get(buffer);
 
-    if (!vertexBuffer) {
+    if (!buffer || source?.options.usage === BufferUsage.Static) {
       return;
     }
-    vertexBuffer.update(data);
+    this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(buffer, data);
+    if (source) {
+      if (source.data.byteLength === data.byteLength) {
+        source.data = data;
+      } else {
+        new Uint8Array(source.data.buffer, source.data.byteOffset, source.data.byteLength)
+          .set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+      }
+    }
     this.disposeVertexArrayObjects();
   }
 
+  /** Offset retains the existing API's Float32 element units. */
   setAttributeSubData (name: string, offset: number, data: spec.TypedArray): void {
-    const vertexBuffer = this.vertexBuffers[name];
+    const buffer = this.getAttributeBuffer(name);
+    const source = buffer && this.bufferData.get(buffer);
 
-    if (!vertexBuffer) {
+    if (!buffer || source?.options.usage === BufferUsage.Static) {
       return;
     }
-    const buffer = vertexBuffer.getWrapperBuffer();
-    const vertexCount = buffer.byteStride > 0
-      ? Math.ceil(data.byteLength / buffer.byteStride)
-      : 0;
+    const byteOffset = offset * Float32Array.BYTES_PER_ELEMENT;
 
-    buffer.updateDirectly(data, offset, vertexCount);
+    this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(buffer, data, byteOffset);
+    if (source) {
+      new Uint8Array(source.data.buffer, source.data.byteOffset, source.data.byteLength)
+        .set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), byteOffset);
+    }
     this.disposeVertexArrayObjects();
   }
 
   getAttributeStride (name: string): number {
-    return this.vertexBuffers[name]?.byteStride ?? 0;
+    const element = this.getVertexElement(name);
+
+    return element ? this.vertexLayout!.getStride(element.slot) : 0;
   }
 
   getAttributeNames (): string[] {
-    return Object.keys(this.vertexBuffers);
+    return this.vertexLayout?.elements.map(element => element.name) ?? [];
   }
 
   /** @hide */
-  getIndexBuffer (): DataBuffer | undefined {
+  getIndexBuffer (): GPUBuffer | undefined {
     return this.indexBuffer;
   }
 
@@ -260,7 +348,7 @@ export class Geometry extends Asset {
     const device = this.engine.displayServer.renderingDevice;
 
     if (!vertexArrayObjects || !supportsVertexArrayObjects(device)) {
-      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader, this.vertexLayout);
 
       return;
     }
@@ -271,6 +359,7 @@ export class Geometry extends Asset {
         this.vertexBuffers,
         this.indexBuffer ?? null,
         shader,
+        this.vertexLayout,
       );
       if (vertexArrayObject) {
         vertexArrayObjects[shader.key] = vertexArrayObject;
@@ -279,7 +368,7 @@ export class Geometry extends Asset {
     if (vertexArrayObject) {
       device.bindVertexArrayObject(vertexArrayObject, this.indexBuffer ?? null);
     } else {
-      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader, this.vertexLayout);
     }
   }
 
@@ -301,9 +390,6 @@ export class Geometry extends Asset {
     if (this.initialized || this.disposed) {
       return;
     }
-    this.forEachVertexBuffer(buffer => {
-      buffer.create();
-    });
     this.createIndexBuffer();
     this.engine.effectsObjectServer.addGeometry(this);
     this.initialized = true;
@@ -315,7 +401,6 @@ export class Geometry extends Asset {
       return;
     }
     this.initialize();
-    this.forEachVertexBuffer(buffer => buffer.create());
   }
 
   /** @hide */
@@ -326,9 +411,10 @@ export class Geometry extends Asset {
     if (this.vertexArrayObjects) {
       this.vertexArrayObjects = {};
     }
-    this.forEachVertexBuffer(buffer => buffer.rebuild());
+    for (const [buffer, source] of this.bufferData) {
+      buffer.initialize({ ...source.options, data: source.data });
+    }
     if (this.indices.length > 0) {
-      this.indexBuffer = undefined;
       this.createIndexBuffer();
     }
   }
@@ -370,9 +456,9 @@ export class Geometry extends Asset {
       const normalChannel = data.vertexData.channels[2];
 
       props.attributes = {
-        [VertexBuffer.PositionKind]: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
-        [VertexBuffer.UVKind]: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
-        [VertexBuffer.NormalKind]: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
+        [VertexElementType.Position]: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
+        [VertexElementType.TexCoord0]: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
+        [VertexElementType.Normal]: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
       };
     }
     if (data.indexFormat !== spec.IndexFormatType.None) {
@@ -396,9 +482,14 @@ export class Geometry extends Asset {
       return;
     }
     this.disposeVertexArrayObjects();
-    Object.keys(this.vertexBuffers).forEach(name => this.vertexBuffers[name].dispose());
+    for (const buffer of this.ownedBuffers) {
+      buffer.dispose();
+    }
+    this.ownedBuffers.clear();
+    this.bufferData.clear();
     this.releaseIndexBuffer();
-    this.vertexBuffers = {};
+    this.vertexBuffers = [];
+    this.vertexLayout = undefined;
     this.indices = new Uint16Array(0);
     this.options = undefined;
     this.drawStart = 0;
@@ -414,7 +505,7 @@ export class Geometry extends Asset {
   private processProps (props: GeometryProps): void {
     this.releaseCurrentBuffers();
     const usage = props.bufferUsage ?? BufferUsage.Static;
-    const sourceBuffers: Record<string, Buffer> = {};
+    const sourceBuffers: Record<string, GPUBuffer> = {};
     const sourceDivisors: Record<string, number> = {};
     const sourceTypes: Record<string, number> = {};
 
@@ -444,18 +535,36 @@ export class Geometry extends Asset {
       const instanceDivisor = sourceDivisors[name] ?? 0;
 
       sourceTypes[name] = type;
-      sourceBuffers[name] = new Buffer(
-        this.engine,
-        data,
-        usage !== (BufferUsage.Static as number),
+      sourceBuffers[name] = this.createVertexBuffer(data, {
+        usage,
+        type,
         byteStride,
-        false,
-        instanceDivisor > 0,
-        true,
         instanceDivisor,
-        name,
-      );
+        label: name,
+        vertexLayout: this.engine.displayServer.renderingDevice.getVertexLayout(
+          Object.keys(props.attributes)
+            .filter(key => {
+              const element = props.attributes[key];
+
+              return ('dataSource' in element ? element.dataSource : key) === name;
+            })
+            .map(key => {
+              const element = props.attributes[key];
+
+              return {
+                name: key, slot: 0, type: element.type ?? type, size: element.size,
+                byteOffset: element.offset ?? 0, normalized: element.normalize ?? false,
+                divisor: element.instanceDivisor ?? 0,
+              };
+            }),
+          [byteStride],
+        ),
+      });
     });
+    const elements: VertexElement[] = [];
+    const buffers: GPUBuffer[] = [];
+    const strides: number[] = [];
+
     Object.keys(props.attributes).forEach(name => {
       const attribute = props.attributes[name];
       const source = 'dataSource' in attribute ? attribute.dataSource : name;
@@ -466,23 +575,26 @@ export class Geometry extends Asset {
       }
       const type = attribute.type ?? sourceTypes[source] ?? BufferDataType.Float;
 
-      const byteStride = attribute.stride || buffer.byteStride;
+      const byteStride = attribute.stride || this.bufferData.get(buffer)!.options.byteStride;
       const instanceDivisor = attribute.instanceDivisor ?? 0;
 
-      const vertexBuffer = new VertexBuffer(this.engine, buffer, name, {
-        size: attribute.size,
-        type,
-        stride: byteStride,
-        offset: attribute.offset ?? 0,
-        normalized: attribute.normalize ?? false,
-        instanced: instanceDivisor > 0,
-        divisor: instanceDivisor,
-        useBytes: true,
-        takeBufferOwnership: true,
-      });
+      let slot = buffers.findIndex((item, index) => item === buffer && strides[index] === byteStride);
 
-      this.setVerticesBuffer(vertexBuffer);
+      if (slot === -1) {
+        slot = buffers.length;
+        buffers.push(buffer);
+        strides.push(byteStride);
+      }
+      elements.push({
+        name, slot, size: attribute.size, type,
+        byteOffset: attribute.offset ?? 0,
+        normalized: attribute.normalize ?? false,
+        divisor: instanceDivisor,
+      });
     });
+    if (elements.length > 0) {
+      this.setVertexBuffers(buffers, this.engine.displayServer.renderingDevice.getVertexLayout(elements, strides));
+    }
     this.name = props.name ?? `effectsGeometry:${geometryId++}`;
     this.drawStart = props.drawStart ?? 0;
     this.drawCount = props.drawCount ?? 0;
@@ -508,9 +620,14 @@ export class Geometry extends Asset {
     const wasInitialized = this.initialized;
 
     this.disposeVertexArrayObjects();
-    Object.keys(this.vertexBuffers).forEach(name => this.vertexBuffers[name].dispose());
+    for (const buffer of this.ownedBuffers) {
+      buffer.dispose();
+    }
+    this.ownedBuffers.clear();
+    this.bufferData.clear();
     this.releaseIndexBuffer();
-    this.vertexBuffers = {};
+    this.vertexBuffers = [];
+    this.vertexLayout = undefined;
     this.indices = new Uint16Array(0);
     if (wasInitialized) {
       this.engine.effectsObjectServer.removeGeometry(this);
@@ -524,23 +641,21 @@ export class Geometry extends Asset {
     if (!vertexArrayObjects) {
       return;
     }
-    Object.keys(vertexArrayObjects).forEach(key => {
-      const vertexArrayObject = vertexArrayObjects[key];
-
-      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine.displayServer.renderingDevice)) {
-        this.engine.displayServer.renderingDevice.releaseVertexArrayObject(vertexArrayObject);
-      }
-    });
-    this.vertexArrayObjects = {};
+    for (const key in vertexArrayObjects) {
+      this.releaseVertexArrayObject(key);
+    }
   }
 
   private createIndexBuffer (): void {
     const indices = this.indices;
 
-    if (indices.length === 0 || this.indexBuffer) {
+    if (indices.length === 0) {
       return;
     }
-    this.indexBuffer = this.engine.displayServer.renderingDevice.createIndexBuffer(indices, {
+    this.indexBuffer ??= this.engine.displayServer.renderingDevice.createBuffer();
+    this.indexBuffer.initialize({
+      data: indices,
+      index: true,
       usage: this.bufferUsage,
       type: this.getIndexType(),
       byteStride: 0,
@@ -553,22 +668,30 @@ export class Geometry extends Asset {
     if (!this.indexBuffer) {
       return;
     }
-    this.engine.displayServer.renderingDevice.releaseBuffer(this.indexBuffer);
+    this.indexBuffer.dispose();
     this.indexBuffer = undefined;
   }
 
-  private forEachVertexBuffer (callback: (buffer: Buffer) => void): void {
-    const visited = new Set<Buffer>();
+  private createVertexBuffer (data: spec.TypedArray, options: GPUBufferOptions): GPUBuffer {
+    const buffer = this.engine.displayServer.renderingDevice.createBuffer();
 
-    Object.keys(this.vertexBuffers).forEach(name => {
-      const buffer = this.vertexBuffers[name].getWrapperBuffer();
+    buffer.initialize({ ...options, data });
+    this.ownedBuffers.add(buffer);
+    this.bufferData.set(buffer, { data, options });
 
-      if (!visited.has(buffer)) {
-        visited.add(buffer);
-        callback(buffer);
-      }
-    });
+    return buffer;
   }
+
+  private releaseUnusedBuffer (buffer: GPUBuffer): void {
+    if (this.vertexBuffers.includes(buffer)) {
+      return;
+    }
+    if (this.ownedBuffers.delete(buffer)) {
+      buffer.dispose();
+    }
+    this.bufferData.delete(buffer);
+  }
+
 }
 
 function isTypedArray (value: unknown): value is spec.TypedArray {
@@ -702,17 +825,17 @@ function decodeBase64ToArrayBuffer (value: string): ArrayBuffer {
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {
-  POSITION: VertexBuffer.PositionKind,
-  TEXCOORD0: VertexBuffer.UVKind,
-  TEXCOORD_0: VertexBuffer.UVKind,
-  TEXCOORD1: VertexBuffer.UV2Kind,
-  NORMAL: VertexBuffer.NormalKind,
-  TANGENT: VertexBuffer.TangentKind,
-  COLOR: VertexBuffer.ColorKind,
-  JOINTS: VertexBuffer.JointsKind,
-  JOINTS_0: VertexBuffer.JointsKind,
-  WEIGHTS: VertexBuffer.WeightsKind,
-  WEIGHTS_0: VertexBuffer.WeightsKind,
+  POSITION: VertexElementType.Position,
+  TEXCOORD0: VertexElementType.TexCoord0,
+  TEXCOORD_0: VertexElementType.TexCoord0,
+  TEXCOORD1: VertexElementType.TexCoord1,
+  NORMAL: VertexElementType.Normal,
+  TANGENT: VertexElementType.Tangent,
+  COLOR: VertexElementType.Color,
+  JOINTS: VertexElementType.BlendIndices,
+  JOINTS_0: VertexElementType.BlendIndices,
+  WEIGHTS: VertexElementType.BlendWeights,
+  WEIGHTS_0: VertexElementType.BlendWeights,
   POSITION_BS0: 'aTargetPosition0',
   POSITION_BS1: 'aTargetPosition1',
   POSITION_BS2: 'aTargetPosition2',

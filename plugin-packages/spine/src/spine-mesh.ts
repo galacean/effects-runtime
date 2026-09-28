@@ -3,7 +3,7 @@ import type {
   Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture, math,
 } from '@galacean/effects';
 import {
-  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, VertexBuffer,
+  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, VertexElementType,
 } from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
@@ -72,10 +72,10 @@ export class SpineMesh implements Disposable {
     const BYTES_PER_ELEMENT = Float32Array.BYTES_PER_ELEMENT;
     const stride = BYTES_PER_ELEMENT * SlotGroup.VERTEX_SIZE;
     const attributes: Record<string, Attribute> = {
-      [VertexBuffer.PositionKind]: { size: 2, offset: 0, stride, data: new Float32Array(0) },
-      [VertexBuffer.ColorKind]: { size: 4, offset: 2 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
-      [VertexBuffer.UVKind]: { size: 2, offset: 6 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
-      aColor2: { size: 4, offset: 8 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
+      [VertexElementType.Position]: { size: 2, offset: 0, stride, data: new Float32Array(0) },
+      [VertexElementType.Color]: { size: 4, offset: 2 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
+      [VertexElementType.TexCoord0]: { size: 2, offset: 6 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
+      aColor2: { size: 4, offset: 8 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
     };
 
     return Geometry.create(
@@ -134,7 +134,7 @@ export class SpineMesh implements Disposable {
     for (let i = this.indicesLength; i < this.indices.length; i++) {
       this.indices[i] = 0;
     }
-    this.geometry.setAttributeData(VertexBuffer.PositionKind, this.vertices);
+    this.geometry.setAttributeData(VertexElementType.Position, this.vertices);
     this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
   }

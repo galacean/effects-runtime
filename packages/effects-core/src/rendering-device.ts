@@ -1,9 +1,13 @@
+import type { GPUTexture } from './texture/gpu-texture';
+import type { GPUResource } from './gpu-resource';
 import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
-  DataArray, DataBuffer, DataBufferOptions, Framebuffer, GPUCapability, IndicesArray, Renderbuffer,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer,
+  DataArray, GPUBuffer, GPUProgram, FramebufferProps, GPUCapability, IndicesArray,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexElement,
 } from './render';
+import { GPUFramebuffer } from './render/gpu-framebuffer';
+import { GPUVertexLayout } from './render/gpu-vertex-layout';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 
@@ -15,8 +19,9 @@ export class RenderingDevice implements Disposable {
   doNotHandleContextLost: boolean;
   gpuCapability: GPUCapability;
   protected _disposed = false;
-  private framebuffers: Framebuffer[] = [];
-  private renderbuffers: Renderbuffer[] = [];
+  private resources: GPUResource[] = [];
+  private readonly vertexLayouts = new Map<string, GPUVertexLayout>();
+  private framebuffers: GPUFramebuffer[] = [];
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
 
@@ -26,6 +31,19 @@ export class RenderingDevice implements Disposable {
 
   get disposed (): boolean {
     return this._disposed;
+  }
+
+  /** @internal */
+  addResource (resource: GPUResource): void {
+    addItem(this.resources, resource);
+  }
+
+  /** @internal */
+  removeResource (resource: GPUResource): void {
+    removeItem(this.resources, resource);
+    if (resource instanceof GPUFramebuffer) {
+      removeItem(this.framebuffers, resource);
+    }
   }
 
   /** Whether rendering is suspended while the graphics context is being restored. */
@@ -38,6 +56,9 @@ export class RenderingDevice implements Disposable {
 
     if (!this.doNotHandleContextLost) {
       this._contextWasLost = true;
+      for (const resource of this.resources.slice()) {
+        resource.releaseGPU();
+      }
     }
     engine.getServer(SceneServer).compositions.forEach(comp => comp.lost(e));
     engine.emit('contextlost', { engine, e });
@@ -48,45 +69,69 @@ export class RenderingDevice implements Disposable {
     this.engine.emit('contextrestored', this.engine);
   }
 
-  createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    throw new Error('The active rendering backend does not provide vertex buffers.');
+  createTexture (): GPUTexture { throw new Error('The active backend does not provide textures.'); }
+
+  createFramebuffer (props: FramebufferProps): GPUFramebuffer { throw new Error('The active backend does not provide framebuffers.'); }
+
+  createBuffer (): GPUBuffer { throw new Error('The active backend does not provide buffers.'); }
+
+  createProgram (key: string): GPUProgram { throw new Error('The active backend does not provide programs.'); }
+
+  /** @hide Creates a layout; shared lookup is handled by getVertexLayout. */
+  createVertexLayout (elements: readonly VertexElement[], strides: readonly number[]): GPUVertexLayout {
+    return new GPUVertexLayout(this, elements, strides);
+  }
+
+  /** @hide Gets a shared layout for this device. */
+  getVertexLayout (elements: readonly VertexElement[], strides: readonly number[]): GPUVertexLayout;
+  /** @hide Combines the layouts described by the supplied vertex buffers. */
+  getVertexLayout (buffers: readonly (GPUBuffer | null)[]): GPUVertexLayout | undefined;
+  getVertexLayout (
+    source: readonly VertexElement[] | readonly (GPUBuffer | null)[],
+    strides?: readonly number[],
+  ): GPUVertexLayout | undefined {
+    if (!strides) {
+      const buffers = source as readonly (GPUBuffer | null)[];
+      const elements: VertexElement[] = [];
+
+      for (let slot = 0; slot < buffers.length; slot++) {
+        for (const element of buffers[slot]?.vertexLayout?.elements ?? []) {
+          elements.push({ ...element, slot });
+        }
+      }
+
+      return elements.length > 0
+        ? this.getVertexLayout(elements, buffers.map(buffer => buffer?.byteStride ?? 0))
+        : undefined;
+    }
+    const elements = source as readonly VertexElement[];
+    const key = JSON.stringify([strides, elements.map(element => [
+      element.name, element.slot, element.type, element.size,
+      element.byteOffset, element.normalized, element.divisor,
+    ])]);
+    let layout = this.vertexLayouts.get(key);
+
+    if (!layout) {
+      layout = this.createVertexLayout(elements, strides);
+      this.vertexLayouts.set(key, layout);
+    }
+
+    return layout;
   }
 
   getWidth (): number {
     return 0;
   }
 
-  addFramebuffer (framebuffer: Framebuffer) {
+  addFramebuffer (framebuffer: GPUFramebuffer) {
     if (this.disposed) {
       return;
     }
     addItem(this.framebuffers, framebuffer);
   }
 
-  removeFramebuffer (framebuffer: Framebuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.framebuffers, framebuffer);
-  }
-
-  addRenderbuffer (renderbuffer: Renderbuffer) {
-    if (this.disposed) {
-      return;
-    }
-    addItem(this.renderbuffers, renderbuffer);
-  }
-
-  removeRenderbuffer (renderbuffer: Renderbuffer) {
-    if (this.disposed) {
-      return;
-    }
-    removeItem(this.renderbuffers, renderbuffer);
-  }
-
   /** Restore attachment storage before rebuilding framebuffer attachments. */
   restoreGraphicsResources (): void {
-    this.renderbuffers.forEach(resource => resource.restore());
     this.engine.effectsObjectServer.restoreGraphicsResources();
     this.framebuffers.forEach(resource => resource.restore());
   }
@@ -98,22 +143,20 @@ export class RenderingDevice implements Disposable {
     // Resource deletion needs a live device and context. Disposing a framebuffer
     // can also dispose and unregister its attachments.
     this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
-    this.renderbuffers.slice().forEach(renderbuffer => renderbuffer.dispose());
     this.framebuffers = [];
-    this.renderbuffers = [];
+    for (const layout of this.vertexLayouts.values()) {
+      layout.dispose();
+    }
+    this.vertexLayouts.clear();
+    for (const resource of this.resources.slice()) {
+      resource.onDeviceDispose();
+    }
+    this.resources.length = 0;
     this._disposed = true;
   }
 
-  createDynamicVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
-    return this.createVertexBuffer(data, options);
-  }
-
-  createIndexBuffer (indices: IndicesArray, options: DataBufferOptions): DataBuffer {
-    throw new Error('The active rendering backend does not provide index buffers.');
-  }
-
   updateDynamicVertexBuffer (
-    vertexBuffer: DataBuffer,
+    vertexBuffer: GPUBuffer,
     data: DataArray,
     byteOffset = 0,
     byteLength?: number,
@@ -122,7 +165,7 @@ export class RenderingDevice implements Disposable {
   }
 
   updateDynamicIndexBuffer (
-    indexBuffer: DataBuffer,
+    indexBuffer: GPUBuffer,
     indices: IndicesArray,
     byteOffset = 0,
   ): void {
@@ -130,17 +173,11 @@ export class RenderingDevice implements Disposable {
   }
 
   /** @hide */
-  releaseBuffer (buffer: DataBuffer): boolean {
-    buffer.references--;
-
-    return buffer.references === 0;
-  }
-
-  /** @hide */
   bindBuffers (
-    vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | null,
+    vertexBuffers: readonly (GPUBuffer | null)[],
+    indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
+    vertexLayout?: GPUVertexLayout,
   ): void {
     throw new Error('The active rendering backend cannot bind geometry buffers.');
   }

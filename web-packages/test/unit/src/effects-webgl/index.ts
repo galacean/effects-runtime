@@ -1,11 +1,16 @@
 import './rendering-device-three.spec';
+import './gpu-resource.spec';
 import './display-server.spec';
 import './rendering-server.spec';
 import './gl-dispose.spec';
 import './gl-frame-buffer.spec';
 import './gl-context-lost.spec';
 import './geometry.spec';
-import './gl-data-buffer.spec';
+import './gpu-buffer.spec';
+import './gpu-program.spec';
+import './gpu-renderbuffer.spec';
+import './gpu-framebuffer.spec';
+import './gpu-vertex-layout.spec';
 import './gl-material.spec';
 import './gl-mesh.spec';
 import './gl-program.spec';

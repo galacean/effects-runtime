@@ -1,13 +1,11 @@
 import type {
-  GeometryMeshProps, FramebufferProps, RenderbufferProps,
-  TextureDataType, TextureSourceOptions, EngineOptions,
-
-  Renderer } from '@galacean/effects-core';
-import {
-  Framebuffer, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, RenderingDevice, logger,
+  GeometryMeshProps, TextureDataType, TextureSourceOptions, EngineOptions,
 } from '@galacean/effects-core';
 import {
-  GLFramebuffer, GLRenderbuffer, GLTexture, RenderingDeviceWebGL,
+  glContext, imageDataFromColor, Mesh, Texture, TextureSourceType, Engine, RenderingDevice, logger,
+} from '@galacean/effects-core';
+import {
+  RenderingDeviceWebGL,
 } from '@galacean/effects-webgl';
 
 export { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -17,7 +15,7 @@ export * from './player';
 export { isCanvasUsedByPlayer, getPlayerByCanvas, getActivePlayers } from './player-map';
 
 Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
-  return new GLTexture(engine, props);
+  return new Texture(engine, props);
 };
 
 Texture.createWithData = (
@@ -36,7 +34,7 @@ Texture.createWithData = (
     flipY = false,
     generateMipmap = false,
   } = options as TextureSourceOptions;
-  const tex = new GLTexture(
+  const tex = new Texture(
     engine,
     {
       data,
@@ -57,14 +55,6 @@ Texture.createWithData = (
 
 Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new Mesh(engine, props);
-};
-
-Renderbuffer.create = (props: RenderbufferProps) => {
-  return new GLRenderbuffer(props);
-};
-
-Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
-  return new GLFramebuffer(props, renderer);
 };
 
 RenderingDevice.create = engine => new RenderingDeviceWebGL(engine);

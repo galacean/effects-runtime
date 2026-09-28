@@ -82,15 +82,18 @@ describe('core/plugins/particle/test', function () {
     const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry();
     const indexData = geometry.getIndexData();
 
-    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getAttributeData('aPos')).to.be.an.instanceOf(Float32Array).with.lengthOf(4 * 12 * 10);
     expect(indexData).to.be.an.instanceOf(Uint16Array).with.lengthOf(6 * 10);
+    const positionData = geometry.getAttributeData('aPos');
+
+    expect(geometry.getAttributeData('aVel')).equals(positionData);
 
     p1Content.reset();
     expect(geometry.getDrawCount()).to.equal(0);
-    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getAttributeData('aPos')).equals(positionData);
     expect(geometry.getIndexData()).to.equal(indexData);
     p1Content.simulate(1);
-    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getAttributeData('aPos')).equals(positionData);
     expect(geometry.getIndexData()).to.equal(indexData);
   });
 

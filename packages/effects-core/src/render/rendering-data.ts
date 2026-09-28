@@ -5,7 +5,7 @@ import type { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Camera } from '../camera';
 import type { PostProcessVolume } from '../components';
 import type { Texture } from '../texture';
-import type { Framebuffer } from './framebuffer';
+import type { GPUFramebuffer } from './gpu-framebuffer';
 import { RenderList } from './scene-rendering';
 import { ContextContainer } from './context-container';
 import { ResourceData } from './resource-data';
@@ -13,7 +13,7 @@ import { ResourceData } from './resource-data';
 /** Inputs for one scene render. The caller retains ownership of the target. */
 export interface RenderOptions {
   camera: Camera,
-  target?: Framebuffer | null,
+  target?: GPUFramebuffer | null,
   postProcessingEnabled?: boolean,
   globalVolume?: PostProcessVolume,
 }
