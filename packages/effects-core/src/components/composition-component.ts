@@ -100,10 +100,12 @@ export class CompositionComponent extends Component {
       for (const masterTrack of this._timelineInstance.masterTrackInstances) {
         const boundObject = masterTrack.boundObject;
 
-        if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
+        if (boundObject instanceof VFXItem) {
           const nestedComposition = boundObject.getComponent(CompositionComponent);
 
-          this.nestedCompositions.push(nestedComposition);
+          if (nestedComposition) {
+            this.nestedCompositions.push(nestedComposition);
+          }
         }
       }
     }
@@ -336,7 +338,8 @@ export class CompositionComponent extends Component {
     for (const child of item.children) {
       result.push(child);
 
-      if (!VFXItem.isComposition(child)) {
+      // 预合成元素内部的渲染顺序由其自身的 CompositionComponent 分配
+      if (!child.getComponent(CompositionComponent)) {
         this.collectChildren(child, result);
       }
     }

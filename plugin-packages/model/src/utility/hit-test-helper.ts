@@ -2,7 +2,6 @@ import type { Composition, Region, spec } from '@galacean/effects';
 import type { Ray, Matrix4 } from '../runtime/math';
 import { Vector3 } from '../runtime/math';
 import type { ModelItemBounding, ModelItemBoundingBox } from '../index';
-import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import { ModelMeshComponent } from '../plugin/model-item';
 
 // 射线与带旋转的包围盒求交
@@ -236,17 +235,14 @@ function CompositionHitTest (composition: Composition, x: number, y: number): Re
  */
 function ToggleItemBounding (composition: Composition, itemId: string) {
   composition.items?.forEach(item => {
-    if (item.type === VFX_ITEM_TYPE_3D) {
-      const meshComponent = item.getComponent(ModelMeshComponent);
+    // content 在组件 onStart 时创建，未开始前跳过
+    const mesh = item.getComponent(ModelMeshComponent)?.content;
 
-      if (meshComponent) {
-        const mesh = meshComponent.content;
-
-        if (item.id === itemId) {
-          mesh.visBoundingBox = true;
-        } else {
-          mesh.visBoundingBox = false;
-        }
+    if (mesh) {
+      if (item.id === itemId) {
+        mesh.visBoundingBox = true;
+      } else {
+        mesh.visBoundingBox = false;
       }
     }
   });
