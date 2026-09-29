@@ -47,7 +47,6 @@ export * from './shape';
 export * from './template-image';
 export * from './texture';
 export * from './ticker';
-export * from './tags';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
