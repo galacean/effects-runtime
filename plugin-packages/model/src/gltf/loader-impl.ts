@@ -186,11 +186,6 @@ export class LoaderImpl implements Loader {
     });
 
     this.items.push(...gltfResource.scenes[0].vfxItemData);
-    this.items.forEach(item => {
-      if (item.type === 'root' as spec.ItemType) {
-        item.type = 'ECS' as spec.ItemType;
-      }
-    });
 
     return this.getLoadResult();
   }

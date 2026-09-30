@@ -5,7 +5,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
-import { EffectComponent, RendererComponent } from './components';
+import { CompositionComponent, EffectComponent, RendererComponent } from './components';
 import type { Composition, CompositionHitTestOptions } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
@@ -664,8 +664,8 @@ export class VFXItem extends EffectsObject implements Disposable {
           }
         } else if (hitParams.type === HitTestType.box) {
           const { center, size } = hitParams;
-          const boxMin = center.clone().addScaledVector(size, 0.5);
-          const boxMax = center.clone().addScaledVector(size, -0.5);
+          const boxMin = center.clone().addScaledVector(size, -0.5);
+          const boxMax = center.clone().addScaledVector(size, 0.5);
 
           if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
             success = true;
@@ -724,8 +724,8 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
 
-    // 3. composition 元素：子元素命中时，将自身也加入结果（根元素除外）
-    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.sceneRoot) {
+    // 3. 预合成元素：子元素命中时，将自身也加入结果（根元素除外）
+    if (this.getComponent(CompositionComponent) && hitTestSuccess && this !== this.composition?.sceneRoot) {
       regions.push({
         id: this.getInstanceId(),
         name: this.name,
@@ -964,14 +964,18 @@ export class VFXItem extends EffectsObject implements Disposable {
       duration = 0, visible = true,
     } = data;
 
+    // type 仅作为元数据赋给实例属性，保留给编辑器和用户代码使用，运行时不再读取
     this.type = data.type;
     this.props = data;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.parentId = parentId;
     this.components.length = 0;
 
-    if (VFXItem.isComposition(this)) {
-      const refId = (this.definition as spec.CompositionItem).content.options.refId;
+    // 预合成元素由结构特征判定（顶层 refId），不依赖 type 字段
+    // 存量数据由 version38Migration 将 content.options.refId 提升到顶层
+    const refId = (data as spec.VFXItemData & { refId?: string }).refId;
+
+    if (refId !== undefined) {
       const compositionData = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
       if (!compositionData) {
@@ -992,10 +996,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-
-    if (!data.content) {
-      data.content = { options: {} };
-    }
 
     if (duration < 0) {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);

@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import { ItemType, DataType } from '@galacean/effects-specification';
+import { DataType } from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
@@ -114,21 +114,19 @@ export class SceneServer extends EngineServer {
     variables: spec.TemplateVariables = {},
   ) {
     scene.jsonScene.items.forEach(item => {
-      if (item.type === ItemType.text || item.type === ItemType.richtext) {
-        const textVariable = variables[item.name] as string;
+      const textVariable = variables[item.name] as string;
 
-        if (textVariable === undefined || textVariable === null) {
-          return;
-        }
-
-        item.components.forEach(({ id }) => {
-          const componentData = this.engine.assetServer.findEffectsObjectData(id) as spec.TextComponentData;
-
-          if (componentData?.dataType === DataType.TextComponent || componentData?.dataType === DataType.RichTextComponent) {
-            componentData.options.text = textVariable;
-          }
-        });
+      if (textVariable === undefined || textVariable === null) {
+        return;
       }
+
+      item.components?.forEach(({ id }) => {
+        const componentData = this.engine.assetServer.findEffectsObjectData(id) as spec.TextComponentData;
+
+        if (componentData?.dataType === DataType.TextComponent || componentData?.dataType === DataType.RichTextComponent) {
+          componentData.options.text = textVariable;
+        }
+      });
     });
   }
 

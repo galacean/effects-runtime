@@ -8,7 +8,6 @@ import type {
   ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
   ModelMeshComponentData, ModelSkyboxComponentData, AnimationComponentData,
 } from '../index';
-import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager, Euler, Ray, Vector2 } from '../runtime';
 import { PCamera, PLight, PMesh, PSkybox, Vector3 } from '../runtime';
 import { RayIntersectsBoxWithRotation } from '../utility';
@@ -61,7 +60,6 @@ export class ModelMeshComponent extends RendererComponent {
   override onStart (): void {
     this.sceneManager = getSceneManager(this);
     this.createContent();
-    this.item.type = VFX_ITEM_TYPE_3D;
     this.priority = this.item.renderOrder;
     this.sceneManager?.addItem(this.content);
     if (this.item.parentId && this.item.parent) {
@@ -295,7 +293,6 @@ export class ModelSkyboxComponent extends RendererComponent {
    */
   override onStart (): void {
     this.createContent();
-    this.item.type = VFX_ITEM_TYPE_3D;
     this.priority = this.item.renderOrder;
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
@@ -401,7 +398,6 @@ export class ModelLightComponent extends Behaviour {
    */
   override onStart (): void {
     this.createContent();
-    this.item.type = VFX_ITEM_TYPE_3D;
     const scene = getSceneManager(this);
 
     scene?.addItem(this.content);
@@ -491,7 +487,6 @@ export class ModelCameraComponent extends Behaviour {
    */
   override onStart (): void {
     this.createContent();
-    this.item.type = VFX_ITEM_TYPE_3D;
     const scene = getSceneManager(this);
 
     scene?.addItem(this.content);
@@ -597,7 +592,6 @@ export class AnimationComponent extends Behaviour {
    */
   override onStart (): void {
     this.elapsedTime = 0;
-    this.item.type = VFX_ITEM_TYPE_3D;
   }
 
   /**

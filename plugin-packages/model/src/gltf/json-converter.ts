@@ -194,12 +194,6 @@ export class JSONConverter {
     newScene.compositionId = oldScene.compositionId;
     newScene.compositions = oldScene.compositions;
 
-    newScene.items.forEach(item => {
-      if (item.type === 'root' as spec.ItemType) {
-        item.type = 'ECS' as spec.ItemType;
-      }
-    });
-
     //@ts-expect-error
     newScene.compositions[0].items = newScene.items.map(item => {
       return { id: item.id } as spec.DataPath;
@@ -377,8 +371,7 @@ export class JSONConverter {
         parentId: treeItem.id,
         name: node.name ?? `node${index}`,
         duration: treeItem.duration,
-        // @ts-expect-error
-        type: 'ECS',
+        type: spec.ItemType.tree,
         dataType: spec.DataType.VFXItemData,
         visible: treeItem.visible,
         endBehavior: treeItem.endBehavior,

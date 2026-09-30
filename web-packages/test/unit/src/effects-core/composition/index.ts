@@ -1,5 +1,6 @@
 import './camera.spec';
 import './comp-vfx-item.spec';
+import './composition-component.spec';
 import './composition.spec';
 import './graph.spec';
 // import './load-tex.spec';

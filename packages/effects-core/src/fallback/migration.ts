@@ -844,6 +844,17 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
  * 粒子自身的生命周期曲线仍由 ParticleSystem 消费。
  */
 export function version38Migration (json: JSONScene): JSONScene {
+  // 预合成引用 refId 从 item.content.options 提升到 item 顶层，
+  // spec 字段落地后由编辑器直接产出顶层 refId
+  for (const item of json.items) {
+    const content = item.content as { options?: { refId?: string } } | undefined;
+
+    if (content?.options?.refId !== undefined) {
+      (item as spec.VFXItemData & { refId?: string }).refId = content.options.refId;
+      delete content.options.refId;
+    }
+  }
+
   json.miscs ??= [];
   const assets = new Map(json.miscs.map(asset => [asset.id, asset]));
   const items = new Map(json.items.map(item => [item.id, item]));

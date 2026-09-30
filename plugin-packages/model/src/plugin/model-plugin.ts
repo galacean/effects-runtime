@@ -7,7 +7,6 @@ import {
   CompositionCache, PTransform, PSceneManager, PCoordinate, PBRShaderGUID,
   UnlitShaderGUID, DEG2RAD, Matrix4, Vector3,
 } from '../runtime';
-import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent, ModelLightComponent, ModelMeshComponent } from './model-item';
 import { fetchPBRShaderCode, fetchUnlitShaderCode, PluginHelper } from '../utility';
 
@@ -185,20 +184,18 @@ export class ModelPluginComponent extends Behaviour {
       // 更新相机的位置，主要是composition的camera数据，以及camera item数据
       composition.camera.position = position;
       composition.items?.forEach(item => {
-        if (item.type === VFX_ITEM_TYPE_3D) {
-          const component = item.getComponent(ModelCameraComponent);
+        const component = item.getComponent(ModelCameraComponent);
 
-          if (component?.content) {
-            const worldMatrix = item.transform.parentTransform?.getWorldMatrix() || Matrix4.IDENTITY.clone();
-            const invWorldMatrix = worldMatrix.invert();
-            const newPosition = invWorldMatrix.transformPoint(position);
+        if (component?.content) {
+          const worldMatrix = item.transform.parentTransform?.getWorldMatrix() || Matrix4.IDENTITY.clone();
+          const invWorldMatrix = worldMatrix.invert();
+          const newPosition = invWorldMatrix.transformPoint(position);
 
-            component.setTransform(newPosition);
+          component.setTransform(newPosition);
 
-            // 正式版本不会走到这个流程，只在测试时使用
-            console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}].`);
-            console.info(`Update camera position [${newPosition.toArray()}].`);
-          }
+          // 正式版本不会走到这个流程，只在测试时使用
+          console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}].`);
+          console.info(`Update camera position [${newPosition.toArray()}].`);
         }
       });
     }

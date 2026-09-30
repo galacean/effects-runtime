@@ -111,7 +111,10 @@ export class AssetServer extends EngineServer {
     for (const vfxItemData of items) {
       if (!passRenderLevel(vfxItemData.renderLevel, scene.renderLevel)) {
         vfxItemData.components = [];
+        // type 仅作为降级标记保留给用户代码（isNull）使用，运行时行为由清空组件决定
         vfxItemData.type = spec.ItemType.null;
+        // 清除预合成引用，降级元素不再实例化预合成（预合成由顶层 refId 结构判定）
+        delete (vfxItemData as { refId?: string }).refId;
       }
       this.addEffectsObjectData(vfxItemData);
     }

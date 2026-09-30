@@ -1,6 +1,5 @@
 import type { Player } from '@galacean/effects';
 import type { PMesh } from '../runtime/mesh';
-import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import { PObjectType } from '../runtime/common';
 import { ModelMeshComponent } from '../plugin/model-item';
 
@@ -112,12 +111,11 @@ export function getPMeshList (player: Player) {
   const composition = player.getCompositions()[0];
 
   composition?.items.forEach(item => {
-    if (item.type === VFX_ITEM_TYPE_3D) {
-      const meshComponent = item.getComponent(ModelMeshComponent);
+    const meshComponent = item.getComponent(ModelMeshComponent);
 
-      if (meshComponent?.content.type === PObjectType.mesh) {
-        meshList.push(meshComponent.content);
-      }
+    // content 在组件 onStart 时创建，未开始前跳过
+    if (meshComponent?.content?.type === PObjectType.mesh) {
+      meshList.push(meshComponent.content);
     }
   });
 

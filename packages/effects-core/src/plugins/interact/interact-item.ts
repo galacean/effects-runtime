@@ -172,16 +172,16 @@ export class InteractComponent extends RendererComponent {
     // Trigger messageBegin when item enter
     if (this.lastTime <= this.item.time) {
       if (this.item.time >= 0 && this.lastTime < 0) {
-        const options = this.item.props.content.options as spec.DragInteractOption;
+        const { type } = (this.interactData?.options ?? {}) as spec.DragInteractOption;
 
-        this.item.composition?.addInteractiveItem(this.item, options.type);
+        this.item.composition?.addInteractiveItem(this.item, type);
       }
     } else {
       // Loop trigger, do not trigger when reverse playback
       if (this.item.time >= 0 && dt > 0) {
-        const options = this.item.props.content.options as spec.DragInteractOption;
+        const { type } = (this.interactData?.options ?? {}) as spec.DragInteractOption;
 
-        this.item.composition?.addInteractiveItem(this.item, options.type);
+        this.item.composition?.addInteractiveItem(this.item, type);
       }
     }
 
