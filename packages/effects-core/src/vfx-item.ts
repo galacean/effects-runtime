@@ -971,8 +971,9 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.components.length = 0;
 
-    // 预合成元素由结构特征判定（content 中带有合成引用 id），不依赖 type 字段
-    const refId = (this.definition as spec.CompositionItem).content?.options?.refId;
+    // 预合成元素由结构特征判定（顶层 refId），不依赖 type 字段
+    // 存量数据由 version38Migration 将 content.options.refId 提升到顶层
+    const refId = (data as spec.VFXItemData & { refId?: string }).refId;
 
     if (refId !== undefined) {
       const compositionData = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData;
@@ -995,10 +996,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-
-    if (!data.content) {
-      data.content = { options: {} };
-    }
 
     if (duration < 0) {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
