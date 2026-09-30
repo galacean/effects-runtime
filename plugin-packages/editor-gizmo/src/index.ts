@@ -1,18 +1,11 @@
 import * as EFFECTS from '@galacean/effects';
 import { logger, registerPlugin } from '@galacean/effects';
-import { EditorGizmoPlugin } from './gizmo-loader';
-import { GizmoSubType } from './define';
-import { GeometryType, createGeometry } from './geometry';
+import { EditorGizmoPlugin } from './3d/gizmo-loader';
 
 registerPlugin('editor-gizmo', EditorGizmoPlugin);
 
-export { DirectionLightData } from './geometry/direction-light';
-export {
-  GizmoSubType,
-  GeometryType,
-  createGeometry,
-};
-export * from './gizmo-component';
+export * from './2d';
+export * from './3d';
 
 /**
  * 插件版本号

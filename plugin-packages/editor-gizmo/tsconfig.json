@@ -12,6 +12,15 @@
   "references": [
     {
       "path": "../../packages/effects"
+    },
+    {
+      "path": "../gui"
+    },
+    {
+      "path": "../multimedia"
+    },
+    {
+      "path": "../rich-text"
     }
   ]
 }
