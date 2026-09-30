@@ -318,6 +318,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-editor-gizmo':
+        specifier: workspace:*
+        version: link:../../plugin-packages/editor-gizmo
       '@galacean/effects-plugin-gui':
         specifier: workspace:*
         version: link:../../plugin-packages/gui

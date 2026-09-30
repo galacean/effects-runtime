@@ -167,7 +167,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
   });
 
   describe('ItemCreateGizmo text creation', () => {
-    it('quick horizontal movement remains a click-created text item', () => {
+    it('commits the final width of a quick horizontal drag without waiting for the preview delay', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
@@ -177,13 +177,13 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       now = 100;
       gizmo.onMouseDrag(mouseMotion(200, 300));
       expect(starts).to.have.lengthOf(0);
-      gizmo.onMouseUp(mouseButton(200, 300, false));
+      gizmo.onMouseUp(mouseButton(220, 300, false));
 
-      expect(commits[0]).to.deep.include({
-        type: ItemCreateType.TEXT,
-        position: [100, 120],
-      });
-      expect(commits[0].info).to.equal(undefined);
+      expect(starts).to.have.lengthOf(1);
+      expect(commits).to.have.lengthOf(1);
+      expect(commits[0]).to.have.deep.nested.property('position', [160, 120]);
+      expect(commits[0]).to.have.deep.nested.property('info.width', 120);
+      expect(commits[0].id).to.equal(starts[0].id);
     });
 
     it('creates fixed-width text after a delayed horizontal drag and ignores vertical distance', () => {

@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
           'compressed': resolve(__dirname, 'html/compressed.html'),
           'context-lost-restore': resolve(__dirname, 'html/context-lost-restore.html'),
           'control': resolve(__dirname, 'html/control.html'),
+          'gizmo-2d': resolve(__dirname, 'html/gizmo-2d.html'),
           'dashboard': resolve(__dirname, 'html/dashboard.html'),
           'dynamic-image': resolve(__dirname, 'html/dynamic-image.html'),
           'dynamic-video': resolve(__dirname, 'html/dynamic-video.html'),

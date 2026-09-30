@@ -185,6 +185,11 @@ export class ItemCreateGizmo extends Gizmo {
       return;
     }
 
+    // 松开时采用最终水平距离，快速拖动也保留宽度；预览仍使用时间阈值。
+    if (this._createType === ItemCreateType.TEXT) {
+      this.updateTextDrag(event, true);
+    }
+
     // 步骤 2：优先提交已开始的拖拽创建。
     const dragCreateInfo = this.getCurrentDragCreateInfo();
 
@@ -444,10 +449,11 @@ export class ItemCreateGizmo extends Gizmo {
   }
 
   /**
-   * 超过时间和水平距离阈值后更新固定宽度文本预览。
+   * 超过水平距离阈值后更新固定宽度文本；预览另外等待时间阈值。
    * @param event 鼠标拖拽事件。
+   * @param committing 是否正在松开提交，此时不等待预览时间阈值。
    */
-  private updateTextDrag (event: InputEventMouseMotion): void {
+  private updateTextDrag (event: InputEventMouseMotion | InputEventMouseButton, committing = false): void {
     if (!this.dragStartPoint || !this.dragStartViewPoint) {
       return;
     }
@@ -457,7 +463,7 @@ export class ItemCreateGizmo extends Gizmo {
 
     if (!this.isFixedWidthText) {
       if (
-        Date.now() - this.pressStartedAt < TEXT_FIXED_WIDTH_DELAY_MS
+        (!committing && Date.now() - this.pressStartedAt < TEXT_FIXED_WIDTH_DELAY_MS)
         || horizontalDistance <= TEXT_FIXED_WIDTH_DRAG_DISTANCE_PX
       ) {
         return;
@@ -572,7 +578,7 @@ export class ItemCreateGizmo extends Gizmo {
    * @param event 鼠标拖拽事件。
    * @returns 当前视口位置。
    */
-  private getCurrentViewPoint (event: InputEventMouseMotion): Vector2 {
+  private getCurrentViewPoint (event: InputEventMouseMotion | InputEventMouseButton): Vector2 {
     const shift = new Vector2(
       event.position.x - this.dragStartPoint!.x,
       event.position.y - this.dragStartPoint!.y,
