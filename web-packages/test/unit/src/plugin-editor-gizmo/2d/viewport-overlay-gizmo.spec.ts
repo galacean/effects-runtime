@@ -27,9 +27,7 @@ describe('plugin-editor-gizmo/viewport-overlay-gizmo', () => {
     };
     const engine = {
       canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-      compositions: [composition],
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+      sceneServer: { compositions: [composition] },
     } as unknown as Engine;
     const owner = { getEngine: () => engine } as GizmoOwner;
 
@@ -72,9 +70,7 @@ describe('plugin-editor-gizmo/viewport-overlay-gizmo', () => {
       };
       const engine = {
         canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-        compositions: [composition],
-        getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+        sceneServer: { compositions: [composition] },
       } as unknown as Engine;
       const gizmo = new ViewportOverlayGizmo({ getEngine: () => engine } as GizmoOwner);
 

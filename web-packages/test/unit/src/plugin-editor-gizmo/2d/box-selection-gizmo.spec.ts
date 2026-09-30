@@ -1,7 +1,7 @@
 import { restoreTestState, getSpyCalls } from '../helpers/spies';
 import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math, type InputEventMouse, SceneServer } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math, type InputEventMouse } from '@galacean/effects';
 import { spec, type Engine, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 
@@ -78,11 +78,9 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       }),
     } as unknown as Selection;
     const engine = {
-      compositions: [{ items: [] }],
+      sceneServer: { compositions: [{ items: [] }] },
       // getContainerSize 直读 engine.canvas.parentElement 的 offsetWidth/Height。
       canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
     const configs = new ConfigManager();
     const frames = new FrameManager({} as unknown as Engine);
@@ -196,7 +194,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
         getInstanceId: () => 'item-1',
       } as unknown as VFXItem;
 
-      engine.getServer(SceneServer).compositions[0].items.push(item);
+      engine.sceneServer.compositions[0].items.push(item);
       let transform = getBoxTransform([
         new Vector2(20, 20),
         new Vector2(110, 20),
@@ -259,7 +257,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       ;(child as VFXItem & { parent?: VFXItem }).parent = compositionChild;
 
       // 模拟 Effects runtime 的 composition.items：容器与后代可能已经全部扁平暴露。
-      engine.getServer(SceneServer).compositions[0].items.push(effects, compositionChild, child);
+      engine.sceneServer.compositions[0].items.push(effects, compositionChild, child);
       const viewTransform = getBoxTransform([
         new Vector2(20, 20),
         new Vector2(80, 20),
@@ -305,7 +303,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
 
     ;(compositionChild as VFXItem & { parent?: VFXItem }).parent = effects
       ;(child as VFXItem & { parent?: VFXItem }).parent = compositionChild;
-      engine.getServer(SceneServer).compositions[0].items.push(effects, compositionChild, child);
+      engine.sceneServer.compositions[0].items.push(effects, compositionChild, child);
       selection.resolveMarqueeSelectableItem = chai.spy((item: VFXItem) => (
         item === child ? child : undefined
       ));
@@ -356,7 +354,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       ;(child as VFXItem & { parent?: VFXItem }).parent = compositionChild;
 
       // Composition.items 实际返回 sceneRoot.getDescendants()，Frame 与后代会同时出现。
-      engine.getServer(SceneServer).compositions[0].items.push(frame, compositionChild, child);
+      engine.sceneServer.compositions[0].items.push(frame, compositionChild, child);
       let frameBox = new Box2(new Vector2(20, 20), new Vector2(180, 180));
       let childBox = new Box2(new Vector2(40, 40), new Vector2(80, 80));
 

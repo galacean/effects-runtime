@@ -97,9 +97,7 @@ function createGizmo (
   const engine = {
     // getContainerSize 直读 engine.canvas.parentElement 的 offsetWidth/Height（与原按 canvas 取值对齐 = 800/600）。
     canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
-    compositions: [],
-    getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+    sceneServer: { compositions: [] },
   } as unknown as Engine;
   const configs = new ConfigManager();
   const frames = new FrameManager({} as unknown as Engine);

@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { type Engine, type InputEvent, type InputEventKey, type InputEventMouse, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import { Control, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import { cursorMap, loadCursorIcons } from './cursor-icons';
@@ -851,7 +850,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     if (!itemId) {
       return;
     }
-    const item = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], itemId);
+    const item = getPlayerItemById(this.engine.sceneServer.compositions[0], itemId);
     const transform = item ? getItemViewTransform(item, GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!)) : undefined;
 
     if (!transform) {

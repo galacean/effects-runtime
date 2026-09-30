@@ -36,9 +36,7 @@ function createEngine (): EngineFixture {
   };
   const engine = {
     canvas: { parentElement: container },
-    compositions: [{ camera }],
-    getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+    sceneServer: { compositions: [{ camera }] },
   } as unknown as Engine;
 
   return { engine, getMatrix: () => matrix, setViewportMatrix };

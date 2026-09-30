@@ -55,9 +55,7 @@ function frame (
 function setup (frameInfos: FrameInfo[], items: TestItem[]): GizmoOwner {
   const engine = {
     canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-    compositions: [{ items }],
-    getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+    sceneServer: { compositions: [{ items }] },
   } as unknown as Engine;
   const frames = {
     updateViewBoxes: chai.spy(),

@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type { VFXItem } from '@galacean/effects';
 import { MouseButton, MouseButtonMask, spec, TextComponent, Texture, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
@@ -252,7 +251,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
   /** 取当前视口矩阵的水平缩放系数。 */
   get viewScale (): number {
-    const viewportMatrix = this._owner.getEngine().getServer(SceneServer).compositions[0].camera.getViewportMatrix();
+    const viewportMatrix = this._owner.getEngine().sceneServer.compositions[0].camera.getViewportMatrix();
     const scale = new Vector3();
 
     viewportMatrix.decompose(new Vector3(), new Quaternion(), scale);
@@ -396,7 +395,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       && (this.activeType === TransformType.SCALE || this.activeType === TransformType.WIDTH_SCALE)
     ) {
       const containerSize = GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!);
-      const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+      const composition = this._owner.getEngine().sceneServer.compositions[0];
 
       this._owner.getSnapManager().cacheSnapTargetsForSelection(
         composition?.items ?? [],
@@ -1563,7 +1562,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         );
         this.setResizePosition(session, resize.totalTranslation);
 
-        const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+        const composition = this._owner.getEngine().sceneServer.compositions[0];
 
         composition?.gotoAndStop(composition.time);
 
@@ -1591,7 +1590,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       );
       this.setResizePosition(session, resize.totalTranslation);
 
-      const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+      const composition = this._owner.getEngine().sceneServer.compositions[0];
 
       composition?.gotoAndStop(composition.time);
 

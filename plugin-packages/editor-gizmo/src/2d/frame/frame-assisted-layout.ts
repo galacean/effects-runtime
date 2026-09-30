@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { type Engine, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { GizmoOwner } from '../gizmo-owner';
@@ -223,7 +222,7 @@ export class AssistedLayout {
 
     // 3. 收集目标画板中其余可见兄弟元素的布局几何。
     const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
-    const composition = this.engine.getServer(SceneServer).compositions[0];
+    const composition = this.engine.sceneServer.compositions[0];
     const siblings = parentFrameInfo.children.reduce<AutoLayoutSibling[]>((result, childId) => {
       if (childId === draggedItemId) {
         return result;

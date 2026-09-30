@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import {
   EventEmitter,
   MouseButton,
@@ -406,7 +405,7 @@ export class ViewportNavigationController extends EventEmitter<ViewportNavigatio
   private hasViewport (): boolean {
     return Boolean(
       this.engine.canvas.parentElement
-      && this.engine.getServer(SceneServer).compositions[0]?.camera,
+      && this.engine.sceneServer.compositions[0]?.camera,
     );
   }
 

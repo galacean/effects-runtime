@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import type { GizmoTool } from '../gizmo-tool';
@@ -43,7 +42,7 @@ export class EffectsEditMode implements EditMode {
     const selection = this.owner.getSelection();
 
     selection.leaveEffectsEditScope();
-    if (getPlayerItemById(this.owner.getEngine().getServer(SceneServer).compositions[0], this.effectsItemId)) {
+    if (getPlayerItemById(this.owner.getEngine().sceneServer.compositions[0], this.effectsItemId)) {
       selection.commitSelectedItems([this.effectsItemId]);
     } else {
       selection.clearSelectedItems();

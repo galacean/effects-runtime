@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import {
   MouseButton,
   spec,
@@ -170,7 +169,7 @@ export class BoxSelectionGizmo extends Gizmo {
     const candidates: string[] = [];
 
     if (size.length() > 0) {
-      const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+      const composition = this._owner.getEngine().sceneServer.compositions[0];
       const selectableItems = new Map<string, VFXItem>();
 
       // GE Composition.items 已是 sceneRoot 的全量后代，不再额外递归 children。

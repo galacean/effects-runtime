@@ -10,10 +10,8 @@ describe('plugin-editor-gizmo/selection', () => {
 
   function makeSelection (): Selection {
     const engine = {
-      compositions: [],
+      sceneServer: { compositions: [] },
       canvas: { offsetWidth: 0, offsetHeight: 0, parentElement: null },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
 
     return new Selection(engine);
@@ -41,10 +39,8 @@ describe('plugin-editor-gizmo/selection', () => {
 
   function makeSelectionWithItems (items: VFXItem[]): Selection {
     const engine = {
-      compositions: [{ items }],
+      sceneServer: { compositions: [{ items }] },
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
 
     return new Selection(engine);

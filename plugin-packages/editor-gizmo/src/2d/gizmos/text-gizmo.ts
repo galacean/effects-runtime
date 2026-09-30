@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { spec, type InputEventMouseButton } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../gizmo';
@@ -72,7 +71,7 @@ export class TextGizmo extends Gizmo {
 
   /** 当前视口缩放。 */
   get viewScale (): number {
-    const viewportMatrix = this._owner.getEngine().getServer(SceneServer).compositions[0].camera.getViewportMatrix();
+    const viewportMatrix = this._owner.getEngine().sceneServer.compositions[0].camera.getViewportMatrix();
 
     return viewportMatrix.elements[0];
   }

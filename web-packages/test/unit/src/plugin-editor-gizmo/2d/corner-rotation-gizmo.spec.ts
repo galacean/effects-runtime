@@ -84,9 +84,7 @@ describe('plugin-editor-gizmo/corner-rotation-gizmo', () => {
     const loadingManager = new LoadingManager();
     const engine = {
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
-      compositions: [],
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+      sceneServer: { compositions: [] },
     } as unknown as Engine;
     const actionStart: TestSpy = chai.spy();
     const actionUpdate: TestSpy = chai.spy();

@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { Texture, FrameComponent, spec } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
@@ -68,7 +67,7 @@ export class ViewportOverlayGizmo extends Gizmo {
       return;
     }
     // 步骤 2：查找主合成蒙版元素。
-    const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const composition = this._owner.getEngine().sceneServer.compositions[0];
     const maskFrame = composition?.items.find(item =>
       item.type === spec.ItemType.null
       && item.getComponent(FrameComponent) !== undefined

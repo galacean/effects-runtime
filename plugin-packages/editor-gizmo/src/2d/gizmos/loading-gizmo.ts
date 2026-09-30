@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type { VFXItem } from '@galacean/effects';
 import { EffectComponent, Geometry, glContext, Material, spec } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
@@ -147,7 +146,7 @@ export class LoadingGizmo extends Gizmo {
       if (!loadingItem.tip?.text) {
         continue;
       }
-      const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], id);
+      const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
       const itemBox = item
         ? getItemViewBox(item, GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!))
         : new Box2();
@@ -297,7 +296,7 @@ export class LoadingGizmo extends Gizmo {
    * @param state 加载状态。
    */
   private createProjection (id: string, state: LoadingItemState): void {
-    const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], id);
+    const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
     const itemViewBox = item
       ? getItemViewBox(item, GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!))
       : new Box2();
@@ -323,7 +322,7 @@ export class LoadingGizmo extends Gizmo {
 
   /** @returns 当前视口的缩放、平移与尺寸。 */
   private getViewportParams (): { scale: number, translation: Vector2, width: number, height: number } {
-    const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const composition = this._owner.getEngine().sceneServer.compositions[0];
     const camera = composition?.camera;
 
     if (camera) {
@@ -358,7 +357,7 @@ export class LoadingGizmo extends Gizmo {
    */
   private createLoadingVFXItem () {
     // 步骤 1：创建加载动画对象与平面几何。
-    const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const composition = this._owner.getEngine().sceneServer.compositions[0];
     const loadingVFXItem = VFXItemFactory.createVFXItem(composition, null, 'LoadingVFXItem', EffectComponent);
 
     this._owner.getSelection().addIgnoreIds([loadingVFXItem.getInstanceId()]);
@@ -428,7 +427,7 @@ void main() {
    * @param loadingItem 对应的加载渲染投影。
    */
   private updateLoadingVFXItemTransform (id: string, loadingItem: { loadingBox: Box2, loadingVFXItem: VFXItem }): void {
-    const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], id);
+    const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
     const containerSize = GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!);
     const itemViewBox = item ? getItemViewBox(item, containerSize) : new Box2();
     const currentBox = getBoxByNormalizeBox(itemViewBox, loadingItem.loadingBox);

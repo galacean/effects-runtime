@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { EventEmitter, spec, TextComponent, type VFXItem } from '@galacean/effects';
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoOwner } from '../gizmo-owner';
@@ -178,7 +177,7 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
   private readonly handleInput = (event: Event): void => {
     const editingItem = this._editingItem;
     const textComponent = editingItem?.getComponent(TextComponent);
-    const composition = this.owner.getEngine()?.getServer(SceneServer).compositions[0];
+    const composition = this.owner.getEngine()?.sceneServer.compositions[0];
 
     if (!editingItem || !textComponent || !composition) {
       return;

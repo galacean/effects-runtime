@@ -89,10 +89,8 @@ describe('plugin-editor-gizmo/select-text-gizmo', () => {
     });
     document.body.appendChild(container);
     const engine = {
-      compositions: [composition],
+      sceneServer: { compositions: [composition] },
       canvas: { parentElement: container },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
     const resetEditMode = chai.spy();
     const setCursor = chai.spy(() => { inputOrder.push('cursor'); });

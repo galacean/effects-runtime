@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type {
   spec } from '@galacean/effects';
 import {
@@ -292,7 +291,7 @@ export class SpriteTextEditGizmo extends Gizmo {
     const currentPreSelected = this.interactionParam.preSelected;
     const entries = this.result
       .map((value, index) => {
-        const playerItem = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], value.id);
+        const playerItem = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], value.id);
 
         if (!playerItem) {
           return undefined;
@@ -388,7 +387,7 @@ export class SpriteTextEditGizmo extends Gizmo {
    * @returns 元素包围盒。
    */
   private getItemOriginBox (id: string): Box2 | undefined {
-    const playerItem = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], id);
+    const playerItem = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
 
     if (!playerItem) {
       return undefined;
@@ -408,7 +407,7 @@ export class SpriteTextEditGizmo extends Gizmo {
   private computePreSelected (mouse: Vector2): number {
     for (let i = 0; i < this.result.length; i++) {
       const textInfo = this.result[i];
-      const playerItem = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], textInfo.id);
+      const playerItem = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], textInfo.id);
 
       if (!playerItem) {
         continue;

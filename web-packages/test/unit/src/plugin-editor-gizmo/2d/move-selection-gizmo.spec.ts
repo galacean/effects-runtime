@@ -69,10 +69,8 @@ describe('plugin-editor-gizmo/move-selection-gizmo', () => {
       getInstanceId: () => 'selected',
     } as unknown as VFXItem;
     const engine = {
-      compositions: [{ items: [] }],
+      sceneServer: { compositions: [{ items: [] }] },
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
     const selection = {
       getSelectedIds: () => ['selected'],

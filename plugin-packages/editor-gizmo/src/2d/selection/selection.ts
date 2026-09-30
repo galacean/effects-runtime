@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { EventEmitter, type Engine, type Composition, type InputEventMouseButton, type Region, spec, type VFXItem, TextComponent, SpriteComponent, FrameComponent, addItem } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
@@ -144,7 +143,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
       return;
     }
 
-    const group = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], groupId);
+    const group = getPlayerItemById(this.engine.sceneServer.compositions[0], groupId);
 
     if (!group || !this.isSelectableGroup(group)) {
       throw new Error(`Selection.setFocusedGroup: Group with id ${groupId} does not exist`);
@@ -175,7 +174,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
   /** @returns 当前选中 ID 对应的有效 VFXItem。 */
   getSelectedPlayerItems (): VFXItem[] {
     return this._selectedIds
-      .map(id => getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id))
+      .map(id => getPlayerItemById(this.engine.sceneServer.compositions[0], id))
       .filter((item): item is VFXItem => !!item);
   }
 
@@ -310,7 +309,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!event.shiftPressed) {
       this._selectedIds = [];
     } else {
-      const parent = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], hitId)?.parent;
+      const parent = getPlayerItemById(this.engine.sceneServer.compositions[0], hitId)?.parent;
 
       if (parent) {
         this._selectedIds = this._selectedIds.filter(id => id !== parent.getInstanceId());
@@ -370,7 +369,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
    * @returns 按命中优先级排列的元素 ID
    */
   hitTest (point: Vector2): string[] {
-    const playerComposition = this.engine.getServer(SceneServer).compositions[0];
+    const playerComposition = this.engine.sceneServer.compositions[0];
 
     if (!playerComposition?.items) {
       return [];
@@ -385,7 +384,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
       console.warn(e);
     }
     this.refreshResultRegions(result);
-    const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id)?.type !== spec.ItemType.composition);
+    const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.sceneServer.compositions[0], id)?.type !== spec.ItemType.composition);
 
     return this.preSelectedFrameOutBound(point, selectedIds);
   }
@@ -528,7 +527,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!this._focusedGroupId) {
       return false;
     }
-    const group = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], this._focusedGroupId);
+    const group = getPlayerItemById(this.engine.sceneServer.compositions[0], this._focusedGroupId);
 
     if (!group) {
       return false;
@@ -583,7 +582,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!this._effectsEditItemId) {
       return false;
     }
-    const effectsItem = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], this._effectsEditItemId);
+    const effectsItem = getPlayerItemById(this.engine.sceneServer.compositions[0], this._effectsEditItemId);
 
     if (!effectsItem) {
       return false;
@@ -645,7 +644,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     const resultSelectedIds: string[] = [];
 
     selectedIds.forEach(id => {
-      const item = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id);
+      const item = getPlayerItemById(this.engine.sceneServer.compositions[0], id);
 
       if (!item) {
         return;
@@ -695,7 +694,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
   ): VFXItem | undefined {
     const effectsOwner = getEffectsPlayerItemOwner(item);
     const focusedGroup = this._focusedGroupId
-      ? getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], this._focusedGroupId)
+      ? getPlayerItemById(this.engine.sceneServer.compositions[0], this._focusedGroupId)
       : undefined;
     let match = this.isDirectlySelectable(item) ? item : undefined;
     let node: VFXItem | undefined = item;
@@ -731,7 +730,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (this.ignoreNames.length === 0) {
       return false;
     }
-    const item = getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id);
+    const item = getPlayerItemById(this.engine.sceneServer.compositions[0], id);
 
     return !!item && this.ignoreNames.includes(item.name);
   }
@@ -740,7 +739,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
   private getSelectedScopeIdSet (): Set<string> {
     const ids = new Set(this._selectedIds);
     const selectedItems = this._selectedIds
-      .map(id => getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id))
+      .map(id => getPlayerItemById(this.engine.sceneServer.compositions[0], id))
       .filter((item): item is VFXItem => !!item);
 
     for (const item of selectedItems) {
@@ -757,7 +756,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
    * @param hitTestResult 原始命中结果
    */
   private refreshResultRegions (hitTestResult: HitTestResult): void {
-    const playerComposition = this.engine.getServer(SceneServer).compositions[0];
+    const playerComposition = this.engine.sceneServer.compositions[0];
 
     if (!playerComposition || this._effectsEditItemId) {
       return;
@@ -860,7 +859,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
    * @returns 补充画板后的命中元素 ID
    */
   private preSelectedFrameOutBound (mouse: Vector2, currentSelectedIds: string[]): string[] {
-    const playerComposition = this.engine.getServer(SceneServer).compositions[0];
+    const playerComposition = this.engine.sceneServer.compositions[0];
 
     if (!playerComposition) {
       return currentSelectedIds;
@@ -903,7 +902,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     }
 
     const selectedItems = selectedIds
-      .map(id => getPlayerItemById(this.engine.getServer(SceneServer).compositions[0], id))
+      .map(id => getPlayerItemById(this.engine.sceneServer.compositions[0], id))
       .filter((item): item is VFXItem => !!item);
 
     if (selectedItems.length !== selectedIds.length) {
@@ -1016,7 +1015,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
       }
     };
 
-    collectItems(this.engine.getServer(SceneServer).compositions[0]?.items ?? []);
+    collectItems(this.engine.sceneServer.compositions[0]?.items ?? []);
 
     const acceptedIds: string[] = [];
     const acceptedIdSet = new Set<string>();

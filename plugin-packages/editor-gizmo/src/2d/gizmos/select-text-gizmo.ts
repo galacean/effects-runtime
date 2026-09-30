@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import {
   MouseButton,
   MouseButtonMask,
@@ -157,7 +156,7 @@ export class SelectTextGizmo extends Gizmo {
       return;
     }
 
-    const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], this._hoverTextId);
+    const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], this._hoverTextId);
 
     if (!this.isTextCandidate(item, true)) {
       this.clearHover();
@@ -173,7 +172,7 @@ export class SelectTextGizmo extends Gizmo {
       return;
     }
 
-    const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], this._hoverTextId);
+    const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], this._hoverTextId);
 
     if (!this.isTextCandidate(item, true)) {
       return;
@@ -231,7 +230,7 @@ export class SelectTextGizmo extends Gizmo {
         [-diagonal, -diagonal],
       ]
       : [[0, 0]];
-    const composition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const composition = this._owner.getEngine().sceneServer.compositions[0];
 
     for (const [x, y] of offsets) {
       const hitPoint = new Vector2(point.x + x, point.y + y);

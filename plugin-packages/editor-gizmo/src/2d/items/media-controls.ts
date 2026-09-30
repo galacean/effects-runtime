@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { CompositionComponent, type Engine, spec } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { getPlayerItemById } from './item-hierarchy';
@@ -52,7 +51,7 @@ export function pauseVideoComponent (videoComponent: VideoComponent): void {
  * @param id 视频元素 id
  */
 export function playVideoItem (engine: Engine, id: string) {
-  const playerItem = getPlayerItemById(engine.getServer(SceneServer).compositions[0], id);
+  const playerItem = getPlayerItemById(engine.sceneServer.compositions[0], id);
 
   if (playerItem?.type !== spec.ItemType.video) {
     return;
@@ -70,7 +69,7 @@ export function playVideoItem (engine: Engine, id: string) {
  * @param id 视频元素 id
  */
 export function pauseVideoItem (engine: Engine, id: string) {
-  const playerItem = getPlayerItemById(engine.getServer(SceneServer).compositions[0], id);
+  const playerItem = getPlayerItemById(engine.sceneServer.compositions[0], id);
 
   if (playerItem?.type !== spec.ItemType.video) {
     return;
@@ -88,7 +87,7 @@ export function pauseVideoItem (engine: Engine, id: string) {
  * @param id 特效元素 id
  */
 export function playEffectsItem (engine: Engine, id: string) {
-  const controlItem = getPlayerItemById(engine.getServer(SceneServer).compositions[0], id);
+  const controlItem = getPlayerItemById(engine.sceneServer.compositions[0], id);
   const compositionItem = controlItem?.children?.[0];
 
   if (compositionItem?.type !== spec.ItemType.composition) {
@@ -103,7 +102,7 @@ export function playEffectsItem (engine: Engine, id: string) {
  * @param id 特效元素 id
  */
 export function pauseEffectsItem (engine: Engine, id: string) {
-  const controlItem = getPlayerItemById(engine.getServer(SceneServer).compositions[0], id);
+  const controlItem = getPlayerItemById(engine.sceneServer.compositions[0], id);
   const compositionItem = controlItem?.children?.[0];
 
   if (compositionItem?.type !== spec.ItemType.composition) {

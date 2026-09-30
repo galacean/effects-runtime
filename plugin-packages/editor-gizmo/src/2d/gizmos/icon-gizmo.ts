@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { MouseButton, MouseButtonMask, type InputEventMouseButton, type InputEventMouseMotion, spec, Texture } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../gizmo';
@@ -121,7 +120,7 @@ export class IconGizmo extends Gizmo {
       return;
     }
     if (videoPlayResult) {
-      const playerItem = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], videoPlayResult.id);
+      const playerItem = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], videoPlayResult.id);
       let time = 0;
 
       if (playerItem?.type === spec.ItemType.video) {
@@ -222,7 +221,7 @@ export class IconGizmo extends Gizmo {
   /** 刷新视频播放与生成器图标的绘制结果。 */
   private refreshResults (): void {
     // 步骤 1：获取当前合成并重置绘制结果。
-    const playerComposition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const playerComposition = this._owner.getEngine().sceneServer.compositions[0];
 
     if (!playerComposition) {
       return;
@@ -236,7 +235,7 @@ export class IconGizmo extends Gizmo {
     const hoverVideoId = this.interactionParam.hoverVideoId;
 
     if (hoverVideoId) {
-      const playerItem = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], hoverVideoId);
+      const playerItem = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], hoverVideoId);
 
       if (playerItem) {
         const itemViewBox = getItemViewBox(
@@ -332,7 +331,7 @@ export class IconGizmo extends Gizmo {
    * @returns 命中视频对象的 ID。
    */
   private computeHoverVideoId (mouse: Vector2): string | undefined {
-    const playerComposition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const playerComposition = this._owner.getEngine().sceneServer.compositions[0];
 
     if (!playerComposition) {
       return undefined;

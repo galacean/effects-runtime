@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { type Engine } from '@galacean/effects';
 import { Matrix4, Vector2, Vector3 } from '../math';
 
@@ -11,7 +10,7 @@ export class GizmoViewportUtils {
    * @returns 视口缩放；无相机时返回 1
    */
   static getViewScale (engine: Engine): number {
-    const camera = engine.getServer(SceneServer).compositions[0]?.camera;
+    const camera = engine.sceneServer.compositions[0]?.camera;
 
     return camera ? camera.getViewportMatrix().elements[0] : 1;
   }
@@ -22,7 +21,7 @@ export class GizmoViewportUtils {
    * @returns 视口平移；无相机时返回零向量
    */
   static getViewportTranslation (engine: Engine): Vector2 {
-    const camera = engine.getServer(SceneServer).compositions[0]?.camera;
+    const camera = engine.sceneServer.compositions[0]?.camera;
 
     if (!camera) {
       return new Vector2();
@@ -38,7 +37,7 @@ export class GizmoViewportUtils {
    * @returns 相机信息；无相机时返回零位姿
    */
   static getCameraInfo (engine: Engine): { position: Vector3, matrix: Matrix4 } {
-    const camera = engine.getServer(SceneServer).compositions[0]?.camera;
+    const camera = engine.sceneServer.compositions[0]?.camera;
 
     if (!camera) {
       return { position: new Vector3(), matrix: new Matrix4() };

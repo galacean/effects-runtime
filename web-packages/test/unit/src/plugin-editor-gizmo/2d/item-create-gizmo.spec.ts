@@ -48,10 +48,8 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
     const updates: GizmoItemCreateInfo[] = [];
     const commits: GizmoItemCreateInfo[] = [];
     const engine = {
-      compositions: [{ items: [] }],
+      sceneServer: { compositions: [{ items: [] }] },
       canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
     const configs = new ConfigManager();
     const owner = {

@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { MouseButton, type InputEventMouseButton, type InputEventMouseMotion, FrameComponent, generateGUID, spec } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../gizmo';
@@ -303,7 +302,7 @@ export class ItemCreateGizmo extends Gizmo {
   refreshInteractiveChildrenBoxes () {
     // 步骤 1：获取当前合成并清空旧的候选包围盒。
     this.interactiveChildrenBoxes.clear();
-    const playerComposition = this._owner.getEngine().getServer(SceneServer).compositions[0];
+    const playerComposition = this._owner.getEngine().sceneServer.compositions[0];
 
     if (!playerComposition?.items.length) {
       return;

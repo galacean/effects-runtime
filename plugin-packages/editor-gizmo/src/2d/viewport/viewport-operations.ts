@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { Matrix4, Quaternion, Vector2, Vector3 } from '../math';
 
@@ -9,7 +8,7 @@ import { Matrix4, Quaternion, Vector2, Vector3 } from '../math';
  * @param center 缩放中心
  */
 export function zoomView (engine: Engine, zoom: number, center: Vector2 = new Vector2()) {
-  const composition = engine.getServer(SceneServer).compositions[0];
+  const composition = engine.sceneServer.compositions[0];
 
   if (!composition) {
     return;
@@ -46,7 +45,7 @@ export function zoomView (engine: Engine, zoom: number, center: Vector2 = new Ve
  * @param translation 位移值
  */
 export function panView (engine: Engine, translation: Vector2,) {
-  const composition = engine.getServer(SceneServer).compositions[0];
+  const composition = engine.sceneServer.compositions[0];
 
   if (!composition) {
     return;

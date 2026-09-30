@@ -2,7 +2,7 @@ import { InputEventKey, InputEventMouseButton, MouseButton, MouseButtonMask, typ
 import { restoreTestState, getSpyCalls, resetSpy } from '../helpers/spies';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
-import { CompositionComponent, SceneServer, Downloader, FrameComponent, InputEventMouseMotion, spec, TextComponent, type Composition, type Engine, type VFXItem } from '@galacean/effects';
+import { CompositionComponent, Downloader, FrameComponent, InputEventMouseMotion, spec, TextComponent, type Composition, type Engine, type VFXItem } from '@galacean/effects';
 import { GestureHandler } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gesture-handler';
 import { Control, MouseFilter } from '@galacean/effects-plugin-gui';
 
@@ -65,9 +65,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     // 即 GestureHandler.buildInteractionLayer 与 getContainerSize 所读的交互容器。本套用例不断言布局尺寸。
     const engine = {
       canvas,
-      compositions: [],
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+      sceneServer: { compositions: [] },
     } as unknown as Engine;
     const handler = new GestureHandler(engine);
 
@@ -101,7 +99,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
         ? component === VideoComponent ? videoComponent : undefined
         : component === FrameComponent ? {} : undefined,
     } as unknown as VFXItem;
-    const compositions = handler.getEngine().getServer(SceneServer).compositions;
+    const compositions = handler.getEngine().sceneServer.compositions;
 
     if (compositions.length === 0) {
       compositions.push({ items: [] } as unknown as Composition);
@@ -590,11 +588,11 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
       parentId: '',
       getInstanceId: () => 'effects',
       getComponent: (component: unknown) => component === FrameComponent ? {} : undefined,
-    } as unknown as VFXItem
+    } as unknown as VFXItem;
 
-    ;(handler.getEngine() as unknown as { compositions: { items: VFXItem[] }[] }).compositions = [{
+    handler.getEngine().sceneServer.compositions.push({
       items: [effectsItem],
-    }];
+    } as unknown as Composition);
     activateTool(handler, () => new MoveGizmoTool(handler));
     handler.getSelection().commitSelectedItems(['effects']);
 
@@ -1294,18 +1292,9 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
   }
 
   function ensureTestViewport (handler: GestureHandler): void {
-    const engine = handler.getEngine() as unknown as {
-      canvas: { parentElement: HTMLElement },
-      compositions: {
-        items: unknown[],
-        camera: {
-          getViewportMatrix (): Matrix4,
-          setViewportMatrix (matrix: Matrix4): void,
-        },
-      }[],
-    };
+    const engine = handler.getEngine();
 
-    if (engine.compositions.length > 0) {
+    if (engine.sceneServer.compositions.length > 0) {
       return;
     }
 
@@ -1315,15 +1304,15 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
     });
     let matrix = new Matrix4();
 
-    engine.compositions = [{
+    engine.sceneServer.compositions.push({
       items: [],
       camera: {
         getViewportMatrix: () => matrix,
-        setViewportMatrix: next => {
+        setViewportMatrix: (next: Matrix4) => {
           matrix = next;
         },
       },
-    }];
+    } as unknown as Composition);
   }
 
   function applyViewportChange (handler: GestureHandler): void {

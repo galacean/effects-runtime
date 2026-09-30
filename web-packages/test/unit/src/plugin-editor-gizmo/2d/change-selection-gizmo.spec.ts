@@ -99,10 +99,8 @@ describe('plugin-editor-gizmo/change-selection-gizmo', () => {
       children: [],
     }));
     const engine = {
-      compositions: [{ items }],
+      sceneServer: { compositions: [{ items }] },
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
     } as unknown as Engine;
     const loadingManager = new LoadingManager();
     const owner = {

@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import { type Vector2 } from '../math';
@@ -377,7 +376,7 @@ export class FrameManager {
     const containerSize = GizmoViewportUtils.getContainerSize(engine.canvas.parentElement!);
 
     for (const record of this.records.values()) {
-      const item = getPlayerItemById(engine.getServer(SceneServer).compositions[0], record.id);
+      const item = getPlayerItemById(engine.sceneServer.compositions[0], record.id);
 
       this.boxes.set(
         record.id,

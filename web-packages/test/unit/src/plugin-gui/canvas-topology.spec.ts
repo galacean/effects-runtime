@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import {
   Composition,
   CompositionComponent,
@@ -96,7 +95,7 @@ describe('plugin-gui/GUI topology', () => {
       }
 
       override onEngineDestroy (engine: Player['engine']): void {
-        expect(engine.getServer(SceneServer).compositions).length(1);
+        expect(engine.sceneServer.compositions).length(1);
         expect(engine.getServer(GUIServer).windowRoot.isDisposed).equals(false);
       }
     }
@@ -184,7 +183,7 @@ describe('plugin-gui/GUI topology', () => {
     first.sceneRoot.getComponent(UICanvas).order = 10;
     second.sceneRoot.getComponent(UICanvas).order = -5;
     engine.getServer(GUIServer).windowRoot.canvases.sortCanvases();
-    expect(engine.getServer(SceneServer).compositions).deep.equals([second, first]);
+    expect(engine.sceneServer.compositions).deep.equals([second, first]);
     expect(first.sceneRoot.getComponent(UICanvas).order).equals(10);
     expect(second.sceneRoot.getComponent(UICanvas).order).equals(-5);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children.indexOf(second.sceneRoot.getComponent(UICanvas).rootControl))
@@ -206,8 +205,8 @@ describe('plugin-gui/GUI topology', () => {
     expect(secondRoot.isDisposed).equals(true);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(firstRoot);
     expect(engine.getServer(GUIServer).windowRoot.canvases.children).not.includes(secondRoot);
-    expect(engine.getServer(SceneServer).compositions).not.includes(first);
-    expect(engine.getServer(SceneServer).compositions).not.includes(second);
+    expect(engine.sceneServer.compositions).not.includes(first);
+    expect(engine.sceneServer.compositions).not.includes(second);
   });
 
   it('injects the default canvas before later plugin creation hooks', () => {

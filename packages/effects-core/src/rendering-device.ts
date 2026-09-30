@@ -1,6 +1,5 @@
 import type { GPUTexture } from './texture/gpu-texture';
 import type { GPUResource } from './gpu-resource';
-import { SceneServer } from './scene-server';
 import type { Engine } from './engine';
 import type {
   DataArray, GPUBuffer, GPUProgram, FramebufferProps, GPUCapability, IndicesArray,
@@ -60,7 +59,7 @@ export class RenderingDevice implements Disposable {
         resource.releaseGPU();
       }
     }
-    engine.getServer(SceneServer).compositions.forEach(comp => comp.lost(e));
+    engine.sceneServer.compositions.forEach(comp => comp.lost(e));
     engine.emit('contextlost', { engine, e });
   }
 

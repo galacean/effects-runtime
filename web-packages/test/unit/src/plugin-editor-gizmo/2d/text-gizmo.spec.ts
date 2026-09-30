@@ -97,17 +97,17 @@ describe('plugin-editor-gizmo/text-gizmo', () => {
           removeChild: (node: Node) => document.body.removeChild(node),
         },
       },
-      compositions: [{
-        time: 0,
-        gotoAndStop: chai.spy(),
-        camera: {
-          getViewportMatrix: () => ({
-            elements: [viewScale, 0, 0, 0, 0, viewScale, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-          }),
-        },
-      }],
-      getServer (this: { compositions: unknown[] }) { return { compositions: this.compositions }; },
-
+      sceneServer: {
+        compositions: [{
+          time: 0,
+          gotoAndStop: chai.spy(),
+          camera: {
+            getViewportMatrix: () => ({
+              elements: [viewScale, 0, 0, 0, 0, viewScale, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            }),
+          },
+        }],
+      },
     } as unknown as Engine;
     const resetEditMode = chai.spy();
     const rebuildGizmos = chai.spy();

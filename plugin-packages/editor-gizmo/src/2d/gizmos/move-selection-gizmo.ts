@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import {
   MouseButton,
   type InputEventMouseButton,
@@ -277,7 +276,7 @@ export class MoveSelectionGizmo extends Gizmo {
     const engine = this._owner.getEngine();
 
     snapManager.cacheSnapTargetsForSelection(
-      engine.getServer(SceneServer).compositions[0]?.items ?? [],
+      engine.sceneServer.compositions[0]?.items ?? [],
       this.selectedItems,
       containerSize ?? GizmoViewportUtils.getContainerSize(engine.canvas.parentElement!),
     );

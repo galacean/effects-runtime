@@ -1,4 +1,3 @@
-import { SceneServer } from '@galacean/effects';
 import { Gizmo } from '../gizmo';
 import {
   MouseButton,
@@ -141,7 +140,7 @@ export class ChangeSelectionGizmo extends Gizmo {
     if (session.mode === 'deferred' && session.deferredTarget) {
       const releaseHit = selection.createHitSnapshot(releasePoint);
       const targetStillExists = !!getPlayerItemById(
-        this._owner.getEngine().getServer(SceneServer).compositions[0],
+        this._owner.getEngine().sceneServer.compositions[0],
         session.deferredTarget,
       );
 
@@ -157,7 +156,7 @@ export class ChangeSelectionGizmo extends Gizmo {
       const releaseHit = selection.createHitSnapshot(releasePoint);
       const drillTargetId = session.pressHit.drillTargetId;
       const targetStillExists = !!getPlayerItemById(
-        this._owner.getEngine().getServer(SceneServer).compositions[0],
+        this._owner.getEngine().sceneServer.compositions[0],
         drillTargetId,
       );
 
@@ -259,7 +258,7 @@ export class ChangeSelectionGizmo extends Gizmo {
     const selectedScopeIds = new Set([
       ...selectedIds,
       ...selectedIds.flatMap(id => {
-        const item = getPlayerItemById(this._owner.getEngine().getServer(SceneServer).compositions[0], id);
+        const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
 
         return item ? getItemChildren(item).map(child => child.getInstanceId()) : [];
       }),
