@@ -1,7 +1,6 @@
 import type { Composition } from './composition';
 import type { Engine } from './engine';
 import type { Scene, SceneLoadOptions } from './scene';
-import { SceneServer } from './scene-server';
 
 /**
  * @hidden
@@ -10,6 +9,6 @@ import { SceneServer } from './scene-server';
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
-    return engine.getServer(SceneServer).loadScene(scene, options);
+    return engine.sceneServer.loadScene(scene, options);
   }
 }

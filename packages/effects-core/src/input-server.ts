@@ -1,6 +1,5 @@
 import { effectsClass } from './decorators';
 import { EngineServer } from './engine-server';
-import { SceneServer } from './scene-server';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Composition } from './composition';
 import type { Engine } from './engine';
@@ -693,7 +692,7 @@ export class InputServer extends EngineServer implements Disposable {
   private onClick (event: TouchEventType): void {
     const hitResults: Region[] = [];
 
-    for (const composition of this.engine.getServer(SceneServer).compositions) {
+    for (const composition of this.engine.sceneServer.compositions) {
       hitResults.push(...composition.hitTest(event.x, event.y));
     }
 
@@ -731,7 +730,7 @@ export class InputServer extends EngineServer implements Disposable {
     let hitRegion: Region | null = null;
 
     if (!(type === PointerEventType.PointerMove && this.skipPointerMovePicking)) {
-      for (const composition of this.engine.getServer(SceneServer).compositions) {
+      for (const composition of this.engine.sceneServer.compositions) {
         const regions = composition.hitTest(event.x, event.y);
 
         if (regions.length > 0) {

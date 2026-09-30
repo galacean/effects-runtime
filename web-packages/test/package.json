@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",
+    "@galacean/effects-math": "1.2.1",
     "@galacean/effects-webgl": "workspace:*",
     "@galacean/effects-helper": "workspace:*",
     "@galacean/effects-threejs": "workspace:*",
@@ -14,6 +15,9 @@
     "@galacean/effects-plugin-model": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
     "@galacean/effects-plugin-dom-content": "workspace:*",
-    "@vvfx/resource-detection": "^0.10.0"
+    "@vvfx/resource-detection": "^0.10.0",
+    "@galacean/effects-plugin-editor-gizmo": "workspace:*",
+    "@galacean/effects-plugin-multimedia": "workspace:*",
+    "@galacean/effects-plugin-rich-text": "workspace:*"
   }
 }

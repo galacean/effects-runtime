@@ -209,13 +209,26 @@ importers:
         version: link:../../packages/effects
 
   plugin-packages/editor-gizmo:
+    dependencies:
+      '@galacean/effects-math':
+        specifier: 1.2.1
+        version: 1.2.1
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../gui
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../model
+      '@galacean/effects-plugin-multimedia':
+        specifier: workspace:*
+        version: link:../multimedia
+      '@galacean/effects-plugin-rich-text':
+        specifier: workspace:*
+        version: link:../rich-text
 
   plugin-packages/ffd:
     devDependencies:
@@ -305,6 +318,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-editor-gizmo':
+        specifier: workspace:*
+        version: link:../../plugin-packages/editor-gizmo
       '@galacean/effects-plugin-gui':
         specifier: workspace:*
         version: link:../../plugin-packages/gui
@@ -367,18 +383,30 @@ importers:
       '@galacean/effects-helper':
         specifier: workspace:*
         version: link:../../packages/effects-helper
+      '@galacean/effects-math':
+        specifier: 1.2.1
+        version: 1.2.1
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-editor-gizmo':
+        specifier: workspace:*
+        version: link:../../plugin-packages/editor-gizmo
       '@galacean/effects-plugin-gui':
         specifier: workspace:*
         version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../../plugin-packages/model
+      '@galacean/effects-plugin-multimedia':
+        specifier: workspace:*
+        version: link:../../plugin-packages/multimedia
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
+      '@galacean/effects-plugin-rich-text':
+        specifier: workspace:*
+        version: link:../../plugin-packages/rich-text
       '@galacean/effects-plugin-spine':
         specifier: workspace:*
         version: link:../../plugin-packages/spine
@@ -3790,7 +3818,7 @@ packages:
     engines: {node: '>=0.4.0'}
 
   /diff@4.0.2:
-    resolution: {integrity: sha1-YPOuy4nV+uUgwRqhnvwruYKq3n0=, tarball: https://registry.npmmirror.com/diff/download/diff-4.0.2.tgz}
+    resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
     engines: {node: '>=0.3.1'}
     dev: true
 
