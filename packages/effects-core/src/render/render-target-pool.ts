@@ -76,8 +76,6 @@ export class RenderTargetPool {
       textureType = glContext.UNSIGNED_BYTE;
     } else if (format === RenderTextureFormat.RGBAHalf) {
       textureType = glContext.HALF_FLOAT;
-    } else if (format === RenderTextureFormat.RGBAFloat) {
-      textureType = glContext.FLOAT;
     }
     if (depthBuffer === 0) {
       depthType = RenderPassAttachmentStorageType.none;
