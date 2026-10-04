@@ -82,6 +82,11 @@ export class FeatherOffscreenPass extends RenderPass {
     this.allocator = new AtlasAllocator(atlasW, atlasH);
     this.entries = [];
 
+    const pipeline = VectorFeatherRenderer.resolveIntegerPipeline(renderer.engine);
+    const integScale = VectorFeatherRenderer.getIntegScale(pipeline);
+    const atlasFormat = pipeline === 'off' ? RenderTextureFormat.RGBAHalf : RenderTextureFormat.RGBAFloat;
+    const useIntegerGeometry = pipeline === 'geometry' || pipeline === 'fixed';
+
     const prevFramebuffer = renderer.getFramebuffer();
     let currentAtlas: Framebuffer | null = null;
 
@@ -96,8 +101,14 @@ export class FeatherOffscreenPass extends RenderPass {
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
         if (params.kernelCoverage < featherRenderer.featherSwitchThreshold){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
-          component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
-          featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
+          if (useIntegerGeometry) {
+            featherRenderer.drawIntegerPasses(
+              renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y), pipeline,
+            );
+          } else {
+            component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+            featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius, integScale);
+          }
         }else{
           featherRenderer.updateUpsampleQuad(getExpandedRadius(featherRenderer.featherRadius, params.featherRadiusScreen));
           featherRenderer.drawGatherPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
@@ -108,6 +119,7 @@ export class FeatherOffscreenPass extends RenderPass {
           textureOffset: new Vector2(rect.x, rect.y),
           textureSize: new Vector2(rect.w, rect.h),
           featherRadiusScreen: params.featherRadiusScreen,
+          integScale,
         };
       }
     };
@@ -121,7 +133,7 @@ export class FeatherOffscreenPass extends RenderPass {
         if (!currentAtlas) {
           currentAtlas = renderer.getTemporaryRT(
             '_FeatherAtlas', atlasW, atlasH, 0,
-            FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+            FilterMode.Nearest, atlasFormat,
             1  // anisotropic = 1，禁用各向异性过滤。在使用texture2D模拟texelFetch时，必须关闭各向异性。
           );
         }
@@ -135,7 +147,7 @@ export class FeatherOffscreenPass extends RenderPass {
         this.entries = [];
         currentAtlas = renderer.getTemporaryRT(
           '_FeatherAtlas', atlasW, atlasH, 0,
-          FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+          FilterMode.Nearest, atlasFormat,
           1,  // anisotropic = 1，禁用各向异性过滤
         );
 

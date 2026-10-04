@@ -4,6 +4,7 @@ varying float vHalfLength;
 varying vec2 vLocal;
 
 uniform float uRadius;
+uniform float uIntegScale;  // 1.0: 直接输出；> 1.0: 输出 round(v * S)，用于 fp32 atlas 的精确整数累加
 
 const float PI = 3.14159265359;
 const float PI_4 = 0.7853981633;
@@ -42,5 +43,10 @@ void main() {
   vec2 feather = integBoundaryLine_Polar_3(r2, local.y, xLocal1 - vLocal.x, xLocal2 - vLocal.x);
 
   // gl_FragColor = vec4(0.0, clamp(feather.x, -1.0, 1.0), feather.y,  0.0);
-  gl_FragColor = vec4(0.0, (feather.x + feather.y), 0.0, 0.0);
+  float integration = (feather.x + feather.y) * uIntegScale;
+
+  if (uIntegScale > 1.0) {
+    integration = floor(integration + 0.5);
+  }
+  gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
 }

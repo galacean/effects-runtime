@@ -20,6 +20,10 @@ export enum FilterMode {
 export enum RenderTextureFormat {
   RGBA32,
   RGBAHalf,
+  /**
+   * 每通道 32 位浮点（WebGL2 下为 RGBA32F）
+   */
+  RGBAFloat,
 }
 
 /**

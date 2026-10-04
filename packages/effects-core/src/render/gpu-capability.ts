@@ -8,6 +8,8 @@ export interface GPUCapabilityDetail {
   floatColorAttachment?: boolean,
   //set currentPass color attachment type HALF_FLOAT
   halfFloatColorAttachment?: boolean,
+  //blending into FLOAT (32-bit) color attachments, requires EXT_float_blend
+  floatBlend?: boolean,
   maxVertexUniforms: number,
   maxVertexTextures: number,
   maxFragmentUniforms: number,
@@ -114,6 +116,7 @@ export class GPUCapability {
       maxFragmentTextures: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),
       floatColorAttachment: level2 ? !!gl.getExtension('EXT_color_buffer_float') : (floatTexture > 0 && !!gl.getExtension('WEBGL_color_buffer_float')),
       halfFloatColorAttachment: level2 ? !!gl.getExtension('EXT_color_buffer_float') : (halfFloatTexture > 0 && !!gl.getExtension('EXT_color_buffer_half_float')),
+      floatBlend: !!gl.getExtension('EXT_float_blend'),
       maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
       maxShaderTexCount: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
       halfFloatLinear,

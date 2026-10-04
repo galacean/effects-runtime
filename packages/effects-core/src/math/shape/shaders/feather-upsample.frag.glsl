@@ -8,6 +8,7 @@ uniform vec2 uTextureOffset;
 uniform vec4 uColor;
 
 uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
+uniform float uIntegScale;   // integration 通道的定点缩放，非整数管线为 1.0
 
 varying vec2 vTexCoord;
 
@@ -102,15 +103,17 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
   vec2 f = fract(pixel);
   mat4 gathered = softGather(uAtlasTex, uv, texSize);
   vec4 indicators = vec4(gathered[0][0], gathered[1][0], gathered[2][0], gathered[3][0]);
-  vec4 integs = vec4(gathered[0][1], gathered[1][1], gathered[2][1], gathered[3][1]);
-  vec4 vals = vec4(
-    fixSingleLayer(indicators.x, integs.x),
-    fixSingleLayer(indicators.y, integs.y),
-    fixSingleLayer(indicators.z, integs.z),
-    fixSingleLayer(indicators.w, integs.w)
-  );
+  vec4 integs = vec4(gathered[0][1], gathered[1][1], gathered[2][1], gathered[3][1]) / uIntegScale;
+  // vec4 vals = vec4(
+  //   fixSingleLayer(indicators.x, integs.x),
+  //   fixSingleLayer(indicators.y, integs.y),
+  //   fixSingleLayer(indicators.z, integs.z),
+  //   fixSingleLayer(indicators.w, integs.w)
+  // );
 
-  fixGatherSave(vals);  // 这个能work应该需要uRadiusScreen至少有1.5个px（直径覆盖3px）。现在在cpu保证。
+  vec4 vals = integs + indicators;
+
+  // fixGatherSave(vals);  // 这个能work应该需要uRadiusScreen至少有1.5个px（直径覆盖3px）。现在在cpu保证。
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);

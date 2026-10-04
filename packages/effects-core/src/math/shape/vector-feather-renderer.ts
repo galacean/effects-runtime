@@ -10,6 +10,7 @@ import { Geometry, GLSLVersion } from '../../render';
 import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
 import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
+import { logger } from '../../utils';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
 import { simplifyScatterEdges, removeShortEdges, removeShortEdgesFloat } from './scatter-edge-simplifier';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
@@ -20,6 +21,31 @@ import gatherVert from './shaders/feather-gather.vert.glsl';
 import gatherFrag from './shaders/feather-gather.frag.glsl';
 import upsampleVert from './shaders/feather-upsample.vert.glsl';
 import upsampleFrag from './shaders/feather-upsample.frag.glsl';
+import intCommon from './shaders/feather-int-common.glsl';
+import indicatorIntVert from './shaders/feather-indicator-int.vert.glsl';
+import indicatorIntFrag from './shaders/feather-indicator-int.frag.glsl';
+import scatterIntVert from './shaders/feather-scatter-int.vert.glsl';
+import scatterIntFrag from './shaders/feather-scatter-int.frag.glsl';
+
+/**
+ * 羽化整数管线档位，逐级叠加：
+ * - off：原始管线（RGBAHalf atlas、float 坐标）
+ * - storage：atlas 改为 RGBA32F，scatter 输出 round(v * S)，累加精确且与顺序无关
+ * - geometry：再加上整数网格坐标、整数叉积内外判定与 SoS 平局规则，积分仍用 float
+ * - fixed：再把积分改为 Q15 定点（多项式、CORDIC atan、整数 sqrt）
+ */
+export type FeatherIntegerPipeline = 'off' | 'storage' | 'geometry' | 'fixed';
+
+/**
+ * integration 通道的定点缩放 S。fp32 在 2^24 以内的整数加法精确，因此部分和可容纳到 +-256。
+ */
+export const FEATHER_INTEG_SCALE = 65536;
+
+/**
+ * 整数网格的子像素精度，必须与 feather-int-common.glsl 中的 FEATHER_GRID_SUB 一致。
+ * FBO 最大 2048px 时坐标不超过 2^15，叉积不会溢出 int32。
+ */
+const FEATHER_GRID_SUB = 16;
 
 /**
  * 羽化渲染参数（用于批处理提交）
@@ -30,6 +56,10 @@ export type FeatherRenderParams = {
   orthoProjection: Matrix4,
   featherRadiusScreen: number, // 这个用于在片段着色器里做抗亮斑
   kernelCoverage: number,
+  /**
+   * FBO 覆盖的局部空间矩形 [minX, minY, width, height]
+   */
+  localRect: [number, number, number, number],
 };
 
 /**
@@ -42,6 +72,7 @@ export type FeatherAtlasInfo = {
   textureOffset: Vector2,
   textureSize: Vector2,
   featherRadiusScreen: number,
+  integScale: number,
 };
 
 /**
@@ -52,19 +83,70 @@ export type FeatherAtlasInfo = {
  * 3. Upsample Pass - 从离屏纹理采样到屏幕
  */
 export class VectorFeatherRenderer {
+  /**
+   * 整数管线档位（全局调试开关）。设备不满足要求时自动回退到 'off'。
+   */
+  static integerPipeline: FeatherIntegerPipeline = 'fixed';
+
+  private static lastPipelineWarning = '';
+
+  /**
+   * 解析当前实际生效的整数管线档位。需要 WebGL2 + EXT_color_buffer_float + EXT_float_blend。
+   */
+  static resolveIntegerPipeline (engine: Engine): FeatherIntegerPipeline {
+    const requested = VectorFeatherRenderer.integerPipeline;
+
+    if (requested === 'off') {
+      return 'off';
+    }
+    const { level, detail } = engine.gpuCapability;
+    const missing: string[] = [];
+
+    if (level !== 2) {
+      missing.push('WebGL2');
+    }
+    if (!detail.floatColorAttachment) {
+      missing.push('EXT_color_buffer_float');
+    }
+    if (!detail.floatBlend) {
+      missing.push('EXT_float_blend');
+    }
+    if (missing.length === 0) {
+      return requested;
+    }
+    const warning = `Feather integer pipeline '${requested}' requires ${missing.join(', ')}, fallback to 'off'.`;
+
+    if (warning !== VectorFeatherRenderer.lastPipelineWarning) {
+      VectorFeatherRenderer.lastPipelineWarning = warning;
+      logger.warn(warning);
+    }
+
+    return 'off';
+  }
+
+  static getIntegScale (pipeline: FeatherIntegerPipeline): number {
+    return pipeline === 'off' ? 1 : FEATHER_INTEG_SCALE;
+  }
+
   private engine: Engine;
 
   private scatterGeometry: Geometry;
   private upsampleGeometry: Geometry;
+  private integerEdgeGeometry: Geometry;
 
   private indicatorMaterial: Material;
   private scatterMaterial: Material;
   private gatherMaterial: Material;
   private upsampleMaterial: Material;
+  // GLSL3 材质，只在启用整数管线时创建，避免在 WebGL1 上编译失败
+  private indicatorIntMaterial?: Material;
+  private scatterIntMaterial?: Material;
 
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
   private scatterEdgeTexture?: Texture;
+  private scatterEdgeSource: number[] = [];
+  private integerEdgeCount = 0;
 
   /**
    * 控制使用scatter还是gather的阈值。
@@ -156,6 +238,39 @@ export class VectorFeatherRenderer {
       drawCount: 4,
     });
 
+    this.integerEdgeGeometry = Geometry.create(engine, {
+      attributes: {
+        aTemplate: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        },
+        aStartQ: {
+          type: glContext.FLOAT,
+          size: 2,
+          stride: 4 * 4,
+          offset: 0,
+          dataSource: 'aEdgeQ',
+          instanceDivisor: 1,
+        },
+        aEndQ: {
+          type: glContext.FLOAT,
+          size: 2,
+          stride: 4 * 4,
+          offset: 2 * 4,
+          dataSource: 'aEdgeQ',
+          instanceDivisor: 1,
+        },
+        aEdgeQ: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(0),
+        },
+      },
+      mode: glContext.TRIANGLE_STRIP,
+      drawCount: 4,
+    });
+
     this.upsampleGeometry = Geometry.create(engine, {
       attributes: {
         aPos: {
@@ -184,6 +299,7 @@ export class VectorFeatherRenderer {
     bbox: [number, number, number, number],
   ): void {
     this.currentBbox = bbox;
+    this.scatterEdgeSource = scatterEdgeVertices;
 
     // 更新 scatter geometry (实例化边数据)
     this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdgeVertices));
@@ -298,7 +414,8 @@ export class VectorFeatherRenderer {
       fboH:fboH, 
       orthoProjection:orthoProjection,
       featherRadiusScreen:refinedScreenRadius, // 注意这里传修改后的
-      kernelCoverage:kernelCoverage };
+      kernelCoverage:kernelCoverage,
+      localRect: [expandedMinX, expandedMinY, expandedW, expandedH] };
   }
 
   /**
@@ -323,12 +440,126 @@ export class VectorFeatherRenderer {
     renderer: Renderer, 
     orthoProjection: Matrix4, 
     featherRadius: number,
+    integScale = 1,
   ): void {
     this.scatterMaterial.setMatrix('uProjection', orthoProjection);
     this.scatterMaterial.setFloat('uRadius', featherRadius);
+    this.scatterMaterial.setFloat('uIntegScale', integScale);
     renderer.drawGeometryInstanced(
       this.scatterGeometry, this.scatterMaterial, this.scatterInstanceCount,
     );
+  }
+
+  /**
+   * 整数管线（geometry / fixed 档）：先把边量化到 FBO 整数网格，再绘制 indicator 和 scatter。
+   * 调用者需已设置好 FBO 和 viewport，viewportOffset 为当前 viewport 在 atlas 中的起点。
+   */
+  drawIntegerPasses (
+    renderer: Renderer,
+    params: FeatherRenderParams,
+    featherRadius: number,
+    viewportOffset: Vector2,
+    pipeline: FeatherIntegerPipeline,
+  ): void {
+    const centerQ = this.quantizeEdges(params);
+
+    if (this.integerEdgeCount === 0) {
+      return;
+    }
+    const [, , localW, localH] = params.localRect;
+    const scaleX = params.fboW / localW;
+    const scaleY = params.fboH / localH;
+    const fboSize = new Vector2(params.fboW, params.fboH);
+    const indicatorMaterial = this.getIndicatorIntMaterial();
+    const scatterMaterial = this.getScatterIntMaterial();
+
+    indicatorMaterial.setVector2('uFboSize', fboSize);
+    indicatorMaterial.setVector2('uViewportOffset', viewportOffset);
+    indicatorMaterial.setVector2('uCenterQ', centerQ);
+    renderer.drawGeometryInstanced(this.integerEdgeGeometry, indicatorMaterial, this.integerEdgeCount);
+
+    scatterMaterial.setVector2('uFboSize', fboSize);
+    scatterMaterial.setVector2('uViewportOffset', viewportOffset);
+    scatterMaterial.setVector2('uInvScale', new Vector2(
+      1 / (scaleX * FEATHER_GRID_SUB), 1 / (scaleY * FEATHER_GRID_SUB),
+    ));
+    scatterMaterial.setFloat('uRadius', featherRadius);
+    scatterMaterial.setFloat('uRadiusPx', featherRadius * Math.max(scaleX, scaleY) + 1);
+    scatterMaterial.setFloat('uIntegScale', FEATHER_INTEG_SCALE);
+    scatterMaterial.setInt('uFixedPoint', pipeline === 'fixed' ? 1 : 0);
+    renderer.drawGeometryInstanced(this.integerEdgeGeometry, scatterMaterial, this.integerEdgeCount);
+  }
+
+  /**
+   * 在 CPU（double）中把边端点量化到 FBO 整数网格并上传，量化后长度为 0 的边被剔除。
+   * indicator 与 scatter 共用这份数据，因此两边看到的几何完全一致。
+   * @returns 扇形中心（量化后的 bbox 中心）
+   */
+  private quantizeEdges (params: FeatherRenderParams): Vector2 {
+    const [minX, minY, localW, localH] = params.localRect;
+    const gridW = params.fboW * FEATHER_GRID_SUB;
+    const gridH = params.fboH * FEATHER_GRID_SUB;
+    const scaleX = gridW / localW;
+    const scaleY = gridH / localH;
+    const toGridX = (x: number) => Math.min(Math.max(Math.round((x - minX) * scaleX), 0), gridW);
+    const toGridY = (y: number) => Math.min(Math.max(Math.round((y - minY) * scaleY), 0), gridH);
+    const source = this.scatterEdgeSource;
+    const edgeData = new Float32Array(source.length);
+    let count = 0;
+
+    for (let i = 0; i + 3 < source.length; i += 4) {
+      const x1 = toGridX(source[i]);
+      const y1 = toGridY(source[i + 1]);
+      const x2 = toGridX(source[i + 2]);
+      const y2 = toGridY(source[i + 3]);
+
+      if (x1 === x2 && y1 === y2) {
+        continue;
+      }
+      edgeData.set([x1, y1, x2, y2], count * 4);
+      count++;
+    }
+
+    this.integerEdgeGeometry.setAttributeData('aEdgeQ', edgeData.slice(0, count * 4));
+    this.integerEdgeCount = count;
+
+    const [bx, by, bw, bh] = this.currentBbox;
+
+    return new Vector2(toGridX(bx + bw / 2), toGridY(by + bh / 2));
+  }
+
+  private getIndicatorIntMaterial (): Material {
+    if (!this.indicatorIntMaterial) {
+      this.indicatorIntMaterial = this.createIntegerFeatherMaterial(indicatorIntVert, indicatorIntFrag);
+    }
+
+    return this.indicatorIntMaterial;
+  }
+
+  private getScatterIntMaterial (): Material {
+    if (!this.scatterIntMaterial) {
+      this.scatterIntMaterial = this.createIntegerFeatherMaterial(scatterIntVert, scatterIntFrag);
+    }
+
+    return this.scatterIntMaterial;
+  }
+
+  private createIntegerFeatherMaterial (vertexShader: string, fragmentShader: string): Material {
+    const material = Material.create(this.engine, {
+      shader: {
+        vertex: vertexShader,
+        fragment: fragmentShader.replace('#pragma feather_int_common', intCommon),
+        glslVersion: GLSLVersion.GLSL3,
+        shared: true,
+      },
+    });
+
+    material.blending = true;
+    material.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
+    material.depthTest = false;
+    material.culling = false;
+
+    return material;
   }
 
   /*
@@ -366,8 +597,10 @@ export class VectorFeatherRenderer {
     textureOffset: Vector2,
     color: Color,
     featherRadiusScreen: number,
+    integScale = 1,
   ): void {
     this.upsampleMaterial.setFloat("uScreenRadius", featherRadiusScreen);
+    this.upsampleMaterial.setFloat('uIntegScale', integScale);
     this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
     this.upsampleMaterial.setVector2('uTextureSize', textureSize);
     this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
@@ -400,11 +633,13 @@ export class VectorFeatherRenderer {
     }
 
     const { fboW, fboH, orthoProjection } = params;
+    const pipeline = VectorFeatherRenderer.resolveIntegerPipeline(this.engine);
+    const integScale = VectorFeatherRenderer.getIntegScale(pipeline);
 
     // 获取临时渲染目标
     const atlas = renderer.getTemporaryRT(
       '_FeatherAtlas', fboW, fboH, 0,
-      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+      FilterMode.Nearest, pipeline === 'off' ? RenderTextureFormat.RGBAHalf : RenderTextureFormat.RGBAFloat,
     );
 
     // 保存当前帧缓冲
@@ -419,8 +654,12 @@ export class VectorFeatherRenderer {
     });
     
     if (params.kernelCoverage < this.featherSwitchThreshold){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
-      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
-      this.drawScatterPass(renderer, orthoProjection, this.featherRadius);
+      if (pipeline === 'geometry' || pipeline === 'fixed') {
+        this.drawIntegerPasses(renderer, params, this.featherRadius, new Vector2(0, 0), pipeline);
+      } else {
+        this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+        this.drawScatterPass(renderer, orthoProjection, this.featherRadius, integScale);
+      }
     }else{
       this.updateUpsampleQuad(this.featherRadius);  // ToDo: 和后面面那个updateUpsampleQuad合并
       this.drawGatherPass(renderer, orthoProjection, this.featherRadius);
@@ -438,7 +677,7 @@ export class VectorFeatherRenderer {
     this.drawUpsamplePass(
       renderer, worldMatrix, atlasTexture,
       new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
-      color, params.featherRadiusScreen,
+      color, params.featherRadiusScreen, integScale,
     );
 
     // 释放临时渲染目标
@@ -533,9 +772,12 @@ export class VectorFeatherRenderer {
   dispose (): void {
     this.scatterGeometry?.dispose();
     this.upsampleGeometry?.dispose();
+    this.integerEdgeGeometry?.dispose();
     this.indicatorMaterial?.dispose();
     this.scatterMaterial?.dispose();
     this.upsampleMaterial?.dispose();
+    this.indicatorIntMaterial?.dispose();
+    this.scatterIntMaterial?.dispose();
     this.scatterEdgeTexture?.dispose();
     this.scatterEdgeTexture = undefined;
   }

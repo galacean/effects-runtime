@@ -21,10 +21,10 @@ Agent可以不用自己阅读这个页面，用户会打开这个页面并观察
 目前我需要协助的就是上述问题2.我需要Agent帮我想办法找出或解决Scattered Integration个别像素出误差的问题。我怀疑它可能和GPU浮点误差相关。
 
 每个尝试的流程：
-1. Agent以当前git分支——batched-feather-rendering为基础，拉一个新分支。
-2. Agent在新分支上写代码（和用户讨论，反复迭代）,用户在调试页面中观察结果。
+1. 用户以batched-feather-rendering为基础，拉一个新分支。Agent在这里工作。目前是BFR-Agent1。
+2. Agent写代码（和用户讨论，反复迭代）,用户在调试页面中观察结果。
 3. Agent在这个文档后续的章节中填写总结（这一步会由用户发出明确指令）。
-4. 如果用户觉得有必要，则将开发分支合并回batched-feather-rendering。
+4. 如果用户觉得有必要，则让Agent将开发分支合并回batched-feather-rendering。
 
 在这里记录不同的尝试的结果。
 ## 1. 尝试使用整数计算改写整个流程

@@ -327,6 +327,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         renderer, this.transform.getWorldMatrix(),
         atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,
         atlasInfo.textureOffset, this.featherRenderer.featherColor, atlasInfo.featherRadiusScreen,
+        atlasInfo.integScale,
       );
 
       return;
