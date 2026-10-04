@@ -84,7 +84,6 @@ export class FeatherOffscreenPass extends RenderPass {
 
     const integerOptions = VectorFeatherRenderer.resolveIntegerOptions(renderer.engine);
     const integScale = VectorFeatherRenderer.getIntegScale(integerOptions);
-    const atlasFormat = integerOptions.storage ? RenderTextureFormat.RGBAFloat : RenderTextureFormat.RGBAHalf;
 
     const prevFramebuffer = renderer.getFramebuffer();
     let currentAtlas: Framebuffer | null = null;
@@ -133,7 +132,7 @@ export class FeatherOffscreenPass extends RenderPass {
         if (!currentAtlas) {
           currentAtlas = renderer.getTemporaryRT(
             '_FeatherAtlas', atlasW, atlasH, 0,
-            FilterMode.Nearest, atlasFormat,
+            FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
             1  // anisotropic = 1，禁用各向异性过滤。在使用texture2D模拟texelFetch时，必须关闭各向异性。
           );
         }
@@ -147,7 +146,7 @@ export class FeatherOffscreenPass extends RenderPass {
         this.entries = [];
         currentAtlas = renderer.getTemporaryRT(
           '_FeatherAtlas', atlasW, atlasH, 0,
-          FilterMode.Nearest, atlasFormat,
+          FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
           1,  // anisotropic = 1，禁用各向异性过滤
         );
 

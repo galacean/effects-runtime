@@ -10,7 +10,6 @@ import { Geometry, GLSLVersion } from '../../render';
 import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
 import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
-import { logger } from '../../utils';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
 import { simplifyScatterEdges, removeShortEdges, removeShortEdgesFloat } from './scatter-edge-simplifier';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
@@ -29,7 +28,8 @@ import scatterDirectFrag from './shaders/feather-scatter-direct.frag.glsl';
  */
 export type FeatherIntegerOptions = {
   /**
-   * atlas 改为 RGBA32F，scatter 输出 round(v * S)，累加精确且与顺序无关
+   * scatter 输出 round(v * S)（atlas 仍为 RGBAHalf），只要部分和不超出 fp16 的精确整数范围，
+   * 累加就精确且与顺序无关；代价是每条边 +-0.5 / S 的量化误差
    */
   storage: boolean,
   /**
@@ -46,9 +46,9 @@ export type FeatherIntegerOptions = {
 };
 
 /**
- * integration 通道的定点缩放 S。fp32 在 2^24 以内的整数加法精确，因此部分和可容纳到 +-256。
+ * integration 通道的定点缩放 S。fp16 在 2048 以内的整数加法精确，因此部分和可容纳到 +-2048 / S = +-8。
  */
-export const FEATHER_INTEG_SCALE = 65536;
+export const FEATHER_INTEG_SCALE = 256;
 
 /**
  * grid 空间的子像素精度（每个 FBO 像素对应的网格单位数）
@@ -92,7 +92,7 @@ export type FeatherAtlasInfo = {
  */
 export class VectorFeatherRenderer {
   /**
-   * 羽化管线开关（全局调试开关）。设备不满足要求的开关会被单独关闭。
+   * 羽化管线开关（全局调试开关）
    */
   static integerOptions: FeatherIntegerOptions = {
     storage: true,
@@ -100,38 +100,12 @@ export class VectorFeatherRenderer {
     geometrySpace: 'local',
   };
 
-  private static lastOptionsWarning = '';
-
   /**
-   * 解析当前实际生效的开关：storage 需要可混合的 float 颜色附件
-   * （WebGL2: EXT_color_buffer_float + EXT_float_blend；WebGL1: WEBGL_color_buffer_float + EXT_float_blend）。
-   * geometry 使用 GLSL1，没有额外要求。
+   * 解析当前实际生效的开关。storage 与 geometry 都只依赖原管线已有的能力（RGBAHalf 附件、GLSL1），
+   * 目前没有需要按设备关闭的开关。
    */
-  static resolveIntegerOptions (engine: Engine): FeatherIntegerOptions {
-    const resolved: FeatherIntegerOptions = { ...VectorFeatherRenderer.integerOptions };
-    const { detail } = engine.gpuCapability;
-    let warning = '';
-
-    if (resolved.storage) {
-      const missing: string[] = [];
-
-      if (!detail.floatColorAttachment) {
-        missing.push('float color attachment');
-      }
-      if (!detail.floatBlend) {
-        missing.push('EXT_float_blend');
-      }
-      if (missing.length > 0) {
-        resolved.storage = false;
-        warning = `Feather option 'storage' requires ${missing.join(', ')}, disabled.`;
-      }
-    }
-    if (warning && warning !== VectorFeatherRenderer.lastOptionsWarning) {
-      logger.warn(warning);
-    }
-    VectorFeatherRenderer.lastOptionsWarning = warning;
-
-    return resolved;
+  static resolveIntegerOptions (_engine: Engine): FeatherIntegerOptions {
+    return { ...VectorFeatherRenderer.integerOptions };
   }
 
   static getIntegScale (options: FeatherIntegerOptions): number {
@@ -548,7 +522,7 @@ export class VectorFeatherRenderer {
     // 获取临时渲染目标
     const atlas = renderer.getTemporaryRT(
       '_FeatherAtlas', fboW, fboH, 0,
-      FilterMode.Nearest, integerOptions.storage ? RenderTextureFormat.RGBAFloat : RenderTextureFormat.RGBAHalf,
+      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
     );
 
     // 保存当前帧缓冲

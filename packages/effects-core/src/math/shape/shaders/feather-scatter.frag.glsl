@@ -4,7 +4,7 @@ varying float vHalfLength;
 varying vec2 vLocal;
 
 uniform float uRadius;
-uniform float uIntegScale;  // 1.0: 直接输出；> 1.0: 输出 round(v * S)，用于 fp32 atlas 的精确整数累加
+uniform float uIntegScale;  // 1.0: 直接输出；> 1.0: 输出 round(v * S)，用于 fp16 atlas 的精确整数累加
 
 const float PI = 3.14159265359;
 const float PI_4 = 0.7853981633;
