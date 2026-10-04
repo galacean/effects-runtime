@@ -82,10 +82,9 @@ export class FeatherOffscreenPass extends RenderPass {
     this.allocator = new AtlasAllocator(atlasW, atlasH);
     this.entries = [];
 
-    const pipeline = VectorFeatherRenderer.resolveIntegerPipeline(renderer.engine);
-    const integScale = VectorFeatherRenderer.getIntegScale(pipeline);
-    const atlasFormat = pipeline === 'off' ? RenderTextureFormat.RGBAHalf : RenderTextureFormat.RGBAFloat;
-    const useIntegerGeometry = pipeline === 'geometry' || pipeline === 'fixed';
+    const integerOptions = VectorFeatherRenderer.resolveIntegerOptions(renderer.engine);
+    const integScale = VectorFeatherRenderer.getIntegScale(integerOptions);
+    const atlasFormat = integerOptions.storage ? RenderTextureFormat.RGBAFloat : RenderTextureFormat.RGBAHalf;
 
     const prevFramebuffer = renderer.getFramebuffer();
     let currentAtlas: Framebuffer | null = null;
@@ -101,9 +100,10 @@ export class FeatherOffscreenPass extends RenderPass {
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
         if (params.kernelCoverage < featherRenderer.featherSwitchThreshold){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
-          if (useIntegerGeometry) {
+          if (integerOptions.geometry) {
             featherRenderer.drawIntegerPasses(
-              renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y), pipeline,
+              renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y),
+              integerOptions, integScale,
             );
           } else {
             component.drawFeatherIndicatorPass(renderer, params.orthoProjection);

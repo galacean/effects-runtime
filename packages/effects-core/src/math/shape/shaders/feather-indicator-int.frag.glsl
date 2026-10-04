@@ -7,10 +7,16 @@ precision highp int;
 flat in ivec4 vEdge;
 
 uniform vec2 uCenterQ;
+uniform int uRasterTriangle;
 
 out vec4 fragColor;
 
 void main () {
+  if (uRasterTriangle != 0) {
+    fragColor = vec4(gl_FrontFacing ? 1.0 : -1.0, 0.0, 0.0, 0.0);
+
+    return;
+  }
   ivec2 p = featherPixelCenterQ();
   ivec2 c = ivec2(uCenterQ);
   ivec2 p1 = vEdge.xy;

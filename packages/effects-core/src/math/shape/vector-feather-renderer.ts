@@ -28,13 +28,27 @@ import scatterIntVert from './shaders/feather-scatter-int.vert.glsl';
 import scatterIntFrag from './shaders/feather-scatter-int.frag.glsl';
 
 /**
- * 羽化整数管线档位，逐级叠加：
- * - off：原始管线（RGBAHalf atlas、float 坐标）
- * - storage：atlas 改为 RGBA32F，scatter 输出 round(v * S)，累加精确且与顺序无关
- * - geometry：再加上整数网格坐标、整数叉积内外判定与 SoS 平局规则，积分仍用 float
- * - fixed：再把积分改为 Q15 定点（多项式、CORDIC atan、整数 sqrt）
+ * 羽化整数管线的可组合开关，全部为 false 时即原始管线。
  */
-export type FeatherIntegerPipeline = 'off' | 'storage' | 'geometry' | 'fixed';
+export type FeatherIntegerOptions = {
+  /**
+   * atlas 改为 RGBA32F，scatter 输出 round(v * S)，累加精确且与顺序无关
+   */
+  storage: boolean,
+  /**
+   * 整数网格坐标 + 整数叉积内外判定 + SoS 平局规则（scatter 侧），积分仍用 float
+   */
+  geometry: boolean,
+  /**
+   * 仅 geometry 生效。true：indicator 用与 scatter 相同的整数 SoS 三角测试；
+   * false：indicator 由光栅器绘制同一份量化坐标的扇形三角形
+   */
+  indicatorSoS: boolean,
+  /**
+   * Q15 定点积分（多项式、CORDIC atan、整数 sqrt）。依赖 geometry，开启时自动视为 geometry = true
+   */
+  fixed: boolean,
+};
 
 /**
  * integration 通道的定点缩放 S。fp32 在 2^24 以内的整数加法精确，因此部分和可容纳到 +-256。
@@ -84,48 +98,66 @@ export type FeatherAtlasInfo = {
  */
 export class VectorFeatherRenderer {
   /**
-   * 整数管线档位（全局调试开关）。设备不满足要求时自动回退到 'off'。
+   * 整数管线开关（全局调试开关）。设备不满足要求的开关会被单独关闭。
    */
-  static integerPipeline: FeatherIntegerPipeline = 'fixed';
+  static integerOptions: FeatherIntegerOptions = {
+    storage: true,
+    geometry: true,
+    indicatorSoS: false,
+    fixed: false,
+  };
 
-  private static lastPipelineWarning = '';
+  private static lastOptionsWarning = '';
 
   /**
-   * 解析当前实际生效的整数管线档位。需要 WebGL2 + EXT_color_buffer_float + EXT_float_blend。
+   * 解析当前实际生效的开关：
+   * - fixed 开启时强制 geometry = true
+   * - storage 需要 WebGL2 + EXT_color_buffer_float + EXT_float_blend
+   * - geometry / fixed 需要 WebGL2（GLSL3 shader）
    */
-  static resolveIntegerPipeline (engine: Engine): FeatherIntegerPipeline {
-    const requested = VectorFeatherRenderer.integerPipeline;
-
-    if (requested === 'off') {
-      return 'off';
-    }
+  static resolveIntegerOptions (engine: Engine): FeatherIntegerOptions {
+    const requested = VectorFeatherRenderer.integerOptions;
+    const resolved: FeatherIntegerOptions = {
+      ...requested,
+      geometry: requested.geometry || requested.fixed,
+    };
     const { level, detail } = engine.gpuCapability;
-    const missing: string[] = [];
+    const warnings: string[] = [];
 
-    if (level !== 2) {
-      missing.push('WebGL2');
-    }
-    if (!detail.floatColorAttachment) {
-      missing.push('EXT_color_buffer_float');
-    }
-    if (!detail.floatBlend) {
-      missing.push('EXT_float_blend');
-    }
-    if (missing.length === 0) {
-      return requested;
-    }
-    const warning = `Feather integer pipeline '${requested}' requires ${missing.join(', ')}, fallback to 'off'.`;
+    if (resolved.storage) {
+      const missing: string[] = [];
 
-    if (warning !== VectorFeatherRenderer.lastPipelineWarning) {
-      VectorFeatherRenderer.lastPipelineWarning = warning;
+      if (level !== 2) {
+        missing.push('WebGL2');
+      }
+      if (!detail.floatColorAttachment) {
+        missing.push('EXT_color_buffer_float');
+      }
+      if (!detail.floatBlend) {
+        missing.push('EXT_float_blend');
+      }
+      if (missing.length > 0) {
+        resolved.storage = false;
+        warnings.push(`'storage' requires ${missing.join(', ')}, disabled.`);
+      }
+    }
+    if (resolved.geometry && level !== 2) {
+      resolved.geometry = false;
+      resolved.fixed = false;
+      warnings.push('\'geometry\' / \'fixed\' require WebGL2, disabled.');
+    }
+    const warning = warnings.length > 0 ? `Feather integer options: ${warnings.join(' ')}` : '';
+
+    if (warning && warning !== VectorFeatherRenderer.lastOptionsWarning) {
       logger.warn(warning);
     }
+    VectorFeatherRenderer.lastOptionsWarning = warning;
 
-    return 'off';
+    return resolved;
   }
 
-  static getIntegScale (pipeline: FeatherIntegerPipeline): number {
-    return pipeline === 'off' ? 1 : FEATHER_INTEG_SCALE;
+  static getIntegScale (options: FeatherIntegerOptions): number {
+    return options.storage ? FEATHER_INTEG_SCALE : 1;
   }
 
   private engine: Engine;
@@ -451,7 +483,7 @@ export class VectorFeatherRenderer {
   }
 
   /**
-   * 整数管线（geometry / fixed 档）：先把边量化到 FBO 整数网格，再绘制 indicator 和 scatter。
+   * 整数几何（geometry 开关）：先把边量化到 FBO 整数网格，再绘制 indicator 和 scatter。
    * 调用者需已设置好 FBO 和 viewport，viewportOffset 为当前 viewport 在 atlas 中的起点。
    */
   drawIntegerPasses (
@@ -459,7 +491,8 @@ export class VectorFeatherRenderer {
     params: FeatherRenderParams,
     featherRadius: number,
     viewportOffset: Vector2,
-    pipeline: FeatherIntegerPipeline,
+    options: FeatherIntegerOptions,
+    integScale: number,
   ): void {
     const centerQ = this.quantizeEdges(params);
 
@@ -476,6 +509,7 @@ export class VectorFeatherRenderer {
     indicatorMaterial.setVector2('uFboSize', fboSize);
     indicatorMaterial.setVector2('uViewportOffset', viewportOffset);
     indicatorMaterial.setVector2('uCenterQ', centerQ);
+    indicatorMaterial.setInt('uRasterTriangle', options.indicatorSoS ? 0 : 1);
     renderer.drawGeometryInstanced(this.integerEdgeGeometry, indicatorMaterial, this.integerEdgeCount);
 
     scatterMaterial.setVector2('uFboSize', fboSize);
@@ -485,8 +519,8 @@ export class VectorFeatherRenderer {
     ));
     scatterMaterial.setFloat('uRadius', featherRadius);
     scatterMaterial.setFloat('uRadiusPx', featherRadius * Math.max(scaleX, scaleY) + 1);
-    scatterMaterial.setFloat('uIntegScale', FEATHER_INTEG_SCALE);
-    scatterMaterial.setInt('uFixedPoint', pipeline === 'fixed' ? 1 : 0);
+    scatterMaterial.setFloat('uIntegScale', integScale);
+    scatterMaterial.setInt('uFixedPoint', options.fixed ? 1 : 0);
     renderer.drawGeometryInstanced(this.integerEdgeGeometry, scatterMaterial, this.integerEdgeCount);
   }
 
@@ -633,13 +667,13 @@ export class VectorFeatherRenderer {
     }
 
     const { fboW, fboH, orthoProjection } = params;
-    const pipeline = VectorFeatherRenderer.resolveIntegerPipeline(this.engine);
-    const integScale = VectorFeatherRenderer.getIntegScale(pipeline);
+    const integerOptions = VectorFeatherRenderer.resolveIntegerOptions(this.engine);
+    const integScale = VectorFeatherRenderer.getIntegScale(integerOptions);
 
     // 获取临时渲染目标
     const atlas = renderer.getTemporaryRT(
       '_FeatherAtlas', fboW, fboH, 0,
-      FilterMode.Nearest, pipeline === 'off' ? RenderTextureFormat.RGBAHalf : RenderTextureFormat.RGBAFloat,
+      FilterMode.Nearest, integerOptions.storage ? RenderTextureFormat.RGBAFloat : RenderTextureFormat.RGBAHalf,
     );
 
     // 保存当前帧缓冲
@@ -654,8 +688,8 @@ export class VectorFeatherRenderer {
     });
     
     if (params.kernelCoverage < this.featherSwitchThreshold){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
-      if (pipeline === 'geometry' || pipeline === 'fixed') {
-        this.drawIntegerPasses(renderer, params, this.featherRadius, new Vector2(0, 0), pipeline);
+      if (integerOptions.geometry) {
+        this.drawIntegerPasses(renderer, params, this.featherRadius, new Vector2(0, 0), integerOptions, integScale);
       } else {
         this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
         this.drawScatterPass(renderer, orthoProjection, this.featherRadius, integScale);

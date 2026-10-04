@@ -8,7 +8,7 @@ flat in ivec4 vEdge;
 
 uniform vec2 uInvScale;     // 每个网格单位对应的局部空间长度 (x, y)
 uniform float uRadius;      // 局部空间羽化半径
-uniform float uIntegScale;  // 输出定点缩放 S
+uniform float uIntegScale;  // 1.0: 直接输出 float；> 1.0: 输出 round(v * S)
 uniform int uFixedPoint;    // 0: float 积分；1: Q15 定点积分
 
 out vec4 fragColor;
@@ -237,5 +237,8 @@ void main () {
     feather = featherFloat(edge) * uIntegScale;
   }
 
-  fragColor = vec4(0.0, floor(feather + 0.5), 0.0, 0.0);
+  if (uIntegScale > 1.0) {
+    feather = floor(feather + 0.5);
+  }
+  fragColor = vec4(0.0, feather, 0.0, 0.0);
 }
