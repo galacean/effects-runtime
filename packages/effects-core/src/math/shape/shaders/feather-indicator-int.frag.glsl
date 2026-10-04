@@ -4,7 +4,11 @@ precision highp int;
 
 #pragma feather_int_common
 
-flat in ivec4 vEdge;
+#ifdef FEATHER_FLAT_EDGE
+flat in vec4 vEdge;
+#else
+in vec4 vEdge;
+#endif
 
 uniform vec2 uCenterQ;
 uniform int uRasterTriangle;
@@ -17,10 +21,12 @@ void main () {
 
     return;
   }
+  // SoS 模式要求 quantize + integerCross，端点为整数；非 flat 插值的微小误差由四舍五入消除。
+  ivec4 edgeQ = ivec4(floor(vEdge + 0.5));
   ivec2 p = featherPixelCenterQ();
   ivec2 c = ivec2(uCenterQ);
-  ivec2 p1 = vEdge.xy;
-  ivec2 p2 = vEdge.zw;
+  ivec2 p1 = edgeQ.xy;
+  ivec2 p2 = edgeQ.zw;
   int orientCross = featherCross(p1 - c, p2 - c);
 
   if (orientCross == 0) {

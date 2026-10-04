@@ -4,7 +4,11 @@ precision highp int;
 
 #pragma feather_int_common
 
-flat in ivec4 vEdge;
+#ifdef FEATHER_FLAT_EDGE
+flat in vec4 vEdge;
+#else
+in vec4 vEdge;
+#endif
 
 uniform vec2 uInvScale;     // 每个网格单位对应的局部空间长度 (x, y)
 uniform float uRadius;      // 局部空间羽化半径
@@ -22,18 +26,21 @@ struct EdgeLocal {
   float b;
   float y1;
   float y2;
-  bool onLine;    // 整数叉积 == 0
+  bool onLine;    // 叉积 == 0
   bool atVertex1; // 像素中心与 p1 重合
   bool atVertex2;
   int side;       // SoS 判定的左右侧，永不为 0
-  ivec2 e;
+  vec2 e;         // 网格坐标下的边向量
 };
 
+#ifdef FEATHER_INTEGER_CROSS
+// 整数叉积：要求 quantize，端点为整数；非 flat 插值的微小误差由四舍五入消除。
 EdgeLocal computeEdgeLocal () {
   EdgeLocal edge;
+  ivec4 edgeQ = ivec4(floor(vEdge + 0.5));
   ivec2 p = featherPixelCenterQ();
-  ivec2 p1 = vEdge.xy;
-  ivec2 p2 = vEdge.zw;
+  ivec2 p1 = edgeQ.xy;
+  ivec2 p2 = edgeQ.zw;
   ivec2 e = p2 - p1;
   ivec2 d1 = p1 - p;
   ivec2 d2 = p2 - p;
@@ -42,7 +49,7 @@ EdgeLocal computeEdgeLocal () {
   float eLength = length(eLocal);
   vec2 eDir = eLocal / eLength;
 
-  edge.e = e;
+  edge.e = vec2(e);
   edge.side = featherSideSoS(p1, p2, p);
   edge.onLine = crossI == 0;
   edge.atVertex1 = d1 == ivec2(0);
@@ -53,6 +60,39 @@ EdgeLocal computeEdgeLocal () {
 
   return edge;
 }
+#else
+// float 叉积：端点直接使用 varying 的 float 值，平局规则与整数版本相同。
+EdgeLocal computeEdgeLocal () {
+  EdgeLocal edge;
+  vec2 p = vec2(featherPixelCenterQ());
+  vec2 p1 = vEdge.xy;
+  vec2 p2 = vEdge.zw;
+  vec2 e = p2 - p1;
+  vec2 d1 = p1 - p;
+  vec2 d2 = p2 - p;
+  float crossF = e.x * (p.y - p1.y) - e.y * (p.x - p1.x);
+  vec2 eLocal = e * uInvScale;
+  float eLength = length(eLocal);
+  vec2 eDir = eLocal / eLength;
+
+  edge.e = e;
+  if (crossF != 0.0) {
+    edge.side = crossF > 0.0 ? 1 : -1;
+  } else if (e.y != 0.0) {
+    edge.side = e.y > 0.0 ? -1 : 1;
+  } else {
+    edge.side = e.x > 0.0 ? 1 : -1;
+  }
+  edge.onLine = crossF == 0.0;
+  edge.atVertex1 = d1 == vec2(0.0);
+  edge.atVertex2 = d2 == vec2(0.0);
+  edge.b = crossF * uInvScale.x * uInvScale.y / eLength;
+  edge.y1 = dot(d1 * uInvScale, eDir);
+  edge.y2 = dot(d2 * uInvScale, eDir);
+
+  return edge;
+}
+#endif
 
 // ---------------- float 积分（geometry 档） ----------------
 
@@ -60,8 +100,8 @@ EdgeLocal computeEdgeLocal () {
 // 顶点处 y / b -> (e.x * invScale.x) / (e.y * invScale.y)；若 e.y == 0 则 -> -inf。
 float arcAngleFloat (float y, EdgeLocal edge, bool atVertex) {
   if (atVertex) {
-    if (edge.e.y != 0) {
-      return atan(float(edge.e.x) * uInvScale.x / (float(edge.e.y) * uInvScale.y));
+    if (edge.e.y != 0.0) {
+      return atan(edge.e.x * uInvScale.x / (edge.e.y * uInvScale.y));
     }
 
     return -PI_2;
@@ -173,10 +213,10 @@ int cordicAtan2Q15 (int x, int y) {
 // atan(t / u) = atan2(t * side, |u|)，side 为 b 的 SoS 符号。
 int arcAngleQ15 (int u, int t, EdgeLocal edge, bool atVertex) {
   if (atVertex) {
-    if (edge.e.y == 0) {
+    if (edge.e.y == 0.0) {
       return -Q15_HALF_PI;
     }
-    vec2 ratio = vec2(float(edge.e.x) * uInvScale.x, float(edge.e.y) * uInvScale.y);
+    vec2 ratio = edge.e * uInvScale;
     ratio /= max(abs(ratio.x), abs(ratio.y));
     int sy = ratio.y > 0.0 ? 1 : -1;
 

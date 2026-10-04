@@ -3,13 +3,17 @@ precision highp float;
 precision highp int;
 
 in vec2 aTemplate;
-in vec2 aStartQ;  // 整数网格坐标（以 float 上传，数值为精确整数）
+in vec2 aStartQ;  // 网格坐标；开启 quantize 时为精确整数
 in vec2 aEndQ;
 
 uniform vec2 uFboSize;
 uniform float uRadiusPx;  // 像素空间下卷积核的最大半径 + 1px，只用于保证覆盖
 
-flat out ivec4 vEdge;
+#ifdef FEATHER_FLAT_EDGE
+flat out vec4 vEdge;
+#else
+out vec4 vEdge;
+#endif
 
 const float GRID_SUB = 16.0;
 
@@ -25,5 +29,5 @@ void main () {
     + outDir * uRadiusPx * aTemplate.y;
 
   gl_Position = vec4(px / uFboSize * 2.0 - 1.0, 0.0, 1.0);
-  vEdge = ivec4(aStartQ, aEndQ);
+  vEdge = vec4(aStartQ, aEndQ);
 }

@@ -104,14 +104,14 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
   mat4 gathered = softGather(uAtlasTex, uv, texSize);
   vec4 indicators = vec4(gathered[0][0], gathered[1][0], gathered[2][0], gathered[3][0]);
   vec4 integs = vec4(gathered[0][1], gathered[1][1], gathered[2][1], gathered[3][1]) / uIntegScale;
-  // vec4 vals = vec4(
-  //   fixSingleLayer(indicators.x, integs.x),
-  //   fixSingleLayer(indicators.y, integs.y),
-  //   fixSingleLayer(indicators.z, integs.z),
-  //   fixSingleLayer(indicators.w, integs.w)
-  // );
+  vec4 vals = vec4(
+    fixSingleLayer(indicators.x, integs.x),
+    fixSingleLayer(indicators.y, integs.y),
+    fixSingleLayer(indicators.z, integs.z),
+    fixSingleLayer(indicators.w, integs.w)
+  );
 
-  vec4 vals = integs + indicators;
+  // vec4 vals = integs + indicators;
 
   // fixGatherSave(vals);  // 这个能work应该需要uRadiusScreen至少有1.5个px（直径覆盖3px）。现在在cpu保证。
 
