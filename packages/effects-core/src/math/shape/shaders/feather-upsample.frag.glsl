@@ -57,16 +57,18 @@ float fixSingleLayer(float indicator, float integration)
 // fixSingleLayer在羽化半径极大、数值极小的时候还是有概率会判定错。
 // 这可能和我们scatter时fp16精度限制有关：半径巨大时有太多很微小的值叠加在一起。
 // 加了这个函数专门针对这种情况干掉接近1的亮点。
+// X Y
+// W Z
 vec4 supressLargeNoises(vec4 vals)
 {
   vec4 outVals = max(vals, 0.0);
   float isXNormal = step(vals.x - vals.y, 0.9) * step(vals.x - vals.z, 0.9);
   float isYNormal = step(vals.y - vals.x, 0.9) * step(vals.y - vals.w, 0.9);
-  float isZNormal = step(vals.z - vals.x, 0.9) * step(vals.z - vals.w, 0.9);
-  float isWNormal = step(vals.w - vals.z, 0.9) * step(vals.w - vals.y, 0.9);
+  float isZNormal = step(vals.z - vals.y, 0.9) * step(vals.z - vals.w, 0.9);
+  float isWNormal = step(vals.w - vals.z, 0.9) * step(vals.w - vals.x, 0.9);
   vals.x = isXNormal * vals.x + (1.0 - isXNormal) * (vals.y + vals.z) * 0.5;
   vals.y = isYNormal * vals.y + (1.0 - isYNormal) * (vals.x + vals.w) * 0.5;
-  vals.z = isZNormal * vals.z + (1.0 - isZNormal) * (vals.x + vals.w) * 0.5;
+  vals.z = isZNormal * vals.z + (1.0 - isZNormal) * (vals.y + vals.w) * 0.5;
   vals.w = isWNormal * vals.w + (1.0 - isWNormal) * (vals.x + vals.z) * 0.5;
   return vals;
 }
