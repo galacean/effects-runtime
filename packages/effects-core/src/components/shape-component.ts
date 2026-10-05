@@ -568,7 +568,24 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         ? [featherBBox.minX, featherBBox.minY, featherBBox.maxX - featherBBox.minX, featherBBox.maxY - featherBBox.minY] as [number, number, number, number]
         : [0, 0, 0, 0] as [number, number, number, number];
 
-      this.featherRenderer.updateMeshData(scatterEdgeVertices, scatterEdgeCount, bbox);
+      const indicatorTriangles: number[] = [];
+
+      for (let i = 0; i + 2 < indices.length; i += 3) {
+        const i0 = indices[i];
+        const i1 = indices[i + 1];
+        const i2 = indices[i + 2];
+
+        indicatorTriangles.push(
+          vertices[i0 * 2], vertices[i0 * 2 + 1],
+          vertices[i1 * 2], vertices[i1 * 2 + 1],
+          vertices[i2 * 2], vertices[i2 * 2 + 1],
+        );
+      }
+
+      this.featherRenderer.updateMeshData(
+        scatterEdgeVertices, scatterEdgeCount, bbox,
+        indicatorTriangles, indicatorTriangles.length / 6,
+      );
 
       // 继承颜色: 优先从 fill, 其次从 stroke
       if (hasFills && this.fills[0].type === spec.FillType.Solid) {

@@ -95,7 +95,11 @@ export class FeatherOffscreenPass extends RenderPass {
        
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+        if (VectorFeatherRenderer.indicatorSoS) {
+          featherRenderer.drawIndicatorSoSPass(renderer, params, new Vector2(rect.x, rect.y));
+        } else {
+          component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+        }
         featherRenderer.drawScatterPass(
           renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y),
         );

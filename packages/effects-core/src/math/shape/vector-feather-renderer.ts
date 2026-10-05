@@ -12,6 +12,8 @@ import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
 import indicatorFrag from './shaders/feather-indicator.frag.glsl';
+import indicatorSoSVert from './shaders/feather-indicator-sos.vert.glsl';
+import indicatorSoSFrag from './shaders/feather-indicator-sos.frag.glsl';
 import scatterVert from './shaders/feather-scatter.vert.glsl';
 import scatterFrag from './shaders/feather-scatter.frag.glsl';
 import upsampleVert from './shaders/feather-upsample.vert.glsl';
@@ -52,17 +54,26 @@ export type FeatherAtlasInfo = {
  * 3. Upsample Pass - 从离屏纹理采样到屏幕
  */
 export class VectorFeatherRenderer {
+  /**
+   * 打开时 indicator 用包围盒覆盖，并按与 scatter 相同的浮点 SoS 判断内外。
+   * 关闭时仍光栅化扇形三角形，用 gl_FrontFacing 写 ±1。
+   */
+  static indicatorSoS = false;
+
   private engine: Engine;
 
   private scatterGeometry: Geometry;
+  private indicatorSoSGeometry: Geometry;
   private upsampleGeometry: Geometry;
 
   private indicatorMaterial: Material;
+  private indicatorSoSMaterial: Material;
   private scatterMaterial: Material;
   private upsampleMaterial: Material;
 
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
+  private indicatorTriangleCount = 0;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -89,6 +100,13 @@ export class VectorFeatherRenderer {
     this.indicatorMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
     this.indicatorMaterial.depthTest = false;
     this.indicatorMaterial.culling = false;
+
+    // --- Indicator SoS 材质 ---
+    this.indicatorSoSMaterial = this.createFeatherMaterial(indicatorSoSVert, indicatorSoSFrag);
+    this.indicatorSoSMaterial.blending = true;
+    this.indicatorSoSMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
+    this.indicatorSoSMaterial.depthTest = false;
+    this.indicatorSoSMaterial.culling = false;
 
     // --- Scatter Pass 材质 ---
     this.scatterMaterial = this.createFeatherMaterial(scatterVert, scatterFrag);
@@ -141,6 +159,47 @@ export class VectorFeatherRenderer {
       drawCount: 4,
     });
 
+    this.indicatorSoSGeometry = Geometry.create(engine, {
+      attributes: {
+        aTemplate: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        },
+        aP0: {
+          type: glContext.FLOAT,
+          size: 2,
+          stride: 6 * 4,
+          offset: 0,
+          dataSource: 'aTriangleData',
+          instanceDivisor: 1,
+        },
+        aP1: {
+          type: glContext.FLOAT,
+          size: 2,
+          stride: 6 * 4,
+          offset: 2 * 4,
+          dataSource: 'aTriangleData',
+          instanceDivisor: 1,
+        },
+        aP2: {
+          type: glContext.FLOAT,
+          size: 2,
+          stride: 6 * 4,
+          offset: 4 * 4,
+          dataSource: 'aTriangleData',
+          instanceDivisor: 1,
+        },
+        aTriangleData: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(0),
+        },
+      },
+      mode: glContext.TRIANGLE_STRIP,
+      drawCount: 4,
+    });
+
     this.upsampleGeometry = Geometry.create(engine, {
       attributes: {
         aPos: {
@@ -167,12 +226,16 @@ export class VectorFeatherRenderer {
     scatterEdgeVertices: number[],
     scatterEdgeCount: number,
     bbox: [number, number, number, number],
+    indicatorTriangles: number[],
+    indicatorTriangleCount: number,
   ): void {
     this.currentBbox = bbox;
 
     // 更新 scatter geometry (实例化边数据)
     this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdgeVertices));
     this.scatterInstanceCount = scatterEdgeCount;
+    this.indicatorSoSGeometry.setAttributeData('aTriangleData', new Float32Array(indicatorTriangles));
+    this.indicatorTriangleCount = indicatorTriangleCount;
   }
 
   /**
@@ -270,6 +333,29 @@ export class VectorFeatherRenderer {
   }
 
   /**
+   * 绘制 Indicator 的浮点 SoS 版本（调用者需已设置好 FBO 和 viewport）。
+   * 每个扇形三角形画外扩 1px 的轴对齐包围盒，片元用与 scatter 相同的像素中心和侧向。
+   * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
+   */
+  drawIndicatorSoSPass (
+    renderer: Renderer,
+    params: FeatherRenderParams,
+    viewportOffset: Vector2,
+  ): void {
+    const [minX, minY, localW, localH] = params.localRect;
+    const localPerPixelX = localW / params.fboW;
+    const localPerPixelY = localH / params.fboH;
+
+    this.indicatorSoSMaterial.setMatrix('uProjection', params.orthoProjection);
+    this.indicatorSoSMaterial.setVector2('uViewportOffset', viewportOffset);
+    this.indicatorSoSMaterial.setVector2('uPixelOrigin', new Vector2(minX, minY));
+    this.indicatorSoSMaterial.setVector2('uSpacePerPixel', new Vector2(localPerPixelX, localPerPixelY));
+    renderer.drawGeometryInstanced(
+      this.indicatorSoSGeometry, this.indicatorSoSMaterial, this.indicatorTriangleCount,
+    );
+  }
+
+  /**
    * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）。
    * 片元用 gl_FragCoord 反算局部空间像素中心，再用端点直接积分。
    * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
@@ -307,6 +393,7 @@ export class VectorFeatherRenderer {
     featherRadiusScreen: number,
   ): void {
     this.upsampleMaterial.setFloat("uScreenRadius", featherRadiusScreen);
+    this.upsampleMaterial.setFloat('uIndicatorSoS', VectorFeatherRenderer.indicatorSoS ? 1 : 0);
     this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
     this.upsampleMaterial.setVector2('uTextureSize', textureSize);
     this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
@@ -334,7 +421,10 @@ export class VectorFeatherRenderer {
   ): void {
     const params = this.computeRenderParams(renderer, worldMatrix, featherRadius);
 
-    if (!params || !indicatorGeometry) {
+    if (!params) {
+      return;
+    }
+    if (!VectorFeatherRenderer.indicatorSoS && !indicatorGeometry) {
       return;
     }
 
@@ -357,7 +447,11 @@ export class VectorFeatherRenderer {
       clearColor: [0, 0, 0, 0],
     });
     
-    this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+    if (VectorFeatherRenderer.indicatorSoS) {
+      this.drawIndicatorSoSPass(renderer, params, new Vector2(0, 0));
+    } else if (indicatorGeometry) {
+      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+    }
     this.drawScatterPass(renderer, params, this.featherRadius, new Vector2(0, 0));
     // === Pass 3: Upsample → 屏幕 ===
     renderer.setFramebuffer(prevFramebuffer);
@@ -466,8 +560,10 @@ export class VectorFeatherRenderer {
 
   dispose (): void {
     this.scatterGeometry?.dispose();
+    this.indicatorSoSGeometry?.dispose();
     this.upsampleGeometry?.dispose();
     this.indicatorMaterial?.dispose();
+    this.indicatorSoSMaterial?.dispose();
     this.scatterMaterial?.dispose();
     this.upsampleMaterial?.dispose();
   }

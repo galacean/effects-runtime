@@ -8,6 +8,7 @@ uniform vec2 uTextureOffset;
 uniform vec4 uColor;
 
 uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
+uniform float uIndicatorSoS;  // 1：indicator 与积分一致，直接相加；0：用 fixSingleLayer 消除不一致
 
 varying vec2 vTexCoord;
 
@@ -39,18 +40,35 @@ mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
   return mat4(tl, tr, br, bl);
 }
 
-// 我们假设同一个轮廓不自交，则可以使用这个函数。
-// 如果不满足条件，则应该用32行注释掉的那段。
 // G/B/A 是基数 8 的三位，位权 1、8、64。
 float decodeIntegration (vec4 texel) {
   return (texel.a * 64.0 + texel.b * 8.0 + texel.g) / INTEG_SCALE;
 }
 
+// 这个函数用于同步indicator和integration的内外判定。
+// 0.005比1/256稍微大一点。
 float fixSingleLayer(float indicator, float integration)
 {
   return (1.0 + integration) * step(integration, -0.005) + 
   integration * step(0.005, integration) + 
   (indicator + integration) * step(-0.005, integration) * step(integration, 0.005);
+}
+
+// fixSingleLayer在羽化半径极大、数值极小的时候还是有概率会判定错。
+// 这可能和我们scatter时fp16精度限制有关：半径巨大时有太多很微小的值叠加在一起。
+// 加了这个函数专门针对这种情况干掉接近1的亮点。
+vec4 supressLargeNoises(vec4 vals)
+{
+  vec4 outVals = max(vals, 0.0);
+  float isXNormal = step(vals.x - vals.y, 0.9) * step(vals.x - vals.z, 0.9);
+  float isYNormal = step(vals.y - vals.x, 0.9) * step(vals.y - vals.w, 0.9);
+  float isZNormal = step(vals.z - vals.x, 0.9) * step(vals.z - vals.w, 0.9);
+  float isWNormal = step(vals.w - vals.z, 0.9) * step(vals.w - vals.y, 0.9);
+  vals.x = isXNormal * vals.x + (1.0 - isXNormal) * (vals.y + vals.z) * 0.5;
+  vals.y = isYNormal * vals.y + (1.0 - isYNormal) * (vals.x + vals.w) * 0.5;
+  vals.z = isZNormal * vals.z + (1.0 - isZNormal) * (vals.x + vals.w) * 0.5;
+  vals.w = isWNormal * vals.w + (1.0 - isWNormal) * (vals.x + vals.z) * 0.5;
+  return vals;
 }
 
 float sampleBilinearGather (vec2 uv, vec2 texSize) {
@@ -64,12 +82,18 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
     decodeIntegration(gathered[2]),
     decodeIntegration(gathered[3])
   );
-  vec4 vals = vec4(
-    fixSingleLayer(indicators.x, integs.x),
-    fixSingleLayer(indicators.y, integs.y),
-    fixSingleLayer(indicators.z, integs.z),
-    fixSingleLayer(indicators.w, integs.w)
-  );
+  vec4 vals;
+  if (uIndicatorSoS > 0.5) {
+    vals = indicators + integs;
+  } else {
+    vals = vec4(
+      fixSingleLayer(indicators.x, integs.x),
+      fixSingleLayer(indicators.y, integs.y),
+      fixSingleLayer(indicators.z, integs.z),
+      fixSingleLayer(indicators.w, integs.w)
+    );
+    vals = supressLargeNoises(vals);
+  }
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);
