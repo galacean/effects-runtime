@@ -8,60 +8,10 @@ uniform vec2 uTextureOffset;
 uniform vec4 uColor;
 
 uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
-uniform float uIntegScale;   // integration 通道的定点缩放，非整数管线为 1.0
 
 varying vec2 vTexCoord;
 
-vec4 fixGatherSave (vec4 gathered) {
-  float downSample = (min(max(1.0, uScreenRadius / 10.0), 9999.0)); 
-  float downRadius = uScreenRadius / downSample;
-  float varyingThres = 1.0 / downRadius;
-
-  float sum = gathered.x + gathered.y + gathered.z + gathered.w;
-  float maxVal = max(gathered.x, gathered.y);
-  maxVal = max(maxVal, gathered.z);
-  maxVal = max(maxVal, gathered.w);
-  float minVal = min(gathered.x, gathered.y);
-  minVal = min(minVal, gathered.z);
-  minVal = min(minVal, gathered.w);
-  // 找到中间值：通常，错误的亮斑/暗斑不会相邻。也即是4个相邻像素中最多两个错的。
-  float middle = (sum - minVal - maxVal) * 0.5;
-  vec4 val = gathered; 
-
-  // 这里先处理以下大于1或小于0的明显异常 不使用if以避免发散
-  // 使用fixSingleLayer时可以不用这一段。
-  // val.x += (step(val.x, 0.0) - step(1.0, val.x)) * step(0.25, abs(val.x - middle));
-  // val.y += (step(val.y, 0.0) - step(1.0, val.y)) * step(0.25, abs(val.y - middle));
-  // val.z += (step(val.z, 0.0) - step(1.0, val.z)) * step(0.25, abs(val.z - middle));
-  // val.w += (step(val.w, 0.0) - step(1.0, val.w)) * step(0.25, abs(val.w - middle));
-
-  // 约束变化率
-  // val.x -= floor((max(val.x - middle, 0.0) / varyingThres)) * varyingThres;
-  // val.y -= floor((max(val.y - middle, 0.0) / varyingThres)) * varyingThres;
-  // val.z -= floor((max(val.z - middle, 0.0) / varyingThres)) * varyingThres;
-  // val.w -= floor((max(val.w - middle, 0.0) / varyingThres)) * varyingThres;
-
-  // val.x += floor((abs(min(val.x - middle, 0.0)) / varyingThres)) * varyingThres;
-  // val.y += floor((abs(min(val.y - middle, 0.0)) / varyingThres)) * varyingThres;
-  // val.z += floor((abs(min(val.z - middle, 0.0)) / varyingThres)) * varyingThres;
-  // val.w += floor((abs(min(val.w - middle, 0.0)) / varyingThres)) * varyingThres;
-
-  // 这个版本给暗部更多关注，效果可能会好些。不过不要求严格gamma，用这个快速平方根会更快。
-  vec4 valGamma = sqrt(val);  
-  float middleGamma = sqrt(middle);
-  valGamma.x -= floor((max(valGamma.x - middleGamma, 0.0) / varyingThres)) * varyingThres;
-  valGamma.y -= floor((max(valGamma.y - middleGamma, 0.0) / varyingThres)) * varyingThres;
-  valGamma.z -= floor((max(valGamma.z - middleGamma, 0.0) / varyingThres)) * varyingThres;
-  valGamma.w -= floor((max(valGamma.w - middleGamma, 0.0) / varyingThres)) * varyingThres;
-
-  valGamma.x += floor((abs(min(valGamma.x - middleGamma, 0.0)) / varyingThres)) * varyingThres;
-  valGamma.y += floor((abs(min(valGamma.y - middleGamma, 0.0)) / varyingThres)) * varyingThres;
-  valGamma.z += floor((abs(min(valGamma.z - middleGamma, 0.0)) / varyingThres)) * varyingThres;
-  valGamma.w += floor((abs(min(valGamma.w - middleGamma, 0.0)) / varyingThres)) * varyingThres;
-  val = valGamma * valGamma;
-
-  return val;
-}
+const float INTEG_SCALE = 32768.0;
 
 mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
   vec2 invTexSize = 1.0 / uAtlasSize;
@@ -91,16 +41,16 @@ mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
 
 // 我们假设同一个轮廓不自交，则可以使用这个函数。
 // 如果不满足条件，则应该用32行注释掉的那段。
-// G/B/A 是基数 8 的三位（位权 1、8、64）。storage 关闭或 gather 时 B = A = 0，结果就是 G / S。
+// G/B/A 是基数 8 的三位，位权 1、8、64。
 float decodeIntegration (vec4 texel) {
-  return (texel.a * 64.0 + texel.b * 8.0 + texel.g) / uIntegScale;
+  return (texel.a * 64.0 + texel.b * 8.0 + texel.g) / INTEG_SCALE;
 }
 
 float fixSingleLayer(float indicator, float integration)
 {
-  return (1.0 + integration) * step(integration, -0.01) + 
-  integration * step(0.01, integration) + 
-  (indicator + integration) * step(-0.01, integration) * step(integration, 0.01);
+  return (1.0 + integration) * step(integration, -0.005) + 
+  integration * step(0.005, integration) + 
+  (indicator + integration) * step(-0.005, integration) * step(integration, 0.005);
 }
 
 float sampleBilinearGather (vec2 uv, vec2 texSize) {
@@ -120,10 +70,6 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
     fixSingleLayer(indicators.z, integs.z),
     fixSingleLayer(indicators.w, integs.w)
   );
-
-  // vec4 vals = integs + indicators;
-
-  // fixGatherSave(vals);  // 这个能work应该需要uRadiusScreen至少有1.5个px（直径覆盖3px）。现在在cpu保证。
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);

@@ -7,7 +7,7 @@ import type { Renderer } from './renderer';
 import { TextureLoadAction } from '../texture';
 import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
-import { FeatherRenderParams, VectorFeatherRenderer, getExpandedRadius } from '../math/shape/vector-feather-renderer';
+import { FeatherRenderParams, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
 
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
@@ -82,9 +82,6 @@ export class FeatherOffscreenPass extends RenderPass {
     this.allocator = new AtlasAllocator(atlasW, atlasH);
     this.entries = [];
 
-    const integerOptions = VectorFeatherRenderer.resolveIntegerOptions(renderer.engine);
-    const integScale = VectorFeatherRenderer.getIntegScale(integerOptions);
-
     const prevFramebuffer = renderer.getFramebuffer();
     let currentAtlas: Framebuffer | null = null;
 
@@ -98,27 +95,16 @@ export class FeatherOffscreenPass extends RenderPass {
        
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        if (params.kernelCoverage < featherRenderer.featherSwitchThreshold){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
-          component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
-          if (integerOptions.geometry) {
-            featherRenderer.drawScatterDirectPass(
-              renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y),
-              integerOptions.geometrySpace, integScale,
-            );
-          } else {
-            featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius, integScale);
-          }
-        }else{
-          featherRenderer.updateUpsampleQuad(getExpandedRadius(featherRenderer.featherRadius, params.featherRadiusScreen));
-          featherRenderer.drawGatherPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
-        }
+        component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+        featherRenderer.drawScatterPass(
+          renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y),
+        );
         featherRenderer.atlasInfo = {
           atlasTexture: currentAtlas.getColorTextures()[0],
           atlasSize: new Vector2(atlasW, atlasH),
           textureOffset: new Vector2(rect.x, rect.y),
           textureSize: new Vector2(rect.w, rect.h),
           featherRadiusScreen: params.featherRadiusScreen,
-          integScale,
         };
       }
     };

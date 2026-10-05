@@ -1,15 +1,88 @@
 precision highp float;
 
-varying float vHalfLength;
-varying vec2 vLocal;
+varying vec4 vEdge;
 
-uniform float uRadius;
-uniform float uIntegScale;  // 1.0: 直接输出；> 1.0: 输出 round(v * S)，用于 fp16 atlas 的精确整数累加
+uniform vec2 uViewportOffset;  // 当前图形在 atlas 中的 viewport 起点（整数像素）
+uniform vec2 uPixelOrigin;     // 像素中心换算到局部空间：P = uPixelOrigin + (pixel + 0.5) * uSpacePerPixel
+uniform vec2 uSpacePerPixel;
+uniform float uRadius;         // 局部空间羽化半径
 
+const float INTEG_SCALE = 32768.0;
 const float PI = 3.14159265359;
+const float PI_2 = 1.5707963268;
 const float PI_4 = 0.7853981633;
 
-vec2 integBoundaryLine_Polar_3 (float r2, float b, float y1, float y2) {
+// 像素与边的相对几何关系。b、y 在局部空间，b > 0 表示像素在边的左侧（CCW 轮廓的内侧）。
+struct EdgeLocal {
+  float b;
+  float y1;
+  float y2;
+  bool onLine;    // 叉积 == 0
+  bool atVertex1; // 像素中心与 p1 重合
+  bool atVertex2;
+  float side;     // 左右侧，永不为 0；叉积为 0 时按 SoS 扰动 p' = p + (eps, eps^2) 取符号
+  vec2 e;         // 局部空间下的边向量
+};
+
+EdgeLocal computeEdgeLocal () {
+  EdgeLocal edge;
+  vec2 pixel = floor(gl_FragCoord.xy) - uViewportOffset;
+  vec2 p = uPixelOrigin + (pixel + 0.5) * uSpacePerPixel;
+  vec2 p1 = vEdge.xy;
+  vec2 p2 = vEdge.zw;
+  vec2 e = p2 - p1;
+  vec2 d1 = p1 - p;
+  vec2 d2 = p2 - p;
+  float crossF = e.x * (p.y - p1.y) - e.y * (p.x - p1.x);
+  float eLength = length(e);
+  vec2 eDir = e / eLength;
+
+  edge.e = e;
+  if (crossF != 0.0) {
+    edge.side = crossF > 0.0 ? 1.0 : -1.0;
+  } else if (e.y != 0.0) {
+    edge.side = e.y > 0.0 ? -1.0 : 1.0;
+  } else {
+    edge.side = e.x > 0.0 ? 1.0 : -1.0;
+  }
+  edge.onLine = crossF == 0.0;
+  edge.atVertex1 = d1 == vec2(0.0);
+  edge.atVertex2 = d2 == vec2(0.0);
+  edge.b = crossF / eLength;
+  edge.y1 = dot(d1, eDir);
+  edge.y2 = dot(d2, eDir);
+
+  return edge;
+}
+
+// atan(y / b)。b == 0 或像素与顶点重合时，按 SoS 扰动取极限：
+// 顶点处 y / b -> e.x / e.y；若 e.y == 0 则 -> -inf。
+float arcAngle (float y, EdgeLocal edge, bool atVertex) {
+  if (atVertex) {
+    if (edge.e.y != 0.0) {
+      return atan(edge.e.x / edge.e.y);
+    }
+
+    return -PI_2;
+  }
+  if (edge.onLine) {
+    return edge.side * sign(y) * PI_2;
+  }
+
+  return atan(y / edge.b);
+}
+
+float feather (EdgeLocal edge) {
+  float r2 = uRadius * uRadius;
+  float b = edge.b;
+
+  if (abs(b) >= uRadius) {
+    return 0.0;
+  }
+  float span = sqrt(r2 - b * b);
+  float y1 = clamp(edge.y1, -span, span);
+  float y2 = clamp(edge.y2, -span, span);
+
   float b2 = b * b;
   float b4 = b2 * b2;
   float b6 = b4 * b2;
@@ -23,37 +96,17 @@ vec2 integBoundaryLine_Polar_3 (float r2, float b, float y1, float y2) {
   float c4 = b * (-1.0 / 56.0 / r6);
   float integ1 = (((c4 * y1_2 + c3) * y1_2 + c2) * y1_2 + c1) * y1;
   float integ2 = (((c4 * y2_2 + c3) * y2_2 + c2) * y2_2 + c1) * y2;
-  // float integArc = 0.125 * r2 * (atan(y2 / b) - atan(y1 / b));   // 虽然这里可能除以0，但实际上不影响。因为atan会把值限制在pi/2
-  // float integArc = 0.125 * r2 * atan(b * (y2 - y1), b2 + y1 * y2);  // 这个看起来没有除以0，也许会更好？
-  float integArc = 0.5 * (atan(y2 / b) - atan(y1 / b)) / PI;
-  return vec2((integ2 - integ1) / (r2 * PI_4), -integArc);
-  // return (integ2 - integ1 - integArc) / (r2 * PI_4);
+  float integArc = 0.5 * (arcAngle(y2, edge, edge.atVertex2) - arcAngle(y1, edge, edge.atVertex1)) / PI;
+
+  return (integ2 - integ1) / (r2 * PI_4) - integArc;
 }
 
 void main() {
-  float r2 = uRadius * uRadius;
-  vec2 local = vLocal;
-
-  // if (abs(local.y) < 0.001)discard;
-
-  float xSpan = sqrt(max(r2 - local.y * local.y, 0.0));
-  float xLocal2 = max(min(local.x + xSpan, vHalfLength), -vHalfLength);
-  float xLocal1 = min(max(local.x - xSpan, -vHalfLength), vHalfLength);
-
-  vec2 feather = integBoundaryLine_Polar_3(r2, local.y, xLocal1 - vLocal.x, xLocal2 - vLocal.x);
-
-  // gl_FragColor = vec4(0.0, clamp(feather.x, -1.0, 1.0), feather.y,  0.0);
-  float integration = (feather.x + feather.y) * uIntegScale;
-
-  // 基数 8：n = d2 * 64 + d1 * 8 + d0，余数落在 [-4, 3]。与 feather-scatter-direct 相同。
-  if (uIntegScale > 1.0) {
-    float n = floor(integration + 0.5);
-    float q1 = floor(n * 0.125 + 0.5);
-    float d0 = n - q1 * 8.0;
-    float q2 = floor(q1 * 0.125 + 0.5);
-    float d1 = q1 - q2 * 8.0;
-    gl_FragColor = vec4(0.0, d0, d1, q2);
-  } else {
-    gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
-  }
+  // 基数 8：n = d2 * 64 + d1 * 8 + d0，余数落在 [-4, 3]。乘 0.125 对 |n| <= 2^24 的整数精确。
+  float n = floor(feather(computeEdgeLocal()) * INTEG_SCALE + 0.5);
+  float q1 = floor(n * 0.125 + 0.5);
+  float d0 = n - q1 * 8.0;
+  float q2 = floor(q1 * 0.125 + 0.5);
+  float d1 = q1 - q2 * 8.0;
+  gl_FragColor = vec4(0.0, d0, d1, q2);
 }
