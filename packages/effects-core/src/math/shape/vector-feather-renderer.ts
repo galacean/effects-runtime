@@ -58,7 +58,7 @@ export class VectorFeatherRenderer {
    * 打开时 indicator 用包围盒覆盖，并按与 scatter 相同的浮点 SoS 判断内外。
    * 关闭时仍光栅化扇形三角形，用 gl_FrontFacing 写 ±1。
    */
-  static indicatorSoS = false;
+  static indicatorSoS = true;
 
   private engine: Engine;
 

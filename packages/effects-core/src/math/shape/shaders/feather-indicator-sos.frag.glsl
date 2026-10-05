@@ -29,14 +29,16 @@ void main() {
   float orientCross = e01.x * (vP2.y - vP0.y) - e01.y * (vP2.x - vP0.x);
 
   if (orientCross == 0.0) {
-    discard;
+    gl_FragColor = vec4(0.0);  // 这里不能用discard，某些手机不支持。
+    return;
   }
   float orient = orientCross > 0.0 ? 1.0 : -1.0;
 
   if (edgeSide(vP0, vP1, p) != orient ||
     edgeSide(vP1, vP2, p) != orient ||
     edgeSide(vP2, vP0, p) != orient) {
-    discard;
+    gl_FragColor = vec4(0.0);
+    return;
   }
 
   gl_FragColor = vec4(orient, 0.0, 0.0, 0.0);
