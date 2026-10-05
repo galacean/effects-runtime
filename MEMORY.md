@@ -29,13 +29,68 @@ Agent可以不用自己阅读这个页面，用户会打开这个页面并观察
 在这里记录不同的尝试的结果。
 ## 1. 尝试使用整数计算改写整个流程
 这个思路是为了验证是否真的是GPU浮点误差导致，并尝试修复。具体地，将Indicator & Integration都改为使用整数计算。可以接受浮点改为整数导致的取整误差，因为本身显示设备就只有8位。我预期它涉及到整个羽化部分渲染管线的改动，包括怎么将输入的图形坐标取整（例如，坐标5.521可能会取整为一个放大的坐标系下的整数坐标552），怎么用整数改写现在scatter pass中的浮点数计算过程，怎么使用能存储和叠加正负整数的纹理类型。
-后面由Agent在实现和总结后填写。
 
-# 实验
+### 阶段性实验
 不同组合的测试，取R=5单位（不是5像素）
 geometry: FPS60，1891mW
 storage+geometry: FPS60，1827mW
 storage+geometry+indicatorSoS: FPS60, 2090mW
 storage+geometry+fixed: FPS60, 1928mW
+
+### 总结
+
+#### 结论
+问题 2 已解决，靠的是两项改动一起生效：
+- **geometry**：scatter 不再插值 `vLocal`，而是在片元中用 `gl_FragCoord` 和边的端点直接计算几何。
+- **storage**：atlas 改为 RGBA32F，并用定点数做精确累加。
+
+两者缺一不可。原先设想的"整数几何 / 整数叉积 / 定点积分 / indicator 共用 SoS 规则"经实验证明都不必要，已删除（实验代码存档在 `fa454d30`、`0212bd35`）。
+问题 1 仍由 upsample 中的 `fixSingleLayer` 处理，需要保持开启。
+
+推荐采用的最终版本是 `ec26fca0`（storage 用 RGBAFloat）。其后的 `ee7f799e` / `dd88f714` 是 fp16 实验版，效果不达标，见下文"fp16 的不足"。
+
+#### 改动规模（相对分支起点 `e80011f4`，只统计 `packages/`）
+- fp32 版 `ec26fca0`：10 个文件，+331 / -10。其中新 shader 约 140 行，其余为开关、uniform 传递和格式支持。
+- fp16 版（当前 HEAD）：7 个文件，+292 / -7。相比 fp32 版去掉了 RGBAFloat 相关的 3 个文件。
+- 涉及的文件：
+  - 新增 `feather-scatter-direct.vert/frag.glsl`（GLSL1）。
+  - 修改 `feather-scatter.frag.glsl`、`feather-upsample.frag.glsl`、`vector-feather-renderer.ts`、`feather-offscreen-pass.ts`、`shape-component.ts`。
+  - 仅 fp32 版修改的 `framebuffer.ts`（新增 `RGBAFloat`）、`render-target-pool.ts`（`FLOAT` 映射）、`gpu-capability.ts`（`floatBlend` 检测）。
+- CPU 端的顶点数据流程（`updateMeshData`）与分支起点完全一致。每帧只多设置几个 uniform，不需要重新上传顶点。
+
+#### 开关（`VectorFeatherRenderer.integerOptions`，全局调试开关）
+- `storage`：
+  - fp32 版：atlas 用 RGBA32F，scatter 输出 `round(v * 65536)`。
+  - fp16 版：atlas 用 RGBAHalf，scatter 输出 `round(v * 256)`。
+  - upsample 读出 G 通道后除以 S。gather 和 indicator 只写 R 通道，不受影响。
+- `geometry`：scatter 改用 `feather-scatter-direct`。indicator 仍是原来的扇形三角形。
+- `geometrySpace`（仅 geometry 生效）：`'grid'`（端点换算到 FBO 像素 × 16 的网格坐标）或 `'local'`（直接在局部坐标中计算）。同一个 shader，只靠 uniform 区分，两种实测都能解决问题 2。
+
+#### 关键设计：为什么能解决问题 2
+1. **相邻边的共享顶点逐位一致（geometry）**
+   - 原 scatter 的每条边以自己的中点为原点，片元拿到的是插值得到的 `vLocal`。同一个顶点在相邻两条边里，会因为参考系不同、插值舍入不同而得到略有差异的局部坐标。
+   - 像素靠近顶点时，弧项 `atan(y/b)` 非常陡峭，相邻两条边的弧项本应精确抵消，却留下了 0.02~0.2 的残差。这正是问题 2 的特征：只出现在边界或顶点附近，并且只有 scatter 有，gather 没有。
+   - 新做法是：像素中心由 `floor(gl_FragCoord.xy)` 得到；端点在顶点着色器里用同一个表达式、同样的输入换算到计算空间。因此共享顶点在两个实例中逐位相同，弧项可以精确抵消。
+   - 叉积为 0、像素恰好落在边上或顶点上时，用 SoS（Simulation of Simplicity，模拟微小扰动）规则决定落在哪一侧，并对顶点重合的情况取极限值，避免出现 0/0。
+2. **累加与绘制顺序无关（storage）**
+   - 硬件混合的累加顺序不确定，fp16 的部分和每次相加都会舍入。
+   - 把每条边的输出量化成整数，再用能精确表示这些整数的格式来累加，加法就是精确的，结果与顺序无关。
+   - fp32 下 `2^24` 以内的整数都能精确表示，S = 65536 时部分和可以达到 ±256，余量很大。
+3. 只开 geometry 时，近顶点的大幅弧项在 fp16 中相加并抵消，仍会残留误差；只开 storage 时，几何本身已经不一致。所以两者必须同时开启。
+
+#### 兼容性与性能
+- 两个新 shader 都是 GLSL1，WebGL1 可以使用（引擎在 WebGL2 下会自动转换成 300 es）。
+- fp32 版 storage 需要以下扩展；缺少时会自动关闭 storage 并打印 warn：
+  - WebGL2：`EXT_color_buffer_float` + `EXT_float_blend`。
+  - WebGL1：`OES_texture_float` + `WEBGL_color_buffer_float` + `EXT_float_blend`。
+- 累加值最大约 2^24，要求片元着色器支持 highp。这一点与原羽化 shader 的要求相同。
+
+#### fp16 的不足（`ee7f799e`，RGBAHalf + 量化）
+- **原理**：fp16 只能精确表示 2048 以内的整数，所以部分和上限为 ±2048 / S。S = 256 时上限 ±8，S = 1024 时上限 ±2。实测部分和不超过约 1.2，不会溢出，累加确实与顺序无关。
+- **问题出在量化误差**：每条边都会产生 ±0.5 / S 的误差，而且这个误差不会随机抵消，会系统性累积。密集曲线上许多边的贡献都小于 0.5 / S，全部被舍入成 0，整体就丢失了。
+  - 仿真结果：1024 边的圆（卷积核内最多 146 条边）误差约 0.088，48 角星约 0.015。这比不开 storage 的 fp16 误差（千分之几）还大一个数量级。
+- **实测**：S = 256 时能看到明显的明暗噪点；S = 1024 时仍未完全消除。S 不能继续增大，否则部分和的余量不够。
+- **结论**：精确累加需要足够的尾数位，fp16 只有 11 位，无法同时满足"量化误差足够小"和"部分和不溢出"两个要求。目前 fp32（RGBA32F + `EXT_float_blend`）难以替代。
+- 对于不支持 float 混合的设备，可能的退路：关闭 storage，只开 geometry（实测问题 2 未完全消除，残余程度待评估）；或者在这些设备上改用 gather。
 
 ## 2. 别的思路——暂时没想到。
