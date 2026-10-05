@@ -28,8 +28,9 @@ import scatterDirectFrag from './shaders/feather-scatter-direct.frag.glsl';
  */
 export type FeatherIntegerOptions = {
   /**
-   * scatter 输出 round(v * S)（atlas 仍为 RGBAHalf），只要部分和不超出 fp16 的精确整数范围，
-   * 累加就精确且与顺序无关；代价是每条边 +-0.5 / S 的量化误差
+   * scatter 把 round(v * S) 拆成基数 8 的三位，加法混合进 G/B/A（atlas 仍为 RGBAHalf）。
+   * 每个通道上，正贡献之和与负贡献之和的较大者不超过 2048 时，累加精确且与顺序无关。
+   * 代价是每条边 +-0.5 / S 的量化误差
    */
   storage: boolean,
   /**
@@ -46,9 +47,14 @@ export type FeatherIntegerOptions = {
 };
 
 /**
- * integration 通道的定点缩放 S。fp16 在 2048 以内的整数加法精确，因此部分和可容纳到 +-2048 / S = +-8。
+ * integration 的定点缩放 S。基数 8，三位写入 G/B/A，位权 1、8、64：
+ * n = d2 * 64 + d1 * 8 + d0，d0 与 d1 落在 [-4, 3]。
+ * fp16 能精确相加的整数只有 ±2048。低位、中位每条边最多贡献 4，
+ * 因此单个像素卷积核内的非零边数须 ≤ 512。
+ * 高位在 S = 32768、核内 512 条边时，要求正贡献之和与负贡献之和的较大者 ≤ 3.44
+ * （净和在 [-1, 1] 时，大约相当于各边绝对值之和 ≤ 5.9）。
  */
-export const FEATHER_INTEG_SCALE = 256;
+export const FEATHER_INTEG_SCALE = 32768;
 
 /**
  * grid 空间的子像素精度（每个 FBO 像素对应的网格单位数）

@@ -89,8 +89,13 @@ mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
   return mat4(tl, tr, br, bl);
 }
 
-// 我们假设1.同一个轮廓不自交，2.有两个通道可用（目前纹理是RGBA，用了RG），则可以使用这个函数
+// 我们假设同一个轮廓不自交，则可以使用这个函数。
 // 如果不满足条件，则应该用32行注释掉的那段。
+// G/B/A 是基数 8 的三位（位权 1、8、64）。storage 关闭或 gather 时 B = A = 0，结果就是 G / S。
+float decodeIntegration (vec4 texel) {
+  return (texel.a * 64.0 + texel.b * 8.0 + texel.g) / uIntegScale;
+}
+
 float fixSingleLayer(float indicator, float integration)
 {
   return (1.0 + integration) * step(integration, -0.01) + 
@@ -103,7 +108,12 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
   vec2 f = fract(pixel);
   mat4 gathered = softGather(uAtlasTex, uv, texSize);
   vec4 indicators = vec4(gathered[0][0], gathered[1][0], gathered[2][0], gathered[3][0]);
-  vec4 integs = vec4(gathered[0][1], gathered[1][1], gathered[2][1], gathered[3][1]) / uIntegScale;
+  vec4 integs = vec4(
+    decodeIntegration(gathered[0]),
+    decodeIntegration(gathered[1]),
+    decodeIntegration(gathered[2]),
+    decodeIntegration(gathered[3])
+  );
   vec4 vals = vec4(
     fixSingleLayer(indicators.x, integs.x),
     fixSingleLayer(indicators.y, integs.y),

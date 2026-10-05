@@ -106,8 +106,15 @@ float feather (EdgeLocal edge) {
 void main() {
   float integration = feather(computeEdgeLocal()) * uIntegScale;
 
+  // 基数 8：n = d2 * 64 + d1 * 8 + d0，余数落在 [-4, 3]。乘 0.125 对 |n| <= 2^24 的整数精确。
   if (uIntegScale > 1.0) {
-    integration = floor(integration + 0.5);
+    float n = floor(integration + 0.5);
+    float q1 = floor(n * 0.125 + 0.5);
+    float d0 = n - q1 * 8.0;
+    float q2 = floor(q1 * 0.125 + 0.5);
+    float d1 = q1 - q2 * 8.0;
+    gl_FragColor = vec4(0.0, d0, d1, q2);
+  } else {
+    gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
   }
-  gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
 }

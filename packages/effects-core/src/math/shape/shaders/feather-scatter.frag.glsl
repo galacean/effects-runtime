@@ -45,8 +45,15 @@ void main() {
   // gl_FragColor = vec4(0.0, clamp(feather.x, -1.0, 1.0), feather.y,  0.0);
   float integration = (feather.x + feather.y) * uIntegScale;
 
+  // 基数 8：n = d2 * 64 + d1 * 8 + d0，余数落在 [-4, 3]。与 feather-scatter-direct 相同。
   if (uIntegScale > 1.0) {
-    integration = floor(integration + 0.5);
+    float n = floor(integration + 0.5);
+    float q1 = floor(n * 0.125 + 0.5);
+    float d0 = n - q1 * 8.0;
+    float q2 = floor(q1 * 0.125 + 0.5);
+    float d1 = q1 - q2 * 8.0;
+    gl_FragColor = vec4(0.0, d0, d1, q2);
+  } else {
+    gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
   }
-  gl_FragColor = vec4(0.0, integration, 0.0, 0.0);
 }
