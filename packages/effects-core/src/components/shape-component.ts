@@ -323,10 +323,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     
     if (atlasInfo) {
       this.featherRenderer.updateUpsampleQuad(getExpandedRadius(this.featherRenderer.featherRadius, atlasInfo.featherRadiusScreen));
+      this.applyUpsamplePaint(this.featherRenderer.upsampleMaterial);
       this.featherRenderer.drawUpsamplePass(
         renderer, this.transform.getWorldMatrix(),
         atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,
-        atlasInfo.textureOffset, this.featherRenderer.featherColor, atlasInfo.featherRadiusScreen,
+        atlasInfo.textureOffset, atlasInfo.featherRadiusScreen,
       );
 
       return;
@@ -759,6 +760,50 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         .invert()
       );
     }
+  }
+
+  private applyUpsamplePaint (material: Material): void {
+    const paint = this.pickFeatherPaint();
+
+    if (!paint) {
+      material.setFloat('_FillType', spec.FillType.Solid);
+      material.color = this.featherRenderer.featherColor;
+
+      return;
+    }
+
+    material.setFloat('_FillType', paint.type);
+
+    if (paint.type === spec.FillType.Solid) {
+      material.color = paint.color;
+
+      return;
+    }
+
+    this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
+  }
+
+  private pickFeatherPaint (): SolidPaint | GradientPaint | undefined {
+    const fill = this.fills[0];
+
+    if (fill && this.isSolidOrGradient(fill)) {
+      return fill;
+    }
+
+    const stroke = this.strokes[0];
+
+    if (stroke && this.isSolidOrGradient(stroke)) {
+      return stroke;
+    }
+
+    return undefined;
+  }
+
+  private isSolidOrGradient (paint: Paint): paint is SolidPaint | GradientPaint {
+    return paint.type === spec.FillType.Solid
+      || paint.type === spec.FillType.GradientLinear
+      || paint.type === spec.FillType.GradientAngular
+      || paint.type === spec.FillType.GradientRadial;
   }
 
   private updateGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {

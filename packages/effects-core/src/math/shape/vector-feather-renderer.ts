@@ -1,7 +1,6 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Engine } from '../../engine';
 import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
@@ -69,9 +68,14 @@ export class VectorFeatherRenderer {
   private indicatorMaterial: Material;
   private indicatorSoSMaterial: Material;
   private scatterMaterial: Material;
-  private upsampleMaterial: Material;
+
+  /**
+   * Upsample 材质。绘制前由调用方写入纯色或渐变 uniform。
+   */
+  upsampleMaterial: Material;
 
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
+  private expandedRect: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
   private indicatorTriangleCount = 0;
 
@@ -261,6 +265,7 @@ export class VectorFeatherRenderer {
       1, 0,   // 右下
     ]);
 
+    this.expandedRect = [minX, minY, maxX - minX, maxY - minY];
     this.upsampleGeometry.setAttributeData('aPos', posData);
     this.upsampleGeometry.setAttributeData('aUV', uvData);
   }
@@ -389,16 +394,21 @@ export class VectorFeatherRenderer {
     textureSize: Vector2,
     atlasSize: Vector2,
     textureOffset: Vector2,
-    color: Color,
     featherRadiusScreen: number,
   ): void {
-    this.upsampleMaterial.setFloat("uScreenRadius", featherRadiusScreen);
+    const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = this.currentBbox;
+    const [expandedMinX, expandedMinY, expandedWidth, expandedHeight] = this.expandedRect;
+
+    this.upsampleMaterial.setFloat('uScreenRadius', featherRadiusScreen);
     this.upsampleMaterial.setFloat('uIndicatorSoS', VectorFeatherRenderer.indicatorSoS ? 1 : 0);
     this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
     this.upsampleMaterial.setVector2('uTextureSize', textureSize);
     this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
     this.upsampleMaterial.setVector2('uTextureOffset', textureOffset);
-    this.upsampleMaterial.setVector4('uColor', new Vector4(color.r, color.g, color.b, color.a));
+    this.upsampleMaterial.setVector2('uGradientMin', new Vector2(gradientMinX, gradientMinY));
+    this.upsampleMaterial.setVector2('uGradientSize', new Vector2(gradientWidth, gradientHeight));
+    this.upsampleMaterial.setVector2('uExpandedMin', new Vector2(expandedMinX, expandedMinY));
+    this.upsampleMaterial.setVector2('uExpandedSize', new Vector2(expandedWidth, expandedHeight));
     renderer.drawGeometry(
       this.upsampleGeometry, worldMatrix, this.upsampleMaterial,
     );
@@ -460,13 +470,15 @@ export class VectorFeatherRenderer {
     // 更新 upsample 四边形覆盖区域
     this.updateUpsampleQuad(getExpandedRadius(this.featherRadius, params.featherRadiusScreen));
 
-    // 绘制 upsample
+    // 绘制 upsample。这条路径只有纯色，渐变由 ShapeComponent 在绘制前写入。
     const atlasTexture = atlas.getColorTextures()[0];
 
+    this.upsampleMaterial.setFloat('_FillType', 0);
+    this.upsampleMaterial.color = color;
     this.drawUpsamplePass(
       renderer, worldMatrix, atlasTexture,
       new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
-      color, params.featherRadiusScreen,
+      params.featherRadiusScreen,
     );
 
     // 释放临时渲染目标
