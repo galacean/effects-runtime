@@ -1,5 +1,6 @@
 import { defineConfig } from './config-definition';
 import type {
+  EffectsEditModeConfig,
   IconConfig,
   ItemCreateConfig,
   MaskConfig,
@@ -14,6 +15,11 @@ import type {
 } from './types';
 
 export { DEFAULT_LOADING_FRAGMENT, loadingConfig } from './loading-config';
+
+export const effectsEditModeConfig = defineConfig<'mode.effects-edit', EffectsEditModeConfig>({
+  id: 'mode.effects-edit',
+  defaults: { allowTransform: true },
+});
 
 export const viewportNavigationConfig = defineConfig<'viewport.navigation', ViewportNavigationConfig>({
   id: 'viewport.navigation',

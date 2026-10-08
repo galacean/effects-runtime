@@ -1,5 +1,6 @@
 import { MouseButton, spec, TextComponent, type InputEventMouseButton } from '@galacean/effects';
 import { GestureCursorType } from '../cursor';
+import { effectsEditModeConfig } from '../configs/builtin-configs';
 import { Gizmo } from '../gizmo';
 import { isEffectsPlayerItem } from '../items';
 import { Vector2 } from '../math';
@@ -45,6 +46,7 @@ export class EnterEditModeGizmo extends Gizmo {
       this._owner.setActiveEditMode(new EffectsEditMode(
         this._owner,
         selectedItem.getInstanceId(),
+        this._owner.getConfigManager().get(effectsEditModeConfig),
       ));
     } else {
       return;

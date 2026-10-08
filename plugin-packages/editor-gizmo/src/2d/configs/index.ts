@@ -15,6 +15,7 @@ export type {
   ConfigManagerEvents,
 } from './config-manager';
 export {
+  effectsEditModeConfig,
   iconConfig,
   itemCreateConfig,
   DEFAULT_LOADING_FRAGMENT,
@@ -30,6 +31,7 @@ export {
   viewportOverlayConfig,
 } from './builtin-configs';
 export type {
+  EffectsEditModeConfig,
   IconConfig,
   ItemCreateConfig,
   LoadingConfig,

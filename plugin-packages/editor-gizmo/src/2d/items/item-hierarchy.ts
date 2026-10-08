@@ -2,6 +2,17 @@ import type { Composition, VFXItem } from '@galacean/effects';
 import { isEffectsPlayerItem, isFramePlayerItem } from './item-predicates';
 
 /**
+ * 判断播放器元素是否参与交互命中。
+ *
+ * 部分测试夹具或外部运行时节点可能未提供 isVisible；只有明确为 false 时视为隐藏。
+ * @param item 待判断元素
+ * @returns 是否可参与交互
+ */
+export function isPlayerItemVisible (item: VFXItem | undefined): boolean {
+  return item?.isVisible !== false;
+}
+
+/**
  * 获取元素自身或祖先链中最近的特效容器。
  *
  * 默认编辑模式下，Effects 预合成的运行时子节点只负责渲染，点选、框选等交互

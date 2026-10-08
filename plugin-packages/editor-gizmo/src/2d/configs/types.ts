@@ -10,6 +10,12 @@ export type SnapConfig = {
   distance: number,
 };
 
+/** 特效内部编辑模式配置。 */
+export type EffectsEditModeConfig = {
+  /** 是否允许子元素移动、缩放和旋转。 */
+  allowTransform: boolean,
+};
+
 /** 滚轮驱动的视口导航配置。 */
 export type ViewportNavigationConfig = {
   /** 是否将无修饰键的滚轮事件解释为缩放而非平移。 */

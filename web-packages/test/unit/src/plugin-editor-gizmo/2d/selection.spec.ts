@@ -1,5 +1,5 @@
 import { restoreTestState } from '../helpers/spies';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Euler, Matrix4, Quaternion, Ray, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameComponent, spec, type Engine, type VFXItem } from '@galacean/effects';
 
@@ -17,14 +17,14 @@ describe('plugin-editor-gizmo/selection', () => {
     return new Selection(engine);
   }
 
-  function makeItem (id: string, children: VFXItem[] = []): VFXItem {
+  function makeItem (id: string, children: VFXItem[] = [], visible = true): VFXItem {
     const item = {
       name: id,
       type: spec.ItemType.null,
       children,
       parent: undefined,
       parentId: '',
-      isVisible: true,
+      isVisible: visible,
       getInstanceId: () => id,
       getComponent: () => undefined,
     } as unknown as VFXItem;
@@ -81,6 +81,27 @@ describe('plugin-editor-gizmo/selection', () => {
   }
 
   describe('Selection hit snapshot and atomic commit', () => {
+    it('命中检测跳过已隐藏的上层元素并保留下层元素', () => {
+      const hidden = makeItem('hidden', [], false);
+      const visible = makeItem('visible');
+      const engine = {
+        sceneServer: {
+          compositions: [{
+            items: [hidden, visible],
+            hitTest: chai.spy(() => [
+              { id: 'visible', position: new Vector3() },
+              { id: 'hidden', position: new Vector3() },
+            ]),
+            getHitTestRay: () => new Ray(),
+          }],
+        },
+        canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
+      } as unknown as Engine;
+      const selection = new Selection(engine);
+
+      expect(selection.hitTest(new Vector2(400, 300))).to.deep.equal(['visible']);
+    });
+
     it('多选时整体选框内的元素间空白可作为移动命中区域', () => {
       const left = makeViewItem('left', -0.5);
       const right = makeViewItem('right', 0.5);

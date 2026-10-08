@@ -207,6 +207,11 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       controller.onMouseDrag(mouseMotion({ position: new math.Vector2(100, 100) }));
       expect(getSelectedIds()).to.deep.equal(['item-1']);
 
+      Object.assign(item, { isVisible: false });
+      controller.onMouseDrag(mouseMotion({ position: new math.Vector2(100, 100) }));
+      expect(getSelectedIds()).to.deep.equal([]);
+      Object.assign(item, { isVisible: true });
+
       transform = getBoxTransform([
         new Vector2(100, 20),
         new Vector2(180, 20),

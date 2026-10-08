@@ -138,6 +138,12 @@ function getResizeAxis (behavior: ResizeSelectionBehavior): 'both' | 'x' | 'y' {
   return behavior === 'resize-x' ? 'x' : behavior === 'resize-y' ? 'y' : 'both';
 }
 
+/** 缩放选区 Gizmo 的交互配置。 */
+export type ResizeSelectionGizmoOptions = {
+  /** 是否允许缩放；关闭时仍绘制选区线框。 */
+  interactive?: boolean,
+};
+
 /** 绘制选区线框，并通过边与角点手柄缩放选中元素。 */
 export class ResizeSelectionGizmo extends Gizmo {
   readonly type: GizmoType = GizmoType.RESIZE_SELECTION;
@@ -191,12 +197,17 @@ export class ResizeSelectionGizmo extends Gizmo {
   /** 缩放开关。 */
   private scaleEnabled = true;
 
+  /** 是否允许当前 Gizmo 接收缩放输入。 */
+  private readonly interactionEnabled: boolean;
+
   /**
    * 创建选区缩放 Gizmo 并监听配置变化。
    * @param owner Gizmo 宿主。
+   * @param options 缩放交互配置。
    */
-  constructor (owner: GizmoOwner) {
+  constructor (owner: GizmoOwner, options: ResizeSelectionGizmoOptions = {}) {
     super(owner);
+    this.interactionEnabled = options.interactive !== false;
     this.configOff = owner.getConfigManager().onChange(
       resizeSelectionConfig,
       change => {
@@ -532,7 +543,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     // 步骤 1：解析选区类型并重置线框数据。
     const { selectedItems, scaleEnabled } = this;
     const isSingleText = selectedItems.length === 1 && selectedItems[0].type === spec.ItemType.text;
-    const transformEnabled = !this.hasLoadingSelection(selectedItems);
+    const transformEnabled = this.interactionEnabled && !this.hasLoadingSelection(selectedItems);
 
     this.iconType = selectedItems.length === 1
       ? this.getIconType(selectedItems[0])

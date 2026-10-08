@@ -97,9 +97,6 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 当前编辑模式。 */
   private editMode: EditMode;
 
-  /** 宿主提供的默认编辑模式工厂。 */
-  private defaultEditModeFactory?: (owner: GizmoOwner) => EditMode;
-
   /** 选中状态与命中查询器。 */
   private selection: Selection;
 
@@ -261,17 +258,6 @@ export class GestureHandler extends Control implements GizmoOwner {
     }
     this.commitEditMode(mode);
     this.redispatchMouseAtCurrentPosition();
-  }
-
-  /**
-   * 注册重置和退出子编辑模式时使用的默认模式工厂。
-   * @param factory 默认编辑模式工厂。
-   */
-  registerDefaultEditModeFactory (factory: (owner: GizmoOwner) => EditMode): void {
-    this.defaultEditModeFactory = factory;
-    if (this.editMode instanceof DefaultSelectionMode) {
-      this.setActiveEditMode(factory(this));
-    }
   }
 
   /** 恢复新的默认编辑模式。 */
@@ -486,9 +472,7 @@ export class GestureHandler extends Control implements GizmoOwner {
 
   /** @returns 新建的默认编辑模式。 */
   private createDefaultEditMode (): EditMode {
-    return this.defaultEditModeFactory
-      ? this.defaultEditModeFactory(this)
-      : new DefaultSelectionMode(this);
+    return new DefaultSelectionMode(this);
   }
 
   /**

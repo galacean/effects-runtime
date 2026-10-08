@@ -12,6 +12,7 @@ import {
   getItemChildren,
   isGroupPlayerItem,
   isFramePlayerItem,
+  isPlayerItemVisible,
 } from '../items';
 import { viewPositionToNDC } from '../viewport';
 
@@ -383,6 +384,12 @@ export class Selection extends EventEmitter<SelectionEvents> {
     } catch (e) {
       console.warn(e);
     }
+    // Effects runtime 在隐藏节点切换后的首帧仍可能返回旧命中区域；以播放器节点的可见性为最终交互依据。
+    result.regions = result.regions.filter(region => {
+      const item = getPlayerItemById(this.engine.sceneServer.compositions[0], region.id);
+
+      return isPlayerItemVisible(item);
+    });
     this.refreshResultRegions(result);
     const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.sceneServer.compositions[0], id)?.type !== spec.ItemType.composition);
 
@@ -814,7 +821,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
       };
 
       dfsItem(playerComposition.items, region.id);
-      if (item === undefined) {
+      if (!item || !isPlayerItemVisible(item)) {
         return;
       }
       const targetItemId = item.getInstanceId();
@@ -864,7 +871,10 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!playerComposition) {
       return currentSelectedIds;
     }
-    const framePlayerItems = playerComposition.items.filter(item => isFramePlayerItem(item));
+    const framePlayerItems = playerComposition.items.filter(item => (
+      isFramePlayerItem(item)
+      && isPlayerItemVisible(item)
+    ));
     const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
     const frameBoxInfoes = framePlayerItems.map(item => ({
       id: item.getInstanceId(),

@@ -596,10 +596,19 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
     activateTool(handler, () => new MoveGizmoTool(handler));
     handler.getSelection().commitSelectedItems(['effects']);
 
-    handler.setActiveEditMode(new EffectsEditMode(handler, 'effects'));
+    handler.setActiveEditMode(new EffectsEditMode(handler, 'effects', { allowTransform: false }));
     expect(handler.getActiveEditMode()).to.be.instanceOf(EffectsEditMode);
     expect(handler.getSelection().getEffectsEditItemId()).to.equal('effects');
     expect(handler.getGizmoManager().get('leave-effects-edit')).not.to.equal(undefined);
+    expect(handler.getGizmoManager().get('corner-rotation')).to.equal(undefined);
+    const resizeSelection = handler.getGizmoManager().get('resize-selection')!;
+
+    resizeSelection.onUpdate();
+    expect(resizeSelection.wireframe.interactive).to.equal(false);
+    expect(resizeSelection.wireframe.cornerEnable).to.equal(false);
+    const selectionInteraction = handler.getGizmoManager().get('click-drag-multiplex')!;
+
+    expect(selectionInteraction.dragCandidates().map(gizmo => gizmo.type)).to.deep.equal(['box-selection']);
 
     handler.getSelection().commitSelectedItems(['effect-child']);
     handler.resetEditMode();

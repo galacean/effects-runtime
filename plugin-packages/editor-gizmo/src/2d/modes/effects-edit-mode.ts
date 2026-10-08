@@ -10,18 +10,29 @@ import { getPlayerItemById } from '../items';
 import { createSelectionInteractionGizmo } from '../selection/create-selection-interaction-gizmo';
 import type { EditMode } from './edit-mode';
 
+/** 特效内部编辑模式配置。 */
+export type EffectsEditModeOptions = {
+  /** 是否允许子元素移动、缩放和旋转；默认允许。 */
+  allowTransform?: boolean,
+};
+
 /** 在单个特效容器内提供子元素选择和变换交互。 */
 export class EffectsEditMode implements EditMode {
   readonly id = 'effects-edit';
+  private readonly allowTransform: boolean;
 
   /**
    * @param owner Gizmo 宿主
    * @param effectsItemId 正在编辑的特效容器实例 ID
+   * @param options 编辑模式配置
    */
   constructor (
     private readonly owner: GizmoOwner,
     readonly effectsItemId: string,
-  ) {}
+    options: EffectsEditModeOptions = {},
+  ) {
+    this.allowTransform = options.allowTransform !== false;
+  }
 
   /**
    * 判断目标工具是否可复用当前特效编辑会话。
@@ -51,14 +62,16 @@ export class EffectsEditMode implements EditMode {
 
   /** @returns 特效内部编辑使用的 Gizmo 图。 */
   createGizmos (): Gizmo[] {
-    const resizeSelection = new ResizeSelectionGizmo(this.owner);
-    const cornerRotation = new CornerRotationGizmo(this.owner, resizeSelection);
+    const resizeSelection = new ResizeSelectionGizmo(this.owner, { interactive: this.allowTransform });
+    const cornerRotation = this.allowTransform
+      ? new CornerRotationGizmo(this.owner, resizeSelection)
+      : undefined;
 
     return [
-      cornerRotation,
+      ...(cornerRotation ? [cornerRotation] : []),
       resizeSelection,
       new LeaveEffectsEditGizmo(this.owner),
-      createSelectionInteractionGizmo(this.owner),
+      createSelectionInteractionGizmo(this.owner, { allowTransform: this.allowTransform }),
     ];
   }
 }

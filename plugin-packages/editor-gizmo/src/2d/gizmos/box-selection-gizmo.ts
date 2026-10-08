@@ -12,7 +12,7 @@ import type { GizmoOwner } from '../gizmo-owner';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import { Vector2, getTransformedBoxCorners, transformedBoxIntersectsBox } from '../math';
 import { drawBox, fillBox, toColor } from '../drawing';
-import { getFramePlayerItemAncestors, getItemViewTransform, isFramePlayerItem } from '../items';
+import { getFramePlayerItemAncestors, getItemViewTransform, isFramePlayerItem, isPlayerItemVisible } from '../items';
 import type { SelectionPreviewConfig } from '../configs/types';
 import { selectionPreviewConfig } from '../configs/builtin-configs';
 
@@ -175,6 +175,9 @@ export class BoxSelectionGizmo extends Gizmo {
       // GE Composition.items 已是 sceneRoot 的全量后代，不再额外递归 children。
       if (composition) {
         for (const item of composition.items) {
+          if (!isPlayerItemVisible(item)) {
+            continue;
+          }
           // 默认归并 Effects 子树；进入 EffectsEditMode 后只展开当前特效内部元素。
           const selectableItem = this.selection.resolveMarqueeSelectableItem(item);
 

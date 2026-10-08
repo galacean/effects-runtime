@@ -13,9 +13,7 @@ import type { EditMode } from './edit-mode';
 export class DefaultSelectionMode implements EditMode {
   readonly id = 'default-selection';
 
-  /**
-   * @param owner Gizmo 宿主
-   */
+  /** @param owner Gizmo 宿主 */
   constructor (private readonly owner: GizmoOwner) {}
 
   /**

@@ -1,9 +1,10 @@
 import { restoreTestState, getSpyCalls, type TestSpy } from '../helpers/spies';
 import { InputEventMouseButton, MouseButton, MouseButtonMask, FrameComponent, spec, TextComponent, type Engine, type VFXItem } from '@galacean/effects';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
-import { FrameManager, GestureCursorType, ConfigManager, SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
+import { FrameManager, GestureCursorType, ConfigManager, SnapManager, effectsEditModeConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 
 import { EnterEditModeGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/enter-edit-mode-gizmo';
+import { ClickDragMultiplexGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo';
 import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import type { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection';
 import { EffectsEditMode, TextEditMode, type EditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';
@@ -56,6 +57,7 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
   function createFixture (kind: 'text' | 'effects', hitIds: string[], hasTextComponent = true): {
     gizmo: EnterEditModeGizmo,
     item: VFXItem,
+    configs: ConfigManager,
     setActiveEditMode: TestSpy,
     setCursor: TestSpy,
   } {
@@ -105,6 +107,7 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
     return {
       gizmo: new EnterEditModeGizmo(owner),
       item,
+      configs,
       setActiveEditMode,
       setCursor,
     };
@@ -147,11 +150,49 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
       gizmo.onMouseDown(event);
 
       expect(setActiveEditMode).to.have.been.called.once;
-      const mode = getSpyCalls(setActiveEditMode)[0][0];
+      const mode = getSpyCalls(setActiveEditMode)[0][0] as EffectsEditMode;
 
       expect(mode).to.be.instanceOf(EffectsEditMode);
       expect(mode.effectsItemId).to.equal('selected-effects');
+      const modeGizmos = mode.createGizmos();
+
+      expect(modeGizmos.some(gizmo => gizmo.type === 'corner-rotation')).to.equal(true);
+      modeGizmos.forEach(gizmo => gizmo.dispose());
       expect(event.isAccepted()).to.equal(true);
+    });
+
+    it('双击时读取当前配置，进入只读 EffectsEditMode', () => {
+      const { gizmo, configs, setActiveEditMode } = createFixture('effects', ['selected-effects']);
+
+      configs.set(effectsEditModeConfig, { allowTransform: false });
+      gizmo.onMouseDown(createDoubleClick());
+
+      const mode = getSpyCalls(setActiveEditMode)[0][0] as EffectsEditMode;
+
+      expect(mode).to.be.instanceOf(EffectsEditMode);
+      const modeGizmos = mode.createGizmos();
+      const selectionInteraction = modeGizmos.find((gizmo): gizmo is ClickDragMultiplexGizmo => gizmo instanceof ClickDragMultiplexGizmo);
+
+      expect(modeGizmos.some(gizmo => gizmo.type === 'corner-rotation')).to.equal(false);
+      expect(selectionInteraction?.dragCandidates().map(gizmo => gizmo.type)).to.deep.equal(['box-selection']);
+      modeGizmos.forEach(gizmo => gizmo.dispose());
+    });
+
+    it('运行期配置变更在下一次双击时生效', () => {
+      const { gizmo, configs, setActiveEditMode } = createFixture('effects', ['selected-effects']);
+
+      gizmo.onMouseDown(createDoubleClick());
+      const firstModeGizmos = (getSpyCalls(setActiveEditMode)[0][0] as EffectsEditMode).createGizmos();
+
+      expect(firstModeGizmos.some(gizmo => gizmo.type === 'corner-rotation')).to.equal(true);
+      firstModeGizmos.forEach(gizmo => gizmo.dispose());
+
+      configs.set(effectsEditModeConfig, { allowTransform: false });
+      gizmo.onMouseDown(createDoubleClick());
+      const modeGizmos = (getSpyCalls(setActiveEditMode)[1][0] as EffectsEditMode).createGizmos();
+
+      expect(modeGizmos.some(gizmo => gizmo.type === 'corner-rotation')).to.equal(false);
+      modeGizmos.forEach(gizmo => gizmo.dispose());
     });
 
     it('双击空白画布时不进入任何编辑模式', () => {
