@@ -4,11 +4,10 @@ attribute vec2 aTemplate;
 attribute vec2 aStart;
 attribute vec2 aEnd;
 
-varying float vHalfLength;
-varying vec2 vLocal;
-
-uniform float uRadius;
 uniform mat4 uProjection;
+uniform float uCoverRadius;  // 局部空间：羽化半径 + 1px，只用于保证覆盖
+
+varying vec4 vEdge;  // 局部空间下的端点 (p1, p2)，同一实例的各顶点取值相同
 
 void main() {
   vec2 midPoint = (aStart + aEnd) / 2.0;
@@ -17,10 +16,9 @@ void main() {
   vec2 outDir = vec2(-frontDir.y, frontDir.x);
 
   gl_Position = uProjection * vec4(
-    midPoint + frontOffset * aTemplate.x + frontDir * uRadius * aTemplate.x + outDir * uRadius * aTemplate.y,
+    midPoint + frontOffset * aTemplate.x + frontDir * uCoverRadius * aTemplate.x + outDir * uCoverRadius * aTemplate.y,
     0.0, 1.0
   );
 
-  vHalfLength = 0.5 * length(aStart - aEnd);
-  vLocal = vec2((length(frontOffset) + uRadius) * aTemplate.x, uRadius * aTemplate.y);
+  vEdge = vec4(aStart, aEnd);
 }

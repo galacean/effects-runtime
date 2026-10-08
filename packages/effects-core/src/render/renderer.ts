@@ -129,8 +129,9 @@ export class Renderer implements LostHandler, RestoreHandler {
     depthBuffer: number,
     filter: FilterMode,
     format: RenderTextureFormat,
+    anisotropic?: number,
   ): Framebuffer {
-    return this.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
+    return this.renderTargetPool.get(name, width, height, depthBuffer, filter, format, anisotropic);
   }
 
   releaseTemporaryRT (rt: Framebuffer): void {

@@ -549,3 +549,408 @@ export function buildLine (
   }
 }
 
+/**
+ * 创建Feather Stroke所需的mesh
+ * @param points 
+ * @param lineStyle 
+ * @param flipAlignment 
+ * @param closed 
+ * @returns 
+ */
+export function buildLineContour(
+  points: number[],
+  lineStyle: StrokeAttributes,
+  flipAlignment: boolean,
+  closed: boolean,
+): number[][] {
+  const eps = closePointEps;
+
+  if (points.length === 0) return [];
+
+  const style = lineStyle;
+  let alignment = style.alignment;
+
+  if (lineStyle.alignment !== 0.5) {
+    let orientation = getOrientationOfPoints(points);
+
+    if (flipAlignment) { orientation *= -1; }
+    alignment = ((alignment - 0.5) * orientation) + 0.5;
+  }
+
+  const firstPoint = new Point(points[0], points[1]);
+  const lastPoint = new Point(points[points.length - 2], points[points.length - 1]);
+  const closedShape = closed;
+  const closedPath = Math.abs(firstPoint.x - lastPoint.x) < eps
+    && Math.abs(firstPoint.y - lastPoint.y) < eps;
+
+  if (closedShape) {
+    points = points.slice();
+    if (closedPath) {
+      points.pop();
+      points.pop();
+      lastPoint.set(points[points.length - 2], points[points.length - 1]);
+    }
+    const midPointX = (firstPoint.x + lastPoint.x) * 0.5;
+    const midPointY = (lastPoint.y + firstPoint.y) * 0.5;
+
+    points.unshift(midPointX, midPointY);
+    points.push(midPointX, midPointY);
+  }
+
+  const length = points.length / 2;
+  const width = style.width / 2;
+  const widthSquared = width * width;
+  const miterLimitSquared = style.miterLimit * style.miterLimit;
+
+
+
+  // ── 核心变化：用两个独立数组收集内外轮廓顶点 ──────────────
+  // 原 buildLine 每次 verts.push(inner, outer)，
+  // 这里拆分为分别 push 到 innerVerts / outerVerts
+  const innerVerts: number[] = [];
+  const outerVerts: number[] = [];
+
+  // cap/join 产生的额外顶点（圆形cap、round join 的扇形）
+  // 这些顶点属于外侧或内侧的"装饰"，单独收集后插入对应序列
+  // 用一个辅助函数代替原来直接 push 到 verts
+
+  // round cap/join 的扇形顶点收集器
+  // clockwise=true 时扇形在 outer 侧，false 时在 inner 侧
+  function pushRoundFan(
+    cx: number, cy: number,
+    sx: number, sy: number,
+    ex: number, ey: number,
+    clockwise: boolean,
+  ): void {
+    const cx2p0x = sx - cx;
+    const cy2p0y = sy - cy;
+    let angle0 = Math.atan2(cx2p0x, cy2p0y);
+    let angle1 = Math.atan2(ex - cx, ey - cy);
+
+    if (clockwise && angle0 < angle1) angle0 += Math.PI * 2;
+    else if (!clockwise && angle0 > angle1) angle1 += Math.PI * 2;
+
+    const angleDiff = angle1 - angle0;
+    const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
+    const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
+    const angleInc = angleDiff / segCount;
+    const target = clockwise ? outerVerts : innerVerts;
+
+    // 起点已由调用方 push，这里只 push 中间点和终点
+    for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
+      target.push(
+        cx + Math.sin(angle) * radius,
+        cy + Math.cos(angle) * radius,
+      );
+    }
+  }
+
+  let x0 = points[0]; 
+  let y0 = points[1];
+  let x1 = points[2]; 
+  let y1 = points[3];
+  let x2 = 0;
+  let y2 = 0;
+
+  let perpX = -(y0 - y1);
+  let perpY = x0 - x1;
+  let perp1x = 0;
+  let perp1y = 0;
+
+  let dist = Math.sqrt(perpX * perpX + perpY * perpY) + NumberEpsilon;
+
+  perpX = perpX / dist * width;
+  perpY = perpY / dist * width;
+
+  const ratio = alignment;
+  const innerWeight = (1 - ratio) * 2;
+  const outerWeight = ratio * 2;
+
+  // ── 起始 cap ──────────────────────────────────────────────
+  if (!closedShape) {
+    if (style.cap === spec.LineCap.Round) {
+      // 圆形 cap：从 outer 到 inner 的半圆，顶点都属于"端部轮廓"
+      // 对于起始端，这段弧连接 outer 起点和 inner 起点
+      // 暂存，等主体顶点确定后再处理；这里先收集到 capStart
+      const capCx = x0 - perpX * (innerWeight - outerWeight) * 0.5;
+      const capCy = y0 - perpY * (innerWeight - outerWeight) * 0.5;
+      const capStartX = x0 - perpX * innerWeight;
+      const capStartY = y0 - perpY * innerWeight;
+      const capEndX = x0 + perpX * outerWeight;
+      const capEndY = y0 + perpY * outerWeight;
+
+      // 起始 round cap 的弧从 inner 侧扫到 outer 侧（逆时针看是反向）
+      // 收集弧上的点，之后 unshift 到 innerVerts 前面作为连接段
+      const capArc: number[] = [capStartX, capStartY];
+      const cx2p0x = capStartX - capCx;
+      const cy2p0y = capStartY - capCy;
+      let angle0 = Math.atan2(cx2p0x, cy2p0y);
+      let angle1 = Math.atan2(capEndX - capCx, capEndY - capCy);
+      if (angle0 < angle1) angle0 += Math.PI * 2;
+      const angleDiff = angle1 - angle0;
+      const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
+      const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
+      const angleInc = angleDiff / segCount;
+
+      for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
+        capArc.push(
+          capCx + Math.sin(angle) * radius,
+          capCy + Math.cos(angle) * radius,
+        );
+      }
+      // capArc 最后一点是 capEndX/Y，即 outer 起点
+      // 将整段弧 unshift 到 innerVerts 头部（反向插入，使其成为从 outer→inner 的过渡）
+      // 实际处理：先正向存，最后组装时再处理顺序
+      // 简化处理：直接把 cap 弧作为 outerVerts 的前置（因为非封闭时内外共用端点）
+      outerVerts.push(...capArc.reverse()); // outer 侧先到弧顶再到 outer 起点
+    } else if (style.cap === spec.LineCap.Square) {
+      // square cap 直接在 inner/outer 各加一个延伸点
+      const exx = perpY / width * width; // 方向向量
+      const eyy = -perpX / width * width;
+      innerVerts.push(
+        x0 - perpX * innerWeight + exx,
+        y0 - perpY * innerWeight + eyy,
+      );
+      outerVerts.push(
+        x0 + perpX * outerWeight + exx,
+        y0 + perpY * outerWeight + eyy,
+      );
+    }
+  }
+
+  // ── 主体第一个点 ───────────────────────────────────────────
+  innerVerts.push(
+    x0 - perpX * innerWeight, 
+    y0 - perpY * innerWeight);
+  outerVerts.push(
+    x0 + perpX * outerWeight, 
+    y0 + perpY * outerWeight);
+
+  // ── 中间顶点（与原 buildLine 逻辑完全对应） ────────────────
+  for (let i = 1; i < length - 1; ++i) {
+    x0 = points[(i - 1) * 2];     
+    y0 = points[(i - 1) * 2 + 1];
+
+    x1 = points[i * 2];           
+    y1 = points[i * 2 + 1];
+
+    x2 = points[(i + 1) * 2];     
+    y2 = points[(i + 1) * 2 + 1];
+
+    perpX = -(y0 - y1); 
+    perpY = x0 - x1;
+    dist = Math.sqrt(perpX * perpX + perpY * perpY) + NumberEpsilon;
+    perpX = perpX / dist * width; 
+    perpY = perpY / dist * width;
+
+    perp1x = -(y1 - y2); 
+    perp1y = x1 - x2;
+    dist = Math.sqrt(perp1x * perp1x + perp1y * perp1y) + NumberEpsilon;
+    perp1x = perp1x / dist * width; 
+    perp1y = perp1y / dist * width;
+
+    const dx0 = x1 - x0; 
+    const dy0 = y0 - y1;
+    const dx1 = x1 - x2;
+    const dy1 = y2 - y1;
+    const dot = dx0 * dx1 + dy0 * dy1;
+    const cross = dy0 * dx1 - dy1 * dx0;
+    const clockwise = cross < 0;
+
+    if (Math.abs(cross) < 0.001 * Math.abs(dot)) {
+      innerVerts.push(
+        x1 - perpX * innerWeight, 
+        y1 - perpY * innerWeight);
+      outerVerts.push(
+        x1 + perpX * outerWeight, 
+        y1 + perpY * outerWeight);
+
+      if (dot >= 0) {
+        if (style.join === spec.LineJoin.Round) {
+          if (clockwise) {
+            outerVerts.push(
+              x1 + perpX * outerWeight, 
+              y1 + perpY * outerWeight);
+            pushRoundFan(x1, y1,
+              x1 + perpX * outerWeight, y1 + perpY * outerWeight,
+              x1 + perp1x * outerWeight, y1 + perp1y * outerWeight,
+              true);
+          } else {
+            innerVerts.push(
+              x1 - perpX * innerWeight, 
+              y1 - perpY * innerWeight);
+            pushRoundFan(x1, y1,
+              x1 - perpX * innerWeight, y1 - perpY * innerWeight,
+              x1 - perp1x * innerWeight, y1 - perp1y * innerWeight,
+              false);
+          }
+        }
+        innerVerts.push(
+          x1 - perp1x * outerWeight, 
+          y1 - perp1y * outerWeight);
+        outerVerts.push(
+          x1 + perp1x * innerWeight, 
+          y1 + perp1y * innerWeight);
+      }
+      continue;
+    }
+
+    const c1 = ((-perpX + x0) * (-perpY + y1)) - ((-perpX + x1) * (-perpY + y0));
+    const c2 = ((-perp1x + x2) * (-perp1y + y1)) - ((-perp1x + x1) * (-perp1y + y2));
+    const px = (dx0 * c2 - dx1 * c1) / cross;
+    const py = (dy1 * c1 - dy0 * c2) / cross;
+    const pDist = (px - x1) * (px - x1) + (py - y1) * (py - y1);
+
+    const imx = x1 + (px - x1) * innerWeight;
+    const imy = y1 + (py - y1) * innerWeight;
+    const omx = x1 - (px - x1) * outerWeight;
+    const omy = y1 - (py - y1) * outerWeight;
+
+    const smallerInsideSegmentSq = Math.min(dx0 * dx0 + dy0 * dy0, dx1 * dx1 + dy1 * dy1);
+    const insideWeight = clockwise ? innerWeight : outerWeight;
+    const smallerInsideDiagonalSq = smallerInsideSegmentSq + insideWeight * insideWeight * widthSquared;
+    const insideMiterOk = pDist <= smallerInsideDiagonalSq;
+
+    if (insideMiterOk) {
+      if (style.join === spec.LineJoin.Bevel || pDist / widthSquared > miterLimitSquared) {
+        if (clockwise) {
+          innerVerts.push(imx, imy);
+          outerVerts.push(x1 + perpX * outerWeight, y1 + perpY * outerWeight);
+          innerVerts.push(imx, imy);  // FixMe: 重复顶点在这里有必要吗？
+          outerVerts.push(x1 + perp1x * outerWeight, y1 + perp1y * outerWeight);
+        } else {
+          innerVerts.push(x1 - perpX * innerWeight, y1 - perpY * innerWeight);
+          outerVerts.push(omx, omy);  // FixMe: 重复顶点在这里有必要吗？
+          innerVerts.push(x1 - perp1x * innerWeight, y1 - perp1y * innerWeight);
+          outerVerts.push(omx, omy);
+        }
+      } else if (style.join === spec.LineJoin.Round) {
+        if (clockwise) {
+          innerVerts.push(imx, imy);
+          outerVerts.push(x1 + perpX * outerWeight, y1 + perpY * outerWeight);
+          pushRoundFan(
+            x1, y1,
+            x1 + perpX * outerWeight, y1 + perpY * outerWeight,
+            x1 + perp1x * outerWeight, y1 + perp1y * outerWeight,
+            true);
+          innerVerts.push(imx, imy);  // FixMe: 重复顶点在这里有必要吗？
+          outerVerts.push(x1 + perp1x * outerWeight, y1 + perp1y * outerWeight);
+        } else {
+          innerVerts.push(x1 - perpX * innerWeight, y1 - perpY * innerWeight);
+          outerVerts.push(omx, omy);
+          pushRoundFan(
+            x1, y1,
+            x1 - perpX * innerWeight, y1 - perpY * innerWeight,
+            x1 - perp1x * innerWeight, y1 - perp1y * innerWeight,
+            false);
+          innerVerts.push(x1 - perp1x * innerWeight, y1 - perp1y * innerWeight);
+          outerVerts.push(omx, omy);  // FixMe: 重复顶点在这里有必要吗？
+        }
+      } else {
+        // Miter
+        innerVerts.push(imx, imy);
+        outerVerts.push(omx, omy);
+      }
+    } else {
+      innerVerts.push(x1 - perpX * innerWeight, y1 - perpY * innerWeight);
+      outerVerts.push(x1 + perpX * outerWeight, y1 + perpY * outerWeight);
+
+      if (style.join === spec.LineJoin.Round) {
+        if (clockwise) {
+          pushRoundFan(x1, y1,
+            x1 + perpX * outerWeight, y1 + perpY * outerWeight,
+            x1 + perp1x * outerWeight, y1 + perp1y * outerWeight,
+            true);
+        } else {
+          pushRoundFan(x1, y1,
+            x1 - perpX * innerWeight, y1 - perpY * innerWeight,
+            x1 - perp1x * innerWeight, y1 - perp1y * innerWeight,
+            false);
+        }
+      } else if (style.join === spec.LineJoin.Miter && pDist / widthSquared <= miterLimitSquared) {
+        if (clockwise) {
+          outerVerts.push(omx, omy);
+        } else {
+          innerVerts.push(imx, imy);
+        }
+      }
+
+      innerVerts.push(x1 - perp1x * innerWeight, y1 - perp1y * innerWeight);
+      outerVerts.push(x1 + perp1x * outerWeight, y1 + perp1y * outerWeight);
+    }
+  }
+
+  // ── 最后一个主体点 ─────────────────────────────────────────
+  x0 = points[(length - 2) * 2];     
+  y0 = points[(length - 2) * 2 + 1];
+  x1 = points[(length - 1) * 2];    
+  y1 = points[(length - 1) * 2 + 1];
+
+  perpX = -(y0 - y1); 
+  perpY = x0 - x1;
+  dist = Math.sqrt(perpX * perpX + perpY * perpY) + NumberEpsilon;
+  perpX = perpX / dist * width; 
+  perpY = perpY / dist * width;
+
+  innerVerts.push(x1 - perpX * innerWeight, y1 - perpY * innerWeight);
+  outerVerts.push(x1 + perpX * outerWeight, y1 + perpY * outerWeight);
+
+  // ── 末尾 cap ──────────────────────────────────────────────
+  if (!closedShape) {
+    if (style.cap === spec.LineCap.Square) {
+      innerVerts.push(
+        x1 - perpX * innerWeight - perpY / width * width,
+        y1 - perpY * innerWeight + perpX / width * width,
+      );
+      outerVerts.push(
+        x1 + perpX * outerWeight - perpY / width * width,
+        y1 + perpY * outerWeight + perpX / width * width,
+      );
+    }
+  }
+
+  // ── 组装输出轮廓 ───────────────────────────────────────────
+  if (closedShape) {
+    // 封闭：外轮廓 + 内轮廓（内轮廓反向，形成孔）
+    const innerReversed: number[] = [];
+    for (let i = innerVerts.length - 2; i >= 0; i -= 2) {
+      innerReversed.push(innerVerts[i], innerVerts[i + 1]);
+    }
+    return [outerVerts, innerReversed];
+  } else {
+    // 非封闭：outer 正向 + inner 反向 = 单一封闭轮廓
+    const contour = [...outerVerts];
+    for (let i = innerVerts.length - 2; i >= 0; i -= 2) {
+      contour.push(innerVerts[i], innerVerts[i + 1]);
+    }
+
+    // round cap 末尾
+    if (style.cap === spec.LineCap.Round) {
+      const capCx = x1 - perpX * (innerWeight - outerWeight) * 0.5;
+      const capCy = y1 - perpY * (innerWeight - outerWeight) * 0.5;
+      const capStartX = x1 - perpX * innerWeight;
+      const capStartY = y1 - perpY * innerWeight;
+      const capEndX = x1 + perpX * outerWeight;
+      const capEndY = y1 + perpY * outerWeight;
+
+      const cx2p0x = capEndX - capCx;
+      const cy2p0y = capEndY - capCy;
+      let angle0 = Math.atan2(cx2p0x, cy2p0y);
+      let angle1 = Math.atan2(capStartX - capCx, capStartY - capCy);
+      if (angle0 < angle1) angle0 += Math.PI * 2;
+      const angleDiff = angle1 - angle0;
+      const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
+      const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
+      const angleInc = angleDiff / segCount;
+
+      for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
+        contour.push(
+          capCx + Math.sin(angle) * radius,
+          capCy + Math.cos(angle) * radius,
+        );
+      }
+    }
+
+    return [contour];
+  }
+}

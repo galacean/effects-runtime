@@ -12,15 +12,15 @@ import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
+import { buildLine, buildLineContour, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
 import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
-import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
-import { buildFeatherMeshData, buildStrokeFeatherMeshData } from '../math/shape/feather-mesh-builder';
+import { VectorFeatherRenderer, getExpandedRadius } from '../math/shape/vector-feather-renderer';
+import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
@@ -320,13 +320,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.maskManager.drawStencilMask(renderer, this);
 
     const atlasInfo = this.featherRenderer.atlasInfo;
-
+    
     if (atlasInfo) {
-      this.featherRenderer.updateUpsampleQuad(this.featherRenderer.featherRadius);
+      this.featherRenderer.updateUpsampleQuad(getExpandedRadius(this.featherRenderer.featherRadius, atlasInfo.featherRadiusScreen));
       this.featherRenderer.drawUpsamplePass(
         renderer, this.transform.getWorldMatrix(),
         atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,
-        atlasInfo.textureOffset, this.featherRenderer.featherColor,
+        atlasInfo.textureOffset, this.featherRenderer.featherColor, atlasInfo.featherRadiusScreen,
       );
 
       return;
@@ -478,15 +478,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         // 构建羽化数据
         if (needFeatherMesh) {
-          scatterEdgeCount += buildStrokeFeatherMeshData(
-            points,
+          const featherLineContours = buildLineContour(points, lineStyle, false, close);
+          scatterEdgeCount += buildContoursFeatherMeshData(
+            featherLineContours,
             vertices,
             vertices.length / 2,
             indices,
             scatterEdgeVertices,
             featherBBox,
-            this.strokeWidth,
-            close,
           );
         } else {
           buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
@@ -569,7 +568,24 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         ? [featherBBox.minX, featherBBox.minY, featherBBox.maxX - featherBBox.minX, featherBBox.maxY - featherBBox.minY] as [number, number, number, number]
         : [0, 0, 0, 0] as [number, number, number, number];
 
-      this.featherRenderer.updateMeshData(scatterEdgeVertices, scatterEdgeCount, bbox);
+      const indicatorTriangles: number[] = [];
+
+      for (let i = 0; i + 2 < indices.length; i += 3) {
+        const i0 = indices[i];
+        const i1 = indices[i + 1];
+        const i2 = indices[i + 2];
+
+        indicatorTriangles.push(
+          vertices[i0 * 2], vertices[i0 * 2 + 1],
+          vertices[i1 * 2], vertices[i1 * 2 + 1],
+          vertices[i2 * 2], vertices[i2 * 2 + 1],
+        );
+      }
+
+      this.featherRenderer.updateMeshData(
+        scatterEdgeVertices, scatterEdgeCount, bbox,
+        indicatorTriangles, indicatorTriangles.length / 6,
+      );
 
       // 继承颜色: 优先从 fill, 其次从 stroke
       if (hasFills && this.fills[0].type === spec.FillType.Solid) {
