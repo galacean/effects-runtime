@@ -101,6 +101,19 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 固定更新，在 lateUpdate 之后、渲染之前调用。dt 单位为毫秒。
+   * 正常时使用固定步长，运行缓慢时允许增大步长，每轮主循环最多调用一次。
+   */
+  onFixedUpdate (dt: number) {
+    // OVERRIDE
+  }
+
+  /** 固定更新后调用，dt 与本轮 onFixedUpdate 相同，单位为毫秒。 */
+  onLateFixedUpdate (dt: number) {
+    // OVERRIDE
+  }
+
+  /**
    * 生命周期函数，每帧调用一次，在合成渲染之前调用
    */
   onPreRender (): void {

@@ -6,6 +6,7 @@ import { InputServer } from './input-server';
 import type { Renderer } from './render';
 import type { Disposable } from './utils';
 import { Ticker } from './ticker';
+import { Time } from './time';
 import type { PointerEventData, Region } from './plugins';
 import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
@@ -37,6 +38,8 @@ export interface EngineOptions extends WebGLContextAttributes {
 }
 
 export type EngineEvent = {
+  /** Emitted after all servers finish Update, before LateUpdate. Delta is scaled milliseconds. */
+  update: [dt: number],
   contextlost: [eventData: { engine: Engine, e: Event }],
   contextrestored: [engine: Engine],
   rendererror: [e: Event | Error],
@@ -80,6 +83,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
   private _disposed = false;
   private servers: EngineServer[] = [];
+  readonly time: Time;
 
   /**
    *
@@ -87,13 +91,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super();
     this.options = options ?? {};
+    this.time = new Time(Math.min(120, Math.max(1, options?.fps ?? 60)));
     this.canvas = canvas;
     this.env = options?.env ?? '';
     this.name = options?.name ?? this.name;
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
-      this.runRenderLoop(this.mainLoop.bind(this));
+      this.ticker.add(dt => this.mainLoop(dt, true));
     }
 
     this.servers = getClassesDerivedFrom(EngineServer).map(Server => new Server(this));
@@ -129,11 +134,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     return server as T;
   }
 
-  runRenderLoop (renderFunction: (dt: number) => void): void {
-    this.ticker?.add(renderFunction);
-  }
-
-  mainLoop (dt: number): void {
+  mainLoop (dt: number, scheduled = false): void {
     // 上下文丢失/恢复期间跳过渲染，避免打到失效的 GL 上下文。
     if (this.displayServer.renderingDevice.contextWasLost) {
       return;
@@ -149,17 +150,55 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    dt *= this.speed;
+    this.time.advance(dt);
+    const fps = this.ticker?.getFPS() ?? this.options.fps ?? 60;
 
+    // Automatic loops use independent deadlines. Explicit manual ticks force
+    // update/draw to preserve seeking and caller-controlled animation sampling.
+    if (this.time.onBeginUpdate(fps, !scheduled)) {
+      const deltaTime = this.time.update.deltaTime * this.speed;
+
+      this.onUpdate(deltaTime);
+      this.onLateUpdate(deltaTime);
+    }
+
+    if (this.time.onBeginPhysics()) {
+      const deltaTime = this.time.physics.deltaTime * this.speed;
+
+      this.onFixedUpdate(deltaTime);
+      this.onLateFixedUpdate(deltaTime);
+    }
+
+    if (this.time.onBeginDraw(fps, !scheduled)) {
+      this.onDraw();
+    }
+  }
+
+  onUpdate (dt: number): void {
     for (const server of this.servers) {
       server.onUpdate(dt);
     }
+    this.emit('update', dt);
+  }
 
+  onLateUpdate (dt: number): void {
     for (const server of this.servers) {
       server.onLateUpdate(dt);
     }
+  }
 
-    this.onDraw();
+  /** Dispatch one fixed update; timing is decided by the main loop's Time layer. */
+  onFixedUpdate (dt: number): void {
+    for (const server of this.servers) {
+      server.onFixedUpdate(dt);
+    }
+  }
+
+  /** Dispatch the late fixed stage after all fixed updates have finished. */
+  onLateFixedUpdate (dt: number): void {
+    for (const server of this.servers) {
+      server.onLateFixedUpdate(dt);
+    }
   }
 
   /** Render current scene state without advancing timelines, Animator or scripts. */

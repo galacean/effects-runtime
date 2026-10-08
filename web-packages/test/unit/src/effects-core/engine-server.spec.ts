@@ -1,5 +1,5 @@
 import type { Scene } from '@galacean/effects';
-import { Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -79,6 +79,117 @@ describe('core/engine/servers', () => {
       '300:beforeExit', '-10:beforeExit', '300:dispose', '-10:dispose',
     ]);
     expect(engine.getServer(Early)).to.equal(undefined);
+  });
+
+  it('dispatches fixed callbacks after updates, scales dt, and respects component registration', () => {
+    const calls: string[] = [];
+    const deltas: number[] = [];
+
+    class Server extends EngineServer {
+      override onUpdate () { calls.push('update'); }
+      override onLateUpdate () { calls.push('late'); }
+      override onFixedUpdate (dt: number) { calls.push('fixed'); deltas.push(dt); }
+      override onLateFixedUpdate () { calls.push('lateFixed'); }
+      override onDraw () { calls.push('draw'); }
+    }
+    class Probe extends Component {
+      override onFixedUpdate () { calls.push('componentFixed'); }
+      override onLateFixedUpdate () { calls.push('componentLateFixed'); }
+    }
+    register('fixed', Server);
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+
+    players.push(player);
+    const engine = player.engine;
+    const composition = new Composition(engine);
+    const probe = new Probe(engine);
+
+    probe.setParent(composition.root);
+    probe.enable();
+    engine.speed = 2;
+    player.tick(1000 / 120);
+    expect(calls).to.deep.equal(['update', 'late', 'draw']);
+    calls.length = 0;
+    player.tick(1000 / 120);
+    expect(calls).to.deep.equal(['update', 'late', 'fixed', 'componentFixed', 'lateFixed', 'componentLateFixed', 'draw']);
+    expect(deltas).to.deep.equal([1000 / 30]);
+    calls.length = 0;
+    probe.disable();
+    player.tick(1000 / 60);
+    expect(calls).to.deep.equal(['update', 'late', 'fixed', 'lateFixed', 'draw']);
+    calls.length = 0;
+    engine.onDraw();
+    player.tick(0);
+    expect(calls).not.to.include('fixed');
+    engine.speed = 0;
+    player.tick(1000);
+    expect(deltas[deltas.length - 1]).to.equal(0);
+    engine.speed = 1;
+    calls.length = 0;
+    probe.enable();
+    composition.sceneTicking.setTicking(false);
+    player.tick(1000 / 60);
+    expect(calls).not.to.include('componentFixed');
+    expect(deltas[deltas.length - 1]).to.be.closeTo(1000 / 60, 1e-7);
+    probe.dispose();
+  });
+
+  it('runs only fixed stages when update and draw are not due', () => {
+    const calls: string[] = [];
+
+    class Server extends EngineServer {
+      override onUpdate () { calls.push('update'); }
+      override onLateUpdate () { calls.push('late'); }
+      override onFixedUpdate () { calls.push('fixed'); }
+      override onLateFixedUpdate () { calls.push('lateFixed'); }
+      override onDraw () { calls.push('draw'); }
+    }
+    register('independent-fixed', Server);
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true, fps: 30 });
+
+    players.push(player);
+    player.engine.mainLoop(1000 / 60, true);
+    expect(calls).to.deep.equal(['fixed', 'lateFixed']);
+    calls.length = 0;
+    player.engine.mainLoop(1000 / 60, true);
+    expect(calls).to.deep.equal(['update', 'late', 'fixed', 'lateFixed', 'draw']);
+  });
+
+  it('emits Player update only with Engine Update, after servers and before LateUpdate', () => {
+    const calls: string[] = [];
+
+    class Server extends EngineServer {
+      override onUpdate () { calls.push('server'); }
+      override onLateUpdate () { calls.push('late'); }
+    }
+    register('update-event', Server);
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true, fps: 30 });
+
+    players.push(player);
+    player.play();
+    const offUpdate = player.on('update', event => {
+      expect(event.player).to.equal(player);
+      expect(event.playing).to.equal(true);
+      calls.push('player');
+    });
+    const deltas: number[] = [];
+
+    player.engine.on('update', dt => deltas.push(dt));
+    player.engine.speed = 2;
+    player.engine.mainLoop(1000 / 60, true);
+    expect(calls).to.deep.equal([]);
+    player.engine.mainLoop(1000 / 60, true);
+    expect(calls).to.deep.equal(['server', 'player', 'late']);
+    expect(deltas).to.deep.equal([1000 / 30 * 2]);
+    calls.length = 0;
+    player.engine.onDraw();
+    expect(calls).to.deep.equal([]);
+    player.tick(10);
+    expect(calls).to.deep.equal(['server', 'player', 'late']);
+    calls.length = 0;
+    player.gotoAndStop(0);
+    expect(calls).to.deep.equal(['server', 'late']);
+    offUpdate();
   });
 
   it('keeps server instances separate for each engine and snapshots registrations', () => {

@@ -11,7 +11,6 @@ export class Ticker {
   private paused = true;
   private lastTime = 0;
   private targetFPS: number;
-  private interval: number;
   private intervalId: number;
   private resetTickers: boolean;
   // deltaTime
@@ -30,17 +29,13 @@ export class Ticker {
   }
 
   /**
-   * FPS 帧率设置
+   * Engine Update/Draw 的目标帧率；Ticker 回调本身每次 RAF 都执行。
    */
   getFPS () {
     return this.targetFPS;
   }
   setFPS (fps: number) {
     this.targetFPS = clamp(fps, 1, 120);
-    // 注意：-2 的原因是保证帧率稳定
-    // interval 在 fps 为 60 的时候设成 15 累计误差会很大，设成 14 较稳定
-    // requestanimationFrame 在不同的刷新率下时间间隔不一样，120hz 的误差在 8 以内，60hz 的误差在 16 以内
-    this.interval = Math.floor(1000 / fps) - 2;
   }
 
   /**
@@ -55,6 +50,9 @@ export class Ticker {
    * 定时器开始方法
    */
   start () {
+    if (this.paused) {
+      this.lastTime = performance.now();
+    }
     this.paused = false;
     this.dt = 0;
 
@@ -98,6 +96,9 @@ export class Ticker {
    * 定时器恢复方法
    */
   resume () {
+    if (this.paused) {
+      this.lastTime = performance.now();
+    }
     this.paused = false;
     this.dt = 0;
   }
@@ -112,22 +113,19 @@ export class Ticker {
     const startTime = performance.now();
 
     this.dt = startTime - this.lastTime;
-    if (this.dt >= this.interval) {
-      this.lastTime = startTime;
+    this.lastTime = startTime;
 
-      if (this.resetTickers) {
-        this.tickers = this.tickers.filter(tick => tick);
-        this.resetTickers = false;
-      }
-
-      for (const tick of this.tickers) {
-        tick(this.dt);
-      }
+    if (this.resetTickers) {
+      this.tickers = this.tickers.filter(tick => tick);
+      this.resetTickers = false;
+    }
+    for (const tick of this.tickers) {
+      tick(this.dt);
     }
   }
 
   /**
-   * 定时器添加计时方法
+   * 添加逐 RAF 回调，dt 为相邻回调的时间差（毫秒），不受目标 FPS 限制。
    * @param ticker - 定时器类
    */
   add (ticker: (dt: number) => void) {

@@ -232,7 +232,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.emit('pointermove', eventData);
       });
 
-      this.engine.runRenderLoop((dt: number) => {
+      this.engine.on('update', () => {
         if (this.autoPlaying) {
           this.emit('update', {
             player: this,

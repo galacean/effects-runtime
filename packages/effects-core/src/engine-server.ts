@@ -23,6 +23,12 @@ export abstract class EngineServer {
   /** Called in server order after all updates and before rendering. */
   onLateUpdate (deltaTime: number): void {}
 
+  /** Called after late update at the target fixed frequency. dt is in milliseconds, variable when running slowly. */
+  onFixedUpdate (deltaTime: number): void {}
+
+  /** Called after all fixed updates, before drawing, with the same delta. */
+  onLateFixedUpdate (deltaTime: number): void {}
+
   /** Called in server order before scene preparation, framebuffer clearing and rendering. */
   onDraw (): void {}
 

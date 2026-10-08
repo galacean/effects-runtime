@@ -207,6 +207,13 @@ export class ThreeDisplayObject extends THREE.Group {
     for (const composition of compositions) {
       composition.sceneTicking.lateUpdate.tick(delta);
     }
+    this.engine.time.advance(delta);
+    if (this.engine.time.onBeginPhysics()) {
+      const dt = this.engine.time.physics.deltaTime * this.engine.speed;
+
+      this.engine.onFixedUpdate(dt);
+      this.engine.onLateFixedUpdate(dt);
+    }
     for (const composition of compositions) {
       composition.camera.updateMatrix();
       composition.sceneTicking.preRender.tick(0);

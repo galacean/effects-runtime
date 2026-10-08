@@ -142,6 +142,18 @@ export class SceneServer extends EngineServer {
     }
   }
 
+  override onFixedUpdate (deltaTime: number): void {
+    for (const composition of this.compositions) {
+      composition.sceneTicking.fixedUpdate.tick(deltaTime);
+    }
+  }
+
+  override onLateFixedUpdate (deltaTime: number): void {
+    for (const composition of this.compositions) {
+      composition.sceneTicking.lateFixedUpdate.tick(deltaTime);
+    }
+  }
+
   override onBeforeExit (): void {
     if (this.disposed) {
       return;
