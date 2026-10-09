@@ -8,16 +8,19 @@ import { TextureLoadAction } from '../texture';
 import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
 import type { FeatherRenderParams, FeatherSide } from '../math/shape/vector-feather-renderer';
-import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import { FEATHER_SIDES, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
 
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
-type FeatherEntry = {
+type PendingFeatherEntry = {
   component: ShapeComponent,
   featherRenderer: VectorFeatherRenderer,
   side: FeatherSide,
   params: FeatherRenderParams,
+};
+
+type FeatherEntry = PendingFeatherEntry & {
   atlas: Framebuffer,
   rect: AtlasRect,
 };
@@ -44,12 +47,7 @@ export class FeatherOffscreenPass extends RenderPass {
   }
 
   override execute (renderer: Renderer): void {
-    const pending: {
-      component: ShapeComponent,
-      featherRenderer: VectorFeatherRenderer,
-      side: FeatherSide,
-      params: FeatherRenderParams,
-    }[] = [];
+    const pending: PendingFeatherEntry[] = [];
     const renderList = renderer.renderingData.currentFrame.renderList;
 
     for (const mesh of renderList) {
@@ -60,15 +58,11 @@ export class FeatherOffscreenPass extends RenderPass {
       const featherRenderer = mesh.featherRenderer;
       const worldMatrix = mesh.transform.getWorldMatrix();
       const prepared = featherRenderer.prepareFeatherRadius(renderer, worldMatrix, featherRenderer.featherRadius);
-      const sides: FeatherSide[] = ['fill', 'stroke'];
 
       featherRenderer.atlasLayers = { fill: null, stroke: null };
 
-      for (const side of sides) {
-        const scatter = featherRenderer.layerInstanceRange(side);
-        const triangles = featherRenderer.layerTriangleRange(side);
-
-        if (scatter.count <= 0 && triangles.count <= 0) {
+      for (const side of FEATHER_SIDES) {
+        if (!featherRenderer.layerHasContent(side)) {
           continue;
         }
 
@@ -106,6 +100,12 @@ export class FeatherOffscreenPass extends RenderPass {
     let currentAtlas: Framebuffer | null = null;
     let batchStart = 0;
 
+    const createAtlas = () => renderer.getTemporaryRT(
+      '_FeatherAtlas', atlasW, atlasH, 0,
+      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+      1, // 禁用各向异性过滤。upsample 用 texture2D 模拟 texelFetch，必须关闭各向异性。
+    );
+
     const flushCurrentBatch = () => {
       const atlas = currentAtlas;
       const batch = this.entries.slice(batchStart);
@@ -119,21 +119,17 @@ export class FeatherOffscreenPass extends RenderPass {
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
 
       for (const { component, featherRenderer, side, params, rect } of batch) {
-        const scatter = featherRenderer.layerInstanceRange(side);
-        const triangles = featherRenderer.layerTriangleRange(side);
         const viewportOffset = new Vector2(rect.x, rect.y);
 
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
 
         if (VectorFeatherRenderer.indicatorSoS) {
-          featherRenderer.drawIndicatorSoSPass(renderer, params, viewportOffset, triangles.start, triangles.count);
+          featherRenderer.drawIndicatorSoSPass(renderer, params, viewportOffset, side);
         } else {
-          component.drawFeatherIndicatorPass(renderer, params.orthoProjection, side === 'fill' ? 2 : 3);
+          component.drawFeatherIndicatorPass(renderer, params.orthoProjection, side);
         }
 
-        featherRenderer.drawScatterPass(
-          renderer, params, featherRenderer.featherRadius, viewportOffset, scatter.start, scatter.count,
-        );
+        featherRenderer.drawScatterPass(renderer, params, featherRenderer.featherRadius, viewportOffset, side);
 
         const layers = featherRenderer.atlasLayers ?? { fill: null, stroke: null };
 
@@ -154,22 +150,14 @@ export class FeatherOffscreenPass extends RenderPass {
 
       if (this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
         if (!currentAtlas) {
-          currentAtlas = renderer.getTemporaryRT(
-            '_FeatherAtlas', atlasW, atlasH, 0,
-            FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-            1,
-          );
+          currentAtlas = createAtlas();
         }
         this.entries.push({ ...entry, atlas: currentAtlas, rect });
       } else {
         flushCurrentBatch();
         this.allocator.reset();
         batchStart = this.entries.length;
-        currentAtlas = renderer.getTemporaryRT(
-          '_FeatherAtlas', atlasW, atlasH, 0,
-          FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-          1,
-        );
+        currentAtlas = createAtlas();
         this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect);
         this.entries.push({ ...entry, atlas: currentAtlas, rect });
       }

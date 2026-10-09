@@ -20,6 +20,7 @@ import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
 import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import type { FeatherRect, FeatherSide } from '../math/shape/vector-feather-renderer';
 import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
@@ -170,6 +171,17 @@ export interface PolygonAttribute extends ShapeAttributes {
 
 const tempMVP = Matrix4.fromIdentity();
 
+/**
+ * 普通绘制使用的子网格
+ */
+const SHAPE_SUBMESH: Record<FeatherSide, number> = { fill: 0, stroke: 1 };
+/**
+ * 羽化 indicator 使用的子网格。其中的扇形三角形会互相重叠，不能直接作为普通网格绘制。
+ */
+const FEATHER_SUBMESH: Record<FeatherSide, number> = { fill: 2, stroke: 3 };
+const SUBMESH_COUNT = 4;
+const FLOATS_PER_TRIANGLE = 6;
+
 function createEmptyFeatherBBox (): FeatherBBox {
   return {
     minX: Number.MAX_VALUE,
@@ -179,7 +191,7 @@ function createEmptyFeatherBBox (): FeatherBBox {
   };
 }
 
-function toFeatherRect (bbox: FeatherBBox): [number, number, number, number] {
+function toFeatherRect (bbox: FeatherBBox): FeatherRect {
   if (!(bbox.minX < Number.MAX_VALUE)) {
     return [0, 0, 0, 0];
   }
@@ -318,23 +330,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       drawCount: 6,
     });
 
-    this.geometry.subMeshes.push({
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    }, {
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    }, {
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    }, {
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    });
+    for (let i = 0; i < SUBMESH_COUNT; i++) {
+      this.geometry.subMeshes.push({
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      });
+    }
 
     // 创建羽化渲染器
     this.featherRenderer = new VectorFeatherRenderer(this.engine);
@@ -368,13 +370,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       const worldMatrix = this.transform.getWorldMatrix();
 
       if (atlasLayers.fill) {
-        this.applyUpsamplePaint(this.featherRenderer.upsampleMaterial, this.fills);
-        this.featherRenderer.drawLayerUpsample(renderer, worldMatrix, atlasLayers.fill);
+        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'fill', atlasLayers.fill);
       }
 
       if (atlasLayers.stroke) {
-        this.applyUpsamplePaint(this.featherRenderer.upsampleMaterial, this.strokes);
-        this.featherRenderer.drawLayerUpsample(renderer, worldMatrix, atlasLayers.stroke);
+        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'stroke', atlasLayers.stroke);
       }
 
       return;
@@ -392,27 +392,31 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
 
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, SHAPE_SUBMESH.fill);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, SHAPE_SUBMESH.stroke);
     }
   }
 
   private draw (renderer: Renderer) {
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], SHAPE_SUBMESH.fill);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], SHAPE_SUBMESH.stroke);
     }
   }
 
-  drawFeatherIndicatorPass (renderer: Renderer, orthoProjection: Matrix4, subMeshIndex: number) {
-    this.featherRenderer.drawIndicatorPass(renderer, orthoProjection, this.geometry, subMeshIndex);
-  }
+  /**
+   * @internal
+   * 绘制某一侧的非 SoS indicator（调用者需已设置好 FBO 和 viewport）
+   */
+  drawFeatherIndicatorPass = (renderer: Renderer, orthoProjection: Matrix4, side: FeatherSide): void => {
+    this.featherRenderer.drawIndicatorPass(renderer, orthoProjection, this.geometry, FEATHER_SUBMESH[side]);
+  };
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
@@ -605,22 +609,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
 
-    const u16Size = 2;
+    const strokeIndexCount = indices.length - fillIndexCount;
+    const activeSubMesh = needFeatherMesh ? FEATHER_SUBMESH : SHAPE_SUBMESH;
+    const inactiveSubMesh = needFeatherMesh ? SHAPE_SUBMESH : FEATHER_SUBMESH;
+    const subMeshes = this.geometry.subMeshes;
+
+    subMeshes[activeSubMesh.fill].offset = 0;
+    subMeshes[activeSubMesh.fill].indexCount = fillIndexCount;
+    subMeshes[activeSubMesh.stroke].offset = fillIndexCount * Uint16Array.BYTES_PER_ELEMENT;
+    subMeshes[activeSubMesh.stroke].indexCount = strokeIndexCount;
+    for (const index of [inactiveSubMesh.fill, inactiveSubMesh.stroke]) {
+      subMeshes[index].offset = 0;
+      subMeshes[index].indexCount = 0;
+    }
 
     if (needFeatherMesh) {
-      const fillSubMesh = this.geometry.subMeshes[2];
-      const strokeSubMesh = this.geometry.subMeshes[3];
-      const strokeIndexCount = indices.length - fillIndexCount;
-
-      fillSubMesh.offset = 0;
-      fillSubMesh.indexCount = fillIndexCount;
-      strokeSubMesh.offset = fillIndexCount * u16Size;
-      strokeSubMesh.indexCount = strokeIndexCount;
-      this.geometry.subMeshes[0].indexCount = 0;
-      this.geometry.subMeshes[0].offset = 0;
-      this.geometry.subMeshes[1].indexCount = 0;
-      this.geometry.subMeshes[1].offset = 0;
-
       const fillTriangles: number[] = [];
       const strokeTriangles: number[] = [];
 
@@ -630,28 +633,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       this.featherRenderer.updateMeshData(
         fillScatterEdges, fillScatterCount, toFeatherRect(fillFeatherBBox),
         strokeScatterEdges, strokeScatterCount, toFeatherRect(strokeFeatherBBox),
-        fillTriangles, fillTriangles.length / 6,
-        strokeTriangles, strokeTriangles.length / 6,
+        fillTriangles, fillTriangles.length / FLOATS_PER_TRIANGLE,
+        strokeTriangles, strokeTriangles.length / FLOATS_PER_TRIANGLE,
       );
-
-      // 继承颜色: 优先从 fill, 其次从 stroke
-      if (hasFills && this.fills[0].type === spec.FillType.Solid) {
-        this.featherRenderer.featherColor = this.fills[0].color;
-      } else if (hasStrokes && this.strokes[0].type === spec.FillType.Solid) {
-        this.featherRenderer.featherColor = this.strokes[0].color;
-      }
-    } else {
-      const fillSubMesh = this.geometry.subMeshes[0];
-      const strokeSubMesh = this.geometry.subMeshes[1];
-
-      fillSubMesh.offset = 0;
-      fillSubMesh.indexCount = fillIndexCount;
-      strokeSubMesh.offset = fillIndexCount * u16Size;
-      strokeSubMesh.indexCount = indices.length - fillIndexCount;
-      this.geometry.subMeshes[2].indexCount = 0;
-      this.geometry.subMeshes[2].offset = 0;
-      this.geometry.subMeshes[3].indexCount = 0;
-      this.geometry.subMeshes[3].offset = 0;
     }
   }
 
@@ -779,6 +763,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.strokes.length; i++) {
       this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
     }
+
+    // 继承颜色: 优先从 fill, 其次从 stroke
+    const firstFill = this.fills[0];
+    const firstStroke = this.strokes[0];
+
+    if (firstFill?.type === spec.FillType.Solid) {
+      this.featherRenderer.featherColor = firstFill.color;
+    } else if (firstStroke?.type === spec.FillType.Solid) {
+      this.featherRenderer.featherColor = firstStroke.color;
+    }
+
+    const upsampleMaterials = this.featherRenderer.upsampleMaterials;
+
+    this.updateFeatherPaintMaterial(upsampleMaterials.fill, this.fills);
+    this.updateFeatherPaintMaterial(upsampleMaterials.stroke, this.strokes);
   }
 
   private updatePaintMaterial (material: Material, paint: Paint) {
@@ -812,35 +811,20 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
   }
 
-  private applyUpsamplePaint (material: Material, paints: Paint[]): void {
-    const paint = this.pickFeatherPaint(paints);
-
-    if (!paint) {
-      material.setFloat('_FillType', spec.FillType.Solid);
-      material.color = this.featherRenderer.featherColor;
-
-      return;
-    }
-
-    material.setFloat('_FillType', paint.type);
-
-    if (paint.type === spec.FillType.Solid) {
-      material.color = paint.color;
-
-      return;
-    }
-
-    this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
-  }
-
-  private pickFeatherPaint (paints: Paint[]): SolidPaint | GradientPaint | undefined {
+  /**
+   * 羽化只支持第一个纯色或渐变 paint，其余情况用 featherColor 纯色兜底
+   */
+  private updateFeatherPaintMaterial (material: Material, paints: Paint[]): void {
     const paint = paints[0];
 
     if (paint && this.isSolidOrGradient(paint)) {
-      return paint;
+      this.updatePaintMaterial(material, paint);
+
+      return;
     }
 
-    return undefined;
+    material.setFloat('_FillType', spec.FillType.Solid);
+    material.color = this.featherRenderer.featherColor;
   }
 
   private isSolidOrGradient (paint: Paint): paint is SolidPaint | GradientPaint {
@@ -938,7 +922,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     // 读取羽化参数 (spec 类型可能尚未定义这些字段，使用类型断言)
     const extData = data as spec.ShapeComponentData & { featherRadius?: number, featherColor?: { r: number, g: number, b: number, a: number } };
 
-    this.featherRenderer.featherRadius = extData.featherRadius ?? 5;
+    this.featherRenderer.featherRadius = extData.featherRadius ?? 1;
     if (extData.featherColor) {
       this.featherRenderer.featherColor = new Color(extData.featherColor.r, extData.featherColor.g, extData.featherColor.b, extData.featherColor.a);
     }
