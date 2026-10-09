@@ -36,7 +36,7 @@ describe('core/engine/servers', () => {
         super(engine, order);
       }
       override onInit () {
-        expect(this.engine.getServer(SceneServer)).to.be.instanceOf(SceneServer);
+        expect(this.engine.sceneServer).to.be.instanceOf(SceneServer);
         expect(this.engine.renderer).to.exist;
         expect(this.engine.renderer.engine).to.equal(this.engine);
         expect(this.engine.getServer(Late)).to.be.instanceOf(Late);
@@ -215,26 +215,27 @@ describe('core/engine/servers', () => {
     register('scene-alias', SceneServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
-    const server = engine.getServer(SceneServer);
+    const server = engine.sceneServer;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
     expect(server.engine).to.equal(engine);
-    expect(server).not.to.equal(other.getServer(SceneServer));
+    expect(server).to.equal(engine.getServer(SceneServer));
+    expect(server).not.to.equal(other.sceneServer);
     expect(first.root.parent).to.equal(undefined);
     expect(first.root.composition).to.equal(first);
     first.setIndex(2);
     second.setIndex(1);
     server.addComposition(first);
-    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second, first]);
+    expect(engine.sceneServer.compositions).to.deep.equal([second, first]);
     first.setIndex(0);
-    expect(engine.getServer(SceneServer).compositions).to.deep.equal([first, second]);
+    expect(engine.sceneServer.compositions).to.deep.equal([first, second]);
     engine.displayServer.setSize(200, 100);
     expect(first.camera.aspect).to.equal(2);
     expect(second.camera.aspect).to.equal(2);
     first.dispose();
-    expect(engine.getServer(SceneServer).compositions).to.deep.equal([second]);
-    expect(other.getServer(SceneServer).compositions).to.have.length(0);
+    expect(engine.sceneServer.compositions).to.deep.equal([second]);
+    expect(other.sceneServer.compositions).to.have.length(0);
   });
 
   it('initializes registered asset servers per engine and restores built-in object lookup', () => {
@@ -372,7 +373,7 @@ describe('core/engine/servers', () => {
     const calls: string[] = [];
 
     manager.dispose = () => {
-      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
+      expect(engine.sceneServer.compositions).to.have.length(0);
       calls.push('manager');
       disposeManager();
     };
@@ -383,7 +384,7 @@ describe('core/engine/servers', () => {
       disposeComposition();
     };
     assets.onDispose = () => {
-      expect(engine.getServer(SceneServer).compositions).to.have.length(0);
+      expect(engine.sceneServer.compositions).to.have.length(0);
       calls.push('assets');
       disposeAssets();
     };
@@ -502,10 +503,10 @@ describe('core/engine/servers', () => {
 
     class Resources extends EngineServer {
       override onBeforeExit () {
-        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
+        expect(this.engine.sceneServer.compositions).to.have.length(0);
       }
       override onDispose () {
-        expect(this.engine.getServer(SceneServer).compositions).to.have.length(0);
+        expect(this.engine.sceneServer.compositions).to.have.length(0);
         calls.push('resources');
       }
     }
@@ -526,6 +527,7 @@ describe('core/engine/servers', () => {
     player.dispose();
     engine.dispose();
     expect(calls).to.deep.equal(['scene:0', 'scene:1', 'resources']);
+    expect(engine.sceneServer.compositions).to.have.length(0);
     expect(engine.getServer(SceneServer)).to.equal(undefined);
   });
 

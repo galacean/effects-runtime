@@ -3,6 +3,9 @@ import { getBanner, getPlugins } from '../../scripts/rollup-config-helper';
 const pkg = require('./package.json');
 const globals = {
   '@galacean/effects': 'ge',
+  '@galacean/effects-plugin-gui': 'ge.gui',
+  '@galacean/effects-plugin-multimedia': 'ge.multimediaPlugin',
+  '@galacean/effects-plugin-rich-text': 'ge.richTextPlugin',
 };
 const external = Object.keys(globals);
 const banner = getBanner(pkg);

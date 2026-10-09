@@ -3,6 +3,7 @@ import { AssetServer } from './asset-server';
 import { EffectsObjectServer } from './effects-object-server';
 import { RenderingServer } from './rendering-server';
 import { InputServer } from './input-server';
+import { SceneServer } from './scene-server';
 import type { Renderer } from './render';
 import type { Disposable } from './utils';
 import { Ticker } from './ticker';
@@ -80,6 +81,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   displayServer: DisplayServer;
   inputServer: InputServer;
   assetServer: AssetServer;
+  sceneServer: SceneServer;
 
   private _disposed = false;
   private servers: EngineServer[] = [];
@@ -108,6 +110,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderingServer = this.getServer(RenderingServer);
     this.effectsObjectServer = this.getServer(EffectsObjectServer);
     this.assetServer = this.getServer(AssetServer);
+    this.sceneServer = this.getServer(SceneServer);
 
     for (const server of this.servers) {
       server.onInit();

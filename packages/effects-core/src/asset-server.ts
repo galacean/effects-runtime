@@ -12,7 +12,6 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetManager } from './asset-manager';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
-import { SceneServer } from './scene-server';
 import { generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Texture } from './texture';
 
@@ -71,7 +70,7 @@ export class AssetServer extends EngineServer {
   }
 
   updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}) {
-    this.engine.getServer(SceneServer).updateTextVariables(scene, variables);
+    this.engine.sceneServer.updateTextVariables(scene, variables);
   }
 
   addEffectsObjectData (data: spec.EffectsObjectData) {
