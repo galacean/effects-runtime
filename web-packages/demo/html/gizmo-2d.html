@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Gizmo 编辑器</title>
+  <style>
+    :root { color-scheme: light; --border: #e8e8e8; --muted: #8a8a8a; --blue: #0d99ff; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; color: #292929; font: 12px/1.5 Inter, system-ui, sans-serif; }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { border: 0; background: transparent; cursor: pointer; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .editor { display: grid; grid-template-columns: 224px minmax(0, 1fr) 272px; height: 100%; min-width: 900px; }
+    .panel { display: flex; flex-direction: column; min-height: 0; background: white; }
+    .layers-panel { border-right: 1px solid var(--border); }
+    .inspector { border-left: 1px solid var(--border); }
+    .document { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+    .document-title { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 13px; }
+    .document-title svg { color: var(--blue); }
+    .document-meta { display: flex; align-items: center; gap: 7px; margin-top: 9px; color: var(--muted); font-size: 11px; }
+    .badge { border-radius: 4px; padding: 1px 5px; color: #1684db; background: #ecf6ff; }
+    h2 { margin: 0; font-size: 12px; font-weight: 600; }
+    .layers-heading { position: relative; padding: 16px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
+    .icon-button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; }
+    .icon-button:hover { background: #f3f3f3; }
+    .tooltip-trigger { position: relative; }
+    .tooltip { position: absolute; left: 50%; bottom: calc(100% + 10px); z-index: 3; width: max-content; height: 30px; display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 11px; border-radius: 6px; background: #1f1f1f; color: #f5f5f5; box-shadow: 0 8px 22px #0003, 0 2px 8px #0003; font-size: 12px; font-weight: 500; line-height: 16px; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 2px); transition: opacity 80ms ease, transform 80ms ease; }
+    .tooltip::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; border-radius: 1px; background: #1f1f1f; transform: translateX(-50%) rotate(45deg); }
+    .tooltip kbd { color: #b5b5b5; font: inherit; }
+    .tooltip-trigger:hover > .tooltip, .tooltip-trigger:focus-visible > .tooltip { opacity: 1; transform: translate(-50%, 0); transition-delay: 650ms; }
+    #create-menu { position: absolute; z-index: 10; top: 46px; right: 12px; min-width: 160px; padding: 5px; border: 1px solid var(--border); border-radius: 8px; background: white; box-shadow: 0 6px 20px #0002; }
+    #create-menu button { width: 100%; padding: 8px; display: flex; align-items: center; gap: 10px; border-radius: 4px; text-align: left; }
+    #create-menu button:hover { background: #f1f7ff; }
+    .shortcut { margin-left: auto; color: var(--muted); font-size: 10px; }
+    #items { overflow: auto; padding: 0 6px 16px; flex: 1; }
+    #items button { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 5px; text-align: left; }
+    #items button:hover { background: #f5f5f5; }
+    #items button[aria-pressed="true"] { background: #e5f4ff; }
+    #items svg { width: 14px; height: 14px; color: #8b8b8b; }
+    #items .layer-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .panel-footer { padding: 12px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+    .panel-footer a { display: flex; align-items: center; gap: 7px; color: #767676; text-decoration: none; }
+    .panel-footer svg { width: 14px; height: 14px; }
+    .workspace { position: relative; overflow: hidden; background: #f5f5f5; }
+    #viewport { position: absolute; inset: 0; overflow: hidden; }
+    #viewport > canvas { display: block; width: 100% !important; height: 100% !important; }
+    .canvas-status { position: absolute; left: 20px; right: 20px; bottom: 8px; display: flex; justify-content: flex-end; color: #9c9c9c; font-size: 10px; pointer-events: none; }
+    #status[data-error="true"] { color: #ba283d; }
+    .toolbar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; padding: 7px; border: 1px solid #e3e3e3; border-radius: 13px; background: white; box-shadow: 0 2px 5px #0001, 0 8px 24px #0001; }
+    .toolbar button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar button:hover { background: #f4f4f4; }
+    .toolbar button[aria-pressed="true"] { background: var(--blue); color: white; }
+    .tool-separator { height: 25px; width: 1px; background: var(--border); margin: 0 4px; }
+    .zoom-controls { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 3px; padding: 5px; border: 1px solid #e3e3e3; border-radius: 0 8px 0 0; background: white; box-shadow: 0 2px 5px #0001; }
+    #zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+    .zoom-controls button { width: 24px; height: 24px; border-radius: 4px; font-size: 16px; color: #666; }
+    .zoom-controls button:hover { background: #f3f3f3; }
+    .inspector-content { overflow: auto; flex: 1; }
+    .inspector section, .inspector details { padding: 18px 16px; border-bottom: 1px solid var(--border); }
+    .selection-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    #selection-kind { color: var(--muted); font-size: 11px; }
+    #selection { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+    .property-label { display: block; margin: 13px 0 7px; color: var(--muted); font-size: 10px; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; background: #f5f5f5; border: 1px solid transparent; border-radius: 5px; }
+    .field:focus-within { border-color: var(--blue); }
+    .field span { min-width: 11px; color: #969696; font-size: 11px; }
+    .field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-variant-numeric: tabular-nums; }
+    input[type="number"] { appearance: textfield; }
+    input::-webkit-inner-spin-button { appearance: none; }
+    input:disabled { color: #a8a8a8; }
+    .field.wide { margin-top: 8px; }
+    .readout { display: flex; justify-content: space-between; margin-top: 12px; color: #8b8b8b; font-size: 11px; }
+    .readout output { color: #555; font-variant-numeric: tabular-nums; }
+    #text-value { width: 100%; min-height: 75px; margin-top: 12px; padding: 9px; resize: vertical; border: 1px solid var(--border); border-radius: 5px; outline-color: var(--blue); background: #fafafa; }
+    .fill-row { display: flex; align-items: center; gap: 9px; margin-top: 13px; padding: 5px 8px; border-radius: 5px; background: #f5f5f5; }
+    #fill { width: 22px; height: 22px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+    #fill-value { font-variant-numeric: tabular-nums; }
+    .fill-opacity { margin-left: auto; color: var(--muted); font-size: 10px; }
+    summary { cursor: pointer; font-weight: 600; }
+    #events { margin: 12px 0 0; padding: 0; list-style: none; font: 10px/1.7 ui-monospace, monospace; color: #777; overflow-wrap: anywhere; }
+    #events li { padding: 4px 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 1100px) { .editor { grid-template-columns: 190px minmax(0, 1fr) 240px; } }
+  </style>
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true"><defs>
+    <symbol id="icon-file" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 3v18M3 12h18"/></symbol>
+    <symbol id="icon-frame" viewBox="0 0 24 24"><path d="M7 3v18M17 3v18M3 7h18M3 17h18"/></symbol>
+    <symbol id="icon-text" viewBox="0 0 24 24"><path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/></symbol>
+    <symbol id="icon-rectangle" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/></symbol>
+    <symbol id="icon-move" viewBox="0 0 24 24"><path d="M5 3l14 9-7 1-3 7z"/></symbol>
+    <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M7 12V7a1.5 1.5 0 0 1 3 0V5a1.5 1.5 0 0 1 3 0v1a1.5 1.5 0 0 1 3 0v2a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-1c-2 0-3-1-4-3l-4-5a1.5 1.5 0 0 1 2-2l3 3M10 7v5M13 6v6M16 8v4"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7M8 12h13"/></symbol>
+  </defs></svg>
+  <main class="editor">
+    <aside class="panel layers-panel" aria-label="图层面板">
+      <header class="document">
+        <div class="document-title"><svg aria-hidden="true"><use href="#icon-file"/></svg>2D Gizmo 编辑器</div>
+        <div class="document-meta">交互示例<span class="badge">本地 Demo</span></div>
+      </header>
+      <div class="layers-heading">
+        <h2>图层</h2>
+        <button id="create-toggle" class="icon-button tooltip-trigger" type="button" aria-label="创建元素" aria-expanded="false" aria-controls="create-menu"><svg aria-hidden="true"><use href="#icon-plus"/></svg><span class="tooltip" aria-hidden="true">创建元素</span></button>
+        <div id="create-menu" hidden>
+          <button id="menu-frame" type="button"><svg aria-hidden="true"><use href="#icon-frame"/></svg>拖动创建 Frame<span class="shortcut">F</span></button>
+          <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>拖动创建 Text<span class="shortcut">T</span></button>
+        </div>
+      </div>
+      <div id="items"></div>
+      <footer class="panel-footer"><a href="../index.html"><svg aria-hidden="true"><use href="#icon-back"/></svg>返回 Demo 列表</a></footer>
+    </aside>
+    <div class="workspace">
+      <div id="viewport"></div>
+      <nav class="toolbar" aria-label="编辑工具">
+        <button id="move" class="tooltip-trigger" type="button" aria-label="选择 / 移动" aria-pressed="true"><svg aria-hidden="true"><use href="#icon-move"/></svg><span class="tooltip" aria-hidden="true">选择 / 移动<kbd>V</kbd></span></button>
+        <button id="hand" class="tooltip-trigger" type="button" aria-label="抓手" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-hand"/></svg><span class="tooltip" aria-hidden="true">抓手平移<kbd>H</kbd></span></button>
+        <span class="tool-separator"></span>
+        <button id="create-frame" class="tooltip-trigger" type="button" aria-label="拖动创建 Frame" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">拖动创建画板<kbd>F</kbd></span></button>
+        <button id="create-text" class="tooltip-trigger" type="button" aria-label="拖动创建 Text" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-text"/></svg><span class="tooltip" aria-hidden="true">拖动创建文本<kbd>T</kbd></span></button>
+      </nav>
+      <div class="zoom-controls" role="group" aria-label="画布缩放"><button id="zoom-out" type="button" aria-label="缩小视口">−</button><output id="zoom">100%</output><button id="zoom-in" type="button" aria-label="放大视口">＋</button></div>
+      <div class="canvas-status"><span id="status" role="status">正在初始化…</span></div>
+    </div>
+    <aside class="panel inspector" aria-label="属性面板">
+      <div class="inspector-content">
+        <section><div class="selection-heading"><h2>当前选区</h2><span id="selection-kind">—</span></div><div id="selection">未选择</div></section>
+        <section>
+          <h2>位置</h2>
+          <span class="property-label">坐标</span>
+          <div class="field-grid"><label class="field"><span>X</span><input id="position-x" type="number" step="0.1" aria-label="X 坐标" disabled></label><label class="field"><span>Y</span><input id="position-y" type="number" step="0.1" aria-label="Y 坐标" disabled></label></div>
+          <span class="property-label">旋转</span>
+          <label class="field"><span>∠</span><input id="rotation" type="number" step="1" aria-label="旋转角度" disabled><span>°</span></label>
+        </section>
+        <section>
+          <h2>布局</h2>
+          <span class="property-label">尺寸</span>
+          <div class="field-grid"><label class="field"><span>W</span><input id="width" type="number" min="0.01" step="0.1" aria-label="宽度" disabled></label><label class="field"><span>H</span><input id="height" type="number" min="0.01" step="0.1" aria-label="高度" disabled></label></div>
+          <div class="readout"><span>缩放</span><output id="scale">—</output></div>
+        </section>
+        <section id="text-properties" hidden>
+          <h2>文本</h2><textarea id="text-value" aria-label="文本内容"></textarea>
+          <label class="field wide"><span>字号</span><input id="font-size" type="number" min="1" step="1" aria-label="字号"></label>
+        </section>
+        <section id="fill-properties" hidden><h2>填充</h2><div class="fill-row"><input id="fill" type="color" aria-label="填充颜色"><span id="fill-value">FFFFFF</span><span class="fill-opacity">100%</span></div></section>
+        <details><summary>最近操作</summary><ol id="events"></ol></details>
+      </div>
+    </aside>
+  </main>
+  <script type="module" src="../src/gizmo-2d.ts"></script>
+</body>
+</html>

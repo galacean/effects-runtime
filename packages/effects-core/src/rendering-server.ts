@@ -5,7 +5,6 @@ import { Graphics } from './render/graphics';
 import { Renderer } from './render/renderer';
 import { RenderTargetPool } from './render/render-target-pool';
 import type { RenderPassClearAction } from './render/render-pass';
-import { SceneServer } from './scene-server';
 import { TextureLoadAction } from './texture';
 
 /** Owns per-engine drawing services, after the graphics device is initialized. */
@@ -45,7 +44,7 @@ export class RenderingServer extends EngineServer {
 
   /** Submit the frame after every server has finished its onDraw preparation. */
   renderFrame (): void {
-    const scenes = this.engine.getServer(SceneServer);
+    const scenes = this.engine.sceneServer;
 
     this.renderer.renderCompositions(scenes.compositions, this.clearAction);
     this.renderer.renderOverlays();

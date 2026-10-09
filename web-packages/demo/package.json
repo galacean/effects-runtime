@@ -13,6 +13,7 @@
     "@galacean/effects-plugin-spine": "workspace:*",
     "@galacean/effects-plugin-dom-content": "workspace:*",
     "@galacean/effects-plugin-gui": "workspace:*",
+    "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "three": "^0.149.0"
   },
