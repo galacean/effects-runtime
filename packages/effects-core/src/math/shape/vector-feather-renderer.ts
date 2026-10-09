@@ -43,6 +43,38 @@ export type FeatherAtlasInfo = {
   textureOffset: Vector2,
   textureSize: Vector2,
   featherRadiusScreen: number,
+  expandedRect: [number, number, number, number],
+};
+
+export type FeatherSide = 'fill' | 'stroke';
+
+export type FeatherAtlasLayers = {
+  fill: FeatherAtlasInfo | null,
+  stroke: FeatherAtlasInfo | null,
+};
+
+export type FeatherRect = [number, number, number, number];
+
+type InstanceAttributeLayout = {
+  name: string,
+  baseOffset: number,
+};
+
+const SCATTER_STRIDE_BYTES = 4 * 4;
+const TRIANGLE_STRIDE_BYTES = 6 * 4;
+const SCATTER_ATTRIBUTES: InstanceAttributeLayout[] = [
+  { name: 'aStart', baseOffset: 0 },
+  { name: 'aEnd', baseOffset: 2 * 4 },
+];
+const TRIANGLE_ATTRIBUTES: InstanceAttributeLayout[] = [
+  { name: 'aP0', baseOffset: 0 },
+  { name: 'aP1', baseOffset: 2 * 4 },
+  { name: 'aP2', baseOffset: 4 * 4 },
+];
+
+export type FeatherRadiusPrep = {
+  featherRadiusScreen: number,
+  expandRadius: number,
 };
 
 /**
@@ -74,10 +106,14 @@ export class VectorFeatherRenderer {
    */
   upsampleMaterial: Material;
 
-  private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
-  private expandedRect: [number, number, number, number] = [0, 0, 0, 0];
-  private scatterInstanceCount = 0;
-  private indicatorTriangleCount = 0;
+  private gradientBBox: FeatherRect = [0, 0, 0, 0];
+  private fillBBox: FeatherRect = [0, 0, 0, 0];
+  private strokeBBox: FeatherRect = [0, 0, 0, 0];
+  private expandedRect: FeatherRect = [0, 0, 0, 0];
+  private fillScatterCount = 0;
+  private strokeScatterCount = 0;
+  private fillTriangleCount = 0;
+  private strokeTriangleCount = 0;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -90,10 +126,9 @@ export class VectorFeatherRenderer {
   featherColor: Color = new Color(1, 1, 1, 1);
 
   /**
-   * @internal
-   * 由 FeatherOffscreenPass 每帧设置，render() 中用于绘制 upsample
+   * 填充和描边各自的 atlas 区域。两侧遮罩互不叠加。
    */
-  atlasInfo: FeatherAtlasInfo | null = null;
+  atlasLayers: FeatherAtlasLayers | null = null;
 
   constructor (engine: Engine) {
     this.engine = engine;
@@ -227,99 +262,128 @@ export class VectorFeatherRenderer {
    * 更新羽化网格数据
    */
   updateMeshData (
-    scatterEdgeVertices: number[],
-    scatterEdgeCount: number,
-    bbox: [number, number, number, number],
-    indicatorTriangles: number[],
-    indicatorTriangleCount: number,
+    fillScatterEdges: number[],
+    fillScatterCount: number,
+    fillBBox: FeatherRect,
+    strokeScatterEdges: number[],
+    strokeScatterCount: number,
+    strokeBBox: FeatherRect,
+    fillTriangles: number[],
+    fillTriangleCount: number,
+    strokeTriangles: number[],
+    strokeTriangleCount: number,
   ): void {
-    this.currentBbox = bbox;
+    this.fillBBox = fillBBox;
+    this.strokeBBox = strokeBBox;
+    this.gradientBBox = unionFeatherRect(fillBBox, strokeBBox);
+    this.fillScatterCount = fillScatterCount;
+    this.strokeScatterCount = strokeScatterCount;
+    this.fillTriangleCount = fillTriangleCount;
+    this.strokeTriangleCount = strokeTriangleCount;
 
-    // 更新 scatter geometry (实例化边数据)
-    this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdgeVertices));
-    this.scatterInstanceCount = scatterEdgeCount;
-    this.indicatorSoSGeometry.setAttributeData('aTriangleData', new Float32Array(indicatorTriangles));
-    this.indicatorTriangleCount = indicatorTriangleCount;
+    const scatterEdges = fillScatterEdges.concat(strokeScatterEdges);
+    const triangles = fillTriangles.concat(strokeTriangles);
+
+    this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdges));
+    this.indicatorSoSGeometry.setAttributeData('aTriangleData', new Float32Array(triangles));
+  }
+
+  layerInstanceRange (side: FeatherSide): { start: number, count: number } {
+    if (side === 'fill') {
+      return { start: 0, count: this.fillScatterCount };
+    }
+
+    return { start: this.fillScatterCount, count: this.strokeScatterCount };
+  }
+
+  layerTriangleRange (side: FeatherSide): { start: number, count: number } {
+    if (side === 'fill') {
+      return { start: 0, count: this.fillTriangleCount };
+    }
+
+    return { start: this.fillTriangleCount, count: this.strokeTriangleCount };
+  }
+
+  layerBBox (side: FeatherSide): FeatherRect {
+    return side === 'fill' ? this.fillBBox : this.strokeBBox;
   }
 
   /**
-   * 更新 upsample 四边形，覆盖 bbox + feather 区域
+   * 同一帧只调用一次。填充和描边再各自用这次得到的半径生成投影。
    */
-  updateUpsampleQuad (featherRadius: number): void {
-    const [bx, by, bw, bh] = this.currentBbox;
-    const minX = bx - featherRadius;
-    const minY = by - featherRadius;
-    const maxX = bx + bw + featherRadius;
-    const maxY = by + bh + featherRadius;
-
-    const posData = new Float32Array([
-      minX, maxY, 0,   // 左上
-      minX, minY, 0,   // 左下
-      maxX, maxY, 0,   // 右上
-      maxX, minY, 0,   // 右下
-    ]);
-    const uvData = new Float32Array([
-      0, 1,   // 左上
-      0, 0,   // 左下
-      1, 1,   // 右上
-      1, 0,   // 右下
-    ]);
-
-    this.expandedRect = [minX, minY, maxX - minX, maxY - minY];
-    this.upsampleGeometry.setAttributeData('aPos', posData);
-    this.upsampleGeometry.setAttributeData('aUV', uvData);
-  }
-
-  /**
-   * 计算渲染参数（FBO 尺寸、正交投影），不执行渲染
-   */
-  computeRenderParams (
+  prepareFeatherRadius (
     renderer: Renderer,
     worldMatrix: Matrix4,
     setFeatherRadius: number,
-  ): FeatherRenderParams | null {
-    if (this.currentBbox[2] <= 0 || this.currentBbox[3] <= 0) {
-      return null;
-    }
-    // 这里计算屏幕radius。
+  ): FeatherRadiusPrep {
     const featherRadiusScreen = this.computeScreenRadius(
-      renderer, worldMatrix, setFeatherRadius
-    );  
-    // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
+      renderer, worldMatrix, setFeatherRadius,
+    );
+    // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）
     const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);
-    // 这里传递回去修改原始羽化
+
     this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
-    // 包围盒向外扩展一个像素，避免半径太小的时候由于光栅化误差缺像素。
-    const expandRadius = getExpandedRadius(this.featherRadius, refinedScreenRadius);  
-    const [bx, by, bw, bh] = this.currentBbox;
-    const expandedW = bw + expandRadius * 2;
-    const expandedH = bh + expandRadius * 2;
-    const expandedMinX = bx - expandRadius;
-    const expandedMinY = by - expandRadius;
+    return {
+      featherRadiusScreen: refinedScreenRadius,
+      expandRadius: getExpandedRadius(this.featherRadius, refinedScreenRadius),
+    };
+  }
 
+  createLayerParams (
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    bbox: FeatherRect,
+    prepared: FeatherRadiusPrep,
+  ): FeatherRenderParams | null {
+    if (bbox[2] <= 0 || bbox[3] <= 0) {
+      return null;
+    }
+
+    const [bx, by, bw, bh] = bbox;
+    const expandedW = bw + prepared.expandRadius * 2;
+    const expandedH = bh + prepared.expandRadius * 2;
+    const expandedMinX = bx - prepared.expandRadius;
+    const expandedMinY = by - prepared.expandRadius;
     const screenExtent = this.computeScreenExtent(
       renderer, worldMatrix,
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
-
-    const downsample = Math.min(Math.max(refinedScreenRadius / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
-
+    const downsample = Math.min(Math.max(prepared.featherRadiusScreen / 10.0, 1.0), 9999);
     const maxFboSize = 2048;
-    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);   // 这里表明实际降采样未必是计算的downsample...
+    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
     const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
 
-    const orthoProjection = createOrthoMatrix(
-      expandedMinX, expandedMinX + expandedW,
-      expandedMinY, expandedMinY + expandedH,
-    );
+    return {
+      fboW,
+      fboH,
+      orthoProjection: createOrthoMatrix(
+        expandedMinX, expandedMinX + expandedW,
+        expandedMinY, expandedMinY + expandedH,
+      ),
+      featherRadiusScreen: prepared.featherRadiusScreen,
+      localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
+    };
+  }
 
-    return { 
-      fboW:fboW, 
-      fboH:fboH, 
-      orthoProjection:orthoProjection,
-      featherRadiusScreen:refinedScreenRadius, // 注意这里传修改后的
-      localRect: [expandedMinX, expandedMinY, expandedW, expandedH] };
+  updateUpsampleQuad (expandedRect: FeatherRect): void {
+    const [minX, minY, width, height] = expandedRect;
+    const posData = new Float32Array([
+      minX, minY + height, 0,
+      minX, minY, 0,
+      minX + width, minY + height, 0,
+      minX + width, minY, 0,
+    ]);
+    const uvData = new Float32Array([
+      0, 1,
+      0, 0,
+      1, 1,
+      1, 0,
+    ]);
+
+    this.expandedRect = expandedRect;
+    this.upsampleGeometry.setAttributeData('aPos', posData);
+    this.upsampleGeometry.setAttributeData('aUV', uvData);
   }
 
   /**
@@ -341,22 +405,31 @@ export class VectorFeatherRenderer {
    * 绘制 Indicator 的浮点 SoS 版本（调用者需已设置好 FBO 和 viewport）。
    * 每个扇形三角形画外扩 1px 的轴对齐包围盒，片元用与 scatter 相同的像素中心和侧向。
    * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
+   * @param instanceStart - 这一侧（fill / stroke）三角形在实例缓冲中的起点
+   * @param instanceCount - 这一侧的三角形数量
    */
   drawIndicatorSoSPass (
     renderer: Renderer,
     params: FeatherRenderParams,
     viewportOffset: Vector2,
+    instanceStart: number,
+    instanceCount: number,
   ): void {
+    if (instanceCount <= 0) {
+      return;
+    }
+
     const [minX, minY, localW, localH] = params.localRect;
     const localPerPixelX = localW / params.fboW;
     const localPerPixelY = localH / params.fboH;
 
+    this.shiftInstanceAttributes(this.indicatorSoSGeometry, TRIANGLE_ATTRIBUTES, instanceStart, TRIANGLE_STRIDE_BYTES);
     this.indicatorSoSMaterial.setMatrix('uProjection', params.orthoProjection);
     this.indicatorSoSMaterial.setVector2('uViewportOffset', viewportOffset);
     this.indicatorSoSMaterial.setVector2('uPixelOrigin', new Vector2(minX, minY));
     this.indicatorSoSMaterial.setVector2('uSpacePerPixel', new Vector2(localPerPixelX, localPerPixelY));
     renderer.drawGeometryInstanced(
-      this.indicatorSoSGeometry, this.indicatorSoSMaterial, this.indicatorTriangleCount,
+      this.indicatorSoSGeometry, this.indicatorSoSMaterial, instanceCount,
     );
   }
 
@@ -364,24 +437,49 @@ export class VectorFeatherRenderer {
    * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）。
    * 片元用 gl_FragCoord 反算局部空间像素中心，再用端点直接积分。
    * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
+   * @param instanceStart - 这一侧边在实例缓冲中的起点
+   * @param instanceCount - 这一侧的边数量
    */
   drawScatterPass (
     renderer: Renderer,
     params: FeatherRenderParams,
     featherRadius: number,
     viewportOffset: Vector2,
+    instanceStart: number,
+    instanceCount: number,
   ): void {
+    if (instanceCount <= 0) {
+      return;
+    }
+
     const [minX, minY, localW, localH] = params.localRect;
     const localPerPixelX = localW / params.fboW;
     const localPerPixelY = localH / params.fboH;
 
+    this.shiftInstanceAttributes(this.scatterGeometry, SCATTER_ATTRIBUTES, instanceStart, SCATTER_STRIDE_BYTES);
     this.scatterMaterial.setMatrix('uProjection', params.orthoProjection);
     this.scatterMaterial.setFloat('uCoverRadius', featherRadius + Math.max(localPerPixelX, localPerPixelY));
     this.scatterMaterial.setVector2('uViewportOffset', viewportOffset);
     this.scatterMaterial.setVector2('uPixelOrigin', new Vector2(minX, minY));
     this.scatterMaterial.setVector2('uSpacePerPixel', new Vector2(localPerPixelX, localPerPixelY));
     this.scatterMaterial.setFloat('uRadius', featherRadius);
-    renderer.drawGeometryInstanced(this.scatterGeometry, this.scatterMaterial, this.scatterInstanceCount);
+    renderer.drawGeometryInstanced(this.scatterGeometry, this.scatterMaterial, instanceCount);
+  }
+
+  /**
+   * 绘制一侧的 Upsample。渐变坐标用填充与描边合并后的包围盒。
+   */
+  drawLayerUpsample (
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    layer: FeatherAtlasInfo,
+  ): void {
+    this.updateUpsampleQuad(layer.expandedRect);
+    this.drawUpsamplePass(
+      renderer, worldMatrix,
+      layer.atlasTexture, layer.textureSize, layer.atlasSize, layer.textureOffset,
+      layer.featherRadiusScreen,
+    );
   }
 
   /**
@@ -396,7 +494,7 @@ export class VectorFeatherRenderer {
     textureOffset: Vector2,
     featherRadiusScreen: number,
   ): void {
-    const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = this.currentBbox;
+    const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = this.gradientBBox;
     const [expandedMinX, expandedMinY, expandedWidth, expandedHeight] = this.expandedRect;
 
     this.upsampleMaterial.setFloat('uScreenRadius', featherRadiusScreen);
@@ -416,10 +514,7 @@ export class VectorFeatherRenderer {
 
   /**
    * 执行 3-pass 羽化渲染（单 shape 独立渲染，未走批处理时使用）
-   * @param renderer - 渲染器
-   * @param worldMatrix - 世界变换矩阵
-   * @param featherRadius - 羽化半径（局部坐标空间）
-   * @param color - 羽化颜色
+   * 先画填充，再画描边。这条非atlas羽化路径应该是废弃的，只做了纯色。
    */
   render (
     renderer: Renderer,
@@ -427,9 +522,35 @@ export class VectorFeatherRenderer {
     featherRadius: number,
     color: Color,
     indicatorGeometry?: Geometry,
-    indicatorSubMeshIndex = 0,
   ): void {
-    const params = this.computeRenderParams(renderer, worldMatrix, featherRadius);
+    const prepared = this.prepareFeatherRadius(renderer, worldMatrix, featherRadius);
+
+    this.upsampleMaterial.setFloat('_FillType', 0);
+    this.upsampleMaterial.color = color;
+    this.renderSolidLayer(renderer, worldMatrix, 'fill', prepared, indicatorGeometry, 2);
+    this.renderSolidLayer(renderer, worldMatrix, 'stroke', prepared, indicatorGeometry, 3);
+  }
+
+  private renderSolidLayer (
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    side: FeatherSide,
+    prepared: FeatherRadiusPrep,
+    indicatorGeometry: Geometry | undefined,
+    subMeshIndex: number,
+  ): void {
+    const scatter = side === 'fill'
+      ? { start: 0, count: this.fillScatterCount }
+      : { start: this.fillScatterCount, count: this.strokeScatterCount };
+    const triangles = side === 'fill'
+      ? { start: 0, count: this.fillTriangleCount }
+      : { start: this.fillTriangleCount, count: this.strokeTriangleCount };
+
+    if (scatter.count <= 0 && triangles.count <= 0) {
+      return;
+    }
+
+    const params = this.createLayerParams(renderer, worldMatrix, this.layerBBox(side), prepared);
 
     if (!params) {
       return;
@@ -456,33 +577,71 @@ export class VectorFeatherRenderer {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
-    
+
     if (VectorFeatherRenderer.indicatorSoS) {
-      this.drawIndicatorSoSPass(renderer, params, new Vector2(0, 0));
+      this.drawIndicatorSoSPass(renderer, params, new Vector2(0, 0), triangles.start, triangles.count);
     } else if (indicatorGeometry) {
-      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, subMeshIndex);
     }
-    this.drawScatterPass(renderer, params, this.featherRadius, new Vector2(0, 0));
-    // === Pass 3: Upsample → 屏幕 ===
+    this.drawScatterPass(renderer, params, this.featherRadius, new Vector2(0, 0), scatter.start, scatter.count);
+
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(0, 0, renderer.getWidth(), renderer.getHeight());
 
-    // 更新 upsample 四边形覆盖区域
-    this.updateUpsampleQuad(getExpandedRadius(this.featherRadius, params.featherRadiusScreen));
-
-    // 绘制 upsample。这条路径只有纯色，渐变由 ShapeComponent 在绘制前写入。
     const atlasTexture = atlas.getColorTextures()[0];
+    const layer: FeatherAtlasInfo = {
+      atlasTexture,
+      atlasSize: new Vector2(fboW, fboH),
+      textureOffset: new Vector2(0, 0),
+      textureSize: new Vector2(fboW, fboH),
+      featherRadiusScreen: params.featherRadiusScreen,
+      expandedRect: params.localRect,
+    };
 
-    this.upsampleMaterial.setFloat('_FillType', 0);
-    this.upsampleMaterial.color = color;
-    this.drawUpsamplePass(
-      renderer, worldMatrix, atlasTexture,
-      new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
-      params.featherRadiusScreen,
-    );
-
-    // 释放临时渲染目标
+    this.drawLayerUpsample(renderer, worldMatrix, layer);
     renderer.releaseTemporaryRT(atlas);
+  }
+
+  private shiftInstanceAttributes (
+    geometry: Geometry,
+    layout: InstanceAttributeLayout[],
+    instanceStart: number,
+    strideBytes: number,
+  ): void {
+    const attributes = (geometry as Geometry & {
+      attributes?: Record<string, { offset?: number }>,
+      vaos?: Record<string, { ready: boolean } | undefined>,
+    }).attributes;
+
+    if (!attributes) {
+      return;
+    }
+
+    const shift = instanceStart * strideBytes;
+
+    for (const item of layout) {
+      const attribute = attributes[item.name];
+
+      if (attribute) {
+        attribute.offset = item.baseOffset + shift;
+      }
+    }
+
+    const vaos = (geometry as Geometry & {
+      vaos?: Record<string, { ready: boolean } | undefined>,
+    }).vaos;
+
+    if (!vaos) {
+      return;
+    }
+
+    for (const key of Object.keys(vaos)) {
+      const vao = vaos[key];
+
+      if (vao) {
+        vao.ready = false;
+      }
+    }
   }
 
   /**
@@ -592,6 +751,25 @@ export class VectorFeatherRenderer {
 
     return Material.create(this.engine, materialProps);
   }
+}
+
+function unionFeatherRect (fill: FeatherRect, stroke: FeatherRect): FeatherRect {
+  const fillEmpty = fill[2] <= 0 || fill[3] <= 0;
+  const strokeEmpty = stroke[2] <= 0 || stroke[3] <= 0;
+
+  if (fillEmpty) {
+    return stroke;
+  }
+  if (strokeEmpty) {
+    return fill;
+  }
+
+  const minX = Math.min(fill[0], stroke[0]);
+  const minY = Math.min(fill[1], stroke[1]);
+  const maxX = Math.max(fill[0] + fill[2], stroke[0] + stroke[2]);
+  const maxY = Math.max(fill[1] + fill[3], stroke[1] + stroke[3]);
+
+  return [minX, minY, maxX - minX, maxY - minY];
 }
 
 /**
