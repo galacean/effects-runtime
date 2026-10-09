@@ -16,8 +16,11 @@ export class SubCompositionTrack extends TrackAsset {
 
     const composition = boundObject.getComponent(CompositionComponent);
 
-    // The parent clip owns this component's time as soon as it is bound.
-    composition.updateMode = UpdateModes.Manual;
+    // Render-level fallback can remove the component while retaining its track.
+    if (composition) {
+      // The parent clip owns this component's time as soon as it is bound.
+      composition.updateMode = UpdateModes.Manual;
+    }
 
     return composition;
   }
