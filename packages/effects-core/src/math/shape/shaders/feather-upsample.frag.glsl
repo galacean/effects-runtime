@@ -99,8 +99,8 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
       fixSingleLayer(indicators.z, integs.z),
       fixSingleLayer(indicators.w, integs.w)
     );
-    vals = supressLargeNoises(vals);
   }
+  vals = supressLargeNoises(vals);
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);
