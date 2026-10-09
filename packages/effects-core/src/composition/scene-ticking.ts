@@ -6,6 +6,8 @@ import { Component } from '../components';
 export class SceneTicking {
   update: UpdateTickData = new UpdateTickData();
   lateUpdate: LateUpdateTickData = new LateUpdateTickData();
+  fixedUpdate: FixedUpdateTickData = new FixedUpdateTickData();
+  lateFixedUpdate: LateFixedUpdateTickData = new LateFixedUpdateTickData();
   preRender: PreRenderTickData = new PreRenderTickData();
 
   /**
@@ -19,6 +21,14 @@ export class SceneTicking {
 
     if (obj.onLateUpdate !== Component.prototype.onLateUpdate) {
       this.lateUpdate.addComponent(obj);
+    }
+
+    if (obj.onFixedUpdate !== Component.prototype.onFixedUpdate) {
+      this.fixedUpdate.addComponent(obj);
+    }
+
+    if (obj.onLateFixedUpdate !== Component.prototype.onLateFixedUpdate) {
+      this.lateFixedUpdate.addComponent(obj);
     }
 
     if (obj.onPreRender !== Component.prototype.onPreRender) {
@@ -39,6 +49,14 @@ export class SceneTicking {
       this.lateUpdate.removeComponent(obj);
     }
 
+    if (obj.onFixedUpdate !== Component.prototype.onFixedUpdate) {
+      this.fixedUpdate.removeComponent(obj);
+    }
+
+    if (obj.onLateFixedUpdate !== Component.prototype.onLateFixedUpdate) {
+      this.lateFixedUpdate.removeComponent(obj);
+    }
+
     if (obj.onPreRender !== Component.prototype.onPreRender) {
       this.preRender.removeComponent(obj);
     }
@@ -48,6 +66,8 @@ export class SceneTicking {
     this.update.canTick = enabled;
     this.lateUpdate.canTick = enabled;
     this.preRender.canTick = enabled;
+    this.fixedUpdate.canTick = enabled;
+    this.lateFixedUpdate.canTick = enabled;
   }
 
   /**
@@ -57,6 +77,8 @@ export class SceneTicking {
     this.update.clear();
     this.lateUpdate.clear();
     this.preRender.clear();
+    this.fixedUpdate.clear();
+    this.lateFixedUpdate.clear();
   }
 }
 
@@ -127,5 +149,17 @@ class LateUpdateTickData extends TickData {
 class PreRenderTickData extends TickData {
   override tickComponent (component: Component, dt: number): void {
     component.onPreRender();
+  }
+}
+
+class FixedUpdateTickData extends TickData {
+  override tickComponent (component: Component, dt: number): void {
+    component.onFixedUpdate(dt);
+  }
+}
+
+class LateFixedUpdateTickData extends TickData {
+  override tickComponent (component: Component, dt: number): void {
+    component.onLateFixedUpdate(dt);
   }
 }

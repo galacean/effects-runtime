@@ -30,3 +30,5 @@ import './mask-processor.spec';
 import './plugins/dom-content';
 
 import './post-processing-regressions.spec';
+
+import './fixed-update.spec';
