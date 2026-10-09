@@ -7,25 +7,29 @@ import type { Renderer } from './renderer';
 import { TextureLoadAction } from '../texture';
 import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
-import { FeatherRenderParams, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import type { FeatherRenderParams, FeatherSide } from '../math/shape/vector-feather-renderer';
+import { FEATHER_SIDES, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
 
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
-type FeatherEntry = {
+type PendingFeatherEntry = {
   component: ShapeComponent,
   featherRenderer: VectorFeatherRenderer,
+  side: FeatherSide,
   params: FeatherRenderParams,
+};
+
+type FeatherEntry = PendingFeatherEntry & {
   atlas: Framebuffer,
   rect: AtlasRect,
 };
 
 /**
  * FeatherOffscreenPass
- * 在 DrawObjectPass 之前执行，将所有需要羽化的 ShapeComponent
- * 的 indicator + scatter pass 渲染到共享的 atlas FBO 中。
- * atlas 信息存入每个 VectorFeatherRenderer.atlasInfo，
- * 由 ShapeComponent.render() 中的 upsample 步骤消费。
+ * 在 DrawObjectPass 之前执行，将需要羽化的填充和描边
+ * 分别渲染到 atlas 中互不重叠的区域。
+ * 结果写入 VectorFeatherRenderer.atlasLayers，由 ShapeComponent.render() 上色。
  */
 export class FeatherOffscreenPass extends RenderPass {
 
@@ -43,35 +47,45 @@ export class FeatherOffscreenPass extends RenderPass {
   }
 
   override execute (renderer: Renderer): void {
-    // 1. 收集需要羽化的 ShapeComponent
-    const featheredComponents: {
-      component: ShapeComponent,
-      featherRenderer: VectorFeatherRenderer,
-      params: FeatherRenderParams,
-    }[] = [];
-
+    const pending: PendingFeatherEntry[] = [];
     const renderList = renderer.renderingData.currentFrame.renderList;
 
     for (const mesh of renderList) {
-      if (mesh instanceof ShapeComponent && mesh.featherRenderer.featherRadius > 0) {
-        const fr = mesh.featherRenderer;
-        const worldMatrix = mesh.transform.getWorldMatrix();
-        const params = fr.computeRenderParams(renderer, worldMatrix, fr.featherRadius);
+      if (!(mesh instanceof ShapeComponent) || mesh.featherRenderer.featherRadius <= 0) {
+        continue;
+      }
 
-        if (!params) { continue; }
-        featheredComponents.push({ component: mesh, featherRenderer: fr, params });
+      const featherRenderer = mesh.featherRenderer;
+      const worldMatrix = mesh.transform.getWorldMatrix();
+      const prepared = featherRenderer.prepareFeatherRadius(renderer, worldMatrix, featherRenderer.featherRadius);
+
+      featherRenderer.atlasLayers = { fill: null, stroke: null };
+
+      for (const side of FEATHER_SIDES) {
+        if (!featherRenderer.layerHasContent(side)) {
+          continue;
+        }
+
+        const params = featherRenderer.createLayerParams(
+          renderer, worldMatrix, featherRenderer.layerBBox(side), prepared,
+        );
+
+        if (!params) {
+          continue;
+        }
+
+        pending.push({ component: mesh, featherRenderer, side, params });
       }
     }
 
-    if (featheredComponents.length === 0) {
+    if (pending.length === 0) {
       return;
     }
 
-    // 2. 计算 atlas 布局
     let maxW = 0;
     let totalArea = 0;
 
-    for (const { params } of featheredComponents) {
+    for (const { params } of pending) {
       maxW = Math.max(maxW, params.fboW);
       totalArea += (params.fboW + ATLAS_PADDING) * (params.fboH + ATLAS_PADDING);
     }
@@ -84,71 +98,73 @@ export class FeatherOffscreenPass extends RenderPass {
 
     const prevFramebuffer = renderer.getFramebuffer();
     let currentAtlas: Framebuffer | null = null;
+    let batchStart = 0;
 
-    // 辅助函数：渲染当前队列
+    const createAtlas = () => renderer.getTemporaryRT(
+      '_FeatherAtlas', atlasW, atlasH, 0,
+      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+      1, // 禁用各向异性过滤。upsample 用 texture2D 模拟 texelFetch，必须关闭各向异性。
+    );
+
     const flushCurrentBatch = () => {
-      if (this.entries.length === 0 || !currentAtlas) { return; }
+      const atlas = currentAtlas;
+      const batch = this.entries.slice(batchStart);
 
-      renderer.setFramebuffer(currentAtlas);
+      if (batch.length === 0 || !atlas) {
+        return;
+      }
+
+      renderer.setFramebuffer(atlas);
       renderer.setViewport(0, 0, atlasW, atlasH);
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
-       
-      for (const { component, featherRenderer, params, rect } of this.entries) {
+
+      for (const { component, featherRenderer, side, params, rect } of batch) {
+        const viewportOffset = new Vector2(rect.x, rect.y);
+
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
+
         if (VectorFeatherRenderer.indicatorSoS) {
-          featherRenderer.drawIndicatorSoSPass(renderer, params, new Vector2(rect.x, rect.y));
+          featherRenderer.drawIndicatorSoSPass(renderer, params, viewportOffset, side);
         } else {
-          component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+          component.drawFeatherIndicatorPass(renderer, params.orthoProjection, side);
         }
-        featherRenderer.drawScatterPass(
-          renderer, params, featherRenderer.featherRadius, new Vector2(rect.x, rect.y),
-        );
-        featherRenderer.atlasInfo = {
-          atlasTexture: currentAtlas.getColorTextures()[0],
+
+        featherRenderer.drawScatterPass(renderer, params, featherRenderer.featherRadius, viewportOffset, side);
+
+        const layers = featherRenderer.atlasLayers ?? { fill: null, stroke: null };
+
+        layers[side] = {
+          atlasTexture: atlas.getColorTextures()[0],
           atlasSize: new Vector2(atlasW, atlasH),
-          textureOffset: new Vector2(rect.x, rect.y),
+          textureOffset: viewportOffset,
           textureSize: new Vector2(rect.w, rect.h),
           featherRadiusScreen: params.featherRadiusScreen,
+          expandedRect: params.localRect,
         };
+        featherRenderer.atlasLayers = layers;
       }
     };
 
-    // 3. 分配并渲染
-    for (const entry of featheredComponents) {
+    for (const entry of pending) {
       const rect: AtlasRect = { x: 0, y: 0, w: 0, h: 0 };
 
       if (this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
-        // 当前 atlas 可以容纳
         if (!currentAtlas) {
-          currentAtlas = renderer.getTemporaryRT(
-            '_FeatherAtlas', atlasW, atlasH, 0,
-            FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-            1  // anisotropic = 1，禁用各向异性过滤。在使用texture2D模拟texelFetch时，必须关闭各向异性。
-          );
+          currentAtlas = createAtlas();
         }
         this.entries.push({ ...entry, atlas: currentAtlas, rect });
       } else {
-        // 溢出：先渲染当前队列
         flushCurrentBatch();
-
-        // 重置并创建新 atlas
         this.allocator.reset();
-        this.entries = [];
-        currentAtlas = renderer.getTemporaryRT(
-          '_FeatherAtlas', atlasW, atlasH, 0,
-          FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-          1,  // anisotropic = 1，禁用各向异性过滤
-        );
-
+        batchStart = this.entries.length;
+        currentAtlas = createAtlas();
         this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect);
         this.entries.push({ ...entry, atlas: currentAtlas, rect });
       }
     }
 
-    // 渲染最后一批
     flushCurrentBatch();
 
-    // 4. 恢复 framebuffer
     renderer.setFramebuffer(prevFramebuffer);
     if (prevFramebuffer) {
       const vp = prevFramebuffer.viewport;
@@ -160,9 +176,14 @@ export class FeatherOffscreenPass extends RenderPass {
   }
 
   override onCameraCleanup (renderer: Renderer): void {
+    const released = new Set<Framebuffer>();
+
     for (const { featherRenderer, atlas } of this.entries) {
-      renderer.releaseTemporaryRT(atlas);
-      featherRenderer.atlasInfo = null;
+      if (!released.has(atlas)) {
+        renderer.releaseTemporaryRT(atlas);
+        released.add(atlas);
+      }
+      featherRenderer.atlasLayers = null;
     }
 
     this.entries = [];
