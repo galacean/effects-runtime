@@ -93,7 +93,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super();
     this.options = options ?? {};
-    this.time = new Time(Math.min(120, Math.max(1, options?.fps ?? 60)));
+    this.time = new Time();
     this.canvas = canvas;
     this.env = options?.env ?? '';
     this.name = options?.name ?? this.name;

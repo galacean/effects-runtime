@@ -18,7 +18,7 @@ function createClock () {
 
 describe('core/fixed-update', () => {
   it('schedules physics independently from 30 FPS updates and draws', () => {
-    const time = new Time(30);
+    const time = new Time();
     const counts = [0, 0, 0];
 
     for (let i = 0; i < 120; i++) {
@@ -101,15 +101,40 @@ describe('core/fixed-update', () => {
       clock.advance(step);
     }
     expect(clock.advance(step)).to.equal(step);
-    expect(clock.advance(1)).to.equal(undefined);
+    expect(clock.advance(0)).to.equal(undefined);
   });
 
-  it('skips missed deadlines without retaining a catch-up backlog', () => {
-    const clock = createClock();
+  it('retains at most one interval of catch-up time after a stall', () => {
+    const time = new Time();
 
-    expect(clock.advance(step * 3.25)).to.be.closeTo(step * 3.25, 1e-7);
-    expect(clock.advance(step * 0.25)).to.equal(undefined);
-    expect(clock.advance(step * 0.5)).to.be.closeTo(step * 0.75, 1e-7);
+    time.advance(1000);
+    expect(time.onBeginUpdate(60)).to.equal(true);
+    expect(time.update.deltaTime).to.equal(100);
+    time.advance(step * 0.25);
+    expect(time.onBeginUpdate(60)).to.equal(true);
+    expect(time.update.deltaTime).to.be.closeTo(step * 0.25, 1e-7);
+    time.advance(step * 0.25);
+    expect(time.onBeginUpdate(60)).to.equal(false);
+    time.advance(step * 0.5);
+    expect(time.onBeginUpdate(60)).to.equal(true);
+  });
+
+  it('preserves the target cadence when RAF timestamps alternate around deadlines', () => {
+    const time = new Time();
+    const counts = [0, 0, 0];
+    let previous = 0;
+
+    for (let i = 1; i <= 120; i++) {
+      const now = i * step + (i % 2 ? 0.2 : -0.2);
+
+      time.advance(now - previous);
+      previous = now;
+      if (time.onBeginUpdate(60)) { counts[0]++; }
+      if (time.onBeginPhysics()) { counts[1]++; }
+      if (time.onBeginDraw(60)) { counts[2]++; }
+    }
+    expect(counts).to.deep.equal([119, 119, 119]);
+    expect(time.physics.deltaTime).to.equal(step);
   });
 
   it('ignores invalid deltas without poisoning the clock', () => {

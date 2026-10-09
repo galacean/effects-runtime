@@ -2,28 +2,21 @@
 export class TickData {
   deltaTime = 0;
   protected lastBegin = 0;
-  protected nextBegin = 0;
-
-  constructor (fps = 60) {
-    this.nextBegin = 1000 / fps;
-  }
+  private lastTime = 0;
+  private accumulator = 0;
 
   onTickBegin (time: number, fps: number, maxDeltaTime: number, force = false): boolean {
-    if (!force && time + 1e-7 < this.nextBegin) {
-      return false;
-    }
-    let dt = Math.max(time - this.lastBegin, 0);
-
-    if (dt > maxDeltaTime) {
-      dt = maxDeltaTime;
-      this.nextBegin = time;
-    }
     const step = 1000 / fps;
 
-    this.nextBegin += Math.max(1, Math.floor((time - this.nextBegin + 1e-7) / step) + 1) * step;
-    if (force) {
-      this.nextBegin = time + step;
+    this.accumulator += Math.max(time - this.lastTime, 0);
+    this.lastTime = time;
+    if (!force && this.accumulator + 1e-7 < step) {
+      return false;
     }
+    const dt = Math.min(Math.max(time - this.lastBegin, 0), maxDeltaTime);
+
+    // Consume one interval and retain at most one interval of catch-up time.
+    this.accumulator = force ? 0 : Math.min(Math.max(this.accumulator - step, 0), step);
     this.lastBegin = time;
     this.deltaTime = dt;
 
@@ -60,16 +53,11 @@ export class FixedStepTickData extends TickData {
  * Caller deltas drive the clock so manual ticks do not depend on wall time.
  */
 export class Time {
-  readonly update: TickData;
+  readonly update = new TickData();
   readonly physics = new FixedStepTickData();
-  readonly draw: TickData;
+  readonly draw = new TickData();
   private time = 0;
   private hasElapsed = false;
-
-  constructor (fps = 60) {
-    this.update = new TickData(fps);
-    this.draw = new TickData(fps);
-  }
 
   advance (dt: number): void {
     this.hasElapsed = Number.isFinite(dt) && dt > 0;
