@@ -1,4 +1,4 @@
-import { Player, spec } from '@galacean/effects';
+import { CompositionComponent, Player, spec, TimelineAsset } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -11,6 +11,7 @@ const { expect } = chai;
  * - 多 clip scale：乘子连乘 base × c1 × c2
  * - 多 clip rotation：Euler 逐分量加权累加
  * - 多 clip position：两段反向位移叠加后抵消回到 base
+ * - 空贡献、回跳和播放图重建：每次采样从 base pose 生成完整姿态
  */
 describe('core/plugins/calculate/transform-clip-mix', () => {
   const canvas = document.createElement('canvas');
@@ -31,6 +32,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     clips: { assetId: string, asset: Record<string, unknown>, start?: number, duration?: number, endBehavior?: number }[],
     spritePosition = { x: 0, y: 0, z: 0 },
     spriteScale = { x: 1, y: 1, z: 1 },
+    spriteRotation = { x: 0, y: 0, z: 0 },
   ) => {
     const transformTrack = {
       id: 'transform_track_1',
@@ -98,7 +100,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
           components: [{ id: 'sprite_component_1' }],
           transform: {
             position: spritePosition,
-            eulerHint: { x: 0, y: 0, z: 0 },
+            eulerHint: spriteRotation,
             anchor: { x: 0, y: 0 },
             size: { x: 1, y: 1 },
             scale: spriteScale,
@@ -142,6 +144,12 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
       ],
     ],
   });
+  const expectRotation = (actual: number[], expected: number[]) => {
+    expect(actual).to.have.lengthOf(expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      expect(actual[i]).to.be.closeTo(expected[i], 1e-5);
+    }
+  };
 
   it('单 clip scale 与直写一致（base × 常量乘子）', async () => {
     const scene = buildScene(
@@ -208,7 +216,94 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.z).to.be.closeTo(0, 1e-5);
   });
 
-  it('clip 结束后恢复被 mixer 写过的 position', async () => {
+  it('空 TransformTrack 每次采样都写回完整 base pose', async () => {
+    const scene = buildScene(
+      [],
+      { x: 1, y: 2, z: 3 },
+      { x: 3, y: 4, z: 3 },
+      { x: 0, y: 0, z: 30 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+
+    component.sampleTime(0);
+    for (const time of [0.5, 1.5]) {
+      sprite.transform.setPosition(9, 8, 7);
+      sprite.transform.setRotation(0, 0, 90);
+      sprite.transform.setScale(6, 6, 6);
+
+      component.sampleTime(time);
+      expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 3]);
+      expectRotation(sprite.transform.rotation.toArray(), [0, 0, 30]);
+      expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 4, 3]);
+    }
+  });
+
+  it('只提供 rotation 贡献时，每次采样仍写回 position 和 scale 的 base pose', async () => {
+    const scene = buildScene(
+      [{ assetId: 'asset_r', asset: { rotationOverLifetime: { asRotation: true, z: 45 } } }],
+      { x: 1, y: 2, z: 3 },
+      { x: 3, y: 4, z: 3 },
+      { x: 0, y: 0, z: 30 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+
+    component.sampleTime(0.5);
+    for (const time of [0.5, 1.5]) {
+      sprite.transform.setPosition(9, 8, 7);
+      sprite.transform.setRotation(0, 0, 90);
+      sprite.transform.setScale(6, 6, 6);
+
+      component.sampleTime(time);
+      expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 3]);
+      expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+      expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 4, 3]);
+    }
+  });
+
+  it('从 clip 内回跳到开始前恢复完整 base pose，再次采样不累积贡献', async () => {
+    const scene = buildScene(
+      [{
+        assetId: 'asset_transform',
+        start: 1,
+        duration: 1,
+        endBehavior: spec.EndBehavior.destroy,
+        asset: {
+          positionOverLifetime: path(4),
+          rotationOverLifetime: { asRotation: true, z: 45 },
+          sizeOverLifetime: { size: 2 },
+        },
+      }],
+      { x: 1, y: 2, z: 3 },
+      { x: 3, y: 4, z: 3 },
+      { x: 0, y: 0, z: 30 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+
+    component.sampleTime(1.5);
+    const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+
+    expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
+
+    component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 3]);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 30]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 4, 3]);
+
+    component.sampleTime(1.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
+  });
+
+  it('clip 结束后恢复 position 的 base pose', async () => {
     const scene = buildScene(
       [{ assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy }],
       { x: 1, y: 2, z: 0 },
@@ -248,5 +343,139 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+  });
+
+  it('切换 timeline 恢复初始姿态，切回后仍使用原来的 basePose', async () => {
+    const scene = buildScene(
+      [{
+        assetId: 'asset_transform',
+        asset: {
+          positionOverLifetime: path(4),
+          rotationOverLifetime: { asRotation: true, z: 45 },
+          sizeOverLifetime: { size: 2 },
+        },
+      }],
+      { x: 1, y: 2, z: 0 },
+      { x: 3, y: 3, z: 3 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+    const timeline = component.timelineAsset;
+
+    comp.gotoAndStop(0.5);
+    const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+
+    expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+
+    component.timelineAsset = new TimelineAsset(player.engine);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 0]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 3, 3]);
+
+    component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
+
+    component.timelineAsset = timeline;
+    component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+
+    component.timelineAsset = null;
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 0]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 3, 3]);
+  });
+
+  it('重建播放图后直接采样 clip 结束时间，仍恢复原来的完整 base pose', async () => {
+    const scene = buildScene(
+      [{
+        assetId: 'asset_transform',
+        duration: 1,
+        endBehavior: spec.EndBehavior.destroy,
+        asset: {
+          positionOverLifetime: path(4),
+          rotationOverLifetime: { asRotation: true, z: 45 },
+          sizeOverLifetime: { size: 2 },
+        },
+      }],
+      { x: 1, y: 2, z: 3 },
+      { x: 3, y: 4, z: 3 },
+      { x: 0, y: 0, z: 30 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+    const timeline = component.timelineAsset!;
+
+    component.sampleTime(0.5);
+    const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+
+    expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
+
+    const data: spec.TimelineAssetData = {
+      id: timeline.getInstanceId(),
+      dataType: spec.DataType.TimelineAsset,
+      tracks: timeline.tracks.map(track => ({ id: track.getInstanceId() })),
+    };
+
+    timeline.setData(data);
+
+    component.sampleTime(1.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 3]);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 30]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 4, 3]);
+
+    component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
+  });
+
+  it('setData 重建播放图保留 basePose，dispose 不恢复当前姿态', async () => {
+    const scene = buildScene(
+      [{
+        assetId: 'asset_transform',
+        asset: {
+          positionOverLifetime: path(4),
+          rotationOverLifetime: { asRotation: true, z: 45 },
+          sizeOverLifetime: { size: 2 },
+        },
+      }],
+      { x: 1, y: 2, z: 0 },
+      { x: 3, y: 3, z: 3 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+    const timeline = component.timelineAsset!;
+
+    comp.gotoAndStop(0.5);
+    const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+    const data: spec.TimelineAssetData = {
+      id: timeline.getInstanceId(),
+      dataType: spec.DataType.TimelineAsset,
+      tracks: timeline.tracks.map(track => ({ id: track.getInstanceId() })),
+    };
+
+    timeline.setData(data);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+
+    component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+
+    component.dispose();
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
   });
 });

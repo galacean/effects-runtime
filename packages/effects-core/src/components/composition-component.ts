@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { ItemBasicTransform, TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import type { TransformState } from '../plugins/timeline/transform-clip-mixer';
 import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
@@ -58,8 +57,7 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private _timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private basePoses = new WeakMap<VFXItem, ItemBasicTransform>();
-  private transformStates = new WeakMap<TrackAsset, WeakMap<VFXItem, TransformState>>();
+  private readonly basePoses = new Map<VFXItem, ItemBasicTransform>();
   private nestedCompositions: CompositionComponent[] = [];
   private unsubscribeTimelineChanged?: () => void;
   private readonly onTimelineChanged = () => this.resetState();
@@ -73,6 +71,7 @@ export class CompositionComponent extends Component {
       return;
     }
 
+    this.restoreBasePoses();
     this._timelineAsset = value;
 
     this.listenToTimeline();
@@ -116,8 +115,7 @@ export class CompositionComponent extends Component {
     this.unsubscribeTimelineChanged?.();
     this.unsubscribeTimelineChanged = undefined;
     this.resetState();
-    this.basePoses = new WeakMap();
-    this.transformStates = new WeakMap();
+    this.basePoses.clear();
     super.dispose();
   }
 
@@ -130,40 +128,31 @@ export class CompositionComponent extends Component {
     instance?.dispose();
   }
 
-  /** @internal 按元素保存初始姿态，按轨道保存写入状态，重建播放图时复用。 */
-  getTransformState (track: TrackAsset, item: VFXItem): TransformState {
-    let states = this.transformStates.get(track);
+  /** @internal 按元素保存初始姿态，重建播放图时复用。 */
+  getBasePose (item: VFXItem): ItemBasicTransform {
+    let basePose = this.basePoses.get(item);
 
-    if (!states) {
-      states = new WeakMap();
-      this.transformStates.set(track, states);
-    }
-    let state = states.get(item);
+    if (!basePose) {
+      const scale = item.transform.scale;
 
-    if (!state) {
-      let basePose = this.basePoses.get(item);
-
-      if (!basePose) {
-        const scale = item.transform.scale;
-
-        basePose = {
-          position: item.transform.position.clone(),
-          rotation: item.transform.getRotation().clone(),
-          // TODO 编辑器 scale 没有z轴控制
-          scale: new Vector3(scale.x, scale.y, scale.x),
-        };
-        this.basePoses.set(item, basePose);
-      }
-      state = {
-        basePose,
-        appliedPosition: false,
-        appliedRotation: false,
-        appliedScale: false,
+      basePose = {
+        position: item.transform.position.clone(),
+        rotation: item.transform.getRotation().clone(),
+        // TODO 编辑器 scale 没有z轴控制
+        scale: new Vector3(scale.x, scale.y, scale.x),
       };
-      states.set(item, state);
+      this.basePoses.set(item, basePose);
     }
 
-    return state;
+    return basePose;
+  }
+
+  private restoreBasePoses (): void {
+    for (const [item, basePose] of this.basePoses) {
+      item.transform.setPosition(basePose.position.x, basePose.position.y, basePose.position.z);
+      item.transform.setRotation(basePose.rotation.x, basePose.rotation.y, basePose.rotation.z);
+      item.transform.setScale(basePose.scale.x, basePose.scale.y, basePose.scale.z);
+    }
   }
 
   private listenToTimeline (): void {

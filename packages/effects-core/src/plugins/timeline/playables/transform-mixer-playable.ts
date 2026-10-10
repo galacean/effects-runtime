@@ -17,9 +17,9 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
     if (!(item instanceof VFXItem)) {
       return;
     }
-    const state = this.trackInstance.composition.getTransformState(this.trackInstance.trackAsset, item);
+    const basePose = this.trackInstance.composition.getBasePose(item);
 
-    this.clipMixer.resetFrame();
+    this.clipMixer.resetFrame(basePose);
 
     for (let i = 0; i < this.clipPlayables.length; i++) {
       const weight = this.clipWeights[i];
@@ -35,12 +35,11 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
       }
 
       this.clipMixer.addContribution(
-        state.basePose,
-        playable.getContribution(state.basePose.position),
+        playable.getContribution(basePose.position),
         weight,
       );
     }
 
-    this.clipMixer.flush(item, state);
+    this.clipMixer.flush(item);
   }
 }
