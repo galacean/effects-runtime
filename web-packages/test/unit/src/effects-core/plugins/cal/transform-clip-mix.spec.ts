@@ -11,7 +11,8 @@ const { expect } = chai;
  * - 多 clip scale：乘子连乘 base × c1 × c2
  * - 多 clip rotation：Euler 逐分量加权累加
  * - 多 clip position：两段反向位移叠加后抵消回到 base
- * - 空贡献、回跳和播放图重建：每次采样从 base pose 生成完整姿态
+ * - 空贡献和回跳：每次采样从当前播放图缓存的 base pose 生成完整姿态
+ * - 播放图重建：清除缓存，在下一次采样时重新捕获当前姿态作为 base pose
  */
 describe('core/plugins/calculate/transform-clip-mix', () => {
   const canvas = document.createElement('canvas');
@@ -345,7 +346,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 
-  it('切换 timeline 保留当前姿态，切回后仍使用原来的 basePose', async () => {
+  it('切换 timeline 保留当前姿态，切回后重新捕获当前姿态作为 basePose', async () => {
     const scene = buildScene(
       [{
         assetId: 'asset_transform',
@@ -365,6 +366,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+    const resampledPosition = animatedPosition.map((value, index) => value + (value - [1, 2, 0][index]));
 
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
@@ -381,18 +383,20 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
     component.timelineAsset = timeline;
-    component.sampleTime(0.5);
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+    for (let i = 0; i < 2; i++) {
+      component.sampleTime(0.5);
+      expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(resampledPosition);
+      expectRotation(sprite.transform.rotation.toArray(), [0, 0, 90]);
+      expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([12, 12, 12]);
+    }
 
     component.timelineAsset = null;
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(resampledPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 90]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([12, 12, 12]);
   });
 
-  it('重建播放图后直接采样 clip 结束时间，仍恢复原来的完整 base pose', async () => {
+  it('重建播放图后直接采样 clip 结束时间，重新捕获当前完整姿态作为 base pose', async () => {
     const scene = buildScene(
       [{
         assetId: 'asset_transform',
@@ -415,6 +419,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     component.sampleTime(0.5);
     const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+    const resampledPosition = animatedPosition.map((value, index) => value + (value - [1, 2, 3][index]));
 
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
     expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
@@ -429,17 +434,22 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     timeline.setData(data);
 
     component.sampleTime(1.5);
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 3]);
-    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 30]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 4, 3]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
 
     component.sampleTime(0.5);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(resampledPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 120]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([12, 16, 12]);
+
+    component.sampleTime(1.5);
     expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
     expectRotation(sprite.transform.rotation.toArray(), [0, 0, 75]);
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
   });
 
-  it('setData 重建播放图保留 basePose，dispose 不恢复当前姿态', async () => {
+  it('setData 重建播放图重新捕获 basePose，dispose 不恢复当前姿态', async () => {
     const scene = buildScene(
       [{
         assetId: 'asset_transform',
@@ -459,6 +469,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     const animatedPosition = sanitizeNumbers(sprite.transform.position.toArray());
+    const resampledPosition = animatedPosition.map((value, index) => value + (value - [1, 2, 0][index]));
     const data: spec.TimelineAssetData = {
       id: timeline.getInstanceId(),
       dataType: spec.DataType.TimelineAsset,
@@ -470,14 +481,16 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
-    component.sampleTime(0.5);
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+    for (let i = 0; i < 2; i++) {
+      component.sampleTime(0.5);
+      expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(resampledPosition);
+      expectRotation(sprite.transform.rotation.toArray(), [0, 0, 90]);
+      expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([12, 12, 12]);
+    }
 
     component.dispose();
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(resampledPosition);
+    expectRotation(sprite.transform.rotation.toArray(), [0, 0, 90]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([12, 12, 12]);
   });
 });

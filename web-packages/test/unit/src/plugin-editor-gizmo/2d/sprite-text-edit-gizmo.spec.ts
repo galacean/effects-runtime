@@ -38,8 +38,8 @@ describe('plugin-editor-gizmo/sprite-text-edit-gizmo', () => {
         text: 'first entry',
         hasChanged: false,
       });
-      expect(gizmo.result[0].box.min).to.deep.equal(new Vector2(0, 0));
-      expect(gizmo.result[0].box.max).to.deep.equal(new Vector2(0.5, 0.5));
+      expect(gizmo.result[0].box.min.toArray()).to.deep.equal([0, 0]);
+      expect(gizmo.result[0].box.max.toArray()).to.deep.equal([0.5, 0.5]);
     });
   });
 });

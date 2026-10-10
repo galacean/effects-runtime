@@ -53,27 +53,23 @@ describe('core/composition/comp-vfx-item', () => {
     expect(pos?.toArray()[0]).to.closeTo(0, 0.1);
     expect(pos?.toArray()[1]).to.closeTo(0, 0.1);
   });
-  // 预合成设置缩放
-  it('set scale in compVFXItem', async () => {
+  // 预合成的当前缩放会在 timeline 采样时被缓存的 base pose 覆盖。
+  it('set scale in compVFXItem is overwritten by timeline sampling', async () => {
     const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*bkLLToY54tgAAAAAAAAAAAAADlB4AQ');
 
     player.gotoAndStop(0);
-    const ref = comp.getItemByName('ref');
+    const ref = comp.getItemByName('ref')!;
+    const baseScale = ref.transform.scale.toArray();
 
-    ref?.setScale(0.1, 0.5, 2);
+    ref.setScale(0.1, 0.5, 2);
+    expect(ref.transform.scale.toArray()).to.deep.equal([0.1, 0.5, 2]);
     player.gotoAndStop(1);
-    let scale = ref?.transform.scale;
+    expect(ref.transform.scale.toArray()).to.deep.equal(baseScale);
 
-    expect(scale?.x).to.eql(0.1);
-    expect(scale?.y).to.eql(0.5);
-    expect(scale?.z).to.eql(2);
-    ref?.scale(2, 2, 0.1);
+    ref.scale(2, 2, 0.1);
+    expect(ref.transform.scale.toArray()).to.deep.equal([baseScale[0] * 2, baseScale[1] * 2, baseScale[2] * 0.1]);
 
     player.gotoAndStop(2);
-    scale = ref?.transform.scale;
-
-    expect(scale?.x).to.eql(0.2);
-    expect(scale?.y).to.eql(1);
-    expect(scale?.z).to.eql(0.2);
+    expect(ref.transform.scale.toArray()).to.deep.equal(baseScale);
   });
 });

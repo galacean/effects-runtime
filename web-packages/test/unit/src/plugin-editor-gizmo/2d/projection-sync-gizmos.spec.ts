@@ -26,6 +26,10 @@ function box (minX: number, minY: number, maxX: number, maxY: number): Box2 {
   return new Box2(new Vector2(minX, minY), new Vector2(maxX, maxY));
 }
 
+function boxCoordinates (value: Box2 | undefined): number[][] | undefined {
+  return value && [value.min.toArray(), value.max.toArray()];
+}
+
 function setup () {
   const selectedItem = {
     testViewBox: box(10, 20, 110, 220),
@@ -93,10 +97,13 @@ describe('projection-backed gizmos before first update', () => {
     const normalizeBox = box(0.1, 0.2, 0.8, 0.9);
     const getSelectionGeometry = chai.spy.on(gizmo as unknown as { getSelectionGeometry (): unknown }, 'getSelectionGeometry');
 
-    expect(gizmo.setCutBox(normalizeBox)).to.deep.equal(normalizeBox);
-    expect(gizmo.getCutBox()).to.deep.equal(normalizeBox);
+    expect(boxCoordinates(gizmo.setCutBox(normalizeBox))).to.deep.equal(boxCoordinates(normalizeBox));
+    expect(boxCoordinates(gizmo.getCutBox())).to.deep.equal(boxCoordinates(normalizeBox));
     expect(getSelectionGeometry).not.to.have.been.called();
-    expect(gizmo.getCutInfo()).to.deep.equal({ cutBox: normalizeBox, itemBox: box(10, 20, 110, 220) });
+    const info = gizmo.getCutInfo();
+
+    expect(boxCoordinates(info?.cutBox)).to.deep.equal(boxCoordinates(normalizeBox));
+    expect(boxCoordinates(info?.itemBox)).to.deep.equal(boxCoordinates(box(10, 20, 110, 220)));
     expect(getSelectionGeometry).to.have.been.called.once;
   });
 
@@ -106,10 +113,13 @@ describe('projection-backed gizmos before first update', () => {
     const normalizeBox = box(-0.1, -0.2, 1.2, 1.3);
     const getSelectionGeometry = chai.spy.on(gizmo as unknown as { getSelectionGeometry (): unknown }, 'getSelectionGeometry');
 
-    expect(gizmo.setExpandBox(normalizeBox)).to.deep.equal(normalizeBox);
-    expect(gizmo.getExpandBox()).to.deep.equal(normalizeBox);
+    expect(boxCoordinates(gizmo.setExpandBox(normalizeBox))).to.deep.equal(boxCoordinates(normalizeBox));
+    expect(boxCoordinates(gizmo.getExpandBox())).to.deep.equal(boxCoordinates(normalizeBox));
     expect(getSelectionGeometry).not.to.have.been.called();
-    expect(gizmo.getExpandInfo()).to.deep.equal({ expandBox: normalizeBox, itemBox: box(10, 20, 110, 220) });
+    const info = gizmo.getExpandInfo();
+
+    expect(boxCoordinates(info?.expandBox)).to.deep.equal(boxCoordinates(normalizeBox));
+    expect(boxCoordinates(info?.itemBox)).to.deep.equal(boxCoordinates(box(10, 20, 110, 220)));
     expect(getSelectionGeometry).to.have.been.called.once;
   });
 

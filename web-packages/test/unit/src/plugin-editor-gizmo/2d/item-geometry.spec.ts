@@ -74,7 +74,8 @@ describe('plugin-editor-gizmo/item-geometry', () => {
       const transform = getItemViewTransform(group, TEST_VIEW_SIZE.clone())!;
       const bounds = getItemViewBox(group, TEST_VIEW_SIZE.clone());
 
-      expect(getTransformedBoxCorners(transform)).to.deep.equal(getBoxCorners(bounds));
+      expect(getTransformedBoxCorners(transform).map(point => point.toArray()))
+        .to.deep.equal(getBoxCorners(bounds).map(point => point.toArray()));
     });
 
     it('does not merge a framed item with its children', () => {

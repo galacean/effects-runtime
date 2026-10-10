@@ -761,7 +761,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
     const corners = getBoxCorners(box);
 
     corners.forEach((corner, index) => {
-      expect(internal.oppositeScaleCorner(corner)).to.deep.equal(corners[(index + 2) % 4]);
+      expect(internal.oppositeScaleCorner(corner)?.toArray()).to.deep.equal(corners[(index + 2) % 4].toArray());
     });
   });
 
@@ -1133,8 +1133,8 @@ describe('ResizeSelectionGizmo - handles only', () => {
     const right = getEdge(center, new Vector2(1, 0))!.getCenter();
     const left = getEdge(center, new Vector2(-1, 0))!.getCenter();
 
-    expect(right).to.deep.equal(new Vector2(140, 100));
-    expect(left).to.deep.equal(new Vector2(60, 100));
+    expect(right.toArray()).to.deep.equal([140, 100]);
+    expect(left.toArray()).to.deep.equal([60, 100]);
     // 起点到中心距离 = 真实半宽（originLength 不再陈旧）
     expect(right.distance(center)).to.equal(40);
     expect(left.distance(center)).to.equal(40);
