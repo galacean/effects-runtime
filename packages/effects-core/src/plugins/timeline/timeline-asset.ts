@@ -170,6 +170,8 @@ export class TimelineInstance {
 
     track.output.setUserData(track.boundObject);
 
+    this.composition.captureRestoreState(track);
+
     for (const clip of track.mixer.clipPlayables) {
       if (clip.getPlayState() === PlayState.Playing) {
         clip.processFrame(context);

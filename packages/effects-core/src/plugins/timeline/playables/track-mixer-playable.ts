@@ -8,6 +8,15 @@ export class TrackMixerPlayable extends Playable {
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 
+  /** 采样前缓存原始属性，返回播放器 restoreData 中的索引。 */
+  captureRestoreState (context: FrameContext): number {
+    return -1;
+  }
+
+  /** 将播放器保存的原始数据写回轨道绑定的对象。 */
+  restoreState (context: FrameContext, value: unknown): void {
+  }
+
   override processFrame (context: FrameContext): void {
     for (const clipPlayable of this.clipPlayables) {
       clipPlayable.processFrame(context);

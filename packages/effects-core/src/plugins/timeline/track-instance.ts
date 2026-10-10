@@ -13,6 +13,8 @@ export class TrackInstance {
   trackAsset: TrackAsset;
   mixer: TrackMixerPlayable;
   output: PlayableOutput;
+  /** 播放器 restoreData 中的索引；-1 表示尚未缓存。 */
+  restoreStateIndex = -1;
 
   children: TrackInstance[] = [];
 

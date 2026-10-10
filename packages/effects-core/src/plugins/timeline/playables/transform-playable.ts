@@ -4,8 +4,6 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { ItemLinearVelOverLifetime, ValueGetter } from '../../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../../math';
-import { VFXItem } from '../../../vfx-item';
-import type { FrameContext } from '../playable';
 import { Playable, PlayableAsset } from '../playable';
 
 const tempRot = new Euler();
@@ -43,7 +41,6 @@ const createEmptyContribution = (): TransformContribution => ({
  * @since 2.0.0
  */
 export class TransformPlayable extends Playable {
-  originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;
   protected sizeYOverLifetime: ValueGetter<number>;
@@ -149,14 +146,8 @@ export class TransformPlayable extends Playable {
     this.velocity.multiply(this.startSpeed);
   }
 
-  override processFrame (context: FrameContext): void {
+  override processFrame (): void {
     this.ensureStarted();
-
-    const boundObject = context.output.getUserData();
-
-    if (!this.originalTransform && boundObject instanceof VFXItem) {
-      this.captureOriginalTransform(boundObject);
-    }
   }
 
   /**
@@ -244,19 +235,6 @@ export class TransformPlayable extends Playable {
     }
   }
 
-  private captureOriginalTransform (boundItem: VFXItem): void {
-    const scale = boundItem.transform.scale;
-
-    this.originalTransform = {
-      position: boundItem.transform.position.clone(),
-      rotation: boundItem.transform.getRotation().clone(),
-      // TODO 编辑器 scale 没有z轴控制
-      scale: new Vector3(scale.x, scale.y, scale.x),
-    };
-    if (this.pathGetter) {
-      this.originalTransform.path = this.pathGetter;
-    }
-  }
 }
 
 @effectsClass(spec.DataType.TransformPlayableAsset)

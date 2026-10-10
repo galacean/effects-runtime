@@ -1,8 +1,14 @@
 import type { FrameContext } from '../playable';
 import type { SpriteComponent } from '../../sprite/sprite-item';
 import type { Sprite } from '../../sprite/sprite';
+import type { Texture } from '../../../texture';
 import { TrackMixerPlayable } from './track-mixer-playable';
 import { PropertyClipPlayable } from './property-clip-playable';
+
+interface SpriteRestoreData {
+  sprite: Sprite,
+  texture: Texture,
+}
 
 /**
  * Sprite 属性 K 帧 mixer。对象引用不混合：取首个激活 clip 的阶梯采样值，
@@ -11,6 +17,28 @@ import { PropertyClipPlayable } from './property-clip-playable';
  * 会阻断无初始 sprite 组件的 K 帧）。
  */
 export class SpritePropertyMixerPlayable extends TrackMixerPlayable {
+  override captureRestoreState (context: FrameContext): number {
+    const boundObject = context.output.getUserData() as SpriteComponent;
+
+    if (!boundObject) {
+      return -1;
+    }
+
+    return this.trackInstance.composition.addRestoreData({
+      sprite: boundObject.sprite,
+      texture: boundObject.renderer.texture,
+    });
+  }
+
+  override restoreState (context: FrameContext, value: SpriteRestoreData): void {
+    const boundObject = context.output.getUserData() as SpriteComponent;
+
+    boundObject.sprite = value.sprite;
+    if (!value.sprite) {
+      boundObject.setTexture(value.texture);
+    }
+  }
+
   override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData() as SpriteComponent;
 

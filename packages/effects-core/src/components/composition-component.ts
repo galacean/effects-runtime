@@ -1,12 +1,16 @@
 import * as spec from '@galacean/effects-specification';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { ItemBasicTransform, TrackAsset, TimelineAsset } from '../plugins';
+import type { TrackAsset, TimelineAsset } from '../plugins';
+import type { TrackInstance } from '../plugins/timeline/track-instance';
 import { TimelineInstance, PlayState } from '../plugins';
 import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
 import type { EventEmitterListener } from '../events';
 import { Component } from './component';
+
+interface CompositionComponentData extends spec.CompositionComponentData {
+  restoreStateOnStop?: boolean,
+}
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -45,6 +49,8 @@ export class CompositionComponent extends Component {
   updateMode: UpdateModes = UpdateModes.EveryUpdate;
 
   playOnStart = false;
+  /** 开启后，stop() 恢复轨道采样前的原始属性。 */
+  restoreStateOnStop = false;
 
   speed = 1;
   /** Absolute start of the timeline, in seconds. */
@@ -57,7 +63,7 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private _timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private basePoses = new WeakMap<VFXItem, ItemBasicTransform>();
+  private readonly restoreData: unknown[] = [];
   private nestedCompositions: CompositionComponent[] = [];
   private unsubscribeTimelineChanged?: () => void;
   private readonly onTimelineChanged = () => this.resetState();
@@ -114,36 +120,54 @@ export class CompositionComponent extends Component {
     this.unsubscribeTimelineChanged?.();
     this.unsubscribeTimelineChanged = undefined;
     this.resetState();
-    this.basePoses = new WeakMap();
     super.dispose();
   }
 
-  /** 清理播放图，下次采样时重建；保留播放时间、播放状态、场景绑定和初始姿态。 */
+  /** 清理播放图和恢复数据，下次采样时重建；保留播放时间、播放状态和场景绑定。 */
   resetState (): void {
     const instance = this._timelineInstance;
 
+    this.restoreData.length = 0;
     this._timelineInstance = null;
     this.nestedCompositions = [];
     instance?.dispose();
   }
 
-  /** @internal 按元素保存初始姿态，重建播放图时复用。 */
-  getBasePose (item: VFXItem): ItemBasicTransform {
-    let basePose = this.basePoses.get(item);
+  /** @internal 追加原始数据，返回由轨道保存的索引。 */
+  addRestoreData (value: unknown): number {
+    const index = this.restoreData.length;
 
-    if (!basePose) {
-      const scale = item.transform.scale;
+    this.restoreData.push(value);
 
-      basePose = {
-        position: item.transform.position.clone(),
-        rotation: item.transform.getRotation().clone(),
-        // TODO 编辑器 scale 没有z轴控制
-        scale: new Vector3(scale.x, scale.y, scale.x),
-      };
-      this.basePoses.set(item, basePose);
+    return index;
+  }
+
+  /** @internal 按轨道保存的索引读取原始数据。 */
+  getRestoreData<T> (index: number): T {
+    return this.restoreData[index] as T;
+  }
+
+  /** @internal 采样前记录原始数据的索引。 */
+  captureRestoreState (track: TrackInstance): void {
+    if (!this.restoreStateOnStop || track.restoreStateIndex !== -1) {
+      return;
     }
+    track.restoreStateIndex = track.mixer.captureRestoreState(track.output.context);
+  }
 
-    return basePose;
+  private restore (): void {
+    const restoreTrack = (track: TrackInstance) => {
+      if (track.restoreStateIndex !== -1) {
+        track.mixer.restoreState(track.output.context, this.getRestoreData(track.restoreStateIndex));
+      }
+      for (const child of track.children) {
+        restoreTrack(child);
+      }
+    };
+
+    for (const track of this._timelineInstance?.masterTrackInstances ?? []) {
+      restoreTrack(track);
+    }
   }
 
   private listenToTimeline (): void {
@@ -211,6 +235,12 @@ export class CompositionComponent extends Component {
   }
 
   stop () {
+    if (this.state === PlayState.Stopped) {
+      return;
+    }
+    if (this.restoreStateOnStop) {
+      this.restore();
+    }
     this.state = PlayState.Stopped;
     this.time = this.startTime;
     this.resetEndState();
@@ -406,9 +436,12 @@ export class CompositionComponent extends Component {
     }
   }
 
-  override fromData (data: spec.CompositionComponentData): void {
+  override fromData (data: CompositionComponentData): void {
     super.fromData(data);
 
+    if (data.restoreStateOnStop !== undefined) {
+      this.restoreStateOnStop = data.restoreStateOnStop;
+    }
     if (data.items !== undefined) {
       this.items = data.items.map(item => this.findObject<VFXItem>(item));
     }

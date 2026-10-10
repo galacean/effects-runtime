@@ -305,8 +305,10 @@ export class SpriteComponent extends MaskableGraphic {
    */
   protected applySpriteToRenderer (sprite: Sprite): void {
     this._sprite = sprite;
-    this.renderer.texture = sprite.texture;
-    this.material.setTexture('_MainTex', sprite.texture);
+    const texture = sprite?.texture ?? this.engine.assetServer.whiteTexture;
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
   }
 
   /**

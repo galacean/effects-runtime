@@ -17,7 +17,8 @@ export class TransformClipMixer {
   resetFrame (basePose: ItemBasicTransform): void {
     this.outPos.copyFrom(basePose.position);
     this.outRot.copyFrom(basePose.rotation);
-    this.outScale.copyFrom(basePose.scale);
+    // TODO 编辑器 scale 没有z轴控制；兼容处理只影响采样结果，不修改原始属性缓存。
+    this.outScale.set(basePose.scale.x, basePose.scale.y, basePose.scale.x);
   }
 
   addContribution (contribution: TransformContribution, weight: number): void {

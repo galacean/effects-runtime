@@ -14,6 +14,30 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   abstract resetPropertyValue (): void;
   abstract addWeightedValue (curveValue: T, weight: number): void;
 
+  override captureRestoreState (context: FrameContext): number {
+    const boundObject = context.output.getUserData();
+
+    if (!boundObject) {
+      return -1;
+    }
+    if (!this.directTarget) {
+      this.preparePath(boundObject);
+    }
+    const target = this.directTarget;
+    const propertyName = this.propertyName;
+
+    return this.trackInstance.composition.addRestoreData(cloneValue(target[propertyName] as T));
+  }
+
+  override restoreState (context: FrameContext, value: T): void {
+    this.directTarget[this.propertyName] = cloneValue(value);
+    const boundObject = context.output.getUserData();
+
+    if (boundObject instanceof Component) {
+      boundObject.onApplyAnimationProperties();
+    }
+  }
+
   override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData() as Record<string, any>;
 
@@ -85,4 +109,10 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
 
     this.directTarget = directTarget;
   }
+}
+
+function cloneValue<T> (value: T): T {
+  const cloneable = value as T & { clone?: () => T };
+
+  return typeof cloneable?.clone === 'function' ? cloneable.clone() : value;
 }
