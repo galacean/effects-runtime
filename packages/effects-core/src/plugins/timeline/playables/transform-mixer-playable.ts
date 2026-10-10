@@ -11,18 +11,14 @@ import { TrackMixerPlayable } from './track-mixer-playable';
 export class TransformMixerPlayable extends TrackMixerPlayable {
   private readonly clipMixer = new TransformClipMixer();
 
-  override dispose (): void {
-    this.clipMixer.dispose();
-    super.dispose();
-  }
-
   override evaluate (context: FrameContext): void {
     const item = context.output.getUserData();
 
     if (!(item instanceof VFXItem)) {
       return;
     }
-    this.clipMixer.captureBasePose(item);
+    const state = this.trackInstance.composition.getTransformState(this.trackInstance.trackAsset, item);
+
     this.clipMixer.resetFrame();
 
     for (let i = 0; i < this.clipPlayables.length; i++) {
@@ -39,12 +35,12 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
       }
 
       this.clipMixer.addContribution(
-        item,
-        playable.getContribution(this.clipMixer.getBasePosition()),
+        state.basePose,
+        playable.getContribution(state.basePose.position),
         weight,
       );
     }
 
-    this.clipMixer.flush(item);
+    this.clipMixer.flush(item, state);
   }
 }

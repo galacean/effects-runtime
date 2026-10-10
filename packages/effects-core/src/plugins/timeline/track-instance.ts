@@ -1,3 +1,4 @@
+import type { CompositionComponent } from '../../components';
 import type { PlayableOutput } from './playable';
 import type { TrackMixerPlayable } from './playables';
 import type { TrackAsset } from './track';
@@ -15,7 +16,12 @@ export class TrackInstance {
 
   children: TrackInstance[] = [];
 
-  constructor (trackAsset: TrackAsset, mixer: TrackMixerPlayable, output: PlayableOutput) {
+  constructor (
+    trackAsset: TrackAsset,
+    mixer: TrackMixerPlayable,
+    output: PlayableOutput,
+    readonly composition: CompositionComponent,
+  ) {
     this.trackAsset = trackAsset;
     this.mixer = mixer;
     this.output = output;

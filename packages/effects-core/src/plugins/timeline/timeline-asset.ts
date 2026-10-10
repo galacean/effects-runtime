@@ -7,7 +7,7 @@ import { ObjectBindingTrack } from './tracks';
 import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
-import type { SceneBinding } from '../../components';
+import type { CompositionComponent, SceneBinding } from '../../components';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends Asset {
@@ -17,10 +17,8 @@ export class TimelineAsset extends Asset {
 
   override fromData (data: spec.TimelineAssetData): void {
     super.fromData(data);
-    if (data.tracks !== undefined) {
-      this.tracks = data.tracks.map(track => this.findObject<TrackAsset>(track));
-      this.invalidate();
-    }
+    this.tracks = (data.tracks ?? []).map(track => this.findObject<TrackAsset>(track));
+    this.invalidate();
   }
 
   get flattenedTracks () {
@@ -71,22 +69,27 @@ export class TimelineInstance {
   masterTrackInstances: TrackInstance[] = [];
 
   private clips: RuntimeClip[] = [];
+  private generatedTracks: TrackAsset[] = [];
 
-  constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
+  constructor (
+    timelineAsset: TimelineAsset,
+    sceneBindings: SceneBinding[],
+    private readonly composition: CompositionComponent,
+  ) {
     const sceneBindingMap: Record<string, VFXItem> = {};
 
     for (const sceneBinding of sceneBindings) {
       sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
     }
 
-    // TODO: Hack 临时生成轨道, 待移除
+    // 辅助轨道属于当前播放实例，避免重建时修改共享资产或重复累积轨道。
     for (const track of timelineAsset.tracks) {
       if (track instanceof ObjectBindingTrack) {
-        track.create(timelineAsset, sceneBindingMap);
+        this.generatedTracks.push(...track.create(sceneBindingMap));
       }
     }
 
-    this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
+    this.compileTracks([...timelineAsset.flattenedTracks, ...this.generatedTracks], sceneBindings);
   }
 
   evaluate (time: number, deltaTime: number) {
@@ -99,6 +102,19 @@ export class TimelineInstance {
     for (const track of this.masterTrackInstances) {
       this.tickTrack(track, deltaTime);
     }
+  }
+
+  /** 释放播放图，保留共享资产和绑定的场景对象。 */
+  dispose (): void {
+    this.clips = [];
+    this.masterTrackInstances = [];
+    for (const track of this.generatedTracks) {
+      for (const clip of track.getClips()) {
+        clip.asset.dispose();
+      }
+      track.dispose();
+    }
+    this.generatedTracks = [];
   }
 
   compileTracks (tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
@@ -115,7 +131,7 @@ export class TimelineInstance {
       const trackOutput = track.createOutput();
 
       // Create track instance
-      const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
+      const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput, this.composition);
 
       trackInstanceMap[track.getInstanceId()] = trackInstance;
 
@@ -128,15 +144,17 @@ export class TimelineInstance {
     for (const track of outputTrack) {
       const trackInstance = trackInstanceMap[track.getInstanceId()];
 
-      for (const child of track.getChildTracks()) {
-        const childTrackInstance = trackInstanceMap[child.getInstanceId()];
-
-        trackInstance.addChild(childTrackInstance);
+      if (track.parent) {
+        trackInstanceMap[track.parent.getInstanceId()]?.addChild(trackInstance);
       }
     }
 
     for (const sceneBinding of sceneBindings) {
-      trackInstanceMap[sceneBinding.key.getInstanceId()].boundObject = sceneBinding.value;
+      const trackInstance = trackInstanceMap[sceneBinding.key.getInstanceId()];
+
+      if (trackInstance) {
+        trackInstance.boundObject = sceneBinding.value;
+      }
     }
 
     for (const trackInstance of this.masterTrackInstances) {

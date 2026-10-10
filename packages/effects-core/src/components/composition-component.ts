@@ -1,6 +1,8 @@
 import * as spec from '@galacean/effects-specification';
-import type { TrackAsset, TimelineAsset } from '../plugins';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { ItemBasicTransform, TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
+import type { TransformState } from '../plugins/timeline/transform-clip-mixer';
 import { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
@@ -54,9 +56,29 @@ export class CompositionComponent extends Component {
 
   private time = 0;
   private sceneBindings: SceneBinding[] = [];
-  private timelineAsset: TimelineAsset | null = null;
+  private _timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
+  private basePoses = new WeakMap<VFXItem, ItemBasicTransform>();
+  private transformStates = new WeakMap<TrackAsset, WeakMap<VFXItem, TransformState>>();
   private nestedCompositions: CompositionComponent[] = [];
+  private unsubscribeTimelineChanged?: () => void;
+  private readonly onTimelineChanged = () => this.resetState();
+
+  get timelineAsset (): TimelineAsset | null {
+    return this._timelineAsset;
+  }
+
+  set timelineAsset (value: TimelineAsset | null) {
+    if (this._timelineAsset === value) {
+      return;
+    }
+
+    this._timelineAsset = value;
+
+    this.listenToTimeline();
+
+    this.resetState();
+  }
 
   get endBehavior () {
     return this.item.endBehavior;
@@ -90,9 +112,68 @@ export class CompositionComponent extends Component {
     this.initializeTimeline();
   }
 
+  override dispose (): void {
+    this.unsubscribeTimelineChanged?.();
+    this.unsubscribeTimelineChanged = undefined;
+    this.resetState();
+    this.basePoses = new WeakMap();
+    this.transformStates = new WeakMap();
+    super.dispose();
+  }
+
+  /** 清理播放图，下次采样时重建；保留播放时间、播放状态、场景绑定和初始姿态。 */
+  resetState (): void {
+    const instance = this._timelineInstance;
+
+    this._timelineInstance = null;
+    this.nestedCompositions = [];
+    instance?.dispose();
+  }
+
+  /** @internal 按元素保存初始姿态，按轨道保存写入状态，重建播放图时复用。 */
+  getTransformState (track: TrackAsset, item: VFXItem): TransformState {
+    let states = this.transformStates.get(track);
+
+    if (!states) {
+      states = new WeakMap();
+      this.transformStates.set(track, states);
+    }
+    let state = states.get(item);
+
+    if (!state) {
+      let basePose = this.basePoses.get(item);
+
+      if (!basePose) {
+        const scale = item.transform.scale;
+
+        basePose = {
+          position: item.transform.position.clone(),
+          rotation: item.transform.getRotation().clone(),
+          // TODO 编辑器 scale 没有z轴控制
+          scale: new Vector3(scale.x, scale.y, scale.x),
+        };
+        this.basePoses.set(item, basePose);
+      }
+      state = {
+        basePose,
+        appliedPosition: false,
+        appliedRotation: false,
+        appliedScale: false,
+      };
+      states.set(item, state);
+    }
+
+    return state;
+  }
+
+  private listenToTimeline (): void {
+    this.unsubscribeTimelineChanged?.();
+    this.unsubscribeTimelineChanged = this.timelineAsset?.on('changed', this.onTimelineChanged);
+  }
+
   private initializeTimeline () {
     if (!this._timelineInstance && this.timelineAsset) {
-      this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
+      this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings, this);
 
       this.nestedCompositions = [];
 
@@ -360,7 +441,5 @@ export class CompositionComponent extends Component {
     if (data.timelineAsset !== undefined) {
       this.timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
     }
-
-    this._timelineInstance = null;
   }
 }

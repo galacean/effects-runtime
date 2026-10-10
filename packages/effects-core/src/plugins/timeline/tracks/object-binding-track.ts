@@ -6,7 +6,6 @@ import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item
 import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { EffectComponent } from '../../../components';
 import { TrackAsset } from '../track';
-import type { TimelineAsset } from '../timeline-asset';
 import { ActivationTrack } from './activation-track';
 import { ParticleTrack } from './particle-track';
 
@@ -16,11 +15,12 @@ import { ParticleTrack } from './particle-track';
 @effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
-  create (timelineAsset: TimelineAsset, sceneBindingMap: Record<string, VFXItem>): void {
+  create (sceneBindingMap: Record<string, VFXItem>): TrackAsset[] {
+    const tracks: TrackAsset[] = [];
     const boundItem = sceneBindingMap[this.getInstanceId()];
 
     if (!(boundItem instanceof VFXItem)) {
-      return;
+      return tracks;
     }
 
     for (const childTrack of this.getChildTracks()) {
@@ -28,7 +28,10 @@ export class ObjectBindingTrack extends TrackAsset {
 
         // 添加粒子动画 clip // TODO 待移除
         if (boundItem.getComponent(ParticleSystem)) {
-          const particleTrack = timelineAsset.createTrack(ParticleTrack, this, 'ParticleTrack');
+          const particleTrack = new ParticleTrack(this.engine);
+
+          particleTrack.parent = this;
+          tracks.push(particleTrack);
 
           for (const activationClip of childTrack.getClips()) {
             const particleClip = particleTrack.createClip(ParticleBehaviourPlayableAsset);
@@ -42,7 +45,10 @@ export class ObjectBindingTrack extends TrackAsset {
 
         // 添加图层帧动画动画时间 clip // TODO 待移除
         if (boundItem.getComponent(SpriteComponent)) {
-          const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'SpriteComponentTimeTrack');
+          const componentTimeTrack = new SpriteComponentTimeTrack(this.engine);
+
+          componentTimeTrack.parent = this;
+          tracks.push(componentTimeTrack);
 
           for (const activationClip of childTrack.getClips()) {
             const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
@@ -55,7 +61,10 @@ export class ObjectBindingTrack extends TrackAsset {
 
         // 添加图层帧动画动画时间 clip // TODO 待移除
         if (boundItem.getComponent(EffectComponent)) {
-          const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'EffectComponentTimeTrack');
+          const componentTimeTrack = new EffectComponentTimeTrack(this.engine);
+
+          componentTimeTrack.parent = this;
+          tracks.push(componentTimeTrack);
 
           for (const activationClip of childTrack.getClips()) {
             const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
@@ -69,5 +78,7 @@ export class ObjectBindingTrack extends TrackAsset {
         break;
       }
     }
+
+    return tracks;
   }
 }

@@ -40,7 +40,7 @@ export class TimelineClip {
 @effectsClass(spec.DataType.TrackAsset)
 export class TrackAsset extends PlayableAsset {
   name: string;
-  parent: TrackAsset;
+  parent?: TrackAsset;
   trackType = TrackType.MasterTrack;
 
   private clipSeed = 0;
@@ -155,21 +155,26 @@ export class TrackAsset extends PlayableAsset {
   override fromData (data: spec.TrackAssetData): void {
     super.fromData(data);
 
-    if (data.clips !== undefined) {
-      this.clips = data.clips.map(clipData => {
-        const clip = new TimelineClip();
+    const clips = (data.clips ?? []).map(clipData => {
+      const clip = new TimelineClip();
 
-        if (clipData.start !== undefined) { clip.start = clipData.start; }
-        if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
-        if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
-        clip.asset = this.findObject<PlayableAsset>(clipData.asset);
+      if (clipData.start !== undefined) { clip.start = clipData.start; }
+      if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
+      if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
+      clip.asset = this.findObject<PlayableAsset>(clipData.asset);
 
-        return clip;
-      });
+      return clip;
+    });
+    const children = (data.children ?? []).map(child => this.findObject<TrackAsset>(child));
+
+    for (const child of this.children) {
+      if (child.parent === this) {
+        child.parent = undefined;
+      }
     }
-    if (data.children !== undefined) {
-      this.children = data.children.map(child => this.findObject<TrackAsset>(child));
-    }
+    this.clips = clips;
+    this.clipSeed = clips.length;
+    this.children = children;
     for (const child of this.children) {
       child.parent = this;
     }

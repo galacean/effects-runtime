@@ -1,12 +1,14 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { VFXItem } from '../../vfx-item';
-import type { TransformContribution } from './playables/transform-playable';
+import type { ItemBasicTransform, TransformContribution } from './playables/transform-playable';
 
-type BasePose = {
-  position: Vector3,
-  rotation: Euler,
-  scale: Vector3,
+/** 由 CompositionComponent 持有，生命周期独立于播放图。 */
+export type TransformState = {
+  basePose: ItemBasicTransform,
+  appliedPosition: boolean,
+  appliedRotation: boolean,
+  appliedScale: boolean,
 };
 
 /**
@@ -14,33 +16,15 @@ type BasePose = {
  * position 与 rotation 使用增量语义，scale 使用乘子语义；结果由 flush 统一写回。
  */
 export class TransformClipMixer {
-  private basePose?: BasePose;
-  private boundInstanceId?: string;
-
   private hasContribution = false;
   private hasPosition = false;
   private hasRotation = false;
   private hasScale = false;
-  private appliedPosition = false;
-  private appliedRotation = false;
-  private appliedScale = false;
 
   private readonly outPos = new Vector3();
   private readonly outRot = new Euler();
   private readonly outScale = new Vector3(1, 1, 1);
   private readonly weightedRot = new Euler();
-
-  captureBasePose (item: VFXItem): void {
-    this.ensureBasePose(item);
-  }
-
-  /**
-   * orbital position 的 contribution 依赖 base position。
-   * 这里返回 mixer 持有的 base，确保采样和合成使用同一份参考姿态。
-   */
-  getBasePosition (): Vector3 | undefined {
-    return this.basePose?.position;
-  }
 
   resetFrame (): void {
     this.hasContribution = false;
@@ -49,18 +33,14 @@ export class TransformClipMixer {
     this.hasScale = false;
   }
 
-  addContribution (item: VFXItem, contribution: TransformContribution, weight: number): void {
+  addContribution (basePose: ItemBasicTransform, contribution: TransformContribution, weight: number): void {
     if (weight <= 0) {
       return;
     }
-    this.ensureBasePose(item);
-
     if (!this.hasContribution) {
-      const base = this.basePose!;
-
-      this.outPos.copyFrom(base.position);
-      this.outRot.copyFrom(base.rotation);
-      this.outScale.copyFrom(base.scale);
+      this.outPos.copyFrom(basePose.position);
+      this.outRot.copyFrom(basePose.rotation);
+      this.outScale.copyFrom(basePose.scale);
       this.hasContribution = true;
     }
 
@@ -89,57 +69,32 @@ export class TransformClipMixer {
     }
   }
 
-  flush (item: VFXItem): void {
-    const base = this.basePose;
+  flush (item: VFXItem, state: TransformState): void {
+    const base = state.basePose;
 
-    if (!base || (!this.hasContribution && !this.appliedPosition && !this.appliedRotation && !this.appliedScale)) {
+    if (!this.hasContribution && !state.appliedPosition && !state.appliedRotation && !state.appliedScale) {
       return;
     }
     if (this.hasPosition) {
       item.transform.setPosition(this.outPos.x, this.outPos.y, this.outPos.z);
-      this.appliedPosition = true;
-    } else if (this.appliedPosition) {
+      state.appliedPosition = true;
+    } else if (state.appliedPosition) {
       item.transform.setPosition(base.position.x, base.position.y, base.position.z);
-      this.appliedPosition = false;
+      state.appliedPosition = false;
     }
     if (this.hasRotation) {
       item.transform.setRotation(this.outRot.x, this.outRot.y, this.outRot.z);
-      this.appliedRotation = true;
-    } else if (this.appliedRotation) {
+      state.appliedRotation = true;
+    } else if (state.appliedRotation) {
       item.transform.setRotation(base.rotation.x, base.rotation.y, base.rotation.z);
-      this.appliedRotation = false;
+      state.appliedRotation = false;
     }
     if (this.hasScale) {
       item.transform.setScale(this.outScale.x, this.outScale.y, this.outScale.z);
-      this.appliedScale = true;
-    } else if (this.appliedScale) {
+      state.appliedScale = true;
+    } else if (state.appliedScale) {
       item.transform.setScale(base.scale.x, base.scale.y, base.scale.z);
-      this.appliedScale = false;
-    }
-  }
-
-  dispose (): void {
-    this.basePose = undefined;
-    this.boundInstanceId = undefined;
-    this.appliedPosition = false;
-    this.appliedRotation = false;
-    this.appliedScale = false;
-    this.resetFrame();
-  }
-
-  private ensureBasePose (item: VFXItem): void {
-    if (!this.basePose || this.boundInstanceId !== item.getInstanceId()) {
-      const scale = item.transform.scale;
-
-      this.basePose = {
-        position: item.transform.position.clone(),
-        rotation: item.transform.getRotation().clone(),
-        scale: new Vector3(scale.x, scale.y, scale.x),
-      };
-      this.boundInstanceId = item.getInstanceId();
-      this.appliedPosition = false;
-      this.appliedRotation = false;
-      this.appliedScale = false;
+      state.appliedScale = false;
     }
   }
 }
