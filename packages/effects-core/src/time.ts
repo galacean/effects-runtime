@@ -24,7 +24,7 @@ export class TickData {
   }
 }
 
-/** Flax FixedStepTickData: fixed while keeping up, elapsed steps when slow. */
+/** FixedStepTickData: fixed while keeping up, elapsed steps when slow. */
 export class FixedStepTickData extends TickData {
   private readonly samples: number[] = [];
 
@@ -49,7 +49,7 @@ export class FixedStepTickData extends TickData {
 }
 
 /**
- * Flax-style Time layer, owned per engine to isolate multiple players.
+ * Time layer, owned per engine to isolate multiple players.
  * Caller deltas drive the clock so manual ticks do not depend on wall time.
  */
 export class Time {

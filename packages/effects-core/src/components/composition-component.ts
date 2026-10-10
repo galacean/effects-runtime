@@ -66,7 +66,11 @@ export class CompositionComponent extends Component {
   private readonly restoreData: unknown[] = [];
   private nestedCompositions: CompositionComponent[] = [];
   private unsubscribeTimelineChanged?: () => void;
-  private readonly onTimelineChanged = () => this.resetState();
+  private readonly onTimelineModified = () => {
+    this.restoreData.length = 0;
+    this.stop();
+    this.resetState();
+  };
 
   get timelineAsset (): TimelineAsset | null {
     return this._timelineAsset;
@@ -81,7 +85,7 @@ export class CompositionComponent extends Component {
 
     this.listenToTimeline();
 
-    this.resetState();
+    this.onTimelineModified();
   }
 
   get endBehavior () {
@@ -172,7 +176,7 @@ export class CompositionComponent extends Component {
 
   private listenToTimeline (): void {
     this.unsubscribeTimelineChanged?.();
-    this.unsubscribeTimelineChanged = this.timelineAsset?.on('changed', this.onTimelineChanged);
+    this.unsubscribeTimelineChanged = this.timelineAsset?.on('changed', this.onTimelineModified);
   }
 
   private initializeTimeline () {
@@ -238,7 +242,7 @@ export class CompositionComponent extends Component {
     if (this.state === PlayState.Stopped) {
       return;
     }
-    if (this.restoreStateOnStop) {
+    if (this.restoreStateOnStop && this.restoreData.length > 0) {
       this.restore();
     }
     this.state = PlayState.Stopped;
