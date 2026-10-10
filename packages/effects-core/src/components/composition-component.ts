@@ -57,7 +57,7 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private _timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private readonly basePoses = new Map<VFXItem, ItemBasicTransform>();
+  private basePoses = new WeakMap<VFXItem, ItemBasicTransform>();
   private nestedCompositions: CompositionComponent[] = [];
   private unsubscribeTimelineChanged?: () => void;
   private readonly onTimelineChanged = () => this.resetState();
@@ -71,7 +71,6 @@ export class CompositionComponent extends Component {
       return;
     }
 
-    this.restoreBasePoses();
     this._timelineAsset = value;
 
     this.listenToTimeline();
@@ -115,7 +114,7 @@ export class CompositionComponent extends Component {
     this.unsubscribeTimelineChanged?.();
     this.unsubscribeTimelineChanged = undefined;
     this.resetState();
-    this.basePoses.clear();
+    this.basePoses = new WeakMap();
     super.dispose();
   }
 
@@ -145,14 +144,6 @@ export class CompositionComponent extends Component {
     }
 
     return basePose;
-  }
-
-  private restoreBasePoses (): void {
-    for (const [item, basePose] of this.basePoses) {
-      item.transform.setPosition(basePose.position.x, basePose.position.y, basePose.position.z);
-      item.transform.setRotation(basePose.rotation.x, basePose.rotation.y, basePose.rotation.z);
-      item.transform.setScale(basePose.scale.x, basePose.scale.y, basePose.scale.z);
-    }
   }
 
   private listenToTimeline (): void {

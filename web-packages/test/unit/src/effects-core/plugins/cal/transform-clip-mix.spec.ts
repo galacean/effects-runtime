@@ -345,7 +345,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 
-  it('切换 timeline 恢复初始姿态，切回后仍使用原来的 basePose', async () => {
+  it('切换 timeline 保留当前姿态，切回后仍使用原来的 basePose', async () => {
     const scene = buildScene(
       [{
         assetId: 'asset_transform',
@@ -371,12 +371,14 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
     component.timelineAsset = new TimelineAsset(player.engine);
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 0]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 3, 3]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
     component.sampleTime(0.5);
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
     component.timelineAsset = timeline;
     component.sampleTime(0.5);
@@ -385,9 +387,9 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
 
     component.timelineAsset = null;
-    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals([1, 2, 0]);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 0]);
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([3, 3, 3]);
+    expect(sanitizeNumbers(sprite.transform.position.toArray())).to.deep.equals(animatedPosition);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
   });
 
   it('重建播放图后直接采样 clip 结束时间，仍恢复原来的完整 base pose', async () => {
