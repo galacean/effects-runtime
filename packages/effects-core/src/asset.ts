@@ -1,3 +1,5 @@
+
+import type * as spec from '@galacean/effects-specification';
 import { EffectsObject } from './effects-object';
 import { EventEmitter } from './events';
 import type { EventEmitterListener } from './events';
@@ -19,7 +21,7 @@ export class Asset extends EffectsObject {
   }
 
   /** 替换当前资产数据，在子类解析完成后通知使用方。资产 ID 保持不变。 */
-  setData (data: Parameters<this['fromData']>[0]): void {
+  setData (data: spec.EffectsObjectData): void {
     if (data.id !== this.getInstanceId()) {
       throw new Error('Cannot change asset ID with setData().');
     }

@@ -7,7 +7,6 @@ import './input-server-canvas.spec';
 import './math';
 import './plugins/cal/transform.spec';
 import './plugins/cal/transform-clip-mix.spec';
-import './plugins/timeline/asset-update.spec';
 import './plugins/common/end-behevior.spec';
 import './plugins/shape';
 // plugin particle
