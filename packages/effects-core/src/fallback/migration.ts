@@ -727,21 +727,12 @@ export function version36Migration (json: JSONScene): JSONScene {
     composition.children = [];
     currentMaskComponentId = undefined;
 
-    //@ts-expect-error
-    const legacyCompositionItems = composition.items;
-
-    if (Array.isArray(legacyCompositionItems)) {
-      processMaskReferenceItems(legacyCompositionItems, itemMap, componentMap);
-    }
-
     for (const componentDataPath of composition.components) {
       const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
 
       if (componentData.dataType === spec.DataType.CompositionComponent) {
         const compositionComponent = componentData as spec.CompositionComponentData;
         const compositionItems = compositionComponent.items ?? [];
-
-        processMaskReferenceItems(compositionItems, itemMap, componentMap);
 
         for (const itemPath of compositionItems) {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
@@ -783,6 +774,7 @@ export function version36Migration (json: JSONScene): JSONScene {
  * - 删除组件的 splits 与 renderer.texture（纹理归属 sprite，renderer 仅保留渲染状态）。
  * - 卫语句 `if (sc.sprite) continue` 处理混合数据（部分组件已用 sprite）。
  * - 多 split（splits.length>1，2x2 纹理打包）保留原 splits 不迁移，仍走 updateGeometryFromMultiSplit 旧路径。
+ * - 将 3.7 及以下版本的 mask.reference 和 mask.inverted 迁移到 references 数组，保留已有 references。
  *
  * 由 getStandardJSON 以 `minorVersion < 8` 守卫调用，数据生命周期内只跑一次。
  * version 字段设为字符串 '3.8'（JSONSceneVersion 枚举无此值，运行时不依赖枚举）。
@@ -791,6 +783,8 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
   json.miscs ??= [];
 
   for (const component of json.components) {
+    processMaskReference(component);
+
     if (component.dataType !== DataType.SpriteComponent) {
       continue;
     }
@@ -979,37 +973,6 @@ export function processContent (composition: spec.CompositionData) {
 
       if (component) {
         processMask(component);
-      }
-    }
-  }
-}
-
-function processMaskReferenceItems (
-  items: { id: string }[],
-  itemMap: Map<string, spec.VFXItemData>,
-  componentMap: Map<string, spec.ComponentData>
-) {
-  for (const item of items) {
-    const itemProps = itemMap.get(item.id);
-
-    if (!itemProps) {
-      continue;
-    }
-
-    if (
-      itemProps.type === spec.ItemType.sprite ||
-      itemProps.type === spec.ItemType.particle ||
-      itemProps.type === spec.ItemType.spine ||
-      itemProps.type === spec.ItemType.text ||
-      itemProps.type === spec.ItemType.richtext ||
-      itemProps.type === spec.ItemType.video ||
-      itemProps.type === spec.ItemType.shape ||
-      itemProps.type === spec.ItemType.mesh
-    ) {
-      const component = componentMap.get(itemProps.components[0].id);
-
-      if (component) {
-        processMaskReference(component);
       }
     }
   }
