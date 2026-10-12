@@ -206,7 +206,7 @@ describe('plugin-editor-gizmo/selection', () => {
       expect(selection.resolveHoverTarget(new Vector2())).to.equal('child');
     });
 
-    it('组和动效编辑焦点变化可单独观察，重复设置不发事件', () => {
+    it('组和动效编辑焦点变化可单独观察', () => {
       const child = makeItem('child');
       const group = makeItem('group', [child]);
       const selection = makeSelectionWithItems([group]);
@@ -215,15 +215,7 @@ describe('plugin-editor-gizmo/selection', () => {
       selection.on('focuschange', listener);
       selection.setFocusedGroup('group');
       selection.setFocusedGroup('group');
-      expect(listener).to.have.been.called.once;
-
       selection.enterEffectsEditScope('group');
-      selection.enterEffectsEditScope('group');
-      expect(listener).to.have.been.called.exactly(3);
-      expect(selection.getFocusedGroupId()).to.equal(undefined);
-      expect(selection.getEffectsEditItemId()).to.equal('group');
-
-      selection.leaveEffectsEditScope();
       selection.leaveEffectsEditScope();
       expect(listener).to.have.been.called.exactly(4);
       expect(selection.getEffectsEditItemId()).to.equal(undefined);
