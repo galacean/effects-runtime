@@ -42,43 +42,71 @@ export enum WeightedMode {
 }
 
 export class BezierCurve extends ValueGetter<number> {
-  curveMap: Record<string, CurveInfo>;
   keys: number[][];
 
   private keyFrames: Keyframe[];
-  private curveInfos: CurveInfo[];
+  private curveInfos: (CurveInfo | undefined)[];
 
   override onCreate (props: spec.BezierKeyframeValue[]) {
-    this.keyFrames = oldBezierKeyFramesToNew(props);
-    const keyframes = this.keyFrames;
+    this.setKeyFrames(oldBezierKeyFramesToNew(props));
+  }
 
-    this.curveMap = {};
-    this.keys = [];
+  /** Returns a copy so key edits go through setKeyFrames and invalidate cached segments. */
+  getKeyFrames (): Keyframe[] {
+    const keyFrames: Keyframe[] = [];
+
+    for (let i = 0; i < this.keyFrames.length; i++) {
+      keyFrames.push({ ...this.keyFrames[i] });
+    }
+
+    return keyFrames;
+  }
+
+  setKeyFrames (keyFrames: readonly Keyframe[]): void {
+    const sortedKeyFrames: Keyframe[] = [];
+
+    for (let i = 0; i < keyFrames.length; i++) {
+      sortedKeyFrames.push({ ...keyFrames[i] });
+    }
+    sortedKeyFrames.sort((a, b) => a.time - b.time);
+    this.keyFrames = sortedKeyFrames;
+
+    for (let i = 0; i < this.keyFrames.length - 1; i++) {
+      const leftKeyframe = this.keyFrames[i];
+      const rightKeyframe = this.keyFrames[i + 1];
+
+      if (leftKeyframe.tangentMode === TangentMode.Linear) {
+        const timeInterval = rightKeyframe.time - leftKeyframe.time;
+        const slope = timeInterval === 0 ? 0 : (rightKeyframe.value - leftKeyframe.value) / timeInterval;
+
+        leftKeyframe.outSlope = slope;
+        rightKeyframe.inSlope = slope;
+      }
+    }
+
     this.curveInfos = [];
+    this.keys = [];
+  }
 
-    for (let i = 0; i < keyframes.length - 1; i++) {
-      const leftKeyframe = keyframes[i];
-      const rightKeyframe = keyframes[i + 1];
+  private getCurveInfo (index: number): CurveInfo {
+    let curveInfo = this.curveInfos[index];
 
-      const { points, curve, timeInterval, valueInterval } = buildBezierEasing(leftKeyframe, rightKeyframe);
-      const s = points[0];
-      const e = points[points.length - 1];
+    if (!curveInfo) {
+      const { points, curve, timeInterval, valueInterval } = buildBezierEasing(this.keyFrames[index], this.keyFrames[index + 1]);
 
-      this.keys.push([...s.toArray(), ...points[1].toArray()]);
-      this.keys.push([...e.toArray(), ...points[2].toArray()]);
-
-      const curveInfo = {
+      curveInfo = {
         points,
         timeInterval,
         valueInterval,
         curve,
-        timeStart: Number(s.x),
-        timeEnd: Number(e.x),
+        timeStart: points[0].x,
+        timeEnd: points[3].x,
       };
 
-      this.curveMap[`${s.x}&${e.x}`] = curveInfo;
-      this.curveInfos.push(curveInfo);
+      this.curveInfos[index] = curveInfo;
     }
+
+    return curveInfo;
   }
 
   override getValue (time: number) {
@@ -97,7 +125,7 @@ export class BezierCurve extends ValueGetter<number> {
         const xMax = this.keyFrames[i + 1].time;
 
         if (time >= xMin && time < xMax) {
-          const curveInfo = this.curveInfos[i];
+          const curveInfo = this.getCurveInfo(i);
           const p0 = curveInfo.points[0];
           const timeInterval = curveInfo.timeInterval;
           const valueInterval = curveInfo.valueInterval;
@@ -129,22 +157,21 @@ export class BezierCurve extends ValueGetter<number> {
     const time = (t1 - t0) / ts;
 
     let result = 0;
-    const keyTimeData = Object.keys(this.curveMap);
-    const keyTimeStart = this.curveMap[keyTimeData[0]].timeStart;
+    const keyTimeStart = this.keyFrames[0].time;
 
     if (time <= keyTimeStart) {
       return 0;
     }
-    for (let i = 0; i < keyTimeData.length; i++) {
-      const xMin = this.curveMap[keyTimeData[i]].timeStart;
-      const xMax = this.curveMap[keyTimeData[i]].timeEnd;
+    for (let i = 0; i < this.keyFrames.length - 1; i++) {
+      const xMin = this.keyFrames[i].time;
+      const xMax = this.keyFrames[i + 1].time;
 
-      if (time >= Number(xMax)) {
-        result += ts * this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
+      if (time >= xMax) {
+        result += ts * this.integrateCurveInfo(this.getCurveInfo(i), xMax);
       }
 
-      if (time >= Number(xMin) && time < Number(xMax)) {
-        result += ts * this.getCurveIntegrateValue(keyTimeData[i], time);
+      if (time >= xMin && time < xMax) {
+        result += ts * this.integrateCurveInfo(this.getCurveInfo(i), time);
 
         break;
       }
@@ -160,9 +187,8 @@ export class BezierCurve extends ValueGetter<number> {
 
     return this.getIntegrateValue(0, t1) - this.getIntegrateValue(0, t0);
   }
-  // 速度变化曲线面板移除后下线
-  getCurveIntegrateValue (curveKey: string, time: number) {
-    const curveInfo = this.curveMap[curveKey];
+
+  private integrateCurveInfo (curveInfo: CurveInfo, time: number): number {
     const [p0] = curveInfo.points;
     const timeInterval = curveInfo.timeInterval;
     const valueInterval = curveInfo.valueInterval;
@@ -194,7 +220,7 @@ export class BezierCurve extends ValueGetter<number> {
       return new Float32Array([0, this.keyFrames[0]?.value ?? 0, 0, 0]);
     }
     const index = meta.index;
-    const count = this.keys.length;
+    const count = (this.keyFrames.length - 1) * 2;
 
     meta.curves.push(this);
     meta.index = index + count;
@@ -207,6 +233,16 @@ export class BezierCurve extends ValueGetter<number> {
 
   override toData (): Float32Array {
     const keys = this.keys;
+
+    if (keys.length === 0) {
+      for (let i = 0; i < this.keyFrames.length - 1; i++) {
+        const { points } = this.getCurveInfo(i);
+
+        keys.push([...points[0].toArray(), ...points[1].toArray()]);
+        keys.push([...points[3].toArray(), ...points[2].toArray()]);
+      }
+    }
+
     const data = new Float32Array(keys.length * 4);
 
     for (let i = 0, cursor = 0; i < keys.length; i++, cursor += 4) {
