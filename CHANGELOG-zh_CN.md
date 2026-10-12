@@ -8,6 +8,12 @@
 
 ---
 
+## 2.10.4
+
+`2026-10-12`
+
+- Fix: migrate legacy mask references through scene 3.7. [#1559](https://github.com/galacean/effects-runtime/pull/1559) @ChengYi996
+
 ## 2.10.3
 
 `2026-09-15`
