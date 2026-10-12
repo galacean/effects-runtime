@@ -21,15 +21,15 @@ export class Vector4Curve extends ValueGetter<Vector4> {
     this.wCurve = createValueGetter(arg[3]) as BezierCurve;
   }
 
-  override getValue (t: number): Vector4 {
+  override getValue (t: number, result = this.value): Vector4 {
     const x = this.xCurve.getValue(t);
     const y = this.yCurve.getValue(t);
     const z = this.zCurve.getValue(t);
     const w = this.wCurve.getValue(t);
 
-    this.value.set(x, y, z, w);
+    result.set(x, y, z, w);
 
-    return this.value;
+    return result;
   }
 
   override getMaxTime (): number {
@@ -55,14 +55,14 @@ export class Vector3Curve extends ValueGetter<Vector3> {
     this.zCurve = createValueGetter(arg[2]) as BezierCurve;
   }
 
-  override getValue (t: number): Vector3 {
+  override getValue (t: number, result = this.value): Vector3 {
     const x = this.xCurve.getValue(t);
     const y = this.yCurve.getValue(t);
     const z = this.zCurve.getValue(t);
 
-    this.value.set(x, y, z);
+    result.set(x, y, z);
 
-    return this.value;
+    return result;
   }
 
   override getMaxTime (): number {
@@ -85,13 +85,13 @@ export class Vector2Curve extends ValueGetter<Vector2> {
     this.yCurve = createValueGetter(arg[1]) as BezierCurve;
   }
 
-  override getValue (t: number): Vector2 {
+  override getValue (t: number, result = this.value): Vector2 {
     const x = this.xCurve.getValue(t);
     const y = this.yCurve.getValue(t);
 
-    this.value.set(x, y);
+    result.set(x, y);
 
-    return this.value;
+    return result;
   }
 
   override getMaxTime (): number {
