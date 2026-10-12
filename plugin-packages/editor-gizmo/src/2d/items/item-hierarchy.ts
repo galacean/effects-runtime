@@ -13,12 +13,12 @@ export function isPlayerItemVisible (item: VFXItem | undefined): boolean {
 }
 
 /**
- * 获取元素自身或祖先链中最近的特效容器。
+ * 获取元素自身或祖先链中最近的动效容器。
  *
  * 默认编辑模式下，Effects 预合成的运行时子节点只负责渲染，点选、框选等交互
  * 会归并到该容器；EffectsEditMode 使用本方法识别当前放开的子树边界。
  * @param item 待解析的播放器元素
- * @returns 最近的特效容器；不在特效子树中时返回 undefined
+ * @returns 最近的动效容器；不在动效子树中时返回 undefined
  */
 export function getEffectsPlayerItemOwner (item: VFXItem | undefined): VFXItem | undefined {
   let current = item;

@@ -12,7 +12,7 @@ export class EnterEditModeGizmo extends Gizmo {
   readonly type = 'enter-edit-mode';
 
   /**
-   * 双击当前选中的文本或特效元素时进入对应编辑模式。
+   * 双击当前选中的文本或动效元素时进入对应编辑模式。
    * @param event 鼠标按下事件
    */
   override onMouseDown (event: InputEventMouseButton): void {

@@ -10,7 +10,7 @@ export type SnapConfig = {
   distance: number,
 };
 
-/** 特效内部编辑模式配置。 */
+/** 动效内部编辑模式配置。 */
 export type EffectsEditModeConfig = {
   /** 是否允许子元素移动、缩放和旋转。 */
   allowTransform: boolean,
@@ -117,7 +117,7 @@ export type ResizeSelectionConfig = {
   videoLogoUrl: string,
   /** 画板元素 logo 地址 */
   frameLogoUrl: string,
-  /** 特效元素 logo 地址 */
+  /** 动效元素 logo 地址 */
   effectsLogoUrl: string,
 };
 

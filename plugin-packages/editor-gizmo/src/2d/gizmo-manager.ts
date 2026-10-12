@@ -58,7 +58,7 @@ export type GizmoTypeMap = {
   'leave-text-edit': LeaveTextEditGizmo,
   /** 子编辑模式进入 Gizmo。 */
   'enter-edit-mode': EnterEditModeGizmo,
-  /** 特效编辑退出 Gizmo。 */
+  /** 动效编辑退出 Gizmo。 */
   'leave-effects-edit': LeaveEffectsEditGizmo,
 };
 

@@ -251,7 +251,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       } as unknown as VFXItem;
       const effects = {
         type: spec.ItemType.null,
-        name: '特效',
+        name: '动效',
         children: [compositionChild],
         parent: undefined,
         getInstanceId: () => 'effects',
@@ -279,7 +279,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       expect(getSelectedIds()).to.deep.equal(['effects']);
     });
 
-    it('在 EffectsEditMode 中框选当前特效的内部元素', () => {
+    it('在 EffectsEditMode 中框选当前动效的内部元素', () => {
       const { controller, engine, selection, getSelectedIds } = createHarness([]);
       const child = {
         type: spec.ItemType.sprite,
@@ -299,7 +299,7 @@ describe('plugin-editor-gizmo/box-selection-gizmo', () => {
       } as unknown as VFXItem;
       const effects = {
         type: spec.ItemType.null,
-        name: '特效',
+        name: '动效',
         children: [compositionChild],
         parent: undefined,
         getInstanceId: () => 'effects',

@@ -87,7 +87,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     const effectsComponent = { play, pause };
     const item = {
       type: kind === 'video' ? spec.ItemType.video : spec.ItemType.null,
-      name: kind === 'video' ? id : '特效',
+      name: kind === 'video' ? id : '动效',
       getInstanceId: () => id,
       children: kind === 'effects' ? [{
         type: spec.ItemType.composition,
@@ -578,10 +578,10 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
     expect(textarea.isConnected).to.equal(false);
   });
 
-  it('EffectsEditMode 放开当前特效子树并在退出后恢复容器选区', () => {
+  it('EffectsEditMode 放开当前动效子树并在退出后恢复容器选区', () => {
     const handler = createHandler();
     const effectsItem = {
-      name: '特效',
+      name: '动效',
       type: spec.ItemType.null,
       children: [],
       parent: undefined,

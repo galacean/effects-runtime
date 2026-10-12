@@ -10,12 +10,12 @@ export function isFramePlayerItem (item: VFXItem) {
 }
 
 /**
- * 判断播放器元素是否为特效元素。
+ * 判断播放器元素是否为动效元素。
  * @param item 播放器元素
- * @returns 是否为特效元素
+ * @returns 是否为动效元素
  */
 export function isEffectsPlayerItem (item: VFXItem) {
-  return item.type === spec.ItemType.null && item.getComponent(FrameComponent) !== undefined && item.name === '特效';
+  return item.type === spec.ItemType.null && item.getComponent(FrameComponent) !== undefined && item.name === '动效';
 }
 
 /**

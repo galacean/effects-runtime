@@ -31,7 +31,7 @@ function item (
   const value = {
     getInstanceId: () => id,
     type: options.kind ? spec.ItemType.null : spec.ItemType.sprite,
-    name: options.kind === 'frame' ? '画板' : options.kind === 'effects' ? '特效' : id,
+    name: options.kind === 'frame' ? '画板' : options.kind === 'effects' ? '动效' : id,
     getComponent: (component: unknown) => component === FrameComponent && (options.kind === 'frame' || options.kind === 'effects') ? {} : undefined,
     children: options.children ?? [],
     isVisible: true,

@@ -59,7 +59,7 @@ export enum ResizeSelectionIconType {
   TEXT = 'text',
   /** 视频。 */
   VIDEO = 'video',
-  /** 特效。 */
+  /** 动效。 */
   EFFECTS = 'effects',
   /** 画板。 */
   FRAME = 'frame',

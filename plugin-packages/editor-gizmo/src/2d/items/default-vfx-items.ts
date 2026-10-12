@@ -75,12 +75,12 @@ export class DefaultVFXItems {
   }
 
   /**
-   * 加载并创建特效合成元素。
+   * 加载并创建动效合成元素。
    * @param composition 目标合成
-   * @param effects 特效地址或场景数据
+   * @param effects 动效地址或场景数据
    * @param parent 父元素
    * @param urlname 元素名称
-   * @returns 新建的特效元素
+   * @returns 新建的动效元素
    */
   static async createEffects (
     composition: Composition,

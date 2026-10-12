@@ -298,7 +298,7 @@ export class ItemCreateGizmo extends Gizmo {
     }
   }
 
-  /** 刷新可被框选加入画板的子元素包围盒映射：过滤特效元素、画板元素及其子元素。 */
+  /** 刷新可被框选加入画板的子元素包围盒映射：过滤动效元素、画板元素及其子元素。 */
   refreshInteractiveChildrenBoxes () {
     // 步骤 1：获取当前合成并清空旧的候选包围盒。
     this.interactiveChildrenBoxes.clear();
@@ -308,7 +308,7 @@ export class ItemCreateGizmo extends Gizmo {
       return;
     }
 
-    // 步骤 2：收集不可被画板收纳的特效、画板及其子元素。
+    // 步骤 2：收集不可被画板收纳的动效、画板及其子元素。
     const effectsItemIds: string[] = [];
     const frameItemIds: string[] = [];
 
@@ -316,7 +316,7 @@ export class ItemCreateGizmo extends Gizmo {
       if (item.name === 'ModelPluginItem') {
         return;
       }
-      if (item.name === '特效' && item.getComponent(FrameComponent) !== undefined) {
+      if (item.name === '动效' && item.getComponent(FrameComponent) !== undefined) {
         effectsItemIds.push(item.getInstanceId());
       }
       if (isFramePlayerItem(item)) {

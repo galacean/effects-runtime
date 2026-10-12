@@ -38,7 +38,7 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
 
   function createItem (kind: 'text' | 'effects', hasTextComponent: boolean): VFXItem {
     return {
-      name: kind === 'effects' ? '特效' : 'text',
+      name: kind === 'effects' ? '动效' : 'text',
       type: kind === 'effects' ? spec.ItemType.null : spec.ItemType.text,
       getInstanceId: () => `selected-${kind}`,
       getComponent: (component: unknown) => {
@@ -140,7 +140,7 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
       expect(event.isAccepted()).to.equal(true);
     });
 
-    it('双击当前特效的深层子元素区域时进入 EffectsEditMode', () => {
+    it('双击当前动效的深层子元素区域时进入 EffectsEditMode', () => {
       const { gizmo, setActiveEditMode } = createFixture(
         'effects',
         ['nested-effects-child'],

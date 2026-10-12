@@ -41,7 +41,7 @@ describe('plugin-editor-gizmo/leave-effects-edit-gizmo', () => {
   }
 
   describe('LeaveEffectsEditGizmo', () => {
-    it('点击特效外部空白区域时退出 EffectsEditMode', () => {
+    it('点击动效外部空白区域时退出 EffectsEditMode', () => {
       const { gizmo, resetEditMode } = createFixture([], false);
       const event = mouseButton(true);
 
@@ -52,7 +52,7 @@ describe('plugin-editor-gizmo/leave-effects-edit-gizmo', () => {
     });
 
     ([
-      { title: '特效内部空白', hitIds: [], pointInScope: true },
+      { title: '动效内部空白', hitIds: [], pointInScope: true },
       { title: '其他可命中元素', hitIds: ['outside-item'], pointInScope: false },
     ]).forEach(caseData => {
       const { hitIds, pointInScope } = caseData;
