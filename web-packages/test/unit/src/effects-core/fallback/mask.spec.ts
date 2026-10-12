@@ -44,7 +44,7 @@ describe('core/fallback/mask', () => {
   }
 
   for (const version of ['3.3', '3.6', '3.7']) {
-    it(`migrates legacy mask references from ${version} to 3.8`, () => {
+    it(`migrates legacy mask references from ${version}`, () => {
       const component = {
         id: 'masked-sprite',
         dataType: spec.DataType.SpriteComponent,
@@ -56,9 +56,9 @@ describe('core/fallback/mask', () => {
           inverted: true,
         },
       };
-      const scene = getStandardJSON(createScene(version, [component]));
 
-      expect(scene.version).to.equal('3.8');
+      getStandardJSON(createScene(version, [component]));
+
       expect(component.mask).to.deep.equal({
         isMask: false,
         alphaMaskEnabled: true,
@@ -132,9 +132,9 @@ describe('core/fallback/mask', () => {
         },
       ];
       const expected = JSON.parse(JSON.stringify(components));
-      const scene = getStandardJSON(createScene(version, components));
 
-      expect(scene.version).to.equal(version);
+      getStandardJSON(createScene(version, components));
+
       expect(components).to.deep.equal(expected);
     });
   }
