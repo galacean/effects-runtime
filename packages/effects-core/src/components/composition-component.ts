@@ -249,8 +249,14 @@ export class CompositionComponent extends Component {
 
     this.timelineInstance?.evaluate(time, time - previousTime);
     this.time = time;
-    if (this.updateMode === UpdateModes.EveryUpdate || this.item === this.item.composition?.sceneRoot) {
-      this.setChildrenRenderOrder(0);
+    const sceneRoot = this.item.composition?.sceneRoot;
+
+    if (this.updateMode === UpdateModes.EveryUpdate || this.item === sceneRoot) {
+      // Independently playing subcompositions share the scene's render-order range.
+      // Sort from its root so they keep the offset assigned by their parent.
+      const rootComposition = sceneRoot?.getComponent(CompositionComponent) ?? this;
+
+      rootComposition.setChildrenRenderOrder(0);
     }
   }
 
