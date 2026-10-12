@@ -82,8 +82,12 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getValue (time: number) {
-    let result = 0;
     const keysNumber = this.keyFrames.length;
+
+    if (keysNumber < 2) {
+      return this.keyFrames[0]?.value ?? 0;
+    }
+    let result = 0;
 
     if (time <= this.keyFrames[0].time) {
       result = this.keyFrames[0].value;
@@ -119,6 +123,9 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getIntegrateValue (t0: number, t1: number, ts = 1) {
+    if (this.keyFrames.length < 2) {
+      return (this.keyFrames[0]?.value ?? 0) * (t1 - t0);
+    }
     const time = (t1 - t0) / ts;
 
     let result = 0;
@@ -147,6 +154,10 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getIntegrateByTime (t0: number, t1: number) {
+    if (this.keyFrames.length < 2) {
+      return 0.5 * (this.keyFrames[0]?.value ?? 0) * (t1 * t1 - t0 * t0);
+    }
+
     return this.getIntegrateValue(0, t1) - this.getIntegrateValue(0, t0);
   }
   // 速度变化曲线面板移除后下线
@@ -179,6 +190,9 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override toUniform (meta: KeyFrameMeta): Float32Array {
+    if (this.keyFrames.length < 2) {
+      return new Float32Array([0, this.keyFrames[0]?.value ?? 0, 0, 0]);
+    }
     const index = meta.index;
     const count = this.keys.length;
 
@@ -203,7 +217,7 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getMaxTime (): number {
-    return this.keyFrames[this.keyFrames.length - 1].time;
+    return this.keyFrames[this.keyFrames.length - 1]?.time ?? 0;
   }
 }
 
