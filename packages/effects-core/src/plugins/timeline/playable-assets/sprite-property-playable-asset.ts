@@ -3,8 +3,7 @@ import { effectsClass } from '../../../decorators';
 import type { Playable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
-import { createValueGetter, REFERENCE_CURVE } from '../../../math';
-import type { ReferenceCurveData, ValueGetter } from '../../../math';
+import { ReferenceCurve } from '../../../math';
 import type { Sprite } from '../../sprite/sprite';
 
 /**
@@ -19,12 +18,12 @@ export interface SpritePropertyAssetData extends spec.EffectsObjectData {
 }
 
 /**
- * Sprite 属性 K 帧 PlayableAsset：curveData 为对象引用阶梯曲线，
+ * Sprite 属性 K 帧 PlayableAsset：持有对象引用阶梯曲线，
  * createPlayable 复用 PropertyClipPlayable<Sprite> + ReferenceCurve（阶梯采样，不插值）。
  */
 @effectsClass('SpritePropertyPlayableAsset')
 export class SpritePropertyPlayableAsset extends PlayableAsset {
-  curveData: [number, ReferenceCurveData<Sprite>] = [REFERENCE_CURVE, []];
+  curve: ReferenceCurve<Sprite>;
 
   override fromData (data: SpritePropertyAssetData): void {
     super.fromData(data);
@@ -37,13 +36,13 @@ export class SpritePropertyPlayableAsset extends PlayableAsset {
 
       referenceCurveData.push([t, this.findObject<Sprite>(ref)]);
     }
-    this.curveData[1] = referenceCurveData;
+    this.curve = new ReferenceCurve(referenceCurveData);
   }
 
   override createPlayable (): Playable {
     const clip = new PropertyClipPlayable<Sprite>();
 
-    clip.curve = createValueGetter(this.curveData) as ValueGetter<Sprite>;
+    clip.curve = this.curve;
     clip.value = clip.curve.getValue(0);
 
     return clip;

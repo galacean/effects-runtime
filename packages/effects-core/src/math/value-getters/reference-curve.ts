@@ -15,7 +15,7 @@ export type ReferenceCurveData<T extends EffectsObject> = [time: number, value: 
  * 不走 shader 通路。典型用例：T = Sprite（sprite 属性 K 帧切图）。
  */
 export class ReferenceCurve<T extends EffectsObject> extends ValueGetter<T> {
-  private keyframes: [time: number, value: T][];
+  keyframes: ReferenceCurveData<T>;
 
   override onCreate (props: ReferenceCurveData<T>) {
     this.keyframes = props;

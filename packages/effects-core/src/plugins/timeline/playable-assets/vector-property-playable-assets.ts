@@ -5,6 +5,7 @@ import type { Playable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
+import type { ValueGetter } from '../../../math';
 
 interface Vector3PropertyPlayableAssetData extends spec.EffectsObjectData {
   curveData: spec.Vector3CurveValue,
@@ -12,17 +13,17 @@ interface Vector3PropertyPlayableAssetData extends spec.EffectsObjectData {
 
 @effectsClass(spec.DataType.Vector4PropertyPlayableAsset)
 export class Vector4PropertyPlayableAsset extends PlayableAsset {
-  curveData: spec.Vector4CurveValue;
+  curve: ValueGetter<Vector4>;
 
   override fromData (data: spec.Vector4PropertyPlayableAssetData): void {
     super.fromData(data);
-    this.curveData = data.curveData;
+    this.curve = createValueGetter(data.curveData);
   }
 
   override createPlayable (): Playable {
     const clipPlayable = new PropertyClipPlayable<Vector4>();
 
-    clipPlayable.curve = createValueGetter(this.curveData);
+    clipPlayable.curve = this.curve;
     clipPlayable.value = clipPlayable.curve.getValue(0);
 
     return clipPlayable;
@@ -31,17 +32,17 @@ export class Vector4PropertyPlayableAsset extends PlayableAsset {
 
 @effectsClass(spec.DataType.Vector3PropertyPlayableAsset)
 export class Vector3ropertyPlayableAsset extends PlayableAsset {
-  curveData: spec.Vector3CurveValue;
+  curve: ValueGetter<Vector3>;
 
   override fromData (data: Vector3PropertyPlayableAssetData): void {
     super.fromData(data);
-    this.curveData = data.curveData;
+    this.curve = createValueGetter(data.curveData);
   }
 
   override createPlayable (): Playable {
     const clipPlayable = new PropertyClipPlayable<Vector3>();
 
-    clipPlayable.curve = createValueGetter(this.curveData);
+    clipPlayable.curve = this.curve;
     clipPlayable.value = clipPlayable.curve.getValue(0);
 
     return clipPlayable;
@@ -50,17 +51,17 @@ export class Vector3ropertyPlayableAsset extends PlayableAsset {
 
 @effectsClass(spec.DataType.Vector2PropertyPlayableAsset)
 export class Vector2PropertyPlayableAsset extends PlayableAsset {
-  curveData: spec.Vector2CurveValue;
+  curve: ValueGetter<Vector2>;
 
   override fromData (data: spec.Vector2PropertyPlayableAssetData): void {
     super.fromData(data);
-    this.curveData = data.curveData;
+    this.curve = createValueGetter(data.curveData);
   }
 
   override createPlayable (): Playable {
     const clipPlayable = new PropertyClipPlayable<Vector2>();
 
-    clipPlayable.curve = createValueGetter(this.curveData);
+    clipPlayable.curve = this.curve;
     clipPlayable.value = clipPlayable.curve.getValue(0);
 
     return clipPlayable;
