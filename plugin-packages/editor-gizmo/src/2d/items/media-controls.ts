@@ -82,9 +82,9 @@ export function pauseVideoItem (engine: Engine, id: string) {
 }
 
 /**
- * 播放特效元素。
+ * 播放动效元素。
  * @param engine 引擎
- * @param id 特效元素 id
+ * @param id 动效元素 id
  */
 export function playEffectsItem (engine: Engine, id: string) {
   const controlItem = getPlayerItemById(engine.sceneServer.compositions[0], id);
@@ -97,9 +97,9 @@ export function playEffectsItem (engine: Engine, id: string) {
 }
 
 /**
- * 暂停特效元素。
+ * 暂停动效元素。
  * @param engine 引擎
- * @param id 特效元素 id
+ * @param id 动效元素 id
  */
 export function pauseEffectsItem (engine: Engine, id: string) {
   const controlItem = getPlayerItemById(engine.sceneServer.compositions[0], id);

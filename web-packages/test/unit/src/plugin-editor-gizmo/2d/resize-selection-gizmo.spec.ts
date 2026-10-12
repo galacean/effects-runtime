@@ -193,7 +193,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(getIconType(item(spec.ItemType.text))).to.equal(ResizeSelectionIconType.TEXT);
     expect(getIconType(item(spec.ItemType.null))).to.equal(ResizeSelectionIconType.GROUP);
     expect(getIconType(item(spec.ItemType.null, '画板', true))).to.equal(ResizeSelectionIconType.FRAME);
-    expect(getIconType(item(spec.ItemType.null, '特效', true))).to.equal(ResizeSelectionIconType.EFFECTS);
+    expect(getIconType(item(spec.ItemType.null, '动效', true))).to.equal(ResizeSelectionIconType.EFFECTS);
 
     const imageGenerator = {
       type: spec.ItemType.sprite,

@@ -117,7 +117,7 @@ export class GestureHandler extends Control implements GizmoOwner {
   private gizmosToDispose: Gizmo[] = [];
 
   /**
-   * 悬停目标变化时同步视频与特效预览。
+   * 悬停目标变化时同步视频与动效预览。
    * @param preSelectedId 新悬停元素 ID。
    */
   private onPreselectChange = ({ preSelectedId }: { preSelectedId: string | undefined }): void => {

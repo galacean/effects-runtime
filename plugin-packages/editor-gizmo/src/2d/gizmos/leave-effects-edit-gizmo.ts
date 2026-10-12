@@ -2,12 +2,12 @@ import { MouseButton, type InputEventMouseButton } from '@galacean/effects';
 import { Gizmo } from '../gizmo';
 import { Vector2 } from '../math';
 
-/** 点击当前特效范围外的画布空白区域时退出特效编辑。 */
+/** 点击当前动效范围外的画布空白区域时退出动效编辑。 */
 export class LeaveEffectsEditGizmo extends Gizmo {
   readonly type = 'leave-effects-edit';
 
   /**
-   * 在特效范围外的空白区域按下主键时退出编辑模式。
+   * 在动效范围外的空白区域按下主键时退出编辑模式。
    * @param event 鼠标按下事件
    */
   override onMouseDown (event: InputEventMouseButton): void {

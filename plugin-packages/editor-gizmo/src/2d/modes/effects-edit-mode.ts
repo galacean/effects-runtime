@@ -10,20 +10,20 @@ import { getPlayerItemById } from '../items';
 import { createSelectionInteractionGizmo } from '../selection/create-selection-interaction-gizmo';
 import type { EditMode } from './edit-mode';
 
-/** 特效内部编辑模式配置。 */
+/** 动效内部编辑模式配置。 */
 export type EffectsEditModeOptions = {
   /** 是否允许子元素移动、缩放和旋转；默认允许。 */
   allowTransform?: boolean,
 };
 
-/** 在单个特效容器内提供子元素选择和变换交互。 */
+/** 在单个动效容器内提供子元素选择和变换交互。 */
 export class EffectsEditMode implements EditMode {
   readonly id = 'effects-edit';
   private readonly allowTransform: boolean;
 
   /**
    * @param owner Gizmo 宿主
-   * @param effectsItemId 正在编辑的特效容器实例 ID
+   * @param effectsItemId 正在编辑的动效容器实例 ID
    * @param options 编辑模式配置
    */
   constructor (
@@ -35,7 +35,7 @@ export class EffectsEditMode implements EditMode {
   }
 
   /**
-   * 判断目标工具是否可复用当前特效编辑会话。
+   * 判断目标工具是否可复用当前动效编辑会话。
    * @param tool 目标工具
    * @returns 是否保持当前模式
    */
@@ -43,12 +43,12 @@ export class EffectsEditMode implements EditMode {
     return tool instanceof MoveGizmoTool || tool instanceof HandGizmoTool;
   }
 
-  /** 放开当前特效容器的子树选择边界。 */
+  /** 放开当前动效容器的子树选择边界。 */
   onEnter (): void {
     this.owner.getSelection().enterEffectsEditScope(this.effectsItemId);
   }
 
-  /** 关闭特效子树选择边界，并恢复选中特效容器。 */
+  /** 关闭动效子树选择边界，并恢复选中动效容器。 */
   onExit (): void {
     const selection = this.owner.getSelection();
 
@@ -60,7 +60,7 @@ export class EffectsEditMode implements EditMode {
     }
   }
 
-  /** @returns 特效内部编辑使用的 Gizmo 图。 */
+  /** @returns 动效内部编辑使用的 Gizmo 图。 */
   createGizmos (): Gizmo[] {
     const resizeSelection = new ResizeSelectionGizmo(this.owner, { interactive: this.allowTransform });
     const cornerRotation = this.allowTransform

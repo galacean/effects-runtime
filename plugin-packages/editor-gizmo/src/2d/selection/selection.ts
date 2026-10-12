@@ -52,6 +52,8 @@ export type SelectionEvents = {
     /** 当前预选元素 ID。 */
     preSelectedId: string | undefined,
   }],
+  /** 组内交互或动效内部查看焦点变更。 */
+  'focuschange': [],
 };
 
 /** 一次选区行为派发使用的稳定命中快照。 */
@@ -79,7 +81,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
   /** 当前选中元素 ID。 */
   private _selectedIds: string[] = [];
-  /** 当前允许穿透选择的特效容器 ID。 */
+  /** 当前允许穿透选择的动效容器 ID。 */
   private _effectsEditItemId: string | undefined;
   /** 当前组内交互的焦点容器 ID。 */
   private _focusedGroupId: string | undefined;
@@ -123,7 +125,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     return this.hoveringResults.overlayItemId;
   }
 
-  /** @returns 当前正在内部编辑的特效容器 ID。 */
+  /** @returns 当前正在内部编辑的动效容器 ID。 */
   getEffectsEditItemId (): string | undefined {
     return this._effectsEditItemId;
   }
@@ -139,7 +141,12 @@ export class Selection extends EventEmitter<SelectionEvents> {
    */
   setFocusedGroup (groupId?: string | null): void {
     if (!groupId) {
+      const changed = this._focusedGroupId !== undefined;
+
       this._focusedGroupId = undefined;
+      if (changed) {
+        this.emit('focuschange');
+      }
 
       return;
     }
@@ -149,22 +156,35 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!group || !this.isSelectableGroup(group)) {
       throw new Error(`Selection.setFocusedGroup: Group with id ${groupId} does not exist`);
     }
-    this._focusedGroupId = groupId;
+    if (this._focusedGroupId !== groupId) {
+      this._focusedGroupId = groupId;
+      this.emit('focuschange');
+    }
   }
 
   /**
-   * 放开指定特效容器的子树选择边界。
-   * @param effectsItemId 特效容器 ID
+   * 放开指定动效容器的子树选择边界。
+   * @param effectsItemId 动效容器 ID
    */
   enterEffectsEditScope (effectsItemId: string): void {
+    const changed = this._effectsEditItemId !== effectsItemId;
+
     this._effectsEditItemId = effectsItemId;
     this.setFocusedGroup();
+    if (changed) {
+      this.emit('focuschange');
+    }
   }
 
-  /** 关闭特效子树选择边界。 */
+  /** 关闭动效子树选择边界。 */
   leaveEffectsEditScope (): void {
+    const changed = this._effectsEditItemId !== undefined;
+
     this._effectsEditItemId = undefined;
     this.setFocusedGroup();
+    if (changed) {
+      this.emit('focuschange');
+    }
   }
 
   /** @returns 选中元素 ID 的内部只读引用。 */
@@ -581,9 +601,9 @@ export class Selection extends EventEmitter<SelectionEvents> {
   }
 
   /**
-   * 判断坐标是否位于当前特效编辑容器的视图范围内。
+   * 判断坐标是否位于当前动效编辑容器的视图范围内。
    * @param point 视图坐标
-   * @returns 是否位于当前特效容器内
+   * @returns 是否位于当前动效容器内
    */
   isPointInEffectsEditScope (point: Vector2): boolean {
     if (!this._effectsEditItemId) {
@@ -601,9 +621,9 @@ export class Selection extends EventEmitter<SelectionEvents> {
   }
 
   /**
-   * 将框选候选按当前特效编辑范围解析为可选元素。
+   * 将框选候选按当前动效编辑范围解析为可选元素。
    *
-   * 默认模式把特效子树归并为容器；特效编辑模式只保留当前容器的内部元素。
+   * 默认模式把动效子树归并为容器；动效编辑模式只保留当前容器的内部元素。
    * @param item 原始播放器元素
    * @returns 当前模式下的框选候选；不可选时返回 undefined
    */
@@ -759,7 +779,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
   }
 
   /**
-   * 将特效子元素命中区域归并到特效容器。
+   * 将动效子元素命中区域归并到动效容器。
    * @param hitTestResult 原始命中结果
    */
   private refreshResultRegions (hitTestResult: HitTestResult): void {
@@ -768,7 +788,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!playerComposition || this._effectsEditItemId) {
       return;
     }
-    const effectsItems = playerComposition.items.filter(item => item.name === '特效' && item.getComponent(FrameComponent) !== undefined);
+    const effectsItems = playerComposition.items.filter(item => item.name === '动效' && item.getComponent(FrameComponent) !== undefined);
     const effectsItemMap = new Map<string, string>();
 
     effectsItems.forEach(item => {

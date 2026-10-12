@@ -330,7 +330,7 @@ export class SnapManager {
     return first.find(id => rest.every(ids => ids.includes(id)));
   }
 
-  /** 画板和特效容器都会隔离内外吸附候选。 */
+  /** 画板和动效容器都会隔离内外吸附候选。 */
   private isSnapScopeItem (item: VFXItem): boolean {
     return isFramePlayerItem(item) || isEffectsPlayerItem(item);
   }

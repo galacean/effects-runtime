@@ -43,7 +43,7 @@ function createItem (
   const x = options.x ?? 0;
   const item = {
     type: isFrame || isEffects ? spec.ItemType.null : spec.ItemType.sprite,
-    name: isFrame ? '画板' : isEffects ? '特效' : id,
+    name: isFrame ? '画板' : isEffects ? '动效' : id,
     isVisible: true,
     parent: options.parent,
     children: [],
@@ -122,7 +122,7 @@ describe('SnapManager', () => {
     expect(getTargetCenterXs(snapping)).to.deep.equal([65]);
   });
 
-  it('根作用域不缓存特效容器内部元素', () => {
+  it('根作用域不缓存动效容器内部元素', () => {
     const snapping = createSnapManager();
     const selected = createItem('selected', { x: 0 });
     const rootPeer = createItem('root-peer', { x: 20 });
@@ -139,7 +139,7 @@ describe('SnapManager', () => {
     expect(getTargetCenterXs(snapping)).to.deep.equal([25, 45]);
   });
 
-  it('特效容器内选区只缓存同一作用域内的元素', () => {
+  it('动效容器内选区只缓存同一作用域内的元素', () => {
     const snapping = createSnapManager();
     const rootPeer = createItem('root-peer', { x: 0 });
     const effects = createItem('effects', { effects: true, x: 20 });

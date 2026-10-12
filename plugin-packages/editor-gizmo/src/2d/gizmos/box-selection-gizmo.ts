@@ -178,7 +178,7 @@ export class BoxSelectionGizmo extends Gizmo {
           if (!isPlayerItemVisible(item)) {
             continue;
           }
-          // 默认归并 Effects 子树；进入 EffectsEditMode 后只展开当前特效内部元素。
+          // 默认归并 Effects 子树；进入 EffectsEditMode 后只展开当前动效内部元素。
           const selectableItem = this.selection.resolveMarqueeSelectableItem(item);
 
           if (!selectableItem) {

@@ -206,6 +206,21 @@ describe('plugin-editor-gizmo/selection', () => {
       expect(selection.resolveHoverTarget(new Vector2())).to.equal('child');
     });
 
+    it('组和动效编辑焦点变化可单独观察', () => {
+      const child = makeItem('child');
+      const group = makeItem('group', [child]);
+      const selection = makeSelectionWithItems([group]);
+      const listener = chai.spy();
+
+      selection.on('focuschange', listener);
+      selection.setFocusedGroup('group');
+      selection.setFocusedGroup('group');
+      selection.enterEffectsEditScope('group');
+      selection.leaveEffectsEditScope();
+      expect(listener).to.have.been.called.exactly(4);
+      expect(selection.getEffectsEditItemId()).to.equal(undefined);
+    });
+
     it('嵌套 group 只在当前焦点容器内解析命中', () => {
     // 公网 group(G1) > group(G1) > 叶子 e：对 G2 再次 group 得到两层嵌套。
       const e = makeItem('e');
@@ -280,14 +295,14 @@ describe('plugin-editor-gizmo/selection', () => {
       compositionChild.type = spec.ItemType.composition;
       const effects = makeItem('effects', [compositionChild]);
 
-      effects.name = '特效'
+      effects.name = '动效'
       ;(effects as unknown as { getComponent: () => unknown }).getComponent = () => ({});
       const selection = makeSelectionWithItems([effects]);
 
       expect(selection.filterSelectedItems(['effect-child'])).to.deep.equal(['effects']);
     });
 
-    it('EffectsEditMode 只放开当前特效的内部层级', () => {
+    it('EffectsEditMode 只放开当前动效的内部层级', () => {
       const child = makeItem('effect-child');
       const group = makeItem('effect-group', [child]);
       const compositionChild = makeItem('effect-composition', [group]);
@@ -295,7 +310,7 @@ describe('plugin-editor-gizmo/selection', () => {
       compositionChild.type = spec.ItemType.composition;
       const effects = makeItem('effects', [compositionChild]);
 
-      effects.name = '特效'
+      effects.name = '动效'
       ;(effects as unknown as { getComponent: () => unknown }).getComponent = () => ({});
 
       const otherChild = makeItem('other-child');
@@ -304,7 +319,7 @@ describe('plugin-editor-gizmo/selection', () => {
       otherComposition.type = spec.ItemType.composition;
       const otherEffects = makeItem('other-effects', [otherComposition]);
 
-      otherEffects.name = '特效'
+      otherEffects.name = '动效'
       ;(otherEffects as unknown as { getComponent: () => unknown }).getComponent = () => ({});
 
       const selection = makeSelectionWithItems([effects, otherEffects]);
@@ -324,7 +339,7 @@ describe('plugin-editor-gizmo/selection', () => {
       expect(selection.getFocusedGroupId()).to.equal('effect-group');
       expect(selection.filterSelectedItems(['effect-child'])).to.deep.equal(['effect-child']);
 
-      // 当前容器本身、其他特效及特效外部元素都不属于内部编辑范围。
+      // 当前容器本身、其他动效及动效外部元素都不属于内部编辑范围。
       expect(selection.filterSelectedItems(['effects'])).to.deep.equal([]);
       expect(selection.filterSelectedItems(['other-child'])).to.deep.equal([]);
 
@@ -340,7 +355,7 @@ describe('plugin-editor-gizmo/selection', () => {
       compositionChild.type = spec.ItemType.composition;
       const effects = makeItem('effects', [compositionChild]);
 
-      effects.name = '特效'
+      effects.name = '动效'
       ;(effects as unknown as { getComponent: () => unknown }).getComponent = () => ({})
 
       // Effects 子预合成运行时可能只有 parent 对象关系，没有可用于实例查找的 parentId。
@@ -361,7 +376,7 @@ describe('plugin-editor-gizmo/selection', () => {
       compositionChild.type = spec.ItemType.composition;
       const effects = makeItem('effects', [compositionChild]);
 
-      effects.name = '特效'
+      effects.name = '动效'
       ;(effects as unknown as { getComponent: () => unknown }).getComponent = () => ({});
       const outside = makeItem('outside');
       const selection = makeSelectionWithItems([effects, outside]);
