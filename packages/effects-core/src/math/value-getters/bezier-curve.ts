@@ -25,10 +25,10 @@ export interface Keyframe {
   inWeight: number,
   outWeight: number,
   weightedMode: WeightedMode,
-  tangentMode: TangentMode,
+  interpolationMode: InterpolationMode,
 }
 
-export enum TangentMode {
+export enum InterpolationMode {
   Cubic,
   Linear,
   Constant
@@ -63,26 +63,12 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   setKeyFrames (keyFrames: readonly Keyframe[]): void {
-    const sortedKeyFrames: Keyframe[] = [];
+    const copiedKeyFrames: Keyframe[] = [];
 
     for (let i = 0; i < keyFrames.length; i++) {
-      sortedKeyFrames.push({ ...keyFrames[i] });
+      copiedKeyFrames.push({ ...keyFrames[i] });
     }
-    sortedKeyFrames.sort((a, b) => a.time - b.time);
-    this.keyFrames = sortedKeyFrames;
-
-    for (let i = 0; i < this.keyFrames.length - 1; i++) {
-      const leftKeyframe = this.keyFrames[i];
-      const rightKeyframe = this.keyFrames[i + 1];
-
-      if (leftKeyframe.tangentMode === TangentMode.Linear) {
-        const timeInterval = rightKeyframe.time - leftKeyframe.time;
-        const slope = timeInterval === 0 ? 0 : (rightKeyframe.value - leftKeyframe.value) / timeInterval;
-
-        leftKeyframe.outSlope = slope;
-        rightKeyframe.inSlope = slope;
-      }
-    }
+    this.keyFrames = copiedKeyFrames;
 
     this.curveInfos = [];
     this.keys = [];
@@ -132,7 +118,7 @@ export class BezierCurve extends ValueGetter<number> {
           const normalizeTime = (time - p0.x) / timeInterval;
           let value = 0;
 
-          if (this.keyFrames[i].tangentMode === TangentMode.Linear) {
+          if (this.keyFrames[i].interpolationMode === InterpolationMode.Linear) {
             value = normalizeTime;
           } else {
             value = curveInfo.curve.getValue(normalizeTime);
@@ -268,25 +254,34 @@ function buildBezierEasing (leftKeyframe: Keyframe, rightKeyframe: Keyframe): {
   const p2 = new Vector2();
   const p3 = new Vector2();
 
-  const isWeighted = leftKeyframe.weightedMode === WeightedMode.Out ||
+  const isLinear = leftKeyframe.interpolationMode === InterpolationMode.Linear;
+  const isWeighted = !isLinear && (leftKeyframe.weightedMode === WeightedMode.Out ||
     leftKeyframe.weightedMode === WeightedMode.Both ||
     rightKeyframe.weightedMode === WeightedMode.In ||
-    rightKeyframe.weightedMode === WeightedMode.Both;
+    rightKeyframe.weightedMode === WeightedMode.Both);
 
-  const isConstant = leftKeyframe.tangentMode === TangentMode.Constant;
-
-  const rightDeltaX = (isWeighted ? leftKeyframe.outWeight : 1) * (rightKeyframe.time - leftKeyframe.time) / 3;
-
-  p1.x = leftKeyframe.time + rightDeltaX;
-  p1.y = leftKeyframe.value + rightDeltaX * (isConstant ? 0 : leftKeyframe.outSlope);
-
-  const leftDeltaX = (isWeighted ? rightKeyframe.inWeight : 1) * (rightKeyframe.time - leftKeyframe.time) / 3;
-
-  p2.x = rightKeyframe.time - leftDeltaX;
-  p2.y = rightKeyframe.value - leftDeltaX * (isConstant ? 0 : rightKeyframe.inSlope);
+  const isConstant = leftKeyframe.interpolationMode === InterpolationMode.Constant;
 
   p3.x = rightKeyframe.time;
   p3.y = isConstant ? leftKeyframe.value : rightKeyframe.value;
+
+  if (isLinear) {
+    const deltaX = (p3.x - p0.x) / 3;
+    const deltaY = (p3.y - p0.y) / 3;
+
+    p1.set(p0.x + deltaX, p0.y + deltaY);
+    p2.set(p3.x - deltaX, p3.y - deltaY);
+  } else {
+    const rightDeltaX = (isWeighted ? leftKeyframe.outWeight : 1) * (rightKeyframe.time - leftKeyframe.time) / 3;
+
+    p1.x = leftKeyframe.time + rightDeltaX;
+    p1.y = leftKeyframe.value + rightDeltaX * (isConstant ? 0 : leftKeyframe.outSlope);
+
+    const leftDeltaX = (isWeighted ? rightKeyframe.inWeight : 1) * (rightKeyframe.time - leftKeyframe.time) / 3;
+
+    p2.x = rightKeyframe.time - leftDeltaX;
+    p2.y = rightKeyframe.value - leftDeltaX * (isConstant ? 0 : rightKeyframe.inSlope);
+  }
 
   assertExist(p2);
   assertExist(p3);
@@ -298,6 +293,9 @@ function buildBezierEasing (leftKeyframe: Keyframe, rightKeyframe: Keyframe): {
 
   if (decimalEqual(valueInterval, 0)) {
     y1 = y2 = NaN;
+  } else if (isLinear) {
+    x1 = y1 = 1 / 3;
+    x2 = y2 = 2 / 3;
   } else {
     y1 = numberToFix((p1.y - p0.y) / valueInterval, 5);
     y2 = numberToFix((p2.y - p0.y) / valueInterval, 5);
@@ -344,7 +342,7 @@ interface KeyData {
   leftControl: Vector2Like,
   value: Vector2Like,
   rightControl: Vector2Like,
-  tangentMode: TangentMode,
+  interpolationMode: InterpolationMode,
 }
 
 export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Keyframe[] {
@@ -366,11 +364,11 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
       leftControl: lastControl,
       value: p0,
       rightControl: p1,
-      tangentMode: type === 'line' ? TangentMode.Linear : TangentMode.Cubic,
+      interpolationMode: type === 'line' ? InterpolationMode.Linear : InterpolationMode.Cubic,
     };
 
     if (leftKeyframe[0] === spec.BezierKeyframeType.HOLD) {
-      keyData.tangentMode = TangentMode.Constant;
+      keyData.interpolationMode = InterpolationMode.Constant;
     }
 
     keyDatas.push(keyData);
@@ -403,7 +401,7 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
       outSlope: outSlope,
       inWeight: 0,
       outWeight: 0,
-      tangentMode: keyDatas[i].tangentMode,
+      interpolationMode: keyDatas[i].interpolationMode,
       weightedMode: WeightedMode.Both,
     };
 
