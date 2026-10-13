@@ -1,4 +1,5 @@
-import { Player, spec } from '@galacean/effects';
+import type { Composition, TimelineInstance } from '@galacean/effects';
+import { CompositionComponent, Player, spec, TransformMixerPlayable } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -8,8 +9,8 @@ const { expect } = chai;
  *
  * 覆盖：
  * - 旧数据在迁移后保持单 clip 的表现
- * - 多 clip 按各自提供的属性归一化加权混合
- * - 无有效 clip 时保留当前 transform
+ * - 多 clip 按属性加权混合，权重不足 1 时补齐首次激活的 transform
+ * - 已参与动画的属性在无有效 clip 时回到缓存值
  */
 describe('core/plugins/calculate/transform-clip-mix', () => {
   const canvas = document.createElement('canvas');
@@ -142,18 +143,46 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     ],
   });
 
-  it('单 clip scale 与直写一致（base × 常量乘子）', async () => {
+  const getMixer = (comp: Composition): TransformMixerPlayable => {
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+    const timeline = (component as unknown as { timelineInstance: TimelineInstance }).timelineInstance;
+
+    return timeline.masterTrackInstances[0].children.find(track => track.mixer instanceof TransformMixerPlayable)!.mixer as TransformMixerPlayable;
+  };
+  const evaluateMixer = (mixer: TransformMixerPlayable, weights: number[]) => {
+    weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
+    mixer.evaluate(mixer.trackInstance.output.context);
+  };
+
+  it('单 clip scale 在首次激活时缓存 transform，按剩余权重补齐', async () => {
     const scene = buildScene(
-      [{ assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } }],
+      [{ assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } }, start: 1 }],
       { x: 0, y: 0, z: 0 },
-      { x: 3, y: 3, z: 3 },
+      { x: 3, y: 4, z: 5 },
     );
     const comp = await player.loadScene(scene as any);
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    // base.scale(3,3,3) × 2 → (6,6,6)；z 取 x，仍是 6
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([3, 4, 5]);
+    sprite.transform.setScale(10, 20, 30);
+
+    comp.gotoAndStop(1.5);
+    // 绝对曲线仍由序列化数据迁移，动画 Z 保留旧数据使用初始 X scale 的规则。
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
+    const mixer = getMixer(comp);
+
+    evaluateMixer(mixer, [0.5]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([8, 14, 18]);
+    evaluateMixer(mixer, [0.5]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([8, 14, 18]);
+
+    sprite.transform.setPosition(7, 8, 9);
+    sprite.transform.setRotation(0, 0, 45);
+    evaluateMixer(mixer, [0]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([10, 20, 30]);
+    expect(sprite.transform.position.toArray()).to.deep.equals([7, 8, 9]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 
   it('多 clip scale 混合绝对值', async () => {
@@ -171,6 +200,12 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     comp.gotoAndStop(0.5);
     // 迁移后的绝对曲线分别为 8 和 2，等权混合得到 5。
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([5, 5, 5]);
+    const mixer = getMixer(comp);
+
+    evaluateMixer(mixer, [0.25, 0.25]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([4.5, 4.5, 4.5]);
+    evaluateMixer(mixer, [2, 2]);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([5, 5, 5]);
   });
 
   it('多 clip rotation 混合绝对 Euler 值', async () => {
@@ -178,11 +213,15 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
       { assetId: 'asset_r1', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 30 } } },
       { assetId: 'asset_r2', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 60 } } },
     ]);
+
+    scene.items[0].transform.eulerHint.z = 10;
     const comp = await player.loadScene(scene as any);
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 55]);
+    evaluateMixer(getMixer(comp), [0.25, 0.25]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 32.5]);
   });
 
   it('多 clip position 混合对称的绝对曲线', async () => {
@@ -196,16 +235,21 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const comp = await player.loadScene(scene as any);
     const sprite = comp.getItemByName('sprite_1')!;
 
-    comp.gotoAndStop(2.5);
+    comp.gotoAndStop(4);
     // 两条对称的绝对位置曲线等权混合，得到初始位置 (1,2,0)。
     const pos = sprite.transform.position;
 
     expect(pos.x).to.be.closeTo(1, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
+    evaluateMixer(getMixer(comp), [0.25, 0.5]);
+    // 绝对位置 5 和 -3，加上初始位置 1 的剩余 0.25 权重。
+    expect(pos.x).to.be.closeTo(0, 1e-5);
+    expect(pos.y).to.be.closeTo(2, 1e-5);
+    expect(pos.z).to.be.closeTo(0, 1e-5);
   });
 
-  it('clip 结束后保留当前 position', async () => {
+  it('clip 结束后回到缓存 position，重新激活时继续采样绝对曲线', async () => {
     const scene = buildScene(
       [{ assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy }],
       { x: 1, y: 2, z: 0 },
@@ -220,10 +264,14 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     comp.gotoAndStop(1.5);
     const pos = sprite.transform.position;
 
+    expect(pos.toArray()).to.deep.equal([1, 2, 0]);
+    comp.gotoAndStop(0.5);
     expect(pos.toArray()).to.deep.equal(previous);
+    comp.gotoAndStop(1.5);
+    expect(pos.toArray()).to.deep.equal([1, 2, 0]);
   });
 
-  it('position clip 结束后保留 position，rotation clip 继续生效', async () => {
+  it('各属性独立补齐权重，position clip 结束后 rotation clip 继续生效', async () => {
     const scene = buildScene(
       [
         { assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy },
@@ -236,12 +284,16 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
-    const previous = sprite.transform.position.toArray();
+    const fullPosition = sprite.transform.position.x;
+
+    evaluateMixer(getMixer(comp), [0.25, 0.5]);
+    expect(sprite.transform.position.x).to.be.closeTo(1 + (fullPosition - 1) * 0.25, 1e-5);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 22.5]);
 
     comp.gotoAndStop(1.5);
     const pos = sprite.transform.position;
 
-    expect(pos.toArray()).to.deep.equal(previous);
+    expect(pos.toArray()).to.deep.equal([1, 2, 0]);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 });
