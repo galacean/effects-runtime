@@ -35,26 +35,29 @@ export interface TranslateTarget {
 export function calculateTranslation (
   out: Vector3,
   target: TranslateTarget,
-  acc: Vector3,
+  acc: Vector3 | undefined,
   time: number,
   duration: number,
   posData: Vector3,
-  velData: Vector3,
+  velData?: Vector3,
 ): Vector3 {
   const ret = out;
   const lifetime = time / duration;
-  let speedIntegrate = time;
-  const speedOverLifetime = target.speedOverLifetime;
-
-  if (speedOverLifetime) {
-    speedIntegrate = speedOverLifetime.getIntegrateValue(0, time, duration);
-  }
-
-  const d = target.gravityModifier ? target.gravityModifier.getIntegrateByTime(0, time) : 0;
 
   ret.copyFrom(posData);
-  ret.addScaledVector(velData, speedIntegrate);
-  ret.addScaledVector(acc, d);
+
+  if (velData) {
+    const speedOverLifetime = target.speedOverLifetime;
+    const speedIntegrate = speedOverLifetime ? speedOverLifetime.getIntegrateValue(0, time, duration) : time;
+
+    ret.addScaledVector(velData, speedIntegrate);
+  }
+
+  if (acc && target.gravityModifier) {
+    const d = target.gravityModifier.getIntegrateByTime(0, time);
+
+    ret.addScaledVector(acc, d);
+  }
 
   const linearVelocityOverLifetime = target.linearVelOverLifetime || {};
   const orbVelOverLifetime = target.orbitalVelOverLifetime || {};

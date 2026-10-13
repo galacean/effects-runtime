@@ -297,8 +297,7 @@ export class KeyframeRenderer {
       return;
     }
 
-    // curveData[1] 反序列化后为 [time, Sprite][]（类型声明为 DataPath 序列化形态）
-    const keyframes = asset.curveData[1];
+    const keyframes = asset.curve.keyframes;
 
     if (keyframes.length === 0) {
       return;

@@ -3,23 +3,24 @@ import type { Playable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
-import type { Color } from '@galacean/effects-math/es/core';
+import type { ValueGetter } from '../../../math';
+import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 
 @effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends PlayableAsset {
-  curveData: spec.ColorCurveValue;
+  curve: ValueGetter<Color>;
 
   override fromData (data: spec.ColorPropertyPlayableAssetData): void {
     super.fromData(data);
-    this.curveData = data.curveData;
+    this.curve = createValueGetter(data.curveData);
   }
 
   override createPlayable (): Playable {
     const clipPlayable = new PropertyClipPlayable<Color>();
 
-    clipPlayable.curve = createValueGetter(this.curveData);
-    clipPlayable.value = clipPlayable.curve.getValue(0);
+    clipPlayable.curve = this.curve;
+    clipPlayable.value = clipPlayable.curve.getValue(0, new Color());
 
     return clipPlayable;
   }

@@ -19,15 +19,15 @@ export class ColorCurve extends ValueGetter<Color> {
     this.aCurve = createValueGetter(arg[3]) as BezierCurve;
   }
 
-  override getValue (t: number): Color {
+  override getValue (t: number, result = this.value): Color {
     const r = this.rCurve.getValue(t);
     const g = this.gCurve.getValue(t);
     const b = this.bCurve.getValue(t);
     const a = this.aCurve.getValue(t);
 
-    this.value.set(r, g, b, a);
+    result.set(r, g, b, a);
 
-    return this.value;
+    return result;
   }
 
   override getMaxTime (): number {

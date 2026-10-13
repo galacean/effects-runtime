@@ -63,10 +63,6 @@ const map: Record<any, any> = {
     return new PathSegments(pros);
   },
   [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
-    if (props.length === 1) {
-      return new StaticValue(props[0][1][1]);
-    }
-
     return new BezierCurve(props as spec.BezierKeyframeValue[]);
   },
   [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {

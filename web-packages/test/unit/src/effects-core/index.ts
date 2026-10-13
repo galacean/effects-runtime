@@ -8,6 +8,7 @@ import './math';
 import './plugins/cal/transform.spec';
 import './plugins/cal/transform-clip-mix.spec';
 import './plugins/common/end-behevior.spec';
+import './plugins/timeline/property-clip-playable.spec';
 import './plugins/shape';
 // plugin particle
 import './plugins/particle';

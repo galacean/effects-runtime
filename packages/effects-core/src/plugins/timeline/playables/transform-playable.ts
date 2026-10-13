@@ -39,119 +39,42 @@ const createEmptyContribution = (): TransformContribution => ({
   scale: new Vector3(1, 1, 1),
 });
 
-/**
- * @since 2.0.0
- */
-export class TransformPlayable extends Playable {
-  originalTransform: ItemBasicTransform;
-  protected sizeSeparateAxes: boolean;
-  protected sizeXOverLifetime: ValueGetter<number>;
-  protected sizeYOverLifetime: ValueGetter<number>;
-  protected sizeZOverLifetime: ValueGetter<number>;
-  protected rotationOverLifetime: {
+/** TransformPlayableAsset 反序列化生成的曲线和采样参数，由 playable 共享读取。 */
+export interface TransformAnimationCurves {
+  hasPosition: boolean,
+  sizeSeparateAxes: boolean,
+  sizeXOverLifetime?: ValueGetter<number>,
+  sizeYOverLifetime?: ValueGetter<number>,
+  sizeZOverLifetime?: ValueGetter<number>,
+  rotationOverLifetime?: {
     asRotation?: boolean,
     separateAxes?: boolean,
-    enabled?: boolean,
     x?: ValueGetter<number>,
     y?: ValueGetter<number>,
     z?: ValueGetter<number>,
-  };
-  gravityModifier: ValueGetter<number>;
-  orbitalVelOverLifetime: {
+  },
+  orbitalVelOverLifetime?: {
     x?: ValueGetter<number>,
     y?: ValueGetter<number>,
     z?: ValueGetter<number>,
     center: [x: number, y: number, z: number],
     asRotation?: boolean,
     enabled?: boolean,
-  };
-  speedOverLifetime?: ValueGetter<number>;
-  linearVelOverLifetime: ItemLinearVelOverLifetime;
-  positionOverLifetime: spec.PositionOverLifetime;
-  gravity: Vector3;
-  direction: Vector3;
-  startSpeed: number;
-  pathGetter?: ValueGetter<Vector3>;
-  data: TransformPlayableAssetData;
+  },
+  linearVelOverLifetime?: ItemLinearVelOverLifetime,
+  pathGetter?: ValueGetter<Vector3>,
+}
 
-  private velocity: Vector3;
-  private started = false;
+/**
+ * @since 2.0.0
+ */
+export class TransformPlayable extends Playable {
+  originalTransform: ItemBasicTransform;
+  curves: TransformAnimationCurves;
+
   private readonly contribution: TransformContribution = createEmptyContribution();
 
-  start (): void {
-    const positionOverLifetime = this.data.positionOverLifetime;
-    const rotationOverLifetime = this.data.rotationOverLifetime;
-    const sizeOverLifetime = this.data.sizeOverLifetime;
-
-    // TODO: 没有 K 帧数据的不需要传 positionOverLifetime 空对象
-    if (positionOverLifetime && Object.keys(positionOverLifetime).length !== 0) {
-      this.positionOverLifetime = positionOverLifetime;
-      if (positionOverLifetime.path) {
-        this.pathGetter = createValueGetter(positionOverLifetime.path);
-      }
-      const linearVelEnable = positionOverLifetime.linearX || positionOverLifetime.linearY || positionOverLifetime.linearZ;
-
-      if (linearVelEnable) {
-        this.linearVelOverLifetime = {
-          x: positionOverLifetime.linearX && createValueGetter(positionOverLifetime.linearX),
-          y: positionOverLifetime.linearY && createValueGetter(positionOverLifetime.linearY),
-          z: positionOverLifetime.linearZ && createValueGetter(positionOverLifetime.linearZ),
-          asMovement: positionOverLifetime.asMovement,
-          enabled: !!linearVelEnable,
-        };
-      }
-
-      const orbitalVelEnable = positionOverLifetime.orbitalX || positionOverLifetime.orbitalY || positionOverLifetime.orbitalZ;
-
-      if (orbitalVelEnable) {
-        this.orbitalVelOverLifetime = {
-          x: positionOverLifetime.orbitalX && createValueGetter(positionOverLifetime.orbitalX),
-          y: positionOverLifetime.orbitalY && createValueGetter(positionOverLifetime.orbitalY),
-          z: positionOverLifetime.orbitalZ && createValueGetter(positionOverLifetime.orbitalZ),
-          center: ensureVec3(positionOverLifetime.orbCenter),
-          asRotation: positionOverLifetime.asRotation,
-          enabled: !!orbitalVelEnable,
-        };
-      }
-      this.speedOverLifetime = positionOverLifetime.speedOverLifetime && createValueGetter(positionOverLifetime.speedOverLifetime);
-    }
-
-    if (sizeOverLifetime) {
-      if (sizeOverLifetime.separateAxes) {
-        this.sizeSeparateAxes = true;
-        this.sizeXOverLifetime = createValueGetter(sizeOverLifetime.x || 1);
-        this.sizeYOverLifetime = createValueGetter(sizeOverLifetime.y || 1);
-        this.sizeZOverLifetime = createValueGetter(sizeOverLifetime.z || 1);
-      } else {
-        this.sizeXOverLifetime = createValueGetter(sizeOverLifetime.size || 1);
-      }
-    }
-
-    if (rotationOverLifetime) {
-      this.rotationOverLifetime = {
-        asRotation: rotationOverLifetime.asRotation,
-        separateAxes: rotationOverLifetime.separateAxes,
-        z: createValueGetter(rotationOverLifetime.z || 0),
-      };
-      if (rotationOverLifetime.separateAxes) {
-        const rotLt = this.rotationOverLifetime;
-
-        rotLt.x = createValueGetter(rotationOverLifetime.x || 0);
-        rotLt.y = createValueGetter(rotationOverLifetime.y || 0);
-      }
-    }
-    this.gravity = Vector3.fromArray(positionOverLifetime?.gravity || []);
-    this.gravityModifier = createValueGetter(positionOverLifetime?.gravityOverLifetime ?? 0);
-    this.direction = positionOverLifetime?.direction ? Vector3.fromArray(positionOverLifetime.direction).normalize() : new Vector3();
-    this.startSpeed = positionOverLifetime?.startSpeed || 0;
-
-    this.velocity = this.direction.clone();
-    this.velocity.multiply(this.startSpeed);
-  }
-
   override processFrame (context: FrameContext): void {
-    this.ensureStarted();
-
     const boundObject = context.output.getUserData();
 
     if (!this.originalTransform && boundObject instanceof VFXItem) {
@@ -165,21 +88,14 @@ export class TransformPlayable extends Playable {
    * @param basePosition - orbital position 计算 contribution 时使用的参考位置。
    */
   getContribution (basePosition?: Vector3): TransformContribution {
-    this.ensureStarted();
     this.sampleAnimation(basePosition);
 
     return this.contribution;
   }
 
-  private ensureStarted (): void {
-    if (!this.started) {
-      this.start();
-      this.started = true;
-    }
-  }
-
   private sampleAnimation (basePosition?: Vector3) {
     const out = this.contribution;
+    const curves = this.curves;
 
     out.hasPosition = false;
     out.hasRotation = false;
@@ -194,12 +110,12 @@ export class TransformPlayable extends Playable {
 
     life = life < 0 ? 0 : life;
 
-    if (this.sizeXOverLifetime) {
+    if (curves.sizeXOverLifetime) {
       out.hasScale = true;
-      out.scale.x = this.sizeXOverLifetime.getValue(life);
-      if (this.sizeSeparateAxes) {
-        out.scale.y = this.sizeYOverLifetime.getValue(life);
-        out.scale.z = this.sizeZOverLifetime.getValue(life);
+      out.scale.x = curves.sizeXOverLifetime.getValue(life);
+      if (curves.sizeSeparateAxes) {
+        out.scale.y = curves.sizeYOverLifetime!.getValue(life);
+        out.scale.z = curves.sizeZOverLifetime!.getValue(life);
       } else {
         out.scale.z = out.scale.y = out.scale.x;
       }
@@ -207,36 +123,38 @@ export class TransformPlayable extends Playable {
       out.hasScale = false;
     }
 
-    if (this.rotationOverLifetime) {
-      out.hasRotation = true;
-      const func = (v: ValueGetter<number>) => this.rotationOverLifetime.asRotation ? v.getValue(life) : v.getIntegrateValue(0, life, duration);
-      const incZ = func(this.rotationOverLifetime.z!);
-      const separateAxes = this.rotationOverLifetime.separateAxes;
+    const rotationOverLifetime = curves.rotationOverLifetime;
 
-      tempRot.x = separateAxes ? func(this.rotationOverLifetime.x!) : 0;
-      tempRot.y = separateAxes ? func(this.rotationOverLifetime.y!) : 0;
+    if (rotationOverLifetime) {
+      out.hasRotation = true;
+      const func = (v: ValueGetter<number>) => rotationOverLifetime.asRotation ? v.getValue(life) : v.getIntegrateValue(0, life, duration);
+      const incZ = func(rotationOverLifetime.z!);
+      const separateAxes = rotationOverLifetime.separateAxes;
+
+      tempRot.x = separateAxes ? func(rotationOverLifetime.x!) : 0;
+      tempRot.y = separateAxes ? func(rotationOverLifetime.y!) : 0;
       tempRot.z = incZ;
       out.rotation.copyFrom(tempRot);
     } else {
       out.hasRotation = false;
     }
 
-    if (this.positionOverLifetime) {
+    if (curves.hasPosition) {
       out.hasPosition = true;
       // Orbital position 依赖参考位置；普通 position 可直接从零向量采样位移贡献。
-      const orbitalEnabled = !!this.orbitalVelOverLifetime?.enabled;
+      const orbitalEnabled = !!curves.orbitalVelOverLifetime?.enabled;
 
       if (orbitalEnabled && basePosition) {
-        calculateTranslation(out.position, this, this.gravity, this.time, duration, basePosition, this.velocity);
-        if (this.pathGetter) {
-          out.position.add(this.pathGetter.getValue(life));
+        calculateTranslation(out.position, curves, undefined, this.time, duration, basePosition);
+        if (curves.pathGetter) {
+          out.position.add(curves.pathGetter.getValue(life));
         }
         out.position.subtract(basePosition);
       } else {
         tempPos.set(0, 0, 0);
-        calculateTranslation(out.position, this, this.gravity, this.time, duration, tempPos, this.velocity);
-        if (this.pathGetter) {
-          out.position.add(this.pathGetter.getValue(life));
+        calculateTranslation(out.position, curves, undefined, this.time, duration, tempPos);
+        if (curves.pathGetter) {
+          out.position.add(curves.pathGetter.getValue(life));
         }
       }
     } else {
@@ -253,8 +171,8 @@ export class TransformPlayable extends Playable {
       // TODO 编辑器 scale 没有z轴控制
       scale: new Vector3(scale.x, scale.y, scale.x),
     };
-    if (this.pathGetter) {
-      this.originalTransform.path = this.pathGetter;
+    if (this.curves.pathGetter) {
+      this.originalTransform.path = this.curves.pathGetter;
     }
   }
 }
@@ -262,17 +180,84 @@ export class TransformPlayable extends Playable {
 @effectsClass(spec.DataType.TransformPlayableAsset)
 export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
+  curves: TransformAnimationCurves;
 
   override createPlayable (): Playable {
     const transformPlayable = new TransformPlayable();
 
-    transformPlayable.data = this.transformAnimationData;
+    transformPlayable.curves = this.curves;
 
     return transformPlayable;
   }
 
   override fromData (data: TransformPlayableAssetData): void {
+    super.fromData(data);
     this.transformAnimationData = data;
+
+    const positionOverLifetime = data.positionOverLifetime;
+    const rotationOverLifetime = data.rotationOverLifetime;
+    const sizeOverLifetime = data.sizeOverLifetime;
+    const curves: TransformAnimationCurves = {
+      hasPosition: !!positionOverLifetime && Object.keys(positionOverLifetime).length !== 0,
+      sizeSeparateAxes: !!sizeOverLifetime?.separateAxes,
+    };
+
+    // TODO: 没有 K 帧数据的不需要传 positionOverLifetime 空对象
+    if (positionOverLifetime && curves.hasPosition) {
+      if (positionOverLifetime.path) {
+        curves.pathGetter = createValueGetter(positionOverLifetime.path);
+      }
+      const linearVelEnable = positionOverLifetime.linearX || positionOverLifetime.linearY || positionOverLifetime.linearZ;
+
+      if (linearVelEnable) {
+        curves.linearVelOverLifetime = {
+          x: positionOverLifetime.linearX && createValueGetter(positionOverLifetime.linearX),
+          y: positionOverLifetime.linearY && createValueGetter(positionOverLifetime.linearY),
+          z: positionOverLifetime.linearZ && createValueGetter(positionOverLifetime.linearZ),
+          asMovement: positionOverLifetime.asMovement,
+          enabled: !!linearVelEnable,
+        };
+      }
+
+      const orbitalVelEnable = positionOverLifetime.orbitalX || positionOverLifetime.orbitalY || positionOverLifetime.orbitalZ;
+
+      if (orbitalVelEnable) {
+        curves.orbitalVelOverLifetime = {
+          x: positionOverLifetime.orbitalX && createValueGetter(positionOverLifetime.orbitalX),
+          y: positionOverLifetime.orbitalY && createValueGetter(positionOverLifetime.orbitalY),
+          z: positionOverLifetime.orbitalZ && createValueGetter(positionOverLifetime.orbitalZ),
+          center: ensureVec3(positionOverLifetime.orbCenter),
+          asRotation: positionOverLifetime.asRotation,
+          enabled: !!orbitalVelEnable,
+        };
+      }
+    }
+
+    if (sizeOverLifetime) {
+      if (sizeOverLifetime.separateAxes) {
+        curves.sizeXOverLifetime = createValueGetter(sizeOverLifetime.x || 1);
+        curves.sizeYOverLifetime = createValueGetter(sizeOverLifetime.y || 1);
+        curves.sizeZOverLifetime = createValueGetter(sizeOverLifetime.z || 1);
+      } else {
+        curves.sizeXOverLifetime = createValueGetter(sizeOverLifetime.size || 1);
+      }
+    }
+
+    if (rotationOverLifetime) {
+      curves.rotationOverLifetime = {
+        asRotation: rotationOverLifetime.asRotation,
+        separateAxes: rotationOverLifetime.separateAxes,
+        z: createValueGetter(rotationOverLifetime.z || 0),
+      };
+      if (rotationOverLifetime.separateAxes) {
+        const rotLt = curves.rotationOverLifetime;
+
+        rotLt.x = createValueGetter(rotationOverLifetime.x || 0);
+        rotLt.y = createValueGetter(rotationOverLifetime.y || 0);
+      }
+    }
+
+    this.curves = curves;
   }
 }
 

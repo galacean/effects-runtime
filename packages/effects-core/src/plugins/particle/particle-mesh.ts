@@ -670,21 +670,21 @@ export class ParticleMesh implements ParticleMeshData {
       // Adjust rotation based on the specified lifetime components
         if (this.rotationOverLifetime.x) {
           if (this.rotationOverLifetime.x instanceof RandomValue) {
-            rotation.x += this.rotationOverLifetime.x.getValue(life, aSeed);
+            rotation.x += this.rotationOverLifetime.x.getValue(life, undefined, aSeed);
           } else {
             rotation.x += this.rotationOverLifetime.x.getValue(life);
           }
         }
         if (this.rotationOverLifetime.y) {
           if (this.rotationOverLifetime.y instanceof RandomValue) {
-            rotation.y += this.rotationOverLifetime.y.getValue(life, aSeed);
+            rotation.y += this.rotationOverLifetime.y.getValue(life, undefined, aSeed);
           } else {
             rotation.y += this.rotationOverLifetime.y.getValue(life);
           }
         }
         if (this.rotationOverLifetime.z) {
           if (this.rotationOverLifetime.z instanceof RandomValue) {
-            rotation.z += this.rotationOverLifetime.z.getValue(life, aSeed);
+            rotation.z += this.rotationOverLifetime.z.getValue(life, undefined, aSeed);
           } else {
             rotation.z += this.rotationOverLifetime.z.getValue(life);
           }
@@ -777,21 +777,21 @@ export class ParticleMesh implements ParticleMeshData {
         if (this.linearVelOverLifetime.asMovement) {
           if (this.linearVelOverLifetime.x) {
             if (this.linearVelOverLifetime.x instanceof RandomValue) {
-              linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime, aSeed);
+              linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime, undefined, aSeed);
             } else {
               linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime);
             }
           }
           if (this.linearVelOverLifetime.y) {
             if (this.linearVelOverLifetime.y instanceof RandomValue) {
-              linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime, aSeed);
+              linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime, undefined, aSeed);
             } else {
               linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime);
             }
           }
           if (this.linearVelOverLifetime.z) {
             if (this.linearVelOverLifetime.z instanceof RandomValue) {
-              linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime, aSeed);
+              linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime, undefined, aSeed);
             } else {
               linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime);
             }

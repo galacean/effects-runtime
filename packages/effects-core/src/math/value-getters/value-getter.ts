@@ -55,7 +55,11 @@ export class ValueGetter<T> {
     throw new Error(NOT_IMPLEMENT);
   }
 
-  getValue (time?: number): T {
+  /**
+   * Samples into a caller-owned result when provided and supported.
+   * Scalars and object references return the sampled value directly.
+   */
+  getValue (time?: number, result?: T, seed?: number): T {
     throw new Error(NOT_IMPLEMENT);
   }
 
@@ -145,7 +149,7 @@ export class RandomValue extends ValueGetter<number> {
     this.max = props[1];
   }
 
-  override getValue (time?: number, seed?: number): number {
+  override getValue (time?: number, result?: number, seed?: number): number {
     const randomSeed = seed ?? Math.random();
 
     return this.min + randomSeed * (this.max - this.min);
