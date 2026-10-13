@@ -4,13 +4,12 @@ import { sanitizeNumbers } from '../../../utils';
 const { expect } = chai;
 
 /**
- * Transform clip 叠加（additive）单测。
+ * Transform clip 绝对属性混合单测。
  *
  * 覆盖：
- * - 单 clip：行为与直写一致（base + delta）
- * - 多 clip scale：乘子连乘 base × c1 × c2
- * - 多 clip rotation：Euler 逐分量加权累加
- * - 多 clip position：两段反向位移叠加后抵消回到 base
+ * - 旧数据在迁移后保持单 clip 的表现
+ * - 多 clip 按各自提供的属性归一化加权混合
+ * - 无有效 clip 时保留当前 transform
  */
 describe('core/plugins/calculate/transform-clip-mix', () => {
   const canvas = document.createElement('canvas');
@@ -157,7 +156,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
   });
 
-  it('多 clip scale 乘子连乘（base × c1 × c2）', async () => {
+  it('多 clip scale 混合绝对值', async () => {
     const scene = buildScene(
       [
         { assetId: 'asset_s1', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } },
@@ -170,11 +169,11 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    // base.scale(4) × 2 × 0.5 = 4
-    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([4, 4, 4]);
+    // 迁移后的绝对曲线分别为 8 和 2，等权混合得到 5。
+    expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([5, 5, 5]);
   });
 
-  it('多 clip rotation 逐分量加权累加（base + r1 + r2）', async () => {
+  it('多 clip rotation 混合绝对 Euler 值', async () => {
     const scene = buildScene([
       { assetId: 'asset_r1', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 30 } } },
       { assetId: 'asset_r2', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 60 } } },
@@ -183,11 +182,10 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    // base z=0，两段 clip z 增量 30 + 60 = 90
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 90]);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 
-  it('多 clip position 反向位移叠加后抵消回到 base', async () => {
+  it('多 clip position 混合对称的绝对曲线', async () => {
     const scene = buildScene(
       [
         { assetId: 'asset_p1', asset: { positionOverLifetime: path(4) } },
@@ -199,8 +197,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(2.5);
-    // +4 与 -4 的 X 位移抵消，停在 base position (1,2,0)
-    // 浮点累加 (base + d) - d 存在 ULP 级误差，用容差断言
+    // 两条对称的绝对位置曲线等权混合，得到初始位置 (1,2,0)。
     const pos = sprite.transform.position;
 
     expect(pos.x).to.be.closeTo(1, 1e-5);
@@ -208,7 +205,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.z).to.be.closeTo(0, 1e-5);
   });
 
-  it('clip 结束后恢复被 mixer 写过的 position', async () => {
+  it('clip 结束后保留当前 position', async () => {
     const scene = buildScene(
       [{ assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy }],
       { x: 1, y: 2, z: 0 },
@@ -218,16 +215,15 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+    const previous = sprite.transform.position.toArray();
 
     comp.gotoAndStop(1.5);
     const pos = sprite.transform.position;
 
-    expect(pos.x).to.be.closeTo(1, 1e-5);
-    expect(pos.y).to.be.closeTo(2, 1e-5);
-    expect(pos.z).to.be.closeTo(0, 1e-5);
+    expect(pos.toArray()).to.deep.equal(previous);
   });
 
-  it('position clip 结束但 rotation clip 仍生效时恢复 position', async () => {
+  it('position clip 结束后保留 position，rotation clip 继续生效', async () => {
     const scene = buildScene(
       [
         { assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy },
@@ -240,13 +236,12 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+    const previous = sprite.transform.position.toArray();
 
     comp.gotoAndStop(1.5);
     const pos = sprite.transform.position;
 
-    expect(pos.x).to.be.closeTo(1, 1e-5);
-    expect(pos.y).to.be.closeTo(2, 1e-5);
-    expect(pos.z).to.be.closeTo(0, 1e-5);
+    expect(pos.toArray()).to.deep.equal(previous);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 });

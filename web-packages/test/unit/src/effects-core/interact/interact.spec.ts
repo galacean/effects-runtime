@@ -439,19 +439,7 @@ describe('core/interact/item', () => {
           'velocityOverLifetime': {
             'asMovement': false,
             'linearX': 0.2,
-            'linearY': [
-              'lines',
-              [
-                [
-                  0,
-                  0,
-                ],
-                [
-                  1,
-                  1,
-                ],
-              ],
-            ],
+            'linearY': ['lines', [[0, 0], [1, 1]]],
           },
         },
       },
@@ -473,13 +461,14 @@ describe('core/interact/item', () => {
       },
     ];
     const composition = await generateComposition(items, player, currentTime);
+    const sampleTime = currentTime + 0.01;
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
     clicked = false;
     edgePoints.forEach(p => {
-      const inPos = vp.projectPoint(new Vector3(p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0), new Vector3());
-      const outPos = vp.projectPoint(new Vector3(p[1] + 0.2 * currentTime, p[0] + currentTime * currentTime / 2 / duration, 0), new Vector3());
+      const inPos = vp.projectPoint(new Vector3(p[0] + 0.2 * sampleTime, p[1] + sampleTime * sampleTime / 2 / duration, 0), new Vector3());
+      const outPos = vp.projectPoint(new Vector3(p[1] + 0.2 * sampleTime, p[0] + sampleTime * sampleTime / 2 / duration, 0), new Vector3());
 
       composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
       expect(clicked).to.be.false;

@@ -11,6 +11,7 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
+import { migrateTransformAnimations } from './transform';
 
 let currentMaskComponentId: string | undefined;
 const componentMap: Map<string, spec.ComponentData> = new Map();
@@ -834,7 +835,7 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
 }
 
 /**
- * 3.9 数据适配：将粒子发射器路径迁移到元素的 TransformTrack。
+ * 3.9 数据适配：迁移粒子发射器路径，并将元素 transform 曲线转换为绝对值。
  * 粒子自身的生命周期曲线仍由 ParticleSystem 消费。
  */
 export function version38Migration (json: JSONScene): JSONScene {
@@ -924,6 +925,7 @@ export function version38Migration (json: JSONScene): JSONScene {
     delete particle.emitterTransform;
   }
 
+  migrateTransformAnimations(json);
   json.version = '3.9' as unknown as JSONSceneVersion;
 
   return json;
