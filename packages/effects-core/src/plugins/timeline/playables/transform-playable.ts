@@ -53,7 +53,6 @@ export interface TransformAnimationCurves {
     y?: ValueGetter<number>,
     z?: ValueGetter<number>,
   },
-  gravityModifier: ValueGetter<number>,
   orbitalVelOverLifetime?: {
     x?: ValueGetter<number>,
     y?: ValueGetter<number>,
@@ -62,10 +61,7 @@ export interface TransformAnimationCurves {
     asRotation?: boolean,
     enabled?: boolean,
   },
-  speedOverLifetime?: ValueGetter<number>,
   linearVelOverLifetime?: ItemLinearVelOverLifetime,
-  gravity: Vector3,
-  velocity: Vector3,
   pathGetter?: ValueGetter<Vector3>,
 }
 
@@ -149,14 +145,14 @@ export class TransformPlayable extends Playable {
       const orbitalEnabled = !!curves.orbitalVelOverLifetime?.enabled;
 
       if (orbitalEnabled && basePosition) {
-        calculateTranslation(out.position, curves, curves.gravity, this.time, duration, basePosition, curves.velocity);
+        calculateTranslation(out.position, curves, undefined, this.time, duration, basePosition);
         if (curves.pathGetter) {
           out.position.add(curves.pathGetter.getValue(life));
         }
         out.position.subtract(basePosition);
       } else {
         tempPos.set(0, 0, 0);
-        calculateTranslation(out.position, curves, curves.gravity, this.time, duration, tempPos, curves.velocity);
+        calculateTranslation(out.position, curves, undefined, this.time, duration, tempPos);
         if (curves.pathGetter) {
           out.position.add(curves.pathGetter.getValue(life));
         }
@@ -201,16 +197,9 @@ export class TransformPlayableAsset extends PlayableAsset {
     const positionOverLifetime = data.positionOverLifetime;
     const rotationOverLifetime = data.rotationOverLifetime;
     const sizeOverLifetime = data.sizeOverLifetime;
-    const velocity = positionOverLifetime?.direction ? Vector3.fromArray(positionOverLifetime.direction).normalize() : new Vector3();
-
-    velocity.multiply(positionOverLifetime?.startSpeed || 0);
-
     const curves: TransformAnimationCurves = {
       hasPosition: !!positionOverLifetime && Object.keys(positionOverLifetime).length !== 0,
       sizeSeparateAxes: !!sizeOverLifetime?.separateAxes,
-      gravity: Vector3.fromArray(positionOverLifetime?.gravity || []),
-      gravityModifier: createValueGetter(positionOverLifetime?.gravityOverLifetime ?? 0),
-      velocity,
     };
 
     // TODO: 没有 K 帧数据的不需要传 positionOverLifetime 空对象
@@ -242,7 +231,6 @@ export class TransformPlayableAsset extends PlayableAsset {
           enabled: !!orbitalVelEnable,
         };
       }
-      curves.speedOverLifetime = positionOverLifetime.speedOverLifetime && createValueGetter(positionOverLifetime.speedOverLifetime);
     }
 
     if (sizeOverLifetime) {
