@@ -3,9 +3,7 @@ import type { FrameContext } from '../playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class SubCompositionMixerPlayable extends TrackMixerPlayable {
-  override evaluate (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
-
+  override evaluate (boundObject: object, context: FrameContext): void {
     if (!(boundObject instanceof CompositionComponent)) {
       return;
     }

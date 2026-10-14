@@ -7,8 +7,8 @@ import { Playable } from '../playable';
  */
 export class ActivationPlayable extends Playable {
 
-  override processFrame (context: FrameContext): void {
-    const vfxItem = context.output.getUserData();
+  override processFrame (boundObject: object, context: FrameContext): void {
+    const vfxItem = boundObject;
 
     if (!(vfxItem instanceof VFXItem)) {
       return;

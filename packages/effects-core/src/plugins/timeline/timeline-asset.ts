@@ -109,13 +109,11 @@ export class TimelineInstance {
     const trackInstanceMap: Record<string, TrackInstance> = {};
 
     for (const track of outputTrack) {
-      // Create track mixer and track output
+      // Create track mixer
       const trackMixPlayable = track.createPlayableGraph(this.clips);
 
-      const trackOutput = track.createOutput();
-
       // Create track instance
-      const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
+      const trackInstance = new TrackInstance(track, trackMixPlayable);
 
       trackInstanceMap[track.getInstanceId()] = trackInstance;
 
@@ -146,19 +144,18 @@ export class TimelineInstance {
 
   private tickTrack (track: TrackInstance, deltaTime: number) {
 
-    const context = track.output.context;
+    const context = track.context;
+    const boundObject = track.boundObject;
 
     context.deltaTime = deltaTime;
 
-    track.output.setUserData(track.boundObject);
-
     for (const clip of track.mixer.clipPlayables) {
       if (clip.getPlayState() === PlayState.Playing) {
-        clip.processFrame(context);
+        clip.processFrame(boundObject, context);
       }
     }
 
-    track.mixer.evaluate(context);
+    track.mixer.evaluate(boundObject, context);
 
     for (const child of track.children) {
       this.tickTrack(child, deltaTime);

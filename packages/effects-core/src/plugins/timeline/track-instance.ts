@@ -1,9 +1,9 @@
-import type { PlayableOutput } from './playable';
+import type { FrameContext } from './playable';
 import type { TrackMixerPlayable } from './playables';
 import type { TrackAsset } from './track';
 
 /**
- * A class that stores track assets and the generated mixer playables and playable outputs.
+ * A class that stores track assets, generated mixer playables, bindings, and frame contexts.
  * It is used to query the corresponding playable object based on the track asset.
  */
 export class TrackInstance {
@@ -11,14 +11,13 @@ export class TrackInstance {
 
   trackAsset: TrackAsset;
   mixer: TrackMixerPlayable;
-  output: PlayableOutput;
+  readonly context: FrameContext = { deltaTime: 0 };
 
   children: TrackInstance[] = [];
 
-  constructor (trackAsset: TrackAsset, mixer: TrackMixerPlayable, output: PlayableOutput) {
+  constructor (trackAsset: TrackAsset, mixer: TrackMixerPlayable) {
     this.trackAsset = trackAsset;
     this.mixer = mixer;
-    this.output = output;
 
     this.mixer.trackInstance = this;
   }

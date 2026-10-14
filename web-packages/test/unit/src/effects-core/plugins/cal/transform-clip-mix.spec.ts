@@ -151,7 +151,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
   };
   const evaluateMixer = (mixer: TransformMixerPlayable, weights: number[]) => {
     weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
-    mixer.evaluate(mixer.trackInstance.output.context);
+    mixer.evaluate(mixer.trackInstance.boundObject, mixer.trackInstance.context);
   };
 
   it('单 clip scale 在首次激活时缓存 transform，按剩余权重补齐', async () => {

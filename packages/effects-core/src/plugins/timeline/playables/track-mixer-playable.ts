@@ -8,11 +8,11 @@ export class TrackMixerPlayable extends Playable {
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 
-  override processFrame (context: FrameContext): void {
+  override processFrame (boundObject: object, context: FrameContext): void {
     for (const clipPlayable of this.clipPlayables) {
-      clipPlayable.processFrame(context);
+      clipPlayable.processFrame(boundObject, context);
     }
-    this.evaluate(context);
+    this.evaluate(boundObject, context);
   }
 
   setClipWeight (playable: Playable, weight: number): void;
@@ -44,7 +44,7 @@ export class TrackMixerPlayable extends Playable {
     return this.clipPlayables[index];
   }
 
-  evaluate (context: FrameContext) {
+  evaluate (boundObject: object, context: FrameContext) {
     // Override
   }
 

@@ -3,6 +3,6 @@ import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class ParticleMixerPlayable extends TrackMixerPlayable {
 
-  override evaluate (context: FrameContext): void {
+  override evaluate (boundObject: object, context: FrameContext): void {
   }
 }

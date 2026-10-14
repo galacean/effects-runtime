@@ -41,35 +41,8 @@ export class Playable {
     return this.playState;
   }
 
-  processFrame (context: FrameContext) {
+  processFrame (boundObject: object, context: FrameContext) {
 
-  }
-}
-
-/**
- * 动画图输出节点对象，将动画数据采样到绑定的元素属性上
- * @since 2.0.0
- */
-export class PlayableOutput {
-  /**
-   * 绑定到的动画 item
-   */
-  userData: object;
-  context: FrameContext;
-
-  constructor () {
-    this.context = {
-      deltaTime: 0,
-      output: this,
-    };
-  }
-
-  setUserData (value: object) {
-    this.userData = value;
-  }
-
-  getUserData () {
-    return this.userData;
   }
 }
 
@@ -79,7 +52,6 @@ export abstract class PlayableAsset extends Asset {
 
 export interface FrameContext {
   deltaTime: number,
-  output: PlayableOutput,
 }
 
 export enum PlayState {

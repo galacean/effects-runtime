@@ -6,7 +6,7 @@ export class PropertyClipPlayable<T> extends Playable {
   value: T;
   curve: ValueGetter<T>;
 
-  override processFrame (context: FrameContext): void {
+  override processFrame (boundObject: object, context: FrameContext): void {
     this.value = this.curve.getValue(this.time / this.getDuration(), this.value);
   }
 }

@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { Playable, PlayableAsset } from './playable';
-import { PlayState, PlayableOutput } from './playable';
+import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';
 
@@ -62,12 +62,6 @@ export class TrackAsset extends Asset {
    */
   createTrackMixer (): TrackMixerPlayable {
     return new TrackMixerPlayable();
-  }
-
-  createOutput (): PlayableOutput {
-    const output = new PlayableOutput();
-
-    return output;
   }
 
   createPlayableGraph (runtimeClips: RuntimeClip[]) {

@@ -1,7 +1,7 @@
 import type { Engine, ValueGetter } from '@galacean/effects';
 import {
   ColorPropertyMixerPlayable, ColorPropertyPlayableAsset, FloatPropertyPlayableAsset,
-  PlayableOutput, PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec,
+  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec,
   Vector2PropertyMixerPlayable, Vector2PropertyPlayableAsset,
   Vector3PropertyMixerPlayable, Vector3ropertyPlayableAsset,
   Vector4PropertyMixerPlayable, Vector4PropertyPlayableAsset,
@@ -19,7 +19,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       unregisterObject: () => {},
     },
   } as unknown as Engine;
-  const context = new PlayableOutput().context;
+  const context = { deltaTime: 0 };
   const cases = [
     {
       name: 'Color', Asset: ColorPropertyPlayableAsset, Mixer: ColorPropertyMixerPlayable,
@@ -42,7 +42,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
   function sample<T> (playable: PropertyClipPlayable<T>, time: number) {
     playable.setDuration(1);
     playable.setTime(time);
-    playable.processFrame(context);
+    playable.processFrame({}, context);
   }
 
   function expectComponents (value: SampleValue, offset: number) {
@@ -107,7 +107,6 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       const first = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
       const second = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
       const mixer = new testCase.Mixer();
-      const output = new PlayableOutput();
       const target = { value: first.value.clone() };
 
       first.setDuration(1);
@@ -118,8 +117,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       mixer.clipPlayables.push(first, second);
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
-      output.setUserData(target);
-      mixer.processFrame(output.context);
+      mixer.processFrame(target, context);
 
       expectComponents(target.value, 5);
       expectComponents(first.value, 2.5);

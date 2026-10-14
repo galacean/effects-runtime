@@ -4,9 +4,7 @@ import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class ActivationMixerPlayable extends TrackMixerPlayable {
 
-  override evaluate (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
-
+  override evaluate (boundObject: object, context: FrameContext): void {
     if (!(boundObject instanceof VFXItem)) {
       return;
     }

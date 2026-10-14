@@ -14,9 +14,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   abstract resetPropertyValue (): void;
   abstract addWeightedValue (curveValue: T, weight: number): void;
 
-  override evaluate (context: FrameContext): void {
-    const boundObject = context.output.getUserData() as Record<string, any>;
-
+  override evaluate (boundObject: object, context: FrameContext): void {
     if (!boundObject) {
       return;
     }

@@ -19,8 +19,8 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
   private readonly rotation = new Vector3();
   private readonly scale = new Vector3();
 
-  override evaluate (context: FrameContext): void {
-    const item = context.output.getUserData();
+  override evaluate (boundObject: object, context: FrameContext): void {
+    const item = boundObject;
 
     if (!(item instanceof VFXItem)) {
       return;
