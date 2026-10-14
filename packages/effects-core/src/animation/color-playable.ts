@@ -15,7 +15,6 @@ export interface ColorPlayableAssetData extends spec.EffectsObjectData {
 const tempColor: spec.RGBAColorValue = [1, 1, 1, 1];
 
 export class ColorPlayable extends Playable {
-  clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue };
   colorOverLifetime: ColorStop[];
   opacityOverLifetime: ValueGetter<number>;
   startColor: spec.RGBAColorValue;
@@ -64,7 +63,6 @@ export class ColorPlayable extends Playable {
   }
 
   create (clipData: ColorPlayableAssetData) {
-    this.clipData = clipData;
     const colorOverLifetime = clipData.colorOverLifetime;
 
     if (colorOverLifetime) {
