@@ -64,25 +64,28 @@ export class TrackAsset extends Asset {
     return new TrackMixerPlayable();
   }
 
-  createPlayableGraph (runtimeClips: RuntimeClip[]) {
-    const mixerPlayable = this.createMixerPlayableGraph(runtimeClips);
+  createPlayableGraph () {
+    const mixerPlayable = this.createMixerPlayableGraph();
 
     return mixerPlayable;
   }
 
-  createMixerPlayableGraph (runtimeClips: RuntimeClip[]) {
+  createMixerPlayableGraph () {
     const clips: TimelineClip[] = [];
 
     for (const clip of this.clips) {
       clips.push(clip);
     }
-    const mixerPlayable = this.compileClips(clips, runtimeClips);
+    const mixerPlayable = this.compileClips(clips);
 
     return mixerPlayable;
   }
 
-  compileClips (timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
+  compileClips (timelineClips: TimelineClip[]) {
     const mixer = this.createTrackMixer();
+
+    mixer.sourceTrack = this;
+    mixer.objectBindingId = this.getInstanceId();
 
     for (const timelineClip of timelineClips) {
       const clipPlayable = this.createClipPlayable(timelineClip);
@@ -91,10 +94,7 @@ export class TrackAsset extends Asset {
 
       const clip = new RuntimeClip(timelineClip, clipPlayable, mixer);
 
-      runtimeClips.push(clip);
-
-      mixer.clipPlayables.push(clipPlayable);
-      mixer.setClipWeight(clipPlayable, 0.0);
+      mixer.addRuntimeClip(clip);
     }
 
     return mixer;

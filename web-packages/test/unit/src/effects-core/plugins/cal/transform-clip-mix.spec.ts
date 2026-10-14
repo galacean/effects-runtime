@@ -143,15 +143,17 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     ],
   });
 
-  const getMixer = (comp: Composition): TransformMixerPlayable => {
+  const getTimeline = (comp: Composition): TimelineInstance => {
     const component = comp.sceneRoot.getComponent(CompositionComponent);
-    const timeline = (component as unknown as { timelineInstance: TimelineInstance }).timelineInstance;
 
-    return timeline.masterTrackInstances[0].children.find(track => track.mixer instanceof TransformMixerPlayable)!.mixer as TransformMixerPlayable;
+    return (component as unknown as { timelineInstance: TimelineInstance }).timelineInstance;
   };
-  const evaluateMixer = (mixer: TransformMixerPlayable, weights: number[]) => {
+  const evaluateMixer = (comp: Composition, weights: number[]) => {
+    const timeline = getTimeline(comp);
+    const mixer = timeline.tracks.find(track => track instanceof TransformMixerPlayable)!;
+
     weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
-    mixer.evaluate(mixer.trackInstance.boundObject, mixer.trackInstance.context);
+    mixer.evaluate(timeline.getBoundObject(mixer.objectBindingId)!, { deltaTime: 0 });
   };
 
   it('单 clip scale 在首次激活时缓存 transform，按剩余权重补齐', async () => {
@@ -170,16 +172,14 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     comp.gotoAndStop(1.5);
     // 绝对曲线仍由序列化数据迁移，动画 Z 保留旧数据使用初始 X scale 的规则。
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 8, 6]);
-    const mixer = getMixer(comp);
-
-    evaluateMixer(mixer, [0.5]);
+    evaluateMixer(comp, [0.5]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([8, 14, 18]);
-    evaluateMixer(mixer, [0.5]);
+    evaluateMixer(comp, [0.5]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([8, 14, 18]);
 
     sprite.transform.setPosition(7, 8, 9);
     sprite.transform.setRotation(0, 0, 45);
-    evaluateMixer(mixer, [0]);
+    evaluateMixer(comp, [0]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([10, 20, 30]);
     expect(sprite.transform.position.toArray()).to.deep.equals([7, 8, 9]);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
@@ -200,11 +200,9 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     comp.gotoAndStop(0.5);
     // 迁移后的绝对曲线分别为 8 和 2，等权混合得到 5。
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([5, 5, 5]);
-    const mixer = getMixer(comp);
-
-    evaluateMixer(mixer, [0.25, 0.25]);
+    evaluateMixer(comp, [0.25, 0.25]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([4.5, 4.5, 4.5]);
-    evaluateMixer(mixer, [2, 2]);
+    evaluateMixer(comp, [2, 2]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([5, 5, 5]);
   });
 
@@ -220,7 +218,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
     comp.gotoAndStop(0.5);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 55]);
-    evaluateMixer(getMixer(comp), [0.25, 0.25]);
+    evaluateMixer(comp, [0.25, 0.25]);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 32.5]);
   });
 
@@ -242,7 +240,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.x).to.be.closeTo(1, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
-    evaluateMixer(getMixer(comp), [0.25, 0.5]);
+    evaluateMixer(comp, [0.25, 0.5]);
     // 绝对位置 5 和 -3，加上初始位置 1 的剩余 0.25 权重。
     expect(pos.x).to.be.closeTo(0, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
@@ -286,7 +284,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
     const fullPosition = sprite.transform.position.x;
 
-    evaluateMixer(getMixer(comp), [0.25, 0.5]);
+    evaluateMixer(comp, [0.25, 0.5]);
     expect(sprite.transform.position.x).to.be.closeTo(1 + (fullPosition - 1) * 0.25, 1e-5);
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 22.5]);
 

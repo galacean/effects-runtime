@@ -2,11 +2,11 @@ import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
-import type { RuntimeClip, TrackAsset } from './track';
+import type { TrackAsset } from './track';
 import { ObjectBindingTrack } from './tracks';
-import { PlayState } from './playable';
+import type { FrameContext } from './playable';
+import type { TrackMixerPlayable } from './playables';
 import type { Constructor } from '../../utils';
-import { TrackInstance } from './track-instance';
 import type { SceneBinding } from '../../components';
 
 @effectsClass(spec.DataType.TimelineAsset)
@@ -68,9 +68,13 @@ export class TimelineInstance {
   /**
    * @internal
    */
-  masterTrackInstances: TrackInstance[] = [];
+  readonly masterTracks: TrackMixerPlayable[] = [];
 
-  private clips: RuntimeClip[] = [];
+  /** Compiled evaluators in parent-before-child execution order. @internal */
+  readonly tracks: TrackMixerPlayable[] = [];
+
+  private readonly boundObjects = new Map<string, object>();
+  private readonly context: FrameContext = { deltaTime: 0 };
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
@@ -90,86 +94,57 @@ export class TimelineInstance {
   }
 
   evaluate (time: number, deltaTime: number) {
-    // TODO search active clips
+    this.context.deltaTime = deltaTime;
 
-    for (const clip of this.clips) {
-      clip.evaluateAt(time);
+    for (const track of this.tracks) {
+      track.prepareFrame(time);
     }
 
-    for (const track of this.masterTrackInstances) {
-      this.tickTrack(track, deltaTime);
+    for (const track of this.tracks) {
+      track.processFrame(this.getBoundObject(track.objectBindingId)!, this.context);
     }
   }
 
+  getBoundObject (objectBindingId: string): object | undefined {
+    return this.boundObjects.get(objectBindingId);
+  }
+
   compileTracks (tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
+    this.masterTracks.length = 0;
+    this.tracks.length = 0;
+    this.boundObjects.clear();
 
-    const outputTrack: TrackAsset[] = tracks;
-
-    // Map for searching track instance with track asset guid
-    const trackInstanceMap: Record<string, TrackInstance> = {};
-
-    for (const track of outputTrack) {
-      // Create track mixer
-      const trackMixPlayable = track.createPlayableGraph(this.clips);
-
-      // Create track instance
-      const trackInstance = new TrackInstance(track, trackMixPlayable);
-
-      trackInstanceMap[track.getInstanceId()] = trackInstance;
-
+    for (const track of tracks) {
       if (!track.parent) {
-        this.masterTrackInstances.push(trackInstance);
-      }
-    }
-
-    // Build trackInstance tree
-    for (const track of outputTrack) {
-      const trackInstance = trackInstanceMap[track.getInstanceId()];
-
-      for (const child of track.getChildTracks()) {
-        const childTrackInstance = trackInstanceMap[child.getInstanceId()];
-
-        trackInstance.addChild(childTrackInstance);
+        this.masterTracks.push(this.compileTrack(track));
       }
     }
 
     for (const sceneBinding of sceneBindings) {
-      trackInstanceMap[sceneBinding.key.getInstanceId()].boundObject = sceneBinding.value;
+      this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
     }
 
-    for (const trackInstance of this.masterTrackInstances) {
-      this.updateTrackAnimatedObject(trackInstance);
+    // Resolve inherited bindings once, following the compiled execution order.
+    for (const mixer of this.tracks) {
+      const track = mixer.sourceTrack;
+
+      if (track.parent && !this.boundObjects.has(mixer.objectBindingId)) {
+        const parentObject = this.getBoundObject(track.parent.getInstanceId());
+        const boundObject = track.updateAnimatedObject(parentObject!);
+
+        this.boundObjects.set(mixer.objectBindingId, boundObject);
+      }
     }
   }
 
-  private tickTrack (track: TrackInstance, deltaTime: number) {
+  private compileTrack (track: TrackAsset): TrackMixerPlayable {
+    const mixer = track.createPlayableGraph();
 
-    const context = track.context;
-    const boundObject = track.boundObject;
-
-    context.deltaTime = deltaTime;
-
-    for (const clip of track.mixer.clipPlayables) {
-      if (clip.getPlayState() === PlayState.Playing) {
-        clip.processFrame(boundObject, context);
-      }
+    this.tracks.push(mixer);
+    for (const child of track.getChildTracks()) {
+      this.compileTrack(child);
     }
 
-    track.mixer.evaluate(boundObject, context);
-
-    for (const child of track.children) {
-      this.tickTrack(child, deltaTime);
-    }
-  }
-
-  private updateTrackAnimatedObject (trackInstance: TrackInstance) {
-    for (const subTrack of trackInstance.children) {
-      if (!subTrack.boundObject) {
-        const boundObject = subTrack.trackAsset.updateAnimatedObject(trackInstance.boundObject);
-
-        subTrack.boundObject = boundObject;
-      }
-      this.updateTrackAnimatedObject(subTrack);
-    }
+    return mixer;
   }
 }

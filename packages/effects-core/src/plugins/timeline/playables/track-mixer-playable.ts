@@ -1,16 +1,35 @@
 import type { FrameContext } from '../playable';
-import { Playable } from '../playable';
-import type { TrackInstance } from '../track-instance';
+import { Playable, PlayState } from '../playable';
+import type { RuntimeClip, TrackAsset } from '../track';
 
+/** Compiled track evaluator. Binding objects and frame contexts are supplied by the timeline. */
 export class TrackMixerPlayable extends Playable {
 
-  trackInstance: TrackInstance;
+  sourceTrack: TrackAsset;
+  objectBindingId = '';
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 
+  private readonly runtimeClips: RuntimeClip[] = [];
+
+  addRuntimeClip (clip: RuntimeClip): void {
+    this.runtimeClips.push(clip);
+    this.clipPlayables.push(clip.playable);
+    this.setClipWeight(clip.playable, 0.0);
+  }
+
+  /** Resolve local clip times and weights before any track processes its frame. */
+  prepareFrame (time: number): void {
+    for (const clip of this.runtimeClips) {
+      clip.evaluateAt(time);
+    }
+  }
+
   override processFrame (boundObject: object, context: FrameContext): void {
     for (const clipPlayable of this.clipPlayables) {
-      clipPlayable.processFrame(boundObject, context);
+      if (clipPlayable.getPlayState() === PlayState.Playing) {
+        clipPlayable.processFrame(boundObject, context);
+      }
     }
     this.evaluate(boundObject, context);
   }

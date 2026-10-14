@@ -97,8 +97,8 @@ export class CompositionComponent extends Component {
       this.nestedCompositions = [];
 
       // 收集所有嵌套预合成实例
-      for (const masterTrack of this._timelineInstance.masterTrackInstances) {
-        const boundObject = masterTrack.boundObject;
+      for (const masterTrack of this._timelineInstance.masterTracks) {
+        const boundObject = this._timelineInstance.getBoundObject(masterTrack.objectBindingId);
 
         if (boundObject instanceof VFXItem) {
           const nestedComposition = boundObject.getComponent(CompositionComponent);
@@ -270,8 +270,8 @@ export class CompositionComponent extends Component {
    * 设置当前合成子元素的渲染顺序
    *
    * 1. 按场景树递归（DFS）顺序遍历所有子元素，得到默认排序队列
-   * 2. 收集队列中属于 masterTrackInstances 绑定的 item 及其坑位索引
-   * 3. 按 masterTrackInstances 的顺序重新分配这些坑位，非 track 绑定的元素坑位不变
+   * 2. 收集队列中属于 masterTracks 绑定的 item 及其坑位索引
+   * 3. 按 masterTracks 的顺序重新分配这些坑位，非 track 绑定的元素坑位不变
    * 4. 最终按调整后的队列依次分配 renderOrder
    *
    * @internal
@@ -286,12 +286,14 @@ export class CompositionComponent extends Component {
 
     this.collectChildren(this.item, sceneOrder);
 
-    // 2. 构建 masterTrackInstances 绑定的 item 集合
+    // 2. 构建 masterTracks 绑定的 item 集合
     const trackedItems = new Set<VFXItem>();
 
-    for (const masterTrack of this.timelineInstance.masterTrackInstances) {
-      if (masterTrack.boundObject instanceof VFXItem) {
-        trackedItems.add(masterTrack.boundObject);
+    for (const masterTrack of this.timelineInstance.masterTracks) {
+      const boundObject = this.timelineInstance.getBoundObject(masterTrack.objectBindingId);
+
+      if (boundObject instanceof VFXItem) {
+        trackedItems.add(boundObject);
       }
     }
 
@@ -304,12 +306,14 @@ export class CompositionComponent extends Component {
       }
     }
 
-    // 4. 按 masterTrackInstances 顺序取出 tracked items
+    // 4. 按 masterTracks 顺序取出 tracked items
     const sortedTrackedItems: VFXItem[] = [];
 
-    for (const masterTrack of this.timelineInstance.masterTrackInstances) {
-      if (masterTrack.boundObject instanceof VFXItem) {
-        sortedTrackedItems.push(masterTrack.boundObject);
+    for (const masterTrack of this.timelineInstance.masterTracks) {
+      const boundObject = this.timelineInstance.getBoundObject(masterTrack.objectBindingId);
+
+      if (boundObject instanceof VFXItem) {
+        sortedTrackedItems.push(boundObject);
       }
     }
 
