@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
-import { VFXItem } from '../../../vfx-item';
+import type { VFXItem } from '../../../vfx-item';
 import { ParticleSystem } from '../../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
 import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
@@ -19,7 +19,7 @@ export class ObjectBindingTrack extends TrackAsset {
   create (timelineAsset: TimelineAsset, sceneBindingMap: Record<string, VFXItem>): void {
     const boundItem = sceneBindingMap[this.getInstanceId()];
 
-    if (!(boundItem instanceof VFXItem)) {
+    if (!boundItem) {
       return;
     }
 

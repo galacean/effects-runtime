@@ -1,32 +1,13 @@
-import { VFXItem } from '../../../vfx-item';
+import type { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class ActivationMixerPlayable extends TrackMixerPlayable {
 
-  override evaluate (boundObject: object, context: FrameContext): void {
-    if (!(boundObject instanceof VFXItem)) {
-      return;
-    }
+  override evaluate (boundItem: VFXItem, context: FrameContext): void {
+    const active = this.hasActiveClip();
 
-    const boundItem = boundObject;
-
-    let hasInput = false;
-
-    for (let i = 0; i < this.clipPlayables.length; i++) {
-      if (this.getClipWeight(i) > 0) {
-        hasInput = true;
-
-        break;
-      }
-    }
-
-    if (hasInput) {
-      boundItem.transform.setValid(true);
-      boundItem.setActive(true);
-    } else {
-      boundItem.transform.setValid(false);
-      boundItem.setActive(false);
-    }
+    boundItem.transform.setValid(active);
+    boundItem.setActive(active);
   }
 }

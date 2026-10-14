@@ -122,6 +122,11 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       expectComponents(target.value, 5);
       expectComponents(first.value, 2.5);
       expectComponents(second.value, 7.5);
+
+      mixer.setClipWeight(0, 0);
+      mixer.setClipWeight(1, 0);
+      mixer.processFrame(target, context);
+      expectComponents(target.value, 5);
     });
 
     it(`${testCase.name} writes into the supplied result and preserves getValue behavior`, () => {

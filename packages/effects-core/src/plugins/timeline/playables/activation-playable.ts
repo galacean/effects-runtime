@@ -1,4 +1,4 @@
-import { VFXItem } from '../../../vfx-item';
+import type { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../playable';
 import { Playable } from '../playable';
 
@@ -7,13 +7,7 @@ import { Playable } from '../playable';
  */
 export class ActivationPlayable extends Playable {
 
-  override processFrame (boundObject: object, context: FrameContext): void {
-    const vfxItem = boundObject;
-
-    if (!(vfxItem instanceof VFXItem)) {
-      return;
-    }
-
-    vfxItem.time = this.time;
+  override processFrame (boundObject: VFXItem, context: FrameContext): void {
+    boundObject.time = this.time;
   }
 }

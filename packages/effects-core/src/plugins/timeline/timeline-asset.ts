@@ -101,7 +101,11 @@ export class TimelineInstance {
     }
 
     for (const track of this.tracks) {
-      track.processFrame(this.getBoundObject(track.objectBindingId)!, this.context);
+      const boundObject = this.getBoundObject(track.objectBindingId);
+
+      if (boundObject) {
+        track.processFrame(boundObject, this.context);
+      }
     }
   }
 

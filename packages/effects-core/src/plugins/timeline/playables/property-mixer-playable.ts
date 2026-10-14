@@ -1,6 +1,6 @@
 import { Component } from '../../../components/component';
 import type { FrameContext } from '../playable';
-import { PropertyClipPlayable } from './property-clip-playable';
+import type { PropertyClipPlayable } from './property-clip-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
@@ -15,15 +15,12 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   abstract addWeightedValue (curveValue: T, weight: number): void;
 
   override evaluate (boundObject: object, context: FrameContext): void {
-    if (!boundObject) {
+    if (!this.hasActiveClip()) {
       return;
     }
-
     if (!this.directTarget) {
       this.preparePath(boundObject);
     }
-
-    let hasInput = false;
 
     this.propertyValue = this.directTarget[this.propertyName] as T;
 
@@ -38,28 +35,17 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
       const weight = this.getClipWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getClipPlayable(i) as PropertyClipPlayable<T>;
-
-        if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
-          console.error('PropertyTrack added non-PropertyPlayableAsset');
-          continue;
-        }
-
-        const curveValue = propertyClipPlayable.value;
+        const curveValue = (this.clipPlayables[i] as PropertyClipPlayable<T>).value;
 
         this.addWeightedValue(curveValue, weight);
-
-        hasInput = true;
       }
     }
 
     // set value
-    if (hasInput) {
-      this.directTarget[this.propertyName] = this.propertyValue;
+    this.directTarget[this.propertyName] = this.propertyValue;
 
-      if (boundObject instanceof Component) {
-        boundObject.onApplyAnimationProperties();
-      }
+    if (boundObject instanceof Component) {
+      boundObject.onApplyAnimationProperties();
     }
   }
 
@@ -77,10 +63,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
       directTarget = property;
     }
 
-    if (propertyPathSegments.length > 0) {
-      this.propertyName = propertyPathSegments[propertyPathSegments.length - 1];
-    }
-
+    this.propertyName = propertyPathSegments[propertyPathSegments.length - 1];
     this.directTarget = directTarget;
   }
 }

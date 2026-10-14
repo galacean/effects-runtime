@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { Playable, PlayableAsset } from './playable';
-import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';
 
@@ -65,20 +64,11 @@ export class TrackAsset extends Asset {
   }
 
   createPlayableGraph () {
-    const mixerPlayable = this.createMixerPlayableGraph();
-
-    return mixerPlayable;
+    return this.createMixerPlayableGraph();
   }
 
   createMixerPlayableGraph () {
-    const clips: TimelineClip[] = [];
-
-    for (const clip of this.clips) {
-      clips.push(clip);
-    }
-    const mixerPlayable = this.compileClips(clips);
-
-    return mixerPlayable;
+    return this.compileClips(this.clips);
   }
 
   compileClips (timelineClips: TimelineClip[]) {
@@ -160,6 +150,7 @@ export class TrackAsset extends Asset {
 }
 
 export class RuntimeClip {
+  active = false;
   clip: TimelineClip;
   playable: Playable;
   parentMixer: TrackMixerPlayable;
@@ -172,35 +163,16 @@ export class RuntimeClip {
 
   evaluateAt (localTime: number) {
     const clip = this.clip;
+    const ended = localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy;
 
-    let weight = 1.0;
-    let ended = false;
-    let started = false;
+    this.active = localTime >= clip.start && !ended;
 
-    if (localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy) {
-      weight = 0.0;
-      ended = true;
-    } else if (localTime - this.clip.start >= 0) {
-      weight = 1.0;
-      started = true;
-    } else if (localTime < clip.start) {
-      weight = 0.0;
-    }
-
-    if (started && this.playable.getPlayState() !== PlayState.Playing) {
+    if (this.active) {
       this.playable.play();
+    } else if (ended) {
+      this.playable.pause();
     }
-    this.parentMixer.setClipWeight(this.playable, weight);
-
-    const clipTime = clip.toLocalTime(localTime);
-
-    this.playable.setTime(clipTime);
-
-    // 判断动画是否结束
-    if (ended) {
-      if (this.playable.getPlayState() === PlayState.Playing) {
-        this.playable.pause();
-      }
-    }
+    this.parentMixer.setClipWeight(this.playable, this.active ? 1 : 0);
+    this.playable.setTime(clip.toLocalTime(localTime));
   }
 }

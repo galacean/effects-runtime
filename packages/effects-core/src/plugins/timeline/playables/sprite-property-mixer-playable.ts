@@ -2,7 +2,7 @@ import type { FrameContext } from '../playable';
 import type { SpriteComponent } from '../../sprite/sprite-item';
 import type { Sprite } from '../../sprite/sprite';
 import { TrackMixerPlayable } from './track-mixer-playable';
-import { PropertyClipPlayable } from './property-clip-playable';
+import type { PropertyClipPlayable } from './property-clip-playable';
 
 /**
  * Sprite 属性 K 帧 mixer。对象引用不混合：取首个激活 clip 的阶梯采样值，
@@ -11,18 +11,13 @@ import { PropertyClipPlayable } from './property-clip-playable';
  * 会阻断无初始 sprite 组件的 K 帧）。
  */
 export class SpritePropertyMixerPlayable extends TrackMixerPlayable {
-  override evaluate (boundObject: object, context: FrameContext): void {
-    const spriteComponent = boundObject as SpriteComponent;
-
-    if (!spriteComponent) {
-      return;
-    }
+  override evaluate (spriteComponent: SpriteComponent, context: FrameContext): void {
     // 对象引用不混合：取首个激活 clip 的采样值
     for (let i = 0; i < this.clipPlayables.length; i++) {
       if (this.getClipWeight(i) > 0) {
-        const clip = this.getClipPlayable(i) as PropertyClipPlayable<Sprite>;
+        const clip = this.clipPlayables[i] as PropertyClipPlayable<Sprite>;
 
-        if (clip instanceof PropertyClipPlayable && clip.value) {
+        if (clip.value) {
           spriteComponent.sprite = clip.value;
         }
 

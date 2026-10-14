@@ -1,99 +1,128 @@
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { FrameContext } from '../playable';
-import { VFXItem } from '../../../vfx-item';
-import { TransformPlayable } from './transform-playable';
+import type { VFXItem } from '../../../vfx-item';
+import type { TransformContribution, TransformPlayable } from './transform-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
-/** Mix absolute transform samples, filling remaining weight with the first active transform. */
+interface TransformEvaluationState {
+  /** Lazily captured mixing baseline for the current active clip scopes. */
+  initialValues?: number[],
+  activeClips: Set<TransformPlayable>,
+  nextActiveClips: Set<TransformPlayable>,
+}
+
+/** Blend valid absolute channels and keep the last applied transform when clips expire. */
 export class TransformMixerPlayable extends TrackMixerPlayable {
-  private initialTransform?: {
-    position: Vector3,
-    rotation: Vector3,
-    scale: Vector3,
-  };
-  private hasPosition = false;
-  private hasRotation = false;
-  private hasScale = false;
+  private readonly states = new WeakMap<VFXItem, TransformEvaluationState>();
+  private readonly totals: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  private readonly weights: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  private readonly result: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  private readonly validChannels: boolean[] = [false, false, false, false, false, false, false, false, false];
 
-  private readonly position = new Vector3();
-  private readonly rotation = new Vector3();
-  private readonly scale = new Vector3();
+  // Transform clips are sampled during accumulation, so no separate clip frame pass is needed.
+  override processFrame (item: VFXItem, context: FrameContext): void {
+    this.evaluate(item, context);
+  }
 
-  override evaluate (boundObject: object, context: FrameContext): void {
-    const item = boundObject;
+  override evaluate (item: VFXItem, context: FrameContext): void {
+    let state = this.states.get(item);
 
-    if (!(item instanceof VFXItem)) {
+    if (!state) {
+      state = {
+        activeClips: new Set(), nextActiveClips: new Set(),
+      };
+      this.states.set(item, state);
+    }
+    state.nextActiveClips.clear();
+    this.totals.fill(0);
+    this.weights.fill(0);
+    this.validChannels.fill(false);
+    let hasContinuingClip = false;
+
+    for (let i = 0; i < this.runtimeClips.length; i++) {
+      if (!this.runtimeClips[i].active) {
+        continue;
+      }
+      const playable = this.clipPlayables[i] as TransformPlayable;
+
+      if (this.accumulate(playable.getContribution(), this.clipWeights[i])) {
+        state.nextActiveClips.add(playable);
+        hasContinuingClip ||= state.activeClips.has(playable);
+      }
+    }
+
+    // A new set of clips captures its own baseline without restoring the object.
+    if (!hasContinuingClip) {
+      state.initialValues = undefined;
+    }
+    const previousClips = state.activeClips;
+
+    state.activeClips = state.nextActiveClips;
+    state.nextActiveClips = previousClips;
+
+    if (state.activeClips.size === 0) {
       return;
     }
-    const position = this.position.set(0, 0, 0);
-    const rotation = this.rotation.set(0, 0, 0);
-    const scale = this.scale.set(0, 0, 0);
-    let positionWeight = 0;
-    let rotationWeight = 0;
-    let scaleWeight = 0;
+    this.resolve(item, state);
+    this.writeValues(item, this.result, this.validChannels);
+  }
 
-    for (let i = 0; i < this.clipPlayables.length; i++) {
-      const weight = this.clipWeights[i];
+  private accumulate (contribution: TransformContribution, weight: number): boolean {
+    let hasInput = false;
 
-      if (!(weight > 0)) {
+    for (let channel = 0; channel < 9; channel++) {
+      if (!contribution.validChannels[channel]) {
         continue;
       }
-      const playable = this.clipPlayables[i];
+      this.validChannels[channel] = true;
+      this.totals[channel] += contribution.values[channel] * weight;
+      this.weights[channel] += weight;
+      hasInput = true;
+    }
 
-      if (!(playable instanceof TransformPlayable)) {
+    return hasInput;
+  }
+
+  private resolve (item: VFXItem, state: TransformEvaluationState): void {
+    this.readValues(item, this.result);
+    for (let channel = 0; channel < 9; channel++) {
+      if (!this.validChannels[channel]) {
         continue;
       }
-
-      const contribution = playable.getContribution();
-
-      if (!(contribution.hasPosition || contribution.hasRotation || contribution.hasScale)) {
-        continue;
-      }
-      if (!this.initialTransform) {
-        const initialRotation = item.transform.getRotation();
-
-        this.initialTransform = {
-          position: item.transform.position.clone(),
-          rotation: new Vector3(initialRotation.x, initialRotation.y, initialRotation.z),
-          scale: item.transform.scale.clone(),
-        };
-      }
-      if (contribution.hasPosition) {
-        this.hasPosition = true;
-        positionWeight += weight;
-        position.addScaledVector(contribution.position, weight);
-      }
-      if (contribution.hasRotation) {
-        this.hasRotation = true;
-        rotationWeight += weight;
-        rotation.x += contribution.rotation.x * weight;
-        rotation.y += contribution.rotation.y * weight;
-        rotation.z += contribution.rotation.z * weight;
-      }
-      if (contribution.hasScale) {
-        this.hasScale = true;
-        scaleWeight += weight;
-        scale.addScaledVector(contribution.scale, weight);
+      if (this.weights[channel] > 0) {
+        this.result[channel] = this.totals[channel] / this.weights[channel];
+      } else {
+        // A zero-weight contribution still owns its channels; an absent one does not.
+        state.initialValues ??= this.readValues(item, []);
+        this.result[channel] = state.initialValues[channel];
       }
     }
+  }
 
-    const initial = this.initialTransform;
+  private readValues (item: VFXItem, values: number[]): number[] {
+    const { position, rotation, scale } = item.transform;
 
-    if (!initial) {
-      return;
+    values[0] = position.x;
+    values[1] = position.y;
+    values[2] = position.z;
+    values[3] = rotation.x;
+    values[4] = rotation.y;
+    values[5] = rotation.z;
+    values[6] = scale.x;
+    values[7] = scale.y;
+    values[8] = scale.z;
+
+    return values;
+  }
+
+  private writeValues (item: VFXItem, values: number[], validChannels: boolean[]): void {
+    if (validChannels[0] || validChannels[1] || validChannels[2]) {
+      item.transform.setPosition(values[0], values[1], values[2]);
     }
-    // Keep unrelated attributes untouched; animated attributes fall back at zero weight.
-    if (this.hasPosition) {
-      position.addScaledVector(initial.position, Math.max(0, 1 - positionWeight)).scale(1 / Math.max(1, positionWeight));
-      item.transform.setPosition(position.x, position.y, position.z);
+    if (validChannels[3] || validChannels[4] || validChannels[5]) {
+      item.transform.setRotation(values[3], values[4], values[5]);
     }
-    if (this.hasRotation) {
-      rotation.addScaledVector(initial.rotation, Math.max(0, 1 - rotationWeight)).scale(1 / Math.max(1, rotationWeight));
-      item.transform.setRotation(rotation.x, rotation.y, rotation.z);
-    }
-    if (this.hasScale) {
-      scale.addScaledVector(initial.scale, Math.max(0, 1 - scaleWeight)).scale(1 / Math.max(1, scaleWeight));
-      item.transform.setScale(scale.x, scale.y, scale.z);
+    if (validChannels[6] || validChannels[7] || validChannels[8]) {
+      item.transform.setScale(values[6], values[7], values[8]);
     }
   }
 }

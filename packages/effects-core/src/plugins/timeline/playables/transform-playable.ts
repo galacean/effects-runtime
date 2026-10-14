@@ -1,42 +1,34 @@
-import { Euler } from '@galacean/effects-math/es/core/euler';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { ValueGetter } from '../../../math';
 import { createValueGetter } from '../../../math';
 import { Playable, PlayableAsset } from '../playable';
 
-export type TransformContribution = {
-  hasPosition: boolean,
-  position: Vector3,
-  hasRotation: boolean,
-  rotation: Euler,
-  hasScale: boolean,
-  scale: Vector3,
-};
+function createOptionalCurve (data: spec.FixedNumberExpression | undefined): ValueGetter<number> | undefined {
+  return data === undefined ? undefined : createValueGetter(data);
+}
 
-const createEmptyContribution = (): TransformContribution => ({
-  hasPosition: false,
-  position: new Vector3(),
-  hasRotation: false,
-  rotation: new Euler(),
-  hasScale: false,
-  scale: new Vector3(1, 1, 1),
-});
+export type TransformContribution = {
+  /** Position XYZ, Euler rotation XYZ and scale XYZ. */
+  values: number[],
+  /** Whether each of the nine channels has a sampled value. */
+  validChannels: boolean[],
+};
 
 /** TransformPlayableAsset 反序列化生成的曲线和采样参数，由 playable 共享读取。 */
 export interface TransformAnimationCurves {
+  validChannels: boolean[],
   sizeSeparateAxes: boolean,
   sizeXOverLifetime?: ValueGetter<number>,
   sizeYOverLifetime?: ValueGetter<number>,
   sizeZOverLifetime?: ValueGetter<number>,
   rotationOverLifetime?: {
-    separateAxes?: boolean,
     x?: ValueGetter<number>,
     y?: ValueGetter<number>,
     z?: ValueGetter<number>,
   },
-  pathGetter?: ValueGetter<Vector3>,
+  pathGetter?: ValueGetter<Vector3 | number[]>,
 }
 
 /**
@@ -45,7 +37,10 @@ export interface TransformAnimationCurves {
 export class TransformPlayable extends Playable {
   curves: TransformAnimationCurves;
 
-  private readonly contribution: TransformContribution = createEmptyContribution();
+  private readonly contribution: TransformContribution = {
+    values: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    validChannels: [false, false, false, false, false, false, false, false, false],
+  };
 
   /**
    * 采样当前帧的绝对局部 transform 属性。
@@ -61,46 +56,48 @@ export class TransformPlayable extends Playable {
     const out = this.contribution;
     const curves = this.curves;
 
-    out.hasPosition = false;
-    out.hasRotation = false;
-    out.hasScale = false;
+    out.validChannels.fill(false);
 
     const duration = this.getDuration();
 
     if (duration <= 0) {
       return;
     }
-    let life = this.time / duration;
+    const life = Math.max(0, this.time / duration);
+    const { sizeXOverLifetime, sizeYOverLifetime, sizeZOverLifetime, rotationOverLifetime, pathGetter } = curves;
 
-    life = life < 0 ? 0 : life;
+    if (curves.sizeSeparateAxes) {
+      if (sizeXOverLifetime) { out.values[6] = sizeXOverLifetime.getValue(life); }
+      if (sizeYOverLifetime) { out.values[7] = sizeYOverLifetime.getValue(life); }
+      if (sizeZOverLifetime) { out.values[8] = sizeZOverLifetime.getValue(life); }
+    } else if (sizeXOverLifetime) {
+      const size = sizeXOverLifetime.getValue(life);
 
-    if (curves.sizeXOverLifetime) {
-      out.hasScale = true;
-      out.scale.x = curves.sizeXOverLifetime.getValue(life);
-      if (curves.sizeSeparateAxes) {
-        out.scale.y = curves.sizeYOverLifetime!.getValue(life);
-        out.scale.z = curves.sizeZOverLifetime!.getValue(life);
-      } else {
-        out.scale.z = out.scale.y = out.scale.x;
+      for (let channel = 6; channel < 9; channel++) {
+        out.values[channel] = size;
       }
     }
 
-    const rotationOverLifetime = curves.rotationOverLifetime;
+    if (rotationOverLifetime?.x) { out.values[3] = rotationOverLifetime.x.getValue(life); }
+    if (rotationOverLifetime?.y) { out.values[4] = rotationOverLifetime.y.getValue(life); }
+    if (rotationOverLifetime?.z) { out.values[5] = rotationOverLifetime.z.getValue(life); }
 
-    if (rotationOverLifetime) {
-      out.hasRotation = true;
-      const separateAxes = rotationOverLifetime.separateAxes;
+    if (pathGetter) {
+      const position = pathGetter.getValue(life);
 
-      out.rotation.set(
-        separateAxes ? rotationOverLifetime.x!.getValue(life) : 0,
-        separateAxes ? rotationOverLifetime.y!.getValue(life) : 0,
-        rotationOverLifetime.z!.getValue(life),
-      );
+      // Constant and linear paths return arrays; Bezier paths return Vector3.
+      if (Array.isArray(position)) {
+        out.values[0] = position[0];
+        out.values[1] = position[1];
+        out.values[2] = position[2];
+      } else {
+        out.values[0] = position.x;
+        out.values[1] = position.y;
+        out.values[2] = position.z;
+      }
     }
-
-    if (curves.pathGetter) {
-      out.hasPosition = true;
-      out.position.set(0, 0, 0).add(curves.pathGetter.getValue(life));
+    for (let channel = 0; channel < 9; channel++) {
+      out.validChannels[channel] = curves.validChannels[channel];
     }
   }
 }
@@ -110,7 +107,7 @@ export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
   curves: TransformAnimationCurves;
 
-  override createPlayable (): Playable {
+  override createPlayable (): TransformPlayable {
     const transformPlayable = new TransformPlayable();
 
     transformPlayable.curves = this.curves;
@@ -122,40 +119,34 @@ export class TransformPlayableAsset extends PlayableAsset {
     super.fromData(data);
     this.transformAnimationData = data;
 
-    const positionOverLifetime = data.positionOverLifetime;
+    const path = data.positionOverLifetime?.path;
     const rotationOverLifetime = data.rotationOverLifetime;
     const sizeOverLifetime = data.sizeOverLifetime;
     const curves: TransformAnimationCurves = {
+      validChannels: [],
       sizeSeparateAxes: !!sizeOverLifetime?.separateAxes,
+      sizeXOverLifetime: createOptionalCurve(sizeOverLifetime?.separateAxes ? sizeOverLifetime.x : sizeOverLifetime?.size),
+      sizeYOverLifetime: createOptionalCurve(sizeOverLifetime?.separateAxes ? sizeOverLifetime.y : undefined),
+      sizeZOverLifetime: createOptionalCurve(sizeOverLifetime?.separateAxes ? sizeOverLifetime.z : undefined),
+      rotationOverLifetime: {
+        x: createOptionalCurve(rotationOverLifetime?.separateAxes ? rotationOverLifetime.x : undefined),
+        y: createOptionalCurve(rotationOverLifetime?.separateAxes ? rotationOverLifetime.y : undefined),
+        z: createOptionalCurve(rotationOverLifetime?.z),
+      },
+      pathGetter: path ? createValueGetter(path) : undefined,
     };
 
-    if (positionOverLifetime?.path) {
-      curves.pathGetter = createValueGetter(positionOverLifetime.path);
-    }
-
-    if (sizeOverLifetime) {
-      if (sizeOverLifetime.separateAxes) {
-        curves.sizeXOverLifetime = createValueGetter(sizeOverLifetime.x ?? 1);
-        curves.sizeYOverLifetime = createValueGetter(sizeOverLifetime.y ?? 1);
-        curves.sizeZOverLifetime = createValueGetter(sizeOverLifetime.z ?? 1);
-      } else {
-        curves.sizeXOverLifetime = createValueGetter(sizeOverLifetime.size ?? 1);
-      }
-    }
-
-    if (rotationOverLifetime) {
-      curves.rotationOverLifetime = {
-        separateAxes: rotationOverLifetime.separateAxes,
-        z: createValueGetter(rotationOverLifetime.z || 0),
-      };
-      if (rotationOverLifetime.separateAxes) {
-        const rotLt = curves.rotationOverLifetime;
-
-        rotLt.x = createValueGetter(rotationOverLifetime.x || 0);
-        rotLt.y = createValueGetter(rotationOverLifetime.y || 0);
-      }
-    }
-
+    curves.validChannels = [
+      !!curves.pathGetter,
+      !!curves.pathGetter,
+      !!curves.pathGetter,
+      !!curves.rotationOverLifetime?.x,
+      !!curves.rotationOverLifetime?.y,
+      !!curves.rotationOverLifetime?.z,
+      !!curves.sizeXOverLifetime,
+      curves.sizeSeparateAxes ? !!curves.sizeYOverLifetime : !!curves.sizeXOverLifetime,
+      curves.sizeSeparateAxes ? !!curves.sizeZOverLifetime : !!curves.sizeXOverLifetime,
+    ];
     this.curves = curves;
   }
 }

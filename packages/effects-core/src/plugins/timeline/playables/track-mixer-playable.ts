@@ -10,12 +10,12 @@ export class TrackMixerPlayable extends Playable {
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 
-  private readonly runtimeClips: RuntimeClip[] = [];
+  protected readonly runtimeClips: RuntimeClip[] = [];
 
   addRuntimeClip (clip: RuntimeClip): void {
     this.runtimeClips.push(clip);
     this.clipPlayables.push(clip.playable);
-    this.setClipWeight(clip.playable, 0.0);
+    this.clipWeights.push(0);
   }
 
   /** Resolve local clip times and weights before any track processes its frame. */
@@ -39,19 +39,10 @@ export class TrackMixerPlayable extends Playable {
   setClipWeight (inputIndex: number, weight: number): void;
 
   setClipWeight (playableOrIndex: Playable | number, weight: number): void {
-    if (playableOrIndex instanceof Playable) {
-      for (let i = 0; i < this.clipPlayables.length; i++) {
-        if (this.clipPlayables[i] === playableOrIndex) {
-          this.clipWeights[i] = weight;
+    const index = typeof playableOrIndex === 'number' ? playableOrIndex : this.clipPlayables.indexOf(playableOrIndex);
 
-          return;
-        }
-      }
-    } else {
-      if (this.clipWeights.length < playableOrIndex + 1) {
-        this.clipWeights.length = playableOrIndex + 1;
-      }
-      this.clipWeights[playableOrIndex] = weight;
+    if (index >= 0) {
+      this.clipWeights[index] = weight;
     }
   }
 
@@ -61,6 +52,16 @@ export class TrackMixerPlayable extends Playable {
 
   getClipPlayable (index: number) {
     return this.clipPlayables[index];
+  }
+
+  protected hasActiveClip (): boolean {
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      if (this.clipWeights[i] > 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   evaluate (boundObject: object, context: FrameContext) {
