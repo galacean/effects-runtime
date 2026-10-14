@@ -42,18 +42,19 @@ function bakeAngularVelocity (value: spec.FixedNumberExpression | number, durati
     return [ValueType.LINE, [[0, 0], [1, sample(1)]]];
   }
   const knots = new Set([0, 1]);
+  const addKnot = (time: number): void => {
+    if (time > 0 && time < 1) {
+      knots.add(time);
+    }
+  };
 
   if (getter instanceof BezierCurve) {
     for (const key of getter.getKeyFrames()) {
-      if (key.time > 0) {
-        knots.add(key.time * duration);
-      }
+      addKnot(key.time * duration);
     }
   } else if (getter instanceof LineSegments) {
     for (const key of getter.keys) {
-      if (key[0] > 0) {
-        knots.add(key[0]);
-      }
+      addKnot(key[0]);
     }
   }
   const times = Array.from(knots).sort((a, b) => a - b);
