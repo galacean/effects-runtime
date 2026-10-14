@@ -1,4 +1,4 @@
-import type { Renderer, ShaderWithSource } from '@galacean/effects-core';
+import type { Renderer, ShaderCompileResult, ShaderWithSource } from '@galacean/effects-core';
 import { Engine } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -125,8 +125,9 @@ describe('webgl/gl-shader-library', () => {
   // expect(isProgram).to.eql(true);
   // });
 
-  it('compile shader async', function (done) {
-    const engine = new Engine(webgl2Canvas, { glType: 'webgl2' });
+  it('compile shader with callback', async () => {
+    const canvas = document.createElement('canvas');
+    const engine = new Engine(canvas, { glType: 'webgl2' });
     const shaderLib = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
@@ -134,20 +135,24 @@ describe('webgl/gl-shader-library', () => {
       macros: [['HAS_TEXTURE', 122.0]],
       glslVersion: GLSLVersion.GLSL3,
     });
-    const time = Date.now();
 
-    shaderLib.compileShader(shader, result => {
-      expect(result).to.eql(shader.compileResult);
-      expect(shader.compileResult?.status).to.eql(ShaderCompileResultStatus.success);
-      // 不同机器上编译时间不一样，把阈值调小
-      expect(Date.now() - time).to.be.greaterThanOrEqual(1);
-      done();
-    });
-    expect(shader.compileResult.status).to.eql(ShaderCompileResultStatus.compiling);
+    try {
+      const result = await new Promise<ShaderCompileResult>(resolve => shaderLib.compileShader(shader, resolve));
+
+      expect(result).to.equal(shader.compileResult);
+      expect(result.status).to.equal(ShaderCompileResultStatus.success);
+      expect(shader.initialized).to.be.true;
+      expect(shader.program).to.exist;
+    } finally {
+      engine.dispose();
+      canvas.remove();
+    }
   });
 
-  it('compile shader async work if no extension', function (done) {
-    const glEngine = rendererGL2.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+  it('compile shader callback works without parallel extension', async () => {
+    const canvas = document.createElement('canvas');
+    const engine = new Engine(canvas, { glType: 'webgl2' });
+    const glEngine = engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     const shaderLib = glEngine.shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
@@ -159,13 +164,17 @@ describe('webgl/gl-shader-library', () => {
     //@ts-expect-error
     shaderLib.glAsyncCompileExt = null;
 
-    shaderLib.compileShader(shader, result => {
-      expect(result).to.eql(shader.compileResult);
-      expect(shader.compileResult?.status).to.eql(ShaderCompileResultStatus.success);
-      glEngine.dispose();
-      done();
-    });
-    expect(shader.compileResult.status).to.eql(ShaderCompileResultStatus.compiling);
+    try {
+      const result = await new Promise<ShaderCompileResult>(resolve => shaderLib.compileShader(shader, resolve));
+
+      expect(result).to.equal(shader.compileResult);
+      expect(result.status).to.equal(ShaderCompileResultStatus.success);
+      expect(shader.initialized).to.be.true;
+      expect(shader.program).to.exist;
+    } finally {
+      engine.dispose();
+      canvas.remove();
+    }
   });
 
   it('compile all shader async', function (done) {

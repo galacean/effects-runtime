@@ -248,10 +248,18 @@ describe('core/plugins/sprite/interaction', async () => {
     });
   });
 
-  // 父元素速度变换
-  it('sprite hit test with parent velocityOverLifetime', async () => {
+  // 父元素线性位移与绕中心旋转，迁移后通过绝对 path 采样。
+  it('sprite hit test with parent linear and orbital animation', async () => {
     const size = 1, aspect = 1, currentTime = 1, duration = 2;
-    const json = `[{"id":"1","name":"sprite_1","duration":${duration},"type":"1","parentId":"2","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[${[(size + 0.001), (size + 0.001) / aspect, 1]}]}},{"id":"2","name":"null_2","duration":${duration},"type":"3","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"positionOverLifetime":{"asMovement":false,"linearX":[0,0.2],"linearY":[5,[[0,0],[1,1]]],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"speedOverLifetime":[0,0]}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}]`;
+    const positionOverLifetime: spec.PositionOverLifetime = {
+      asMovement: false,
+      linearX: [spec.ValueType.CONSTANT, 0.2],
+      linearY: [spec.ValueType.LINE, [[0, 0], [1, 1]]],
+      asRotation: false,
+      orbitalZ: [spec.ValueType.CONSTANT, 90],
+      orbCenter: [1, 0, 0],
+    };
+    const json = `[{"id":"1","name":"sprite_1","duration":${duration},"type":"1","parentId":"2","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1},"positionOverLifetime":{}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[${[(size + 0.001), (size + 0.001) / aspect, 1]}]}},{"id":"2","name":"null_2","duration":${duration},"type":"3","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"positionOverLifetime":${JSON.stringify(positionOverLifetime)}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}]`;
     const comp = await loadSceneAndPlay(player, JSON.parse(json), currentTime);
     const width = size, height = width / aspect;
     const vp = comp.camera.getViewProjectionMatrix();
@@ -260,8 +268,8 @@ describe('core/plugins/sprite/interaction', async () => {
     edgePoints.map(p => {
       const inPos = vp.projectPoint(
         Vector3.fromArray([
-          p[0] + 0.2 * currentTime,
-          p[1] + currentTime * currentTime / 2 / duration,
+          p[0] + 1 + 0.2 * currentTime,
+          p[1] + 1 + currentTime * currentTime / 2 / duration,
           0,
         ]),
         new Vector3(),

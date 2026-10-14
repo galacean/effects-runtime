@@ -1,6 +1,8 @@
 import * as spec from '@galacean/effects-specification';
+import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
-import { PlayState, Playable, PlayableAsset, PlayableOutput } from './playable';
+import type { Playable, PlayableAsset } from './playable';
+import { PlayState, PlayableOutput } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';
 
@@ -38,10 +40,9 @@ export class TimelineClip {
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TrackAsset)
-export class TrackAsset extends PlayableAsset {
+export class TrackAsset extends Asset {
   name: string;
   parent: TrackAsset;
-  trackType = TrackType.MasterTrack;
 
   private clipSeed = 0;
 
@@ -105,10 +106,6 @@ export class TrackAsset extends PlayableAsset {
     return mixer;
   }
 
-  override createPlayable (): Playable {
-    return new Playable();
-  }
-
   getChildTracks () {
     return this.children;
   }
@@ -133,14 +130,6 @@ export class TrackAsset extends PlayableAsset {
 
   getClips (): TimelineClip[] {
     return this.clips;
-  }
-
-  findClip (name: string): TimelineClip | undefined {
-    for (const clip of this.clips) {
-      if (clip.name === name) {
-        return clip;
-      }
-    }
   }
 
   addClip (clip: TimelineClip): void {
@@ -176,11 +165,6 @@ export class TrackAsset extends PlayableAsset {
   }
 }
 
-export enum TrackType {
-  MasterTrack,
-  ObjectTrack,
-}
-
 export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
@@ -190,15 +174,6 @@ export class RuntimeClip {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
-  }
-
-  set enable (value: boolean) {
-    if (value) {
-      this.playable.play();
-    } else {
-      this.parentMixer.setClipWeight(this.playable, 0);
-      this.playable.pause();
-    }
   }
 
   evaluateAt (localTime: number) {
@@ -234,11 +209,4 @@ export class RuntimeClip {
       }
     }
   }
-}
-
-/**
- * @since 2.0.0
- */
-export interface TimelineClipData {
-  asset: PlayableAsset,
 }

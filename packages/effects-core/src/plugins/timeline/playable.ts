@@ -1,16 +1,11 @@
 import { Asset } from '../../asset';
-import type { Disposable } from '../../utils';
 
 /**
  * 动画图可播放节点对象
  * @since 2.0.0
  */
-export class Playable implements Disposable {
-  onPlayablePlayFlag = true;
-  onPlayablePauseFlag = false;
-
+export class Playable {
   private duration = 0;
-  private destroyed = false;
   private playState: PlayState = PlayState.Playing;
 
   /**
@@ -18,32 +13,12 @@ export class Playable implements Disposable {
    */
   protected time: number = 0;
 
-  constructor () {}
-
   play () {
-    switch (this.playState) {
-      case PlayState.Playing:
-        break;
-      case PlayState.Paused:
-        this.playState = PlayState.Playing;
-        this.onPlayablePlayFlag = true;
-        this.onPlayablePauseFlag = false;
-
-        break;
-    }
+    this.playState = PlayState.Playing;
   }
 
   pause () {
-    switch (this.playState) {
-      case PlayState.Playing:
-        this.playState = PlayState.Paused;
-        this.onPlayablePauseFlag = true;
-        this.onPlayablePlayFlag = false;
-
-        break;
-      case PlayState.Paused:
-        break;
-    }
+    this.playState = PlayState.Paused;
   }
 
   setTime (time: number) {
@@ -66,33 +41,8 @@ export class Playable implements Disposable {
     return this.playState;
   }
 
-  // onPlayablePlay (context: FrameContext) {
-
-  // }
-
-  // onPlayablePause (context: FrameContext) {
-
-  // }
-
-  prepareFrame (context: FrameContext) {
-
-  }
-
   processFrame (context: FrameContext) {
 
-  }
-
-  onPlayableDestroy () {
-
-  }
-
-  dispose (): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.onPlayableDestroy();
-    // TODO 将节点从动画图中移除
-    this.destroyed = true;
   }
 }
 
@@ -106,10 +56,6 @@ export class PlayableOutput {
    */
   userData: object;
   context: FrameContext;
-  /**
-   * 当前本地播放的时间
-   */
-  protected time: number;
 
   constructor () {
     this.context = {
@@ -124,18 +70,6 @@ export class PlayableOutput {
 
   getUserData () {
     return this.userData;
-  }
-
-  // onGraphStart () {
-
-  // }
-
-  prepareFrame () {
-
-  }
-
-  processFrame () {
-
   }
 }
 
