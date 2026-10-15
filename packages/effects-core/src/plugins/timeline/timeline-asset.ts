@@ -120,17 +120,17 @@ export class TimelineInstance {
     return this.boundObjects.get(objectBindingId);
   }
 
-  compileTracks (rootTracks: TrackAsset[], sceneBindings: SceneBinding[]) {
+  private compileTracks (): void {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.cachedNestedCompositions.length = 0;
     this.boundObjects.clear();
 
-    for (const sceneBinding of sceneBindings) {
+    for (const sceneBinding of this.sceneBindings) {
       this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
     }
 
-    for (const track of rootTracks) {
+    for (const track of this.timelineAsset.tracks) {
       const mixer = this.compileTrack(track);
 
       this.masterTracks.push(mixer);
@@ -171,7 +171,7 @@ export class TimelineInstance {
         track.create(this.timelineAsset, sceneBindingMap);
       }
     }
-    this.compileTracks(this.timelineAsset.tracks, this.sceneBindings);
+    this.compileTracks();
     this.needsCompile = false;
   }
 
