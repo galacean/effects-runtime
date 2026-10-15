@@ -1,13 +1,14 @@
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { TrackAsset } from './track';
 import { ObjectBindingTrack } from './tracks';
 import type { FrameContext } from './playable';
 import type { TrackMixerPlayable } from './playables';
 import type { Constructor } from '../../utils';
 import type { SceneBinding } from '../../components';
+import { CompositionComponent } from '../../components';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends Asset {
@@ -73,6 +74,7 @@ export class TimelineInstance {
   /** Compiled evaluators in parent-before-child execution order. @internal */
   readonly tracks: TrackMixerPlayable[] = [];
 
+  private readonly cachedNestedCompositions: CompositionComponent[] = [];
   private readonly boundObjects = new Map<string, object>();
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
@@ -83,6 +85,15 @@ export class TimelineInstance {
   ) {
     this.rebuild();
     timelineAsset.on('changed', this.onAssetChanged);
+  }
+
+  get nestedCompositions (): CompositionComponent[] {
+    // Playback controls must see edited bindings before the next evaluation.
+    if (this.needsCompile) {
+      this.rebuild();
+    }
+
+    return this.cachedNestedCompositions;
   }
 
   evaluate (time: number, deltaTime: number) {
@@ -112,6 +123,7 @@ export class TimelineInstance {
   compileTracks (rootTracks: TrackAsset[], sceneBindings: SceneBinding[]) {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
+    this.cachedNestedCompositions.length = 0;
     this.boundObjects.clear();
 
     for (const sceneBinding of sceneBindings) {
@@ -119,7 +131,18 @@ export class TimelineInstance {
     }
 
     for (const track of rootTracks) {
-      this.masterTracks.push(this.compileTrack(track));
+      const mixer = this.compileTrack(track);
+
+      this.masterTracks.push(mixer);
+      const boundObject = this.getBoundObject(mixer.objectBindingId);
+
+      if (boundObject instanceof VFXItem) {
+        const composition = boundObject.getComponent(CompositionComponent);
+
+        if (composition) {
+          this.cachedNestedCompositions.push(composition);
+        }
+      }
     }
   }
 
@@ -128,6 +151,7 @@ export class TimelineInstance {
     this.needsCompile = false;
     this.masterTracks.length = 0;
     this.tracks.length = 0;
+    this.cachedNestedCompositions.length = 0;
     this.boundObjects.clear();
   }
 

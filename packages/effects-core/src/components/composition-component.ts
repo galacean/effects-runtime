@@ -56,26 +56,7 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private timelineDirty = false;
-
-  private get nestedCompositions (): CompositionComponent[] {
-    const compositions: CompositionComponent[] = [];
-
-    // Playback controls must see edited roots even before the next evaluation.
-    for (const track of this.timelineAsset?.tracks ?? []) {
-      const boundObject = this.sceneBindings.find(binding => binding.key.getInstanceId() === track.getInstanceId())?.value;
-
-      if (boundObject instanceof VFXItem) {
-        const composition = boundObject.getComponent(CompositionComponent);
-
-        if (composition) {
-          compositions.push(composition);
-        }
-      }
-    }
-
-    return compositions;
-  }
+  private timelineDirty = true;
 
   get endBehavior () {
     return this.item.endBehavior;
@@ -86,7 +67,7 @@ export class CompositionComponent extends Component {
   }
 
   private get timelineInstance (): TimelineInstance | null {
-    if (!this._timelineInstance || this.timelineDirty) {
+    if (this.timelineDirty) {
       this.initializeTimeline();
     }
 
@@ -153,7 +134,7 @@ export class CompositionComponent extends Component {
   pause () {
     this.state = PlayState.Paused;
 
-    for (const subComposition of this.nestedCompositions) {
+    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
       subComposition.pause();
     }
   }
@@ -161,7 +142,7 @@ export class CompositionComponent extends Component {
   play () {
     this.state = PlayState.Playing;
 
-    for (const subComposition of this.nestedCompositions) {
+    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
       subComposition.play();
     }
   }
@@ -171,7 +152,7 @@ export class CompositionComponent extends Component {
     this.time = this.startTime;
     this.resetEndState();
 
-    for (const subComposition of this.nestedCompositions) {
+    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
       subComposition.stop();
     }
   }
