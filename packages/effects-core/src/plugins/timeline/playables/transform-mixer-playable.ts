@@ -38,13 +38,12 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
     this.validChannels.fill(false);
     let hasContinuingClip = false;
 
-    for (let i = 0; i < this.runtimeClips.length; i++) {
-      if (!this.runtimeClips[i].active) {
-        continue;
-      }
-      const playable = this.clipPlayables[i] as TransformPlayable;
+    for (const clip of this.activeClips) {
+      const index = clip.playableIndex;
+      const playable = this.clipPlayables[index] as TransformPlayable;
+      const contribution = playable.getContribution(this.getClipContext(clip, context));
 
-      if (this.accumulate(playable.getContribution(), this.clipWeights[i])) {
+      if (this.accumulate(contribution, this.clipWeights[index])) {
         state.nextActiveClips.add(playable);
         hasContinuingClip ||= state.activeClips.has(playable);
       }

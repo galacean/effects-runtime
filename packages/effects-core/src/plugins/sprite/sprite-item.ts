@@ -84,7 +84,7 @@ export class ComponentTimePlayable extends Playable {
       return;
     }
 
-    boundObject.time = this.time;
+    boundObject.time = context.time;
   }
 }
 

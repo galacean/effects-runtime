@@ -1,7 +1,7 @@
 import type { Engine, ValueGetter } from '@galacean/effects';
 import {
   ColorPropertyMixerPlayable, ColorPropertyPlayableAsset, FloatPropertyPlayableAsset,
-  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec,
+  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec, TimelineClip, TrackAsset,
   Vector2PropertyMixerPlayable, Vector2PropertyPlayableAsset,
   Vector3PropertyMixerPlayable, Vector3ropertyPlayableAsset,
   Vector4PropertyMixerPlayable, Vector4PropertyPlayableAsset,
@@ -19,7 +19,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       unregisterObject: () => {},
     },
   } as unknown as Engine;
-  const context = { deltaTime: 0 };
+  const context = { time: 0, deltaTime: 0 };
   const cases = [
     {
       name: 'Color', Asset: ColorPropertyPlayableAsset, Mixer: ColorPropertyMixerPlayable,
@@ -40,9 +40,8 @@ describe('core/plugins/timeline/property-clip-playable', () => {
   ];
 
   function sample<T> (playable: PropertyClipPlayable<T>, time: number) {
-    playable.setDuration(1);
-    playable.setTime(time);
-    playable.processFrame({}, context);
+    playable.duration = 1;
+    playable.processFrame({}, { time, deltaTime: 0 });
   }
 
   function expectComponents (value: SampleValue, offset: number) {
@@ -104,17 +103,27 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
     it(`${testCase.name} mixes different sample times from a shared curve`, () => {
       const asset = createAsset();
-      const first = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
-      const second = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
+      const track = new TrackAsset(engine);
       const mixer = new testCase.Mixer();
+      const clips = [-0.25, -0.75].map(start => {
+        const clip = new TimelineClip();
+
+        clip.asset = asset;
+        clip.start = start;
+        clip.duration = 1;
+        clip.endBehavior = spec.EndBehavior.destroy;
+
+        return clip;
+      });
+
+      track.createTrackMixer = () => mixer;
+      track.compileClips(clips);
+      mixer.prepareFrame(0);
+      const first = mixer.getClipPlayable(0) as PropertyClipPlayable<SampleValue>;
+      const second = mixer.getClipPlayable(1) as PropertyClipPlayable<SampleValue>;
       const target = { value: first.value.clone() };
 
-      first.setDuration(1);
-      first.setTime(0.25);
-      second.setDuration(1);
-      second.setTime(0.75);
       mixer.propertyPath = 'value';
-      mixer.clipPlayables.push(first, second);
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
       mixer.processFrame(target, context);

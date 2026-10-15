@@ -158,7 +158,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const mixer = timeline.tracks.find(track => track instanceof TransformMixerPlayable)!;
 
     weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
-    mixer.evaluate(timeline.getBoundObject(mixer.objectBindingId)!, { deltaTime: 0 });
+    mixer.evaluate(timeline.getBoundObject(mixer.objectBindingId)!, { time: comp.time, deltaTime: 0 });
   };
 
   it('单 clip scale 归一化低权重，零权重使用独立混合初值', async () => {

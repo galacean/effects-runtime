@@ -31,11 +31,12 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
     this.resetPropertyValue();
 
     // evaluate the curve
-    for (let i = 0; i < this.clipPlayables.length; i++) {
-      const weight = this.getClipWeight(i);
+    for (const clip of this.activeClips) {
+      const index = clip.playableIndex;
+      const weight = this.getClipWeight(index);
 
       if (weight > 0) {
-        const curveValue = (this.clipPlayables[i] as PropertyClipPlayable<T>).value;
+        const curveValue = (this.clipPlayables[index] as PropertyClipPlayable<T>).value;
 
         this.addWeightedValue(curveValue, weight);
       }

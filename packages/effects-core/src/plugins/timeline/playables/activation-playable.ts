@@ -8,6 +8,6 @@ import { Playable } from '../playable';
 export class ActivationPlayable extends Playable {
 
   override processFrame (boundObject: VFXItem, context: FrameContext): void {
-    boundObject.time = this.time;
+    boundObject.time = context.time;
   }
 }

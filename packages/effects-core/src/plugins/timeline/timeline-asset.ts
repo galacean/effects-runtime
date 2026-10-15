@@ -74,7 +74,7 @@ export class TimelineInstance {
   readonly tracks: TrackMixerPlayable[] = [];
 
   private readonly boundObjects = new Map<string, object>();
-  private readonly context: FrameContext = { deltaTime: 0 };
+  private readonly context: FrameContext = { time: 0, deltaTime: 0 };
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
@@ -94,6 +94,7 @@ export class TimelineInstance {
   }
 
   evaluate (time: number, deltaTime: number) {
+    this.context.time = time;
     this.context.deltaTime = deltaTime;
 
     for (const track of this.tracks) {

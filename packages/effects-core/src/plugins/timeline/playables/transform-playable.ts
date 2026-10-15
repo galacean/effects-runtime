@@ -3,6 +3,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { ValueGetter } from '../../../math';
 import { createValueGetter } from '../../../math';
+import type { FrameContext } from '../playable';
 import { Playable, PlayableAsset } from '../playable';
 
 function createOptionalCurve (data: spec.FixedNumberExpression | undefined): ValueGetter<number> | undefined {
@@ -46,24 +47,24 @@ export class TransformPlayable extends Playable {
    * 采样当前帧的绝对局部 transform 属性。
    * 返回值为内部复用对象，调用方应在当前帧同步消费，不应缓存。
    */
-  getContribution (): TransformContribution {
-    this.sampleAnimation();
+  getContribution (context: FrameContext): TransformContribution {
+    this.sampleAnimation(context);
 
     return this.contribution;
   }
 
-  private sampleAnimation () {
+  private sampleAnimation (context: FrameContext) {
     const out = this.contribution;
     const curves = this.curves;
 
     out.validChannels.fill(false);
 
-    const duration = this.getDuration();
+    const duration = this.duration;
 
     if (duration <= 0) {
       return;
     }
-    const life = Math.max(0, this.time / duration);
+    const life = Math.max(0, context.time / duration);
     const { sizeXOverLifetime, sizeYOverLifetime, sizeZOverLifetime, rotationOverLifetime, pathGetter } = curves;
 
     if (curves.sizeSeparateAxes) {

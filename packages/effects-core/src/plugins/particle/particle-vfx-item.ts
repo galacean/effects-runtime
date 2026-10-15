@@ -30,17 +30,17 @@ export class ParticleBehaviourPlayable extends Playable {
       return;
     }
 
-    if (this.time >= 0 && this.time < particleSystem.time) {
+    if (context.time >= 0 && context.time < particleSystem.time) {
       particleSystem.reset();
     }
 
     const maxSimulateTime = 0.016; // simulate at most 16ms one frame to avoid long time step
 
-    while (particleSystem.time + maxSimulateTime < this.time) {
+    while (particleSystem.time + maxSimulateTime < context.time) {
       particleSystem.simulate(maxSimulateTime);
     }
 
-    particleSystem.simulate(this.time - particleSystem.time);
+    particleSystem.simulate(context.time - particleSystem.time);
   }
 }
 

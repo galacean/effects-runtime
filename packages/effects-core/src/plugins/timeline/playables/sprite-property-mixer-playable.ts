@@ -13,9 +13,11 @@ import type { PropertyClipPlayable } from './property-clip-playable';
 export class SpritePropertyMixerPlayable extends TrackMixerPlayable {
   override evaluate (spriteComponent: SpriteComponent, context: FrameContext): void {
     // 对象引用不混合：取首个激活 clip 的采样值
-    for (let i = 0; i < this.clipPlayables.length; i++) {
-      if (this.getClipWeight(i) > 0) {
-        const clip = this.clipPlayables[i] as PropertyClipPlayable<Sprite>;
+    for (const clipData of this.activeClips) {
+      const index = clipData.playableIndex;
+
+      if (this.getClipWeight(index) > 0) {
+        const clip = this.clipPlayables[index] as PropertyClipPlayable<Sprite>;
 
         if (clip.value) {
           spriteComponent.sprite = clip.value;
