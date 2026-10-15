@@ -1,11 +1,16 @@
 precision highp float;
 precision highp int;
 
+#include "./gradient.glsl"
+
 uniform sampler2D uAtlasTex;
 uniform vec2 uTextureSize;
 uniform vec2 uAtlasSize;
 uniform vec2 uTextureOffset;
-uniform vec4 uColor;
+uniform vec2 uExpandedMin;   // upsample 四边形在局部空间的最小点
+uniform vec2 uExpandedSize;  // upsample 四边形的宽高
+uniform vec2 uGradientMin;   // 紧包围盒最小点，渐变 UV 的原点
+uniform vec2 uGradientSize;  // 紧包围盒宽高
 
 uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
 uniform float uIndicatorSoS;  // 1：indicator 与积分一致，直接相加；0：用 fixSingleLayer 消除不一致
@@ -94,8 +99,8 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
       fixSingleLayer(indicators.z, integs.z),
       fixSingleLayer(indicators.w, integs.w)
     );
-    vals = supressLargeNoises(vals);
   }
+  vals = supressLargeNoises(vals);
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);
@@ -107,5 +112,10 @@ void main() {
   vec2 texSize = uTextureSize;
   float opacity = sampleBilinearGather(vTexCoord, texSize);
   opacity = clamp(opacity, 0.0, 1.0);
-  gl_FragColor = vec4(uColor.rgb * uColor.a * opacity, uColor.a * opacity);
+
+  vec2 localPos = uExpandedMin + vTexCoord * uExpandedSize;
+  vec2 gradientUV = (localPos - uGradientMin) / max(uGradientSize, vec2(1e-6));
+  vec4 color = evalGradient(gradientUV);
+
+  gl_FragColor = vec4(color.rgb * color.a * opacity, color.a * opacity);
 }

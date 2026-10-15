@@ -19,7 +19,8 @@ import { glContext } from '../gl';
 import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
-import { VectorFeatherRenderer, getExpandedRadius } from '../math/shape/vector-feather-renderer';
+import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import type { FeatherRect, FeatherSide } from '../math/shape/vector-feather-renderer';
 import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
@@ -171,6 +172,56 @@ export interface PolygonAttribute extends ShapeAttributes {
 const tempMVP = Matrix4.fromIdentity();
 
 /**
+ * 普通绘制使用的子网格
+ */
+const SHAPE_SUBMESH: Record<FeatherSide, number> = { fill: 0, stroke: 1 };
+/**
+ * 羽化 indicator 使用的子网格。其中的扇形三角形会互相重叠，不能直接作为普通网格绘制。
+ */
+const FEATHER_SUBMESH: Record<FeatherSide, number> = { fill: 2, stroke: 3 };
+const SUBMESH_COUNT = 4;
+const FLOATS_PER_TRIANGLE = 6;
+
+function createEmptyFeatherBBox (): FeatherBBox {
+  return {
+    minX: Number.MAX_VALUE,
+    minY: Number.MAX_VALUE,
+    maxX: -Number.MAX_VALUE,
+    maxY: -Number.MAX_VALUE,
+  };
+}
+
+function toFeatherRect (bbox: FeatherBBox): FeatherRect {
+  if (!(bbox.minX < Number.MAX_VALUE)) {
+    return [0, 0, 0, 0];
+  }
+
+  return [bbox.minX, bbox.minY, bbox.maxX - bbox.minX, bbox.maxY - bbox.minY];
+}
+
+function appendIndicatorTriangles (
+  indices: number[],
+  vertices: number[],
+  indexStart: number,
+  indexCount: number,
+  out: number[],
+): void {
+  const end = indexStart + indexCount;
+
+  for (let i = indexStart; i + 2 < end; i += 3) {
+    const i0 = indices[i];
+    const i1 = indices[i + 1];
+    const i2 = indices[i + 2];
+
+    out.push(
+      vertices[i0 * 2], vertices[i0 * 2 + 1],
+      vertices[i1 * 2], vertices[i1 * 2 + 1],
+      vertices[i2 * 2], vertices[i2 * 2 + 1],
+    );
+  }
+}
+
+/**
  * 图形组件
  * @since 2.1.0
  */
@@ -279,19 +330,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       drawCount: 6,
     });
 
-    this.geometry.subMeshes.push({
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    }, {
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    }, {
-      offset: 0,
-      indexCount: 0,
-      vertexCount: 0,
-    });
+    for (let i = 0; i < SUBMESH_COUNT; i++) {
+      this.geometry.subMeshes.push({
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      });
+    }
 
     // 创建羽化渲染器
     this.featherRenderer = new VectorFeatherRenderer(this.engine);
@@ -319,15 +364,18 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    const atlasInfo = this.featherRenderer.atlasInfo;
-    
-    if (atlasInfo) {
-      this.featherRenderer.updateUpsampleQuad(getExpandedRadius(this.featherRenderer.featherRadius, atlasInfo.featherRadiusScreen));
-      this.featherRenderer.drawUpsamplePass(
-        renderer, this.transform.getWorldMatrix(),
-        atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,
-        atlasInfo.textureOffset, this.featherRenderer.featherColor, atlasInfo.featherRadiusScreen,
-      );
+    const atlasLayers = this.featherRenderer.atlasLayers;
+
+    if (atlasLayers && (atlasLayers.fill || atlasLayers.stroke)) {
+      const worldMatrix = this.transform.getWorldMatrix();
+
+      if (atlasLayers.fill) {
+        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'fill', atlasLayers.fill);
+      }
+
+      if (atlasLayers.stroke) {
+        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'stroke', atlasLayers.stroke);
+      }
 
       return;
     }
@@ -344,27 +392,31 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
 
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, SHAPE_SUBMESH.fill);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, SHAPE_SUBMESH.stroke);
     }
   }
 
   private draw (renderer: Renderer) {
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], SHAPE_SUBMESH.fill);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], SHAPE_SUBMESH.stroke);
     }
   }
 
-  drawFeatherIndicatorPass (renderer: Renderer, orthoProjection: Matrix4) {
-    this.featherRenderer.drawIndicatorPass(renderer, orthoProjection, this.geometry, 2);
-  }
+  /**
+   * @internal
+   * 绘制某一侧的非 SoS indicator（调用者需已设置好 FBO 和 viewport）
+   */
+  drawFeatherIndicatorPass = (renderer: Renderer, orthoProjection: Matrix4, side: FeatherSide): void => {
+    this.featherRenderer.drawIndicatorPass(renderer, orthoProjection, this.geometry, FEATHER_SUBMESH[side]);
+  };
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
@@ -415,18 +467,16 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const shapePrimitives = shapePath.shapePrimitives;
     const vertices: number[] = [];
     const indices: number[] = [];
-    const scatterEdgeVertices: number[] = [];
+    const fillScatterEdges: number[] = [];
+    const strokeScatterEdges: number[] = [];
 
     const hasFills = this.fills.length > 0;
     const hasStrokes = this.strokes.length > 0;
     const needFeatherMesh = this.featherRenderer.featherRadius > 0;
-    const featherBBox: FeatherBBox = {
-      minX: Number.MAX_VALUE,
-      minY: Number.MAX_VALUE,
-      maxX: -Number.MAX_VALUE,
-      maxY: -Number.MAX_VALUE,
-    };
-    let scatterEdgeCount = 0;
+    const fillFeatherBBox = createEmptyFeatherBBox();
+    const strokeFeatherBBox = createEmptyFeatherBBox();
+    let fillScatterCount = 0;
+    let strokeScatterCount = 0;
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (hasFills) {
@@ -440,13 +490,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         // 构建羽化数据
         if (needFeatherMesh) {
-          scatterEdgeCount += buildFeatherMeshData(
+          fillScatterCount += buildFeatherMeshData(
             points,
             vertices,
             vertices.length / 2,
             indices,
-            scatterEdgeVertices,
-            featherBBox,
+            fillScatterEdges,
+            fillFeatherBBox,
           );
         } else {
           shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
@@ -454,7 +504,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       }
     }
 
-    const fillIndexCount = needFeatherMesh ? 0 : indices.length;
+    const fillIndexCount = indices.length;
 
     if (hasStrokes) {
       for (const shapePrimitive of shapePrimitives) {
@@ -479,13 +529,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         // 构建羽化数据
         if (needFeatherMesh) {
           const featherLineContours = buildLineContour(points, lineStyle, false, close);
-          scatterEdgeCount += buildContoursFeatherMeshData(
+
+          strokeScatterCount += buildContoursFeatherMeshData(
             featherLineContours,
             vertices,
             vertices.length / 2,
             indices,
-            scatterEdgeVertices,
-            featherBBox,
+            strokeScatterEdges,
+            strokeFeatherBBox,
           );
         } else {
           buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
@@ -558,49 +609,33 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
 
+    const strokeIndexCount = indices.length - fillIndexCount;
+    const activeSubMesh = needFeatherMesh ? FEATHER_SUBMESH : SHAPE_SUBMESH;
+    const inactiveSubMesh = needFeatherMesh ? SHAPE_SUBMESH : FEATHER_SUBMESH;
+    const subMeshes = this.geometry.subMeshes;
+
+    subMeshes[activeSubMesh.fill].offset = 0;
+    subMeshes[activeSubMesh.fill].indexCount = fillIndexCount;
+    subMeshes[activeSubMesh.stroke].offset = fillIndexCount * Uint16Array.BYTES_PER_ELEMENT;
+    subMeshes[activeSubMesh.stroke].indexCount = strokeIndexCount;
+    for (const index of [inactiveSubMesh.fill, inactiveSubMesh.stroke]) {
+      subMeshes[index].offset = 0;
+      subMeshes[index].indexCount = 0;
+    }
+
     if (needFeatherMesh) {
-      const indicatorSubMesh = this.geometry.subMeshes[2];
+      const fillTriangles: number[] = [];
+      const strokeTriangles: number[] = [];
 
-      indicatorSubMesh.offset = 0;
-      indicatorSubMesh.indexCount = indices.length;
-
-      const bbox = featherBBox.minX < Number.MAX_VALUE
-        ? [featherBBox.minX, featherBBox.minY, featherBBox.maxX - featherBBox.minX, featherBBox.maxY - featherBBox.minY] as [number, number, number, number]
-        : [0, 0, 0, 0] as [number, number, number, number];
-
-      const indicatorTriangles: number[] = [];
-
-      for (let i = 0; i + 2 < indices.length; i += 3) {
-        const i0 = indices[i];
-        const i1 = indices[i + 1];
-        const i2 = indices[i + 2];
-
-        indicatorTriangles.push(
-          vertices[i0 * 2], vertices[i0 * 2 + 1],
-          vertices[i1 * 2], vertices[i1 * 2 + 1],
-          vertices[i2 * 2], vertices[i2 * 2 + 1],
-        );
-      }
+      appendIndicatorTriangles(indices, vertices, 0, fillIndexCount, fillTriangles);
+      appendIndicatorTriangles(indices, vertices, fillIndexCount, strokeIndexCount, strokeTriangles);
 
       this.featherRenderer.updateMeshData(
-        scatterEdgeVertices, scatterEdgeCount, bbox,
-        indicatorTriangles, indicatorTriangles.length / 6,
+        fillScatterEdges, fillScatterCount, toFeatherRect(fillFeatherBBox),
+        strokeScatterEdges, strokeScatterCount, toFeatherRect(strokeFeatherBBox),
+        fillTriangles, fillTriangles.length / FLOATS_PER_TRIANGLE,
+        strokeTriangles, strokeTriangles.length / FLOATS_PER_TRIANGLE,
       );
-
-      // 继承颜色: 优先从 fill, 其次从 stroke
-      if (hasFills && this.fills[0].type === spec.FillType.Solid) {
-        this.featherRenderer.featherColor = this.fills[0].color;
-      } else if (hasStrokes && this.strokes[0].type === spec.FillType.Solid) {
-        this.featherRenderer.featherColor = this.strokes[0].color;
-      }
-    } else {
-      const u16Size = 2;
-      const fillSubMesh = this.geometry.subMeshes[0];
-      const strokeSubMesh = this.geometry.subMeshes[1];
-
-      fillSubMesh.indexCount = fillIndexCount;
-      strokeSubMesh.offset = fillIndexCount * u16Size;
-      strokeSubMesh.indexCount = indices.length - fillIndexCount;
     }
   }
 
@@ -728,6 +763,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.strokes.length; i++) {
       this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
     }
+
+    // 继承颜色: 优先从 fill, 其次从 stroke
+    const firstFill = this.fills[0];
+    const firstStroke = this.strokes[0];
+
+    if (firstFill?.type === spec.FillType.Solid) {
+      this.featherRenderer.featherColor = firstFill.color;
+    } else if (firstStroke?.type === spec.FillType.Solid) {
+      this.featherRenderer.featherColor = firstStroke.color;
+    }
+
+    const upsampleMaterials = this.featherRenderer.upsampleMaterials;
+
+    this.updateFeatherPaintMaterial(upsampleMaterials.fill, this.fills);
+    this.updateFeatherPaintMaterial(upsampleMaterials.stroke, this.strokes);
   }
 
   private updatePaintMaterial (material: Material, paint: Paint) {
@@ -759,6 +809,29 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         .invert()
       );
     }
+  }
+
+  /**
+   * 羽化只支持第一个纯色或渐变 paint，其余情况用 featherColor 纯色兜底
+   */
+  private updateFeatherPaintMaterial (material: Material, paints: Paint[]): void {
+    const paint = paints[0];
+
+    if (paint && this.isSolidOrGradient(paint)) {
+      this.updatePaintMaterial(material, paint);
+
+      return;
+    }
+
+    material.setFloat('_FillType', spec.FillType.Solid);
+    material.color = this.featherRenderer.featherColor;
+  }
+
+  private isSolidOrGradient (paint: Paint): paint is SolidPaint | GradientPaint {
+    return paint.type === spec.FillType.Solid
+      || paint.type === spec.FillType.GradientLinear
+      || paint.type === spec.FillType.GradientAngular
+      || paint.type === spec.FillType.GradientRadial;
   }
 
   private updateGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
