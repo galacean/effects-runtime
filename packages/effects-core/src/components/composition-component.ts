@@ -56,6 +56,7 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
+  private timelineDirty = false;
 
   private get nestedCompositions (): CompositionComponent[] {
     const compositions: CompositionComponent[] = [];
@@ -85,7 +86,9 @@ export class CompositionComponent extends Component {
   }
 
   private get timelineInstance (): TimelineInstance | null {
-    this.initializeTimeline();
+    if (!this._timelineInstance || this.timelineDirty) {
+      this.initializeTimeline();
+    }
 
     return this._timelineInstance;
   }
@@ -108,10 +111,15 @@ export class CompositionComponent extends Component {
     this.initializeTimeline();
   }
 
-  private initializeTimeline () {
-    if (!this._timelineInstance && this.timelineAsset) {
+  /** Rebuilds playback from the component's current timeline and bindings. */
+  private initializeTimeline (): void {
+    this._timelineInstance?.dispose();
+    this._timelineInstance = null;
+
+    if (this.timelineAsset) {
       this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
     }
+    this.timelineDirty = false;
   }
 
   override dispose (): void {
@@ -375,12 +383,11 @@ export class CompositionComponent extends Component {
         key: this.findObject<TrackAsset>(binding.key),
         value: this.findObject<VFXItem>(binding.value),
       }));
+      this.timelineDirty = true;
     }
     if (data.timelineAsset !== undefined) {
       this.timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
+      this.timelineDirty = true;
     }
-
-    this._timelineInstance?.dispose();
-    this._timelineInstance = null;
   }
 }
