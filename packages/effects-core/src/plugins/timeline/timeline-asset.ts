@@ -15,11 +15,18 @@ export class TimelineAsset extends Asset {
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;
 
+  /** Invalidates asset caches and notifies timeline instances after an edit. */
+  markAsChanged (): void {
+    this.cacheFlattenedTracks = null;
+    this.eventEmitter.emit('changed', this);
+  }
+
   override fromData (data: spec.TimelineAssetData): void {
     super.fromData(data);
     if (data.tracks !== undefined) {
       this.tracks = data.tracks.map(track => this.findObject<TrackAsset>(track));
-      this.invalidate();
+      // setData emits changed after deserialization.
+      this.cacheFlattenedTracks = null;
     }
   }
 
@@ -42,16 +49,9 @@ export class TimelineAsset extends Asset {
     newTrack.name = name ? name : classConstructor.name;
     parent.addChild(newTrack);
 
-    this.invalidate();
+    this.markAsChanged();
 
     return newTrack;
-  }
-
-  /**
-   * Invalidates the asset, called when tracks data changed
-   */
-  private invalidate () {
-    this.cacheFlattenedTracks = null;
   }
 
   private addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
@@ -75,25 +75,20 @@ export class TimelineInstance {
 
   private readonly boundObjects = new Map<string, object>();
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
+  private needsCompile = false;
 
-  constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
-    const sceneBindingMap: Record<string, VFXItem> = {};
-
-    for (const sceneBinding of sceneBindings) {
-      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
-    }
-
-    // TODO: Hack 临时生成轨道, 待移除
-    for (const track of timelineAsset.tracks) {
-      if (track instanceof ObjectBindingTrack) {
-        track.create(timelineAsset, sceneBindingMap);
-      }
-    }
-
-    this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
+  constructor (
+    private readonly timelineAsset: TimelineAsset,
+    private readonly sceneBindings: SceneBinding[],
+  ) {
+    this.rebuild();
+    timelineAsset.on('changed', this.onAssetChanged);
   }
 
   evaluate (time: number, deltaTime: number) {
+    if (this.needsCompile) {
+      this.rebuild();
+    }
     this.context.time = time;
     this.context.deltaTime = deltaTime;
 
@@ -114,40 +109,61 @@ export class TimelineInstance {
     return this.boundObjects.get(objectBindingId);
   }
 
-  compileTracks (tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
+  compileTracks (rootTracks: TrackAsset[], sceneBindings: SceneBinding[]) {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.boundObjects.clear();
-
-    for (const track of tracks) {
-      if (!track.parent) {
-        this.masterTracks.push(this.compileTrack(track));
-      }
-    }
 
     for (const sceneBinding of sceneBindings) {
       this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
     }
 
-    // Resolve inherited bindings once, following the compiled execution order.
-    for (const mixer of this.tracks) {
-      const track = mixer.sourceTrack;
-
-      if (track.parent && !this.boundObjects.has(mixer.objectBindingId)) {
-        const parentObject = this.getBoundObject(track.parent.getInstanceId());
-        const boundObject = track.updateAnimatedObject(parentObject!);
-
-        this.boundObjects.set(mixer.objectBindingId, boundObject);
-      }
+    for (const track of rootTracks) {
+      this.masterTracks.push(this.compileTrack(track));
     }
   }
 
-  private compileTrack (track: TrackAsset): TrackMixerPlayable {
+  dispose (): void {
+    this.timelineAsset.off('changed', this.onAssetChanged);
+    this.needsCompile = false;
+    this.masterTracks.length = 0;
+    this.tracks.length = 0;
+    this.boundObjects.clear();
+  }
+
+  private readonly onAssetChanged = (): void => {
+    this.needsCompile = true;
+  };
+
+  private rebuild (): void {
+    const sceneBindingMap: Record<string, VFXItem> = {};
+
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
+    }
+    // TODO: Hack 临时生成轨道, 待移除
+    for (const track of this.timelineAsset.tracks) {
+      if (track instanceof ObjectBindingTrack) {
+        track.create(this.timelineAsset, sceneBindingMap);
+      }
+    }
+    this.compileTracks(this.timelineAsset.tracks, this.sceneBindings);
+    this.needsCompile = false;
+  }
+
+  private compileTrack (track: TrackAsset, parent?: TrackAsset): TrackMixerPlayable {
     const mixer = track.createPlayableGraph();
 
+    if (parent && !this.boundObjects.has(mixer.objectBindingId)) {
+      const parentObject = this.getBoundObject(parent.getInstanceId());
+
+      if (parentObject) {
+        this.boundObjects.set(mixer.objectBindingId, track.updateAnimatedObject(parentObject));
+      }
+    }
     this.tracks.push(mixer);
     for (const child of track.getChildTracks()) {
-      this.compileTrack(child);
+      this.compileTrack(child, track);
     }
 
     return mixer;

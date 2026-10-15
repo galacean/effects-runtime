@@ -56,7 +56,25 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private nestedCompositions: CompositionComponent[] = [];
+
+  private get nestedCompositions (): CompositionComponent[] {
+    const compositions: CompositionComponent[] = [];
+
+    // Playback controls must see edited roots even before the next evaluation.
+    for (const track of this.timelineAsset?.tracks ?? []) {
+      const boundObject = this.sceneBindings.find(binding => binding.key.getInstanceId() === track.getInstanceId())?.value;
+
+      if (boundObject instanceof VFXItem) {
+        const composition = boundObject.getComponent(CompositionComponent);
+
+        if (composition) {
+          compositions.push(composition);
+        }
+      }
+    }
+
+    return compositions;
+  }
 
   get endBehavior () {
     return this.item.endBehavior;
@@ -93,22 +111,13 @@ export class CompositionComponent extends Component {
   private initializeTimeline () {
     if (!this._timelineInstance && this.timelineAsset) {
       this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
-
-      this.nestedCompositions = [];
-
-      // 收集所有嵌套预合成实例
-      for (const masterTrack of this._timelineInstance.masterTracks) {
-        const boundObject = this._timelineInstance.getBoundObject(masterTrack.objectBindingId);
-
-        if (boundObject instanceof VFXItem) {
-          const nestedComposition = boundObject.getComponent(CompositionComponent);
-
-          if (nestedComposition) {
-            this.nestedCompositions.push(nestedComposition);
-          }
-        }
-      }
     }
+  }
+
+  override dispose (): void {
+    this._timelineInstance?.dispose();
+    this._timelineInstance = null;
+    super.dispose();
   }
 
   override onEnable () {
@@ -371,6 +380,7 @@ export class CompositionComponent extends Component {
       this.timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
     }
 
+    this._timelineInstance?.dispose();
     this._timelineInstance = null;
   }
 }
