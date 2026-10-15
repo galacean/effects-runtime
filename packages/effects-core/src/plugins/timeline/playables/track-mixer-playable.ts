@@ -23,17 +23,42 @@ export class TrackMixerPlayable {
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 
-  protected activeClips: readonly ClipEvaluationData[] = [];
+  protected allowEmptySegments = false;
 
   private readonly segments: EvaluationSegment[] = [];
+  private activeSegment: EvaluationSegment | null = null;
   private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
+
+  protected get activeClips (): readonly ClipEvaluationData[] {
+    return this.activeSegment?.clips ?? [];
+  }
+
+  /** Whether the current time belongs to a compiled segment, including empty ones. */
+  hasActiveSegment (): boolean {
+    return this.activeSegment !== null;
+  }
+
+  /** Called before the track enters evaluation. */
+  onBeginEvaluation (boundObject: object): void {
+    // Override
+  }
+
+  /** Called after the track leaves evaluation. */
+  onEndEvaluation (boundObject: object): void {
+    // Override
+  }
 
   /** Compile the evaluation ranges supplied by the source track into segments. */
   compileSegments (clips: ClipEvaluationData[]): void {
     this.segments.length = 0;
-    this.activeClips = [];
+    this.activeSegment = null;
     this.clipWeights.fill(0);
     const boundaries = new Set<number>();
+
+    if (this.allowEmptySegments) {
+      boundaries.add(-Infinity);
+      boundaries.add(Infinity);
+    }
 
     for (const clip of clips) {
       const end = clip.endBehavior === spec.EndBehavior.destroy ? clip.start + clip.duration : Infinity;
@@ -57,7 +82,7 @@ export class TrackMixerPlayable {
           activeClips.push(clip);
         }
       }
-      if (activeClips.length > 0) {
+      if (this.allowEmptySegments || activeClips.length > 0) {
         this.segments.push({ start, end: times[i + 1], clips: activeClips });
       }
     }
@@ -65,7 +90,7 @@ export class TrackMixerPlayable {
 
   /** Select the segment containing this time, including backward seeks and gaps. */
   prepareFrame (time: number): void {
-    this.activeClips = [];
+    this.activeSegment = null;
     this.clipWeights.fill(0);
     let lower = 0;
     let upper = this.segments.length - 1;
@@ -79,7 +104,7 @@ export class TrackMixerPlayable {
       } else if (time >= segment.end) {
         lower = index + 1;
       } else {
-        this.activeClips = segment.clips;
+        this.activeSegment = segment;
 
         break;
       }

@@ -77,6 +77,7 @@ export class TimelineInstance {
   private readonly cachedNestedCompositions: CompositionComponent[] = [];
   private readonly cachedOrderedBoundItems: VFXItem[] = [];
   private readonly boundObjects = new Map<string, object>();
+  private readonly evaluatingTracks = new Set<TrackMixerPlayable>();
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
 
@@ -117,10 +118,27 @@ export class TimelineInstance {
       track.prepareFrame(time);
     }
 
+    // End expired tracks before beginning any tracks at the new evaluation time.
+    for (let i = this.tracks.length - 1; i >= 0; i--) {
+      const track = this.tracks[i];
+
+      if (!track.hasActiveSegment()) {
+        this.endEvaluation(track);
+      }
+    }
     for (const track of this.tracks) {
       const boundObject = this.getBoundObject(track.objectBindingId);
 
-      if (boundObject) {
+      if (boundObject && track.hasActiveSegment() && !this.evaluatingTracks.has(track)) {
+        this.evaluatingTracks.add(track);
+        track.onBeginEvaluation(boundObject);
+      }
+    }
+
+    for (const track of this.tracks) {
+      const boundObject = this.getBoundObject(track.objectBindingId);
+
+      if (boundObject && this.evaluatingTracks.has(track)) {
         track.processFrame(boundObject, this.context);
       }
     }
@@ -131,11 +149,7 @@ export class TimelineInstance {
   }
 
   private compileTracks (): void {
-    this.masterTracks.length = 0;
-    this.tracks.length = 0;
-    this.cachedNestedCompositions.length = 0;
-    this.cachedOrderedBoundItems.length = 0;
-    this.boundObjects.clear();
+    this.releaseTracks();
 
     for (const sceneBinding of this.sceneBindings) {
       this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
@@ -161,11 +175,29 @@ export class TimelineInstance {
   dispose (): void {
     this.timelineAsset.off('changed', this.onAssetChanged);
     this.needsCompile = false;
+    this.releaseTracks();
+  }
+
+  private releaseTracks (): void {
+    // End child tracks before their parents, while the old bindings still exist.
+    for (let i = this.tracks.length - 1; i >= 0; i--) {
+      this.endEvaluation(this.tracks[i]);
+    }
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.cachedNestedCompositions.length = 0;
     this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
+  }
+
+  private endEvaluation (track: TrackMixerPlayable): void {
+    if (this.evaluatingTracks.delete(track)) {
+      const boundObject = this.getBoundObject(track.objectBindingId);
+
+      if (boundObject) {
+        track.onEndEvaluation(boundObject);
+      }
+    }
   }
 
   private readonly onAssetChanged = (): void => {

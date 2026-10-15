@@ -1,9 +1,16 @@
 import type { CompositionComponent } from '../../../components';
-import type { FrameContext } from '../playable';
+import { UpdateModes } from '../../../components';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class SubCompositionMixerPlayable extends TrackMixerPlayable {
-  override evaluate (boundObject: CompositionComponent, context: FrameContext): void {
-    boundObject.item.setActive(this.hasActiveClip());
+  private originalUpdateMode: UpdateModes;
+
+  override onBeginEvaluation (boundObject: CompositionComponent): void {
+    this.originalUpdateMode = boundObject.updateMode;
+    boundObject.updateMode = UpdateModes.Manual;
+  }
+
+  override onEndEvaluation (boundObject: CompositionComponent): void {
+    boundObject.updateMode = this.originalUpdateMode;
   }
 }
