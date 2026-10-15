@@ -72,6 +72,17 @@ describe('effects-core/render-target-pool', () => {
       expect(fb2.name).to.equal('nearest');
     });
 
+    it('keeps feather atlas textures separate from targets with anisotropic filtering', () => {
+      const atlas = pool.get('atlas', 64, 64, 0, FilterMode.Nearest, RenderTextureFormat.RGBA32, 1);
+
+      pool.release(atlas);
+      const filtered = pool.get('filtered', 64, 64, 0, FilterMode.Nearest, RenderTextureFormat.RGBA32, 4);
+
+      expect(filtered).not.equals(atlas);
+      pool.release(filtered);
+      expect(pool.get('atlas-again', 64, 64, 0, FilterMode.Nearest, RenderTextureFormat.RGBA32, 1)).equals(atlas);
+    });
+
     it('should create framebuffer with different formats', () => {
       const fb1 = pool.get('rgba32', 32, 32, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
       const fb2 = pool.get('rgbahalf', 32, 32, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);

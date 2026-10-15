@@ -20,3 +20,4 @@ export * from './renderer-feature';
 export * from './graphics';
 export * from './draw-object-pass';
 export * from './text-cache';
+export * from './feather-offscreen-pass';

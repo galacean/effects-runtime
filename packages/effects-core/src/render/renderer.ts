@@ -12,6 +12,7 @@ import { VertexElementType } from './vertex-element-type';
 import { RenderingData } from './rendering-data';
 import type { RenderOptions } from './rendering-data';
 import { DrawObjectPass } from './draw-object-pass';
+import { FeatherOffscreenPass } from './feather-offscreen-pass';
 import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { SceneRendering } from './scene-rendering';
 import type { RendererFeature } from './renderer-feature';
@@ -58,6 +59,7 @@ export class Renderer {
   protected currentFramebuffer: GPUFramebuffer | null = null;
   protected disposed = false;
   private readonly drawObjectPass: DrawObjectPass;
+  private readonly featherOffscreenPass: FeatherOffscreenPass;
   private readonly bloomPass: BloomPass;
   private readonly toneMappingPass: ToneMappingPass;
   private readonly features: RendererFeature[] = [];
@@ -70,6 +72,7 @@ export class Renderer {
 
   constructor (public engine: Engine) {
     this.drawObjectPass = new DrawObjectPass(this);
+    this.featherOffscreenPass = new FeatherOffscreenPass(this);
     this.bloomPass = new BloomPass(this, 7);
     this.toneMappingPass = new ToneMappingPass(this);
   }
@@ -249,6 +252,9 @@ export class Renderer {
     this.activeRenderPassQueue.length = 0;
     this.renderingData = data;
     this.prepareRenderingData(scene, data);
+    if (this.featherOffscreenPass.hasFeatheredShapes(data)) {
+      this.enqueuePass(this.featherOffscreenPass);
+    }
     this.enqueuePass(this.drawObjectPass);
 
     if (options.postProcessingEnabled) {
@@ -355,6 +361,20 @@ export class Renderer {
     }
   }
 
+  drawGeometryInstanced (geometry: Geometry, material: Material, instanceCount: number, subMeshIndex = 0): void {
+    if (!geometry || !material || instanceCount <= 0) {
+      return;
+    }
+    const previousInstanceCount = geometry.instanceCount;
+
+    try {
+      geometry.instanceCount = instanceCount;
+      this.drawGeometry(geometry, math.Matrix4.IDENTITY, material, subMeshIndex);
+    } finally {
+      geometry.instanceCount = previousInstanceCount;
+    }
+  }
+
   getTemporaryRT (
     name: string,
     width: number,
@@ -362,8 +382,9 @@ export class Renderer {
     depthBuffer: number,
     filter: FilterMode,
     format: RenderTextureFormat,
+    anisotropic?: number,
   ): GPUFramebuffer {
-    return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
+    return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format, anisotropic);
   }
 
   releaseTemporaryRT (rt: GPUFramebuffer): void {
@@ -437,6 +458,7 @@ export class Renderer {
     }
 
     this.drawObjectPass.dispose();
+    this.featherOffscreenPass.dispose();
     this.bloomPass.dispose();
     this.toneMappingPass.dispose();
     for (const feature of this.features) {
