@@ -7,10 +7,16 @@ import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import type { Attribute, Renderer } from '../../render';
 import { BufferUsage, Geometry, GLSLVersion } from '../../render';
-import { FilterMode, RenderTextureFormat } from '../../render/gpu-framebuffer';
 import type { Texture } from '../../texture';
-import { TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
+import type { ItemRenderer } from '../../components';
+import type { ShapeContour } from '../../plugins/shape/shape-path';
+import type { Paint } from '../../plugins/shape/shape-material';
+import { applyShapeRendererOptions, isSolidOrGradient, updateShapePaintMaterial } from '../../plugins/shape/shape-material';
+import type { StrokeAttributes } from './build-line';
+import { buildLineContour } from './build-line';
+import type { FeatherBBox } from './feather-mesh-builder';
+import { buildContoursFeatherMeshData, buildFeatherMeshData } from './feather-mesh-builder';
 import indicatorVert from '../../plugins/shape/shaders/feather-indicator.vert.glsl';
 import indicatorFrag from '../../plugins/shape/shaders/feather-indicator.frag.glsl';
 import indicatorSoSVert from '../../plugins/shape/shaders/feather-indicator-sos.vert.glsl';
@@ -57,15 +63,20 @@ export const FEATHER_SIDES: readonly FeatherSide[] = ['fill', 'stroke'];
 
 export type FeatherAtlasLayers = Record<FeatherSide, FeatherAtlasInfo | null>;
 
-/**
- * 绘制某一侧的 indicator（非 SoS 版本），由持有 indicator 几何体的一方实现。
- */
-export type FeatherIndicatorDrawer = (renderer: Renderer, orthoProjection: Matrix4, side: FeatherSide) => void;
-
 export type FeatherRadiusPrep = {
   featherRadius: number,
   featherRadiusScreen: number,
   expandRadius: number,
+};
+
+type FeatherShapeData = {
+  fillContours: readonly ShapeContour[],
+  strokeContours: readonly ShapeContour[],
+  strokeAttributes: StrokeAttributes,
+  fills: readonly Paint[],
+  strokes: readonly Paint[],
+  rendererOptions: ItemRenderer,
+  isMask: boolean,
 };
 
 type InstanceAttributeLayout = {
@@ -99,6 +110,8 @@ const TRIANGLE_ATTRIBUTES: InstanceAttributeLayout[] = [
 ];
 const SCATTER_DATA_SOURCE = 'aEdgeData';
 const TRIANGLE_DATA_SOURCE = 'aTriangleData';
+const INDICATOR_SUBMESH: Record<FeatherSide, number> = { fill: 0, stroke: 1 };
+const FLOATS_PER_TRIANGLE = 6;
 
 /**
  * 矢量羽化渲染器
@@ -121,6 +134,7 @@ export class VectorFeatherRenderer {
    */
   private scatterGeometries: Record<FeatherSide, Geometry>;
   private indicatorSoSGeometries: Record<FeatherSide, Geometry>;
+  private indicatorGeometry: Geometry;
   private upsampleGeometry: Geometry;
 
   private indicatorMaterial: Material;
@@ -128,12 +142,21 @@ export class VectorFeatherRenderer {
   private scatterMaterial: Material;
 
   /**
-   * 填充和描边各自的 Upsample 材质。纯色或渐变 uniform 由 ShapeComponent 在材质变脏时写入。
+   * 填充和描边各自的 Upsample 材质。
    */
   private _upsampleMaterials: Record<FeatherSide, Material>;
   private resourcesInitialized = false;
+  private _enabled = false;
 
-  get upsampleMaterials (): Record<FeatherSide, Material> {
+  get enabled (): boolean {
+    return this._enabled && this.featherRadius > 0;
+  }
+
+  get materials (): Material[] {
+    return this.enabled ? [this.upsampleMaterials.fill, this.upsampleMaterials.stroke] : [];
+  }
+
+  private get upsampleMaterials (): Record<FeatherSide, Material> {
     this.initializeResources();
 
     return this._upsampleMaterials;
@@ -212,6 +235,18 @@ export class VectorFeatherRenderer {
       stroke: this.createInstancedGeometry(TRIANGLE_DATA_SOURCE, TRIANGLE_STRIDE_BYTES, TRIANGLE_ATTRIBUTES),
     };
 
+    this.indicatorGeometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: { type: glContext.FLOAT, size: 2, data: new Float32Array(0) },
+      },
+      mode: glContext.TRIANGLES,
+      drawCount: 0,
+      bufferUsage: BufferUsage.Dynamic,
+    });
+    for (const side of FEATHER_SIDES) {
+      this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH[side]] = { offset: 0, vertexCount: 0 };
+    }
+
     // 单位四边形，局部坐标由顶点着色器用 uExpandedMin / uExpandedSize 计算
     this.upsampleGeometry = Geometry.create(this.engine, {
       attributes: {
@@ -234,9 +269,101 @@ export class VectorFeatherRenderer {
   }
 
   /**
-   * 更新羽化网格数据
+   * 读取配置；具体的 paint 支持条件在 update 中判断。
    */
-  updateMeshData (
+  fromData (data: spec.ShapeComponentData): void {
+    const extData = data as spec.ShapeComponentData & {
+      featherRadius?: number,
+      featherColor?: { r: number, g: number, b: number, a: number },
+    };
+
+    this.featherRadius = extData.featherRadius ?? 0;
+    if (extData.featherColor) {
+      this.featherColor = new Color().copyFrom(extData.featherColor);
+    }
+    this.atlasLayers = null;
+    this._enabled = false;
+  }
+
+  update (data: FeatherShapeData, geometryDirty: boolean, materialDirty: boolean): void {
+    const wasEnabled = this.enabled;
+
+    this._enabled = this.featherRadius > 0 && !data.isMask
+      && data.fills.length <= 1 && data.strokes.length <= 1
+      && data.fills.every(isSolidOrGradient) && data.strokes.every(isSolidOrGradient);
+
+    if (!this.enabled) {
+      this.atlasLayers = null;
+
+      return;
+    }
+    if (geometryDirty || !wasEnabled) {
+      this.updateGeometry(data);
+    }
+    if (materialDirty || !wasEnabled) {
+      this.updateMaterials(data);
+    }
+  }
+
+  private updateGeometry (data: FeatherShapeData): void {
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const fillEdges: number[] = [];
+    const strokeEdges: number[] = [];
+    const fillBBox = createEmptyFeatherBBox();
+    const strokeBBox = createEmptyFeatherBBox();
+    let fillCount = 0;
+    let strokeCount = 0;
+
+    for (const contour of data.fillContours) {
+      fillCount += buildFeatherMeshData(contour.points, vertices, vertices.length / 2, indices, fillEdges, fillBBox);
+    }
+    const fillIndexCount = indices.length;
+
+    for (const contour of data.strokeContours) {
+      const contours = buildLineContour(contour.points, data.strokeAttributes, false, contour.closed);
+
+      strokeCount += buildContoursFeatherMeshData(contours, vertices, vertices.length / 2, indices, strokeEdges, strokeBBox);
+    }
+
+    const fillTriangles: number[] = [];
+    const strokeTriangles: number[] = [];
+
+    appendIndicatorTriangles(indices, vertices, 0, fillIndexCount, fillTriangles);
+    appendIndicatorTriangles(indices, vertices, fillIndexCount, indices.length - fillIndexCount, strokeTriangles);
+    this.updateMeshData(
+      fillEdges, fillCount, toFeatherRect(fillBBox),
+      strokeEdges, strokeCount, toFeatherRect(strokeBBox),
+      fillTriangles, fillTriangles.length / FLOATS_PER_TRIANGLE,
+      strokeTriangles, strokeTriangles.length / FLOATS_PER_TRIANGLE,
+    );
+  }
+
+  private updateMaterials (data: FeatherShapeData): void {
+    const firstFill = data.fills[0];
+    const firstStroke = data.strokes[0];
+
+    if (firstFill?.type === spec.FillType.Solid) {
+      this.featherColor = firstFill.color;
+    } else if (firstStroke?.type === spec.FillType.Solid) {
+      this.featherColor = firstStroke.color;
+    }
+
+    for (const side of FEATHER_SIDES) {
+      const material = this.upsampleMaterials[side];
+      const paint = (side === 'fill' ? data.fills : data.strokes)[0];
+
+      applyShapeRendererOptions(material, data.rendererOptions);
+      if (paint) {
+        updateShapePaintMaterial(material, paint);
+      } else {
+        material.setFloat('_FillType', spec.FillType.Solid);
+        material.color = this.featherColor;
+      }
+    }
+  }
+
+  private updateMeshData (
     fillScatterEdges: number[],
     fillScatterCount: number,
     fillBBox: FeatherRect,
@@ -264,6 +391,19 @@ export class VectorFeatherRenderer {
     this.indicatorSoSGeometries.stroke = this.updateInstancedGeometry(
       this.indicatorSoSGeometries.stroke, TRIANGLE_DATA_SOURCE, TRIANGLE_STRIDE_BYTES, TRIANGLE_ATTRIBUTES, strokeTriangles,
     );
+
+    const positions = new Float32Array([...fillTriangles, ...strokeTriangles]);
+    const buffer = this.indicatorGeometry.getAttributeBuffer('aPos');
+
+    if (!buffer || positions.byteLength > buffer.capacity) {
+      this.indicatorGeometry.setAttribute('aPos', { data: positions, size: 2 }, BufferUsage.Dynamic);
+    } else {
+      this.indicatorGeometry.setAttributeData('aPos', positions);
+    }
+    this.indicatorGeometry.setDrawCount(positions.length / 2);
+    this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH.fill].vertexCount = fillTriangles.length / 2;
+    this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH.stroke].offset = fillTriangles.length / 2;
+    this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH.stroke].vertexCount = strokeTriangles.length / 2;
 
     const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = unionFeatherRect(fillBBox, strokeBBox);
 
@@ -351,12 +491,11 @@ export class VectorFeatherRenderer {
   drawIndicatorPass (
     renderer: Renderer,
     orthoProjection: Matrix4,
-    geometry: Geometry,
-    subMeshIndex: number,
+    side: FeatherSide,
   ): void {
     this.indicatorMaterial.setMatrix('uProjection', orthoProjection);
     renderer.drawGeometry(
-      geometry, Matrix4.IDENTITY, this.indicatorMaterial, subMeshIndex,
+      this.indicatorGeometry, Matrix4.IDENTITY, this.indicatorMaterial, INDICATOR_SUBMESH[side],
     );
   }
 
@@ -449,92 +588,22 @@ export class VectorFeatherRenderer {
     renderer.drawGeometry(this.upsampleGeometry, worldMatrix, material);
   }
 
-  /**
-   * 执行 3-pass 羽化渲染（单 shape 独立渲染，未走批处理时使用）
-   * 先画填充，再画描边。这条非atlas羽化路径应该是废弃的，只做了纯色。
-   * @param drawIndicator - 关闭 indicatorSoS 时用于绘制某一侧的 indicator
-   */
-  render (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
-    featherRadius: number,
-    color: Color,
-    drawIndicator?: FeatherIndicatorDrawer,
-  ): void {
-    const prepared = this.prepareFeatherRadius(renderer, worldMatrix, featherRadius);
+  /** atlas 已准备好时完成合成，否则由组件继续普通绘制。 */
+  render (renderer: Renderer, worldMatrix: Matrix4): boolean {
+    const layers = this.atlasLayers;
 
+    if (!this.enabled || !layers || !(layers.fill || layers.stroke)) {
+      return false;
+    }
     for (const side of FEATHER_SIDES) {
-      const material = this.upsampleMaterials[side];
+      const layer = layers[side];
 
-      material.setFloat('_FillType', spec.FillType.Solid);
-      material.color = color;
-      this.renderSolidLayer(renderer, worldMatrix, side, prepared, drawIndicator);
-    }
-  }
-
-  private renderSolidLayer (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
-    side: FeatherSide,
-    prepared: FeatherRadiusPrep,
-    drawIndicator: FeatherIndicatorDrawer | undefined,
-  ): void {
-    if (!this.layerHasContent(side)) {
-      return;
-    }
-    if (!VectorFeatherRenderer.indicatorSoS && !drawIndicator) {
-      return;
+      if (layer) {
+        this.drawUpsamplePass(renderer, worldMatrix, side, layer);
+      }
     }
 
-    const params = this.createLayerParams(renderer, worldMatrix, this.layerBBox(side), prepared);
-
-    if (!params) {
-      return;
-    }
-
-    const { fboW, fboH, orthoProjection } = params;
-    const viewportOffset = new Vector2(0, 0);
-
-    // 获取临时渲染目标
-    const atlas = renderer.getTemporaryRT(
-      '_FeatherAtlas', fboW, fboH, 0,
-      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-      1, // 禁用各向异性过滤。upsample 用 texture2D 模拟 texelFetch，必须关闭各向异性。
-    );
-
-    // 保存当前帧缓冲
-    const prevFramebuffer = renderer.getFramebuffer();
-    const prevViewport = renderer.getViewport();
-
-    // === Pass 1 & 2: Indicator + Scatter → Atlas FBO ===
-    renderer.setFramebuffer(atlas);
-    renderer.setViewport(0, 0, fboW, fboH);
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      clearColor: [0, 0, 0, 0],
-    });
-
-    if (VectorFeatherRenderer.indicatorSoS) {
-      this.drawIndicatorSoSPass(renderer, params, viewportOffset, side);
-    } else if (drawIndicator) {
-      drawIndicator(renderer, orthoProjection, side);
-    }
-    this.drawScatterPass(renderer, params, viewportOffset, side);
-
-    renderer.setFramebuffer(prevFramebuffer);
-    renderer.setViewport(...prevViewport);
-
-    const layer: FeatherAtlasInfo = {
-      atlasTexture: atlas.getColorTextures()[0],
-      atlasSize: new Vector2(fboW, fboH),
-      textureOffset: viewportOffset,
-      textureSize: new Vector2(fboW, fboH),
-      featherRadiusScreen: params.featherRadiusScreen,
-      expandedRect: params.localRect,
-    };
-
-    this.drawUpsamplePass(renderer, worldMatrix, side, layer);
-    renderer.releaseTemporaryRT(atlas);
+    return true;
   }
 
   private updateInstancedGeometry (
@@ -696,6 +765,7 @@ export class VectorFeatherRenderer {
 
   dispose (): void {
     this.atlasLayers = null;
+    this._enabled = false;
     if (!this.resourcesInitialized) {
       return;
     }
@@ -705,6 +775,7 @@ export class VectorFeatherRenderer {
       this._upsampleMaterials[side].dispose();
     }
     this.upsampleGeometry?.dispose();
+    this.indicatorGeometry.dispose();
     this.indicatorMaterial?.dispose();
     this.indicatorSoSMaterial?.dispose();
     this.scatterMaterial?.dispose();
@@ -722,6 +793,36 @@ export class VectorFeatherRenderer {
     };
 
     return Material.create(this.engine, materialProps);
+  }
+}
+
+function createEmptyFeatherBBox (): FeatherBBox {
+  return { minX: Number.MAX_VALUE, minY: Number.MAX_VALUE, maxX: -Number.MAX_VALUE, maxY: -Number.MAX_VALUE };
+}
+
+function toFeatherRect (bbox: FeatherBBox): FeatherRect {
+  if (!(bbox.minX < Number.MAX_VALUE)) {
+    return [0, 0, 0, 0];
+  }
+
+  return [bbox.minX, bbox.minY, bbox.maxX - bbox.minX, bbox.maxY - bbox.minY];
+}
+
+function appendIndicatorTriangles (
+  indices: number[],
+  vertices: number[],
+  indexStart: number,
+  indexCount: number,
+  out: number[],
+): void {
+  const end = indexStart + indexCount;
+
+  for (let i = indexStart; i + 2 < end; i += 3) {
+    const i0 = indices[i] * 2;
+    const i1 = indices[i + 1] * 2;
+    const i2 = indices[i + 2] * 2;
+
+    out.push(vertices[i0], vertices[i0 + 1], vertices[i1], vertices[i1 + 1], vertices[i2], vertices[i2 + 1]);
   }
 }
 

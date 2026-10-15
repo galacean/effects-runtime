@@ -7,11 +7,11 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { Maskable, MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
+import { Material, getPreMultiAlpha } from '../../material';
 import type { Renderer } from '../../render';
 import { BufferUsage, GLSLVersion, Geometry, VertexElementType } from '../../render';
 import type { GradientValue, StrokeAttributes } from '../../math';
-import { Polygon, buildLine, buildLineContour, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
@@ -20,49 +20,15 @@ import vert from './shaders/shape.vert.glsl';
 import frag from './shaders/shape.frag.glsl';
 import { TrimPath } from './trim-path';
 import { GraphicsPath } from './graphics-path';
-import type { ShapePath } from './shape-path';
+import type { ShapeContour, ShapePath } from './shape-path';
 import type { BoundingBoxInfo } from '../interact/mesh-collider';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { VectorFeatherRenderer } from '../../math/shape/vector-feather-renderer';
-import type { FeatherRect, FeatherSide } from '../../math/shape/vector-feather-renderer';
-import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../../math/shape/feather-mesh-builder';
-import type { FeatherBBox } from '../../math/shape/feather-mesh-builder';
+import type { Paint, SolidPaint } from './shape-material';
+import { applyShapeRendererOptions, updateShapePaintMaterial } from './shape-material';
 
-type Paint = SolidPaint | GradientPaint | TexturePaint;
-
-export interface SolidPaint {
-  type: spec.FillType.Solid,
-  color: Color,
-}
-
-export interface GradientPaint {
-  type: spec.FillType.GradientLinear | spec.FillType.GradientAngular | spec.FillType.GradientRadial,
-  gradientStops: GradientValue,
-  startPoint: Vector2,
-  endPoint: Vector2,
-}
-
-export interface TextureTransform {
-  offset: Vector2,
-  rotation: number,
-  scale: Vector2,
-}
-
-export interface TexturePaint {
-  type: spec.FillType.Texture,
-  texture: Texture,
-  scaleMode: TexturePaintScaleMode,
-  scalingFactor: number,
-  opacity: number,
-  textureTransform: TextureTransform,
-}
-
-export enum TexturePaintScaleMode {
-  Fill,
-  Fit,
-  Crop,
-  Tile
-}
+export type { SolidPaint, GradientPaint, TextureTransform, TexturePaint } from './shape-material';
+export { TexturePaintScaleMode } from './shape-material';
 
 interface ShapeAttributes {
   /**
@@ -176,52 +142,8 @@ export interface PolygonAttribute extends ShapeAttributes {
 /**
  * 普通绘制使用的子网格
  */
-const SHAPE_SUBMESH: Record<FeatherSide, number> = { fill: 0, stroke: 1 };
-/**
- * 羽化 indicator 使用的子网格。其中的扇形三角形会互相重叠，不能直接作为普通网格绘制。
- */
-const FEATHER_SUBMESH: Record<FeatherSide, number> = { fill: 2, stroke: 3 };
-const SUBMESH_COUNT = 4;
-const FLOATS_PER_TRIANGLE = 6;
-
-function createEmptyFeatherBBox (): FeatherBBox {
-  return {
-    minX: Number.MAX_VALUE,
-    minY: Number.MAX_VALUE,
-    maxX: -Number.MAX_VALUE,
-    maxY: -Number.MAX_VALUE,
-  };
-}
-
-function toFeatherRect (bbox: FeatherBBox): FeatherRect {
-  if (!(bbox.minX < Number.MAX_VALUE)) {
-    return [0, 0, 0, 0];
-  }
-
-  return [bbox.minX, bbox.minY, bbox.maxX - bbox.minX, bbox.maxY - bbox.minY];
-}
-
-function appendIndicatorTriangles (
-  indices: number[],
-  vertices: number[],
-  indexStart: number,
-  indexCount: number,
-  out: number[],
-): void {
-  const end = indexStart + indexCount;
-
-  for (let i = indexStart; i + 2 < end; i += 3) {
-    const i0 = indices[i];
-    const i1 = indices[i + 1];
-    const i2 = indices[i + 2];
-
-    out.push(
-      vertices[i0 * 2], vertices[i0 * 2 + 1],
-      vertices[i1 * 2], vertices[i1 * 2 + 1],
-      vertices[i2 * 2], vertices[i2 * 2 + 1],
-    );
-  }
-}
+const SHAPE_SUBMESH = { fill: 0, stroke: 1 };
+const SUBMESH_COUNT = 2;
 
 /**
  * 图形组件
@@ -240,6 +162,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private shapeDirty = true;
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
+  private fillContours: ShapeContour[] = [];
+  private strokeContours: ShapeContour[] = [];
 
   private fills: Paint[] = [];
   private strokeAttributes: StrokeAttributes = {
@@ -273,15 +197,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get fillTrimPath (): TrimPath | null {
     return this._fillTrimPath;
-  }
-
-  /** @internal 羽化管线目前每侧只支持一个纯色或渐变 paint。 */
-  get useFeather (): boolean {
-    return this.featherRenderer.featherRadius > 0
-      && !this.maskManager.isMask
-      && this.fills.length <= 1 && this.strokes.length <= 1
-      && this.fills.every(paint => this.isSolidOrGradient(paint))
-      && this.strokes.every(paint => this.isSolidOrGradient(paint));
   }
 
   /**
@@ -376,6 +291,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override onUpdate (dt: number): void {
+    if (!this.shapeDirty && !this.materialDirty) {
+      return;
+    }
     if (this.shapeDirty) {
       const screenScale = this.computeScreenScale();
 
@@ -385,35 +303,32 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
 
       this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
-      this.shapeDirty = false;
     }
 
     if (this.materialDirty) {
       this.updateMaterials();
-      this.materialDirty = false;
     }
+
+    this.featherRenderer.update({
+      fillContours: this.fillContours,
+      strokeContours: this.strokeContours,
+      strokeAttributes: this.strokeAttributes,
+      fills: this.fills,
+      strokes: this.strokes,
+      rendererOptions: this.rendererOptions,
+      isMask: this.maskManager.isMask,
+    }, this.shapeDirty, this.materialDirty);
+    this.materials = [...this.fillMaterials, ...this.strokeMaterials, ...this.featherRenderer.materials];
+    this.shapeDirty = false;
+    this.materialDirty = false;
   }
 
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    const atlasLayers = this.featherRenderer.atlasLayers;
-
-    if (atlasLayers && (atlasLayers.fill || atlasLayers.stroke)) {
-      const worldMatrix = this.transform.getWorldMatrix();
-
-      if (atlasLayers.fill) {
-        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'fill', atlasLayers.fill);
-      }
-
-      if (atlasLayers.stroke) {
-        this.featherRenderer.drawUpsamplePass(renderer, worldMatrix, 'stroke', atlasLayers.stroke);
-      }
-
-      return;
+    if (!this.featherRenderer.render(renderer, this.transform.getWorldMatrix())) {
+      this.draw(renderer);
     }
-
-    this.draw(renderer);
   }
 
   /**
@@ -442,14 +357,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], SHAPE_SUBMESH.stroke);
     }
   }
-
-  /**
-   * @internal
-   * 绘制某一侧的非 SoS indicator（调用者需已设置好 FBO 和 viewport）
-   */
-  drawFeatherIndicatorPass = (renderer: Renderer, orthoProjection: Matrix4, side: FeatherSide): void => {
-    this.featherRenderer.drawIndicatorPass(renderer, orthoProjection, this.geometry, FEATHER_SUBMESH[side]);
-  };
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
@@ -499,14 +406,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private buildGeometryFromPath (fillShapePath: ShapePath, strokeShapePath: ShapePath, screenScale: number) {
     const vertices: number[] = [];
     const indices: number[] = [];
-    const fillScatterEdges: number[] = [];
-    const strokeScatterEdges: number[] = [];
+    const lineStyle = this.strokeAttributes;
 
-    const needFeatherMesh = this.useFeather;
-    const fillFeatherBBox = createEmptyFeatherBBox();
-    const strokeFeatherBBox = createEmptyFeatherBBox();
-    let fillScatterCount = 0;
-    let strokeScatterCount = 0;
+    this.fillContours.length = 0;
+    this.strokeContours.length = 0;
+    lineStyle.cap = this.strokeCap;
+    lineStyle.join = this.strokeJoin;
+    lineStyle.width = this.strokeWidth;
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.fills.length > 0) {
@@ -517,37 +423,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         const vertOffset = vertices.length / 2;
 
         shape.build(points, screenScale);
-
-        // 构建羽化数据
-        if (needFeatherMesh) {
-          fillScatterCount += buildFeatherMeshData(
-            points,
-            vertices,
-            vertices.length / 2,
-            indices,
-            fillScatterEdges,
-            fillFeatherBBox,
-          );
-        } else {
-          shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-        }
+        this.fillContours.push({ points, closed: true });
+        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
       }
     }
 
     const fillIndexCount = indices.length;
 
-    if (this.strokes.length > 0) {
+    if (this.strokes.length > 0 && this.strokeWidth > 0) {
       for (const shapePrimitive of strokeShapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
-        const lineStyle = this.strokeAttributes;
-
-        lineStyle.cap = this.strokeCap;
-        lineStyle.join = this.strokeJoin;
-        lineStyle.width = this.strokeWidth;
-
         let close = true;
 
         if (this._strokeTrimPath && !this._strokeTrimPath.isIdentity()) {
@@ -557,22 +445,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         }
 
         shape.build(points, screenScale);
-
-        // 构建羽化数据
-        if (needFeatherMesh) {
-          const featherLineContours = buildLineContour(points, lineStyle, false, close);
-
-          strokeScatterCount += buildContoursFeatherMeshData(
-            featherLineContours,
-            vertices,
-            vertices.length / 2,
-            indices,
-            strokeScatterEdges,
-            strokeFeatherBBox,
-          );
-        } else {
-          buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
-        }
+        this.strokeContours.push({ points, closed: close });
+        buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
 
@@ -642,33 +516,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.geometry.setDrawCount(indices.length);
 
     const strokeIndexCount = indices.length - fillIndexCount;
-    const activeSubMesh = needFeatherMesh ? FEATHER_SUBMESH : SHAPE_SUBMESH;
-    const inactiveSubMesh = needFeatherMesh ? SHAPE_SUBMESH : FEATHER_SUBMESH;
     const subMeshes = this.geometry.subMeshes;
 
-    subMeshes[activeSubMesh.fill].offset = 0;
-    subMeshes[activeSubMesh.fill].indexCount = fillIndexCount;
-    subMeshes[activeSubMesh.stroke].offset = fillIndexCount * Uint16Array.BYTES_PER_ELEMENT;
-    subMeshes[activeSubMesh.stroke].indexCount = strokeIndexCount;
-    for (const index of [inactiveSubMesh.fill, inactiveSubMesh.stroke]) {
-      subMeshes[index].offset = 0;
-      subMeshes[index].indexCount = 0;
-    }
-
-    if (needFeatherMesh) {
-      const fillTriangles: number[] = [];
-      const strokeTriangles: number[] = [];
-
-      appendIndicatorTriangles(indices, vertices, 0, fillIndexCount, fillTriangles);
-      appendIndicatorTriangles(indices, vertices, fillIndexCount, strokeIndexCount, strokeTriangles);
-
-      this.featherRenderer.updateMeshData(
-        fillScatterEdges, fillScatterCount, toFeatherRect(fillFeatherBBox),
-        strokeScatterEdges, strokeScatterCount, toFeatherRect(strokeFeatherBBox),
-        fillTriangles, fillTriangles.length / FLOATS_PER_TRIANGLE,
-        strokeTriangles, strokeTriangles.length / FLOATS_PER_TRIANGLE,
-      );
-    }
+    subMeshes[SHAPE_SUBMESH.fill].offset = 0;
+    subMeshes[SHAPE_SUBMESH.fill].indexCount = fillIndexCount;
+    subMeshes[SHAPE_SUBMESH.stroke].offset = fillIndexCount * Uint16Array.BYTES_PER_ELEMENT;
+    subMeshes[SHAPE_SUBMESH.stroke].indexCount = strokeIndexCount;
   }
 
   private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
@@ -806,39 +659,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.strokes.length; i++) {
       this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
     }
-
-    this.materials = [...this.fillMaterials, ...this.strokeMaterials];
-    if (!this.useFeather) {
-      return;
-    }
-
-    // 继承颜色: 优先从 fill, 其次从 stroke
-    const firstFill = this.fills[0];
-    const firstStroke = this.strokes[0];
-
-    if (firstFill?.type === spec.FillType.Solid) {
-      this.featherRenderer.featherColor = firstFill.color;
-    } else if (firstStroke?.type === spec.FillType.Solid) {
-      this.featherRenderer.featherColor = firstStroke.color;
-    }
-
-    const upsampleMaterials = this.featherRenderer.upsampleMaterials;
-
-    this.applyRendererOptions(upsampleMaterials.fill, this.rendererOptions);
-    this.applyRendererOptions(upsampleMaterials.stroke, this.rendererOptions);
-    this.updateFeatherPaintMaterial(upsampleMaterials.fill, this.fills);
-    this.updateFeatherPaintMaterial(upsampleMaterials.stroke, this.strokes);
-    this.materials.push(upsampleMaterials.fill, upsampleMaterials.stroke);
   }
 
   private updatePaintMaterial (material: Material, paint: Paint) {
-    material.setFloat('_FillType', paint.type);
+    updateShapePaintMaterial(material, paint);
 
-    if (paint.type === spec.FillType.Solid) {
-      material.color = paint.color;
-    } else if (paint.type === spec.FillType.GradientLinear || paint.type === spec.FillType.GradientAngular || paint.type === spec.FillType.GradientRadial) {
-      this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
-    } else if (paint.type === spec.FillType.Texture) {
+    if (paint.type === spec.FillType.Texture) {
       material.setInt('_ImageScaleMode', paint.scaleMode);
       material.setVector2('_ImageSize', new Vector2(paint.texture.getWidth(), paint.texture.getHeight()));
 
@@ -862,47 +688,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
   }
 
-  /**
-   * 仅在 useFeather 确认 paint 组合受支持后调用。
-   */
-  private updateFeatherPaintMaterial (material: Material, paints: Paint[]): void {
-    const paint = paints[0];
-
-    if (paint && this.isSolidOrGradient(paint)) {
-      this.updatePaintMaterial(material, paint);
-
-      return;
-    }
-
-    material.setFloat('_FillType', spec.FillType.Solid);
-    material.color = this.featherRenderer.featherColor;
-  }
-
-  private isSolidOrGradient (paint: Paint): paint is SolidPaint | GradientPaint {
-    return paint.type === spec.FillType.Solid
-      || paint.type === spec.FillType.GradientLinear
-      || paint.type === spec.FillType.GradientAngular
-      || paint.type === spec.FillType.GradientRadial;
-  }
-
-  private updateGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
-    const gradientColors: Vector4[] = [];
-    const gradientStops: number[] = [];
-
-    for (const stop of gradient.stops) {
-      const stopColor = stop.color;
-
-      gradientColors.push(new Vector4(stopColor.r, stopColor.g, stopColor.b, stopColor.a));
-      gradientStops.push(stop.time);
-    }
-
-    material.setVector4Array('_Colors', gradientColors);
-    material.setFloats('_Stops', gradientStops);
-    material.setInt('_StopsCount', gradientStops.length);
-    material.setVector2('_StartPoint', startPoint);
-    material.setVector2('_EndPoint', endPoint);
-  }
-
   private createMaterialFromRendererOptions (rendererOptions: ItemRenderer): Material {
     const materialProps: MaterialProps = {
       shader: {
@@ -916,7 +701,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const renderer = rendererOptions;
     const { blending: blendMode, texture } = renderer;
 
-    this.applyRendererOptions(material, rendererOptions);
+    applyShapeRendererOptions(material, rendererOptions);
 
     material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
@@ -939,19 +724,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return material;
   }
 
-  private applyRendererOptions (material: Material, renderer: ItemRenderer): void {
-    material.blending = true;
-    material.depthTest = true;
-    material.depthMask = renderer.occlusion;
-    setBlendMode(material, renderer.blending);
-    setSideMode(material, renderer.side);
-  }
-
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
     this.materialDirty = true;
-    this.featherRenderer.atlasLayers = null;
 
     if (data.mask) {
       this.maskManager.setMaskOptions(this.engine, data.mask);
@@ -990,13 +766,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       this._fillTrimPath.fromData(data.fillTrimPath);
     }
 
-    // 读取羽化参数 (spec 类型可能尚未定义这些字段，使用类型断言)
-    const extData = data as spec.ShapeComponentData & { featherRadius?: number, featherColor?: { r: number, g: number, b: number, a: number } };
-
-    this.featherRenderer.featherRadius = extData.featherRadius ?? 0;
-    if (extData.featherColor) {
-      this.featherRenderer.featherColor = new Color(extData.featherColor.r, extData.featherColor.g, extData.featherColor.b, extData.featherColor.a);
-    }
+    this.featherRenderer.fromData(data);
 
     this.fills.length = 0;
     this.fillMaterials.length = 0;

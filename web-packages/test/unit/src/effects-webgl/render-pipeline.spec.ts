@@ -1,11 +1,13 @@
 import {
   Engine, RenderingDevice, ContextContainer, ContextItem, Composition, Player, PostProcessVolume, RenderPass, RendererComponent, TextureLoadAction,
   FilterMode, Material, RendererFeature, RenderPassEvent, RenderTextureFormat, VFXItem,
+  Camera, SceneRendering, ShapeComponent, spec,
 } from '@galacean/effects';
-import type { Renderer, RenderingData } from '@galacean/effects';
+import type { Geometry, Renderer, RenderingData, TrimPathData } from '@galacean/effects';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import { ThreeComposition } from '../../../../../packages/effects-threejs/src/three-composition';
+import { VectorFeatherRenderer } from '../../../../../packages/effects-core/src/math/shape/vector-feather-renderer';
 
 const { expect } = chai;
 
@@ -66,6 +68,126 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
       return component;
     }
+
+    describe('shape feather delegation', () => {
+      let indicatorSoS: boolean;
+
+      beforeEach(() => {
+        indicatorSoS = VectorFeatherRenderer.indicatorSoS;
+      });
+      afterEach(() => {
+        VectorFeatherRenderer.indicatorSoS = indicatorSoS;
+      });
+
+      function createShape (overrides: Partial<spec.RectangleData & { featherRadius: number, strokeTrimPath: TrimPathData }> = {}) {
+        const item = new VFXItem(player.engine);
+        const shape = item.addComponent(ShapeComponent);
+
+        shape.fromData({
+          id: shape.getInstanceId(), item: { id: item.getInstanceId() },
+          dataType: spec.DataType.ShapeComponent,
+          type: spec.ShapePrimitiveType.Rectangle, width: 4, height: 4, roundness: 0,
+          fills: [{ type: spec.FillType.Solid, color: { r: 1, g: 0, b: 0, a: 1 } }], strokes: [],
+          featherRadius: 0.25, ...overrides,
+        });
+        item.setActive(true);
+        shape.initialize();
+        shape.onUpdate(0);
+
+        return shape;
+      }
+
+      function renderShape (shape: ShapeComponent, prepareFeather = true) {
+        const scene = new SceneRendering();
+        const renderer = player.renderer;
+        const proxy = new RendererComponent(player.engine);
+
+        proxy.render = renderer => shape.render(renderer);
+        scene.addRenderer(prepareFeather ? shape : proxy);
+        renderer.clear({ colorAction: TextureLoadAction.clear, depthAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
+        renderer.renderScene(scene, { camera: new Camera('shape-feather') });
+      }
+
+      function readPixel (x: number, y: number) {
+        const gl = (player.engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
+        const pixel = new Uint8Array(4);
+
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        expect(gl.getError()).equals(gl.NO_ERROR);
+        expect(player.engine.renderErrors.size).equals(0);
+
+        return Array.from(pixel);
+      }
+
+      it('preserves ordinary geometry for picking and drawing without an atlas', () => {
+        const shape = createShape();
+        const ordinary = createShape({ featherRadius: 0 });
+
+        expect(shape.getHitTestParams(true)?.triangles).deep.equals(ordinary.getHitTestParams(true)?.triangles);
+        renderShape(shape, false);
+        expect(readPixel(13, 17)).deep.equals([255, 0, 0, 255]);
+      });
+
+      for (const mode of [true, false]) {
+        it(`renders trimmed round strokes with indicatorSoS=${mode}`, () => {
+          VectorFeatherRenderer.indicatorSoS = mode;
+          const shape = createShape({
+            fills: [],
+            strokes: [{ type: spec.FillType.Solid, color: { r: 1, g: 0, b: 0, a: 1 } }],
+            strokeWidth: 0.8,
+            strokeCap: spec.LineCap.Round,
+            strokeTrimPath: { start: 0, end: 0.25, offset: 0, mode: 0 },
+          });
+
+          renderShape(shape);
+          expect(readPixel(15, 22)[0]).greaterThan(100);
+          expect(readPixel(15, 9)[3]).equals(0);
+        });
+
+        it(`owns and disposes fill/stroke resources with indicatorSoS=${mode}`, () => {
+          VectorFeatherRenderer.indicatorSoS = mode;
+          const shape = createShape({
+            strokes: [{ type: spec.FillType.Solid, color: { r: 0, g: 0, b: 1, a: 1 } }],
+            strokeWidth: 0.6,
+          });
+          const geometries = new Set<Geometry>();
+          const materials = new Set<Material>();
+          const renderer = player.renderer;
+          const drawGeometry = renderer.drawGeometry.bind(renderer);
+
+          renderer.drawGeometry = (geometry, matrix, material, ...args) => {
+            geometries.add(geometry);
+            materials.add(material);
+            drawGeometry(geometry, matrix, material, ...args);
+          };
+          renderShape(shape);
+          expect(readPixel(13, 17)).deep.equals([255, 0, 0, 255]);
+          const stroke = readPixel(23, 17);
+
+          expect(stroke[2]).greaterThan(20);
+          expect(stroke[2]).greaterThan(stroke[0]);
+          shape.dispose();
+          geometries.forEach(geometry => expect(geometry.isDisposed()).equals(true));
+          materials.forEach(material => expect(material.isRegistered).equals(false));
+        });
+      }
+
+      it('registers feather materials for stencil clipping', () => {
+        const mask = createShape({ width: 2 });
+
+        mask.transform.setPosition(1, 0, 0);
+        mask.maskManager.isMask = true;
+        mask.onApplyAnimationProperties();
+        mask.onUpdate(0);
+        const shape = createShape();
+
+        shape.maskManager.addMaskReference(mask);
+        renderShape(shape);
+        expect(mask.featherRenderer.enabled).equals(false);
+        expect(readPixel(12, 17)[3]).equals(0);
+        expect(readPixel(19, 17)).deep.equals([255, 0, 0, 255]);
+      });
+    });
 
     it('shares pass instances and isolates camera, uniforms and scene lists', () => {
       const first = new Composition(player.engine);

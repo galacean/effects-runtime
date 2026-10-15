@@ -8,6 +8,12 @@ import type { ShapePrimitive } from '../../math/shape/shape-primitive';
 import type { StarType } from '../../math';
 import { Polygon, PolyStar, Triangle, Rectangle, Circle, Ellipse } from '../../math';
 
+/** 已离散的路径轮廓，供普通网格和效果绘制共用。 */
+export interface ShapeContour {
+  points: number[],
+  closed: boolean,
+}
+
 export class ShapePath {
   currentPoly: Polygon | null = null;
   shapePrimitives: { shape: ShapePrimitive, transform?: Matrix4 }[] = [];

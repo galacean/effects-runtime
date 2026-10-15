@@ -15,7 +15,6 @@ const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
 type PendingFeatherEntry = {
-  component: ShapeComponent,
   featherRenderer: VectorFeatherRenderer,
   side: FeatherSide,
   params: FeatherRenderParams,
@@ -30,7 +29,7 @@ type FeatherEntry = PendingFeatherEntry & {
  * FeatherOffscreenPass
  * 在 DrawObjectPass 之前执行，将需要羽化的填充和描边
  * 分别渲染到 atlas 中互不重叠的区域。
- * 结果写入 VectorFeatherRenderer.atlasLayers，由 ShapeComponent.render() 上色。
+ * 结果写入 VectorFeatherRenderer.atlasLayers，由 renderer 完成合成上色。
  */
 export class FeatherOffscreenPass extends RenderPass {
 
@@ -44,7 +43,7 @@ export class FeatherOffscreenPass extends RenderPass {
   }
 
   hasFeatheredShapes (data: RenderingData): boolean {
-    return data.renderList.objects.some(mesh => mesh instanceof ShapeComponent && mesh.useFeather);
+    return data.renderList.objects.some(mesh => mesh instanceof ShapeComponent && mesh.featherRenderer.enabled);
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
@@ -52,7 +51,7 @@ export class FeatherOffscreenPass extends RenderPass {
     const renderList = data.renderList.objects;
 
     for (const mesh of renderList) {
-      if (!(mesh instanceof ShapeComponent) || !mesh.useFeather) {
+      if (!(mesh instanceof ShapeComponent) || !mesh.featherRenderer.enabled) {
         continue;
       }
 
@@ -75,7 +74,7 @@ export class FeatherOffscreenPass extends RenderPass {
           continue;
         }
 
-        pending.push({ component: mesh, featherRenderer, side, params });
+        pending.push({ featherRenderer, side, params });
       }
     }
 
@@ -123,7 +122,7 @@ export class FeatherOffscreenPass extends RenderPass {
       renderer.setViewport(0, 0, atlasW, atlasH);
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
 
-      for (const { component, featherRenderer, side, params, rect } of batch) {
+      for (const { featherRenderer, side, params, rect } of batch) {
         const viewportOffset = new Vector2(rect.x, rect.y);
 
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
@@ -131,7 +130,7 @@ export class FeatherOffscreenPass extends RenderPass {
         if (VectorFeatherRenderer.indicatorSoS) {
           featherRenderer.drawIndicatorSoSPass(renderer, params, viewportOffset, side);
         } else {
-          component.drawFeatherIndicatorPass(renderer, params.orthoProjection, side);
+          featherRenderer.drawIndicatorPass(renderer, params.orthoProjection, side);
         }
 
         featherRenderer.drawScatterPass(renderer, params, viewportOffset, side);
