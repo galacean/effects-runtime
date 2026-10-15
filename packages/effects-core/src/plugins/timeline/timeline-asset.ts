@@ -75,6 +75,7 @@ export class TimelineInstance {
   readonly tracks: TrackMixerPlayable[] = [];
 
   private readonly cachedNestedCompositions: CompositionComponent[] = [];
+  private readonly cachedOrderedBoundItems: VFXItem[] = [];
   private readonly boundObjects = new Map<string, object>();
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
@@ -94,6 +95,15 @@ export class TimelineInstance {
     }
 
     return this.cachedNestedCompositions;
+  }
+
+  /** Scene items in root-track order. @internal */
+  get orderedBoundItems (): readonly VFXItem[] {
+    if (this.needsCompile) {
+      this.rebuild();
+    }
+
+    return this.cachedOrderedBoundItems;
   }
 
   evaluate (time: number, deltaTime: number) {
@@ -124,6 +134,7 @@ export class TimelineInstance {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.cachedNestedCompositions.length = 0;
+    this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
 
     for (const sceneBinding of this.sceneBindings) {
@@ -137,6 +148,7 @@ export class TimelineInstance {
       const boundObject = this.getBoundObject(mixer.objectBindingId);
 
       if (boundObject instanceof VFXItem) {
+        this.cachedOrderedBoundItems.push(boundObject);
         const composition = boundObject.getComponent(CompositionComponent);
 
         if (composition) {
@@ -152,6 +164,7 @@ export class TimelineInstance {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.cachedNestedCompositions.length = 0;
+    this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
   }
 

@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import { VFXItem } from '../vfx-item';
+import type { VFXItem } from '../vfx-item';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
 import type { EventEmitterListener } from '../events';
@@ -275,9 +275,12 @@ export class CompositionComponent extends Component {
    * @internal
    */
   setChildrenRenderOrder (startOrder: number): number {
-    if (!this.timelineInstance) {
+    const timelineInstance = this.timelineInstance;
+
+    if (!timelineInstance) {
       return startOrder;
     }
+    const orderedBoundItems = timelineInstance.orderedBoundItems;
 
     // 1. 场景树 DFS 顺序收集直接子元素
     const sceneOrder: VFXItem[] = [];
@@ -285,15 +288,7 @@ export class CompositionComponent extends Component {
     this.collectChildren(this.item, sceneOrder);
 
     // 2. 构建 masterTracks 绑定的 item 集合
-    const trackedItems = new Set<VFXItem>();
-
-    for (const masterTrack of this.timelineInstance.masterTracks) {
-      const boundObject = this.timelineInstance.getBoundObject(masterTrack.objectBindingId);
-
-      if (boundObject instanceof VFXItem) {
-        trackedItems.add(boundObject);
-      }
-    }
+    const trackedItems = new Set(orderedBoundItems);
 
     // 3. 收集 tracked items 在场景队列中的坑位索引
     const slotIndices: number[] = [];
@@ -304,23 +299,12 @@ export class CompositionComponent extends Component {
       }
     }
 
-    // 4. 按 masterTracks 顺序取出 tracked items
-    const sortedTrackedItems: VFXItem[] = [];
-
-    for (const masterTrack of this.timelineInstance.masterTracks) {
-      const boundObject = this.timelineInstance.getBoundObject(masterTrack.objectBindingId);
-
-      if (boundObject instanceof VFXItem) {
-        sortedTrackedItems.push(boundObject);
-      }
+    // 4. 将编译时缓存的有序绑定元素填回原坑位
+    for (let i = 0; i < slotIndices.length && i < orderedBoundItems.length; i++) {
+      sceneOrder[slotIndices[i]] = orderedBoundItems[i];
     }
 
-    // 5. 将排序后的 tracked items 填回原坑位
-    for (let i = 0; i < slotIndices.length && i < sortedTrackedItems.length; i++) {
-      sceneOrder[slotIndices[i]] = sortedTrackedItems[i];
-    }
-
-    // 6. 分配 renderOrder
+    // 5. 分配 renderOrder
     for (const child of sceneOrder) {
       const renderOrder = startOrder++;
 
