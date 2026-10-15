@@ -151,10 +151,17 @@ export class CompositionComponent extends Component {
     this.state = PlayState.Stopped;
     this.time = this.startTime;
     this.resetEndState();
+    this.finishEvaluation();
 
     for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
       subComposition.stop();
     }
+  }
+
+  /** End parent-driven evaluation at the current time without continuing standalone playback. @internal */
+  finishEvaluation (): void {
+    this.state = PlayState.Stopped;
+    this._timelineInstance?.finish();
   }
 
   getTime () {

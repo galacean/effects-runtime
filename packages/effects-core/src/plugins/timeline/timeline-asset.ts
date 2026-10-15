@@ -77,7 +77,8 @@ export class TimelineInstance {
   private readonly cachedNestedCompositions: CompositionComponent[] = [];
   private readonly cachedOrderedBoundItems: VFXItem[] = [];
   private readonly boundObjects = new Map<string, object>();
-  private readonly evaluatingTracks = new Set<TrackMixerPlayable>();
+  private evaluatingTracks = new Map<TrackMixerPlayable, object>();
+  private previousEvaluatingTracks = new Map<TrackMixerPlayable, object>();
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
 
@@ -114,33 +115,56 @@ export class TimelineInstance {
     this.context.time = time;
     this.context.deltaTime = deltaTime;
 
+    const previousTracks = this.evaluatingTracks;
+
+    this.evaluatingTracks = this.previousEvaluatingTracks;
+    this.previousEvaluatingTracks = previousTracks;
+    const currentTracks = this.evaluatingTracks;
+
+    currentTracks.clear();
+
     for (const track of this.tracks) {
       track.prepareFrame(time);
     }
-
-    // End expired tracks before beginning any tracks at the new evaluation time.
+    // Store child tracks first so teardown can iterate without copying entries.
     for (let i = this.tracks.length - 1; i >= 0; i--) {
       const track = this.tracks[i];
+      const boundObject = this.getBoundObject(track.objectBindingId);
 
-      if (!track.hasActiveSegment()) {
-        this.endEvaluation(track);
+      if (boundObject && track.hasActiveSegment()) {
+        currentTracks.set(track, boundObject);
+      }
+    }
+    // End expired tracks before beginning any tracks at the new evaluation time.
+    for (const [track, boundObject] of previousTracks) {
+      if (!currentTracks.has(track)) {
+        track.onEndEvaluation(boundObject);
       }
     }
     for (const track of this.tracks) {
-      const boundObject = this.getBoundObject(track.objectBindingId);
+      const boundObject = currentTracks.get(track);
 
-      if (boundObject && track.hasActiveSegment() && !this.evaluatingTracks.has(track)) {
-        this.evaluatingTracks.add(track);
+      if (boundObject && !previousTracks.has(track)) {
         track.onBeginEvaluation(boundObject);
       }
     }
 
     for (const track of this.tracks) {
-      const boundObject = this.getBoundObject(track.objectBindingId);
+      const boundObject = currentTracks.get(track);
 
-      if (boundObject && this.evaluatingTracks.has(track)) {
+      if (boundObject) {
         track.processFrame(boundObject, this.context);
       }
+    }
+  }
+
+  /** End the current evaluation without discarding compiled tracks. */
+  finish (): void {
+    this.previousEvaluatingTracks.clear();
+    for (const [track, boundObject] of this.evaluatingTracks) {
+      this.evaluatingTracks.delete(track);
+
+      track.onEndEvaluation(boundObject);
     }
   }
 
@@ -149,7 +173,8 @@ export class TimelineInstance {
   }
 
   private compileTracks (): void {
-    this.releaseTracks();
+    // Recompilation must not end evaluation or restore scene state from a getter.
+    this.clearTracks();
 
     for (const sceneBinding of this.sceneBindings) {
       this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
@@ -175,29 +200,16 @@ export class TimelineInstance {
   dispose (): void {
     this.timelineAsset.off('changed', this.onAssetChanged);
     this.needsCompile = false;
-    this.releaseTracks();
+    this.finish();
+    this.clearTracks();
   }
 
-  private releaseTracks (): void {
-    // End child tracks before their parents, while the old bindings still exist.
-    for (let i = this.tracks.length - 1; i >= 0; i--) {
-      this.endEvaluation(this.tracks[i]);
-    }
+  private clearTracks (): void {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.cachedNestedCompositions.length = 0;
     this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
-  }
-
-  private endEvaluation (track: TrackMixerPlayable): void {
-    if (this.evaluatingTracks.delete(track)) {
-      const boundObject = this.getBoundObject(track.objectBindingId);
-
-      if (boundObject) {
-        track.onEndEvaluation(boundObject);
-      }
-    }
   }
 
   private readonly onAssetChanged = (): void => {

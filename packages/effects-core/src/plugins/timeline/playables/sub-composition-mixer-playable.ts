@@ -11,6 +11,7 @@ export class SubCompositionMixerPlayable extends TrackMixerPlayable {
   }
 
   override onEndEvaluation (boundObject: CompositionComponent): void {
+    boundObject.finishEvaluation();
     boundObject.updateMode = this.originalUpdateMode;
   }
 }
