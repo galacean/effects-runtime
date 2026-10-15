@@ -44,7 +44,7 @@ export class FeatherOffscreenPass extends RenderPass {
   }
 
   hasFeatheredShapes (data: RenderingData): boolean {
-    return data.renderList.objects.some(mesh => mesh instanceof ShapeComponent && !mesh.maskManager.isMask && mesh.featherRenderer.featherRadius > 0);
+    return data.renderList.objects.some(mesh => mesh instanceof ShapeComponent && mesh.useFeather);
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
@@ -52,7 +52,7 @@ export class FeatherOffscreenPass extends RenderPass {
     const renderList = data.renderList.objects;
 
     for (const mesh of renderList) {
-      if (!(mesh instanceof ShapeComponent) || mesh.maskManager.isMask || mesh.featherRenderer.featherRadius <= 0) {
+      if (!(mesh instanceof ShapeComponent) || !mesh.useFeather) {
         continue;
       }
 
@@ -84,15 +84,18 @@ export class FeatherOffscreenPass extends RenderPass {
     }
 
     let maxW = 0;
+    let maxH = 0;
     let totalArea = 0;
 
     for (const { params } of pending) {
       maxW = Math.max(maxW, params.fboW);
+      maxH = Math.max(maxH, params.fboH);
       totalArea += (params.fboW + ATLAS_PADDING) * (params.fboH + ATLAS_PADDING);
     }
 
-    const atlasW = Math.min(Math.max(maxW, Math.ceil(Math.sqrt(totalArea))), MAX_ATLAS_SIZE);
-    const atlasH = Math.min(Math.max(Math.ceil(totalArea / atlasW) * 2, maxW), MAX_ATLAS_SIZE);
+    const maxAtlasSize = Math.min(MAX_ATLAS_SIZE, renderer.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize);
+    const atlasW = Math.min(Math.max(maxW, Math.ceil(Math.sqrt(totalArea))), maxAtlasSize);
+    const atlasH = Math.min(Math.max(Math.ceil(totalArea / atlasW) * 2, maxH), maxAtlasSize);
 
     this.allocator = new AtlasAllocator(atlasW, atlasH);
     this.entries = [];
@@ -131,7 +134,7 @@ export class FeatherOffscreenPass extends RenderPass {
           component.drawFeatherIndicatorPass(renderer, params.orthoProjection, side);
         }
 
-        featherRenderer.drawScatterPass(renderer, params, featherRenderer.featherRadius, viewportOffset, side);
+        featherRenderer.drawScatterPass(renderer, params, viewportOffset, side);
 
         const layers = featherRenderer.atlasLayers ?? { fill: null, stroke: null };
 
@@ -150,21 +153,24 @@ export class FeatherOffscreenPass extends RenderPass {
     for (const entry of pending) {
       const rect: AtlasRect = { x: 0, y: 0, w: 0, h: 0 };
 
-      if (this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
-        if (!currentAtlas) {
-          currentAtlas = createAtlas();
-        }
-        this.entries.push({ ...entry, atlas: currentAtlas, rect });
-      } else {
+      if (!this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
         flushCurrentBatch();
         this.allocator.reset();
         batchStart = this.entries.length;
-        currentAtlas = createAtlas();
-        this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect);
-        this.entries.push({ ...entry, atlas: currentAtlas, rect });
-      }
-    }
+        currentAtlas = null;
+        if (!this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
+          this.onCameraCleanup(renderer);
+          renderer.setFramebuffer(prevFramebuffer);
+          renderer.setViewport(...prevViewport);
 
+          throw new Error(`Feather region ${entry.params.fboW}×${entry.params.fboH} does not fit atlas ${atlasW}×${atlasH}.`);
+        }
+      }
+      if (!currentAtlas) {
+        currentAtlas = createAtlas();
+      }
+      this.entries.push({ ...entry, atlas: currentAtlas, rect });
+    }
     flushCurrentBatch();
 
     renderer.setFramebuffer(prevFramebuffer);

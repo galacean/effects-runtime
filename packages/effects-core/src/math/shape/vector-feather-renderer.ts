@@ -29,6 +29,7 @@ export type FeatherRenderParams = {
   fboW: number,
   fboH: number,
   orthoProjection: Matrix4,
+  featherRadius: number, // 本次绘制使用的局部空间半径，不改写配置值
   featherRadiusScreen: number, // 这个用于在片段着色器里做抗亮斑
   /**
    * FBO 覆盖的局部空间矩形 [minX, minY, width, height]。
@@ -62,6 +63,7 @@ export type FeatherAtlasLayers = Record<FeatherSide, FeatherAtlasInfo | null>;
 export type FeatherIndicatorDrawer = (renderer: Renderer, orthoProjection: Matrix4, side: FeatherSide) => void;
 
 export type FeatherRadiusPrep = {
+  featherRadius: number,
   featherRadiusScreen: number,
   expandRadius: number,
 };
@@ -128,7 +130,14 @@ export class VectorFeatherRenderer {
   /**
    * 填充和描边各自的 Upsample 材质。纯色或渐变 uniform 由 ShapeComponent 在材质变脏时写入。
    */
-  readonly upsampleMaterials: Record<FeatherSide, Material>;
+  private _upsampleMaterials: Record<FeatherSide, Material>;
+  private resourcesInitialized = false;
+
+  get upsampleMaterials (): Record<FeatherSide, Material> {
+    this.initializeResources();
+
+    return this._upsampleMaterials;
+  }
 
   private sideMeshes: Record<FeatherSide, SideMeshInfo> = {
     fill: { bbox: [0, 0, 0, 0], scatterCount: 0, triangleCount: 0 },
@@ -160,6 +169,12 @@ export class VectorFeatherRenderer {
 
   constructor (engine: Engine) {
     this.engine = engine;
+  }
+
+  private initializeResources (): void {
+    if (this.resourcesInitialized) {
+      return;
+    }
 
     // --- Indicator Pass 材质 ---
     this.indicatorMaterial = this.createFeatherMaterial(indicatorVert, indicatorFrag);
@@ -183,7 +198,7 @@ export class VectorFeatherRenderer {
     this.scatterMaterial.culling = false;
 
     // --- Upsample Pass 材质 ---
-    this.upsampleMaterials = {
+    this._upsampleMaterials = {
       fill: this.createUpsampleMaterial(),
       stroke: this.createUpsampleMaterial(),
     };
@@ -198,7 +213,7 @@ export class VectorFeatherRenderer {
     };
 
     // 单位四边形，局部坐标由顶点着色器用 uExpandedMin / uExpandedSize 计算
-    this.upsampleGeometry = Geometry.create(engine, {
+    this.upsampleGeometry = Geometry.create(this.engine, {
       attributes: {
         aUV: {
           type: glContext.FLOAT,
@@ -215,6 +230,7 @@ export class VectorFeatherRenderer {
       mode: glContext.TRIANGLES,
       drawCount: 6,
     });
+    this.resourcesInitialized = true;
   }
 
   /**
@@ -232,6 +248,7 @@ export class VectorFeatherRenderer {
     strokeTriangles: number[],
     strokeTriangleCount: number,
   ): void {
+    this.initializeResources();
     this.sideMeshes.fill = { bbox: fillBBox, scatterCount: fillScatterCount, triangleCount: fillTriangleCount };
     this.sideMeshes.stroke = { bbox: strokeBBox, scatterCount: strokeScatterCount, triangleCount: strokeTriangleCount };
 
@@ -282,11 +299,12 @@ export class VectorFeatherRenderer {
     // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）
     const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);
 
-    this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
+    const featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
     return {
+      featherRadius,
       featherRadiusScreen: refinedScreenRadius,
-      expandRadius: getExpandedRadius(this.featherRadius, refinedScreenRadius),
+      expandRadius: getExpandedRadius(featherRadius, refinedScreenRadius),
     };
   }
 
@@ -310,7 +328,7 @@ export class VectorFeatherRenderer {
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
     const downsample = Math.min(Math.max(prepared.featherRadiusScreen / 10.0, 1.0), 9999);
-    const maxFboSize = 2048;
+    const maxFboSize = Math.min(2048, this.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize);
     const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
     const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
 
@@ -321,6 +339,7 @@ export class VectorFeatherRenderer {
         expandedMinX, expandedMinX + expandedW,
         expandedMinY, expandedMinY + expandedH,
       ),
+      featherRadius: prepared.featherRadius,
       featherRadiusScreen: prepared.featherRadiusScreen,
       localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
     };
@@ -379,7 +398,6 @@ export class VectorFeatherRenderer {
   drawScatterPass (
     renderer: Renderer,
     params: FeatherRenderParams,
-    featherRadius: number,
     viewportOffset: Vector2,
     side: FeatherSide,
   ): void {
@@ -389,6 +407,7 @@ export class VectorFeatherRenderer {
       return;
     }
 
+    const { featherRadius } = params;
     const [minX, minY, localW, localH] = params.localRect;
     const localPerPixelX = localW / params.fboW;
     const localPerPixelY = localH / params.fboH;
@@ -500,7 +519,7 @@ export class VectorFeatherRenderer {
     } else if (drawIndicator) {
       drawIndicator(renderer, orthoProjection, side);
     }
-    this.drawScatterPass(renderer, params, this.featherRadius, viewportOffset, side);
+    this.drawScatterPass(renderer, params, viewportOffset, side);
 
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(...prevViewport);
@@ -644,11 +663,8 @@ export class VectorFeatherRenderer {
   }
 
   /**
-   * 简化版的computeScreenExtent，用于计算屏幕空间羽化尺寸
-   * 实际上计算了一个[0,0,r,r]的矩形变换后的最短边
-   * @param renderer
-   * @param worldMatrix
-   * @param featherRadius
+   * 分别投影局部 X/Y 轴上的半径，取较短的屏幕长度。
+   * 使用向量长度，避免旋转后对角线的 X/Y 分量抵消。
    */
   private computeScreenRadius (
     renderer: Renderer,
@@ -663,29 +679,36 @@ export class VectorFeatherRenderer {
     const ox = e[12];
     const oy = e[13];
     const ow = e[15];
-    // [r, r, 0, 1]
-    const rx = (e[0] + e[4]) * featherRadius + e[12];
-    const ry = (e[1] + e[5]) * featherRadius + e[13];
-    const rw = (e[3] + e[7]) * featherRadius + e[15];
+    const projectAxis = (column: number): number => {
+      const rw = e[column + 3] * featherRadius + ow;
 
-    const osx = (ox / ow * 0.5 + 0.5) * screenW;
-    const osy = (oy / ow * 0.5 + 0.5) * screenH;
-    const rsx = (rx / rw * 0.5 + 0.5) * screenW;
-    const rsy = (ry / rw * 0.5 + 0.5) * screenH;
+      if (ow <= 0 || rw <= 0) {
+        return 0;
+      }
+      const dx = ((e[column] * featherRadius + ox) / rw - ox / ow) * screenW * 0.5;
+      const dy = ((e[column + 1] * featherRadius + oy) / rw - oy / ow) * screenH * 0.5;
 
-    return Math.min(Math.abs(rsx - osx), Math.abs(rsy - osy));
+      return Math.hypot(dx, dy);
+    };
+
+    return Math.min(projectAxis(0), projectAxis(4));
   }
 
   dispose (): void {
+    this.atlasLayers = null;
+    if (!this.resourcesInitialized) {
+      return;
+    }
     for (const side of FEATHER_SIDES) {
-      this.scatterGeometries[side]?.dispose();
-      this.indicatorSoSGeometries[side]?.dispose();
-      this.upsampleMaterials[side]?.dispose();
+      this.scatterGeometries[side].dispose();
+      this.indicatorSoSGeometries[side].dispose();
+      this._upsampleMaterials[side].dispose();
     }
     this.upsampleGeometry?.dispose();
     this.indicatorMaterial?.dispose();
     this.indicatorSoSMaterial?.dispose();
     this.scatterMaterial?.dispose();
+    this.resourcesInitialized = false;
   }
 
   private createFeatherMaterial (vertexShader: string, fragmentShader: string): Material {

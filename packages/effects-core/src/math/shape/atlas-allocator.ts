@@ -60,6 +60,9 @@ export class AtlasAllocator {
    * 在 Atlas 中分配空间
    */
   allocate (w: number, h: number, outRect: AtlasRect): boolean {
+    if (!(w > 0 && h > 0 && w <= this.width && h <= this.height)) {
+      return false;
+    }
     if (this.currentX + w > this.width) {
       this.currentY += this.currentRowHeight + ATLAS_PADDING;
       this.currentX = 0;

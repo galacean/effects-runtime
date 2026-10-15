@@ -565,7 +565,7 @@ export function buildLineContour (
 ): number[][] {
   const eps = closePointEps;
 
-  if (points.length === 0) {return [];}
+  if (points.length < 4 || lineStyle.width <= 0) {return [];}
 
   const style = lineStyle;
   let alignment = style.alignment;
@@ -607,10 +607,7 @@ export function buildLineContour (
   // 这里拆分为分别 push 到 innerVerts / outerVerts
   const innerVerts: number[] = [];
   const outerVerts: number[] = [];
-
-  // cap/join 产生的额外顶点（圆形cap、round join 的扇形）
-  // 这些顶点属于外侧或内侧的"装饰"，单独收集后插入对应序列
-  // 用一个辅助函数代替原来直接 push 到 verts
+  const startCap: number[] = [];
 
   // round cap/join 的扇形顶点收集器
   // clockwise=true 时扇形在 outer 侧，false 时在 inner 侧
@@ -619,6 +616,7 @@ export function buildLineContour (
     sx: number, sy: number,
     ex: number, ey: number,
     clockwise: boolean,
+    target = clockwise ? outerVerts : innerVerts,
   ): void {
     const cx2p0x = sx - cx;
     const cy2p0y = sy - cy;
@@ -631,15 +629,15 @@ export function buildLineContour (
     const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
     const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
     const angleInc = angleDiff / segCount;
-    const target = clockwise ? outerVerts : innerVerts;
 
     // 起点已由调用方 push，这里只 push 中间点和终点
-    for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
+    for (let i = 1, angle = angle0 + angleInc; i < segCount; i++, angle += angleInc) {
       target.push(
         cx + Math.sin(angle) * radius,
         cy + Math.cos(angle) * radius,
       );
     }
+    target.push(ex, ey);
   }
 
   let x0 = points[0];
@@ -666,41 +664,14 @@ export function buildLineContour (
   // ── 起始 cap ──────────────────────────────────────────────
   if (!closedShape) {
     if (style.cap === spec.LineCap.Round) {
-      // 圆形 cap：从 outer 到 inner 的半圆，顶点都属于"端部轮廓"
-      // 对于起始端，这段弧连接 outer 起点和 inner 起点
-      // 暂存，等主体顶点确定后再处理；这里先收集到 capStart
+      // 起始圆弧从 inner 扫到 outer，组装时接在反向 inner 轮廓之后。
       const capCx = x0 - perpX * (innerWeight - outerWeight) * 0.5;
       const capCy = y0 - perpY * (innerWeight - outerWeight) * 0.5;
-      const capStartX = x0 - perpX * innerWeight;
-      const capStartY = y0 - perpY * innerWeight;
-      const capEndX = x0 + perpX * outerWeight;
-      const capEndY = y0 + perpY * outerWeight;
 
-      // 起始 round cap 的弧从 inner 侧扫到 outer 侧（逆时针看是反向）
-      // 收集弧上的点，之后 unshift 到 innerVerts 前面作为连接段
-      const capArc: number[] = [capStartX, capStartY];
-      const cx2p0x = capStartX - capCx;
-      const cy2p0y = capStartY - capCy;
-      let angle0 = Math.atan2(cx2p0x, cy2p0y);
-      const angle1 = Math.atan2(capEndX - capCx, capEndY - capCy);
-
-      if (angle0 < angle1) {angle0 += Math.PI * 2;}
-      const angleDiff = angle1 - angle0;
-      const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
-      const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
-      const angleInc = angleDiff / segCount;
-
-      for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
-        capArc.push(
-          capCx + Math.sin(angle) * radius,
-          capCy + Math.cos(angle) * radius,
-        );
-      }
-      // capArc 最后一点是 capEndX/Y，即 outer 起点
-      // 将整段弧 unshift 到 innerVerts 头部（反向插入，使其成为从 outer→inner 的过渡）
-      // 实际处理：先正向存，最后组装时再处理顺序
-      // 简化处理：直接把 cap 弧作为 outerVerts 的前置（因为非封闭时内外共用端点）
-      outerVerts.push(...capArc.reverse()); // outer 侧先到弧顶再到 outer 起点
+      pushRoundFan(capCx, capCy,
+        x0 - perpX * innerWeight, y0 - perpY * innerWeight,
+        x0 + perpX * outerWeight, y0 + perpY * outerWeight,
+        true, startCap);
     } else if (style.cap === spec.LineCap.Square) {
       // square cap 直接在 inner/outer 各加一个延伸点
       const exx = perpY / width * width; // 方向向量
@@ -919,40 +890,25 @@ export function buildLineContour (
 
     return [outerVerts, innerReversed];
   } else {
-    // 非封闭：outer 正向 + inner 反向 = 单一封闭轮廓
+    // 非封闭：outer 正向 → 末端圆弧 → inner 反向 → 起始圆弧。
     const contour = [...outerVerts];
 
-    for (let i = innerVerts.length - 2; i >= 0; i -= 2) {
-      contour.push(innerVerts[i], innerVerts[i + 1]);
-    }
-
-    // round cap 末尾
     if (style.cap === spec.LineCap.Round) {
       const capCx = x1 - perpX * (innerWeight - outerWeight) * 0.5;
       const capCy = y1 - perpY * (innerWeight - outerWeight) * 0.5;
-      const capStartX = x1 - perpX * innerWeight;
-      const capStartY = y1 - perpY * innerWeight;
-      const capEndX = x1 + perpX * outerWeight;
-      const capEndY = y1 + perpY * outerWeight;
 
-      const cx2p0x = capEndX - capCx;
-      const cy2p0y = capEndY - capCy;
-      let angle0 = Math.atan2(cx2p0x, cy2p0y);
-      const angle1 = Math.atan2(capStartX - capCx, capStartY - capCy);
-
-      if (angle0 < angle1) {angle0 += Math.PI * 2;}
-      const angleDiff = angle1 - angle0;
-      const radius = Math.sqrt(cx2p0x * cx2p0x + cy2p0y * cy2p0y);
-      const segCount = ((15 * Math.abs(angleDiff) * Math.sqrt(radius) / Math.PI) >> 0) + 1;
-      const angleInc = angleDiff / segCount;
-
-      for (let i = 1, angle = angle0 + angleInc; i <= segCount; i++, angle += angleInc) {
-        contour.push(
-          capCx + Math.sin(angle) * radius,
-          capCy + Math.cos(angle) * radius,
-        );
-      }
+      pushRoundFan(capCx, capCy,
+        x1 + perpX * outerWeight, y1 + perpY * outerWeight,
+        x1 - perpX * innerWeight, y1 - perpY * innerWeight,
+        true, contour);
     }
+
+    const innerEnd = innerVerts.length - (style.cap === spec.LineCap.Round ? 4 : 2);
+
+    for (let i = innerEnd; i >= 0; i -= 2) {
+      contour.push(innerVerts[i], innerVerts[i + 1]);
+    }
+    contour.push(...startCap);
 
     return [contour];
   }

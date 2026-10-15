@@ -275,6 +275,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this._fillTrimPath;
   }
 
+  /** @internal 羽化管线目前每侧只支持一个纯色或渐变 paint。 */
+  get useFeather (): boolean {
+    return this.featherRenderer.featherRadius > 0
+      && !this.maskManager.isMask
+      && this.fills.length <= 1 && this.strokes.length <= 1
+      && this.fills.every(paint => this.isSolidOrGradient(paint))
+      && this.strokes.every(paint => this.isSolidOrGradient(paint));
+  }
+
   /**
    *
    * @param engine
@@ -359,6 +368,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+  }
+
+  override dispose (): void {
+    super.dispose();
+    this.featherRenderer.dispose();
   }
 
   override onUpdate (dt: number): void {
@@ -488,7 +502,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const fillScatterEdges: number[] = [];
     const strokeScatterEdges: number[] = [];
 
-    const needFeatherMesh = this.featherRenderer.featherRadius > 0 && !this.maskManager.isMask;
+    const needFeatherMesh = this.useFeather;
     const fillFeatherBBox = createEmptyFeatherBBox();
     const strokeFeatherBBox = createEmptyFeatherBBox();
     let fillScatterCount = 0;
@@ -793,6 +807,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
     }
 
+    this.materials = [...this.fillMaterials, ...this.strokeMaterials];
+    if (!this.useFeather) {
+      return;
+    }
+
     // 继承颜色: 优先从 fill, 其次从 stroke
     const firstFill = this.fills[0];
     const firstStroke = this.strokes[0];
@@ -805,8 +824,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     const upsampleMaterials = this.featherRenderer.upsampleMaterials;
 
+    this.applyRendererOptions(upsampleMaterials.fill, this.rendererOptions);
+    this.applyRendererOptions(upsampleMaterials.stroke, this.rendererOptions);
     this.updateFeatherPaintMaterial(upsampleMaterials.fill, this.fills);
     this.updateFeatherPaintMaterial(upsampleMaterials.stroke, this.strokes);
+    this.materials.push(upsampleMaterials.fill, upsampleMaterials.stroke);
   }
 
   private updatePaintMaterial (material: Material, paint: Paint) {
@@ -841,7 +863,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   /**
-   * 羽化只支持第一个纯色或渐变 paint，其余情况用 featherColor 纯色兜底
+   * 仅在 useFeather 确认 paint 组合受支持后调用。
    */
   private updateFeatherPaintMaterial (material: Material, paints: Paint[]): void {
     const paint = paints[0];
@@ -892,14 +914,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const material = Material.create(this.engine, materialProps);
 
     const renderer = rendererOptions;
-    const { side, occlusion, blending: blendMode, texture } = renderer;
+    const { blending: blendMode, texture } = renderer;
 
-    material.blending = true;
-    material.depthTest = true;
-    material.depthMask = occlusion;
-
-    setBlendMode(material, blendMode);
-    setSideMode(material, side);
+    this.applyRendererOptions(material, rendererOptions);
 
     material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
@@ -922,9 +939,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return material;
   }
 
+  private applyRendererOptions (material: Material, renderer: ItemRenderer): void {
+    material.blending = true;
+    material.depthTest = true;
+    material.depthMask = renderer.occlusion;
+    setBlendMode(material, renderer.blending);
+    setSideMode(material, renderer.side);
+  }
+
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
+    this.materialDirty = true;
+    this.featherRenderer.atlasLayers = null;
 
     if (data.mask) {
       this.maskManager.setMaskOptions(this.engine, data.mask);
@@ -966,7 +993,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     // 读取羽化参数 (spec 类型可能尚未定义这些字段，使用类型断言)
     const extData = data as spec.ShapeComponentData & { featherRadius?: number, featherColor?: { r: number, g: number, b: number, a: number } };
 
-    this.featherRenderer.featherRadius = extData.featherRadius ?? 1;
+    this.featherRenderer.featherRadius = extData.featherRadius ?? 0;
     if (extData.featherColor) {
       this.featherRenderer.featherColor = new Color(extData.featherColor.r, extData.featherColor.g, extData.featherColor.b, extData.featherColor.a);
     }
@@ -985,10 +1012,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       this.strokeMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
     }
 
-    this.materials = [
-      ...this.fillMaterials, ...this.strokeMaterials,
-      this.featherRenderer.upsampleMaterials.fill, this.featherRenderer.upsampleMaterials.stroke,
-    ];
+    this.materials = [...this.fillMaterials, ...this.strokeMaterials];
 
     switch (data.type) {
       case spec.ShapePrimitiveType.Custom: {
