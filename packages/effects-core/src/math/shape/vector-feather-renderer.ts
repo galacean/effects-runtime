@@ -15,7 +15,7 @@ import type { Paint } from '../../plugins/shape/shape-material';
 import { applyShapeRendererOptions, isSolidOrGradient, updateShapePaintMaterial } from '../../plugins/shape/shape-material';
 import type { StrokeAttributes } from './build-line';
 import { buildLineContour } from './build-line';
-import type { FeatherBBox } from './feather-mesh-builder';
+import type { FeatherBBox, FeatherMeshData } from './feather-mesh-builder';
 import { buildContoursFeatherMeshData, buildFeatherMeshData } from './feather-mesh-builder';
 import indicatorVert from '../../plugins/shape/shaders/feather-indicator.vert.glsl';
 import indicatorFrag from '../../plugins/shape/shaders/feather-indicator.frag.glsl';
@@ -36,7 +36,6 @@ export type FeatherRenderParams = {
   fboH: number,
   orthoProjection: Matrix4,
   featherRadius: number, // 本次绘制使用的局部空间半径，不改写配置值
-  featherRadiusScreen: number, // 这个用于在片段着色器里做抗亮斑
   /**
    * FBO 覆盖的局部空间矩形 [minX, minY, width, height]。
    * scatter 用它把 gl_FragCoord 反算回局部坐标。
@@ -53,7 +52,6 @@ export type FeatherAtlasInfo = {
   atlasSize: Vector2,
   textureOffset: Vector2,
   textureSize: Vector2,
-  featherRadiusScreen: number,
   expandedRect: FeatherRect,
 };
 
@@ -285,9 +283,7 @@ export class VectorFeatherRenderer {
     this._enabled = false;
   }
 
-  update (data: FeatherShapeData, geometryDirty: boolean, materialDirty: boolean): void {
-    const wasEnabled = this.enabled;
-
+  update (data: FeatherShapeData): void {
     this._enabled = this.featherRadius > 0 && !data.isMask
       && data.fills.length <= 1 && data.strokes.length <= 1
       && data.fills.every(isSolidOrGradient) && data.strokes.every(isSolidOrGradient);
@@ -297,46 +293,27 @@ export class VectorFeatherRenderer {
 
       return;
     }
-    if (geometryDirty || !wasEnabled) {
-      this.updateGeometry(data);
-    }
-    if (materialDirty || !wasEnabled) {
-      this.updateMaterials(data);
-    }
+    this.updateGeometry(data);
+    this.updateMaterials(data);
   }
 
   private updateGeometry (data: FeatherShapeData): void {
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const fillEdges: number[] = [];
-    const strokeEdges: number[] = [];
-    const fillBBox = createEmptyFeatherBBox();
-    const strokeBBox = createEmptyFeatherBBox();
-    let fillCount = 0;
-    let strokeCount = 0;
+    const meshes = {
+      fill: createEmptyFeatherMeshData(),
+      stroke: createEmptyFeatherMeshData(),
+    };
 
     for (const contour of data.fillContours) {
-      fillCount += buildFeatherMeshData(contour.points, vertices, vertices.length / 2, indices, fillEdges, fillBBox);
+      buildFeatherMeshData(contour.points, meshes.fill);
     }
-    const fillIndexCount = indices.length;
 
     for (const contour of data.strokeContours) {
       const contours = buildLineContour(contour.points, data.strokeAttributes, false, contour.closed);
 
-      strokeCount += buildContoursFeatherMeshData(contours, vertices, vertices.length / 2, indices, strokeEdges, strokeBBox);
+      buildContoursFeatherMeshData(contours, meshes.stroke);
     }
 
-    const fillTriangles: number[] = [];
-    const strokeTriangles: number[] = [];
-
-    appendIndicatorTriangles(indices, vertices, 0, fillIndexCount, fillTriangles);
-    appendIndicatorTriangles(indices, vertices, fillIndexCount, indices.length - fillIndexCount, strokeTriangles);
-    this.updateMeshData(
-      fillEdges, fillCount, toFeatherRect(fillBBox),
-      strokeEdges, strokeCount, toFeatherRect(strokeBBox),
-      fillTriangles, fillTriangles.length / FLOATS_PER_TRIANGLE,
-      strokeTriangles, strokeTriangles.length / FLOATS_PER_TRIANGLE,
-    );
+    this.updateMeshData(meshes);
   }
 
   private updateMaterials (data: FeatherShapeData): void {
@@ -363,34 +340,27 @@ export class VectorFeatherRenderer {
     }
   }
 
-  private updateMeshData (
-    fillScatterEdges: number[],
-    fillScatterCount: number,
-    fillBBox: FeatherRect,
-    strokeScatterEdges: number[],
-    strokeScatterCount: number,
-    strokeBBox: FeatherRect,
-    fillTriangles: number[],
-    fillTriangleCount: number,
-    strokeTriangles: number[],
-    strokeTriangleCount: number,
-  ): void {
+  private updateMeshData (meshes: Record<FeatherSide, FeatherMeshData>): void {
     this.initializeResources();
-    this.sideMeshes.fill = { bbox: fillBBox, scatterCount: fillScatterCount, triangleCount: fillTriangleCount };
-    this.sideMeshes.stroke = { bbox: strokeBBox, scatterCount: strokeScatterCount, triangleCount: strokeTriangleCount };
 
-    this.scatterGeometries.fill = this.updateInstancedGeometry(
-      this.scatterGeometries.fill, SCATTER_DATA_SOURCE, SCATTER_STRIDE_BYTES, SCATTER_ATTRIBUTES, fillScatterEdges,
-    );
-    this.scatterGeometries.stroke = this.updateInstancedGeometry(
-      this.scatterGeometries.stroke, SCATTER_DATA_SOURCE, SCATTER_STRIDE_BYTES, SCATTER_ATTRIBUTES, strokeScatterEdges,
-    );
-    this.indicatorSoSGeometries.fill = this.updateInstancedGeometry(
-      this.indicatorSoSGeometries.fill, TRIANGLE_DATA_SOURCE, TRIANGLE_STRIDE_BYTES, TRIANGLE_ATTRIBUTES, fillTriangles,
-    );
-    this.indicatorSoSGeometries.stroke = this.updateInstancedGeometry(
-      this.indicatorSoSGeometries.stroke, TRIANGLE_DATA_SOURCE, TRIANGLE_STRIDE_BYTES, TRIANGLE_ATTRIBUTES, strokeTriangles,
-    );
+    for (const side of FEATHER_SIDES) {
+      const { triangles, edges, bbox } = meshes[side];
+
+      this.sideMeshes[side] = {
+        bbox: toFeatherRect(bbox),
+        scatterCount: edges.length / 4,
+        triangleCount: triangles.length / FLOATS_PER_TRIANGLE,
+      };
+      this.scatterGeometries[side] = this.updateInstancedGeometry(
+        this.scatterGeometries[side], SCATTER_DATA_SOURCE, SCATTER_STRIDE_BYTES, SCATTER_ATTRIBUTES, edges,
+      );
+      this.indicatorSoSGeometries[side] = this.updateInstancedGeometry(
+        this.indicatorSoSGeometries[side], TRIANGLE_DATA_SOURCE, TRIANGLE_STRIDE_BYTES, TRIANGLE_ATTRIBUTES, triangles,
+      );
+    }
+
+    const fillTriangles = meshes.fill.triangles;
+    const strokeTriangles = meshes.stroke.triangles;
 
     const positions = new Float32Array([...fillTriangles, ...strokeTriangles]);
     const buffer = this.indicatorGeometry.getAttributeBuffer('aPos');
@@ -405,7 +375,9 @@ export class VectorFeatherRenderer {
     this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH.stroke].offset = fillTriangles.length / 2;
     this.indicatorGeometry.subMeshes[INDICATOR_SUBMESH.stroke].vertexCount = strokeTriangles.length / 2;
 
-    const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = unionFeatherRect(fillBBox, strokeBBox);
+    const [gradientMinX, gradientMinY, gradientWidth, gradientHeight] = unionFeatherRect(
+      this.sideMeshes.fill.bbox, this.sideMeshes.stroke.bbox,
+    );
 
     for (const side of FEATHER_SIDES) {
       const material = this.upsampleMaterials[side];
@@ -480,7 +452,6 @@ export class VectorFeatherRenderer {
         expandedMinY, expandedMinY + expandedH,
       ),
       featherRadius: prepared.featherRadius,
-      featherRadiusScreen: prepared.featherRadiusScreen,
       localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
     };
   }
@@ -577,7 +548,6 @@ export class VectorFeatherRenderer {
 
     vectors.expandedMin.set(expandedMinX, expandedMinY);
     vectors.expandedSize.set(expandedWidth, expandedHeight);
-    material.setFloat('uScreenRadius', layer.featherRadiusScreen);
     material.setFloat('uIndicatorSoS', VectorFeatherRenderer.indicatorSoS ? 1 : 0);
     material.setTexture('uAtlasTex', layer.atlasTexture);
     material.setVector2('uTextureSize', layer.textureSize);
@@ -796,8 +766,12 @@ export class VectorFeatherRenderer {
   }
 }
 
-function createEmptyFeatherBBox (): FeatherBBox {
-  return { minX: Number.MAX_VALUE, minY: Number.MAX_VALUE, maxX: -Number.MAX_VALUE, maxY: -Number.MAX_VALUE };
+function createEmptyFeatherMeshData (): FeatherMeshData {
+  return {
+    triangles: [],
+    edges: [],
+    bbox: { minX: Number.MAX_VALUE, minY: Number.MAX_VALUE, maxX: -Number.MAX_VALUE, maxY: -Number.MAX_VALUE },
+  };
 }
 
 function toFeatherRect (bbox: FeatherBBox): FeatherRect {
@@ -806,24 +780,6 @@ function toFeatherRect (bbox: FeatherBBox): FeatherRect {
   }
 
   return [bbox.minX, bbox.minY, bbox.maxX - bbox.minX, bbox.maxY - bbox.minY];
-}
-
-function appendIndicatorTriangles (
-  indices: number[],
-  vertices: number[],
-  indexStart: number,
-  indexCount: number,
-  out: number[],
-): void {
-  const end = indexStart + indexCount;
-
-  for (let i = indexStart; i + 2 < end; i += 3) {
-    const i0 = indices[i] * 2;
-    const i1 = indices[i + 1] * 2;
-    const i2 = indices[i + 2] * 2;
-
-    out.push(vertices[i0], vertices[i0 + 1], vertices[i1], vertices[i1 + 1], vertices[i2], vertices[i2 + 1]);
-  }
 }
 
 function unionFeatherRect (fill: FeatherRect, stroke: FeatherRect): FeatherRect {

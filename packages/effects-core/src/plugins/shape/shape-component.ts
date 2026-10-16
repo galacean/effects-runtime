@@ -1,13 +1,12 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { Maskable, MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha } from '../../material';
+import { Material } from '../../material';
 import type { Renderer } from '../../render';
 import { BufferUsage, GLSLVersion, Geometry, VertexElementType } from '../../render';
 import type { GradientValue, StrokeAttributes } from '../../math';
@@ -159,8 +158,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
    */
   readonly featherRenderer: VectorFeatherRenderer;
 
-  private shapeDirty = true;
-  private materialDirty = true;
+  private dirty = true;
   private graphicsPath = new GraphicsPath();
   private fillContours: ShapeContour[] = [];
   private strokeContours: ShapeContour[] = [];
@@ -291,23 +289,18 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.shapeDirty && !this.materialDirty) {
+    if (!this.dirty) {
       return;
     }
-    if (this.shapeDirty) {
-      const screenScale = this.computeScreenScale();
+    const screenScale = this.computeScreenScale();
 
-      this.buildPath(this.shapeAttributes, screenScale);
+    this.buildPath(this.shapeAttributes, screenScale);
 
-      const fillPath = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
-      const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+    const fillPath = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+    const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
 
-      this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
-    }
-
-    if (this.materialDirty) {
-      this.updateMaterials();
-    }
+    this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
+    this.updateMaterials();
 
     this.featherRenderer.update({
       fillContours: this.fillContours,
@@ -317,10 +310,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       strokes: this.strokes,
       rendererOptions: this.rendererOptions,
       isMask: this.maskManager.isMask,
-    }, this.shapeDirty, this.materialDirty);
+    });
     this.materials = [...this.fillMaterials, ...this.strokeMaterials, ...this.featherRenderer.materials];
-    this.shapeDirty = false;
-    this.materialDirty = false;
+    this.dirty = false;
   }
 
   override render (renderer: Renderer) {
@@ -698,36 +690,17 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     };
     const material = Material.create(this.engine, materialProps);
 
-    const renderer = rendererOptions;
-    const { blending: blendMode, texture } = renderer;
-
     applyShapeRendererOptions(material, rendererOptions);
 
     material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
-    material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
-    material.setTexture('_ImageTex', texture);
-
-    const preMultiAlpha = getPreMultiAlpha(blendMode);
-    const texParams = new Vector4();
-
-    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = preMultiAlpha;
-    texParams.z = renderer.renderMode;
-    material.setVector4('_TexParams', texParams);
-
-    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
-      material.enableMacro('ALPHA_CLIP');
-    } else {
-      material.disableMacro('ALPHA_CLIP');
-    }
+    material.setTexture('_ImageTex', rendererOptions.texture);
 
     return material;
   }
 
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
-    this.shapeDirty = true;
-    this.materialDirty = true;
+    this.dirty = true;
 
     if (data.mask) {
       this.maskManager.setMaskOptions(this.engine, data.mask);
@@ -920,7 +893,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override onApplyAnimationProperties (): void {
-    this.shapeDirty = true;
-    this.materialDirty = true;
+    this.dirty = true;
   }
 }

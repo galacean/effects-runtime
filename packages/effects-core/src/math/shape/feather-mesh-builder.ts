@@ -7,6 +7,12 @@ export type FeatherBBox = {
   maxY: number,
 };
 
+export type FeatherMeshData = {
+  triangles: number[],
+  edges: number[],
+  bbox: FeatherBBox,
+};
+
 function expandFeatherBBox (
   bbox: FeatherBBox,
   minX: number,
@@ -24,22 +30,14 @@ function expandFeatherBBox (
  * 从形状路径的 2D 顶点数组构建羽化网格
  * 自动处理路径闭合和CCW方向
  * @param pathVertices - 形状路径的 2D 坐标数组 [x0, y0, x1, y1, ...]
- * @param vertices - Indicator pass 使用的顶点输出数组 (vec2)
- * @param vertOffset - Indicator 顶点起始偏移（以顶点数计）
- * @param indices - Indicator pass 索引输出数组
- * @param scatterEdgeVertices - Scatter pass 边数据输出数组
- * @param bbox - 羽化包围盒输出对象
+ * @param meshData - Indicator 三角形、Scatter 边数据和包围盒的输出对象
  */
 export function buildFeatherMeshData (
   pathVertices: number[],
-  outputVertices: number[],
-  vertOffset: number,
-  indices: number[],
-  scatterEdgeVertices: number[],
-  bbox: FeatherBBox,
-): number {
+  meshData: FeatherMeshData,
+): void {
   if (pathVertices.length < 6) {
-    return 0;
+    return;
   }
 
   // 确保路径闭合（首尾相同）
@@ -57,24 +55,9 @@ export function buildFeatherMeshData (
   // 确保 CCW 方向 Union函数自带显式闭合
   const outerContours: number[][] = union(ensureCCW(closedVertices), true);
 
-  let edgeCount = 0;
-  let contourVertOffset = vertOffset;
-
-  for (let c = 0; c < outerContours.length; c++) {
-    const outerContour: number[] = outerContours[c];
-
-    edgeCount += buildFeatherMeshDataInternal(
-      outerContour,
-      outputVertices,
-      contourVertOffset,
-      indices,
-      scatterEdgeVertices,
-      bbox,
-    );
-    contourVertOffset = outputVertices.length / 2;
+  for (const outerContour of outerContours) {
+    buildFeatherMeshDataInternal(outerContour, meshData);
   }
-
-  return edgeCount;
 }
 
 /**
@@ -82,12 +65,9 @@ export function buildFeatherMeshData (
  */
 function buildFeatherMeshDataInternal (
   pathVertices: number[],
-  outputVertices: number[],
-  vertOffset: number,
-  indices: number[],
-  scatterEdgeVertices: number[],
-  bbox: FeatherBBox,
-): number {
+  meshData: FeatherMeshData,
+): void {
+  const { triangles, edges, bbox } = meshData;
   const numPathPts = pathVertices.length / 2;
 
   // 计算几何中心和包围盒
@@ -109,68 +89,29 @@ function buildFeatherMeshDataInternal (
   cx /= numPathPts;
   cy /= numPathPts;
 
-  // --- Indicator 扇形网格 ---
-  // 顶点: [center, v0, v1, ..., v(n-1)]，vec2 格式
-  outputVertices.push(cx, cy);
-  for (let i = 0; i < numPathPts; i++) {
-    outputVertices.push(pathVertices[i * 2], pathVertices[i * 2 + 1]);
-  }
+  // 每条轮廓边对应一个 Indicator 扇形三角形和一个 Scatter 实例。
+  for (let i = 0; i < numPathPts - 1; i++) {
+    const x1 = pathVertices[i * 2];
+    const y1 = pathVertices[i * 2 + 1];
+    const x2 = pathVertices[(i + 1) * 2];
+    const y2 = pathVertices[(i + 1) * 2 + 1];
 
-  // 索引: 三角扇 [center, vi, vi+1]
-  const numTriangles = numPathPts - 1;
-
-  for (let i = 0; i < numTriangles; i++) {
-    indices.push(
-      vertOffset,
-      vertOffset + i + 1,
-      vertOffset + i + 2,
-    );
-  }
-
-  // --- Scatter 边顶点数据 (用于实例化渲染) ---
-  // 显式写入每条边的起点和终点，避免多 contour 串接时产生伪边
-  const numEdges = numPathPts - 1;
-
-  for (let i = 0; i < numEdges; i++) {
-    scatterEdgeVertices.push(
-      pathVertices[i * 2],
-      pathVertices[i * 2 + 1],
-      pathVertices[(i + 1) * 2],
-      pathVertices[(i + 1) * 2 + 1],
-    );
+    triangles.push(cx, cy, x1, y1, x2, y2);
+    edges.push(x1, y1, x2, y2);
   }
   expandFeatherBBox(bbox, minX, minY, maxX, maxY);
-
-  return numEdges;
 }
 
 export function buildContoursFeatherMeshData (
   contours: number[][],
-  outputVertices: number[],
-  vertOffset: number,
-  indices: number[],
-  scatterEdgeVertices: number[],
-  bbox: FeatherBBox,
-): number {
-  let edgeCount = 0;
-  let contourVertOffset = vertOffset;
-
+  meshData: FeatherMeshData,
+): void {
   // 这里保证了路径闭合和CCW
   const parsedContours = unionContours(contours, true);
 
   for (const contour of parsedContours) {
-    edgeCount += buildFeatherMeshDataInternal(
-      contour,
-      outputVertices,
-      contourVertOffset,
-      indices,
-      scatterEdgeVertices,
-      bbox,
-    );
-    contourVertOffset = outputVertices.length / 2;
+    buildFeatherMeshDataInternal(contour, meshData);
   }
-
-  return edgeCount;
 }
 
 /**

@@ -21,24 +21,15 @@ export type ContourMeasurePosTan = {
   tan: Vector2,
 };
 
-type ContourDataSegment = {
-  distance: number,
-  pointIndex: number,
-  tValue: number,
-  type: 'line' | 'cubic',
-  smoothness?: number,
-  scale?: number,
-};
-
 type ContourCurve = {
   points: Vector2[],
-  segments: ContourDataSegment[],
+  segments: ContourMeasureSegment[],
   closePath: boolean,
 };
 
 type ContourMeasureData = {
   points: Vector2[],
-  segments: ContourDataSegment[],
+  segments: ContourMeasureSegment[],
   contourLength: number,
   contourClosed: boolean,
 };
@@ -50,7 +41,7 @@ type ContourBuildResult = {
 
 function addLineSeg (
   points: Vector2[],
-  segments: ContourDataSegment[],
+  segments: ContourMeasureSegment[],
   target: Vector2,
   distance: number,
 ): number {
@@ -90,7 +81,7 @@ function addCubicSegs (
   tolerance: number,
   smoothness?: number,
   scale?: number,
-): { distance: number, segments: ContourDataSegment[] } {
+): { distance: number, segments: ContourMeasureSegment[] } {
   const samplePoints: number[] = [];
   const tValues: number[] = [];
 
@@ -108,7 +99,7 @@ function addCubicSegs (
     scale ?? screenScale,
     tValues,
   );
-  const segments: ContourDataSegment[] = [];
+  const segments: ContourMeasureSegment[] = [];
   let previousPoint = sourcePoints[0];
 
   for (let index = 0; index < tValues.length; index++) {
@@ -144,7 +135,7 @@ function addCubicSegs (
 
 function finishContourCurve (
   points: Vector2[],
-  segments: ContourDataSegment[],
+  segments: ContourMeasureSegment[],
   distance: number,
   closePath: boolean,
 ): ContourCurve | null {
@@ -166,7 +157,7 @@ function tryNextContour (
   tolerance: number,
 ): ContourBuildResult {
   let currentPoints: Vector2[] = [];
-  let currentSegments: ContourDataSegment[] = [];
+  let currentSegments: ContourMeasureSegment[] = [];
   let currentDistance = 0;
   let contourStart: Vector2 | null = null;
   let isClosed = false;

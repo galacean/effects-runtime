@@ -1,4 +1,3 @@
-const DOWNSAMPLE_FEATHER_FACTOR = 10.0;
 const ATLAS_PADDING = 2.0;
 
 export interface AtlasRect {
@@ -28,32 +27,6 @@ export class AtlasAllocator {
     this.currentX = 0;
     this.currentY = 0;
     this.currentRowHeight = 0;
-  }
-
-  /**
-   * 根据羽化半径计算降采样倍率
-   */
-  getDownsample (featherRadius: number): number {
-    return Math.max(featherRadius / DOWNSAMPLE_FEATHER_FACTOR, 1.0);
-  }
-
-  /**
-   * 将原始包围盒转换到 Atlas 坐标并进行 Y 轴翻转
-   */
-  fit (bbox: AtlasRect, downSample: number, outBbox: AtlasRect): boolean {
-    const flippedY = this.height - bbox.y - bbox.h;
-
-    const x1 = Math.floor(bbox.x / downSample);
-    const y1 = Math.floor(flippedY / downSample);
-    const x2 = Math.ceil((bbox.x + bbox.w) / downSample);
-    const y2 = Math.ceil((flippedY + bbox.h) / downSample);
-
-    outBbox.x = Math.max(x1, 0);
-    outBbox.y = Math.max(y1, 0);
-    outBbox.w = Math.min(this.width - outBbox.x, x2 - x1);
-    outBbox.h = Math.min(this.height - outBbox.y, y2 - y1);
-
-    return outBbox.w > 0 && outBbox.h > 0;
   }
 
   /**

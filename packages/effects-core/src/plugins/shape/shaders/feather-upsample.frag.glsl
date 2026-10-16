@@ -12,7 +12,6 @@ uniform vec2 uExpandedSize;  // upsample 四边形的宽高
 uniform vec2 uGradientMin;   // 紧包围盒最小点，渐变 UV 的原点
 uniform vec2 uGradientSize;  // 紧包围盒宽高
 
-uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
 uniform float uIndicatorSoS;  // 1：indicator 与积分一致，直接相加；0：用 fixSingleLayer 消除不一致
 
 varying vec2 vTexCoord;
@@ -72,10 +71,11 @@ vec4 supressLargeNoises(vec4 vals)
   float yDiff = (vals.y - vals.x + vals.y - vals.w) * 0.5;
   float zDiff = (vals.z - vals.y + vals.z - vals.w) * 0.5;
   float wDiff = (vals.w - vals.z + vals.w - vals.x) * 0.5;
-  vals.x -= round(xDiff) * step(0.9,  abs(xDiff));
-  vals.y -= round(yDiff) * step(0.9,  abs(yDiff));
-  vals.z -= round(zDiff) * step(0.9,  abs(zDiff));
-  vals.w -= round(wDiff) * step(0.9,  abs(wDiff));
+  // WebGL1 不支持 round，使用 floor(x + 0.5) 取整。
+  vals.x -= floor(xDiff + 0.5) * step(0.9, abs(xDiff));
+  vals.y -= floor(yDiff + 0.5) * step(0.9, abs(yDiff));
+  vals.z -= floor(zDiff + 0.5) * step(0.9, abs(zDiff));
+  vals.w -= floor(wDiff + 0.5) * step(0.9, abs(wDiff));
   return vals;
 }
 
