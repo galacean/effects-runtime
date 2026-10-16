@@ -12,11 +12,20 @@ interface TransformEvaluationState {
 
 /** Blend valid absolute channels and keep the last applied transform when clips expire. */
 export class TransformMixerPlayable extends TrackMixerPlayable {
-  private readonly states = new WeakMap<VFXItem, TransformEvaluationState>();
+  private states = new WeakMap<VFXItem, TransformEvaluationState>();
   private readonly totals: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly weights: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly result: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly validChannels: boolean[] = [false, false, false, false, false, false, false, false, false];
+
+  constructor () {
+    super();
+    this.requiresTearDown = true;
+  }
+
+  protected override tearDown (): void {
+    this.states = new WeakMap();
+  }
 
   override evaluate (segmentId: number, item: VFXItem | undefined, context: FrameContext): void {
     let state = item ? this.states.get(item) : undefined;

@@ -162,9 +162,12 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     mixer.evaluate(segmentId, timeline.getBoundObject(mixer.objectBindingId), { time: comp.time, deltaTime: 0 });
   };
 
-  it('单 clip scale 归一化低权重，零权重使用独立混合初值', async () => {
+  it('单 clip scale 归一化低权重，退出后重新捕获零权重混合初值', async () => {
     const scene = buildScene(
-      [{ assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } }, start: 1 }],
+      [{
+        assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } },
+        start: 1, duration: 1, endBehavior: spec.EndBehavior.destroy,
+      }],
       { x: 0, y: 0, z: 0 },
       { x: 3, y: 4, z: 5 },
     );
@@ -192,8 +195,31 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     sprite.transform.setScale(30, 40, 50);
     evaluateMixer(comp, [0]);
     expect(sprite.transform.scale.toArray()).to.deep.equals([6, 8, 6]);
-    comp.sceneRoot.getComponent(CompositionComponent).stop();
+    const component = comp.sceneRoot.getComponent(CompositionComponent);
+    const mixer = getTimeline(comp).tracks.find(track => track instanceof TransformMixerPlayable)!;
+    const evaluate = mixer.evaluate.bind(mixer);
+
+    mixer.evaluate = (segmentId, item, context) => {
+      mixer.setClipWeight(0, 0);
+      evaluate(segmentId, item, context);
+    };
+
+    component.stop();
     expect(sprite.transform.scale.toArray()).to.deep.equals([6, 8, 6]);
+    sprite.transform.setScale(30, 40, 50);
+    component.setTime(1.5);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([30, 40, 50]);
+
+    sprite.transform.setScale(60, 70, 80);
+    component.setTime(1.75);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([30, 40, 50]);
+    component.setTime(2.5);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([30, 40, 50]);
+    sprite.transform.setScale(60, 70, 80);
+    component.setTime(1.5);
+    expect(sprite.transform.scale.toArray()).to.deep.equals([60, 70, 80]);
+    component.stop();
+    expect(sprite.transform.scale.toArray()).to.deep.equals([60, 70, 80]);
   });
 
   it('多 clip scale 混合绝对值', async () => {
