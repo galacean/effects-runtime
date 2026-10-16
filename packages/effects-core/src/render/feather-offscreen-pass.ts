@@ -1,4 +1,3 @@
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { ShapeComponent } from '../plugins/shape/shape-component';
 import type { GPUFramebuffer } from './gpu-framebuffer';
 import { FilterMode, RenderTextureFormat } from './gpu-framebuffer';
@@ -8,15 +7,13 @@ import type { RenderingData } from './rendering-data';
 import { TextureLoadAction } from '../texture';
 import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
-import type { FeatherRenderParams, FeatherSide } from '../math/shape/vector-feather-renderer';
-import { FEATHER_SIDES, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import type { FeatherRenderParams, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
 
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
 type PendingFeatherEntry = {
   featherRenderer: VectorFeatherRenderer,
-  side: FeatherSide,
   params: FeatherRenderParams,
 };
 
@@ -29,7 +26,7 @@ type FeatherEntry = PendingFeatherEntry & {
  * FeatherOffscreenPass
  * 在 DrawObjectPass 之前执行，将需要羽化的填充和描边
  * 分别渲染到 atlas 中互不重叠的区域。
- * 结果写入 VectorFeatherRenderer.atlasLayers，由 renderer 完成合成上色。
+ * VectorFeatherRenderer 负责参数准备、离屏绘制和合成上色。
  */
 export class FeatherOffscreenPass extends RenderPass {
 
@@ -51,30 +48,14 @@ export class FeatherOffscreenPass extends RenderPass {
     const renderList = data.renderList.objects;
 
     for (const mesh of renderList) {
-      if (!(mesh instanceof ShapeComponent) || !mesh.featherRenderer.enabled) {
+      if (!(mesh instanceof ShapeComponent)) {
         continue;
       }
 
       const featherRenderer = mesh.featherRenderer;
-      const worldMatrix = mesh.transform.getWorldMatrix();
-      const prepared = featherRenderer.prepareFeatherRadius(renderer, worldMatrix, featherRenderer.featherRadius);
 
-      featherRenderer.atlasLayers = { fill: null, stroke: null };
-
-      for (const side of FEATHER_SIDES) {
-        if (!featherRenderer.layerHasContent(side)) {
-          continue;
-        }
-
-        const params = featherRenderer.createLayerParams(
-          renderer, worldMatrix, featherRenderer.layerBBox(side), prepared,
-        );
-
-        if (!params) {
-          continue;
-        }
-
-        pending.push({ featherRenderer, side, params });
+      for (const params of featherRenderer.prepareLayers(renderer, mesh.transform.getWorldMatrix())) {
+        pending.push({ featherRenderer, params });
       }
     }
 
@@ -122,29 +103,9 @@ export class FeatherOffscreenPass extends RenderPass {
       renderer.setViewport(0, 0, atlasW, atlasH);
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
 
-      for (const { featherRenderer, side, params, rect } of batch) {
-        const viewportOffset = new Vector2(rect.x, rect.y);
-
+      for (const { featherRenderer, params, rect } of batch) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-
-        if (VectorFeatherRenderer.indicatorSoS) {
-          featherRenderer.drawIndicatorSoSPass(renderer, params, viewportOffset, side);
-        } else {
-          featherRenderer.drawIndicatorPass(renderer, params.orthoProjection, side);
-        }
-
-        featherRenderer.drawScatterPass(renderer, params, viewportOffset, side);
-
-        const layers = featherRenderer.atlasLayers ?? { fill: null, stroke: null };
-
-        layers[side] = {
-          atlasTexture: atlas.getColorTextures()[0],
-          atlasSize: new Vector2(atlasW, atlasH),
-          textureOffset: viewportOffset,
-          textureSize: new Vector2(rect.w, rect.h),
-          expandedRect: params.localRect,
-        };
-        featherRenderer.atlasLayers = layers;
+        featherRenderer.renderOffscreen(renderer, params, atlas, rect);
       }
     };
 

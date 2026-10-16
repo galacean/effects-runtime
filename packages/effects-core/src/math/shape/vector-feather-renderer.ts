@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
-import type { Attribute, Renderer } from '../../render';
+import type { Attribute, GPUFramebuffer, Renderer } from '../../render';
 import { BufferUsage, Geometry, GLSLVersion } from '../../render';
 import type { Texture } from '../../texture';
 import { glContext } from '../../gl';
@@ -17,6 +17,7 @@ import type { StrokeAttributes } from './build-line';
 import { buildLineContour } from './build-line';
 import type { FeatherBBox, FeatherMeshData } from './feather-mesh-builder';
 import { buildContoursFeatherMeshData, buildFeatherMeshData } from './feather-mesh-builder';
+import type { AtlasRect } from './atlas-allocator';
 import indicatorVert from '../../plugins/shape/shaders/feather-indicator.vert.glsl';
 import indicatorFrag from '../../plugins/shape/shaders/feather-indicator.frag.glsl';
 import indicatorSoSVert from '../../plugins/shape/shaders/feather-indicator-sos.vert.glsl';
@@ -32,6 +33,7 @@ export type FeatherRect = [number, number, number, number];
  * 羽化渲染参数（用于批处理提交）
  */
 export type FeatherRenderParams = {
+  side: FeatherSide,
   fboW: number,
   fboH: number,
   orthoProjection: Matrix4,
@@ -45,7 +47,7 @@ export type FeatherRenderParams = {
 
 /**
  * @internal
- * 由 FeatherOffscreenPass 每帧设置，供 render() 执行 upsample
+ * 由 renderOffscreen() 每帧设置，供 render() 执行 upsample
  */
 export type FeatherAtlasInfo = {
   atlasTexture: Texture,
@@ -57,15 +59,9 @@ export type FeatherAtlasInfo = {
 
 export type FeatherSide = 'fill' | 'stroke';
 
-export const FEATHER_SIDES: readonly FeatherSide[] = ['fill', 'stroke'];
+const FEATHER_SIDES: readonly FeatherSide[] = ['fill', 'stroke'];
 
 export type FeatherAtlasLayers = Record<FeatherSide, FeatherAtlasInfo | null>;
-
-export type FeatherRadiusPrep = {
-  featherRadius: number,
-  featherRadiusScreen: number,
-  expandRadius: number,
-};
 
 type FeatherShapeData = {
   fillContours: readonly ShapeContour[],
@@ -168,10 +164,8 @@ export class VectorFeatherRenderer {
     fill: { expandedMin: new Vector2(), expandedSize: new Vector2() },
     stroke: { expandedMin: new Vector2(), expandedSize: new Vector2() },
   };
-  private scatterPixelOrigin = new Vector2();
-  private scatterSpacePerPixel = new Vector2();
-  private indicatorSoSPixelOrigin = new Vector2();
-  private indicatorSoSSpacePerPixel = new Vector2();
+  private pixelOrigin = new Vector2();
+  private spacePerPixel = new Vector2();
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -387,156 +381,122 @@ export class VectorFeatherRenderer {
     }
   }
 
-  layerHasContent (side: FeatherSide): boolean {
-    const mesh = this.sideMeshes[side];
-
-    return mesh.scatterCount > 0 || mesh.triangleCount > 0;
-  }
-
-  layerBBox (side: FeatherSide): FeatherRect {
-    return this.sideMeshes[side].bbox;
-  }
-
   /**
-   * 同一帧只调用一次。填充和描边再各自用这次得到的半径生成投影。
+   * 一次准备填充和描边的离屏参数，共用 MVP、屏幕尺寸和修正后的半径。
    */
-  prepareFeatherRadius (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
-    setFeatherRadius: number,
-  ): FeatherRadiusPrep {
+  prepareLayers (renderer: Renderer, worldMatrix: Matrix4): FeatherRenderParams[] {
+    this.atlasLayers = null;
+    const layers: FeatherRenderParams[] = [];
+
+    if (!this.enabled) {
+      return layers;
+    }
+
+    const vpMatrix = renderer.renderingData.options!.camera.getViewProjectionMatrix();
+    const mvp = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
+    const [, , screenW, screenH] = renderer.getViewport();
     const featherRadiusScreen = this.computeScreenRadius(
-      renderer, worldMatrix, setFeatherRadius,
+      mvp, screenW, screenH, this.featherRadius,
     );
     // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）
     const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);
 
-    const featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
-
-    return {
-      featherRadius,
-      featherRadiusScreen: refinedScreenRadius,
-      expandRadius: getExpandedRadius(featherRadius, refinedScreenRadius),
-    };
-  }
-
-  createLayerParams (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
-    bbox: FeatherRect,
-    prepared: FeatherRadiusPrep,
-  ): FeatherRenderParams | null {
-    if (bbox[2] <= 0 || bbox[3] <= 0) {
-      return null;
-    }
-
-    const [bx, by, bw, bh] = bbox;
-    const expandedW = bw + prepared.expandRadius * 2;
-    const expandedH = bh + prepared.expandRadius * 2;
-    const expandedMinX = bx - prepared.expandRadius;
-    const expandedMinY = by - prepared.expandRadius;
-    const screenExtent = this.computeScreenExtent(
-      renderer, worldMatrix,
-      expandedMinX, expandedMinY, expandedW, expandedH,
-    );
-    const downsample = Math.min(Math.max(prepared.featherRadiusScreen / 10.0, 1.0), 9999);
+    const featherRadius = this.featherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
+    const expandRadius = getExpandedRadius(featherRadius, refinedScreenRadius);
+    const downsample = Math.min(Math.max(refinedScreenRadius / 10.0, 1.0), 9999);
     const maxFboSize = Math.min(2048, this.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize);
-    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
-    const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
 
-    return {
-      fboW,
-      fboH,
-      orthoProjection: createOrthoMatrix(
-        expandedMinX, expandedMinX + expandedW,
-        expandedMinY, expandedMinY + expandedH,
-      ),
-      featherRadius: prepared.featherRadius,
-      localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
+    for (const side of FEATHER_SIDES) {
+      const { bbox, scatterCount, triangleCount } = this.sideMeshes[side];
+
+      if ((scatterCount <= 0 && triangleCount <= 0) || bbox[2] <= 0 || bbox[3] <= 0) {
+        continue;
+      }
+
+      const [bx, by, bw, bh] = bbox;
+      const expandedW = bw + expandRadius * 2;
+      const expandedH = bh + expandRadius * 2;
+      const expandedMinX = bx - expandRadius;
+      const expandedMinY = by - expandRadius;
+      const screenExtent = this.computeScreenExtent(
+        mvp, screenW, screenH,
+        expandedMinX, expandedMinY, expandedW, expandedH,
+      );
+
+      layers.push({
+        side,
+        fboW: Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize),
+        fboH: Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize),
+        orthoProjection: createOrthoMatrix(
+          expandedMinX, expandedMinX + expandedW,
+          expandedMinY, expandedMinY + expandedH,
+        ),
+        featherRadius,
+        localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
+      });
+    }
+
+    return layers;
+  }
+
+  /**
+   * 向已分配的 atlas 区域绘制 Indicator 和 Scatter，并记录合成参数。
+   * 调用者需已设置好 FBO 和 viewport。
+   */
+  renderOffscreen (
+    renderer: Renderer,
+    params: FeatherRenderParams,
+    atlas: GPUFramebuffer,
+    rect: AtlasRect,
+  ): void {
+    const { side, featherRadius, orthoProjection } = params;
+    const { triangleCount, scatterCount } = this.sideMeshes[side];
+    const useSoS = VectorFeatherRenderer.indicatorSoS;
+    const indicatorMaterial = useSoS ? this.indicatorSoSMaterial : this.indicatorMaterial;
+    const viewportOffset = new Vector2(rect.x, rect.y);
+    const [minX, minY, localW, localH] = params.localRect;
+
+    this.pixelOrigin.set(minX, minY);
+    this.spacePerPixel.set(localW / params.fboW, localH / params.fboH);
+    indicatorMaterial.setMatrix('uProjection', orthoProjection);
+    this.scatterMaterial.setMatrix('uProjection', orthoProjection);
+
+    for (const material of useSoS ? [indicatorMaterial, this.scatterMaterial] : [this.scatterMaterial]) {
+      material.setVector2('uViewportOffset', viewportOffset);
+      material.setVector2('uPixelOrigin', this.pixelOrigin);
+      material.setVector2('uSpacePerPixel', this.spacePerPixel);
+    }
+
+    if (useSoS) {
+      if (triangleCount > 0) {
+        renderer.drawGeometryInstanced(this.indicatorSoSGeometries[side], indicatorMaterial, triangleCount);
+      }
+    } else {
+      renderer.drawGeometry(this.indicatorGeometry, Matrix4.IDENTITY, indicatorMaterial, INDICATOR_SUBMESH[side]);
+    }
+
+    if (scatterCount > 0) {
+      this.scatterMaterial.setFloat('uCoverRadius', featherRadius + Math.max(this.spacePerPixel.x, this.spacePerPixel.y));
+      this.scatterMaterial.setFloat('uRadius', featherRadius);
+      renderer.drawGeometryInstanced(this.scatterGeometries[side], this.scatterMaterial, scatterCount);
+    }
+
+    const layers = this.atlasLayers ?? { fill: null, stroke: null };
+
+    layers[side] = {
+      atlasTexture: atlas.getColorTextures()[0],
+      atlasSize: new Vector2(atlas.viewport[2], atlas.viewport[3]),
+      textureOffset: viewportOffset,
+      textureSize: new Vector2(rect.w, rect.h),
+      expandedRect: params.localRect,
     };
-  }
-
-  /**
-   * 绘制 Indicator Pass（调用者需已设置好 FBO 和 viewport）
-   */
-  drawIndicatorPass (
-    renderer: Renderer,
-    orthoProjection: Matrix4,
-    side: FeatherSide,
-  ): void {
-    this.indicatorMaterial.setMatrix('uProjection', orthoProjection);
-    renderer.drawGeometry(
-      this.indicatorGeometry, Matrix4.IDENTITY, this.indicatorMaterial, INDICATOR_SUBMESH[side],
-    );
-  }
-
-  /**
-   * 绘制 Indicator 的浮点 SoS 版本（调用者需已设置好 FBO 和 viewport）。
-   * 每个扇形三角形画外扩 1px 的轴对齐包围盒，片元用与 scatter 相同的像素中心和侧向。
-   * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
-   */
-  drawIndicatorSoSPass (
-    renderer: Renderer,
-    params: FeatherRenderParams,
-    viewportOffset: Vector2,
-    side: FeatherSide,
-  ): void {
-    const instanceCount = this.sideMeshes[side].triangleCount;
-
-    if (instanceCount <= 0) {
-      return;
-    }
-
-    const [minX, minY, localW, localH] = params.localRect;
-
-    this.indicatorSoSPixelOrigin.set(minX, minY);
-    this.indicatorSoSSpacePerPixel.set(localW / params.fboW, localH / params.fboH);
-    this.indicatorSoSMaterial.setMatrix('uProjection', params.orthoProjection);
-    this.indicatorSoSMaterial.setVector2('uViewportOffset', viewportOffset);
-    this.indicatorSoSMaterial.setVector2('uPixelOrigin', this.indicatorSoSPixelOrigin);
-    this.indicatorSoSMaterial.setVector2('uSpacePerPixel', this.indicatorSoSSpacePerPixel);
-    renderer.drawGeometryInstanced(
-      this.indicatorSoSGeometries[side], this.indicatorSoSMaterial, instanceCount,
-    );
-  }
-
-  /**
-   * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）。
-   * 片元用 gl_FragCoord 反算局部空间像素中心，再用端点直接积分。
-   * @param viewportOffset - 当前 viewport 在 atlas 中的起点（整数像素）
-   */
-  drawScatterPass (
-    renderer: Renderer,
-    params: FeatherRenderParams,
-    viewportOffset: Vector2,
-    side: FeatherSide,
-  ): void {
-    const instanceCount = this.sideMeshes[side].scatterCount;
-
-    if (instanceCount <= 0) {
-      return;
-    }
-
-    const { featherRadius } = params;
-    const [minX, minY, localW, localH] = params.localRect;
-    const localPerPixelX = localW / params.fboW;
-    const localPerPixelY = localH / params.fboH;
-
-    this.scatterPixelOrigin.set(minX, minY);
-    this.scatterSpacePerPixel.set(localPerPixelX, localPerPixelY);
-    this.scatterMaterial.setMatrix('uProjection', params.orthoProjection);
-    this.scatterMaterial.setFloat('uCoverRadius', featherRadius + Math.max(localPerPixelX, localPerPixelY));
-    this.scatterMaterial.setVector2('uViewportOffset', viewportOffset);
-    this.scatterMaterial.setVector2('uPixelOrigin', this.scatterPixelOrigin);
-    this.scatterMaterial.setVector2('uSpacePerPixel', this.scatterSpacePerPixel);
-    this.scatterMaterial.setFloat('uRadius', featherRadius);
-    renderer.drawGeometryInstanced(this.scatterGeometries[side], this.scatterMaterial, instanceCount);
+    this.atlasLayers = layers;
   }
 
   /**
    * 绘制一侧的 Upsample。只写入随 atlas 和相机变化的 uniform。
    */
-  drawUpsamplePass (
+  private drawUpsamplePass (
     renderer: Renderer,
     worldMatrix: Matrix4,
     side: FeatherSide,
@@ -656,12 +616,10 @@ export class VectorFeatherRenderer {
    * 用于确定 FBO 的合理分辨率，避免局部坐标远小于屏幕像素时出现马赛克。
    */
   private computeScreenExtent (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
+    mvp: Matrix4,
+    screenW: number, screenH: number,
     minX: number, minY: number, w: number, h: number,
   ): [number, number] {
-    const vpMatrix = renderer.renderingData.options!.camera.getViewProjectionMatrix();
-    const mvp = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
     const e = mvp.elements;
 
     const corners = [
@@ -670,8 +628,6 @@ export class VectorFeatherRenderer {
       [minX, minY + h],
       [minX + w, minY + h],
     ];
-
-    const [, , screenW, screenH] = renderer.getViewport();
 
     let sxMin = Infinity, syMin = Infinity;
     let sxMax = -Infinity, syMax = -Infinity;
@@ -706,14 +662,11 @@ export class VectorFeatherRenderer {
    * 使用向量长度，避免旋转后对角线的 X/Y 分量抵消。
    */
   private computeScreenRadius (
-    renderer: Renderer,
-    worldMatrix: Matrix4,
+    mvp: Matrix4,
+    screenW: number, screenH: number,
     featherRadius: number,
   ) {
-    const vpMatrix = renderer.renderingData.options!.camera.getViewProjectionMatrix();
-    const mvp = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
     const e = mvp.elements;
-    const [, , screenW, screenH] = renderer.getViewport();
     // [0, 0, 0, 1]
     const ox = e[12];
     const oy = e[13];
