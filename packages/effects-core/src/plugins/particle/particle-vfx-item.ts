@@ -1,23 +1,20 @@
 import { VFXItem } from '../../vfx-item';
 import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
+import { ClipPlayable, PlayableAsset } from '../timeline/playable';
 import { ParticleSystem } from './particle-system';
 
 /**
  * @since 2.0.0
  */
-export class ParticleBehaviourPlayable extends Playable {
+export class ParticleBehaviourPlayable extends ClipPlayable {
   private particleSystem: ParticleSystem | null = null;
 
-  getParticleSystem (context: FrameContext): ParticleSystem | null {
-    if (this.particleSystem) {
-      return this.particleSystem;
-    }
-
-    const boundObject = context.output.getUserData();
-
+  getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
     if (!(boundObject instanceof VFXItem)) {
       return null;
+    }
+    if (this.particleSystem) {
+      return this.particleSystem;
     }
 
     this.particleSystem = boundObject.getComponent(ParticleSystem);
@@ -25,29 +22,29 @@ export class ParticleBehaviourPlayable extends Playable {
     return this.particleSystem;
   }
 
-  override processFrame (context: FrameContext): void {
-    const particleSystem = this.getParticleSystem(context);
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
+    const particleSystem = this.getParticleSystem(boundObject);
 
     if (!particleSystem) {
       return;
     }
 
-    if (this.time >= 0 && this.time < particleSystem.time) {
+    if (context.time >= 0 && context.time < particleSystem.time) {
       particleSystem.reset();
     }
 
     const maxSimulateTime = 0.016; // simulate at most 16ms one frame to avoid long time step
 
-    while (particleSystem.time + maxSimulateTime < this.time) {
+    while (particleSystem.time + maxSimulateTime < context.time) {
       particleSystem.simulate(maxSimulateTime);
     }
 
-    particleSystem.simulate(this.time - particleSystem.time);
+    particleSystem.simulate(context.time - particleSystem.time);
   }
 }
 
 export class ParticleBehaviourPlayableAsset extends PlayableAsset {
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     return new ParticleBehaviourPlayable();
   }
 }

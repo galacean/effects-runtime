@@ -1,8 +1,17 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, ParticleTrack, spec, SpriteColorTrack, SpritePropertyTrack, SubCompositionTrack, TransformTrack } from '@galacean/effects';
+import { ActivationTrack, CompositionComponent, ParticleTrack, spec, SpriteColorTrack, SpritePropertyTrack, SubCompositionTrack, TransformTrack } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
+
+/** Notify the timeline after an edit and update the preview without advancing time. */
+export function refreshTimelineAfterEdit (state: SequencerState): void {
+  const composition = state.currentComposition.sceneRoot.getComponent(CompositionComponent);
+
+  // @ts-expect-error Editor access to the composition's timeline asset.
+  composition.timelineAsset?.markAsChanged();
+  composition.sampleTime(composition.getTime());
+}
 
 /**
  * 时间转换为像素位置

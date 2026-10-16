@@ -15,6 +15,7 @@ const buildKFrameScene = (clipStart = 0) => {
   const itemID = generateGUID();
   const componentID = generateGUID();
   const compositionID = generateGUID();
+  const compositionComponentID = generateGUID();
   const imageID = generateGUID();
   const textureID = generateGUID();
   const spriteAID = generateGUID();
@@ -46,15 +47,21 @@ const buildKFrameScene = (clipStart = 0) => {
           'startTime': 0,
           'endBehavior': 5,
           'previewSize': [0, 0],
-          'items': [{ 'id': itemID }],
+          'components': [{ 'id': compositionComponentID }],
+          'children': [{ 'id': itemID }],
           'camera': { 'fov': 60, 'far': 1000, 'near': 0.3, 'clipMode': 0, 'position': [0, 0, 8], 'rotation': [0, 0, 0] },
+        },
+      ],
+      'components': [
+        {
+          'id': compositionComponentID,
+          'dataType': 'CompositionComponent',
+          'item': { 'id': compositionID },
           'sceneBindings': [
             { 'key': { 'id': bindingTrackID }, 'value': { 'id': itemID } },
           ],
           'timelineAsset': { 'id': timelineAssetID },
         },
-      ],
-      'components': [
         {
           'id': componentID,
           'dataType': 'SpriteComponent',
@@ -69,6 +76,7 @@ const buildKFrameScene = (clipStart = 0) => {
           'id': itemID, 'duration': 5, 'type': '1', 'visible': true, 'endBehavior': 0, 'delay': 0,
           'name': 'sprite_1', 'renderLevel': 'B+', 'dataType': 'VFXItemData',
           'components': [{ 'id': componentID }],
+          'children': [],
           'transform': { 'position': { 'x': 0, 'y': 0, 'z': 0 }, 'eulerHint': { 'x': 0, 'y': 0, 'z': 0 }, 'scale': { 'x': 1, 'y': 1, 'z': 1 } },
         },
       ],

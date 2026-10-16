@@ -1,6 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
-import type { Playable } from '../playable';
+import type { ClipPlayable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { ReferenceCurve } from '../../../math';
@@ -39,7 +39,7 @@ export class SpritePropertyPlayableAsset extends PlayableAsset {
     this.curve = new ReferenceCurve(referenceCurveData);
   }
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const clip = new PropertyClipPlayable<Sprite>();
 
     clip.curve = this.curve;

@@ -5,7 +5,7 @@ import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
 import type { KeyframeData, TransformPropertyChannel, SpriteKeyframeData } from './types';
 import { getKeyframeId, toggleKeyframeSelection, clearKeyframeSelection } from './selection';
-import { timeToPixel, pixelToTime } from './timeline-utils';
+import { timeToPixel, pixelToTime, refreshTimelineAfterEdit } from './timeline-utils';
 import { getSpriteThumbnail } from '../../widgets/sprite-thumbnail';
 
 export class KeyframeRenderer {
@@ -400,9 +400,12 @@ export class KeyframeRenderer {
       state.draggedSpriteKeyframe = { trackId, index: hoveredIndex };
     }
     if (ImGui.IsItemDeactivated()) {
-      state.draggedSpriteKeyframe = null;
       // 拖完按 time 升序排序，保证 ReferenceCurve.getValue 阶梯采样的升序前提
       keyframes.sort((a, b) => a[0] - b[0]);
+      if (state.draggedSpriteKeyframe?.trackId === trackId) {
+        refreshTimelineAfterEdit(state);
+      }
+      state.draggedSpriteKeyframe = null;
     }
 
     // 水平拖动改关键帧时间（IsItemActive 拖动期间稳定，用锁定 index）
@@ -416,7 +419,12 @@ export class KeyframeRenderer {
       let newAbsTime = curAbsTime + timeDelta;
 
       newAbsTime = Math.max(clipStart, Math.min(clipStart + clipDuration, newAbsTime));
-      keyframes[idx][0] = (newAbsTime - clipStart) / Math.max(0.0001, clipDuration);
+      const normalizedTime = (newAbsTime - clipStart) / Math.max(0.0001, clipDuration);
+
+      if (keyframes[idx][0] !== normalizedTime) {
+        keyframes[idx][0] = normalizedTime;
+        refreshTimelineAfterEdit(state);
+      }
       ImGui.ResetMouseDragDelta(0);
       ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
       // 拖动期间把该帧作为悬浮 tooltip

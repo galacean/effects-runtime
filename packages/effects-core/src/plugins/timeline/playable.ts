@@ -1,85 +1,54 @@
 import { Asset } from '../../asset';
+import type { TimelineInstance } from './timeline-asset';
 
 /**
- * 动画图可播放节点对象
+ * Shared evaluation lifecycle for clips and track mixers.
  * @since 2.0.0
  */
-export class Playable {
-  private duration = 0;
-  private playState: PlayState = PlayState.Playing;
+export abstract class Playable {
+  protected requiresSetup = false;
+  protected requiresTearDown = false;
 
-  /**
-   * 当前本地播放的时间
-   */
-  protected time: number = 0;
-
-  play () {
-    this.playState = PlayState.Playing;
+  onBeginEvaluation (timeline: TimelineInstance): void {
+    if (this.requiresSetup) {
+      this.setup(timeline);
+    }
   }
 
-  pause () {
-    this.playState = PlayState.Paused;
+  onEndEvaluation (timeline: TimelineInstance): void {
+    if (this.requiresTearDown) {
+      this.tearDown(timeline);
+    }
   }
 
-  setTime (time: number) {
-    this.time = time;
+  protected setup (timeline: TimelineInstance): void {
+    // Override
   }
 
-  getTime () {
-    return this.time;
-  }
-
-  setDuration (duration: number) {
-    this.duration = duration;
-  }
-
-  getDuration () {
-    return this.duration;
-  }
-
-  getPlayState () {
-    return this.playState;
-  }
-
-  processFrame (context: FrameContext) {
-
+  protected tearDown (timeline: TimelineInstance): void {
+    // Override
   }
 }
 
-/**
- * 动画图输出节点对象，将动画数据采样到绑定的元素属性上
- * @since 2.0.0
- */
-export class PlayableOutput {
-  /**
-   * 绑定到的动画 item
-   */
-  userData: object;
-  context: FrameContext;
+/** Clip playable. Evaluation time is supplied by the track. */
+export class ClipPlayable extends Playable {
+  /** Compiled clip duration used by normalized curves. */
+  duration = 0;
 
-  constructor () {
-    this.context = {
-      deltaTime: 0,
-      output: this,
-    };
-  }
-
-  setUserData (value: object) {
-    this.userData = value;
-  }
-
-  getUserData () {
-    return this.userData;
+  /** The binding may be absent; sampling can still run without a target object. */
+  evaluate (boundObject: object | undefined, context: FrameContext): void {
+    // Override
   }
 }
 
 export abstract class PlayableAsset extends Asset {
-  abstract createPlayable (): Playable;
+  abstract createPlayable (): ClipPlayable;
 }
 
 export interface FrameContext {
+  /** Current evaluation time, mapped into clip space when evaluating a playable. */
+  time: number,
   deltaTime: number,
-  output: PlayableOutput,
 }
 
 export enum PlayState {

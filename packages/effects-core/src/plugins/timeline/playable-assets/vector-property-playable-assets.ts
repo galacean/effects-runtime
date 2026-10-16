@@ -3,7 +3,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { effectsClass } from '../../../decorators';
-import type { Playable } from '../playable';
+import type { ClipPlayable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
@@ -22,7 +22,7 @@ export class Vector4PropertyPlayableAsset extends PlayableAsset {
     this.curve = createValueGetter(data.curveData);
   }
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const clipPlayable = new PropertyClipPlayable<Vector4>();
 
     clipPlayable.curve = this.curve;
@@ -41,7 +41,7 @@ export class Vector3ropertyPlayableAsset extends PlayableAsset {
     this.curve = createValueGetter(data.curveData);
   }
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const clipPlayable = new PropertyClipPlayable<Vector3>();
 
     clipPlayable.curve = this.curve;
@@ -60,7 +60,7 @@ export class Vector2PropertyPlayableAsset extends PlayableAsset {
     this.curve = createValueGetter(data.curveData);
   }
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const clipPlayable = new PropertyClipPlayable<Vector2>();
 
     clipPlayable.curve = this.curve;

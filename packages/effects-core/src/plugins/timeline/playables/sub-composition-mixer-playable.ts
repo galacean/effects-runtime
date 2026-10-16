@@ -1,31 +1,35 @@
-import { CompositionComponent } from '../../../components';
-import type { FrameContext } from '../playable';
+import type { CompositionComponent } from '../../../components';
+import { UpdateModes } from '../../../components';
+import type { TimelineInstance } from '../timeline-asset';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class SubCompositionMixerPlayable extends TrackMixerPlayable {
-  override evaluate (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
+  private boundObject: CompositionComponent | undefined;
+  private originalUpdateMode: UpdateModes;
 
-    if (!(boundObject instanceof CompositionComponent)) {
-      return;
+  constructor () {
+    super();
+    this.requiresSetup = true;
+    this.requiresTearDown = true;
+  }
+
+  protected override setup (timeline: TimelineInstance): void {
+    const boundObject = timeline.getBoundObject(this.objectBindingId) as CompositionComponent | undefined;
+
+    this.boundObject = boundObject;
+    if (boundObject) {
+      this.originalUpdateMode = boundObject.updateMode;
+      boundObject.updateMode = UpdateModes.Manual;
     }
+  }
 
-    const compositionComponent = boundObject;
+  protected override tearDown (timeline: TimelineInstance): void {
+    const { boundObject, originalUpdateMode } = this;
 
-    let hasInput = false;
-
-    for (let i = 0; i < this.clipPlayables.length; i++) {
-      if (this.getClipWeight(i) > 0) {
-        hasInput = true;
-
-        break;
-      }
-    }
-
-    if (hasInput) {
-      compositionComponent.item.setActive(true);
-    } else {
-      compositionComponent.item.setActive(false);
+    this.boundObject = undefined;
+    if (boundObject) {
+      boundObject.finishEvaluation();
+      boundObject.updateMode = originalUpdateMode;
     }
   }
 }

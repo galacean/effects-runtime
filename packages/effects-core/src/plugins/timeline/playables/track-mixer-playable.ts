@@ -1,38 +1,104 @@
-import type { FrameContext } from '../playable';
+import * as spec from '@galacean/effects-specification';
+import type { ClipPlayable, FrameContext } from '../playable';
 import { Playable } from '../playable';
-import type { TrackInstance } from '../track-instance';
+import type { TrackAsset } from '../track';
 
+export interface ClipEvaluationData {
+  playableIndex: number,
+  start: number,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
+
+export interface EvaluationSegment {
+  start: number,
+  end: number,
+  clips: ClipEvaluationData[],
+}
+
+/** Compiled track evaluator. Binding objects and frame contexts are supplied by the timeline. */
 export class TrackMixerPlayable extends Playable {
 
-  trackInstance: TrackInstance;
-  clipPlayables: Playable[] = [];
+  sourceTrack: TrackAsset;
+  objectBindingId = '';
+  clipPlayables: ClipPlayable[] = [];
   clipWeights: number[] = [];
 
-  override processFrame (context: FrameContext): void {
-    for (const clipPlayable of this.clipPlayables) {
-      clipPlayable.processFrame(context);
-    }
-    this.evaluate(context);
+  protected allowEmptySegments = false;
+
+  private readonly segments: EvaluationSegment[] = [];
+  private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
+
+  getSegments (): readonly EvaluationSegment[] {
+    return this.segments;
   }
 
-  setClipWeight (playable: Playable, weight: number): void;
+  getSegment (segmentId: number): EvaluationSegment {
+    return this.segments[segmentId];
+  }
+
+  /** Compile the evaluation ranges supplied by the source track into segments. */
+  compileSegments (clips: ClipEvaluationData[]): void {
+    this.segments.length = 0;
+    this.clipWeights.fill(0);
+    const boundaries = new Set<number>();
+
+    if (this.allowEmptySegments) {
+      boundaries.add(-Infinity);
+      boundaries.add(Infinity);
+    }
+
+    for (const clip of clips) {
+      const end = clip.endBehavior === spec.EndBehavior.destroy ? clip.start + clip.duration : Infinity;
+
+      if (end <= clip.start) {
+        continue;
+      }
+      boundaries.add(clip.start);
+      boundaries.add(end);
+    }
+    const times = Array.from(boundaries).sort((a, b) => a - b);
+
+    for (let i = 0; i < times.length - 1; i++) {
+      const start = times[i];
+      const activeClips: ClipEvaluationData[] = [];
+
+      for (const clip of clips) {
+        const end = clip.endBehavior === spec.EndBehavior.destroy ? clip.start + clip.duration : Infinity;
+
+        if (start >= clip.start && start < end) {
+          activeClips.push(clip);
+        }
+      }
+      if (this.allowEmptySegments || activeClips.length > 0) {
+        this.segments.push({ start, end: times[i + 1], clips: activeClips });
+      }
+    }
+  }
+
+  /** Evaluate the segment selected by the timeline's compiled evaluation field. */
+  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
+    this.defaultEvaluate(segmentId, boundObject, context);
+  }
+
+  /** Sample each active clip. Custom track evaluation may reuse this pass. */
+  protected defaultEvaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
+    for (const clip of this.getSegment(segmentId).clips) {
+      const clipPlayable = this.clipPlayables[clip.playableIndex];
+
+      clipPlayable.evaluate(boundObject, this.getClipContext(clip, context));
+    }
+  }
+
+  setClipWeight (playable: ClipPlayable, weight: number): void;
 
   setClipWeight (inputIndex: number, weight: number): void;
 
-  setClipWeight (playableOrIndex: Playable | number, weight: number): void {
-    if (playableOrIndex instanceof Playable) {
-      for (let i = 0; i < this.clipPlayables.length; i++) {
-        if (this.clipPlayables[i] === playableOrIndex) {
-          this.clipWeights[i] = weight;
+  setClipWeight (playableOrIndex: ClipPlayable | number, weight: number): void {
+    const index = typeof playableOrIndex === 'number' ? playableOrIndex : this.clipPlayables.indexOf(playableOrIndex);
 
-          return;
-        }
-      }
-    } else {
-      if (this.clipWeights.length < playableOrIndex + 1) {
-        this.clipWeights.length = playableOrIndex + 1;
-      }
-      this.clipWeights[playableOrIndex] = weight;
+    if (index >= 0) {
+      this.clipWeights[index] = weight;
     }
   }
 
@@ -44,8 +110,29 @@ export class TrackMixerPlayable extends Playable {
     return this.clipPlayables[index];
   }
 
-  evaluate (context: FrameContext) {
-    // Override
+  protected hasActiveClip (segmentId: number): boolean {
+    for (const clip of this.getSegment(segmentId).clips) {
+      if (this.clipWeights[clip.playableIndex] > 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
+  protected getClipContext (clip: ClipEvaluationData, context: FrameContext): FrameContext {
+    let time = context.time - clip.start;
+
+    if (time > clip.duration) {
+      if (clip.endBehavior === spec.EndBehavior.restart) {
+        time %= clip.duration;
+      } else if (clip.endBehavior === spec.EndBehavior.freeze) {
+        time = clip.duration;
+      }
+    }
+    this.clipContext.time = time;
+    this.clipContext.deltaTime = context.deltaTime;
+
+    return this.clipContext;
+  }
 }

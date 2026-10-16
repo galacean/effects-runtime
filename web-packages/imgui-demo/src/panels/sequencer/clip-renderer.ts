@@ -4,7 +4,7 @@ import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
 import { isTrackExpanded } from './selection';
-import { timeToPixel, pixelToTime, getTrackColor, getEndBehaviorDescription, processSectionColor } from './timeline-utils';
+import { timeToPixel, pixelToTime, getTrackColor, getEndBehaviorDescription, processSectionColor, refreshTimelineAfterEdit } from './timeline-utils';
 import { getSpriteKeyframes, getTransformPropertyGroups, getClipAggregatedKeyframeTimes } from './data-extraction';
 import type { KeyframeRenderer } from './keyframe-renderer';
 
@@ -271,6 +271,8 @@ export class ClipRenderer {
       if (isClipActive && ImGui.IsMouseDragging(0)) {
         const delta = ImGui.GetMouseDragDelta(0);
         const timeDelta = pixelToTime(delta.x, state) - pixelToTime(0, state);
+        const previousStart = clip.start;
+        const previousDuration = clip.duration;
 
         if (state.clipDragMode === 'resize-left') {
           const maxShrink = clip.duration - minClipDuration;
@@ -284,6 +286,9 @@ export class ClipRenderer {
           clip.start = Math.max(0, clip.start + timeDelta);
         }
 
+        if (clip.start !== previousStart || clip.duration !== previousDuration) {
+          refreshTimelineAfterEdit(state);
+        }
         if (state.clipDragMode !== 'none') {
           ImGui.ResetMouseDragDelta(0);
         }

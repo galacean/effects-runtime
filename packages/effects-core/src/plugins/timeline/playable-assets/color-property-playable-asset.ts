@@ -1,5 +1,5 @@
 import { effectsClass } from '../../../decorators';
-import type { Playable } from '../playable';
+import type { ClipPlayable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
@@ -16,7 +16,7 @@ export class ColorPropertyPlayableAsset extends PlayableAsset {
     this.curve = createValueGetter(data.curveData);
   }
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const clipPlayable = new PropertyClipPlayable<Color>();
 
     clipPlayable.curve = this.curve;

@@ -6,7 +6,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { FrameContext } from '../timeline';
-import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
+import { ClipPlayable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
 import { BufferUsage, VertexElementType } from '../../render';
@@ -38,7 +38,7 @@ let seed = 0;
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: ColorPlayableAssetData;
 
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const spriteColorPlayable = new ColorPlayable();
 
     spriteColorPlayable.create(this.data);
@@ -71,22 +71,20 @@ export class EffectComponentTimeTrack extends ComponentTimeTrack {
 }
 
 export class ComponentTimePlayableAsset extends PlayableAsset {
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     const componentTimePlayable = new ComponentTimePlayable();
 
     return componentTimePlayable;
   }
 }
 
-export class ComponentTimePlayable extends Playable {
-  override processFrame (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
-
-    if (!('time' in boundObject)) {
+export class ComponentTimePlayable extends ClipPlayable {
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
+    if (!boundObject || !('time' in boundObject)) {
       return;
     }
 
-    boundObject.time = this.time;
+    boundObject.time = context.time;
   }
 }
 
