@@ -10,16 +10,20 @@ uniform vec2 uSpacePerPixel;
 
 // 与 feather-scatter.frag.glsl 的 computeEdgeLocal 逐式相同，不要改写。
 float edgeSide (vec2 p1, vec2 p2, vec2 p) {
-  vec2 e = p2 - p1;
-  float crossF = e.x * (p.y - p1.y) - e.y * (p.x - p1.x);
-
+  bool flip = (p2.x < p1.x) || (p2.x == p1.x && p2.y < p1.y);
+  vec2 a = flip ? p2 : p1;
+  vec2 b = flip ? p1 : p2;
+  vec2 e = b - a;
+  float crossF = e.x * (p.y - a.y) - e.y * (p.x - a.x);
+  float side;
   if (crossF != 0.0) {
-    return crossF > 0.0 ? 1.0 : -1.0;
+    side = crossF > 0.0 ? 1.0 : -1.0;
   } else if (e.y != 0.0) {
-    return e.y > 0.0 ? -1.0 : 1.0;
+    side = e.y > 0.0 ? -1.0 : 1.0;
   } else {
-    return e.x > 0.0 ? 1.0 : -1.0;
+    side = e.x > 0.0 ? 1.0 : -1.0;
   }
+  return flip ? -side : side;
 }
 
 void main() {
