@@ -9,13 +9,12 @@ import { ParticleSystem } from './particle-system';
 export class ParticleBehaviourPlayable extends Playable {
   private particleSystem: ParticleSystem | null = null;
 
-  getParticleSystem (boundObject: object): ParticleSystem | null {
-    if (this.particleSystem) {
-      return this.particleSystem;
-    }
-
+  getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
     if (!(boundObject instanceof VFXItem)) {
       return null;
+    }
+    if (this.particleSystem) {
+      return this.particleSystem;
     }
 
     this.particleSystem = boundObject.getComponent(ParticleSystem);
@@ -23,7 +22,7 @@ export class ParticleBehaviourPlayable extends Playable {
     return this.particleSystem;
   }
 
-  override processFrame (boundObject: object, context: FrameContext): void {
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
     const particleSystem = this.getParticleSystem(boundObject);
 
     if (!particleSystem) {

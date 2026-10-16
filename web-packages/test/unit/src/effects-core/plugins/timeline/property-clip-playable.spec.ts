@@ -41,7 +41,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
   function sample<T> (playable: PropertyClipPlayable<T>, time: number) {
     playable.duration = 1;
-    playable.processFrame({}, { time, deltaTime: 0 });
+    playable.evaluate({}, { time, deltaTime: 0 });
   }
 
   function expectComponents (value: SampleValue, offset: number) {
@@ -118,7 +118,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
       track.createTrackMixer = () => mixer;
       track.compileClips(clips);
-      mixer.prepareFrame(0);
+      const segmentId = mixer.getSegments().findIndex(segment => context.time >= segment.start && context.time < segment.end);
       const first = mixer.getClipPlayable(0) as PropertyClipPlayable<SampleValue>;
       const second = mixer.getClipPlayable(1) as PropertyClipPlayable<SampleValue>;
       const target = { value: first.value.clone() };
@@ -126,7 +126,11 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       mixer.propertyPath = 'value';
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
-      mixer.processFrame(target, context);
+      mixer.evaluate(segmentId, undefined, { time: 0.1, deltaTime: 0 });
+      expectComponents(first.value, 3.5);
+      expectComponents(second.value, 8.5);
+      expectComponents(target.value, 0);
+      mixer.evaluate(segmentId, target, context);
 
       expectComponents(target.value, 5);
       expectComponents(first.value, 2.5);
@@ -134,7 +138,16 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
       mixer.setClipWeight(0, 0);
       mixer.setClipWeight(1, 0);
-      mixer.processFrame(target, context);
+      mixer.evaluate(segmentId, target, { time: 0.1, deltaTime: 0.1 });
+      expectComponents(target.value, 5);
+      expectComponents(first.value, 3.5);
+      expectComponents(second.value, 8.5);
+
+      mixer.setClipWeight(0, 0.5);
+      mixer.setClipWeight(1, 0.5);
+      mixer.evaluate(segmentId, undefined, { time: 0.2, deltaTime: 0.1 });
+      expectComponents(first.value, 4.5);
+      expectComponents(second.value, 9.5);
       expectComponents(target.value, 5);
     });
 

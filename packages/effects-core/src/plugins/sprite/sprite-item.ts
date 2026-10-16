@@ -79,8 +79,8 @@ export class ComponentTimePlayableAsset extends PlayableAsset {
 }
 
 export class ComponentTimePlayable extends Playable {
-  override processFrame (boundObject: object, context: FrameContext): void {
-    if (!('time' in boundObject)) {
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
+    if (!boundObject || !('time' in boundObject)) {
       return;
     }
 

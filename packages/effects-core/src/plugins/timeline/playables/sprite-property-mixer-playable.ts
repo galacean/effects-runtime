@@ -11,9 +11,13 @@ import type { PropertyClipPlayable } from './property-clip-playable';
  * 会阻断无初始 sprite 组件的 K 帧）。
  */
 export class SpritePropertyMixerPlayable extends TrackMixerPlayable {
-  override evaluate (spriteComponent: SpriteComponent, context: FrameContext): void {
+  override evaluate (segmentId: number, spriteComponent: SpriteComponent | undefined, context: FrameContext): void {
+    this.defaultEvaluate(segmentId, spriteComponent, context);
+    if (!spriteComponent) {
+      return;
+    }
     // 对象引用不混合：取首个激活 clip 的采样值
-    for (const clipData of this.activeClips) {
+    for (const clipData of this.getSegment(segmentId).clips) {
       const index = clipData.playableIndex;
 
       if (this.getClipWeight(index) > 0) {

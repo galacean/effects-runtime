@@ -18,37 +18,35 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
   private readonly result: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly validChannels: boolean[] = [false, false, false, false, false, false, false, false, false];
 
-  // Transform clips are sampled during accumulation, so no separate clip frame pass is needed.
-  override processFrame (item: VFXItem, context: FrameContext): void {
-    this.evaluate(item, context);
-  }
+  override evaluate (segmentId: number, item: VFXItem | undefined, context: FrameContext): void {
+    let state = item ? this.states.get(item) : undefined;
 
-  override evaluate (item: VFXItem, context: FrameContext): void {
-    let state = this.states.get(item);
-
-    if (!state) {
+    if (item && !state) {
       state = {
         activeClips: new Set(), nextActiveClips: new Set(),
       };
       this.states.set(item, state);
     }
-    state.nextActiveClips.clear();
+    state?.nextActiveClips.clear();
     this.totals.fill(0);
     this.weights.fill(0);
     this.validChannels.fill(false);
     let hasContinuingClip = false;
 
-    for (const clip of this.activeClips) {
+    for (const clip of this.getSegment(segmentId).clips) {
       const index = clip.playableIndex;
       const playable = this.clipPlayables[index] as TransformPlayable;
-      const contribution = playable.getContribution(this.getClipContext(clip, context));
 
-      if (this.accumulate(contribution, this.clipWeights[index])) {
+      playable.evaluate(item, this.getClipContext(clip, context));
+      if (this.accumulate(playable.contribution, this.clipWeights[index]) && state) {
         state.nextActiveClips.add(playable);
         hasContinuingClip ||= state.activeClips.has(playable);
       }
     }
 
+    if (!item || !state) {
+      return;
+    }
     // A new set of clips captures its own baseline without restoring the object.
     if (!hasContinuingClip) {
       state.initialValues = undefined;

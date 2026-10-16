@@ -22,7 +22,7 @@ export class ColorPlayable extends Playable {
   activeComponent?: MaskableGraphic;
   activeMaterial?: Material;
 
-  override processFrame (boundObject: object, context: FrameContext): void {
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
     if (!(boundObject instanceof VFXItem)) {
       return;
     }

@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { FrameContext, Playable } from '../playable';
 import type { TrackAsset } from '../track';
+import type { TimelineInstance } from '../timeline-asset';
 
 export interface ClipEvaluationData {
   playableIndex: number,
@@ -9,7 +10,7 @@ export interface ClipEvaluationData {
   endBehavior: spec.EndBehavior,
 }
 
-interface EvaluationSegment {
+export interface EvaluationSegment {
   start: number,
   end: number,
   clips: ClipEvaluationData[],
@@ -24,34 +25,43 @@ export class TrackMixerPlayable {
   clipWeights: number[] = [];
 
   protected allowEmptySegments = false;
+  protected requiresSetup = false;
+  protected requiresTearDown = false;
 
   private readonly segments: EvaluationSegment[] = [];
-  private activeSegment: EvaluationSegment | null = null;
   private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
 
-  protected get activeClips (): readonly ClipEvaluationData[] {
-    return this.activeSegment?.clips ?? [];
+  getSegments (): readonly EvaluationSegment[] {
+    return this.segments;
   }
 
-  /** Whether the current time belongs to a compiled segment, including empty ones. */
-  hasActiveSegment (): boolean {
-    return this.activeSegment !== null;
+  getSegment (segmentId: number): EvaluationSegment {
+    return this.segments[segmentId];
   }
 
-  /** Called before the track enters evaluation. */
-  onBeginEvaluation (boundObject: object): void {
+  onBeginEvaluation (timeline: TimelineInstance): void {
+    if (this.requiresSetup) {
+      this.setup(timeline);
+    }
+  }
+
+  onEndEvaluation (timeline: TimelineInstance): void {
+    if (this.requiresTearDown) {
+      this.tearDown(timeline);
+    }
+  }
+
+  protected setup (timeline: TimelineInstance): void {
     // Override
   }
 
-  /** Called after the track leaves evaluation. */
-  onEndEvaluation (boundObject: object): void {
+  protected tearDown (timeline: TimelineInstance): void {
     // Override
   }
 
   /** Compile the evaluation ranges supplied by the source track into segments. */
   compileSegments (clips: ClipEvaluationData[]): void {
     this.segments.length = 0;
-    this.activeSegment = null;
     this.clipWeights.fill(0);
     const boundaries = new Set<number>();
 
@@ -88,39 +98,18 @@ export class TrackMixerPlayable {
     }
   }
 
-  /** Select the segment containing this time, including backward seeks and gaps. */
-  prepareFrame (time: number): void {
-    this.activeSegment = null;
-    this.clipWeights.fill(0);
-    let lower = 0;
-    let upper = this.segments.length - 1;
-
-    while (lower <= upper) {
-      const index = Math.floor((lower + upper) / 2);
-      const segment = this.segments[index];
-
-      if (time < segment.start) {
-        upper = index - 1;
-      } else if (time >= segment.end) {
-        lower = index + 1;
-      } else {
-        this.activeSegment = segment;
-
-        break;
-      }
-    }
-    for (const clip of this.activeClips) {
-      this.clipWeights[clip.playableIndex] = 1;
-    }
+  /** Evaluate the segment selected by the timeline's compiled evaluation field. */
+  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
+    this.defaultEvaluate(segmentId, boundObject, context);
   }
 
-  processFrame (boundObject: object, context: FrameContext): void {
-    for (const clip of this.activeClips) {
+  /** Sample each active clip. Custom track evaluation may reuse this pass. */
+  protected defaultEvaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
+    for (const clip of this.getSegment(segmentId).clips) {
       const clipPlayable = this.clipPlayables[clip.playableIndex];
 
-      clipPlayable.processFrame(boundObject, this.getClipContext(clip, context));
+      clipPlayable.evaluate(boundObject, this.getClipContext(clip, context));
     }
-    this.evaluate(boundObject, context);
   }
 
   setClipWeight (playable: Playable, weight: number): void;
@@ -143,8 +132,8 @@ export class TrackMixerPlayable {
     return this.clipPlayables[index];
   }
 
-  protected hasActiveClip (): boolean {
-    for (const clip of this.activeClips) {
+  protected hasActiveClip (segmentId: number): boolean {
+    for (const clip of this.getSegment(segmentId).clips) {
       if (this.clipWeights[clip.playableIndex] > 0) {
         return true;
       }
@@ -168,9 +157,4 @@ export class TrackMixerPlayable {
 
     return this.clipContext;
   }
-
-  evaluate (boundObject: object, context: FrameContext) {
-    // Override
-  }
-
 }

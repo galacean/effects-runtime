@@ -38,19 +38,14 @@ export interface TransformAnimationCurves {
 export class TransformPlayable extends Playable {
   curves: TransformAnimationCurves;
 
-  private readonly contribution: TransformContribution = {
+  /** Current sample, reused across evaluations and consumed synchronously by the mixer. */
+  readonly contribution: TransformContribution = {
     values: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     validChannels: [false, false, false, false, false, false, false, false, false],
   };
 
-  /**
-   * 采样当前帧的绝对局部 transform 属性。
-   * 返回值为内部复用对象，调用方应在当前帧同步消费，不应缓存。
-   */
-  getContribution (context: FrameContext): TransformContribution {
+  override evaluate (boundObject: object | undefined, context: FrameContext): void {
     this.sampleAnimation(context);
-
-    return this.contribution;
   }
 
   private sampleAnimation (context: FrameContext) {

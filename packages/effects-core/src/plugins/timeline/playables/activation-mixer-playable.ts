@@ -1,28 +1,46 @@
 import type { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../playable';
+import type { TimelineInstance } from '../timeline-asset';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class ActivationMixerPlayable extends TrackMixerPlayable {
+  private boundItem: VFXItem | undefined;
   private originalActive: boolean;
   private originalTransformValid: boolean;
 
   constructor () {
     super();
     this.allowEmptySegments = true;
+    this.requiresSetup = true;
+    this.requiresTearDown = true;
   }
 
-  override onBeginEvaluation (boundItem: VFXItem): void {
-    this.originalActive = boundItem.isActive;
-    this.originalTransformValid = boundItem.transform.getValid();
+  protected override setup (timeline: TimelineInstance): void {
+    const boundItem = timeline.getBoundObject(this.objectBindingId) as VFXItem | undefined;
+
+    this.boundItem = boundItem;
+    if (boundItem) {
+      this.originalActive = boundItem.isActive;
+      this.originalTransformValid = boundItem.transform.getValid();
+    }
   }
 
-  override onEndEvaluation (boundItem: VFXItem): void {
-    boundItem.transform.setValid(this.originalTransformValid);
-    boundItem.setActive(this.originalActive);
+  protected override tearDown (timeline: TimelineInstance): void {
+    const { boundItem, originalActive, originalTransformValid } = this;
+
+    this.boundItem = undefined;
+    if (boundItem) {
+      boundItem.transform.setValid(originalTransformValid);
+      boundItem.setActive(originalActive);
+    }
   }
 
-  override evaluate (boundItem: VFXItem, context: FrameContext): void {
-    const active = this.hasActiveClip();
+  override evaluate (segmentId: number, boundItem: VFXItem | undefined, context: FrameContext): void {
+    this.defaultEvaluate(segmentId, boundItem, context);
+    if (!boundItem) {
+      return;
+    }
+    const active = this.hasActiveClip(segmentId);
 
     boundItem.transform.setValid(active);
     boundItem.setActive(active);

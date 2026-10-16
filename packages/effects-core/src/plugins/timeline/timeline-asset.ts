@@ -9,6 +9,13 @@ import type { TrackMixerPlayable } from './playables';
 import type { Constructor } from '../../utils';
 import type { SceneBinding } from '../../components';
 import { CompositionComponent } from '../../components';
+import type { EvaluationFieldSegmentRef, OrderedEvaluationKey } from './evaluation-field';
+import { EvaluationField, EvaluationMetaData } from './evaluation-field';
+
+interface CompiledTrack {
+  track: TrackMixerPlayable,
+  boundObject: object | undefined,
+}
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends Asset {
@@ -77,8 +84,16 @@ export class TimelineInstance {
   private readonly cachedNestedCompositions: CompositionComponent[] = [];
   private readonly cachedOrderedBoundItems: VFXItem[] = [];
   private readonly boundObjects = new Map<string, object>();
-  private evaluatingTracks = new Map<TrackMixerPlayable, object>();
-  private previousEvaluatingTracks = new Map<TrackMixerPlayable, object>();
+  private readonly evaluationField = new EvaluationField();
+  /** Compiled track lookup, including stale tracks until their entities have been torn down. */
+  private readonly evaluationTracks = new Map<number, CompiledTrack>();
+  private readonly trackIdentifiers: number[] = [];
+  private thisFrameMetaData = new EvaluationMetaData();
+  private lastFrameMetaData = new EvaluationMetaData();
+  private readonly newEntities: OrderedEvaluationKey[] = [];
+  private readonly expiredEntities: OrderedEvaluationKey[] = [];
+  private nextTrackIdentifier = 0;
+  private staleTrackIdentifierLimit = 0;
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
 
@@ -115,56 +130,83 @@ export class TimelineInstance {
     this.context.time = time;
     this.context.deltaTime = deltaTime;
 
-    const previousTracks = this.evaluatingTracks;
+    this.swapFrameMetaData();
+    const segmentRefs = this.setupFrame(time);
 
-    this.evaluatingTracks = this.previousEvaluatingTracks;
-    this.previousEvaluatingTracks = previousTracks;
-    const currentTracks = this.evaluatingTracks;
+    this.callSetupTearDown();
+    if (segmentRefs) {
+      for (const segmentRef of segmentRefs) {
+        const compiledTrack = this.evaluationTracks.get(segmentRef.trackIdentifier);
 
-    currentTracks.clear();
-
-    for (const track of this.tracks) {
-      track.prepareFrame(time);
-    }
-    // Store child tracks first so teardown can iterate without copying entries.
-    for (let i = this.tracks.length - 1; i >= 0; i--) {
-      const track = this.tracks[i];
-      const boundObject = this.getBoundObject(track.objectBindingId);
-
-      if (boundObject && track.hasActiveSegment()) {
-        currentTracks.set(track, boundObject);
-      }
-    }
-    // End expired tracks before beginning any tracks at the new evaluation time.
-    for (const [track, boundObject] of previousTracks) {
-      if (!currentTracks.has(track)) {
-        track.onEndEvaluation(boundObject);
-      }
-    }
-    for (const track of this.tracks) {
-      const boundObject = currentTracks.get(track);
-
-      if (boundObject && !previousTracks.has(track)) {
-        track.onBeginEvaluation(boundObject);
-      }
-    }
-
-    for (const track of this.tracks) {
-      const boundObject = currentTracks.get(track);
-
-      if (boundObject) {
-        track.processFrame(boundObject, this.context);
+        if (compiledTrack) {
+          compiledTrack.track.evaluate(segmentRef.segmentId, compiledTrack.boundObject, this.context);
+        }
       }
     }
   }
 
   /** End the current evaluation without discarding compiled tracks. */
   finish (): void {
-    this.previousEvaluatingTracks.clear();
-    for (const [track, boundObject] of this.evaluatingTracks) {
-      this.evaluatingTracks.delete(track);
+    this.swapFrameMetaData();
+    this.callSetupTearDown();
+    this.lastFrameMetaData.reset();
+  }
 
-      track.onEndEvaluation(boundObject);
+  private swapFrameMetaData (): void {
+    const previous = this.lastFrameMetaData;
+
+    this.lastFrameMetaData = this.thisFrameMetaData;
+    this.thisFrameMetaData = previous;
+    this.thisFrameMetaData.reset();
+  }
+
+  private setupFrame (time: number): readonly EvaluationFieldSegmentRef[] | undefined {
+    const fieldIndex = this.evaluationField.getSegmentFromTime(time);
+
+    if (fieldIndex < 0) {
+      return;
+    }
+    this.thisFrameMetaData.assign(this.evaluationField.getMetaData(fieldIndex));
+    const segmentRefs = this.evaluationField.getSegmentRefs(fieldIndex);
+
+    // Establish default weights before lifecycle callbacks, preserving explicit weight overrides during evaluation.
+    for (const segmentRef of segmentRefs) {
+      const { track } = this.evaluationTracks.get(segmentRef.trackIdentifier)!;
+
+      track.clipWeights.fill(0);
+      for (const clip of track.getSegment(segmentRef.segmentId).clips) {
+        track.setClipWeight(clip.playableIndex, 1);
+      }
+    }
+
+    return segmentRefs;
+  }
+
+  private callSetupTearDown (): void {
+    this.thisFrameMetaData.diffEntities(this.lastFrameMetaData, this.newEntities, this.expiredEntities);
+    this.callEntityLifecycle(this.expiredEntities, false);
+    this.callEntityLifecycle(this.newEntities, true);
+
+    if (this.staleTrackIdentifierLimit > 0) {
+      for (const identifier of this.evaluationTracks.keys()) {
+        if (identifier < this.staleTrackIdentifierLimit) {
+          this.evaluationTracks.delete(identifier);
+        }
+      }
+      this.staleTrackIdentifierLimit = 0;
+    }
+  }
+
+  private callEntityLifecycle (entities: readonly OrderedEvaluationKey[], beginning: boolean): void {
+    for (const { key } of entities) {
+      const track = this.evaluationTracks.get(key.trackIdentifier)?.track;
+      const entity = key.clipIndex === -1 ? track : track?.getClipPlayable(key.clipIndex);
+
+      if (beginning) {
+        entity?.onBeginEvaluation(this);
+      } else {
+        entity?.onEndEvaluation(this);
+      }
     }
   }
 
@@ -175,6 +217,7 @@ export class TimelineInstance {
   private compileTracks (): void {
     // Recompilation must not end evaluation or restore scene state from a getter.
     this.clearTracks();
+    this.staleTrackIdentifierLimit = this.nextTrackIdentifier;
 
     for (const sceneBinding of this.sceneBindings) {
       this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
@@ -195,6 +238,9 @@ export class TimelineInstance {
         }
       }
     }
+    this.evaluationField.compile(this.trackIdentifiers.map((trackIdentifier, index) => ({
+      trackIdentifier, track: this.tracks[index],
+    })));
   }
 
   dispose (): void {
@@ -202,11 +248,14 @@ export class TimelineInstance {
     this.needsCompile = false;
     this.finish();
     this.clearTracks();
+    this.evaluationTracks.clear();
   }
 
   private clearTracks (): void {
     this.masterTracks.length = 0;
     this.tracks.length = 0;
+    this.trackIdentifiers.length = 0;
+    this.evaluationField.reset();
     this.cachedNestedCompositions.length = 0;
     this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
@@ -242,7 +291,13 @@ export class TimelineInstance {
         this.boundObjects.set(mixer.objectBindingId, track.updateAnimatedObject(parentObject));
       }
     }
+    const trackIdentifier = this.nextTrackIdentifier++;
+
     this.tracks.push(mixer);
+    this.trackIdentifiers.push(trackIdentifier);
+    this.evaluationTracks.set(trackIdentifier, {
+      track: mixer, boundObject: this.getBoundObject(mixer.objectBindingId),
+    });
     for (const child of track.getChildTracks()) {
       this.compileTrack(child, track);
     }
