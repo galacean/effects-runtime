@@ -50,7 +50,8 @@ float decodeIntegration (vec4 texel) {
   return (texel.a * 64.0 + texel.b * 8.0 + texel.g) / INTEG_SCALE;
 }
 
-// 这个函数用于同步indicator和integration的内外判定。
+// 这个函数用于同步indicator和integration的内外判定。只适用于单层图形。
+// 以integration的判定为准，integration为0时再考虑indicator判定。
 // 0.005比1/256稍微大一点。
 float fixSingleLayer(float indicator, float integration)
 {
@@ -59,22 +60,22 @@ float fixSingleLayer(float indicator, float integration)
   (indicator + integration) * step(-0.005, integration) * step(integration, 0.005);
 }
 
-// fixSingleLayer在羽化半径极大、数值极小的时候还是有概率会判定错。
-// 这可能和我们scatter时fp16精度限制有关：半径巨大时有太多很微小的值叠加在一起。
-// 加了这个函数专门针对这种情况干掉接近1的亮点。
+// 在不使用整数几何（它做起来有点麻烦，在有-无feather切换几何时可能引入微小的不对齐，并且对webgl1支持不佳）的情况下
+// 我们无法保证indicator和integration的内外判定完全一致（因为浮点误差）
+// 可能会相差整数值（最常见的是边界/接缝处相差正负1）
+// 这个函数用于修正这种情况：检查偏差，如果偏差接近或大于1，则减去“偏差取整”。
 // X Y
 // W Z
 vec4 supressLargeNoises(vec4 vals)
 {
-  vec4 outVals = max(vals, 0.0);
-  float isXNormal = step(vals.x - vals.y, 0.9) * step(vals.x - vals.z, 0.9);
-  float isYNormal = step(vals.y - vals.x, 0.9) * step(vals.y - vals.w, 0.9);
-  float isZNormal = step(vals.z - vals.y, 0.9) * step(vals.z - vals.w, 0.9);
-  float isWNormal = step(vals.w - vals.z, 0.9) * step(vals.w - vals.x, 0.9);
-  vals.x = isXNormal * vals.x + (1.0 - isXNormal) * (vals.y + vals.z) * 0.5;
-  vals.y = isYNormal * vals.y + (1.0 - isYNormal) * (vals.x + vals.w) * 0.5;
-  vals.z = isZNormal * vals.z + (1.0 - isZNormal) * (vals.y + vals.w) * 0.5;
-  vals.w = isWNormal * vals.w + (1.0 - isWNormal) * (vals.x + vals.z) * 0.5;
+  float xDiff = (vals.x - vals.y + vals.x - vals.z) * 0.5;
+  float yDiff = (vals.y - vals.x + vals.y - vals.w) * 0.5;
+  float zDiff = (vals.z - vals.y + vals.z - vals.w) * 0.5;
+  float wDiff = (vals.w - vals.z + vals.w - vals.x) * 0.5;
+  vals.x -= round(xDiff) * step(0.9,  abs(xDiff));
+  vals.y -= round(yDiff) * step(0.9,  abs(yDiff));
+  vals.z -= round(zDiff) * step(0.9,  abs(zDiff));
+  vals.w -= round(wDiff) * step(0.9,  abs(wDiff));
   return vals;
 }
 
@@ -90,6 +91,9 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
     decodeIntegration(gathered[3])
   );
   vec4 vals;
+  // indicatorSoS是一种特殊的内外判定方式，可以最大程度对齐indicator和integration的内外判定。
+  // 相比关闭时使用gl_frontfacing判断并使用fixSingleLayer修正的方案，它可以支持自相交图形（即同一个位置有>1层图形）。
+  // 代价是三角形接缝处有极小概率因浮点误差而出错（如果使用整数几何，可以完全避免）。因此也需要supressLargeNoises修正。
   if (uIndicatorSoS > 0.5) {
     vals = indicators + integs;
   } else {
