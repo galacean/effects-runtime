@@ -1,5 +1,5 @@
 import { Asset } from '../../asset';
-import type { TimelineInstance } from './timeline-asset';
+import type { TimelineInstance } from './timeline-instance';
 
 /**
  * Shared evaluation lifecycle for clips and track mixers.

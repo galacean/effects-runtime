@@ -1,6 +1,6 @@
 import type { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../playable';
-import type { TimelineInstance } from '../timeline-asset';
+import type { TimelineInstance } from '../timeline-instance';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class ActivationMixerPlayable extends TrackMixerPlayable {

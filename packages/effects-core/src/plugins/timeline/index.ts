@@ -3,5 +3,6 @@ export * from './evaluation-field';
 export * from './tracks';
 export * from './playable-assets';
 export * from './timeline-asset';
+export * from './timeline-instance';
 export * from './playables';
 export * from './playable';

@@ -1,6 +1,6 @@
 import type { CompositionComponent } from '../../../components';
 import { UpdateModes } from '../../../components';
-import type { TimelineInstance } from '../timeline-asset';
+import type { TimelineInstance } from '../timeline-instance';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class SubCompositionMixerPlayable extends TrackMixerPlayable {
