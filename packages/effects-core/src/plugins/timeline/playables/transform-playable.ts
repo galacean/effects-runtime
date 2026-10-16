@@ -4,7 +4,7 @@ import { effectsClass } from '../../../decorators';
 import type { ValueGetter } from '../../../math';
 import { createValueGetter } from '../../../math';
 import type { FrameContext } from '../playable';
-import { Playable, PlayableAsset } from '../playable';
+import { ClipPlayable, PlayableAsset } from '../playable';
 
 function createOptionalCurve (data: spec.FixedNumberExpression | undefined): ValueGetter<number> | undefined {
   return data === undefined ? undefined : createValueGetter(data);
@@ -35,7 +35,7 @@ export interface TransformAnimationCurves {
 /**
  * @since 2.0.0
  */
-export class TransformPlayable extends Playable {
+export class TransformPlayable extends ClipPlayable {
   curves: TransformAnimationCurves;
 
   /** Current sample, reused across evaluations and consumed synchronously by the mixer. */

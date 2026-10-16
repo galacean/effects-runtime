@@ -1,12 +1,12 @@
 import { VFXItem } from '../../vfx-item';
 import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
+import { ClipPlayable, PlayableAsset } from '../timeline/playable';
 import { ParticleSystem } from './particle-system';
 
 /**
  * @since 2.0.0
  */
-export class ParticleBehaviourPlayable extends Playable {
+export class ParticleBehaviourPlayable extends ClipPlayable {
   private particleSystem: ParticleSystem | null = null;
 
   getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
@@ -44,7 +44,7 @@ export class ParticleBehaviourPlayable extends Playable {
 }
 
 export class ParticleBehaviourPlayableAsset extends PlayableAsset {
-  override createPlayable (): Playable {
+  override createPlayable (): ClipPlayable {
     return new ParticleBehaviourPlayable();
   }
 }

@@ -1,8 +1,8 @@
 import type { ValueGetter } from '../../../math';
 import type { FrameContext } from '../playable';
-import { Playable } from '../playable';
+import { ClipPlayable } from '../playable';
 
-export class PropertyClipPlayable<T> extends Playable {
+export class PropertyClipPlayable<T> extends ClipPlayable {
   value: T;
   curve: ValueGetter<T>;
 

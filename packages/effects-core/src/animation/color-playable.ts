@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { createValueGetter, vecFill, vecMulCombine, type ValueGetter } from '../math';
 import type { FrameContext } from '../plugins/timeline/playable';
-import { Playable } from '../plugins/timeline/playable';
+import { ClipPlayable } from '../plugins/timeline/playable';
 import { VFXItem } from '../vfx-item';
 import type { Material } from '../material';
 import type { ColorStop } from '../utils';
@@ -14,7 +14,7 @@ export interface ColorPlayableAssetData extends spec.EffectsObjectData {
 
 const tempColor: spec.RGBAColorValue = [1, 1, 1, 1];
 
-export class ColorPlayable extends Playable {
+export class ColorPlayable extends ClipPlayable {
   colorOverLifetime: ColorStop[];
   opacityOverLifetime: ValueGetter<number>;
   startColor: spec.RGBAColorValue;

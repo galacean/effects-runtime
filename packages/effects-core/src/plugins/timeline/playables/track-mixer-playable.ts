@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
-import type { FrameContext, Playable } from '../playable';
+import type { ClipPlayable, FrameContext } from '../playable';
+import { Playable } from '../playable';
 import type { TrackAsset } from '../track';
-import type { TimelineInstance } from '../timeline-asset';
 
 export interface ClipEvaluationData {
   playableIndex: number,
@@ -17,16 +17,14 @@ export interface EvaluationSegment {
 }
 
 /** Compiled track evaluator. Binding objects and frame contexts are supplied by the timeline. */
-export class TrackMixerPlayable {
+export class TrackMixerPlayable extends Playable {
 
   sourceTrack: TrackAsset;
   objectBindingId = '';
-  clipPlayables: Playable[] = [];
+  clipPlayables: ClipPlayable[] = [];
   clipWeights: number[] = [];
 
   protected allowEmptySegments = false;
-  protected requiresSetup = false;
-  protected requiresTearDown = false;
 
   private readonly segments: EvaluationSegment[] = [];
   private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
@@ -37,26 +35,6 @@ export class TrackMixerPlayable {
 
   getSegment (segmentId: number): EvaluationSegment {
     return this.segments[segmentId];
-  }
-
-  onBeginEvaluation (timeline: TimelineInstance): void {
-    if (this.requiresSetup) {
-      this.setup(timeline);
-    }
-  }
-
-  onEndEvaluation (timeline: TimelineInstance): void {
-    if (this.requiresTearDown) {
-      this.tearDown(timeline);
-    }
-  }
-
-  protected setup (timeline: TimelineInstance): void {
-    // Override
-  }
-
-  protected tearDown (timeline: TimelineInstance): void {
-    // Override
   }
 
   /** Compile the evaluation ranges supplied by the source track into segments. */
@@ -112,11 +90,11 @@ export class TrackMixerPlayable {
     }
   }
 
-  setClipWeight (playable: Playable, weight: number): void;
+  setClipWeight (playable: ClipPlayable, weight: number): void;
 
   setClipWeight (inputIndex: number, weight: number): void;
 
-  setClipWeight (playableOrIndex: Playable | number, weight: number): void {
+  setClipWeight (playableOrIndex: ClipPlayable | number, weight: number): void {
     const index = typeof playableOrIndex === 'number' ? playableOrIndex : this.clipPlayables.indexOf(playableOrIndex);
 
     if (index >= 0) {
