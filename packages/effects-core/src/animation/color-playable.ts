@@ -17,10 +17,21 @@ const tempColor: spec.RGBAColorValue = [1, 1, 1, 1];
 export class ColorPlayable extends ClipPlayable {
   colorOverLifetime: ColorStop[];
   opacityOverLifetime: ValueGetter<number>;
-  startColor: spec.RGBAColorValue;
+  startColor: spec.RGBAColorValue = [1, 1, 1, 1];
   renderColor: spec.vec4 = [1, 1, 1, 1];
   activeComponent?: MaskableGraphic;
   activeMaterial?: Material;
+
+  constructor () {
+    super();
+    this.requiresTearDown = true;
+  }
+
+  protected override tearDown (): void {
+    this.activeComponent = undefined;
+    this.activeMaterial = undefined;
+    this.startColor = [1, 1, 1, 1];
+  }
 
   override evaluate (boundObject: object | undefined, context: FrameContext): void {
     if (!(boundObject instanceof VFXItem)) {

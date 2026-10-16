@@ -9,7 +9,16 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   protected propertyName = '';
   protected propertyValue: T;
 
-  private directTarget: Record<string, any>;
+  private directTarget: Record<string, any> | undefined;
+
+  constructor () {
+    super();
+    this.requiresTearDown = true;
+  }
+
+  protected override tearDown (): void {
+    this.directTarget = undefined;
+  }
 
   abstract resetPropertyValue (): void;
   abstract addWeightedValue (curveValue: T, weight: number): void;
@@ -23,7 +32,12 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
       this.preparePath(boundObject);
     }
 
-    this.propertyValue = this.directTarget[this.propertyName] as T;
+    const directTarget = this.directTarget;
+
+    if (!directTarget) {
+      return;
+    }
+    this.propertyValue = directTarget[this.propertyName] as T;
 
     if (this.propertyValue === undefined || this.propertyValue === null) {
       return;
@@ -44,7 +58,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
     }
 
     // set value
-    this.directTarget[this.propertyName] = this.propertyValue;
+    directTarget[this.propertyName] = this.propertyValue;
 
     if (boundObject instanceof Component) {
       boundObject.onApplyAnimationProperties();

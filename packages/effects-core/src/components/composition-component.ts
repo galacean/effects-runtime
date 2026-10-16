@@ -2,6 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
 import type { VFXItem } from '../vfx-item';
+import type { EffectsObject } from '../effects-object';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
 import type { EventEmitterListener } from '../events';
@@ -9,7 +10,7 @@ import { Component } from './component';
 
 export interface SceneBinding {
   key: TrackAsset,
-  value: VFXItem,
+  value: EffectsObject,
 }
 
 export interface SceneBindingData {
@@ -74,6 +75,45 @@ export class CompositionComponent extends Component {
     return this._timelineInstance;
   }
 
+  /**
+   * Set a track's scene binding. Takes effect on the next binding lookup
+   * or evaluation without changing this component's time or playback state.
+   */
+  setBinding (track: TrackAsset, target: EffectsObject): void {
+    if (!this.timelineAsset?.flattenedTracks.includes(track)) {
+      throw new Error('CompositionComponent.setBinding: track does not belong to this timeline.');
+    }
+    if (target.engine !== this.engine) {
+      throw new Error('CompositionComponent.setBinding: target belongs to a different engine.');
+    }
+    const trackId = track.getInstanceId();
+    const binding = this.sceneBindings.find(binding => binding.key.getInstanceId() === trackId);
+
+    if (binding) {
+      binding.value = target;
+    } else {
+      this.sceneBindings.push({ key: track, value: target });
+    }
+    this._timelineInstance?.invalidateBindings();
+  }
+
+  /** Return the explicitly assigned scene binding, excluding inherited targets. */
+  getBinding (track: TrackAsset): EffectsObject | undefined {
+    return this.sceneBindings.find(binding => binding.key.getInstanceId() === track.getInstanceId())?.value;
+  }
+
+  /** Delete a scene binding. Child tracks resume resolving from their parent. */
+  clearBinding (track: TrackAsset): void {
+    const trackId = track.getInstanceId();
+    const index = this.sceneBindings.findIndex(binding => binding.key.getInstanceId() === trackId);
+
+    if (index < 0) {
+      return;
+    }
+    this.sceneBindings.splice(index, 1);
+    this._timelineInstance?.invalidateBindings();
+  }
+
   on<E extends keyof CompositionComponentEvent> (
     eventName: E,
     listener: EventEmitterListener<CompositionComponentEvent[E]>,
@@ -133,18 +173,10 @@ export class CompositionComponent extends Component {
 
   pause () {
     this.state = PlayState.Paused;
-
-    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
-      subComposition.pause();
-    }
   }
 
   play () {
     this.state = PlayState.Playing;
-
-    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
-      subComposition.play();
-    }
   }
 
   stop () {
@@ -152,10 +184,6 @@ export class CompositionComponent extends Component {
     this.time = this.startTime;
     this.resetEndState();
     this.finishEvaluation();
-
-    for (const subComposition of this.timelineInstance?.nestedCompositions ?? []) {
-      subComposition.stop();
-    }
   }
 
   /** End parent-driven evaluation at the current time without continuing standalone playback. @internal */
@@ -353,13 +381,17 @@ export class CompositionComponent extends Component {
     if (data.sceneBindings !== undefined) {
       this.sceneBindings = data.sceneBindings.map(binding => ({
         key: this.findObject<TrackAsset>(binding.key),
-        value: this.findObject<VFXItem>(binding.value),
+        value: this.findObject<EffectsObject>(binding.value),
       }));
-      this.timelineDirty = true;
+      this._timelineInstance?.setBindings(this.sceneBindings);
     }
     if (data.timelineAsset !== undefined) {
-      this.timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
-      this.timelineDirty = true;
+      const timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
+
+      if (timelineAsset !== this.timelineAsset) {
+        this.timelineAsset = timelineAsset;
+        this.timelineDirty = true;
+      }
     }
   }
 }

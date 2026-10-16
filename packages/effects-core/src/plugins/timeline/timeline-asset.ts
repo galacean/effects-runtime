@@ -8,13 +8,11 @@ import type { FrameContext } from './playable';
 import type { TrackMixerPlayable } from './playables';
 import type { Constructor } from '../../utils';
 import type { SceneBinding } from '../../components';
-import { CompositionComponent } from '../../components';
 import type { EvaluationFieldSegmentRef, OrderedEvaluationKey } from './evaluation-field';
 import { EvaluationField, EvaluationMetaData } from './evaluation-field';
 
 interface CompiledTrack {
   track: TrackMixerPlayable,
-  boundObject: object | undefined,
 }
 
 @effectsClass(spec.DataType.TimelineAsset)
@@ -81,9 +79,11 @@ export class TimelineInstance {
   /** Compiled evaluators in parent-before-child execution order. @internal */
   readonly tracks: TrackMixerPlayable[] = [];
 
-  private readonly cachedNestedCompositions: CompositionComponent[] = [];
   private readonly cachedOrderedBoundItems: VFXItem[] = [];
-  private readonly boundObjects = new Map<string, object>();
+  private boundObjects = new Map<string, object | undefined>();
+  private bindingsDirty = true;
+  private refreshingBindings = false;
+  private readonly compatibilityTracks: TrackAsset[] = [];
   private readonly evaluationField = new EvaluationField();
   /** Compiled track lookup, including stale tracks until their entities have been torn down. */
   private readonly evaluationTracks = new Map<number, CompiledTrack>();
@@ -99,19 +99,10 @@ export class TimelineInstance {
 
   constructor (
     private readonly timelineAsset: TimelineAsset,
-    private readonly sceneBindings: SceneBinding[],
+    private sceneBindings: readonly SceneBinding[],
   ) {
     this.rebuild();
     timelineAsset.on('changed', this.onAssetChanged);
-  }
-
-  get nestedCompositions (): CompositionComponent[] {
-    // Playback controls must see edited bindings before the next evaluation.
-    if (this.needsCompile) {
-      this.rebuild();
-    }
-
-    return this.cachedNestedCompositions;
   }
 
   /** Scene items in root-track order. @internal */
@@ -119,6 +110,7 @@ export class TimelineInstance {
     if (this.needsCompile) {
       this.rebuild();
     }
+    this.refreshBindings();
 
     return this.cachedOrderedBoundItems;
   }
@@ -127,6 +119,7 @@ export class TimelineInstance {
     if (this.needsCompile) {
       this.rebuild();
     }
+    this.refreshBindings();
     this.context.time = time;
     this.context.deltaTime = deltaTime;
 
@@ -139,7 +132,9 @@ export class TimelineInstance {
         const compiledTrack = this.evaluationTracks.get(segmentRef.trackIdentifier);
 
         if (compiledTrack) {
-          compiledTrack.track.evaluate(segmentRef.segmentId, compiledTrack.boundObject, this.context);
+          const track = compiledTrack.track;
+
+          track.evaluate(segmentRef.segmentId, this.getBoundObject(track.objectBindingId), this.context);
         }
       }
     }
@@ -147,6 +142,7 @@ export class TimelineInstance {
 
   /** End the current evaluation without discarding compiled tracks. */
   finish (): void {
+    this.refreshBindings();
     this.swapFrameMetaData();
     this.callSetupTearDown();
     this.lastFrameMetaData.reset();
@@ -211,7 +207,72 @@ export class TimelineInstance {
   }
 
   getBoundObject (objectBindingId: string): object | undefined {
+    if (this.needsCompile && !this.refreshingBindings) {
+      this.rebuild();
+    }
+    this.refreshBindings();
+
     return this.boundObjects.get(objectBindingId);
+  }
+
+  /** Replace the component's binding table without recompiling tracks. */
+  setBindings (bindings: readonly SceneBinding[]): void {
+    this.sceneBindings = bindings;
+    this.invalidateBindings();
+  }
+
+  /** Refresh bindings on the next lookup or evaluation without recompiling tracks. */
+  invalidateBindings (): void {
+    this.bindingsDirty = true;
+  }
+
+  private refreshBindings (): void {
+    if (!this.bindingsDirty || this.refreshingBindings) {
+      return;
+    }
+    this.refreshingBindings = true;
+    const objects = new Map<string, object | undefined>();
+
+    for (const binding of this.sceneBindings) {
+      objects.set(binding.key.getInstanceId(), binding.value);
+    }
+    const changedTracks = new Set<number>();
+
+    // Compiled tracks are ordered parent-first, so inherited targets are already resolved.
+    for (let i = 0; i < this.tracks.length; i++) {
+      const { objectBindingId, sourceTrack } = this.tracks[i];
+      let object = objects.get(objectBindingId);
+
+      if (!object && sourceTrack.parent) {
+        const parentObject = objects.get(sourceTrack.parent.getInstanceId());
+
+        if (parentObject) {
+          object = sourceTrack.updateAnimatedObject(parentObject);
+        }
+      }
+      objects.set(objectBindingId, object);
+      if (object !== this.boundObjects.get(objectBindingId)) {
+        changedTracks.add(this.trackIdentifiers[i]);
+      }
+    }
+    this.bindingsDirty = false;
+
+    // End old scopes to clear playable caches and restore state before switching targets.
+    // Keep the old lookup available during teardown; the next evaluation sets up the new targets.
+    const activeEntities = this.thisFrameMetaData.activeEntities;
+    const expired = activeEntities.filter(entity => changedTracks.has(entity.key.trackIdentifier));
+
+    if (expired.length > 0) {
+      const remaining = activeEntities.filter(entity => !changedTracks.has(entity.key.trackIdentifier));
+
+      activeEntities.length = 0;
+      activeEntities.push(...remaining);
+      expired.sort((a, b) => a.tearDownIndex - b.tearDownIndex);
+      this.callEntityLifecycle(expired, false);
+    }
+    this.boundObjects = objects;
+    this.refreshOrderedBoundItems();
+    this.refreshingBindings = false;
   }
 
   private compileTracks (): void {
@@ -219,28 +280,24 @@ export class TimelineInstance {
     this.clearTracks();
     this.staleTrackIdentifierLimit = this.nextTrackIdentifier;
 
-    for (const sceneBinding of this.sceneBindings) {
-      this.boundObjects.set(sceneBinding.key.getInstanceId(), sceneBinding.value);
-    }
-
     for (const track of this.timelineAsset.tracks) {
-      const mixer = this.compileTrack(track);
-
-      this.masterTracks.push(mixer);
-      const boundObject = this.getBoundObject(mixer.objectBindingId);
-
-      if (boundObject instanceof VFXItem) {
-        this.cachedOrderedBoundItems.push(boundObject);
-        const composition = boundObject.getComponent(CompositionComponent);
-
-        if (composition) {
-          this.cachedNestedCompositions.push(composition);
-        }
-      }
+      this.masterTracks.push(this.compileTrack(track));
     }
     this.evaluationField.compile(this.trackIdentifiers.map((trackIdentifier, index) => ({
       trackIdentifier, track: this.tracks[index],
     })));
+    this.invalidateBindings();
+  }
+
+  private refreshOrderedBoundItems (): void {
+    this.cachedOrderedBoundItems.length = 0;
+    for (const mixer of this.masterTracks) {
+      const boundObject = this.boundObjects.get(mixer.objectBindingId);
+
+      if (boundObject instanceof VFXItem) {
+        this.cachedOrderedBoundItems.push(boundObject);
+      }
+    }
   }
 
   dispose (): void {
@@ -252,11 +309,17 @@ export class TimelineInstance {
   }
 
   private clearTracks (): void {
+    for (const track of this.compatibilityTracks) {
+      for (const clip of track.getClips()) {
+        clip.asset.dispose();
+      }
+      track.dispose();
+    }
+    this.compatibilityTracks.length = 0;
     this.masterTracks.length = 0;
     this.tracks.length = 0;
     this.trackIdentifiers.length = 0;
     this.evaluationField.reset();
-    this.cachedNestedCompositions.length = 0;
     this.cachedOrderedBoundItems.length = 0;
     this.boundObjects.clear();
   }
@@ -266,40 +329,29 @@ export class TimelineInstance {
   };
 
   private rebuild (): void {
-    const sceneBindingMap: Record<string, VFXItem> = {};
-
-    for (const sceneBinding of this.sceneBindings) {
-      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
-    }
-    // TODO: Hack 临时生成轨道, 待移除
-    for (const track of this.timelineAsset.tracks) {
-      if (track instanceof ObjectBindingTrack) {
-        track.create(this.timelineAsset, sceneBindingMap);
-      }
-    }
     this.compileTracks();
     this.needsCompile = false;
   }
 
-  private compileTrack (track: TrackAsset, parent?: TrackAsset): TrackMixerPlayable {
+  private compileTrack (track: TrackAsset): TrackMixerPlayable {
     const mixer = track.createPlayableGraph();
-
-    if (parent && !this.boundObjects.has(mixer.objectBindingId)) {
-      const parentObject = this.getBoundObject(parent.getInstanceId());
-
-      if (parentObject) {
-        this.boundObjects.set(mixer.objectBindingId, track.updateAnimatedObject(parentObject));
-      }
-    }
     const trackIdentifier = this.nextTrackIdentifier++;
 
     this.tracks.push(mixer);
     this.trackIdentifiers.push(trackIdentifier);
     this.evaluationTracks.set(trackIdentifier, {
-      track: mixer, boundObject: this.getBoundObject(mixer.objectBindingId),
+      track: mixer,
     });
     for (const child of track.getChildTracks()) {
-      this.compileTrack(child, track);
+      this.compileTrack(child);
+    }
+    if (track instanceof ObjectBindingTrack) {
+      const compatibilityTracks = track.createCompatibilityTracks();
+
+      this.compatibilityTracks.push(...compatibilityTracks);
+      for (const child of compatibilityTracks) {
+        this.compileTrack(child);
+      }
     }
 
     return mixer;

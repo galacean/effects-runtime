@@ -1,4 +1,4 @@
-import type { TimelineClip, VFXItem } from '@galacean/effects';
+import type { EffectsObject, TimelineClip } from '@galacean/effects';
 import { CompositionComponent, Player, SpriteColorPlayableAsset, SpriteColorTrack, SpriteComponent, math } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
 
@@ -43,7 +43,7 @@ describe('core/plugins/sprite/item-base', () => {
     const compositionComponent = comp.rootItem.getComponent(CompositionComponent);
     //@ts-expect-error
     const sceneBindings = compositionComponent.sceneBindings;
-    const sceneBindingMap: Record<string, VFXItem> = {};
+    const sceneBindingMap: Record<string, EffectsObject> = {};
 
     for (const sceneBinding of sceneBindings) {
       sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;

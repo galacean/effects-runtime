@@ -1,14 +1,10 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
-import type { VFXItem } from '../../../vfx-item';
-import { ParticleSystem } from '../../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
-import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
-import { EffectComponent } from '../../../components';
+import { ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { TrackAsset } from '../track';
 import type { TimelineClip } from '../track';
 import type { PlayableAsset } from '../playable';
-import type { TimelineAsset } from '../timeline-asset';
 import type { Constructor } from '../../../utils';
 import { ActivationTrack } from './activation-track';
 import { ParticleTrack } from './particle-track';
@@ -19,53 +15,43 @@ import { ParticleTrack } from './particle-track';
 @effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
-  create (timelineAsset: TimelineAsset, sceneBindingMap: Record<string, VFXItem>): void {
-    const boundItem = sceneBindingMap[this.getInstanceId()];
-
-    if (!boundItem) {
-      return;
-    }
-
+  /** Compile a fixed compatibility graph; missing target components resolve to no object. @internal */
+  createCompatibilityTracks (): TrackAsset[] {
     const activationClips = this.getChildTracks().find(track => track instanceof ActivationTrack)?.getClips() ?? [];
+    const tracks: TrackAsset[] = [];
 
-    // Synchronize compatibility clips without appending tracks on each rebuild.
-    if (boundItem.getComponent(ParticleSystem)) {
-      this.syncTrack(timelineAsset, ParticleTrack, ParticleBehaviourPlayableAsset, activationClips);
+    if (activationClips.length === 0) {
+      return tracks;
     }
-    if (boundItem.getComponent(SpriteComponent)) {
-      this.syncTrack(timelineAsset, SpriteComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
-    }
-    if (boundItem.getComponent(EffectComponent)) {
-      this.syncTrack(timelineAsset, EffectComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
-    }
+    this.addCompatibilityTrack(tracks, ParticleTrack, ParticleBehaviourPlayableAsset, activationClips);
+    this.addCompatibilityTrack(tracks, SpriteComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
+    this.addCompatibilityTrack(tracks, EffectComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
+
+    return tracks;
   }
 
-  private syncTrack (
-    timelineAsset: TimelineAsset,
+  private addCompatibilityTrack (
+    tracks: TrackAsset[],
     trackClass: Constructor<TrackAsset>,
     playableClass: Constructor<PlayableAsset>,
     activationClips: TimelineClip[],
   ): void {
-    let track = this.getChildTracks().find(child => child instanceof trackClass);
-
-    if (!track) {
-      if (activationClips.length === 0) {
-        return;
-      }
-      track = timelineAsset.createTrack(trackClass, this, trackClass.name);
+    if (this.getChildTracks().some(child => child instanceof trackClass)) {
+      return;
     }
-    const clips = track.getClips();
+    const track = new trackClass(this.engine);
 
-    while (clips.length > activationClips.length) {
-      clips.pop()!.asset.dispose();
-    }
-    for (let i = 0; i < activationClips.length; i++) {
-      const source = activationClips[i];
-      const clip = clips[i] ?? track.createClip(playableClass);
+    track.unregisterObject();
+    track.name = trackClass.name;
+    track.parent = this;
+    for (const source of activationClips) {
+      const clip = track.createClip(playableClass);
 
+      clip.asset.unregisterObject();
       clip.start = source.start;
       clip.duration = source.duration;
       clip.endBehavior = source.endBehavior;
     }
+    tracks.push(track);
   }
 }

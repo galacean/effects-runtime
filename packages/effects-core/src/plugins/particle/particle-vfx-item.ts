@@ -9,6 +9,15 @@ import { ParticleSystem } from './particle-system';
 export class ParticleBehaviourPlayable extends ClipPlayable {
   private particleSystem: ParticleSystem | null = null;
 
+  constructor () {
+    super();
+    this.requiresTearDown = true;
+  }
+
+  protected override tearDown (): void {
+    this.particleSystem = null;
+  }
+
   getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
     if (!(boundObject instanceof VFXItem)) {
       return null;

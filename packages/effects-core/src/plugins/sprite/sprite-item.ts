@@ -7,7 +7,7 @@ import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { FrameContext } from '../timeline';
 import { ClipPlayable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
 import { BufferUsage, VertexElementType } from '../../render';
 import { rotateVec2 } from '../../shape';
@@ -58,15 +58,14 @@ export class ComponentTimeTrack extends TrackAsset {
 }
 
 export class SpriteComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object {
-
-    return (boundObject as VFXItem).getComponent(SpriteComponent);
+  override updateAnimatedObject (boundObject: object): object | undefined {
+    return boundObject instanceof VFXItem ? boundObject.getComponent(SpriteComponent) : undefined;
   }
 }
 
 export class EffectComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object {
-    return (boundObject as VFXItem).getComponent(EffectComponent);
+  override updateAnimatedObject (boundObject: object): object | undefined {
+    return boundObject instanceof VFXItem ? boundObject.getComponent(EffectComponent) : undefined;
   }
 }
 

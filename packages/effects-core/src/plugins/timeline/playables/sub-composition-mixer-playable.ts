@@ -18,6 +18,7 @@ export class SubCompositionMixerPlayable extends TrackMixerPlayable {
 
     this.boundObject = boundObject;
     if (boundObject) {
+      // Parent clips supply time directly while standalone playback state remains independent.
       this.originalUpdateMode = boundObject.updateMode;
       boundObject.updateMode = UpdateModes.Manual;
     }
@@ -28,6 +29,7 @@ export class SubCompositionMixerPlayable extends TrackMixerPlayable {
 
     this.boundObject = undefined;
     if (boundObject) {
+      // Release the child's evaluation at its current time before restoring its update mode.
       boundObject.finishEvaluation();
       boundObject.updateMode = originalUpdateMode;
     }
