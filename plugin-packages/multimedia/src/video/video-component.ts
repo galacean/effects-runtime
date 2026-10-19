@@ -40,6 +40,8 @@ export class VideoComponent extends MaskableGraphic {
    */
   private manualPlaybackRate = false;
 
+  private videoPlaybackRate = 1;
+
   /**
    * 是否由用户手动控制循环播放（覆盖合成的结束行为）
    */
@@ -163,6 +165,8 @@ export class VideoComponent extends MaskableGraphic {
     } = options;
 
     this.transparent = transparent;
+
+    this.videoPlaybackRate = playbackRate;
 
     if (video) {
       const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
@@ -623,7 +627,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 更新视频播放速率
-   * 手动模式下保持用户设置的速率不变，自动模式下根据 engine.speed * composition.speed 计算
+   * 手动模式下保持用户设置的速率不变，自动模式下将配置倍速乘以 engine.speed * composition.speed
    */
   private updatePlaybackRate (): void {
     // 手动模式下不自动更新速率
@@ -641,7 +645,7 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
-    const playbackRate = this.engine.speed * composition.speed;
+    const playbackRate = this.videoPlaybackRate * this.engine.speed * composition.speed;
 
     if (this.video.playbackRate !== playbackRate) {
       this.video.playbackRate = playbackRate;
