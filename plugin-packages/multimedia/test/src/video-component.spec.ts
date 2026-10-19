@@ -644,6 +644,61 @@ describe('videoComponent:setVideo', function () {
     }
   });
 
+  it('uploads the final video frame when a replacement freezes at double speed', async function () {
+    const originalTexture = component.renderer.texture;
+
+    try {
+      await component.setVideo('https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*RHk_SYRqMMwAAAAAYaAAAAgAesF2AQ');
+      component.item.endBehavior = spec.EndBehavior.freeze;
+      component.setLoop(false);
+      component.setPlaybackRate(2);
+      const video = component.video!;
+      const texture = component.renderer.texture;
+      const upload = texture.uploadCurrentVideoFrame.bind(texture);
+      let lastUploadedTime = -1;
+
+      texture.uploadCurrentVideoFrame = () => {
+        lastUploadedTime = video.currentTime;
+        upload();
+      };
+      await new Promise<void>((resolve, reject) => {
+        const deadline = performance.now() + 5000;
+        const timer = window.setInterval(() => {
+          if (video.paused && video.currentTime >= video.duration - 0.01) {
+            window.clearInterval(timer);
+            resolve();
+          } else if (performance.now() > deadline) {
+            window.clearInterval(timer);
+            reject(new Error('Video did not reach its end'));
+          }
+        }, 20);
+      });
+      component.onUpdate(0);
+      expect(video.currentTime).to.equal(video.duration);
+      expect(lastUploadedTime).to.equal(video.currentTime);
+    } finally {
+      originalTexture.dispose();
+    }
+  });
+
+  it('freezes at the composition endpoint without stopping within the seek tolerance', async function () {
+    const video = component.video!;
+
+    composition.sceneRoot.duration = 1;
+    composition.sceneRoot.endBehavior = spec.EndBehavior.freeze;
+    composition.gotoAndStop(0.995);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await video.play();
+    component.onUpdate(0);
+    expect(video.paused).to.be.false;
+
+    composition.gotoAndStop(1);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await video.play();
+    component.onUpdate(0);
+    expect(video.paused).to.be.true;
+  });
+
   it('keeps the current video when loading a replacement fails', async function () {
     const video = component.video!;
     const texture = component.renderer.texture;

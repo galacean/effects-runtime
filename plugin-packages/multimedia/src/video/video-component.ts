@@ -98,7 +98,7 @@ export class VideoComponent extends MaskableGraphic {
    */
   private eventDisposers: (() => void)[] = [];
 
-  private static readonly threshold = 0.01;
+  private static readonly seekTolerance = 0.01;
 
   constructor (engine: Engine) {
     super(engine);
@@ -222,6 +222,9 @@ export class VideoComponent extends MaskableGraphic {
     // 根据结束行为决定视频状态
     if (this.shouldFreezeVideo()) {
       this.freezeVideo();
+      if (!this.videoSeeking) {
+        this.renderer.texture.uploadCurrentVideoFrame();
+      }
 
       return;
     }
@@ -364,7 +367,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return this.video!.currentTime + VideoComponent.threshold >= this.video!.duration;
+    return this.video!.ended || this.video!.currentTime >= this.video!.duration;
   }
 
   /**
@@ -377,7 +380,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return composition.time + VideoComponent.threshold >= composition.sceneRoot.duration;
+    return composition.time >= composition.sceneRoot.duration;
   }
 
   /**
@@ -568,7 +571,7 @@ export class VideoComponent extends MaskableGraphic {
   private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
     time = this.getClampedSeekTime(time);
     const wasPlaying = !this.video!.paused;
-    const isNoopSeek = () => !clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.threshold;
+    const isNoopSeek = () => !clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.seekTolerance;
     const finishNoopSeek = () => {
       this.videoSeeking = false;
       this.isGotoAndStopSeeking = false;
@@ -711,7 +714,7 @@ export class VideoComponent extends MaskableGraphic {
     const seekTime = this.getItemSeekTime();
     const clampedSeekTime = this.getClampedSeekTime(seekTime);
 
-    if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.threshold) {
+    if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.seekTolerance) {
       this.pendingSeekTime = clampedSeekTime;
     }
   }
