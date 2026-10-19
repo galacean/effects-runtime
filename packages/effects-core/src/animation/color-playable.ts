@@ -43,8 +43,14 @@ export class ColorPlayable extends ClipPlayable {
       state.material = state.component?.material;
       const startColor = state.material?.getColor('_Color');
 
-      if (startColor) {
-        state.startColor = startColor.toArray();
+      if (state.material && startColor) {
+        // Clip state expires while the material retains its last animated color.
+        const initialColors = cache.getOrAddSharedData(
+          ColorPlayable, () => new WeakMap<Material, spec.RGBAColorValue>(),
+        );
+
+        state.startColor = initialColors.get(state.material) ?? startColor.toArray();
+        initialColors.set(state.material, state.startColor);
       }
     }
     let colorInc = vecFill(tempColor, 1);
