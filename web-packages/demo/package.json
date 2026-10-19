@@ -15,7 +15,12 @@
     "@galacean/effects-plugin-gui": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
-    "three": "^0.149.0"
+    "three": "^0.149.0",
+    "@galacean/effects-plugin-ffd": "workspace:*",
+    "@galacean/effects-plugin-ktx2": "workspace:*",
+    "@galacean/effects-plugin-model": "workspace:*",
+    "@galacean/effects-plugin-multimedia": "workspace:*",
+    "@galacean/effects-plugin-rich-text": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.149.0"

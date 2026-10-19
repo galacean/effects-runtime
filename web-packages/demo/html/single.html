@@ -1,21 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>single - demo</title>
+  <title>GE 文件播放 - demo</title>
   <style>
-    html, body, div, canvas { margin: 0; padding: 0; }
-    .container {
-      width: 375px;
-      height: 812px;
-      background-color: rgba(0,0,0,255);
-    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { height: 100vh; height: 100dvh; display: flex; flex-direction: column; background: #252525; color: white; font: 14px/1.6 system-ui, sans-serif; }
+    .preview { flex: 0 0 55%; min-height: 0; display: flex; justify-content: center; overflow: hidden; background: black; }
+    #J-container { position: relative; height: 100%; max-width: 100%; aspect-ratio: 375 / 812; }
+    #J-container canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .controls { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .controls-inner { max-width: 800px; margin: auto; }
+    fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+    label { display: block; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px; font: 16px/1.4 system-ui, sans-serif; }
+    button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: 4px; font: inherit; cursor: pointer; touch-action: manipulation; }
+    button[type="submit"] { background: #4a90d9; color: white; }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    #source-hint { color: #c1c7cf; overflow-wrap: anywhere; }
+    #status { overflow-wrap: anywhere; }
+    #status[data-error="true"] { color: #ffb4ab; }
   </style>
 </head>
 <body>
-<div class="container" id="J-container"></div>
-
-<script type="module" src="../src/single.ts"></script>
+  <div class="preview"><div id="J-container" aria-label="GE 播放预览"></div></div>
+  <main class="controls">
+    <div class="controls-inner">
+      <form id="scene-form">
+        <fieldset id="source-controls">
+          <label id="source-label" for="scene-source">GE URL</label>
+          <input id="scene-source" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="source-hint">
+          <div class="row">
+            <button type="submit">加载播放</button>
+            <button id="source-toggle" type="button">切换为本地文件</button>
+          </div>
+        </fieldset>
+      </form>
+      <p id="source-hint"></p>
+      <fieldset id="playback-controls" disabled>
+        <div class="row">
+          <button id="play" type="button">播放</button>
+          <button id="pause" type="button">暂停</button>
+          <button id="restart" type="button">重播</button>
+        </div>
+      </fieldset>
+      <p id="status" role="status" aria-live="polite">输入 URL 或切换为本地文件后，点击“加载播放”。</p>
+    </div>
+  </main>
+  <script type="module" src="../src/single.ts"></script>
 </body>
 </html>

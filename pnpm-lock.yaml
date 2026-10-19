@@ -321,6 +321,21 @@ importers:
       '@galacean/effects-plugin-editor-gizmo':
         specifier: workspace:*
         version: link:../../plugin-packages/editor-gizmo
+      '@galacean/effects-plugin-ffd':
+        specifier: workspace:*
+        version: link:../../plugin-packages/ffd
+      '@galacean/effects-plugin-ktx2':
+        specifier: workspace:*
+        version: link:../../plugin-packages/ktx2
+      '@galacean/effects-plugin-model':
+        specifier: workspace:*
+        version: link:../../plugin-packages/model
+      '@galacean/effects-plugin-multimedia':
+        specifier: workspace:*
+        version: link:../../plugin-packages/multimedia
+      '@galacean/effects-plugin-rich-text':
+        specifier: workspace:*
+        version: link:../../plugin-packages/rich-text
       '@galacean/effects-plugin-gui':
         specifier: workspace:*
         version: link:../../plugin-packages/gui
