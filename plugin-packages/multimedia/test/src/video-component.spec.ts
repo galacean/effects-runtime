@@ -1,4 +1,5 @@
-import { generateGUID, Player, spec } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
+import { generateGUID, Player, Texture, spec } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
@@ -529,6 +530,136 @@ describe('videoComponent ', function () {
     expect(videoComponent.isVideoActive).to.be.true;
     expect(videoComponent.getCurrentTime()).to.be.within(2, 2.1);
     composition.dispose();
+  });
+});
+
+describe('videoComponent:setVideo', function () {
+  this.timeout(15000);
+
+  const url = 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr';
+  const replacementUrl = 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ';
+  let composition: Composition;
+  let component: VideoComponent;
+
+  beforeEach(async function () {
+    const id = generateGUID();
+
+    composition = await player.loadScene(getVideoJson({
+      duration: 30,
+      compositionDuration: 30,
+      endBehavior: spec.EndBehavior.restart,
+      id,
+      videos: [{ id, url }],
+      start: 0,
+      options: { video: { id }, muted: true },
+    }));
+    component = composition.getItemByName('video')!.getComponent(VideoComponent);
+  });
+
+  afterEach(function () {
+    composition?.dispose();
+  });
+
+  it('explicitly rewinds the loaded URL and retains automatic playback settings', async function () {
+    const originalTexture = component.renderer.texture;
+    const fromVideo = Texture.fromVideo;
+    const texture = await fromVideo(replacementUrl, player.renderer.engine);
+    const video = (texture.source as { video: HTMLVideoElement }).video;
+
+    video.pause();
+    await new Promise<void>(resolve => {
+      video.addEventListener('seeked', () => resolve(), { once: true });
+      video.currentTime = 1;
+    });
+    composition.pause();
+    composition.speed = 1.5;
+    component.setVolume(0.4);
+    component.setMuted(false);
+    Texture.fromVideo = async (url, engine) => {
+      expect(url).to.equal(replacementUrl);
+      expect(engine).to.equal(player.renderer.engine);
+
+      return texture;
+    };
+    try {
+      await component.setVideo(replacementUrl);
+      expect(component.video).to.equal(video);
+      expect(video.currentTime).to.equal(0);
+      expect(video.volume).to.equal(1);
+      expect(video.muted).to.be.true;
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      expect(composition.textures).to.include(texture);
+      expect(composition.textures).not.to.include(originalTexture);
+      composition.play();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expect(video.paused).to.be.false;
+      expect(video.currentTime).to.be.within(0.01, 1);
+      expect(video.loop).to.be.true;
+      expect(video.playbackRate).to.equal(1.5);
+      composition.dispose();
+      expect(texture.isDestroyed).to.be.true;
+    } finally {
+      Texture.fromVideo = fromVideo;
+      originalTexture.dispose();
+      if (!texture.isDestroyed) { texture.dispose(); }
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+  });
+
+  it('preserves the existing texture position and manual playback mode', async function () {
+    const originalTexture = component.renderer.texture;
+    const texture = await Texture.fromVideo(replacementUrl, player.renderer.engine);
+    const video = (texture.source as { video: HTMLVideoElement }).video;
+
+    try {
+      video.pause();
+      await new Promise<void>(resolve => {
+        video.addEventListener('seeked', () => resolve(), { once: true });
+        video.currentTime = 1;
+      });
+      video.volume = 0.3;
+      video.muted = false;
+      video.loop = false;
+      video.playbackRate = 1.5;
+      composition.pause();
+      component.setVolume(0.8);
+      component.setMuted(true);
+      component.setLoop(true);
+      component.setPlaybackRate(0.5);
+      component.setTexture(texture);
+
+      expect(component.video).to.equal(video);
+      expect(video.currentTime).to.equal(1);
+      expect(video.paused).to.be.true;
+      composition.play();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expect(video.volume).to.equal(0.3);
+      expect(video.muted).to.be.false;
+      expect(video.loop).to.be.false;
+      expect(video.playbackRate).to.equal(1.5);
+    } finally {
+      originalTexture.dispose();
+    }
+  });
+
+  it('keeps the current video when loading a replacement fails', async function () {
+    const video = component.video!;
+    const texture = component.renderer.texture;
+
+    component.setVolume(0.4);
+    let failed = false;
+
+    try {
+      await component.setVideo('data:video/mp4;base64,AAAA');
+    } catch {
+      failed = true;
+    }
+    expect(failed).to.be.true;
+    expect(component.video).to.equal(video);
+    expect(component.renderer.texture).to.equal(texture);
+    expect(video.volume).to.equal(0.4);
   });
 });
 

@@ -134,6 +134,18 @@ export class VideoComponent extends MaskableGraphic {
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
   }
 
+  /**
+   * Replace the video URL and explicitly rewind the loaded video.
+   */
+  async setVideo (url: string): Promise<void> {
+    if (!this.item.composition) { return; }
+
+    await this.setTexture(url);
+    if (this.video) {
+      this.video.currentTime = 0;
+    }
+  }
+
   override onAwake (): void {
     super.onAwake();
 
