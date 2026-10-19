@@ -2,6 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import type { ClipPlayable, FrameContext } from '../playable';
 import { Playable } from '../playable';
 import type { TrackAsset } from '../track';
+import type { CacheDataManager } from '../cache-data-manager';
 
 export interface ClipEvaluationData {
   playableIndex: number,
@@ -77,17 +78,24 @@ export class TrackMixerPlayable extends Playable {
   }
 
   /** Evaluate the segment selected by the timeline's compiled evaluation field. */
-  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
-    this.defaultEvaluate(segmentId, boundObject, context);
+  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
+    this.defaultEvaluate(segmentId, boundObject, context, cache);
   }
 
   /** Sample each active clip. Custom track evaluation may reuse this pass. */
-  protected defaultEvaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
+  protected defaultEvaluate (segmentId: number, boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
     for (const clip of this.getSegment(segmentId).clips) {
-      const clipPlayable = this.clipPlayables[clip.playableIndex];
-
-      clipPlayable.evaluate(boundObject, this.getClipContext(clip, context));
+      this.evaluateClip(clip, boundObject, context, cache);
     }
+  }
+
+  /** Select the clip's cache scope while sampling it. */
+  protected evaluateClip (clip: ClipEvaluationData, boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
+    const clipPlayable = this.clipPlayables[clip.playableIndex];
+
+    cache.setClipKey(clip.playableIndex);
+    clipPlayable.evaluate(boundObject, this.getClipContext(clip, context), cache);
+    cache.setClipKey(undefined);
   }
 
   setClipWeight (playable: ClipPlayable, weight: number): void;

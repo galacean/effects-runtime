@@ -94,7 +94,7 @@ export class CompositionComponent extends Component {
     } else {
       this.sceneBindings.push({ key: track, value: target });
     }
-    this._timelineInstance?.invalidateBindings();
+    this._timelineInstance?.invalidateBindings(track);
   }
 
   /** Return the explicitly assigned scene binding, excluding inherited targets. */
@@ -111,7 +111,7 @@ export class CompositionComponent extends Component {
       return;
     }
     this.sceneBindings.splice(index, 1);
-    this._timelineInstance?.invalidateBindings();
+    this._timelineInstance?.invalidateBindings(track);
   }
 
   on<E extends keyof CompositionComponentEvent> (

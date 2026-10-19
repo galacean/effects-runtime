@@ -1,5 +1,6 @@
 export * from './track';
 export * from './evaluation-field';
+export * from './cache-data-manager';
 export * from './tracks';
 export * from './playable-assets';
 export * from './timeline-asset';

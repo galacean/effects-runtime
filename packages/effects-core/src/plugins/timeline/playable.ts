@@ -1,31 +1,18 @@
 import { Asset } from '../../asset';
-import type { TimelineInstance } from './timeline-instance';
+import type { CacheDataManager } from './cache-data-manager';
 
 /**
  * Shared evaluation lifecycle for clips and track mixers.
  * @since 2.0.0
  */
 export abstract class Playable {
-  protected requiresSetup = false;
-  protected requiresTearDown = false;
-
-  onBeginEvaluation (timeline: TimelineInstance): void {
-    if (this.requiresSetup) {
-      this.setup(timeline);
-    }
-  }
-
-  onEndEvaluation (timeline: TimelineInstance): void {
-    if (this.requiresTearDown) {
-      this.tearDown(timeline);
-    }
-  }
-
-  protected setup (timeline: TimelineInstance): void {
+  /** Called when this track or clip enters evaluation. */
+  onBeginEvaluation (cache: CacheDataManager): void {
     // Override
   }
 
-  protected tearDown (timeline: TimelineInstance): void {
+  /** Called when this track or clip leaves evaluation. */
+  onEndEvaluation (cache: CacheDataManager): void {
     // Override
   }
 }
@@ -36,7 +23,7 @@ export class ClipPlayable extends Playable {
   duration = 0;
 
   /** The binding may be absent; sampling can still run without a target object. */
-  evaluate (boundObject: object | undefined, context: FrameContext): void {
+  evaluate (boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
     // Override
   }
 }

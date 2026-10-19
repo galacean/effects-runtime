@@ -1,4 +1,5 @@
 import type { FrameContext } from '../playable';
+import type { CacheDataManager } from '../cache-data-manager';
 import type { SpriteComponent } from '../../sprite/sprite-item';
 import type { Sprite } from '../../sprite/sprite';
 import { TrackMixerPlayable } from './track-mixer-playable';
@@ -11,8 +12,8 @@ import type { PropertyClipPlayable } from './property-clip-playable';
  * 会阻断无初始 sprite 组件的 K 帧）。
  */
 export class SpritePropertyMixerPlayable extends TrackMixerPlayable {
-  override evaluate (segmentId: number, spriteComponent: SpriteComponent | undefined, context: FrameContext): void {
-    this.defaultEvaluate(segmentId, spriteComponent, context);
+  override evaluate (segmentId: number, spriteComponent: SpriteComponent | undefined, context: FrameContext, cache: CacheDataManager): void {
+    this.defaultEvaluate(segmentId, spriteComponent, context, cache);
     if (!spriteComponent) {
       return;
     }

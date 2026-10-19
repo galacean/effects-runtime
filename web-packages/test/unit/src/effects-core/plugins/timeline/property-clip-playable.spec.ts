@@ -2,6 +2,7 @@ import type { Engine, ValueGetter } from '@galacean/effects';
 import {
   ColorPropertyMixerPlayable, ColorPropertyPlayableAsset, FloatPropertyPlayableAsset,
   PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec, TimelineClip, TrackAsset,
+  CacheDataManager,
   Vector2PropertyMixerPlayable, Vector2PropertyPlayableAsset,
   Vector3PropertyMixerPlayable, Vector3ropertyPlayableAsset,
   Vector4PropertyMixerPlayable, Vector4PropertyPlayableAsset,
@@ -20,6 +21,13 @@ describe('core/plugins/timeline/property-clip-playable', () => {
     },
   } as unknown as Engine;
   const context = { time: 0, deltaTime: 0 };
+  let cache: CacheDataManager;
+
+  beforeEach(() => {
+    cache = new CacheDataManager({ trackData: new Map(), clipData: new Map(), sharedData: new Map() });
+    cache.setTrackKey(0);
+  });
+
   const cases = [
     {
       name: 'Color', Asset: ColorPropertyPlayableAsset, Mixer: ColorPropertyMixerPlayable,
@@ -126,11 +134,11 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       mixer.propertyPath = 'value';
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
-      mixer.evaluate(segmentId, undefined, { time: 0.1, deltaTime: 0 });
+      mixer.evaluate(segmentId, undefined, { time: 0.1, deltaTime: 0 }, cache);
       expectComponents(first.value, 3.5);
       expectComponents(second.value, 8.5);
       expectComponents(target.value, 0);
-      mixer.evaluate(segmentId, target, context);
+      mixer.evaluate(segmentId, target, context, cache);
 
       expectComponents(target.value, 5);
       expectComponents(first.value, 2.5);
@@ -138,14 +146,14 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
       mixer.setClipWeight(0, 0);
       mixer.setClipWeight(1, 0);
-      mixer.evaluate(segmentId, target, { time: 0.1, deltaTime: 0.1 });
+      mixer.evaluate(segmentId, target, { time: 0.1, deltaTime: 0.1 }, cache);
       expectComponents(target.value, 5);
       expectComponents(first.value, 3.5);
       expectComponents(second.value, 8.5);
 
       mixer.setClipWeight(0, 0.5);
       mixer.setClipWeight(1, 0.5);
-      mixer.evaluate(segmentId, undefined, { time: 0.2, deltaTime: 0.1 });
+      mixer.evaluate(segmentId, undefined, { time: 0.2, deltaTime: 0.1 }, cache);
       expectComponents(first.value, 4.5);
       expectComponents(second.value, 9.5);
       expectComponents(target.value, 5);

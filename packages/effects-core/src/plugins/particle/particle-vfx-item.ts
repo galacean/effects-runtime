@@ -7,28 +7,12 @@ import { ParticleSystem } from './particle-system';
  * @since 2.0.0
  */
 export class ParticleBehaviourPlayable extends ClipPlayable {
-  private particleSystem: ParticleSystem | null = null;
-
-  constructor () {
-    super();
-    this.requiresTearDown = true;
-  }
-
-  protected override tearDown (): void {
-    this.particleSystem = null;
-  }
-
   getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
     if (!(boundObject instanceof VFXItem)) {
       return null;
     }
-    if (this.particleSystem) {
-      return this.particleSystem;
-    }
 
-    this.particleSystem = boundObject.getComponent(ParticleSystem);
-
-    return this.particleSystem;
+    return boundObject.getComponent(ParticleSystem);
   }
 
   override evaluate (boundObject: object | undefined, context: FrameContext): void {
