@@ -38,7 +38,6 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
       const index = clip.playableIndex;
       const playable = this.clipPlayables[index] as TransformPlayable;
 
-      this.evaluateClip(clip, item, context, cache);
       if (this.accumulate(playable.contribution, this.clipWeights[index]) && state) {
         state.nextActiveClips.add(playable);
         hasContinuingClip ||= state.activeClips.has(playable);

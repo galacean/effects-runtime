@@ -13,7 +13,6 @@ export class ActivationMixerPlayable extends TrackMixerPlayable {
     if (!boundItem) {
       return;
     }
-    this.defaultEvaluate(segmentId, boundItem, context, cache);
     const active = this.hasActiveClip(segmentId);
 
     boundItem.transform.setValid(active);

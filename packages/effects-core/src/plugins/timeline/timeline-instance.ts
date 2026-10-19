@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import { VFXItem } from '../../vfx-item';
 import type { SceneBinding } from '../../components';
 import type { EvaluationFieldSegmentRef, OrderedEvaluationKey } from './evaluation-field';
@@ -6,7 +7,7 @@ import { ObjectBindingCache } from './object-binding-cache';
 import { CacheDataManager } from './cache-data-manager';
 import type { CacheDataStore } from './cache-data-manager';
 import type { FrameContext } from './playable';
-import type { TrackMixerPlayable } from './playables';
+import type { ClipEvaluationData, TrackMixerPlayable } from './playables';
 import type { TimelineAsset } from './timeline-asset';
 import type { TrackAsset } from './track';
 import { ObjectBindingTrack } from './tracks';
@@ -41,6 +42,7 @@ export class TimelineInstance {
   private nextTrackIdentifier = 0;
   private staleTrackIdentifierLimit = 0;
   private readonly context: FrameContext = { time: 0, deltaTime: 0 };
+  private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
   private needsCompile = false;
 
   constructor (
@@ -79,12 +81,34 @@ export class TimelineInstance {
         const track = this.evaluationTracks.get(segmentRef.trackIdentifier);
 
         if (track) {
-          cache.setTrackKey(segmentRef.trackIdentifier);
+          const boundObject = this.getBoundObject(track.objectBindingId);
 
-          track.evaluate(segmentRef.segmentId, this.getBoundObject(track.objectBindingId), this.context, cache);
+          cache.setTrackKey(segmentRef.trackIdentifier);
+          for (const clip of track.getSegment(segmentRef.segmentId).clips) {
+            cache.setClipKey(clip.playableIndex);
+            track.getClipPlayable(clip.playableIndex).evaluate(boundObject, this.getClipContext(clip), cache);
+            cache.setClipKey(undefined);
+          }
+          track.evaluate(segmentRef.segmentId, boundObject, this.context, cache);
         }
       }
     }
+  }
+
+  private getClipContext (clip: ClipEvaluationData): FrameContext {
+    let time = this.context.time - clip.start;
+
+    if (time > clip.duration) {
+      if (clip.endBehavior === spec.EndBehavior.restart) {
+        time %= clip.duration;
+      } else if (clip.endBehavior === spec.EndBehavior.freeze) {
+        time = clip.duration;
+      }
+    }
+    this.clipContext.time = time;
+    this.clipContext.deltaTime = this.context.deltaTime;
+
+    return this.clipContext;
   }
 
   /** End the current evaluation without discarding compiled tracks. */

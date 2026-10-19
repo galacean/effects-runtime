@@ -130,13 +130,20 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       const first = mixer.getClipPlayable(0) as PropertyClipPlayable<SampleValue>;
       const second = mixer.getClipPlayable(1) as PropertyClipPlayable<SampleValue>;
       const target = { value: first.value.clone() };
+      const evaluate = (time: number) => {
+        sample(first, time - clips[0].start);
+        sample(second, time - clips[1].start);
+      };
 
       mixer.propertyPath = 'value';
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
+      evaluate(0.1);
       mixer.evaluate(segmentId, undefined, { time: 0.1, deltaTime: 0 }, cache);
       expectComponents(first.value, 3.5);
       expectComponents(second.value, 8.5);
+      expectComponents(target.value, 0);
+      evaluate(context.time);
       expectComponents(target.value, 0);
       mixer.evaluate(segmentId, target, context, cache);
 
@@ -146,6 +153,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
       mixer.setClipWeight(0, 0);
       mixer.setClipWeight(1, 0);
+      evaluate(0.1);
       mixer.evaluate(segmentId, target, { time: 0.1, deltaTime: 0.1 }, cache);
       expectComponents(target.value, 5);
       expectComponents(first.value, 3.5);
@@ -153,6 +161,7 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
       mixer.setClipWeight(0, 0.5);
       mixer.setClipWeight(1, 0.5);
+      evaluate(0.2);
       mixer.evaluate(segmentId, undefined, { time: 0.2, deltaTime: 0.1 }, cache);
       expectComponents(first.value, 4.5);
       expectComponents(second.value, 9.5);

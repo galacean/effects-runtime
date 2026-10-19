@@ -14,7 +14,6 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   abstract addWeightedValue (curveValue: T, weight: number): void;
 
   override evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
-    this.defaultEvaluate(segmentId, boundObject, context, cache);
     if (!boundObject || !this.hasActiveClip(segmentId)) {
       return;
     }
@@ -33,7 +32,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
 
     this.resetPropertyValue();
 
-    // evaluate the curve
+    // Blend the values sampled by the clips.
     for (const clip of this.getSegment(segmentId).clips) {
       const index = clip.playableIndex;
       const weight = this.getClipWeight(index);

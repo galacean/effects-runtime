@@ -17,12 +17,12 @@ export abstract class Playable {
   }
 }
 
-/** Clip playable. Evaluation time is supplied by the track. */
+/** Clip playable. Evaluation time is mapped by TimelineInstance. */
 export class ClipPlayable extends Playable {
   /** Compiled clip duration used by normalized curves. */
   duration = 0;
 
-  /** The binding may be absent; sampling can still run without a target object. */
+  /** Sample this clip using the time mapped by TimelineInstance. */
   evaluate (boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
     // Override
   }

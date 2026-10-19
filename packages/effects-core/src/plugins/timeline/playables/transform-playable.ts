@@ -38,7 +38,7 @@ export interface TransformAnimationCurves {
 export class TransformPlayable extends ClipPlayable {
   curves: TransformAnimationCurves;
 
-  /** Current sample, reused across evaluations and consumed synchronously by the mixer. */
+  /** Current sample, reused across evaluations and consumed by the mixer. */
   readonly contribution: TransformContribution = {
     values: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     validChannels: [false, false, false, false, false, false, false, false, false],
