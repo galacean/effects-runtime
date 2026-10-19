@@ -12,7 +12,7 @@ import { VertexElementType } from './vertex-element-type';
 import { RenderingData } from './rendering-data';
 import type { RenderOptions } from './rendering-data';
 import { DrawObjectPass } from './draw-object-pass';
-import { FeatherOffscreenPass } from './feather-offscreen-pass';
+import { FEATHER_GROUP, FeatherOffscreenPass } from './feather-offscreen-pass';
 import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { SceneRendering } from './scene-rendering';
 import type { RendererFeature } from './renderer-feature';
@@ -252,7 +252,7 @@ export class Renderer {
     this.activeRenderPassQueue.length = 0;
     this.renderingData = data;
     this.prepareRenderingData(scene, data);
-    if (this.featherOffscreenPass.hasFeatheredShapes(data)) {
+    if (data.renderList.groups.get(FEATHER_GROUP)?.length) {
       this.enqueuePass(this.featherOffscreenPass);
     }
     this.enqueuePass(this.drawObjectPass);

@@ -1,4 +1,4 @@
-import { ShapeComponent } from '../plugins/shape/shape-component';
+import type { ShapeComponent } from '../plugins/shape/shape-component';
 import type { GPUFramebuffer } from './gpu-framebuffer';
 import { FilterMode, RenderTextureFormat } from './gpu-framebuffer';
 import { RenderPass, RenderPassEvent } from './render-pass';
@@ -9,17 +9,14 @@ import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
 import type { FeatherRenderParams, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
 
+export const FEATHER_GROUP = 'FeatherOffscreenPass';
+
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
-type PendingFeatherEntry = {
+type FeatherEntry = {
   featherRenderer: VectorFeatherRenderer,
   params: FeatherRenderParams,
-};
-
-type FeatherEntry = PendingFeatherEntry & {
-  atlas: GPUFramebuffer,
-  rect: AtlasRect,
 };
 
 /**
@@ -30,123 +27,89 @@ type FeatherEntry = PendingFeatherEntry & {
  */
 export class FeatherOffscreenPass extends RenderPass {
 
-  private entries: FeatherEntry[] = [];
-  private allocator = new AtlasAllocator(1, 1);
+  private atlases: GPUFramebuffer[] = [];
+  private featherRenderers: VectorFeatherRenderer[] = [];
 
   constructor (renderer: Renderer) {
     super(renderer);
     this.renderPassEvent = RenderPassEvent.BeforeRendering;
-    this.name = 'FeatherOffscreenPass';
-  }
-
-  hasFeatheredShapes (data: RenderingData): boolean {
-    return data.renderList.objects.some(mesh => mesh instanceof ShapeComponent && mesh.featherRenderer.enabled);
+    this.name = FEATHER_GROUP;
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
-    const pending: PendingFeatherEntry[] = [];
-    const renderList = data.renderList.objects;
-
-    for (const mesh of renderList) {
-      if (!(mesh instanceof ShapeComponent)) {
-        continue;
-      }
-
-      const featherRenderer = mesh.featherRenderer;
-
-      for (const params of featherRenderer.prepareLayers(renderer, mesh.transform.getWorldMatrix())) {
-        pending.push({ featherRenderer, params });
-      }
-    }
-
-    if (pending.length === 0) {
-      return;
-    }
-
+    const entries: FeatherEntry[] = [];
+    const shapes = (data.renderList.groups.get(FEATHER_GROUP) ?? []) as ShapeComponent[];
     let maxW = 0;
     let maxH = 0;
     let totalArea = 0;
 
-    for (const { params } of pending) {
-      maxW = Math.max(maxW, params.fboW);
-      maxH = Math.max(maxH, params.fboH);
-      totalArea += (params.fboW + ATLAS_PADDING) * (params.fboH + ATLAS_PADDING);
+    for (const shape of shapes) {
+      const featherRenderer = shape.featherRenderer;
+      const layers = featherRenderer.prepareLayers(renderer, shape.transform.getWorldMatrix());
+
+      if (layers.length > 0) {
+        this.featherRenderers.push(featherRenderer);
+      }
+      for (const params of layers) {
+        entries.push({ featherRenderer, params });
+        maxW = Math.max(maxW, params.fboW);
+        maxH = Math.max(maxH, params.fboH);
+        totalArea += (params.fboW + ATLAS_PADDING) * (params.fboH + ATLAS_PADDING);
+      }
+    }
+
+    if (entries.length === 0) {
+      return;
     }
 
     const maxAtlasSize = Math.min(MAX_ATLAS_SIZE, renderer.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize);
     const atlasW = Math.min(Math.max(maxW, Math.ceil(Math.sqrt(totalArea))), maxAtlasSize);
     const atlasH = Math.min(Math.max(Math.ceil(totalArea / atlasW) * 2, maxH), maxAtlasSize);
-
-    this.allocator = new AtlasAllocator(atlasW, atlasH);
-    this.entries = [];
-
+    const allocator = new AtlasAllocator(atlasW, atlasH);
     const prevFramebuffer = renderer.getFramebuffer();
     const prevViewport = renderer.getViewport();
-    let currentAtlas: GPUFramebuffer | null = null;
-    let batchStart = 0;
+    let currentAtlas = this.createAtlas(renderer, atlasW, atlasH);
 
-    const createAtlas = () => renderer.getTemporaryRT(
-      '_FeatherAtlas', atlasW, atlasH, 0,
-      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
-      1, // 禁用各向异性过滤。upsample 用 texture2D 模拟 texelFetch，必须关闭各向异性。
-    );
-
-    const flushCurrentBatch = () => {
-      const atlas = currentAtlas;
-      const batch = this.entries.slice(batchStart);
-
-      if (batch.length === 0 || !atlas) {
-        return;
-      }
-
-      renderer.setFramebuffer(atlas);
-      renderer.setViewport(0, 0, atlasW, atlasH);
-      renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
-
-      for (const { featherRenderer, params, rect } of batch) {
-        renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        featherRenderer.renderOffscreen(renderer, params, atlas, rect);
-      }
-    };
-
-    for (const entry of pending) {
+    for (const { featherRenderer, params } of entries) {
       const rect: AtlasRect = { x: 0, y: 0, w: 0, h: 0 };
 
-      if (!this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
-        flushCurrentBatch();
-        this.allocator.reset();
-        batchStart = this.entries.length;
-        currentAtlas = null;
-        if (!this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect)) {
-          this.onCameraCleanup(renderer);
-          renderer.setFramebuffer(prevFramebuffer);
-          renderer.setViewport(...prevViewport);
-
-          throw new Error(`Feather region ${entry.params.fboW}×${entry.params.fboH} does not fit atlas ${atlasW}×${atlasH}.`);
-        }
+      if (!allocator.allocate(params.fboW, params.fboH, rect)) {
+        allocator.reset();
+        // Atlas 尺寸覆盖所有区域，重置后一定能容纳当前区域。
+        allocator.allocate(params.fboW, params.fboH, rect);
+        currentAtlas = this.createAtlas(renderer, atlasW, atlasH);
       }
-      if (!currentAtlas) {
-        currentAtlas = createAtlas();
-      }
-      this.entries.push({ ...entry, atlas: currentAtlas, rect });
+      renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
+      featherRenderer.renderOffscreen(renderer, params, currentAtlas, rect);
     }
-    flushCurrentBatch();
 
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(...prevViewport);
   }
 
   override onCameraCleanup (renderer: Renderer): void {
-    const released = new Set<GPUFramebuffer>();
-
-    for (const { featherRenderer, atlas } of this.entries) {
-      if (!released.has(atlas)) {
-        renderer.releaseTemporaryRT(atlas);
-        released.add(atlas);
-      }
+    for (const atlas of this.atlases) {
+      renderer.releaseTemporaryRT(atlas);
+    }
+    for (const featherRenderer of this.featherRenderers) {
       featherRenderer.atlasLayers = null;
     }
 
-    this.entries = [];
+    this.atlases.length = 0;
+    this.featherRenderers.length = 0;
+  }
+
+  private createAtlas (renderer: Renderer, width: number, height: number): GPUFramebuffer {
+    const atlas = renderer.getTemporaryRT(
+      '_FeatherAtlas', width, height, 0,
+      FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+      1, // 禁用各向异性过滤。upsample 用 texture2D 模拟 texelFetch，必须关闭各向异性。
+    );
+
+    this.atlases.push(atlas);
+    renderer.setFramebuffer(atlas);
+    renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
+
+    return atlas;
   }
 }

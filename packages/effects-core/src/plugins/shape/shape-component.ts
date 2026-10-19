@@ -25,6 +25,7 @@ import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/cli
 import { VectorFeatherRenderer } from '../../math/shape/vector-feather-renderer';
 import type { Paint, SolidPaint } from './shape-material';
 import { applyShapeRendererOptions, updateShapePaintMaterial } from './shape-material';
+import { FEATHER_GROUP } from '../../render/feather-offscreen-pass';
 
 export type { SolidPaint, GradientPaint, TextureTransform, TexturePaint } from './shape-material';
 export { TexturePaintScaleMode } from './shape-material';
@@ -281,6 +282,16 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+  }
+
+  override onEnable (): void {
+    super.onEnable();
+    this.item.composition?.sceneRendering.addRenderer(this, FEATHER_GROUP);
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+    this.item.composition?.sceneRendering.removeRenderer(this, FEATHER_GROUP);
   }
 
   override dispose (): void {

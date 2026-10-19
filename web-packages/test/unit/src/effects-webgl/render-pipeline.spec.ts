@@ -1,9 +1,9 @@
 import {
   Engine, RenderingDevice, ContextContainer, ContextItem, Composition, Player, PostProcessVolume, RenderPass, RendererComponent, TextureLoadAction,
   FilterMode, Material, RendererFeature, RenderPassEvent, RenderTextureFormat, VFXItem,
-  Camera, SceneRendering, ShapeComponent, spec,
+  Camera, FEATHER_GROUP, SceneRendering, ShapeComponent, spec,
 } from '@galacean/effects';
-import type { Geometry, Renderer, RenderingData, TrimPathData } from '@galacean/effects';
+import type { Geometry, GPUFramebuffer, Renderer, RenderingData, TrimPathData } from '@galacean/effects';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import { ThreeComposition } from '../../../../../packages/effects-threejs/src/three-composition';
@@ -100,10 +100,11 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
       function renderShape (shape: ShapeComponent, prepareFeather = true) {
         const scene = new SceneRendering();
         const renderer = player.renderer;
-        const proxy = new RendererComponent(player.engine);
 
-        proxy.render = renderer => shape.render(renderer);
-        scene.addRenderer(prepareFeather ? shape : proxy);
+        scene.addRenderer(shape);
+        if (prepareFeather) {
+          scene.addRenderer(shape, FEATHER_GROUP);
+        }
         renderer.clear({ colorAction: TextureLoadAction.clear, depthAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
         renderer.renderScene(scene, { camera: new Camera('shape-feather') });
       }
