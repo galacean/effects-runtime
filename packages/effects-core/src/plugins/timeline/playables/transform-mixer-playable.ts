@@ -1,4 +1,5 @@
 import type { FrameContext } from '../playable';
+import type { CacheDataManager } from '../cache-data-manager';
 import type { VFXItem } from '../../../vfx-item';
 import type { TransformContribution, TransformPlayable } from './transform-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
@@ -12,29 +13,20 @@ interface TransformEvaluationState {
 
 /** Blend valid absolute channels and keep the last applied transform when clips expire. */
 export class TransformMixerPlayable extends TrackMixerPlayable {
-  private states = new WeakMap<VFXItem, TransformEvaluationState>();
   private readonly totals: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly weights: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly result: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   private readonly validChannels: boolean[] = [false, false, false, false, false, false, false, false, false];
 
-  constructor () {
-    super();
-    this.requiresTearDown = true;
-  }
-
-  protected override tearDown (): void {
-    this.states = new WeakMap();
-  }
-
-  override evaluate (segmentId: number, item: VFXItem | undefined, context: FrameContext): void {
-    let state = item ? this.states.get(item) : undefined;
+  override evaluate (segmentId: number, item: VFXItem | undefined, context: FrameContext, cache: CacheDataManager): void {
+    const states = cache.getOrAddTrackData(() => new WeakMap<VFXItem, TransformEvaluationState>());
+    let state = item ? states.get(item) : undefined;
 
     if (item && !state) {
       state = {
         activeClips: new Set(), nextActiveClips: new Set(),
       };
-      this.states.set(item, state);
+      states.set(item, state);
     }
     state?.nextActiveClips.clear();
     this.totals.fill(0);
@@ -46,7 +38,6 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
       const index = clip.playableIndex;
       const playable = this.clipPlayables[index] as TransformPlayable;
 
-      playable.evaluate(item, this.getClipContext(clip, context));
       if (this.accumulate(playable.contribution, this.clipWeights[index]) && state) {
         state.nextActiveClips.add(playable);
         hasContinuingClip ||= state.activeClips.has(playable);

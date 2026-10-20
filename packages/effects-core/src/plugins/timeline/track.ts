@@ -35,7 +35,7 @@ export class TrackAsset extends Asset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  updateAnimatedObject (boundObject: object): object {
+  updateAnimatedObject (boundObject: object): object | undefined {
     return boundObject;
   }
 

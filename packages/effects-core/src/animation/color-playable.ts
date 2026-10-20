@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { createValueGetter, vecFill, vecMulCombine, type ValueGetter } from '../math';
 import type { FrameContext } from '../plugins/timeline/playable';
+import type { CacheDataManager } from '../plugins/timeline/cache-data-manager';
 import { ClipPlayable } from '../plugins/timeline/playable';
 import { VFXItem } from '../vfx-item';
 import type { Material } from '../material';
@@ -14,30 +15,44 @@ export interface ColorPlayableAssetData extends spec.EffectsObjectData {
 
 const tempColor: spec.RGBAColorValue = [1, 1, 1, 1];
 
+interface ColorEvaluationState {
+  component?: MaskableGraphic,
+  material?: Material,
+  startColor: spec.RGBAColorValue,
+}
+
 export class ColorPlayable extends ClipPlayable {
   colorOverLifetime: ColorStop[];
   opacityOverLifetime: ValueGetter<number>;
-  startColor: spec.RGBAColorValue;
-  renderColor: spec.vec4 = [1, 1, 1, 1];
-  activeComponent?: MaskableGraphic;
-  activeMaterial?: Material;
 
-  override evaluate (boundObject: object | undefined, context: FrameContext): void {
+  override evaluate (boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
     if (!(boundObject instanceof VFXItem)) {
       return;
     }
-    if (!this.activeComponent) {
-      this.activeComponent = this.getActiveComponent(boundObject);
-    }
-    if (!this.activeMaterial) {
-      this.activeMaterial = this.activeComponent?.material;
-      const startColor = this.activeMaterial?.getColor('_Color');
+    const states = cache.getOrAddClipData(() => new WeakMap<VFXItem, ColorEvaluationState>());
+    let state = states.get(boundObject);
 
-      if (startColor) {
-        this.startColor = startColor.toArray();
+    if (!state) {
+      state = { startColor: [1, 1, 1, 1] };
+      states.set(boundObject, state);
+    }
+    if (!state.component) {
+      state.component = this.getActiveComponent(boundObject);
+    }
+    if (!state.material) {
+      state.material = state.component?.material;
+      const startColor = state.material?.getColor('_Color');
+
+      if (state.material && startColor) {
+        // Clip state expires while the material retains its last animated color.
+        const initialColors = cache.getOrAddSharedData(
+          ColorPlayable, () => new WeakMap<Material, spec.RGBAColorValue>(),
+        );
+
+        state.startColor = initialColors.get(state.material) ?? startColor.toArray();
+        initialColors.set(state.material, state.startColor);
       }
     }
-
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
     const life = context.time / this.duration;
@@ -55,8 +70,8 @@ export class ColorPlayable extends ClipPlayable {
     }
 
     if (colorChanged) {
-      vecMulCombine<spec.vec4>(this.renderColor, colorInc, this.startColor);
-      this.activeMaterial?.getColor('_Color')?.setFromArray(this.renderColor);
+      vecMulCombine<spec.vec4>(tempColor, colorInc, state.startColor);
+      state.material?.getColor('_Color')?.setFromArray(tempColor);
     }
   }
 

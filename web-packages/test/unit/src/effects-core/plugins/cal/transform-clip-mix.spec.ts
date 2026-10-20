@@ -156,10 +156,14 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
   const evaluateMixer = (comp: Composition, weights: number[]) => {
     const timeline = getTimeline(comp);
     const mixer = timeline.tracks.find(track => track instanceof TransformMixerPlayable)!;
-    const segmentId = mixer.getSegments().findIndex(segment => comp.time >= segment.start && comp.time < segment.end);
+    const evaluate = mixer.evaluate;
 
-    weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
-    mixer.evaluate(segmentId, timeline.getBoundObject(mixer.objectBindingId), { time: comp.time, deltaTime: 0 });
+    mixer.evaluate = (segmentId, target, context, cache) => {
+      weights.forEach((weight, index) => mixer.setClipWeight(index, weight));
+      evaluate.call(mixer, segmentId, target, context, cache);
+    };
+    timeline.evaluate(comp.time, 0);
+    mixer.evaluate = evaluate;
   };
 
   it('单 clip scale 归一化低权重，退出后重新捕获零权重混合初值', async () => {
@@ -199,9 +203,9 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const mixer = getTimeline(comp).tracks.find(track => track instanceof TransformMixerPlayable)!;
     const evaluate = mixer.evaluate.bind(mixer);
 
-    mixer.evaluate = (segmentId, item, context) => {
+    mixer.evaluate = (segmentId, item, context, cache) => {
       mixer.setClipWeight(0, 0);
-      evaluate(segmentId, item, context);
+      evaluate(segmentId, item, context, cache);
     };
 
     component.stop();
@@ -345,7 +349,8 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(sprite.isActive).to.be.true;
     expect(pos.toArray()).to.deep.equal(previous);
     component.stop();
-    expect(sprite.isActive).to.be.false;
+    // Stopping evaluation keeps the last animated values, including activation.
+    expect(sprite.isActive).to.be.true;
     expect(pos.toArray()).to.deep.equal(previous);
   });
 
