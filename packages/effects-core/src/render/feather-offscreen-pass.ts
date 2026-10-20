@@ -28,7 +28,6 @@ type FeatherEntry = {
 export class FeatherOffscreenPass extends RenderPass {
 
   private atlases: GPUFramebuffer[] = [];
-  private featherRenderers: VectorFeatherRenderer[] = [];
 
   constructor (renderer: Renderer) {
     super(renderer);
@@ -45,12 +44,8 @@ export class FeatherOffscreenPass extends RenderPass {
 
     for (const shape of shapes) {
       const featherRenderer = shape.featherRenderer;
-      const layers = featherRenderer.prepareLayers(renderer, shape.transform.getWorldMatrix());
 
-      if (layers.length > 0) {
-        this.featherRenderers.push(featherRenderer);
-      }
-      for (const params of layers) {
+      for (const params of featherRenderer.prepareLayers(renderer, shape.transform.getWorldMatrix())) {
         entries.push({ featherRenderer, params });
         maxW = Math.max(maxW, params.fboW);
         maxH = Math.max(maxH, params.fboH);
@@ -87,16 +82,17 @@ export class FeatherOffscreenPass extends RenderPass {
     renderer.setViewport(...prevViewport);
   }
 
-  override onCameraCleanup (renderer: Renderer): void {
+  override onCameraCleanup (renderer: Renderer, data: RenderingData): void {
+    const shapes = (data.renderList.groups.get(FEATHER_GROUP) ?? []) as ShapeComponent[];
+
     for (const atlas of this.atlases) {
       renderer.releaseTemporaryRT(atlas);
     }
-    for (const featherRenderer of this.featherRenderers) {
-      featherRenderer.atlasLayers = null;
+    for (const shape of shapes) {
+      shape.featherRenderer.atlasLayers = null;
     }
 
     this.atlases.length = 0;
-    this.featherRenderers.length = 0;
   }
 
   private createAtlas (renderer: Renderer, width: number, height: number): GPUFramebuffer {

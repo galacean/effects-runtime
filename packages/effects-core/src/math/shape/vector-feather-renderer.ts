@@ -1,9 +1,7 @@
-import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
-import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import type { Attribute, GPUFramebuffer, Renderer } from '../../render';
 import { BufferUsage, Geometry, GLSLVersion } from '../../render';
@@ -173,11 +171,6 @@ export class VectorFeatherRenderer {
   featherRadius = 0;
 
   /**
-   * 羽化颜色，默认使用第一个 fill 的颜色
-   */
-  featherColor: Color = new Color(1, 1, 1, 1);
-
-  /**
    * 填充和描边各自的 atlas 区域。两侧遮罩互不叠加。
    */
   atlasLayers: FeatherAtlasLayers | null = null;
@@ -193,24 +186,12 @@ export class VectorFeatherRenderer {
 
     // --- Indicator Pass 材质 ---
     this.indicatorMaterial = this.createFeatherMaterial(indicatorVert, indicatorFrag);
-    this.indicatorMaterial.blending = true;
-    this.indicatorMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
-    this.indicatorMaterial.depthTest = false;
-    this.indicatorMaterial.culling = false;
 
     // --- Indicator SoS 材质 ---
     this.indicatorSoSMaterial = this.createFeatherMaterial(indicatorSoSVert, indicatorSoSFrag);
-    this.indicatorSoSMaterial.blending = true;
-    this.indicatorSoSMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
-    this.indicatorSoSMaterial.depthTest = false;
-    this.indicatorSoSMaterial.culling = false;
 
     // --- Scatter Pass 材质 ---
     this.scatterMaterial = this.createFeatherMaterial(scatterVert, scatterFrag);
-    this.scatterMaterial.blending = true;
-    this.scatterMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
-    this.scatterMaterial.depthTest = false;
-    this.scatterMaterial.culling = false;
 
     // --- Upsample Pass 材质 ---
     this._upsampleMaterials = {
@@ -266,13 +247,9 @@ export class VectorFeatherRenderer {
   fromData (data: spec.ShapeComponentData): void {
     const extData = data as spec.ShapeComponentData & {
       featherRadius?: number,
-      featherColor?: { r: number, g: number, b: number, a: number },
     };
 
     this.featherRadius = extData.featherRadius ?? 0;
-    if (extData.featherColor) {
-      this.featherColor = new Color().copyFrom(extData.featherColor);
-    }
     this.atlasLayers = null;
     this._enabled = false;
   }
@@ -311,15 +288,6 @@ export class VectorFeatherRenderer {
   }
 
   private updateMaterials (data: FeatherShapeData): void {
-    const firstFill = data.fills[0];
-    const firstStroke = data.strokes[0];
-
-    if (firstFill?.type === spec.FillType.Solid) {
-      this.featherColor = firstFill.color;
-    } else if (firstStroke?.type === spec.FillType.Solid) {
-      this.featherColor = firstStroke.color;
-    }
-
     for (const side of FEATHER_SIDES) {
       const material = this.upsampleMaterials[side];
       const paint = (side === 'fill' ? data.fills : data.strokes)[0];
@@ -327,9 +295,6 @@ export class VectorFeatherRenderer {
       applyShapeRendererOptions(material, data.rendererOptions);
       if (paint) {
         updateShapePaintMaterial(material, paint);
-      } else {
-        material.setFloat('_FillType', spec.FillType.Solid);
-        material.color = this.featherColor;
       }
     }
   }
@@ -427,9 +392,10 @@ export class VectorFeatherRenderer {
         side,
         fboW: Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize),
         fboH: Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize),
-        orthoProjection: createOrthoMatrix(
+        orthoProjection: new Matrix4().orthographic(
           expandedMinX, expandedMinX + expandedW,
-          expandedMinY, expandedMinY + expandedH,
+          expandedMinY + expandedH, expandedMinY,
+          -1, 1,
         ),
         featherRadius,
         localRect: [expandedMinX, expandedMinY, expandedW, expandedH],
@@ -599,13 +565,10 @@ export class VectorFeatherRenderer {
   private createUpsampleMaterial (): Material {
     const material = this.createFeatherMaterial(upsampleVert, upsampleFrag);
 
-    material.blending = true;
     material.blendFunction = [
       glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
       glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
     ];
-    material.depthTest = false;
-    material.culling = false;
     material.shader.shaderData.properties = 'uAtlasTex("uAtlasTex",2D) = "white" {}';
 
     return material;
@@ -706,16 +669,21 @@ export class VectorFeatherRenderer {
   }
 
   private createFeatherMaterial (vertexShader: string, fragmentShader: string): Material {
-    const materialProps: MaterialProps = {
+    const material = Material.create(this.engine, {
       shader: {
         vertex: vertexShader,
         fragment: fragmentShader,
         glslVersion: GLSLVersion.GLSL1,
         shared: true,
       },
-    };
+    });
 
-    return Material.create(this.engine, materialProps);
+    material.blending = true;
+    material.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
+    material.depthTest = false;
+    material.culling = false;
+
+    return material;
   }
 }
 
@@ -752,40 +720,6 @@ function unionFeatherRect (fill: FeatherRect, stroke: FeatherRect): FeatherRect 
   const maxY = Math.max(fill[1] + fill[3], stroke[1] + stroke[3]);
 
   return [minX, minY, maxX - minX, maxY - minY];
-}
-
-/**
- * 创建正交投影矩阵
- */
-function createOrthoMatrix (
-  left: number, right: number,
-  bottom: number, top: number,
-  near = -1, far = 1,
-): Matrix4 {
-  const mat = new Matrix4();
-  const data = mat.elements;
-
-  data[0] = 2 / (right - left);
-  data[1] = 0;
-  data[2] = 0;
-  data[3] = 0;
-
-  data[4] = 0;
-  data[5] = 2 / (top - bottom);
-  data[6] = 0;
-  data[7] = 0;
-
-  data[8] = 0;
-  data[9] = 0;
-  data[10] = -2 / (far - near);
-  data[11] = 0;
-
-  data[12] = -(right + left) / (right - left);
-  data[13] = -(top + bottom) / (top - bottom);
-  data[14] = -(far + near) / (far - near);
-  data[15] = 1;
-
-  return mat;
 }
 
 /**
