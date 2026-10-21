@@ -7,11 +7,17 @@ import { createValueGetter } from '../../../math';
 import type { ValueGetter } from '../../../math';
 import * as spec from '@galacean/effects-specification';
 
+/** TODO: update to spec. */
+interface FloatPropertyPlayableAssetData extends TimelineClipData {
+  dataType: spec.DataType.FloatPropertyPlayableAsset,
+  curveData: spec.BezierValue,
+}
+
 @effectsClass(spec.DataType.FloatPropertyPlayableAsset)
 export class FloatPropertyPlayableAsset extends TimelineClip {
   curve: ValueGetter<number>;
 
-  override fromData (data: spec.FloatPropertyPlayableAssetData & TimelineClipData): void {
+  override fromData (data: FloatPropertyPlayableAssetData): void {
     super.fromData(data);
     this.curve = createValueGetter(data.curveData);
   }

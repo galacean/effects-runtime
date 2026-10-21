@@ -8,11 +8,17 @@ import type { ValueGetter } from '../../../math';
 import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 
+/** TODO: update to spec. */
+interface ColorPropertyPlayableAssetData extends TimelineClipData {
+  dataType: spec.DataType.ColorPropertyPlayableAsset,
+  curveData: spec.ColorCurveValue,
+}
+
 @effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends TimelineClip {
   curve: ValueGetter<Color>;
 
-  override fromData (data: spec.ColorPropertyPlayableAssetData & TimelineClipData): void {
+  override fromData (data: ColorPropertyPlayableAssetData): void {
     super.fromData(data);
     this.curve = createValueGetter(data.curveData);
   }
