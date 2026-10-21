@@ -1573,10 +1573,6 @@ export class ResizeSelectionGizmo extends Gizmo {
         );
         this.setResizePosition(session, resize.totalTranslation);
 
-        const composition = this._owner.getEngine().sceneServer.compositions[0];
-
-        composition?.gotoAndStop(composition.time);
-
         return;
       }
 
@@ -1600,10 +1596,6 @@ export class ResizeSelectionGizmo extends Gizmo {
         initialScale.z,
       );
       this.setResizePosition(session, resize.totalTranslation);
-
-      const composition = this._owner.getEngine().sceneServer.compositions[0];
-
-      composition?.gotoAndStop(composition.time);
 
       return;
     }
