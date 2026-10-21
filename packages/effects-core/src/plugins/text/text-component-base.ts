@@ -254,6 +254,11 @@ export class TextComponentBase {
     this.context = null;
   }
 
+  /** Canvas 像素边长上限，同时遵守设备纹理尺寸限制。 */
+  protected getMaxCanvasSize (): number {
+    return Math.min(4096, this.engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize);
+  }
+
   /**
    * 通用纹理渲染辅助方法
    */
