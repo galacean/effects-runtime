@@ -1,7 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { ClipPlayable } from '../playable';
-import { PlayableAsset } from '../playable';
+import { TimelineClip } from '../timeline-clip';
+import type { TimelineClipData } from '../timeline-clip';
 import { PropertyClipPlayable } from '../playables';
 import { ReferenceCurve } from '../../../math';
 import type { Sprite } from '../../sprite/sprite';
@@ -13,16 +14,16 @@ import type { Sprite } from '../../sprite/sprite';
  */
 export type ReferenceCurveValue = [number, [number, spec.DataPath][]];
 
-export interface SpritePropertyAssetData extends spec.EffectsObjectData {
+export interface SpritePropertyAssetData extends TimelineClipData {
   curveData: ReferenceCurveValue,
 }
 
 /**
- * Sprite 属性 K 帧 PlayableAsset：持有对象引用阶梯曲线，
+ * Sprite 属性 K 帧片段：持有对象引用阶梯曲线，
  * createPlayable 复用 PropertyClipPlayable<Sprite> + ReferenceCurve（阶梯采样，不插值）。
  */
 @effectsClass('SpritePropertyPlayableAsset')
-export class SpritePropertyPlayableAsset extends PlayableAsset {
+export class SpritePropertyPlayableAsset extends TimelineClip {
   curve: ReferenceCurve<Sprite>;
 
   override fromData (data: SpritePropertyAssetData): void {

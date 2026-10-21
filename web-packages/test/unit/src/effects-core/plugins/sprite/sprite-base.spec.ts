@@ -62,8 +62,8 @@ describe('core/plugins/sprite/item-base', () => {
     let spriteColorClip;
 
     for (const track of tracks) {
-      if (track.asset instanceof SpriteColorPlayableAsset) {
-        spriteColorClip = track.asset;
+      if (track instanceof SpriteColorPlayableAsset) {
+        spriteColorClip = track;
       }
     }
     const color = spriteItem?.material.getColor('_Color')?.toArray();

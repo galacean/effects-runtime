@@ -1,4 +1,4 @@
-import type { TrackAsset, spec } from '@galacean/effects';
+import type { TimelineClip, TrackAsset, spec } from '@galacean/effects';
 import { TransformPlayableAsset, SpritePropertyPlayableAsset } from '@galacean/effects';
 import { COLORS } from './theme';
 import type { KeyframeData, TransformPropertyChannel, TransformPropertyGroup, CurveSegmentData, CurveChannelData, CurvePropertyGroup, CurveCanvasChannel, SpriteKeyframeData } from './types';
@@ -7,17 +7,15 @@ import { getCurveChannelId } from './selection';
 
 /**
  * 从 SpritePropertyTrack 的 clip 中提取 sprite 对象引用关键帧。
- * asset.curve.keyframes 形如 [time: number(归一化0-1), sprite: Sprite][]。
+ * clip.curve.keyframes 形如 [time: number(归一化0-1), sprite: Sprite][]。
  * 非 SpritePropertyPlayableAsset 返回 null。
  */
-export function getSpriteKeyframes (clip: { asset: unknown }): SpriteKeyframeData[] | null {
-  const asset = clip.asset;
-
-  if (!(asset instanceof SpritePropertyPlayableAsset)) {
+export function getSpriteKeyframes (clip: TimelineClip | undefined): SpriteKeyframeData[] | null {
+  if (!(clip instanceof SpritePropertyPlayableAsset)) {
     return null;
   }
   const result: SpriteKeyframeData[] = [];
-  const keyframes = asset.curve.keyframes;
+  const keyframes = clip.curve.keyframes;
 
   for (let i = 0; i < keyframes.length; i++) {
     const [time, sprite] = keyframes[i];
@@ -39,13 +37,11 @@ export function getTransformPropertyGroups (trackAsset: TrackAsset): TransformPr
   const clips = trackAsset.getClips();
 
   for (const clip of clips) {
-    const asset = clip.asset;
-
-    if (!(asset instanceof TransformPlayableAsset)) {
+    if (!(clip instanceof TransformPlayableAsset)) {
       continue;
     }
 
-    const data = asset.transformAnimationData;
+    const data = clip.transformAnimationData;
 
     if (!data) {
       continue;
@@ -116,15 +112,14 @@ export function getTransformPropertyGroups (trackAsset: TrackAsset): TransformPr
 /**
  * 聚合 clip 内所有关键帧的绝对时间（用于 Section 级关键帧菱形标记）
  */
-export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: number, duration: number }): number[] {
-  const asset = clip.asset;
+export function getClipAggregatedKeyframeTimes (clip: TimelineClip): number[] {
   const clipStart = clip.start;
   const clipDuration = clip.duration;
 
   // Sprite 对象引用关键帧：从 Curve 取归一化时间
-  if (asset instanceof SpritePropertyPlayableAsset) {
+  if (clip instanceof SpritePropertyPlayableAsset) {
     const timeSet = new Set<number>();
-    const keyframes = asset.curve.keyframes;
+    const keyframes = clip.curve.keyframes;
 
     for (let i = 0; i < keyframes.length; i++) {
       const absTime = clipStart + keyframes[i][0] * clipDuration;
@@ -135,11 +130,11 @@ export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: n
     return Array.from(timeSet);
   }
 
-  if (!(asset instanceof TransformPlayableAsset)) {
+  if (!(clip instanceof TransformPlayableAsset)) {
     return [];
   }
 
-  const data = asset.transformAnimationData;
+  const data = clip.transformAnimationData;
 
   if (!data) {
     return [];
@@ -678,13 +673,11 @@ export function getCurvePropertyGroups (trackAsset: TrackAsset): CurvePropertyGr
   const clips = trackAsset.getClips();
 
   for (const clip of clips) {
-    const asset = clip.asset;
-
-    if (!(asset instanceof TransformPlayableAsset)) {
+    if (!(clip instanceof TransformPlayableAsset)) {
       continue;
     }
 
-    const data = asset.transformAnimationData;
+    const data = clip.transformAnimationData;
 
     if (!data) {
       continue;

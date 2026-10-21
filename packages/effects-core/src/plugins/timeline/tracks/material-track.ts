@@ -1,9 +1,9 @@
-import type * as spec from '@galacean/effects-specification';
 import { RendererComponent } from '../../../components';
 import { effectsClass } from '../../../decorators';
 import { TrackAsset } from '../track';
+import type { TrackAssetData } from '../track';
 
-interface MaterialTrackData extends spec.TrackAssetData {
+interface MaterialTrackData extends TrackAssetData {
   index?: number,
 }
 

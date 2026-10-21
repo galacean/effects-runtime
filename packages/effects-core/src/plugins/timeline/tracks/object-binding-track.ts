@@ -3,8 +3,7 @@ import { effectsClass } from '../../../decorators';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
 import { ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { TrackAsset } from '../track';
-import type { TimelineClip } from '../track';
-import type { PlayableAsset } from '../playable';
+import type { TimelineClip } from '../timeline-clip';
 import type { Constructor } from '../../../utils';
 import { ActivationTrack } from './activation-track';
 import { ParticleTrack } from './particle-track';
@@ -33,7 +32,7 @@ export class ObjectBindingTrack extends TrackAsset {
   private addCompatibilityTrack (
     tracks: TrackAsset[],
     trackClass: Constructor<TrackAsset>,
-    playableClass: Constructor<PlayableAsset>,
+    clipClass: Constructor<TimelineClip>,
     activationClips: TimelineClip[],
   ): void {
     if (this.getChildTracks().some(child => child instanceof trackClass)) {
@@ -45,9 +44,9 @@ export class ObjectBindingTrack extends TrackAsset {
     track.name = trackClass.name;
     track.parent = this;
     for (const source of activationClips) {
-      const clip = track.createClip(playableClass);
+      const clip = track.createClip(clipClass);
 
-      clip.asset.unregisterObject();
+      clip.unregisterObject();
       clip.start = source.start;
       clip.duration = source.duration;
       clip.endBehavior = source.endBehavior;

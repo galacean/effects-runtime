@@ -1,21 +1,14 @@
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
-import type { PlayableAsset } from './playable';
+import type { TimelineClip } from './timeline-clip';
 import type { Constructor } from '../../utils';
 import type { ClipEvaluationData } from './playables';
 import { TrackMixerPlayable } from './playables';
 
-/**
- * @since 2.0.0
- */
-export class TimelineClip {
-  id: string;
-  name: string;
-  start = 0;
-  duration = 0;
-  asset: PlayableAsset;
-  endBehavior: spec.EndBehavior;
+/** TODO: update to spec. */
+export interface TrackAssetData extends Omit<spec.TrackAssetData, 'clips'> {
+  clips: spec.DataPath[],
 }
 
 /**
@@ -25,8 +18,6 @@ export class TimelineClip {
 export class TrackAsset extends Asset {
   name: string;
   parent: TrackAsset;
-
-  private clipSeed = 0;
 
   private clips: TimelineClip[] = [];
 
@@ -61,7 +52,7 @@ export class TrackAsset extends Asset {
     mixer.sourceTrack = this;
     mixer.objectBindingId = this.getInstanceId();
     for (const clip of timelineClips) {
-      const playable = clip.asset.createPlayable();
+      const playable = clip.createPlayable();
       const playableIndex = mixer.clipPlayables.length;
 
       playable.duration = clip.duration;
@@ -83,14 +74,13 @@ export class TrackAsset extends Asset {
     child.parent = this;
   }
 
-  createClip<T extends PlayableAsset> (
+  createClip<T extends TimelineClip> (
     classConstructor: Constructor<T>,
     name?: string,
-  ): TimelineClip {
-    const newClip = new TimelineClip();
+  ): T {
+    const newClip = new classConstructor(this.engine);
 
-    newClip.asset = new classConstructor(this.engine);
-    newClip.name = name ? name : 'TimelineClip' + newClip.id;
+    newClip.name = name ?? 'TimelineClip' + newClip.getInstanceId();
     this.addClip(newClip);
 
     return newClip;
@@ -101,24 +91,17 @@ export class TrackAsset extends Asset {
   }
 
   addClip (clip: TimelineClip): void {
-    clip.id = (this.clipSeed++).toString();
     this.clips.push(clip);
   }
 
-  override fromData (data: spec.TrackAssetData): void {
+  override fromData (data: TrackAssetData): void {
     super.fromData(data);
 
+    if (data.name !== undefined) {
+      this.name = data.name;
+    }
     if (data.clips !== undefined) {
-      this.clips = data.clips.map(clipData => {
-        const clip = new TimelineClip();
-
-        if (clipData.start !== undefined) { clip.start = clipData.start; }
-        if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
-        if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
-        clip.asset = this.findObject<PlayableAsset>(clipData.asset);
-
-        return clip;
-      });
+      this.clips = data.clips.map(clip => this.findObject<TimelineClip>(clip));
     }
     if (data.children !== undefined) {
       this.children = data.children.map(child => this.findObject<TrackAsset>(child));

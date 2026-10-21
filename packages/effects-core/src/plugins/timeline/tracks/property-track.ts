@@ -1,4 +1,4 @@
-import type { TrackAssetData } from '@galacean/effects-specification';
+import type { TrackAssetData } from '../track';
 import { TrackAsset } from '../track';
 
 interface PropertyTrackData extends TrackAssetData {

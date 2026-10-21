@@ -291,13 +291,12 @@ export class KeyframeRenderer {
    */
   drawSpriteKeyframes (track: SpritePropertyTrack, clip: TimelineClip, trackId: string): void {
     const state = this.state;
-    const asset = clip.asset;
 
-    if (!(asset instanceof SpritePropertyPlayableAsset)) {
+    if (!(clip instanceof SpritePropertyPlayableAsset)) {
       return;
     }
 
-    const keyframes = asset.curve.keyframes;
+    const keyframes = clip.curve.keyframes;
 
     if (keyframes.length === 0) {
       return;

@@ -25,7 +25,7 @@ export class ClipRenderer {
     const isTransformTrack = trackAsset instanceof TransformTrack;
     const isSpriteTrack = trackAsset instanceof SpritePropertyTrack;
     const spriteKeyframes = isSpriteTrack
-      ? getSpriteKeyframes(trackAsset.getClips()[0] ?? { asset: null as unknown })
+      ? getSpriteKeyframes(trackAsset.getClips()[0])
       : null;
     const hasKeyframeData = isTransformTrack && getTransformPropertyGroups(trackAsset).length > 0;
     const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData || !!spriteKeyframes;

@@ -12,6 +12,8 @@ import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
 import { migrateTransformAnimations } from './transform';
+import type { TrackAssetData } from '../plugins/timeline/track';
+import type { TimelineClipData } from '../plugins/timeline/timeline-clip';
 
 let currentMaskComponentId: string | undefined;
 const componentMap: Map<string, spec.ComponentData> = new Map();
@@ -835,7 +837,7 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
 }
 
 /**
- * 3.9 数据适配：迁移粒子发射器路径，并将元素 transform 曲线转换为绝对值。
+ * 3.9 数据适配：迁移粒子发射器路径，将元素 transform 曲线转换为绝对值，并合并片段数据。
  * 粒子自身的生命周期曲线仍由 ParticleSystem 消费。
  */
 export function version38Migration (json: JSONScene): JSONScene {
@@ -926,9 +928,34 @@ export function version38Migration (json: JSONScene): JSONScene {
   }
 
   migrateTransformAnimations(json);
+  migrateTimelineClips(json);
   json.version = '3.9' as unknown as JSONSceneVersion;
 
   return json;
+}
+
+/** 将旧片段的时间信息合入可播放资产，轨道直接引用合并后的片段。 */
+function migrateTimelineClips (json: JSONScene): void {
+  const assets = new Map(json.miscs.map(asset => [asset.id, asset]));
+
+  for (const data of json.miscs) {
+    const track = data as spec.TrackAssetData;
+
+    if (!Array.isArray(track.clips)) {
+      continue;
+    }
+    const clips = track.clips.map(clip => {
+      const asset = assets.get(clip.asset.id) as TimelineClipData;
+
+      asset.start = clip.start ?? 0;
+      asset.duration = clip.duration ?? 0;
+      asset.endBehavior = clip.endBehavior;
+
+      return clip.asset;
+    });
+
+    (data as TrackAssetData).clips = clips;
+  }
 }
 
 /**
