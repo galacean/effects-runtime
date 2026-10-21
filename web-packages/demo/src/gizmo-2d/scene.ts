@@ -111,6 +111,7 @@ export class DemoScene {
     text.setText(value);
     text.setFontFamily('sans-serif');
     text.setFontSize(fontSize);
+    text.setFontScale(4);
     text.setLineHeight(Math.round(fontSize * 1.35));
     text.setTextWidth(options.width ?? 200);
     text.setAutoResize(spec.TextSizeMode.autoHeight);
