@@ -34,28 +34,34 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     }[],
     spritePosition = { x: 0, y: 0, z: 0 },
     spriteScale = { x: 1, y: 1, z: 1 },
+    version = '3.6',
   ) => {
     const transformTrack = {
       id: 'transform_track_1',
       dataType: 'TransformTrack',
       children: [],
-      clips: clips.map(clip => ({
+      clips: clips.map(clip => version === '3.9' ? { id: clip.assetId } : {
         start: clip.start ?? 0,
         duration: clip.duration ?? 5,
         endBehavior: clip.endBehavior ?? 4,
         asset: { id: clip.assetId },
-      })),
+      }),
     };
     const assetNodes = clips.map(clip => ({
       id: clip.assetId,
       dataType: 'TransformPlayableAsset',
       ...clip.asset,
+      ...(version === '3.9' ? {
+        start: clip.start ?? 0,
+        duration: clip.duration ?? 5,
+        endBehavior: clip.endBehavior ?? 4,
+      } : {}),
     }));
 
     return {
       playerVersion: { web: '2.8.11', native: '0.0.1.202311221223' },
       fonts: [],
-      version: '3.6',
+      version,
       plugins: [],
       type: 'ge',
       compositions: [
@@ -118,13 +124,18 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
       animations: [],
       miscs: [
         { id: 'timeline_1', dataType: 'TimelineAsset', tracks: [{ id: 'obt_1' }] },
-        { id: 'activation_asset_1', dataType: 'ActivationPlayableAsset' },
+        {
+          id: 'activation_asset_1', dataType: 'ActivationPlayableAsset',
+          ...(version === '3.9' ? { start: 0, duration: 5, endBehavior: 4 } : {}),
+        },
         ...assetNodes,
         {
           id: 'activation_track_1',
           dataType: 'ActivationTrack',
           children: [],
-          clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'activation_asset_1' } }],
+          clips: version === '3.9'
+            ? [{ id: 'activation_asset_1' }]
+            : [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'activation_asset_1' } }],
         },
         transformTrack,
         {
@@ -257,10 +268,9 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
         assetId: 'asset_r2', duration: 1, endBehavior: spec.EndBehavior.destroy,
         asset: { rotationOverLifetime: { asRotation: true, z: 70 } },
       },
-    ]);
+    ], undefined, undefined, '3.9');
 
     // 绝对曲线只包含 Z，缺失的 X/Y 通道不参与混合。
-    scene.version = '3.9';
     scene.items[0].transform.eulerHint.x = 15;
     scene.items[0].transform.eulerHint.y = 20;
     scene.items[0].transform.eulerHint.z = 10;
@@ -297,9 +307,10 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
         },
       ],
       { x: 1, y: 2, z: 0 },
+      undefined,
+      '3.9',
     );
 
-    scene.version = '3.9';
     const comp = await player.loadScene(scene as any);
     const sprite = comp.getItemByName('sprite_1')!;
 

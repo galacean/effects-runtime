@@ -249,7 +249,7 @@ export class TimelineInstance {
   private clearTracks (): void {
     for (const track of this.compatibilityTracks) {
       for (const clip of track.getClips()) {
-        clip.asset.dispose();
+        clip.dispose();
       }
       track.dispose();
     }

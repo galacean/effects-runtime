@@ -1,4 +1,5 @@
 export * from './track';
+export * from './timeline-clip';
 export * from './evaluation-field';
 export * from './cache-data-manager';
 export * from './tracks';

@@ -122,18 +122,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 场景渲染对象登记
    */
-  readonly sceneRendering = new SceneRendering();
-  readonly editorTransform = new Vector4(1, 1, 0, 0);
-  /**
-   * 动画播放速度
-   */
-  get speed () {
-    return this.rootComposition.speed;
-  }
-
-  set speed (value: number) {
-    this.rootComposition.speed = value;
-  }
+  sceneRendering = new SceneRendering();
+  editorTransform = new Vector4(1, 1, 0, 0);
   /**
    * 是否卸载纹理贴图，就是将纹理贴图大小设置为1x1
    */
@@ -143,37 +133,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   videoState: (number | undefined)[];
   /**
-   * 合成渲染顺序，默认按升序渲染
-   */
-  get renderOrder (): number {
-    return this._renderOrder;
-  }
-
-  set renderOrder (value: number) {
-    this._renderOrder = value;
-  }
-  /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
    * @deprecated
    */
   reusable: boolean;
-  /**
-   * 合成内的元素否允许点击、拖拽交互
-   * @since 1.6.0
-   */
-  get interactive (): boolean {
-    return this._interactive;
-  }
-
-  set interactive (value: boolean) {
-    this._interactive = !!value;
-  }
-  /**
-   * 合成是否结束
-   */
-  get isEnded () {
-    return this.rootComposition.isEnded;
-  }
   /**
    * 合成id
    */
@@ -199,23 +162,23 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly url: Scene.LoadType;
   /**
+   * @internal
+   * 合成根元素
+   */
+  readonly root: VFXItem;
+  /**
    * 合成场景根元素
    */
   readonly sceneRoot: VFXItem;
   /**
-   * 合成的相机对象
-   */
-  readonly camera: Camera;
-  /**
-   * 合成开始渲染的时间
-   */
-  get startTime () {
-    return this.rootComposition.startTime;
-  }
-  /**
+   * @internal
    * 插件元素根元素
    */
   readonly pluginRoot: VFXItem;
+  /**
+   * 合成的相机对象
+   */
+  readonly camera: Camera;
   /**
    * 场景中视频列表
    */
@@ -240,11 +203,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private _renderOrder = 0;
   private _interactive = true;
   private _textures: Texture[] = [];
-  /**
-   * @internal
-   * 合成根元素
-   */
-  readonly root: VFXItem;
 
   /**
    * Composition 构造函数
@@ -390,6 +348,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
+   * 合成开始渲染的时间
+   */
+  get startTime () {
+    return this.rootComposition.startTime;
+  }
+
+  /**
    * @deprecated 2.10.0 Please use `sceneRoot` instead
    */
   get rootItem () {
@@ -422,6 +387,46 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   get time () {
     return this.rootComposition.getTime();
+  }
+
+  /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.6.0
+   */
+  get interactive (): boolean {
+    return this._interactive;
+  }
+
+  set interactive (value: boolean) {
+    this._interactive = !!value;
+  }
+  /**
+   * 合成是否结束
+   */
+  get isEnded () {
+    return this.rootComposition.isEnded;
+  }
+
+  /**
+   * 动画播放速度
+   */
+  get speed () {
+    return this.rootComposition.speed;
+  }
+
+  set speed (value: number) {
+    this.rootComposition.speed = value;
+  }
+
+  /**
+   * 合成渲染顺序，默认按升序渲染
+   */
+  get renderOrder (): number {
+    return this._renderOrder;
+  }
+
+  set renderOrder (value: number) {
+    this._renderOrder = value;
   }
 
   /**

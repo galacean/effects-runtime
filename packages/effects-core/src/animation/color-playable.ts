@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { createValueGetter, vecFill, vecMulCombine, type ValueGetter } from '../math';
 import type { FrameContext } from '../plugins/timeline/playable';
+import type { TimelineClipData } from '../plugins/timeline/timeline-clip';
 import type { CacheDataManager } from '../plugins/timeline/cache-data-manager';
 import { ClipPlayable } from '../plugins/timeline/playable';
 import { VFXItem } from '../vfx-item';
@@ -9,7 +10,7 @@ import type { ColorStop } from '../utils';
 import { colorStopsFromGradient, getColorFromGradientStops } from '../utils';
 import { MaskableGraphic } from '../components';
 
-export interface ColorPlayableAssetData extends spec.EffectsObjectData {
+export interface ColorPlayableAssetData extends TimelineClipData {
   colorOverLifetime?: spec.ColorOverLifetime,
 }
 
