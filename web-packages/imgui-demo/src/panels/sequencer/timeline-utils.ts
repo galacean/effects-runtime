@@ -1,5 +1,5 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, CompositionComponent, ParticleTrack, spec, SpriteColorTrack, SpritePropertyTrack, SubCompositionTrack, TransformTrack } from '@galacean/effects';
+import { ActivationTrack, CompositionComponent, ParticleTrack, spec, SpriteColorTrack, ObjectReferencePropertyTrack, SubCompositionTrack, TransformTrack } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
@@ -241,8 +241,8 @@ export function getTrackColor (trackAsset: TrackAsset, state: SequencerState): I
     categoryKey = 'ActivationTrack';
   } else if (trackAsset instanceof SpriteColorTrack) {
     categoryKey = 'SpriteColorTrack';
-  } else if (trackAsset instanceof SpritePropertyTrack) {
-    categoryKey = 'SpritePropertyTrack';
+  } else if (trackAsset instanceof ObjectReferencePropertyTrack) {
+    categoryKey = 'ObjectReferencePropertyTrack';
   } else if (trackAsset instanceof SubCompositionTrack) {
     categoryKey = 'SubCompositionTrack';
   } else if (trackAsset instanceof ParticleTrack) {

@@ -8,7 +8,7 @@ const { expect } = chai;
  * 构造 sprite 属性 K 帧场景：
  * - sprite item + SpriteComponent（初始引用 spriteA）
  * - 2 个 Sprite 资产（spriteA / spriteB，rect 不同，引用同一纹理）
- * - ObjectBindingTrack 绑 item → SpritePropertyTrack（path='sprite'）
+ * - ObjectBindingTrack 绑定 SpriteComponent → ObjectReferencePropertyTrack（path='sprite'）
  *   clip duration=2，keyframes [[0, spriteA], [0.5, spriteB]]（归一化时间）
  */
 const buildKFrameScene = (clipStart = 0) => {
@@ -22,6 +22,7 @@ const buildKFrameScene = (clipStart = 0) => {
   const spriteBID = generateGUID();
   const timelineAssetID = generateGUID();
   const bindingTrackID = generateGUID();
+  const componentBindingTrackID = generateGUID();
   const spritePropertyTrackID = generateGUID();
   const playableAssetID = generateGUID();
 
@@ -35,7 +36,7 @@ const buildKFrameScene = (clipStart = 0) => {
         { 'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original', 'id': imageID },
       ],
       'fonts': [],
-      'version': '3.7',
+      'version': '3.9',
       'shapes': [],
       'plugins': [],
       'type': 'ge',
@@ -59,6 +60,7 @@ const buildKFrameScene = (clipStart = 0) => {
           'item': { 'id': compositionID },
           'sceneBindings': [
             { 'key': { 'id': bindingTrackID }, 'value': { 'id': itemID } },
+            { 'key': { 'id': componentBindingTrackID }, 'value': { 'id': componentID } },
           ],
           'timelineAsset': { 'id': timelineAssetID },
         },
@@ -89,19 +91,21 @@ const buildKFrameScene = (clipStart = 0) => {
       ],
       'miscs': [
         { 'id': timelineAssetID, 'dataType': 'TimelineAsset', 'tracks': [{ 'id': bindingTrackID }] },
-        { 'id': bindingTrackID, 'dataType': 'ObjectBindingTrack', 'children': [{ 'id': spritePropertyTrackID }], 'clips': [] },
+        { 'id': bindingTrackID, 'dataType': 'ObjectBindingTrack', 'children': [{ 'id': componentBindingTrackID }], 'clips': [] },
+        { 'id': componentBindingTrackID, 'dataType': 'ObjectBindingTrack', 'children': [{ 'id': spritePropertyTrackID }], 'clips': [] },
         {
           'id': spritePropertyTrackID,
-          'dataType': 'SpritePropertyTrack',
+          'dataType': 'ObjectReferencePropertyTrack',
           'path': 'sprite',
           'children': [],
           'clips': [
-            { 'start': clipStart, 'duration': 2, 'endBehavior': 0, 'asset': { 'id': playableAssetID } },
+            { 'id': playableAssetID },
           ],
         },
         {
           'id': playableAssetID,
-          'dataType': 'SpritePropertyPlayableAsset',
+          'dataType': 'ObjectReferencePropertyPlayableAsset',
+          'start': clipStart, 'duration': 2, 'endBehavior': 0,
           'curveData': [
             28,
             [
@@ -119,7 +123,7 @@ const buildKFrameScene = (clipStart = 0) => {
   };
 };
 
-describe('core/plugins/timeline/sprite-property', () => {
+describe('core/plugins/timeline/object-reference-property', () => {
   let player: Player;
 
   before(() => {

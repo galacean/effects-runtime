@@ -1,5 +1,5 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, Component, spec, SpritePropertyTrack, TransformTrack, VFXItem } from '@galacean/effects';
+import { ActivationTrack, Component, spec, ObjectReferencePropertyTrack, TransformTrack, VFXItem } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
@@ -23,7 +23,7 @@ export class ClipRenderer {
   drawTrackClips (trackAsset: TrackAsset, trackName: string, sceneBindings: any[], depth: number): void {
     const state = this.state;
     const isTransformTrack = trackAsset instanceof TransformTrack;
-    const isSpriteTrack = trackAsset instanceof SpritePropertyTrack;
+    const isSpriteTrack = trackAsset instanceof ObjectReferencePropertyTrack;
     const spriteKeyframes = isSpriteTrack
       ? getSpriteKeyframes(trackAsset.getClips()[0])
       : null;
@@ -116,8 +116,8 @@ export class ClipRenderer {
       }
     }
 
-    // SpritePropertyTrack 展开时，绘制 sprite 缩略图关键帧行
-    if (isTrackExpanded(state, trackAsset) && trackAsset instanceof SpritePropertyTrack) {
+    // ObjectReferencePropertyTrack 展开时，绘制 sprite 缩略图关键帧行
+    if (isTrackExpanded(state, trackAsset) && trackAsset instanceof ObjectReferencePropertyTrack && spriteKeyframes) {
       const trackId = trackAsset.getInstanceId().toString();
       const clips = trackAsset.getClips();
 
