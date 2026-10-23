@@ -46,7 +46,7 @@ export class ObjectBindingCache {
       }
       children.add(bindingId);
       if (parentObject) {
-        object = track.updateAnimatedObject(parentObject);
+        object = track.resolveBoundObject(parentObject);
       }
     }
     // Unresolved bindings are retried, so components added later can be found.
