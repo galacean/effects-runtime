@@ -1,17 +1,17 @@
 import type { TimelineClip, TrackAsset, spec } from '@galacean/effects';
-import { TransformPlayableAsset, SpritePropertyPlayableAsset } from '@galacean/effects';
+import { TransformPlayableAsset, ObjectReferencePropertyPlayableAsset, Sprite } from '@galacean/effects';
 import { COLORS } from './theme';
 import type { KeyframeData, TransformPropertyChannel, TransformPropertyGroup, CurveSegmentData, CurveChannelData, CurvePropertyGroup, CurveCanvasChannel, SpriteKeyframeData } from './types';
 import type { SequencerState } from './sequencer-state';
 import { getCurveChannelId } from './selection';
 
 /**
- * 从 SpritePropertyTrack 的 clip 中提取 sprite 对象引用关键帧。
+ * 从 ObjectReferencePropertyTrack 的 clip 中提取 sprite 对象引用关键帧。
  * clip.curve.keyframes 形如 [time: number(归一化0-1), sprite: Sprite][]。
- * 非 SpritePropertyPlayableAsset 返回 null。
+ * 非 ObjectReferencePropertyPlayableAsset 返回 null。
  */
 export function getSpriteKeyframes (clip: TimelineClip | undefined): SpriteKeyframeData[] | null {
-  if (!(clip instanceof SpritePropertyPlayableAsset)) {
+  if (!(clip instanceof ObjectReferencePropertyPlayableAsset)) {
     return null;
   }
   const result: SpriteKeyframeData[] = [];
@@ -20,12 +20,14 @@ export function getSpriteKeyframes (clip: TimelineClip | undefined): SpriteKeyfr
   for (let i = 0; i < keyframes.length; i++) {
     const [time, sprite] = keyframes[i];
 
-    if (sprite) {
+    if (sprite instanceof Sprite) {
       result.push({ time, sprite });
+    } else if (sprite !== null) {
+      return null;
     }
   }
 
-  return result;
+  return result.length > 0 ? result : null;
 }
 
 /**
@@ -116,8 +118,8 @@ export function getClipAggregatedKeyframeTimes (clip: TimelineClip): number[] {
   const clipStart = clip.start;
   const clipDuration = clip.duration;
 
-  // Sprite 对象引用关键帧：从 Curve 取归一化时间
-  if (clip instanceof SpritePropertyPlayableAsset) {
+  // 对象引用关键帧：从 Curve 取归一化时间
+  if (clip instanceof ObjectReferencePropertyPlayableAsset) {
     const timeSet = new Set<number>();
     const keyframes = clip.curve.keyframes;
 

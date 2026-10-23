@@ -1,5 +1,5 @@
-import type { TimelineClip, SpritePropertyTrack, Sprite } from '@galacean/effects';
-import { SpritePropertyPlayableAsset } from '@galacean/effects';
+import type { TimelineClip, ObjectReferencePropertyTrack } from '@galacean/effects';
+import { ObjectReferencePropertyPlayableAsset, Sprite } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
@@ -285,14 +285,14 @@ export class KeyframeRenderer {
   }
 
   /**
-   * 绘制 SpritePropertyTrack 的 sprite 缩略图关键帧（右侧面板）。
+   * 绘制 ObjectReferencePropertyTrack 的 sprite 缩略图关键帧（右侧面板）。
    * 每个关键帧显示为对应 Sprite 资产的纹理子区域缩略图，支持点击选中与水平拖动改时间。
    * 每帧独立 InvisibleButton：按下后 ImGui 锁定该 item，拖动期间不依赖每帧 hit-test，避免失焦。
    */
-  drawSpriteKeyframes (track: SpritePropertyTrack, clip: TimelineClip, trackId: string): void {
+  drawSpriteKeyframes (track: ObjectReferencePropertyTrack, clip: TimelineClip, trackId: string): void {
     const state = this.state;
 
-    if (!(clip instanceof SpritePropertyPlayableAsset)) {
+    if (!(clip instanceof ObjectReferencePropertyPlayableAsset)) {
       return;
     }
 
@@ -359,7 +359,8 @@ export class KeyframeRenderer {
       const isSelected = state.selectedKeyframes.has(keyframeId);
 
       drawList.AddRectFilled(pMin, pMax, ImGui.GetColorU32(new ImGui.Vec4(0.15, 0.15, 0.15, 1.0)));
-      const thumb = getSpriteThumbnail(keyframes[i][1]);
+      const reference = keyframes[i][1];
+      const thumb = reference instanceof Sprite ? getSpriteThumbnail(reference) : null;
 
       if (thumb) {
         drawList.AddImage(thumb.tex, pMin, pMax, thumb.uv0, thumb.uv1);
