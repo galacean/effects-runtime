@@ -1,11 +1,11 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, Component, ParticleTrack, SpriteColorTrack, SpritePropertyTrack, SubCompositionTrack, TransformTrack, VFXItem } from '@galacean/effects';
+import { ActivationTrack, Component, ParticleTrack, SpriteColorTrack, ObjectReferencePropertyTrack, SubCompositionTrack, TransformTrack, VFXItem } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
 import { selectTrack, isTrackSelected, isTrackExpanded, toggleTrackExpansion, getCurveChannelId } from './selection';
 import { getTrackColor } from './timeline-utils';
-import { getTransformPropertyGroups, getCurvePropertyGroups } from './data-extraction';
+import { getTransformPropertyGroups, getCurvePropertyGroups, getSpriteKeyframes } from './data-extraction';
 
 export class TrackLabelRenderer {
   constructor (private readonly state: SequencerState) {}
@@ -16,7 +16,8 @@ export class TrackLabelRenderer {
   drawTrackLabel (trackAsset: TrackAsset, trackName: string, sceneBindings: any[], depth: number): void {
     const state = this.state;
     const isTransformTrack = trackAsset instanceof TransformTrack;
-    const isSpriteTrack = trackAsset instanceof SpritePropertyTrack;
+    const isSpriteTrack = trackAsset instanceof ObjectReferencePropertyTrack
+      && !!getSpriteKeyframes(trackAsset.getClips()[0]);
     const hasKeyframeData = isTransformTrack && getTransformPropertyGroups(trackAsset).length > 0;
     const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData || isSpriteTrack;
     const frameHeight = LAYOUT.sectionHeight;
@@ -242,8 +243,8 @@ export class TrackLabelRenderer {
       }
     }
 
-    // SpritePropertyTrack 展开时，画一行 sprite 通道标签（与 clip 侧缩略图行对齐，高 40）
-    if (isTrackExpanded(state, trackAsset) && trackAsset instanceof SpritePropertyTrack) {
+    // ObjectReferencePropertyTrack 展开时，画一行 sprite 通道标签（与 clip 侧缩略图行对齐，高 40）
+    if (isTrackExpanded(state, trackAsset) && isSpriteTrack) {
       this.drawSpriteChannelLabel(depth + 1);
     }
   }
@@ -597,8 +598,8 @@ export class TrackLabelRenderer {
         new ImGui.Vec2(centerX + hw - 1, centerY - hh + 2),
         colorU32, 1
       );
-    } else if (trackAsset instanceof SpritePropertyTrack) {
-      // Sprite 资产图标 — 实心方块（代表 sprite 切片）
+    } else if (trackAsset instanceof ObjectReferencePropertyTrack) {
+      // 对象引用资产图标
       const s = 4;
 
       drawList.AddRectFilled(

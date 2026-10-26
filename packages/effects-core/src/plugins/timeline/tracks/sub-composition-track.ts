@@ -9,7 +9,7 @@ import { TrackAsset } from '../track';
 @effectsClass(spec.DataType.SubCompositionTrack)
 export class SubCompositionTrack extends TrackAsset {
 
-  override updateAnimatedObject (boundObject: object): object {
+  override resolveBoundObject (boundObject: object): object {
     if (!(boundObject instanceof VFXItem)) {
       throw new Error('SubCompositionTrack needs to be set under the VFXItem track.');
     }

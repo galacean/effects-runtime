@@ -24,9 +24,9 @@ export class TrackAsset extends Asset {
   protected children: TrackAsset[] = [];
 
   /**
-   * 重写该方法以获取自定义对象绑定
+   * 根据父轨道的绑定对象解析当前轨道的目标对象
    */
-  updateAnimatedObject (boundObject: object): object | undefined {
+  resolveBoundObject (boundObject: object): object | undefined {
     return boundObject;
   }
 

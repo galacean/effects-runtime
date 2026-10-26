@@ -19,7 +19,7 @@ export class MaterialTrack extends TrackAsset {
     }
   }
 
-  override updateAnimatedObject (boundObject: object): object {
+  override resolveBoundObject (boundObject: object): object {
     if (!(boundObject instanceof RendererComponent)) {
       throw new Error('MaterialTrack: expected a RendererComponent bound object.');
     }

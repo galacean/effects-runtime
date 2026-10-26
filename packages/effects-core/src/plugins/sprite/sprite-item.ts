@@ -59,13 +59,13 @@ export class ComponentTimeTrack extends TrackAsset {
 }
 
 export class SpriteComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object | undefined {
+  override resolveBoundObject (boundObject: object): object | undefined {
     return boundObject instanceof VFXItem ? boundObject.getComponent(SpriteComponent) : undefined;
   }
 }
 
 export class EffectComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object | undefined {
+  override resolveBoundObject (boundObject: object): object | undefined {
     return boundObject instanceof VFXItem ? boundObject.getComponent(EffectComponent) : undefined;
   }
 }
