@@ -1,5 +1,4 @@
-import { Player, VFXItem } from '@galacean/effects';
-import { UICanvas, UIControl } from '@galacean/effects-plugin-gui';
+import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
@@ -7,7 +6,7 @@ import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-rich-text';
 import '@galacean/effects-plugin-spine';
 import { AssetDatabase } from './core/asset-data-base';
-import { CanvasGizmo } from './core/canvas-gizmo';
+import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 
 export class GalaceanEffects {
@@ -18,7 +17,9 @@ export class GalaceanEffects {
     const container = document.getElementById('J-container');
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
 
-    GalaceanEffects.player = new Player({ container });
+    GalaceanEffects.player = new Player({ container, interactive: true, env: 'editor' });
+    // Scene 负责输入路由，避免底层画布收到其他面板的鼠标事件。
+    GalaceanEffects.player.engine.inputServer.bindListeners(null);
 
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
@@ -580,6 +581,7 @@ export class GalaceanEffects {
   }
 
   static playURL (url: string, use3DConverter = false) {
+    Selection.clear();
     GalaceanEffects.player.destroyCurrentCompositions();
     if (use3DConverter) {
       const converter = new JSONConverter(GalaceanEffects.player.renderer);
@@ -588,17 +590,7 @@ export class GalaceanEffects {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
       });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        const overlayCanvas = composition.pluginRoot.getComponent(UICanvas) ??
-          composition.pluginRoot.addComponent(UICanvas);
-        const canvasGizmo = new VFXItem(composition.engine);
-        const bridge = canvasGizmo.addComponent(UIControl);
-
-        overlayCanvas.order = Number.MAX_SAFE_INTEGER;
-        bridge.control = new CanvasGizmo(composition.engine);
-
-        canvasGizmo.setParent(composition.pluginRoot);
-      });
+      void GalaceanEffects.player.loadScene(url, { autoplay: true });
     }
 
   }

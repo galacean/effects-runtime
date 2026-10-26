@@ -143,7 +143,7 @@ function canvas_on_blur (event: FocusEvent): void {
   io.AddKeyEvent(ImGui.Key.Mod_Alt, false);
   io.AddKeyEvent(ImGui.Key.Mod_Super, false);
   for (let i = 0; i < io.MouseDown.length; ++i) {
-    io.MouseDown[i] = false;
+    io.AddMouseButtonEvent(i, false);
   }
 }
 
@@ -285,8 +285,7 @@ function canvas_on_keypress (event: KeyboardEvent): void {
 function canvas_on_pointermove (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MousePos.x = event.offsetX;
-  io.MousePos.y = event.offsetY;
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
   if (io.WantCaptureMouse) {
     event.preventDefault();
   }
@@ -304,9 +303,10 @@ const mouse_button_map: number[] = [0, 2, 1, 3, 4];
 function canvas_on_pointerdown (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MousePos.x = event.offsetX;
-  io.MousePos.y = event.offsetY;
-  io.MouseDown[mouse_button_map[event.button]] = true;
+  // 将输入排队，保留两次渲染之间的快速按下与抬起。
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
+  io.AddMouseButtonEvent(mouse_button_map[event.button], true);
+  canvas?.setPointerCapture(event.pointerId);
   // if (io.WantCaptureMouse) {
   //     event.preventDefault();
   // }
@@ -322,9 +322,18 @@ function canvas_on_contextmenu (event: Event): void {
 function canvas_on_pointerup (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MouseDown[mouse_button_map[event.button]] = false;
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
+  io.AddMouseButtonEvent(mouse_button_map[event.button], false);
   if (io.WantCaptureMouse) {
     event.preventDefault();
+  }
+}
+
+function canvas_on_pointercancel (): void {
+  const io = ImGui.GetIO();
+
+  for (let button = 0; button < io.MouseDown.length; button++) {
+    io.AddMouseButtonEvent(button, false);
   }
 }
 
@@ -343,8 +352,7 @@ function canvas_on_wheel (event: WheelEvent): void {
 
       break;
   }
-  io.MouseWheelH = event.deltaX * scale;
-  io.MouseWheel = -event.deltaY * scale; // Mouse wheel: 1 unit scrolls about 5 lines text.
+  io.AddMouseWheelEvent(event.deltaX * scale, -event.deltaY * scale);
   if (io.WantCaptureMouse) {
     event.preventDefault();
   }
@@ -430,6 +438,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
     canvas.addEventListener('pointerdown', canvas_on_pointerdown);
     canvas.addEventListener('contextmenu', canvas_on_contextmenu);
     canvas.addEventListener('pointerup', canvas_on_pointerup);
+    canvas.addEventListener('pointercancel', canvas_on_pointercancel);
     canvas.addEventListener('wheel', canvas_on_wheel);
   }
 
@@ -455,6 +464,7 @@ export function Shutdown (): void {
     canvas.removeEventListener('pointerdown', canvas_on_pointerdown);
     canvas.removeEventListener('contextmenu', canvas_on_contextmenu);
     canvas.removeEventListener('pointerup', canvas_on_pointerup);
+    canvas.removeEventListener('pointercancel', canvas_on_pointercancel);
     canvas.removeEventListener('wheel', canvas_on_wheel);
   }
 

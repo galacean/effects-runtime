@@ -11,12 +11,20 @@
       padding: 0; 
     }
     .container {
-      position: fixed;
+      position: absolute;
       top: 50%;
       left: 50%;
       width: 640px;
       height: 360px;
+      overflow: hidden;
       background-color: rgba(0,0,0,255);
+    }
+    #J-container .text-gizmo-custom-style {
+      caret-color: #f2f2f2;
+    }
+    #J-container .text-gizmo-custom-style,
+    #J-container .text-gizmo-pointer-selection-preview {
+      visibility: var(--scene-text-edit-visibility, hidden);
     }
     .bg {
       position: fixed;
@@ -29,7 +37,7 @@
 <body>
 <div class="bg" id="J-bg"></div>
 <div class="container" id="J-container"></div>
-<script type="module" src="../src/main.ts"></script>
+<script type="module" src="./src/main.ts"></script>
 </body>
 </html>
 
