@@ -13,6 +13,7 @@ export class GizmoDemo {
   private readonly status = element('status');
   private readonly player: Player;
   private readonly handler: GestureHandler;
+  private readonly scene: DemoScene;
   private readonly editor: DemoEditor;
   private readonly view: DemoView;
   private started = false;
@@ -45,12 +46,14 @@ export class GizmoDemo {
       },
     });
     this.configureViewport();
-    const scene = new DemoScene(this.player, composition);
+    const scene = this.scene = new DemoScene(this.player, composition);
     const initialSelection = scene.createDefaultItems();
 
     this.editor = new DemoEditor(this.player, scene, this.handler, viewport);
     this.view = new DemoView(scene, this.editor);
     this.unsubscribes.push(
+      scene.on('change', () => this.view.refreshScene()),
+      scene.on('resourceerror', (message, error) => this.reportError(message, error)),
       this.editor.on('scenechange', () => this.view.refreshScene()),
       this.editor.on('selectionchange', () => this.view.refreshSelection()),
       this.editor.on('toolchange', tool => this.view.showTool(tool)),
@@ -58,7 +61,10 @@ export class GizmoDemo {
       this.editor.on('action', label => this.view.recordAction(label)),
       this.player.on('update', () => this.view.refreshSelection()),
     );
-    this.events.on(window, 'resize', () => this.player.resize());
+    this.events.on(window, 'resize', () => {
+      this.player.resize();
+      this.editor.resizeViewport();
+    });
     this.events.on(window, 'beforeunload', () => this.dispose());
     this.editor.select(initialSelection);
   }
@@ -69,6 +75,9 @@ export class GizmoDemo {
     }
     this.started = true;
     this.player.play();
+    this.player.tick(0);
+    this.editor.fitToView();
+    void this.scene.createDefaultMediaItems();
   }
 
   dispose (): void {
@@ -77,6 +86,7 @@ export class GizmoDemo {
     }
     this.disposed = true;
     this.player.pause();
+    this.scene.dispose();
     this.events.dispose();
     this.unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
     this.view.dispose();

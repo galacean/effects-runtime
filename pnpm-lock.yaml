@@ -324,6 +324,9 @@ importers:
       '@galacean/effects-plugin-gui':
         specifier: workspace:*
         version: link:../../plugin-packages/gui
+      '@galacean/effects-plugin-multimedia':
+        specifier: workspace:*
+        version: link:../../plugin-packages/multimedia
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer

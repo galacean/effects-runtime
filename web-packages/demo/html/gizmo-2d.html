@@ -84,6 +84,12 @@
     summary { cursor: pointer; font-weight: 600; }
     #events { margin: 12px 0 0; padding: 0; list-style: none; font: 10px/1.7 ui-monospace, monospace; color: #777; overflow-wrap: anywhere; }
     #events li { padding: 4px 0; }
+    .media-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; }
+    #media-play { padding: 6px 16px; border-radius: 5px; color: white; background: var(--blue); }
+    #media-play:disabled { opacity: 0.5; cursor: default; }
+    #media-time { font-variant-numeric: tabular-nums; color: var(--muted); }
+    #media-seek { width: 100%; accent-color: var(--blue); }
+    #media-status { margin: 8px 0 0; color: var(--muted); }
     [hidden] { display: none !important; }
     @media (max-width: 1100px) { .editor { grid-template-columns: 190px minmax(0, 1fr) 240px; } }
   </style>
@@ -94,9 +100,12 @@
     <symbol id="icon-frame" viewBox="0 0 24 24"><path d="M7 3v18M17 3v18M3 7h18M3 17h18"/></symbol>
     <symbol id="icon-text" viewBox="0 0 24 24"><path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/></symbol>
     <symbol id="icon-rectangle" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/></symbol>
+    <symbol id="icon-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
+    <symbol id="icon-effects" viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM20 3v4M18 5h4"/></symbol>
     <symbol id="icon-move" viewBox="0 0 24 24"><path d="M5 3l14 9-7 1-3 7z"/></symbol>
     <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M7 12V7a1.5 1.5 0 0 1 3 0V5a1.5 1.5 0 0 1 3 0v1a1.5 1.5 0 0 1 3 0v2a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-1c-2 0-3-1-4-3l-4-5a1.5 1.5 0 0 1 2-2l3 3M10 7v5M13 6v6M16 8v4"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"/></symbol>
     <symbol id="icon-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7M8 12h13"/></symbol>
   </defs></svg>
   <main class="editor">
@@ -111,6 +120,8 @@
         <div id="create-menu" hidden>
           <button id="menu-frame" type="button"><svg aria-hidden="true"><use href="#icon-frame"/></svg>拖动创建 Frame<span class="shortcut">F</span></button>
           <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>拖动创建 Text<span class="shortcut">T</span></button>
+          <button id="menu-video" type="button"><svg aria-hidden="true"><use href="#icon-video"/></svg>添加 Video</button>
+          <button id="menu-effects" type="button"><svg aria-hidden="true"><use href="#icon-effects"/></svg>添加 Effects</button>
         </div>
       </div>
       <div id="items"></div>
@@ -124,8 +135,10 @@
         <span class="tool-separator"></span>
         <button id="create-frame" class="tooltip-trigger" type="button" aria-label="拖动创建 Frame" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">拖动创建画板<kbd>F</kbd></span></button>
         <button id="create-text" class="tooltip-trigger" type="button" aria-label="拖动创建 Text" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-text"/></svg><span class="tooltip" aria-hidden="true">拖动创建文本<kbd>T</kbd></span></button>
+        <button id="create-video" class="tooltip-trigger" type="button" aria-label="添加 Video"><svg aria-hidden="true"><use href="#icon-video"/></svg><span class="tooltip" aria-hidden="true">添加视频</span></button>
+        <button id="create-effects" class="tooltip-trigger" type="button" aria-label="添加 Effects"><svg aria-hidden="true"><use href="#icon-effects"/></svg><span class="tooltip" aria-hidden="true">添加动效</span></button>
       </nav>
-      <div class="zoom-controls" role="group" aria-label="画布缩放"><button id="zoom-out" type="button" aria-label="缩小视口">−</button><output id="zoom">100%</output><button id="zoom-in" type="button" aria-label="放大视口">＋</button></div>
+      <div class="zoom-controls" role="group" aria-label="画布缩放"><button id="zoom-out" type="button" aria-label="缩小视口">−</button><output id="zoom">100%</output><button id="zoom-in" type="button" aria-label="放大视口">＋</button><button id="fit-view" type="button" aria-label="适应画布" title="适应画布"><svg aria-hidden="true"><use href="#icon-fit"/></svg></button></div>
       <div class="canvas-status"><span id="status" role="status">正在初始化…</span></div>
     </div>
     <aside class="panel inspector" aria-label="属性面板">
@@ -149,6 +162,12 @@
           <label class="field wide"><span>字号</span><input id="font-size" type="number" min="1" step="1" aria-label="字号"></label>
         </section>
         <section id="fill-properties" hidden><h2>填充</h2><div class="fill-row"><input id="fill" type="color" aria-label="填充颜色"><span id="fill-value">FFFFFF</span><span class="fill-opacity">100%</span></div></section>
+        <section id="media-properties" hidden>
+          <h2>媒体播放</h2>
+          <div class="media-controls"><button id="media-play" type="button">播放</button><output id="media-time">0.00 / 0.00 s</output></div>
+          <input id="media-seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="媒体播放进度">
+          <p id="media-status">素材加载中…</p>
+        </section>
         <details><summary>最近操作</summary><ol id="events"></ol></details>
       </div>
     </aside>
