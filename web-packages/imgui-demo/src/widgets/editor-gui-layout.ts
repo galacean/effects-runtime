@@ -1,274 +1,220 @@
-import { Texture } from '@galacean/effects-core';
+import { Sprite, Texture } from '@galacean/effects';
+import { ImGui } from '../imgui';
+import { Selection } from '../core/selection';
+import { PropertyGrid, PROPERTY_COLORS } from './property-grid';
+import type { PropertyHeaderIcon, PropertyRowAction } from './property-grid';
+import { drawEditorChevron } from './editor-arrow';
+import { getOrCreateTexturePreview } from './texture-preview';
+import { getSpriteThumbnail } from './sprite-thumbnail';
 
-import { ImGui, ImGui_Impl } from '../imgui';
+type VectorDefaults = number[] | { values: number[], reset: () => void };
 
-function access (object: any, property: string) {
-  return (_ = object[property]) => {
-    object[property] = _;
+function access (object: object, property: string) {
+  const target = object as Record<string, any>;
 
-    return object[property];
+  return (next?: any) => {
+    if (next !== undefined) { target[property] = next; }
+
+    return target[property];
   };
+}
+
+function dragNumber (id: string, value: ImGui.Bind.ImAccess<number>, width: number, speed: number, min: number, max: number, format: string): boolean {
+  const formatted = format.replace(/%\.(\d+)f/, (_, precision: string) => value().toFixed(Number(precision))).replace(/%%/g, '%');
+  const space = Math.max(1, ImGui.CalcTextSize(' ').x);
+  const padding = Math.max(0, Math.min(Math.max(0, 63 - formatted.length), Math.floor((width - ImGui.GetStyle().FramePadding.x * 2 - ImGui.CalcTextSize(formatted).x) / space)));
+
+  ImGui.SetNextItemWidth(width);
+
+  return ImGui.DragFloat(id, value, speed, min, max, format + ' '.repeat(padding), ImGui.SliderFlags.NoRoundToFormat);
 }
 
 export class EditorGUILayout {
   static alignWidth = 200;
 
-  static Label (label: string) {
-    ImGui.Text('       ' + label);
+  static Label (label: string): void {
+    ImGui.AlignTextToFramePadding();
+    ImGui.Text(label);
     ImGui.SameLine(EditorGUILayout.alignWidth);
     ImGui.SetNextItemWidth(-1);
   }
 
-  static TextField (label: string, object: object, property: string, guiID?: string) {
-    EditorGUILayout.Label(label);
+  static Property (label: string, draw: (width: number) => boolean | void, guiID = label, reset?: () => void, action?: PropertyRowAction): boolean {
+    if (PropertyGrid.active) { return PropertyGrid.row(label, draw, guiID, reset, action); }
+    ImGui.PushID(guiID);
+    this.Label(label);
+    const changed = draw(ImGui.GetContentRegionAvail().x) === true;
 
-    return ImGui.InputText('##' + label + guiID, access(object, property), undefined, ImGui.InputTextFlags.EnterReturnsTrue);
-  }
-
-  static Text (label: string, text: string) {
-    EditorGUILayout.Label(label);
-    ImGui.Text(text);
-  }
-
-  static Checkbox (label: string, object: object, property: string, guiID?: string) {
-    EditorGUILayout.Label(label);
-
-    return ImGui.Checkbox('##' + label + guiID, access(object, property));
-  }
-
-  static Vector2Field (label: string, value: ImGui.XY | ImGui.Bind.ImTuple2<number>, guiID?: string) {
-    EditorGUILayout.Label(label);
-
-    return ImGui.DragFloat2('##' + label + guiID, value, 0.03);
-  }
-
-  static Vector3Field (label: string, value: ImGui.XYZ | ImGui.XYZW | ImGui.Bind.ImTuple3<number> | ImGui.Bind.ImTuple4<number>, guiID?: string): boolean {
-    const id = guiID ?? label;
-    let changed = false;
-
-    // 创建一个临时数组来存储值
-    const tempValues = [
-      (value as any).x ?? (value as any)[0],
-      (value as any).y ?? (value as any)[1],
-      (value as any).z ?? (value as any)[2],
-    ];
-
-    ImGui.PushID(id);
-
-    // 使用统一的标签对齐系统
-    EditorGUILayout.Label(label);
-
-    // 计算可用宽度和间距
-    const style = ImGui.GetStyle();
-    const spacing = style.ItemInnerSpacing.x;
-    const buttonSize = ImGui.GetFrameHeight(); // 使用框架高度确保对齐
-    const buttonWidth = 5;
-    const availableWidth = ImGui.GetContentRegionAvail().x;
-
-    // 计算输入框宽度：总宽度 - 3个按钮宽度 - 5个间距（按钮和输入框之间的间距）
-    const totalButtonWidth = buttonWidth * 3;
-    const totalSpacing = spacing * 5; // 按钮前、按钮后、按钮前、按钮后、按钮前的间距
-    const inputWidth = Math.max(0, (availableWidth - totalButtonWidth - totalSpacing) / 3);
-
-    ImGui.BeginGroup();
-
-    // 定义颜色常量
-    const xColor = new ImGui.Vec4(0.8, 0.1, 0.15, 1.0);
-    const xColorHover = new ImGui.Vec4(0.9, 0.2, 0.2, 1.0);
-    const xColorBg = new ImGui.Vec4(0.8, 0.1, 0.15, 0.15);
-
-    const yColor = new ImGui.Vec4(0.2, 0.7, 0.2, 1.0);
-    const yColorHover = new ImGui.Vec4(0.3, 0.8, 0.3, 1.0);
-    const yColorBg = new ImGui.Vec4(0.2, 0.7, 0.2, 0.15);
-
-    const zColor = new ImGui.Vec4(0.1, 0.25, 0.8, 1.0);
-    const zColorHover = new ImGui.Vec4(0.2, 0.35, 0.9, 1.0);
-    const zColorBg = new ImGui.Vec4(0.1, 0.25, 0.8, 0.15);
-
-    // X 坐标输入
-    ImGui.PushStyleColor(ImGui.Col.Button, xColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, xColorHover);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, xColor);
-    ImGui.Button('##AxisChip_X', new ImGui.Vec2(buttonWidth, buttonSize));
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine(0, spacing);
-    ImGui.SetNextItemWidth(inputWidth);
-    // ImGui.PushStyleColor(ImGui.Col.FrameBg, xColorBg);
-    if (ImGui.DragFloat('##X', access(tempValues, '0'), 0.01, 0, 0, '%.3f')) {
-      changed = true;
-    }
-    // ImGui.PopStyleColor();
-
-    // Y 坐标输入
-    ImGui.SameLine(0, spacing);
-    ImGui.PushStyleColor(ImGui.Col.Button, yColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, yColorHover);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, yColor);
-    ImGui.Button('##AxisChip_Y', new ImGui.Vec2(buttonWidth, buttonSize));
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine(0, spacing);
-    ImGui.SetNextItemWidth(inputWidth);
-    // ImGui.PushStyleColor(ImGui.Col.FrameBg, yColorBg);
-    if (ImGui.DragFloat('##Y', access(tempValues, '1'), 0.01, 0, 0, '%.3f')) {
-      changed = true;
-    }
-    // ImGui.PopStyleColor();
-
-    // Z 坐标输入
-    ImGui.SameLine(0, spacing);
-    ImGui.PushStyleColor(ImGui.Col.Button, zColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, zColorHover);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, zColor);
-    ImGui.Button('##AxisChip_Z', new ImGui.Vec2(buttonWidth, buttonSize));
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine(0, spacing);
-    ImGui.SetNextItemWidth(inputWidth);
-    // ImGui.PushStyleColor(ImGui.Col.FrameBg, zColorBg);
-    if (ImGui.DragFloat('##Z', access(tempValues, '2'), 0.01, 0, 0, '%.3f')) {
-      changed = true;
-    }
-    // ImGui.PopStyleColor();
-
-    ImGui.EndGroup();
     ImGui.PopID();
-
-    // 如果值改变，更新原始值
-    if (changed) {
-      if ('x' in value) {
-        value.x = tempValues[0];
-        value.y = tempValues[1];
-        value.z = tempValues[2];
-      } else {
-        (value as any)[0] = tempValues[0];
-        (value as any)[1] = tempValues[1];
-        (value as any)[2] = tempValues[2];
-      }
-    }
 
     return changed;
   }
 
-  static FloatField (label: string, object: object, property: string, guiID?: string) {
-    EditorGUILayout.Label(label);
+  static TextField (label: string, object: object, property: string, guiID?: string): boolean {
+    return this.Property(label, width => {
+      ImGui.SetNextItemWidth(width);
 
-    return ImGui.DragFloat('##' + label + guiID, access(object, property), 0.03);
+      return ImGui.InputText('##Value', access(object, property));
+    }, guiID);
   }
 
-  static ColorField (label: string, color: ImGui.RGBA | ImGui.Bind.ImTuple4<number> | ImGui.Bind.interface_ImVec4, guiID?: string) {
-    EditorGUILayout.Label(label);
+  static Text (label: string, text: string): void {
+    this.Property(label, width => {
+      const point = ImGui.GetCursorScreenPos(), dl = ImGui.GetWindowDrawList();
 
-    return ImGui.ColorEdit4('##' + label + guiID, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.HDR);
+      dl.PushClipRect(point, new ImGui.Vec2(point.x + width, point.y + ImGui.GetFrameHeight()), true);
+      dl.AddText(new ImGui.Vec2(point.x + 7, point.y + (ImGui.GetFrameHeight() - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(PROPERTY_COLORS.text), text);
+      dl.PopClipRect();
+      ImGui.Dummy(new ImGui.Vec2(width, ImGui.GetFrameHeight()));
+      if (ImGui.IsItemHovered() && ImGui.CalcTextSize(text).x > width) { ImGui.SetTooltip(text); }
+    });
   }
 
-  /**
-   * 折叠分组头：渲染一个带背景条的可折叠标题栏，并对内部内容进行轻微缩进，
-   * 用于在父级标题（如组件标题）下表达次级分组关系。
-   *
-   * @param label       标题文本（同时用作 ID）
-   * @param defaultOpen 初始是否展开（默认 true）
-   * @returns           当前是否展开（用于条件绘制内部控件）
-   *
-   * @example
-   * if (EditorGUILayout.BeginFoldoutHeaderGroup('Properties')) {
-   *   // 绘制内部控件
-   * }
-   * EditorGUILayout.EndFoldoutHeaderGroup();
-   */
+  static Checkbox (label: string, object: object, property: string, guiID?: string): boolean {
+    return this.Property(label, () => ImGui.Checkbox('##Value', access(object, property)), guiID);
+  }
+
+  static NumberField (label: string, value: ImGui.Bind.ImAccess<number>, speed = 0.03, min = 0, max = 0, format = '%.3f', guiID?: string): boolean {
+    return this.Property(label, width => {
+      return dragNumber('##Value', value, width, speed, min, max, format);
+    }, guiID);
+  }
+
+  static FloatField (label: string, object: object, property: string, guiID?: string): boolean {
+    return this.NumberField(label, access(object, property), 0.03, 0, 0, '%.3f', guiID);
+  }
+
+  static ComboField (label: string, value: ImGui.Bind.ImAccess<number>, items: string[], guiID?: string): boolean {
+    return this.Property(label, width => {
+      const origin = ImGui.GetCursorScreenPos();
+      const selected = value();
+      let changed = false;
+
+      ImGui.SetNextItemWidth(width);
+      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 4));
+      if (ImGui.BeginCombo('##Value', items[selected] ?? 'None', ImGui.ComboFlags.NoArrowButton)) {
+        items.forEach((item, index) => {
+          if (ImGui.Selectable(item, index === selected) && index !== selected) { value(index); changed = true; }
+          if (index === selected) { ImGui.SetItemDefaultFocus(); }
+        });
+        ImGui.EndCombo();
+      }
+      ImGui.PopStyleVar();
+      drawEditorChevron(origin.x + width - 21, origin.y + (ImGui.GetFrameHeight() - 14) / 2, 14, PROPERTY_COLORS.text);
+
+      return changed;
+    }, guiID);
+  }
+
+  static Vector2Field (label: string, value: ImGui.XY | ImGui.Bind.ImTuple2<number>, guiID?: string, defaults?: number[]): boolean {
+    return this.vectorField(label, value, 2, guiID, defaults);
+  }
+
+  static Vector3Field (label: string, value: ImGui.XYZ | ImGui.XYZW | ImGui.Bind.ImTuple3<number> | ImGui.Bind.ImTuple4<number>, guiID?: string, defaults?: VectorDefaults, action?: PropertyRowAction): boolean {
+    return this.vectorField(label, value, 3, guiID, defaults, action);
+  }
+
+  private static vectorField (label: string, value: object, count: number, guiID?: string, defaults?: VectorDefaults, action?: PropertyRowAction): boolean {
+    const vector = value as Record<string, number>;
+    const fields = 'x' in value ? ['x', 'y', 'z'] : ['0', '1', '2'];
+    const values = fields.slice(0, count).map(key => vector[key]);
+    const defaultValues = Array.isArray(defaults) ? defaults : defaults?.values;
+    const reset = defaultValues && values.some((number, index) => Math.abs(number - defaultValues[index]) > 1e-6)
+      ? () => {
+        defaultValues.forEach((number, index) => values[index] = number);
+        if (defaults && !Array.isArray(defaults)) { defaults.reset(); }
+      } : undefined;
+    const changed = this.Property(label, width => {
+      const spacing = 4, inputWidth = Math.max(20, (width - (count - 1) * spacing) / count);
+      let edited = false;
+
+      for (let axis = 0; axis < count; axis++) {
+        if (axis) { ImGui.SameLine(0, spacing); }
+        ImGui.PushID(axis);
+        let precision = 3;
+
+        while (precision > 1 && ImGui.CalcTextSize(values[axis].toFixed(precision)).x + ImGui.GetStyle().FramePadding.x * 2 > inputWidth) { precision--; }
+        if (dragNumber('##Axis', next => {
+          if (next !== undefined && Number.isFinite(next)) { values[axis] = next; }
+
+          return values[axis];
+        }, inputWidth, label === 'Rotation' ? 0.1 : 0.01, 0, 0, '%.' + precision + 'f')) { edited = true; }
+        const min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax();
+
+        ImGui.GetWindowDrawList().AddRectFilled(new ImGui.Vec2(min.x + 2, min.y + 3), new ImGui.Vec2(min.x + 4, max.y - 3), ImGui.GetColorU32(PROPERTY_COLORS.axes[axis]), 1);
+        if (ImGui.IsItemHovered() && !ImGui.IsItemActive()) { ImGui.SetTooltip(['X', 'Y', 'Z'][axis] + ': ' + values[axis] + '\nClick to type, or drag to adjust.'); }
+        ImGui.PopID();
+      }
+
+      return edited;
+    }, guiID, reset, action);
+
+    if (changed) { fields.slice(0, count).forEach((key, index) => vector[key] = values[index]); }
+
+    return changed;
+  }
+
+  static ColorField (label: string, color: ImGui.RGBA | ImGui.Bind.ImTuple4<number> | ImGui.Bind.interface_ImVec4, guiID?: string): boolean {
+    return this.Property(label, width => {
+      ImGui.SetNextItemWidth(width);
+      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 4));
+      const changed = ImGui.ColorEdit4('##Value', color, ImGui.ColorEditFlags.Float | ImGui.ColorEditFlags.HDR | ImGui.ColorEditFlags.NoInputs);
+
+      ImGui.PopStyleVar();
+
+      return changed;
+    }, guiID);
+  }
+
   static BeginFoldoutHeaderGroup (label: string, defaultOpen = true): boolean {
-    let flags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.NoTreePushOnOpen;
-
-    if (defaultOpen) {
-      flags |= ImGui.TreeNodeFlags.DefaultOpen;
-    }
-
+    if (PropertyGrid.active) { return PropertyGrid.beginGroup(label, defaultOpen); }
     ImGui.Indent();
 
-    // 用 channel split 让背景条画在 TreeNode 之下：
-    // 先在前景通道绘制 TreeNode，再读取它实际的 ItemRect 作为底色范围，
-    // 这样背景高度与 hover/active 时的高亮区域完全一致。
-    const drawList = ImGui.GetWindowDrawList();
-
-    drawList.ChannelsSplit(2);
-    drawList.ChannelsSetCurrent(1);
-
-    const opened = ImGui.TreeNodeEx(label, flags);
-
-    drawList.ChannelsSetCurrent(0);
-    drawList.AddRectFilled(
-      ImGui.GetItemRectMin(),
-      ImGui.GetItemRectMax(),
-      ImGui.GetColorU32(ImGui.Col.Header),
-    );
-    drawList.ChannelsMerge();
-
-    return opened;
+    return ImGui.TreeNodeEx(label, ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.NoTreePushOnOpen |
+      (defaultOpen ? ImGui.TreeNodeFlags.DefaultOpen : 0));
   }
 
-  /**
-   * 结束开启的分组。
-   */
   static EndFoldoutHeaderGroup (): void {
-    ImGui.Unindent();
+    if (PropertyGrid.active) { PropertyGrid.endGroup(); } else { ImGui.Unindent(); }
   }
 
-  static ObjectField (label: string, object: object, property: string) {
-    EditorGUILayout.Label(label);
+  static ObjectField (label: string, object: object, property: string, expectedType?: string, readOnly = false, icon?: PropertyHeaderIcon): boolean {
+    const target = object as Record<string, any>;
+    const reference = target[property];
 
-    const targetObject = (object as Record<string, any>)[property];
+    return this.Property(label, width => {
+      let changed = false;
+      const origin = ImGui.GetCursorScreenPos();
+      const preview = reference instanceof Texture ? getOrCreateTexturePreview(reference) : reference instanceof Sprite ? getSpriteThumbnail(reference) : null;
+      let thumbnailWidth = 0;
 
-    if (!targetObject) {
-      return;
-    }
+      if (preview) {
+        const size = 48;
 
-    ImGui.PushID(`ObjectField_${label}_${property}`);
-    if (targetObject instanceof Texture) {
-      let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
-
-      if (!__inspectorTexture && targetObject.definition.image) {
-        __inspectorTexture = createImguiTextureFromImage(targetObject.definition.image);
-        (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
+        if (ImGui.ImageButton('##Thumbnail', preview.tex, new ImGui.Vec2(size, size), preview.uv0, preview.uv1)) { Selection.select(reference); }
+        thumbnailWidth = size + 10;
+        ImGui.SameLine(0, 6);
       }
-      ImGui.ImageButton('inspector_texture', __inspectorTexture, new ImGui.Vec2(100, 100));
-    } else {
-      ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(-1, 0));
-    }
+      ImGui.SetNextItemWidth(width - thumbnailWidth);
+      const caption = reference?.name || reference?.constructor.name || 'None';
+      const buttonOrigin = ImGui.GetCursorScreenPos();
 
-    if (ImGui.BeginDragDropTarget()) {
-      const payload = ImGui.AcceptDragDropPayload(targetObject.constructor.name);
+      ImGui.PushStyleColor(ImGui.Col.Button, PROPERTY_COLORS.input);
+      ImGui.PushStyleVar(ImGui.StyleVar.ButtonTextAlign, new ImGui.Vec2(0, 0.5));
+      ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(icon ? 28 : ImGui.GetStyle().FramePadding.x, ImGui.GetStyle().FramePadding.y));
+      if (ImGui.Button(caption + '##Reference', new ImGui.Vec2(Math.max(20, width - thumbnailWidth), ImGui.GetFrameHeight())) && reference) { Selection.select(reference); }
+      ImGui.PopStyleVar(2); ImGui.PopStyleColor();
+      if (icon) { icon(buttonOrigin.x + 6, buttonOrigin.y + (ImGui.GetFrameHeight() - 16) / 2, 16); }
+      if (ImGui.IsItemHovered()) { ImGui.SetTooltip(reference ? 'Open ' + caption + (readOnly ? '.' : '. Drop an asset here to replace it.') : 'Drop an asset here.'); }
+      if (!readOnly && ImGui.BeginDragDropTarget()) {
+        const payload = ImGui.AcceptDragDropPayload(expectedType ?? reference?.constructor.name ?? 'EffectsObject');
 
-      if (payload && payload.Data) {
-        try {
-          (object as Record<string, any>)[property] = payload.Data;
-        } catch (error) {
-          console.warn('[ObjectField] Failed to assign dropped object:', error);
-        }
+        if (payload?.Data) { target[property] = payload.Data; changed = true; }
+        ImGui.EndDragDropTarget();
       }
+      if (thumbnailWidth) { ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 54)); ImGui.Dummy(new ImGui.Vec2(width, 0)); }
 
-      ImGui.EndDragDropTarget();
-    }
-    ImGui.PopID();
+      return changed;
+    }, label + ' ' + (reference?.name ?? ''));
   }
-}
-
-export function createImguiTextureFromImage (
-  image: HTMLImageElement
-): WebGLTexture {
-  const gl = ImGui_Impl.gl!;
-  const texture = gl.createTexture()!;
-
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-
-  // 上传图片数据到纹理
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-
-  // 设置纹理参数
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  return texture;
 }

@@ -8,6 +8,7 @@ export function setGetWindowProvider (fn: <T extends EditorWindow>(type: new () 
 
 export class EditorWindow {
   title = 'New Window';
+  protected initialSize = new ImGui.Vec2(500, 300);
 
   private opened = false;
   private active = false;
@@ -31,7 +32,7 @@ export class EditorWindow {
       return;
     }
     if (this.firstFrame) {
-      ImGui.SetNextWindowSize(new ImGui.Vec2(500, 300));
+      ImGui.SetNextWindowSize(this.initialSize);
       this.firstFrame = false;
     }
 

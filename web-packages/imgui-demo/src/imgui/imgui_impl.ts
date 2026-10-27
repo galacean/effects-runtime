@@ -236,6 +236,10 @@ function ime_create (): void {
   ime_input.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!is_composing && !e.isComposing) {
       canvas_on_keydown(e);
+      // Enter is handled by the key event; suppress the textarea's duplicate newline input.
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+        e.preventDefault();
+      }
     }
   });
   ime_input.addEventListener('keyup', (e: KeyboardEvent) => {
