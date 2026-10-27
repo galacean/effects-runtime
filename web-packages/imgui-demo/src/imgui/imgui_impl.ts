@@ -446,6 +446,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
 
   // Setup back-end capabilities flags
   io.BackendFlags |= ImGui.BackendFlags.HasMouseCursors;   // We can honor GetMouseCursor() values (optional)
+  if (gl || ctx) { io.BackendFlags |= ImGui.BackendFlags.RendererHasVtxOffset; }
 
   // Keyboard input is handled via AddKeyEvent in canvas_on_keydown/canvas_on_keyup
 
@@ -453,6 +454,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
 }
 
 export function Shutdown (): void {
+  ImGui.GetIO().BackendFlags &= ~ImGui.BackendFlags.RendererHasVtxOffset;
   DestroyDeviceObjects();
 
   if (canvas !== null) {
@@ -701,10 +703,6 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
   gl && gl.enableVertexAttribArray(g_AttribLocationUV);
   gl && gl.enableVertexAttribArray(g_AttribLocationColor);
 
-  gl && gl.vertexAttribPointer(g_AttribLocationPosition, 2, gl.FLOAT, false, ImGui.DrawVertSize, ImGui.DrawVertPosOffset);
-  gl && gl.vertexAttribPointer(g_AttribLocationUV, 2, gl.FLOAT, false, ImGui.DrawVertSize, ImGui.DrawVertUVOffset);
-  gl && gl.vertexAttribPointer(g_AttribLocationColor, 4, gl.UNSIGNED_BYTE, true, ImGui.DrawVertSize, ImGui.DrawVertColOffset);
-
   // Draw
   const pos = draw_data.DisplayPos;
   const idx_buffer_type: GLenum = gl && ((ImGui.DrawIdxSize === 4) ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT) || 0;
@@ -714,7 +712,7 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
     gl || ctx || console.log('VtxBuffer.length', draw_list.VtxBuffer.length);
     gl || ctx || console.log('IdxBuffer.length', draw_list.IdxBuffer.length);
 
-    let idx_buffer_offset = 0;
+    let vertex_offset = -1;
 
     gl && gl.bindBuffer(gl.ARRAY_BUFFER, g_VboHandle);
     gl && gl.bufferData(gl.ARRAY_BUFFER, draw_list.VtxBuffer, gl.STREAM_DRAW);
@@ -722,6 +720,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
     gl && gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, draw_list.IdxBuffer, gl.STREAM_DRAW);
 
     draw_list.IterateDrawCmds((draw_cmd: ImGui.DrawCmd): void => {
+      const idx_buffer_offset = draw_cmd.IdxOffset * ImGui.DrawIdxSize;
+
       gl || ctx || console.log(draw_cmd);
       gl || ctx || console.log('ElemCount', draw_cmd.ElemCount);
       gl || ctx || console.log('ClipRect', draw_cmd.ClipRect.x, fb_height - draw_cmd.ClipRect.w, draw_cmd.ClipRect.z - draw_cmd.ClipRect.x, draw_cmd.ClipRect.w - draw_cmd.ClipRect.y);
@@ -742,6 +742,15 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
         const clip_rect = new ImGui.Vec4(draw_cmd.ClipRect.x - pos.x, draw_cmd.ClipRect.y - pos.y, draw_cmd.ClipRect.z - pos.x, draw_cmd.ClipRect.w - pos.y);
 
         if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0 && clip_rect.w >= 0.0) {
+          if (gl && vertex_offset !== draw_cmd.VtxOffset) {
+            const byte_offset = draw_cmd.VtxOffset * ImGui.DrawVertSize;
+
+            // WebGL applies each command's base vertex through attribute byte offsets.
+            gl.vertexAttribPointer(g_AttribLocationPosition, 2, gl.FLOAT, false, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertPosOffset);
+            gl.vertexAttribPointer(g_AttribLocationUV, 2, gl.FLOAT, false, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertUVOffset);
+            gl.vertexAttribPointer(g_AttribLocationColor, 4, gl.UNSIGNED_BYTE, true, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertColOffset);
+            vertex_offset = draw_cmd.VtxOffset;
+          }
           // Apply scissor/clipping rectangle
           gl && gl.scissor(clip_rect.x, fb_height - clip_rect.w, clip_rect.z - clip_rect.x, clip_rect.w - clip_rect.y);
 
@@ -751,6 +760,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
           gl && gl.drawElements(gl.TRIANGLES, draw_cmd.ElemCount, idx_buffer_type, idx_buffer_offset);
 
           if (ctx) {
+            const vtx_buffer_offset = draw_list.VtxBuffer.byteOffset + draw_cmd.VtxOffset * ImGui.DrawVertSize;
+
             ctx.save();
             ctx.beginPath();
             ctx.rect(clip_rect.x, clip_rect.y, clip_rect.z - clip_rect.x, clip_rect.w - clip_rect.y);
@@ -763,15 +774,15 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
               const i0: number = idx[i + 0];
               const i1: number = idx[i + 1];
               const i2: number = idx[i + 2];
-              const v0: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i0 * ImGui.DrawVertSize);
-              const v1: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i1 * ImGui.DrawVertSize);
-              const v2: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i2 * ImGui.DrawVertSize);
+              const v0: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i0 * ImGui.DrawVertSize);
+              const v1: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i1 * ImGui.DrawVertSize);
+              const v2: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i2 * ImGui.DrawVertSize);
               const i3: number = idx[i + 3];
               const i4: number = idx[i + 4];
               const i5: number = idx[i + 5];
-              const v3: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i3 * ImGui.DrawVertSize);
-              const v4: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i4 * ImGui.DrawVertSize);
-              const v5: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i5 * ImGui.DrawVertSize);
+              const v3: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i3 * ImGui.DrawVertSize);
+              const v4: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i4 * ImGui.DrawVertSize);
+              const v5: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i5 * ImGui.DrawVertSize);
               let quad = true;
               let minmin: ImGui.DrawVert = v0;
               let minmax: ImGui.DrawVert = v0;
@@ -830,7 +841,6 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
           }
         }
       }
-      idx_buffer_offset += draw_cmd.ElemCount * ImGui.DrawIdxSize;
     });
   });
 

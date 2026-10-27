@@ -5,6 +5,7 @@ import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { editorApp } from '../core/editor-application';
+import { getEditorRotation } from '../core/editor-transform';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
@@ -120,17 +121,13 @@ export class Inspector extends EditorWindow {
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
 
-      EditorGUILayout.Vector3Field('Position', transform.position);
-      EditorGUILayout.Vector3Field('Rotation', transform.rotation);
-      EditorGUILayout.Vector3Field('Scale', transform.scale);
-      EditorGUILayout.Vector2Field('Size', transform.size);
+      const position = transform.position.clone(), rotation = getEditorRotation(transform);
+      const scale = transform.scale.clone(), size = transform.size.clone();
 
-      transform.quat.setFromEuler(transform.rotation);
-      transform.quat.conjugate();
-      //@ts-expect-error
-      transform.dirtyFlags.localData = true;
-      //@ts-expect-error
-      transform.dispatchValueChange();
+      if (EditorGUILayout.Vector3Field('Position', position)) { transform.setPosition(position.x, position.y, position.z); }
+      if (EditorGUILayout.Vector3Field('Rotation', rotation)) { transform.setRotation(rotation.x, rotation.y, rotation.z); }
+      if (EditorGUILayout.Vector3Field('Scale', scale)) { transform.setScale(scale.x, scale.y, scale.z); }
+      if (EditorGUILayout.Vector2Field('Size', size)) { transform.setSize(size.x, size.y); }
     }
 
     // 仅当 VFXItem 挂了 Control 组件才显示锚点布局编辑区

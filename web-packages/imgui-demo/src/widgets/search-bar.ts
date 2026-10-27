@@ -2,6 +2,10 @@ import { ImGui } from '../imgui';
 import { EditorColors } from '../panels/theme';
 
 export type SearchBarOptions = {
+  /** 指定输入栏宽度，默认填满当前内容区域。 */
+  width?: number,
+  /** 输入为空时的提示文字，空字符串只显示搜索图标。 */
+  hint?: string,
   /** 是否显示清除按钮（默认 true） */
   showClearButton?: boolean,
   /** 缓冲区大小（默认 256） */
@@ -23,7 +27,7 @@ export function searchBar (
 ): boolean {
   const { showClearButton = true, bufferSize = 256 } = opts;
 
-  const availWidth = ImGui.GetContentRegionAvail().x;
+  const availWidth = Math.min(opts.width ?? ImGui.GetContentRegionAvail().x, ImGui.GetContentRegionAvail().x);
   const frameHeight = Math.max(ImGui.GetFrameHeight(), 22);
   const frameRounding = 4;
   const leftPadding = 8;
@@ -66,7 +70,7 @@ export function searchBar (
   ImGui.SetCursorScreenPos(new ImGui.Vec2(textStartX, frameMin.y));
   ImGui.PushItemWidth(Math.max(32, textWidth));
   ImGui.SetNextItemAllowOverlap();
-  const changed = ImGui.InputTextWithHint(id, 'Search', buffer, bufferSize);
+  const changed = ImGui.InputTextWithHint(id, opts.hint ?? 'Search', buffer, bufferSize);
   const inputHovered = ImGui.IsItemHovered();
   const inputActive = ImGui.IsItemActive() || ImGui.IsItemFocused();
 

@@ -21,7 +21,8 @@ export class GalaceanEffects {
     // Scene 负责输入路由，避免底层画布收到其他面板的鼠标事件。
     GalaceanEffects.player.engine.inputServer.bindListeners(null);
 
-    GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
+    // 只在场景和界面完成绘制后拷贝，避免限帧时上传已被浏览器清空的画布。
+    GalaceanEffects.player.renderer.addOverlayRenderer({ render: GalaceanEffects.updateRenderTexture });
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.assetServer.database = GalaceanEffects.assetDataBase;
     // @ts-expect-error

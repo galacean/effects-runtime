@@ -1,6 +1,8 @@
 import { selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
 import type { SceneGizmo } from './scene-gizmo';
 import { ImGui } from '../../imgui';
+import { drawEditorChevron } from '../../widgets/editor-arrow';
+import { editorMenuSection } from '../../widgets/editor-menu';
 import { EditorColors } from '../theme';
 
 interface SceneToolbarOptions {
@@ -24,7 +26,10 @@ interface ToolbarLayout {
 
 type Icon = 'transform' | 'hand' | 'snap' | 'camera' | 'show' | 'more';
 
-const ACTIVE_COLOR = new ImGui.Vec4(0.16, 0.62, 0.94, 1);
+const ACTIVE_COLOR = new ImGui.Vec4(38 / 255, 187 / 255, 1, 1);
+const HOVER_COLOR = new ImGui.Vec4(1, 1, 1, 1);
+const MENU_BACKGROUND = new ImGui.Vec4(56 / 255, 56 / 255, 56 / 255, 1);
+const MENU_BORDER = new ImGui.Vec4(76 / 255, 76 / 255, 76 / 255, 1);
 
 /** 控件与菜单继承编辑器字号；空间不足时只收纳当前隐藏的入口。 */
 export class SceneToolbar {
@@ -77,7 +82,7 @@ export class SceneToolbar {
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, 4));
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(2, 0));
     ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 3);
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(8, 6));
+    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 6));
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 4, origin.y + 3));
 
     ImGui.BeginDisabled(!editing);
@@ -223,15 +228,7 @@ export class SceneToolbar {
   }
 
   private menuSection (label: string, separated = false): void {
-    if (separated) {
-      ImGui.Spacing();
-      ImGui.PushStyleColor(ImGui.Col.Separator, EditorColors.borderStrong);
-      ImGui.Separator();
-      ImGui.PopStyleColor();
-      ImGui.Spacing();
-    }
-    ImGui.TextColored(EditorColors.textSecondary, label);
-    ImGui.Spacing();
+    editorMenuSection(label, separated);
   }
 
   private textButtonWidth (label: string, icon = false, arrow = true): number {
@@ -249,11 +246,17 @@ export class SceneToolbar {
       ImGui.SetNextWindowPos(new ImGui.Vec2(min.x, max.y + 3));
     }
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 4));
+    ImGui.PushStyleVar(ImGui.StyleVar.PopupRounding, 0);
+    ImGui.PushStyleVar(ImGui.StyleVar.PopupBorderSize, 1);
+    ImGui.PushStyleColor(ImGui.Col.PopupBg, MENU_BACKGROUND);
+    ImGui.PushStyleColor(ImGui.Col.Border, MENU_BORDER);
+    ImGui.PushStyleColor(ImGui.Col.Separator, new ImGui.Vec4(1, 1, 1, 0.25));
     if (ImGui.BeginPopup(id)) {
       draw();
       ImGui.EndPopup();
     }
-    ImGui.PopStyleVar();
+    ImGui.PopStyleColor(3);
+    ImGui.PopStyleVar(3);
   }
 
   private button (id: string, icon?: Icon, options: ButtonOptions = {}): boolean {
@@ -267,7 +270,8 @@ export class SceneToolbar {
     const clicked = ImGui.Button(`##Scene${id}`, new ImGui.Vec2(width, this.buttonHeight));
     const min = ImGui.GetItemRectMin();
     const drawList = ImGui.GetWindowDrawList();
-    const color = ImGui.GetColorU32(active ? ACTIVE_COLOR : EditorColors.textPrimary);
+    const tint = active ? ACTIVE_COLOR : ImGui.IsItemHovered() ? HOVER_COLOR : EditorColors.textPrimary;
+    const color = ImGui.GetColorU32(tint);
     const background = ImGui.IsItemActive() ? EditorColors.accentActive : ImGui.IsItemHovered() ? EditorColors.buttonHovered : normalBackground;
 
     if (icon) { this.drawIcon(icon, min.x + (label || arrow ? 14 : width / 2), min.y + this.buttonHeight / 2, color, ImGui.GetColorU32(background)); }
@@ -275,11 +279,7 @@ export class SceneToolbar {
       drawList.AddText(new ImGui.Vec2(min.x + (icon ? 28 : 8), min.y + (this.buttonHeight - ImGui.GetTextLineHeight()) / 2), color, label);
     }
     if (arrow) {
-      const x = min.x + width - 9;
-      const y = min.y + this.buttonHeight / 2;
-
-      drawList.AddLine(new ImGui.Vec2(x - 3, y - 1), new ImGui.Vec2(x, y + 2), color, 1.2);
-      drawList.AddLine(new ImGui.Vec2(x, y + 2), new ImGui.Vec2(x + 3, y - 1), color, 1.2);
+      drawEditorChevron(min.x + width - 18, min.y + (this.buttonHeight - 16) / 2, 16, tint);
     }
     ImGui.PopStyleColor(3);
 
@@ -308,9 +308,15 @@ export class SceneToolbar {
         line(0, direction * 6, -2.5, direction * 3.5); line(0, direction * 6, 2.5, direction * 3.5);
       }
     } else if (icon === 'hand') {
-      line(-4, 0, -6, -2); line(-6, -2, -7, 0); line(-7, 0, -4, 5);
-      line(-4, 5, -2, 6); line(-2, 6, 3, 6); line(3, 6, 5, 2); line(5, 2, 5, -2);
-      for (let finger = 0; finger < 4; finger++) { line(-4 + finger * 2.5, 0, -4 + finger * 2.5, -5 + Math.abs(finger - 1)); }
+      const outline = [[5, 2], [5, -3], [4.5, -4], [3.75, -4], [3.25, -3], [3.25, 0],
+        [2.25, 0], [2.25, -5], [1.75, -6], [1, -6], [0.5, -5], [0.5, 0],
+        [-0.5, 0], [-0.5, -7], [-1, -8], [-1.75, -8], [-2.25, -7], [-2.25, 0],
+        [-3.25, 0], [-3.25, -5], [-3.75, -6], [-4.5, -6], [-5, -5], [-5, 1],
+        [-6, -1], [-7.5, -1], [-8, 0], [-5, 5], [-3, 7], [2, 7], [4, 5], [5, 2]];
+
+      for (let index = 0; index + 1 < outline.length; index++) {
+        line(outline[index][0] + 1, outline[index][1], outline[index + 1][0] + 1, outline[index + 1][1]);
+      }
     } else if (icon === 'snap') {
       const magnetPoint = (dx: number, dy: number) => point((dx + dy) * Math.SQRT1_2, (dy - dx) * Math.SQRT1_2);
       const stroke = (a: ImGui.Vec2, b: ImGui.Vec2, tint = color) => drawList.AddLine(a, b, tint, 3);
@@ -330,9 +336,15 @@ export class SceneToolbar {
       drawList.AddTriangleFilled(point(3, -2), point(7, -5), point(7, 5), color);
       drawList.AddTriangleFilled(point(3, -2), point(7, 5), point(3, 2), color);
     } else if (icon === 'show') {
-      line(-7, 0, -3, -4); line(-3, -4, 3, -4); line(3, -4, 7, 0);
-      line(7, 0, 3, 4); line(3, 4, -3, 4); line(-3, 4, -7, 0);
-      drawList.AddCircle(point(0, 0), 2, color, 12, 1.3);
+      drawList.PathClear();
+      for (let index = 0; index <= 24; index++) {
+        const t = index <= 12 ? index / 12 : (24 - index) / 12;
+
+        drawList.PathLineTo(point(-7 + 14 * t, Math.sin(t * Math.PI) * (index <= 12 ? -4 : 4)));
+      }
+      drawList.PathFillConvex(color);
+      drawList.AddCircleFilled(point(0, 0), 2.8, background, 16);
+      drawList.AddCircleFilled(point(0, 0), 1.4, color, 12);
     } else {
       for (const offset of [-4, 0, 4]) { drawList.AddCircleFilled(point(0, offset), 1.2, color); }
     }
