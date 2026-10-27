@@ -105,6 +105,7 @@ export class Sequencer extends EditorWindow {
     for (const track of document.timeline.tracks) {
       if (objects.includes(document.boundItem(track)!)) { document.selectedTracks.add(track.getInstanceId()); }
     }
+    this.state.captureCurveSelection(document);
   }
 
   private selectBoundItems (track: TrackAsset): void {
@@ -115,6 +116,9 @@ export class Sequencer extends EditorWindow {
 
     selected.push(...document.selectedSectionItems.map(section => section.track), ...document.selectedKeyItems().map(item => item.section.track));
     if (!selected.length) { selected.push(track); }
+    if (!this.state.curveMode) {
+      this.state.curveTracks.clear(); selected.forEach(item => this.state.curveTracks.add(item.getInstanceId()));
+    }
     const items = selected.map(item => document.boundItem(item)).filter((item): item is VFXItem => !!item);
 
     this.syncingSelection = true;
@@ -259,7 +263,7 @@ export class Sequencer extends EditorWindow {
       ImGui.EndPopup();
     }
     this.divider();
-    if (this.icon('key', 'Add key at playhead (Enter)', false, hasSelection)) { this.addKeys(document); }
+    if (this.icon('key', 'Add key at playhead (Enter)', false, hasSelection || this.state.curveMode && this.state.curveTracks.size > 0)) { this.addKeys(document); }
     ImGui.SameLine();
     if (this.icon('auto', 'Auto Key: record transform changes at the playhead', this.autoKey)) { this.autoKey = !this.autoKey; this.autoValues.clear(); }
     this.divider();
@@ -285,7 +289,9 @@ export class Sequencer extends EditorWindow {
     }
     this.divider();
     if (this.icon('curve', 'Curve Editor', this.state.curveMode)) {
-      this.state.curveMode = !this.state.curveMode; this.state.fitValues(document);
+      this.state.curveMode = !this.state.curveMode;
+      if (this.state.curveMode && document.selectedTracks.size) { this.state.captureCurveSelection(document); }
+      this.state.fitValues(document);
     }
     ImGui.SameLine(0, 12);
     const labelPosition = ImGui.GetCursorScreenPos();
@@ -687,10 +693,13 @@ export class Sequencer extends EditorWindow {
   private addKeys (document: SequencerDocument): void {
     const row = this.state.rows(document).find(row => row.id === this.state.activeChannel);
 
-    if (row) {
+    if (row || this.state.curveMode) {
+      const channels = row?.channels ?? this.state.curveChannels(document, true);
+
+      if (!channels.length) { return; }
       document.edit('Add channel keys', () => {
         document.selectedKeys.clear();
-        row.channels.forEach(entry => document.insertKey(entry.section, entry.channel, document.currentTime));
+        channels.forEach(entry => document.insertKey(entry.section, entry.channel, document.currentTime));
       });
     } else { document.addKeys(document.currentTime); }
   }
@@ -705,8 +714,9 @@ export class Sequencer extends EditorWindow {
 
   private stepKey (document: SequencerDocument, direction: number): void {
     const selectedTracks = document.selectedTracks;
-    const times = document.allSections().filter(section => !selectedTracks.size || document.trackSelected(section.track))
-      .flatMap(section => section.channels.flatMap(channel => channel.keys.map(key => section.clip.start + key.time * section.clip.duration)));
+    const channels = this.state.curveMode ? this.state.curveChannels(document) : document.allSections()
+      .filter(section => !selectedTracks.size || document.trackSelected(section.track)).flatMap(section => section.channels.map(channel => ({ section, channel })));
+    const times = channels.flatMap(({ section, channel }) => channel.keys.map(key => section.clip.start + key.time * section.clip.duration));
     const candidates = times.filter(time => direction > 0 ? time > document.currentTime + 1e-6 : time < document.currentTime - 1e-6);
 
     if (candidates.length) { document.setTime(direction > 0 ? Math.min(...candidates) : Math.max(...candidates)); }
@@ -730,7 +740,10 @@ export class Sequencer extends EditorWindow {
     const io = ImGui.GetIO(), command = io.KeyCtrl || io.KeySuper;
     const pressed = (key: ImGui.Key) => ImGui.IsKeyPressed(key, false);
 
-    if (pressed(ImGui.Key.Escape)) { this.canvas.cancel(document); document.clearSelection(); this.state.activeChannel = ''; } else if (command && pressed(ImGui.Key.Z)) { if (io.KeyShift) { document.redo(); } else { document.undo(); } } else if (command && pressed(ImGui.Key.Y)) { document.redo(); } else if (command && pressed(ImGui.Key.D)) {
+    if (pressed(ImGui.Key.Escape)) {
+      this.canvas.cancel(document); document.clearSelection();
+      if (!this.state.curveMode) { this.state.activeChannel = ''; this.state.captureCurveSelection(document); }
+    } else if (command && pressed(ImGui.Key.Z)) { if (io.KeyShift) { document.redo(); } else { document.undo(); } } else if (command && pressed(ImGui.Key.Y)) { document.redo(); } else if (command && pressed(ImGui.Key.D)) {
       if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
     } else if (command && pressed(ImGui.Key.A)) {
       const channels = this.state.curveMode ? this.state.curveChannels(document).map(entry => entry.channel) : document.allSections().flatMap(section => section.channels);

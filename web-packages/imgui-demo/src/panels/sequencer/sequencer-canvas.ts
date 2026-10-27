@@ -340,6 +340,7 @@ export class SequencerCanvas {
   private drawOutliner (document: SequencerDocument): void {
     const dl = ImGui.GetWindowDrawList(), mouse = ImGui.GetMousePos();
     const columns = this.outlinerColumns;
+    const selectedTracks = this.state.curveMode ? this.state.curveTracks : document.selectedTracks;
     let editingRowVisible = false;
 
     this.valueHovered = false; this.valueActive = false;
@@ -348,7 +349,7 @@ export class SequencerCanvas {
       const y = this.plot.y + row.top - this.state.scrollY;
 
       if (y + row.height < this.plot.y || y > this.plot.y + this.plot.height) { continue; }
-      const selected = this.state.activeChannel ? row.id === this.state.activeChannel : document.selectedTracks.has(row.id);
+      const selected = this.state.activeChannel ? row.id === this.state.activeChannel : selectedTracks.has(row.id);
       const hovered = ImGui.IsWindowHovered() && mouse.x < this.plot.x && mouse.x >= this.rect.x && mouse.y >= y && mouse.y < y + row.height;
       const background = row.kind === 'object' ? C.header : row.kind === 'channel' ? C.outliner : C.group;
       const color = row.kind === 'channel' ? C.axes[row.channels[0]?.channel.axis ?? 3] : C.text;
@@ -403,10 +404,7 @@ export class SequencerCanvas {
       }
 
       if (row.channels.length) {
-        const keyed = row.channels.some(({ section, channel }) => channel.keys.some(key =>
-          Math.abs(section.clip.start + key.time * section.clip.duration - document.currentTime) < 0.5 / this.state.frameRate));
-
-        this.drawOutlinerControl('key', columns.key, center, hovered, keyed, 'Add key at playhead');
+        this.drawOutlinerControl('key', columns.key, center, hovered, false, 'Add key at playhead');
         if (columns.navigation) {
           this.drawOutlinerControl('previousKey', columns.previous, center, hovered, false, 'Previous key');
           this.drawOutlinerControl('nextKey', columns.next, center, hovered, false, 'Next key');
@@ -472,6 +470,7 @@ export class SequencerCanvas {
       if (this.valueEdit && this.valueEdit.id !== channel.id) { document.commit(); }
       document.setTime(document.currentTime); document.begin('Edit channel value');
       document.clearSelection(); document.selectedTracks.add(row.track.getInstanceId());
+      this.state.captureCurveSelection(document);
       this.state.activeChannel = row.id; this.selectTrack(row.track);
       this.valueEdit = { id: channel.id, cancelled: false };
     }
@@ -565,10 +564,10 @@ export class SequencerCanvas {
   }
 
   private drawCurveLine (section: SequenceSection, curve: BezierCurve, color: ImGui.Vec4): void {
-    const start = Math.max(this.graphLeft, this.timeX(section.clip.start));
-    const end = Math.min(this.plot.x + this.plot.width, this.timeX(section.clip.start + section.clip.duration));
+    const start = this.graphLeft;
+    const end = this.plot.x + this.plot.width;
 
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || section.clip.duration <= 0) { return; }
+    if (![start, end, section.clip.start, section.clip.duration].every(Number.isFinite) || end <= start || section.clip.duration <= 0) { return; }
     const dl = ImGui.GetWindowDrawList(), tint = ImGui.GetColorU32(color);
     const points: ImGui.Vec2[] = [];
     const flush = () => {
@@ -743,9 +742,9 @@ export class SequencerCanvas {
     for (const entry of this.state.curveChannels(document)) {
       const { section, channel } = entry;
 
-      if (section.clip.duration <= 0) { continue; }
-      const start = Math.max(this.graphLeft, this.timeX(section.clip.start), x - 7);
-      const end = Math.min(this.plot.x + this.plot.width, this.timeX(section.clip.start + section.clip.duration), x + 7);
+      if (!Number.isFinite(section.clip.start) || !Number.isFinite(section.clip.duration) || section.clip.duration <= 0) { continue; }
+      const start = Math.max(this.graphLeft, x - 7);
+      const end = Math.min(this.plot.x + this.plot.width, x + 7);
       const curve = this.getCurve(document, channel);
       const sample = (px: number) => this.valueY(curve.getValue((this.timeAt(px) - section.clip.start) / section.clip.duration));
       let lastX = start, lastY = sample(start);
@@ -807,15 +806,19 @@ export class SequencerCanvas {
   }
 
   private selectContext (document: SequencerDocument, context: SequencerContext): void {
+    const tracks = this.state.curveMode ? this.state.curveTracks : document.selectedTracks;
+    const rowSelected = context.row && (this.state.activeChannel ? context.row.id === this.state.activeChannel : tracks.has(context.row.id));
+
     if (context.keys?.length) {
       if (!context.keys.some(item => document.selectedKeys.has(item.key.id))) {
         document.clearSelection(); context.keys.forEach(item => document.selectedKeys.add(item.key.id));
       }
     } else if (context.section && !document.selectedSections.has(context.section.clip.getInstanceId())) {
       document.clearSelection(); document.selectedSections.add(context.section.clip.getInstanceId());
-    } else if (context.row && !document.selectedTracks.has(context.row.track.getInstanceId())) {
+    } else if (context.row && !rowSelected) {
       document.clearSelection(); document.selectedTracks.add(context.row.track.getInstanceId());
       this.state.activeChannel = context.row.kind === 'channel' || context.row.kind === 'group' ? context.row.id : '';
+      this.state.captureCurveSelection(document);
     }
   }
 
@@ -927,9 +930,13 @@ export class SequencerCanvas {
       } else if (withinColumn(columns.key) && row.channels.length && !document.isLocked(row.track)) {
         document.edit('Add property key', () => row.channels.forEach(entry => document.insertKey(entry.section, entry.channel, document.currentTime)));
       } else {
+        if (this.state.curveMode && (modified || io.KeyShift)) {
+          this.state.curveTracks.forEach(id => document.selectedTracks.add(id));
+        }
         if (!modified && !io.KeyShift) { document.clearSelection(); }
         if (modified && document.selectedTracks.has(row.track.getInstanceId())) { document.selectedTracks.delete(row.track.getInstanceId()); } else { document.selectedTracks.add(row.track.getInstanceId()); }
         this.state.activeChannel = row.kind === 'channel' || row.kind === 'group' ? row.id : '';
+        this.state.captureCurveSelection(document);
         this.selectTrack(row.track);
         if (ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left) && row.expandable) {
           if (this.state.expanded.has(row.id)) { this.state.expanded.delete(row.id); } else { this.state.expanded.add(row.id); }

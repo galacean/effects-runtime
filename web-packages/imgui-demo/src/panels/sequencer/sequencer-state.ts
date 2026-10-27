@@ -37,6 +37,7 @@ export class SequencerState {
   curveMax = 1;
   search = '';
   activeChannel = '';
+  readonly curveTracks = new Set<string>();
   readonly expanded = new Set<string>();
   private readonly initialized = new Set<string>();
 
@@ -45,7 +46,12 @@ export class SequencerState {
     this.viewEnd = document.duration * 1.07;
     this.playbackStart = 0; this.playbackEnd = document.duration;
     this.scrollY = 0; this.activeChannel = ''; this.search = '';
-    this.expanded.clear(); this.initialized.clear();
+    this.expanded.clear(); this.initialized.clear(); this.curveTracks.clear();
+  }
+
+  captureCurveSelection (document: SequencerDocument): void {
+    this.curveTracks.clear();
+    document.selectedTracks.forEach(id => this.curveTracks.add(id));
   }
 
   rows (document: SequencerDocument): SequenceRow[] {
@@ -137,16 +143,27 @@ export class SequencerState {
     this.fitValues(document, selection);
   }
 
-  curveChannels (document: SequencerDocument): { section: SequenceSection, channel: SequenceChannel }[] {
-    let channels = document.allSections().flatMap(section => section.channels.filter(channel => channel.kind === 'number' && channel.keys.length)
+  curveChannels (document: SequencerDocument, includeEmpty = false): { section: SequenceSection, channel: SequenceChannel }[] {
+    let channels = document.allSections().flatMap(section => section.channels.filter(channel => channel.kind === 'number' && (includeEmpty || channel.keys.length))
       .map(channel => ({ section, channel })));
+    const liveTracks = new Set(document.tracks.map(track => track.getInstanceId()));
 
-    if (this.activeChannel) {
-      const row = this.rows(document).find(row => row.id === this.activeChannel);
+    for (const id of this.curveTracks) { if (!liveTracks.has(id)) { this.curveTracks.delete(id); } }
+    const row = this.activeChannel ? this.rows(document).find(row => row.id === this.activeChannel) : undefined;
 
-      if (row) { channels = channels.filter(entry => row.channels.some(item => item.channel === entry.channel)); }
-    } else if (document.selectedTracks.size) {
-      channels = channels.filter(entry => document.trackSelected(entry.section.track));
+    if (row) {
+      channels = channels.filter(entry => row.channels.some(item => item.channel === entry.channel));
+    } else if (this.curveTracks.size) {
+      channels = channels.filter(entry => {
+        let track: TrackAsset | undefined = entry.section.track;
+
+        while (track) {
+          if (this.curveTracks.has(track.getInstanceId())) { return true; }
+          track = track.parent;
+        }
+
+        return false;
+      });
     }
 
     return channels;
@@ -186,8 +203,9 @@ export class SequencerState {
   }
 
   toggleSelectedExpansion (document: SequencerDocument, recursive: boolean): void {
+    const selectedTracks = this.curveMode ? this.curveTracks : document.selectedTracks;
     const rows = this.rows(document).filter(row => row.expandable && (this.activeChannel ? row.id === this.activeChannel :
-      (row.kind === 'object' || row.kind === 'track') && document.selectedTracks.has(row.track.getInstanceId())));
+      (row.kind === 'object' || row.kind === 'track') && selectedTracks.has(row.track.getInstanceId())));
     const expand = rows.some(row => !this.expanded.has(row.id));
     const apply = (id: string) => { if (expand) { this.expanded.add(id); } else { this.expanded.delete(id); } };
 

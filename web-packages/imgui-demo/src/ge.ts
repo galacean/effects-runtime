@@ -1,7 +1,6 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
-import { JSONConverter } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-rich-text';
 import '@galacean/effects-plugin-spine';
@@ -13,6 +12,8 @@ export class GalaceanEffects {
   static player: Player;
   static assetDataBase: AssetDatabase;
   static sceneRendederTexture: WebGLTexture;
+  private static sceneLoad: Promise<void> = Promise.resolve();
+  private static pendingScene?: { url: string };
   static async initialize () {
     const container = document.getElementById('J-container');
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
@@ -581,19 +582,22 @@ export class GalaceanEffects {
     });
   }
 
-  static playURL (url: string, use3DConverter = false) {
-    Selection.clear();
-    GalaceanEffects.player.destroyCurrentCompositions();
-    if (use3DConverter) {
-      const converter = new JSONConverter(GalaceanEffects.player.renderer);
+  static playURL (url: string): void {
+    if (this.pendingScene?.url === url) { return; }
+    const request = { url };
 
-      void converter.processScene(url).then(async (scene: any) => {
-        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
-      });
-    } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay: true });
-    }
-
+    this.pendingScene = request;
+    this.sceneLoad = this.sceneLoad.then(async () => {
+      if (this.pendingScene !== request) { return; }
+      Selection.clear();
+      this.player.destroyCurrentCompositions();
+      await this.player.loadScene(url, { autoplay: true });
+      if (this.pendingScene !== request) { this.player.destroyCurrentCompositions(); } else { this.pendingScene = undefined; }
+    }).catch(error => {
+      this.player.destroyCurrentCompositions();
+      if (this.pendingScene === request) { this.pendingScene = undefined; }
+      console.error('Failed to load composition.', error);
+    });
   }
 
   static updateRenderTexture () {

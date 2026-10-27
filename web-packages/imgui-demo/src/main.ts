@@ -130,6 +130,7 @@ async function _init (): Promise<void> {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.userSelect = 'none';
+    canvas.style.outline = 'none';
 
     canvas.addEventListener('dragover', Project.allowDrop);
     canvas.addEventListener('drop', Project.drop);
