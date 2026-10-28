@@ -3,6 +3,7 @@ import type { TrackAsset } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { getEditorRotation } from '../../core/editor-transform';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { searchBar } from '../../widgets';
@@ -26,6 +27,7 @@ export class Sequencer extends EditorWindow {
   private readonly state = new SequencerState();
   private readonly canvas = new SequencerCanvas(this.state, track => this.selectBoundItems(track));
   private document?: SequencerDocument;
+  private documents = new Map<CompositionComponent, SequencerDocument>();
   private searchBuffer: ImGui.ImScalar<string> = [''];
   private renameTrack?: TrackAsset;
   private renameValue = '';
@@ -36,6 +38,7 @@ export class Sequencer extends EditorWindow {
   private autoValues = new Map<string, number[]>();
   private lastRevision = -1;
   private syncingSelection = false;
+  private restoredSelection = false;
   private lastAutoTime = NaN;
   private autoRecording = false;
   private acceptsClipboard = false;
@@ -58,8 +61,13 @@ export class Sequencer extends EditorWindow {
   override update (): void {
     const composition = GalaceanEffects.player.getCompositions()[0];
 
+    if (sceneWorkspace.current) { sceneWorkspace.current.autoKeyTarget = () => false; }
+
+    for (const [component, document] of this.documents) {
+      if (document.composition !== composition) { document.dispose(); this.documents.delete(component); }
+    }
+
     if (!composition) {
-      this.document?.dispose();
       this.document = undefined;
 
       return;
@@ -71,20 +79,30 @@ export class Sequencer extends EditorWindow {
     const timeline = component ? findSequenceTimeline(component) : undefined;
 
     if (!component || !timeline) {
-      this.document?.dispose();
       this.document = undefined;
 
       return;
     }
     if (this.document?.component !== component || this.document.timeline !== timeline) {
-      this.document?.dispose();
-      this.document = new SequencerDocument(composition, component);
+      this.document?.commit();
+      const cached = this.documents.get(component);
+
+      if (cached && cached.timeline !== timeline) { cached.dispose(); }
+      this.document = cached?.timeline === timeline ? cached : new SequencerDocument(composition, component);
+      this.documents.set(component, this.document);
       this.state.initialize(this.document); this.searchBuffer[0] = '';
       this.autoValues.clear(); this.lastRevision = -1;
       this.lastAutoTime = NaN; this.autoRecording = false;
-      this.onSelectionChange();
+      if (!this.restoredSelection) { this.onSelectionChange(); }
     }
+    this.restoredSelection = false;
     const document = this.document;
+
+    if (sceneWorkspace.current) {
+      sceneWorkspace.current.autoKeyTarget = item => this.autoKey && document.composition.getPaused() && document.allSections().some(section =>
+        section.channels.length === 9 && document.boundItem(section.track) === item && !document.isLocked(section.track) && !document.isMuted(section.track) &&
+        document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration);
+    }
 
     document.sync();
     if (!composition.getPaused() && document.currentTime >= this.state.playbackEnd) {
@@ -94,13 +112,21 @@ export class Sequencer extends EditorWindow {
     this.updateAutoKey(document);
   }
 
+  override flushEdits (): void { this.document?.commit(); }
+
+  override onUndoRedo (): void {
+    this.canvas.resetInteraction();
+    this.autoValues.clear(); this.lastRevision = -1; this.lastAutoTime = NaN; this.autoRecording = false;
+    this.context = undefined; this.renameTrack = undefined; this.restoredSelection = true;
+    this.document?.sync();
+  }
+
   override onSelectionChange (): void {
     const document = this.document;
 
-    if (!document || this.syncingSelection) { return; }
+    if (!document || this.syncingSelection || Selection.changeSource === 'history') { return; }
     const objects = Selection.getSelectedObjects().filter((item): item is VFXItem => item instanceof VFXItem);
 
-    if (!objects.length) { return; }
     document.clearSelection(); this.state.activeChannel = '';
     for (const track of document.timeline.tracks) {
       if (objects.includes(document.boundItem(track)!)) { document.selectedTracks.add(track.getInstanceId()); }
@@ -122,13 +148,14 @@ export class Sequencer extends EditorWindow {
     const items = selected.map(item => document.boundItem(item)).filter((item): item is VFXItem => !!item);
 
     this.syncingSelection = true;
-    try { Selection.setObjects(items); } finally { this.syncingSelection = false; }
+    try { Selection.setObjects(items, 'sync'); } finally { this.syncingSelection = false; }
   }
 
   override draw (): void {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
     ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
-    super.draw(); ImGui.PopStyleColor(); ImGui.PopStyleVar();
+    if (sceneWorkspace.current) { sceneWorkspace.current.observeEditor('Select timeline elements', () => super.draw()); } else { super.draw(); }
+    ImGui.PopStyleColor(); ImGui.PopStyleVar();
   }
 
   protected override onEnable (): void {
@@ -144,6 +171,9 @@ export class Sequencer extends EditorWindow {
   protected override onGUI (): void {
     const document = this.document;
 
+    if (ImGui.IsWindowHovered() && (ImGui.IsMouseClicked(ImGui.MouseButton.Left) || ImGui.IsMouseClicked(ImGui.MouseButton.Right))) {
+      sceneWorkspace.flushEdits(); sceneWorkspace.current?.commit(true);
+    }
     if (!document) {
       this.acceptsClipboard = false; this.clipboardCommands.length = 0;
       ImGui.TextDisabled('Open a composition with a timeline to start editing.');
@@ -599,7 +629,7 @@ export class Sequencer extends EditorWindow {
       if (ImGui.MenuItem('Lock Track', '', ownLock)) {
         document.edit('Toggle track lock', () => {
           if (ownLock) { document.locked.delete(row.track.getInstanceId()); } else { document.locked.add(row.track.getInstanceId()); }
-        });
+        }, false);
       }
       if (ImGui.MenuItem('Add Section', '', false, row.kind !== 'object' && !document.isLocked(row.track))) {
         document.edit('Add section', () => { document.createSection(row.track); });
@@ -743,7 +773,7 @@ export class Sequencer extends EditorWindow {
     if (pressed(ImGui.Key.Escape)) {
       this.canvas.cancel(document); document.clearSelection();
       if (!this.state.curveMode) { this.state.activeChannel = ''; this.state.captureCurveSelection(document); }
-    } else if (command && pressed(ImGui.Key.Z)) { if (io.KeyShift) { document.redo(); } else { document.undo(); } } else if (command && pressed(ImGui.Key.Y)) { document.redo(); } else if (command && pressed(ImGui.Key.D)) {
+    } else if (command && pressed(ImGui.Key.D)) {
       if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
     } else if (command && pressed(ImGui.Key.A)) {
       const channels = this.state.curveMode ? this.state.curveChannels(document).map(entry => entry.channel) : document.allSections().flatMap(section => section.channels);

@@ -15,6 +15,7 @@ import {
 } from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { Selection } from '../../core/selection';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 
 export type SceneTool = 'transform' | 'hand';
 
@@ -61,6 +62,11 @@ export class SceneGizmo {
     configs.set(viewportNavigationConfig, { scrollWheelZoom: true });
     configs.set(resizeSelectionConfig, { nameTextColor: 0xC8C8C8, sizeTextColor: 0xC8C8C8 });
     this.unsubscribeSelection = this.handler.getSelection().on('selectionchange', () => this.syncToPanels());
+    this.handler.on('textinput', event => {
+      const item = this.composition.items.find(item => item.getInstanceId() === event.itemId);
+
+      if (item) { sceneWorkspace.recordText(item); }
+    });
     Selection.addSelectionListener(this.syncFromPanels);
     this.syncFromPanels();
   }
@@ -72,6 +78,8 @@ export class SceneGizmo {
   get selectedItems (): VFXItem[] {
     return this.handler.getSelection().getSelectedPlayerItems();
   }
+
+  refreshSelection (): void { this.syncFromPanels(); }
 
   get canEditText (): boolean {
     const items = this.selectedItems;

@@ -4,15 +4,22 @@ import { type EditorWindow, setGetWindowProvider } from '../panels/editor-window
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { editorStore, editorWindowStore, menuItemStore } from './decorators';
 import { Selection } from './selection';
+import { sceneWorkspace } from './scene-document/scene-workspace';
+import { SceneFiles } from '../panels/scene/scene-files';
+import { editorLayout } from './editor-layout';
 
 export class EditorApplication {
   private windows: EditorWindow[] = [];
   private editors = new Map<Function, Editor>();
   private menuNodes: MenuNode[] = [];
   private lastTime = 0;
+  private readonly sceneFiles = new SceneFiles();
 
   initialize () {
-    this.registerBuiltinMenuItems();
+    this.sceneFiles.initialize();
+    sceneWorkspace.flushEdits = () => { this.windows.forEach(window => window.flushEdits()); };
+    sceneWorkspace.onRestored = () => { this.windows.forEach(window => window.onUndoRedo()); };
+    Selection.setChangeHandler(apply => sceneWorkspace.changeSelection(apply));
 
     for (const path of Object.keys(menuItemStore)) {
       const entry = menuItemStore[path];
@@ -25,6 +32,13 @@ export class EditorApplication {
     for (const editorWindowClass of editorWindowStore) {
       this.windows.push(new editorWindowClass());
     }
+    editorLayout.onError = error => sceneWorkspace.report(new Error('Unable to save the editor layout: ' + (error instanceof Error ? error.message : String(error))));
+    for (const window of this.windows) {
+      editorLayout.registerWindow(window.layoutId, () => window.isOpened(), opened => {
+        if (opened) { window.open(); } else { window.close(); }
+      });
+    }
+    editorLayout.initialize();
 
     for (const key of editorStore.keys()) {
       const customEditorClass = editorStore.get(key);
@@ -44,6 +58,13 @@ export class EditorApplication {
         w.onSelectionChange();
       }
     });
+  }
+
+  shutdown (): void {
+    editorLayout.shutdown();
+    this.sceneFiles.shutdown();
+    Selection.setChangeHandler();
+    sceneWorkspace.current?.dispose();
   }
 
   getWindow<T extends EditorWindow> (type: new () => T): T {
@@ -74,27 +95,20 @@ export class EditorApplication {
     for (const w of this.windows) {
       w.draw();
     }
+    this.sceneFiles.shortcuts();
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive()) { sceneWorkspace.current?.commit(); }
+    this.sceneFiles.drawDialogs();
   }
 
   private drawMainMenuBar () {
     if (ImGui.BeginMainMenuBar()) {
+      this.sceneFiles.drawFileMenu();
+      this.sceneFiles.drawEditMenu();
       for (const menuNode of this.menuNodes) {
         menuNode.draw();
       }
       ImGui.EndMainMenuBar();
     }
-  }
-
-  private registerBuiltinMenuItems () {
-    menuItemStore['File/Save Layout'] = {
-      action: () => {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('imgui.ini', ImGui.SaveIniSettingsToMemory());
-        }
-      },
-      priority: 0,
-      shortcut: '',
-    };
   }
 
   private sortMenuTree () {

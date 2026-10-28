@@ -36,17 +36,21 @@ export class SequencerState {
   curveMin = -1;
   curveMax = 1;
   search = '';
-  activeChannel = '';
-  readonly curveTracks = new Set<string>();
+  private document?: SequencerDocument;
+  private readonly emptyCurveTracks = new Set<string>();
+  get activeChannel (): string { return this.document?.activeChannel ?? ''; }
+  set activeChannel (value: string) { if (this.document) { this.document.activeChannel = value; } }
+  get curveTracks (): Set<string> { return this.document?.curveTracks ?? this.emptyCurveTracks; }
   readonly expanded = new Set<string>();
   private readonly initialized = new Set<string>();
 
   initialize (document: SequencerDocument): void {
+    this.document = document;
     this.viewStart = -document.duration * 0.03;
     this.viewEnd = document.duration * 1.07;
     this.playbackStart = 0; this.playbackEnd = document.duration;
-    this.scrollY = 0; this.activeChannel = ''; this.search = '';
-    this.expanded.clear(); this.initialized.clear(); this.curveTracks.clear();
+    this.scrollY = 0; this.search = '';
+    this.expanded.clear(); this.initialized.clear();
   }
 
   captureCurveSelection (document: SequencerDocument): void {

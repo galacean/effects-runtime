@@ -367,7 +367,6 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
 
   if (typeof(window) !== 'undefined') {
     io.BackendPlatformName = 'imgui_impl_browser';
-    ImGui.LoadIniSettingsFromMemory(window.localStorage.getItem('imgui.ini') || '');
   } else {
     io.BackendPlatformName = 'imgui_impl_console';
   }
@@ -495,13 +494,6 @@ export function Shutdown (): void {
 
 export function NewFrame (time: number): void {
   const io = ImGui.GetIO();
-
-  if (io.WantSaveIniSettings) {
-    io.WantSaveIniSettings = false;
-    if (typeof(window) !== 'undefined') {
-      window.localStorage.setItem('imgui.ini', ImGui.SaveIniSettingsToMemory());
-    }
-  }
 
   // 当 ImGui 需要文字输入时，焦点切到隐藏 textarea 以激活 IME
   if (io.WantTextInput) {

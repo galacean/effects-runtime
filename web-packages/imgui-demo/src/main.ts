@@ -4,10 +4,11 @@ import { GalaceanEffects } from './ge';
 import { ImGui, ImGui_Impl } from './imgui/index';
 import { ShowDemoWindow } from './imgui/imgui_demo';
 import { MemoryEditor } from './imgui/imgui_memory_editor';
+import { imGuiIni } from './imgui/imgui-config';
 import './panels';
 import './custom-editors';
-import { imGuiIni } from './imgui/imgui-config';
 import { editorApp } from './core/editor-application';
+import { editorLayout } from './core/editor-layout';
 import { Project } from './panels';
 import { EditorThemeManager } from './panels/theme';
 
@@ -70,10 +71,6 @@ async function _init (): Promise<void> {
 
   console.log('Total allocated space (uordblks) @ _init:', ImGui.bind.mallinfo().uordblks);
 
-  if (!window.localStorage.getItem('imgui.ini')) {
-    window.localStorage.setItem('imgui.ini', imGuiIni);
-  }
-
   // Setup Dear ImGui context
   ImGui.CHECKVERSION();
   ImGui.CreateContext();
@@ -135,6 +132,7 @@ async function _init (): Promise<void> {
     canvas.addEventListener('dragover', Project.allowDrop);
     canvas.addEventListener('drop', Project.drop);
 
+    ImGui.LoadIniSettingsFromMemory(editorLayout.loadIni(imGuiIni));
     ImGui_Impl.Init(canvas);
   } else {
     ImGui_Impl.Init(null);
@@ -142,6 +140,12 @@ async function _init (): Promise<void> {
 
   await GalaceanEffects.initialize();
   editorApp.initialize();
+  editorLayout.registerWindow('Dear ImGui Demo', () => show_demo_window, opened => show_demo_window = opened);
+  editorLayout.registerWindow('Another Window', () => show_another_window, opened => show_another_window = opened);
+  editorLayout.registerWindow('Memory Editor', () => memory_editor.Open, opened => memory_editor.Open = opened);
+  editorLayout.registerWindow('Sandbox Window', () => show_sandbox_window, opened => show_sandbox_window = opened);
+  editorLayout.registerWindow('Gamepad Window', () => show_gamepad_window, opened => show_gamepad_window = opened);
+  editorLayout.registerWindow('Movie Window', () => show_movie_window, opened => show_movie_window = opened);
 
   StartUpImage();
   StartUpVideo();
@@ -253,6 +257,7 @@ function _loop (time: number): void {
 
   // Rendering
   ImGui.Render();
+  editorLayout.endFrame();
   const gl: WebGLRenderingContext | null = ImGui_Impl.gl;
 
   if (gl) {
@@ -298,6 +303,7 @@ async function _done (): Promise<void> {
   CleanUpVideo();
 
   // Cleanup
+  editorApp.shutdown();
   ImGui_Impl.Shutdown();
   ImGui.DestroyContext();
 

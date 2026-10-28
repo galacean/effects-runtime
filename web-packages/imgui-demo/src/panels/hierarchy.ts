@@ -7,6 +7,7 @@ import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { EditorColors } from './theme';
 import { searchBar } from '../widgets';
+import { sceneWorkspace } from '../core/scene-document/scene-workspace';
 
 // 颜色常量
 const COLORS = {
@@ -62,6 +63,8 @@ export class Hierarchy extends EditorWindow {
     this.title = 'Hierarchy';
     this.open();
   }
+
+  override draw (): void { Selection.batch(() => super.draw()); }
 
   override onGUI () {
     const composition = GalaceanEffects.player.getCompositions()[0];
@@ -402,9 +405,7 @@ export class Hierarchy extends EditorWindow {
     const targets = this.getVisibilityTargets(item);
     const nextState = !item.isVisible;
 
-    for (const target of targets) {
-      target.setVisible(nextState);
-    }
+    sceneWorkspace.observe('Change visibility', () => targets.forEach(target => target.setVisible(nextState)), targets);
   }
 
   private getVisibilityTargets (item: VFXItem): VFXItem[] {

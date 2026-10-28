@@ -8,6 +8,21 @@ export interface SequenceKey extends Keyframe {
 }
 let keySerial = 0;
 
+/** Identify the runtime curve without duplicating baked path data in editor storage. */
+export function curveSourceSignature (value: unknown): string {
+  const text = JSON.stringify(value) ?? '';
+  let first = 2166136261, second = 5381;
+
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+
+    first = Math.imul(first ^ code, 16777619);
+    second = Math.imul(second, 33) ^ code;
+  }
+
+  return text.length + ':' + (first >>> 0).toString(16) + ':' + (second >>> 0).toString(16);
+}
+
 export function makeKey (time: number, value: number): SequenceKey {
   return { id: 'key-' + ++keySerial, time, value, inSlope: 0, outSlope: 0, inWeight: 1, outWeight: 1,
     weightedMode: WeightedMode.Both, interpolationMode: InterpolationMode.Cubic, tangentMode: 'auto' };

@@ -160,6 +160,11 @@ export class SequencerCanvas {
     if (this.drag) { document.cancel(); this.drag = undefined; }
   }
 
+  resetInteraction (): void {
+    this.drag = undefined; this.valueEdit = undefined; this.valueActive = false;
+    this.selectedTangents = []; this.context = undefined; this.curves.clear();
+  }
+
   private drawRuler (document: SequencerDocument): void {
     const s = this.state;
     const playheadX = Math.round(this.timeX(document.currentTime));

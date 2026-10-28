@@ -3,7 +3,7 @@ import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
-import { Selection } from '../core/selection';
+import { sceneWorkspace } from '../core/scene-document/scene-workspace';
 import { EditorColors } from './theme';
 import { searchBar } from '../widgets';
 
@@ -43,6 +43,7 @@ export class Composition extends EditorWindow {
   private compositionNames: string[] = [];
   private compositionURLs: string[] = [];
   private currentCompositionURL = '';
+  private activeSourceURL = '';
   private playingIndex = -1;
 
   private searchFilterBuffer: ImGui.ImScalar<string> = [''];
@@ -69,6 +70,13 @@ export class Composition extends EditorWindow {
   }
 
   protected override onGUI (): void {
+    const sourceURL = sceneWorkspace.sourceURL ?? '';
+
+    if (sourceURL !== this.activeSourceURL) {
+      this.activeSourceURL = sourceURL; this.currentCompositionURL = sourceURL;
+    }
+    this.currentItem = this.compositionURLs.indexOf(sourceURL); this.playingIndex = this.currentItem;
+    ImGui.BeginDisabled(sceneWorkspace.busy);
     this.drawSearchBar();
     ImGui.Spacing();
     this.drawURLSection();
@@ -78,6 +86,7 @@ export class Composition extends EditorWindow {
     ImGui.Spacing();
 
     this.drawCompositionList();
+    ImGui.EndDisabled();
   }
 
   private drawURLSection (): void {
@@ -164,10 +173,7 @@ export class Composition extends EditorWindow {
         ImGui.InvisibleButton(`##row_${idx}`, new ImGui.Vec2(rowFullRight - windowPos.x, LAYOUT.rowHeight));
 
         if (ImGui.IsItemClicked()) {
-          this.currentItem = idx;
-          this.currentCompositionURL = this.compositionURLs[idx];
-          Selection.select(null);
-          this.playURL(this.currentCompositionURL, idx);
+          this.playURL(this.compositionURLs[idx]);
         }
 
         ImGui.PopID();
@@ -254,12 +260,9 @@ export class Composition extends EditorWindow {
     }
   }
 
-  private playURL (url: string, listIndex?: number): void {
+  private playURL (url: string): void {
     if (!url) {
       return;
-    }
-    if (listIndex !== undefined) {
-      this.playingIndex = listIndex;
     }
     void GalaceanEffects.playURL(url);
   }

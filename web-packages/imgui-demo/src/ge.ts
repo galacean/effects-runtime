@@ -1,4 +1,5 @@
-import { Player } from '@galacean/effects';
+import { Player, getClass } from '@galacean/effects';
+import type { Scene } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -7,13 +8,13 @@ import '@galacean/effects-plugin-spine';
 import { AssetDatabase } from './core/asset-data-base';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
+import { sceneWorkspace } from './core/scene-document/scene-workspace';
+import { jsonData, resolveSceneURLs } from './core/scene-document/scene-values';
 
 export class GalaceanEffects {
   static player: Player;
   static assetDataBase: AssetDatabase;
   static sceneRendederTexture: WebGLTexture;
-  private static sceneLoad: Promise<void> = Promise.resolve();
-  private static pendingScene?: { url: string };
   static async initialize () {
     const container = document.getElementById('J-container');
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
@@ -26,8 +27,41 @@ export class GalaceanEffects {
     GalaceanEffects.player.renderer.addOverlayRenderer({ render: GalaceanEffects.updateRenderTexture });
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.assetServer.database = GalaceanEffects.assetDataBase;
-    // @ts-expect-error
-    GalaceanEffects.playURL({
+    const lastScene = await sceneWorkspace.initialize(async source => {
+      const player = this.player;
+      const manager = player.engine.assetServer.createAssetManager({ env: 'editor', autoplay: false, reusable: true });
+      const scene = await manager.loadScene(source, player.renderer);
+      const baseURL = typeof source === 'string' ? new URL(source, location.href).href : location.href;
+      const authored = resolveSceneURLs(scene.jsonScene, baseURL);
+
+      for (const composition of authored.compositions) {
+        for (const reference of composition.components ?? []) {
+          const component = authored.components.find(entry => entry.id === reference.id);
+
+          if (!component) {
+            throw new Error('The scene references a missing component: ' + reference.id);
+          }
+          if (!getClass(component.dataType)) { throw new Error('Unknown scene component type: ' + component.dataType); }
+        }
+      }
+
+      sceneWorkspace.current?.dispose();
+      Selection.clear('sync'); sceneWorkspace.current = undefined;
+      player.destroyCurrentCompositions();
+      let composition;
+
+      try { composition = await player.loadScene(scene, { autoplay: false, reusable: true }); } catch (error) {
+        player.destroyCurrentCompositions(); throw error;
+      }
+
+      return { composition, source: jsonData(authored) };
+    });
+
+    if (lastScene) {
+      await sceneWorkspace.openSaved(lastScene);
+      if (sceneWorkspace.current) { return; }
+    }
+    await GalaceanEffects.playURL({
       'playerVersion': {
         'web': '2.8.3',
         'native': '0.0.1.202311221223',
@@ -582,22 +616,8 @@ export class GalaceanEffects {
     });
   }
 
-  static playURL (url: string): void {
-    if (this.pendingScene?.url === url) { return; }
-    const request = { url };
-
-    this.pendingScene = request;
-    this.sceneLoad = this.sceneLoad.then(async () => {
-      if (this.pendingScene !== request) { return; }
-      Selection.clear();
-      this.player.destroyCurrentCompositions();
-      await this.player.loadScene(url, { autoplay: true });
-      if (this.pendingScene !== request) { this.player.destroyCurrentCompositions(); } else { this.pendingScene = undefined; }
-    }).catch(error => {
-      this.player.destroyCurrentCompositions();
-      if (this.pendingScene === request) { this.pendingScene = undefined; }
-      console.error('Failed to load composition.', error);
-    });
+  static async playURL (source: Scene.LoadType): Promise<void> {
+    await sceneWorkspace.requestOpen(source);
   }
 
   static updateRenderTexture () {

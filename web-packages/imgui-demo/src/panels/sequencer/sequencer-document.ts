@@ -5,11 +5,14 @@ import {
   VFXItem, REFERENCE_CURVE, createValueGetter, effectsClassStore, spec,
 } from '@galacean/effects';
 import type { Composition, EffectsObject, TimelineAsset, TimelineClip, TrackAsset } from '@galacean/effects';
-import { decodeCurve, decodeSpatialCurve, encodeCurve, insertBoundary, makeKey, sampleCurve, trimKeys, updateAutoTangents } from './curve-data';
+import { curveSourceSignature, decodeCurve, decodeSpatialCurve, encodeCurve, insertBoundary, makeKey, sampleCurve, trimKeys, updateAutoTangents } from './curve-data';
 import type { SequenceKey } from './curve-data';
 import { encodePositionPath } from './position-path';
 import { findSequenceTimeline, sampleSequencePreview } from './sequencer-preview';
 import { getEditorRotation } from '../../core/editor-transform';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
+import type { SequenceChannelEditorData, SequenceEditorData } from '../../core/scene-document/scene-storage';
+import { EditorHistory, historyBytes } from '../../core/scene-document/editor-history';
 
 type Payload = Record<string, unknown>;
 type TransformData = TransformPlayableAsset['transformAnimationData'];
@@ -61,9 +64,11 @@ export interface SequenceSnapshot {
   tracks: TrackSnapshot[],
   sections: SectionSnapshot[],
   locked: string[],
+  selection: SequenceSelection,
   transforms: { item: VFXItem, position: number[], rotation: number[], scale: number[] }[],
 }
-interface HistoryEntry { label: string, before: SequenceSnapshot, after: SequenceSnapshot }
+interface SequenceSelection { tracks: string[], sections: string[], keys: string[], activeChannel: string, curveTracks: string[] }
+interface SequenceEditorState extends SequenceSelection { locked: string[], muted: string[] }
 interface KeyClipboard {
   offset: number,
   channel: string,
@@ -97,9 +102,11 @@ export class SequencerDocument {
   readonly selectedTracks = new Set<string>();
   readonly selectedSections = new Set<string>();
   readonly selectedKeys = new Set<string>();
-  readonly history: HistoryEntry[] = [];
-  readonly redoHistory: HistoryEntry[] = [];
-  private transaction?: { label: string, before: SequenceSnapshot, changed: boolean };
+  activeChannel = '';
+  readonly curveTracks = new Set<string>();
+  readonly history = new EditorHistory();
+  private transaction?: { label: string, before: SequenceSnapshot, changed: boolean, affectsContent: boolean };
+  private unregisterEditorState?: () => void;
   private keyClipboard: KeyClipboard[] = [];
   private sectionClipboard: SectionClipboard[] = [];
   private trackClipboard: TrackClipboard[] = [];
@@ -116,13 +123,28 @@ export class SequencerDocument {
     this.timeline = timeline;
     timeline.on('changed', this.onTimelineChanged);
     this.sync();
+    this.unregisterEditorState = this.sceneDocument?.registerEditorState<SequenceEditorState>({
+      read: () => ({ ...this.selection(), locked: Array.from(this.locked), muted: Array.from(this.muted) }),
+      restore: state => {
+        const muteChanged = state.muted.length !== this.muted.size || state.muted.some(id => !this.muted.has(id));
+
+        this.transaction = undefined;
+        this.restoreSelection(state);
+        this.locked.clear(); state.locked.forEach(id => this.locked.add(id));
+        this.muted.clear(); state.muted.forEach(id => this.muted.add(id));
+        this.sync();
+        if (muteChanged) { this.changed(); }
+      },
+      valid: () => !this.composition.isDestroyed && this.component.isRegistered,
+    });
   }
 
   get tracks (): TrackAsset[] { return this.timeline.flattenedTracks; }
   get currentTime (): number { return this.component.getTime() - this.component.startTime; }
   get duration (): number { return Math.max(1 / 30, this.component.item.duration); }
-  get canUndo (): boolean { return this.history.length > 0; }
-  get canRedo (): boolean { return this.redoHistory.length > 0; }
+  private get sceneDocument () { return sceneWorkspace.current?.composition === this.composition ? sceneWorkspace.current : undefined; }
+  get canUndo (): boolean { return this.sceneDocument?.canUndo ?? this.history.canUndo; }
+  get canRedo (): boolean { return this.sceneDocument?.canRedo ?? this.history.canRedo; }
   get hasClipboard (): boolean { return this.keyClipboard.length > 0 || this.sectionClipboard.length > 0 || this.trackClipboard.length > 0; }
 
   sync (): void {
@@ -145,6 +167,8 @@ export class SequencerDocument {
   }
 
   dispose (): void {
+    this.unregisterEditorState?.();
+    this.history.clear('The timeline editor was closed.');
     this.timeline.off('changed', this.onTimelineChanged);
     if (this.muted.size && this.component.isRegistered) { sampleSequencePreview(this.component, this.timeline, new Set()); }
   }
@@ -219,7 +243,7 @@ export class SequencerDocument {
       const id = track.getInstanceId();
 
       if (this.muted.has(id)) { this.muted.delete(id); } else { this.muted.add(id); }
-    });
+    }, false);
   }
 
   channelValue (section: SequenceSection, channel: SequenceChannel, time = this.currentTime): number {
@@ -248,13 +272,20 @@ export class SequencerDocument {
     return channel.keys.length ? sampleCurve(channel.keys, (time - section.clip.start) / section.clip.duration) : channel.defaultValue;
   }
 
-  begin (label: string): void {
-    if (!this.transaction) { this.transaction = { label, before: this.snapshot(), changed: false }; }
+  begin (label: string, affectsContent = true): void {
+    if (!this.transaction) {
+      this.transaction = { label, before: this.snapshot(), changed: false, affectsContent };
+      this.sceneDocument?.beginSequence(this, label, this.transaction.before, affectsContent);
+    } else if (affectsContent && !this.transaction.affectsContent) {
+      this.transaction.affectsContent = true;
+      this.sceneDocument?.beginSequence(this, label, this.transaction.before, true);
+    }
   }
 
   changed (): void {
     if (this.transaction) { this.transaction.changed = true; }
     this.revision++;
+    if (this.transaction?.affectsContent) { this.sceneDocument?.changedSequence(this); }
     sampleSequencePreview(this.component, this.timeline, this.muted);
     this.previewDirty = false;
   }
@@ -263,35 +294,53 @@ export class SequencerDocument {
     const transaction = this.transaction;
 
     this.transaction = undefined;
+    if (this.sceneDocument) {
+      if (transaction?.changed && transaction.affectsContent) { this.sceneDocument.changedSequence(this); }
+      this.sceneDocument.setScopeActive(this, false);
+
+      return;
+    }
     if (!transaction?.changed) { return; }
-    this.history.push({ label: transaction.label, before: transaction.before, after: this.snapshot() });
-    if (this.history.length > 100) { this.history.shift(); }
-    this.redoHistory.length = 0;
+    const before = transaction.before, after = this.snapshot();
+
+    this.history.push({ label: transaction.label, bytes: historyBytes([before, after]),
+      valid: () => !this.composition.isDestroyed && this.isValidSnapshot(before) && this.isValidSnapshot(after),
+      undo: () => this.restore(before), redo: () => this.restore(after) });
   }
 
   cancel (): void {
     const before = this.transaction?.before;
 
     this.transaction = undefined;
-    if (before) { this.restore(before); }
+    if (before) {
+      if (this.sceneDocument) { this.sceneDocument.cancelSequence(this); } else { this.restore(before); }
+    }
   }
 
-  edit (label: string, action: () => void): void {
-    this.begin(label);
-    try { action(); this.changed(); this.commit(); } catch (error) { this.cancel(); throw error; }
+  edit (label: string, action: () => void, affectsContent = true): void {
+    const nested = !!this.transaction;
+
+    this.begin(label, affectsContent);
+    try { action(); this.changed(); if (!nested) { this.commit(); } } catch (error) { this.cancel(); throw error; }
   }
 
   undo (): void {
     this.commit();
-    const entry = this.history.pop();
+    if (this.sceneDocument) {
+      sceneWorkspace.undo();
 
-    if (entry) { this.restore(entry.before); this.redoHistory.push(entry); }
+      return;
+    }
+    this.history.undo();
   }
 
   redo (): void {
-    const entry = this.redoHistory.pop();
+    if (this.sceneDocument) {
+      sceneWorkspace.redo();
 
-    if (entry) { this.restore(entry.after); this.history.push(entry); }
+      return;
+    }
+    this.commit(); this.history.redo();
   }
 
   setTime (time: number): void {
@@ -301,6 +350,20 @@ export class SequencerDocument {
 
   clearSelection (): void {
     this.selectedTracks.clear(); this.selectedSections.clear(); this.selectedKeys.clear();
+  }
+
+  private selection (): SequenceSelection {
+    return { tracks: Array.from(this.selectedTracks), sections: Array.from(this.selectedSections), keys: Array.from(this.selectedKeys),
+      activeChannel: this.activeChannel, curveTracks: Array.from(this.curveTracks) };
+  }
+
+  private restoreSelection (state: SequenceSelection): void {
+    this.clearSelection();
+    state.tracks.forEach(id => this.selectedTracks.add(id));
+    state.sections.forEach(id => this.selectedSections.add(id));
+    state.keys.forEach(id => this.selectedKeys.add(id));
+    this.activeChannel = state.activeChannel;
+    this.curveTracks.clear(); state.curveTracks.forEach(id => this.curveTracks.add(id));
   }
 
   addBinding (item: VFXItem): ObjectBindingTrack {
@@ -693,7 +756,7 @@ export class SequencerDocument {
     const items = new Set(this.tracks.map(track => this.boundItem(track)).filter((item): item is VFXItem => !!item));
 
     return {
-      roots: [...this.timeline.tracks], locked: Array.from(this.locked),
+      roots: [...this.timeline.tracks], locked: Array.from(this.locked), selection: this.selection(),
       transforms: Array.from(items, item => ({ item, position: item.transform.position.toArray(),
         rotation: getEditorRotation(item.transform).toArray(), scale: item.transform.scale.toArray() })),
       tracks: this.tracks.map(track => ({
@@ -734,16 +797,18 @@ export class SequencerDocument {
   }
 
   restore (snapshot: SequenceSnapshot): void {
+    this.transaction = undefined;
     for (const track of this.tracks) { this.component.clearBinding(track); }
     this.timeline.tracks.splice(0, this.timeline.tracks.length, ...snapshot.roots);
     this.muted.clear();
     for (const state of snapshot.tracks) {
       state.track.name = state.name;
+      Reflect.set(state.track, 'parent', undefined);
       if (state.muted) { this.muted.add(state.track.getInstanceId()); }
       state.track.getChildTracks().splice(0, state.track.getChildTracks().length, ...state.children);
       state.track.getClips().splice(0, state.track.getClips().length, ...state.clips);
-      for (const child of state.children) { child.parent = state.track; }
     }
+    for (const state of snapshot.tracks) { for (const child of state.children) { child.parent = state.track; } }
     this.locked.clear(); snapshot.locked.forEach(id => this.locked.add(id));
     this.timeline.markAsChanged();
     for (const state of snapshot.tracks) { if (state.binding) { this.component.setBinding(state.track, state.binding); } }
@@ -752,6 +817,7 @@ export class SequencerDocument {
 
       section.clip.start = state.start; section.clip.duration = state.duration;
       section.clip.endBehavior = state.endBehavior; section.clip.name = state.name; section.payload = copy(state.payload); section.channelState = new Map(state.channelState);
+      section.channels = state.channels.map(channel => channel.channel);
       for (const channel of state.channels) {
         channel.channel.keys = channel.keys.map(key => ({ ...key }));
         channel.channel.references = channel.references ? new Map(channel.references) : undefined;
@@ -763,7 +829,14 @@ export class SequencerDocument {
       item.transform.setRotation(rotation[0], rotation[1], rotation[2]);
       item.transform.setScale(scale[0], scale[1], scale[2]);
     }
-    this.changed();
+    this.restoreSelection(snapshot.selection); this.sync(); this.changed();
+  }
+
+  isValidSnapshot (snapshot: SequenceSnapshot): boolean {
+    return this.component.isRegistered && snapshot.tracks.every(state => state.track.isRegistered && (!state.binding || state.binding.isRegistered)) &&
+      snapshot.sections.every(state => state.section.clip.isRegistered && state.channels.every(channel =>
+        !channel.references || Array.from(channel.references.values()).every(reference => !reference || reference.isRegistered))) &&
+      snapshot.transforms.every(state => state.item.isRegistered);
   }
 
   exportData (): object {
@@ -785,15 +858,57 @@ export class SequencerDocument {
     };
   }
 
+  exportEditorData (): SequenceEditorData {
+    const id = (object: EffectsObject) => this.sceneDocument?.serializer.id(object) ?? object.getInstanceId();
+
+    return {
+      timelineId: id(this.timeline),
+      sections: Object.fromEntries(this.allSections().map(section => [id(section.clip), section.channels.filter(channel => channel.kind === 'number').map(channel => ({
+        group: channel.group, axis: channel.axis, defaultValue: channel.defaultValue,
+        source: curveSourceSignature(this.channelSource(section, channel.group)),
+        keys: channel.keys.map(({ id: _id, ...key }) => ({ ...key })),
+      }))])),
+    };
+  }
+
+  private channelSource (section: SequenceSection, group: string): unknown {
+    if (section.clip instanceof TransformPlayableAsset) {
+      const data = section.payload as unknown as TransformData;
+
+      return group === 'Location' ? data.positionOverLifetime?.path : group === 'Rotation' ? data.rotationOverLifetime : data.sizeOverLifetime;
+    }
+
+    return section.clip instanceof SpriteColorPlayableAsset ? section.payload.colorOverLifetime : section.payload.curveData;
+  }
+
+  private savedChannels (section: SequenceSection): SequenceChannelEditorData[] {
+    const document = this.sceneDocument;
+
+    if (!document) { return []; }
+    const timelineId = document.serializer.id(this.timeline);
+    const data = document.editor.sequences?.[timelineId] ?? document.editor.sequences?.[document.serializer.id(this.component)];
+
+    if (!data || data.timelineId !== timelineId) { return []; }
+
+    return (data.sections?.[document.serializer.id(section.clip)] ?? []).filter(channel =>
+      channel.source === curveSourceSignature(this.channelSource(section, channel.group)) && Number.isFinite(channel.defaultValue) &&
+      Array.isArray(channel.keys) && channel.keys.every(key =>
+        [key.time, key.value, key.inSlope, key.outSlope, key.inWeight, key.outWeight, key.weightedMode, key.interpolationMode].every(Number.isFinite) &&
+        ['auto', 'user', 'break'].includes(key.tangentMode)));
+  }
+
   private readSection (clip: TimelineClip, track: TrackAsset): SequenceSection {
     const payload = copy(clip instanceof TransformPlayableAsset ? clip.transformAnimationData ?? {} :
       clip instanceof SpriteColorPlayableAsset ? clip.data ?? {} : clip.definition ?? {}) as Payload;
     const section: SequenceSection = { clip, track, payload, channels: [], channelState: new Map() };
     const item = this.boundItem(track);
+    const saved = this.savedChannels(section);
     const add = (group: string, label: string, axis: number, expression: spec.FixedNumberExpression | undefined, fallback: number) => {
+      const authored = saved.find(channel => channel.group === group && channel.axis === axis);
       const channel: SequenceChannel = {
         id: clip.getInstanceId() + ':' + group + '.' + label, group, label, axis,
-        keys: decodeCurve(expression, fallback), defaultValue: fallback, kind: 'number',
+        keys: authored ? authored.keys.map(key => ({ ...key, id: makeKey(key.time, key.value).id })) : decodeCurve(expression, fallback),
+        defaultValue: authored && this.channelSource(section, group) !== undefined ? authored.defaultValue : fallback, kind: 'number',
       };
 
       section.channels.push(channel);
@@ -809,6 +924,7 @@ export class SequencerDocument {
       for (let axis = 0; axis < 3; axis++) {
         const channel = add('Location', ['X', 'Y', 'Z'][axis], axis, undefined, defaults[axis]);
 
+        if (saved.some(entry => entry.group === 'Location' && entry.axis === axis)) { continue; }
         if (path && Array.isArray(path) && path[0] === spec.ValueType.CONSTANT_VEC3) {
           channel.keys = [makeKey(0, path[1][axis])];
         } else if (path?.[0] === spec.ValueType.LINEAR_PATH && path[1][0].every(key => key[2] === 1 && key[3] === 1)) {
@@ -845,7 +961,9 @@ export class SequencerDocument {
     } else if (clip instanceof FloatPropertyPlayableAsset) {
       const channel = add('Value', 'Value', 0, undefined, clip.curve?.getValue(0) ?? 0);
 
-      channel.keys = clip.curve instanceof BezierCurve ? clip.curve.getKeyFrames().map(key => ({ ...key, id: makeKey(0, 0).id, tangentMode: 'user' })) : [makeKey(0, channel.defaultValue)];
+      if (!saved.some(entry => entry.group === 'Value' && entry.axis === 0)) {
+        channel.keys = clip.curve instanceof BezierCurve ? clip.curve.getKeyFrames().map(key => ({ ...key, id: makeKey(0, 0).id, tangentMode: 'user' })) : [makeKey(0, channel.defaultValue)];
+      }
     } else if (clip instanceof ObjectReferencePropertyPlayableAsset) {
       const channel = add('Sprite', 'Reference', 0, undefined, 0);
 
@@ -867,7 +985,7 @@ export class SequencerDocument {
   private channelSignature (section: SequenceSection, group: string): string {
     return JSON.stringify(section.channels.filter(channel => channel.group === group).map(channel => channel.keys.map(key => ({
       time: key.time, value: key.value, inSlope: key.inSlope, outSlope: key.outSlope, inWeight: key.inWeight,
-      outWeight: key.outWeight, interpolationMode: key.interpolationMode,
+      outWeight: key.outWeight, weightedMode: key.weightedMode, interpolationMode: key.interpolationMode,
     }))));
   }
 

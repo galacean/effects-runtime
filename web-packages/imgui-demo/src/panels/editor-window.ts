@@ -16,6 +16,8 @@ export class EditorWindow {
   private firstFrame = true;
   private windowFlags = ImGui.WindowFlags.None;
 
+  get layoutId (): string { return this.title.includes('###') ? this.title.split('###')[1] : this.title; }
+
   static getWindow<T extends EditorWindow> (type: new () => T): T {
     if (!getWindowFn) {
       throw new Error('EditorApplication not initialized');
@@ -27,12 +29,15 @@ export class EditorWindow {
   update (dt: number) {
   }
 
+  flushEdits (): void {
+  }
+
   draw () {
     if (!this.opened) {
       return;
     }
     if (this.firstFrame) {
-      ImGui.SetNextWindowSize(this.initialSize);
+      ImGui.SetNextWindowSize(this.initialSize, ImGui.Cond.FirstUseEver);
       this.firstFrame = false;
     }
 
@@ -94,6 +99,9 @@ export class EditorWindow {
   }
 
   onSelectionChange () {
+  }
+
+  onUndoRedo (): void {
   }
 
   private setActive (active: boolean): void {

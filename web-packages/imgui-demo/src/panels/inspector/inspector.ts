@@ -17,6 +17,7 @@ import { drawInspectorIcon, inspectorIconButton } from './inspector-icons';
 import { drawControlLayout, LAYOUT_TERMS } from './layout-inspector';
 import { drawMaterialProperties, materialSearchTerms } from './material-inspector';
 import { DebugInspector } from './debug-inspector';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 
 const TRANSFORM_TERMS = ['Location', 'Position', 'Rotation', 'Scale', 'Size', 'X', 'Y', 'Z'];
 const END_BEHAVIORS = [spec.EndBehavior.destroy, spec.EndBehavior.forward, spec.EndBehavior.freeze, spec.EndBehavior.restart];
@@ -56,7 +57,28 @@ export class Inspector extends EditorWindow {
   override draw (): void {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
     ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
-    super.draw(); ImGui.PopStyleColor(); ImGui.PopStyleVar();
+    const changed = sceneWorkspace.observe('Edit properties', () => super.draw(),
+      [this.activeObject, this.lockedObject ?? Selection.getSelectedObjects()[0]]);
+
+    if (changed) { sceneWorkspace.current?.setScopeActive(this, true); }
+    if (!ImGui.IsAnyItemActive()) { sceneWorkspace.current?.setScopeActive(this, false); }
+    ImGui.PopStyleColor(); ImGui.PopStyleVar();
+  }
+
+  override flushEdits (): void {
+    if (this.activeObject && this.editingName) {
+      sceneWorkspace.observe('Rename object', () => this.commitName(this.activeObject!), [this.activeObject]);
+      this.editingName = false;
+    }
+    sceneWorkspace.current?.setScopeActive(this, false);
+  }
+
+  override onUndoRedo (): void {
+    this.editingName = false; this.activeObject = undefined;
+  }
+
+  override onSelectionChange (): void {
+    if (Selection.changeSource === 'history') { this.onUndoRedo(); }
   }
 
   protected override onGUI (): void {

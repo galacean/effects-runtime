@@ -403,6 +403,9 @@ export function createPreviewPlayer (): Player {
   newDiv.style.width = '100px';
   newDiv.style.height = '100px';
   newDiv.style.backgroundColor = 'black';
+  newDiv.style.position = 'absolute';
+  newDiv.style.left = '-10000px';
+  newDiv.style.pointerEvents = 'none';
 
   // 将 div 添加到页面中
   document.body.appendChild(newDiv);

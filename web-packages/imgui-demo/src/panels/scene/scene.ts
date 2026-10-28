@@ -10,6 +10,7 @@ import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
 import { EditorColors } from '../theme';
 import { SceneToolbar } from './scene-toolbar';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 
 @editorWindow()
 export class Scene extends EditorWindow {
@@ -21,6 +22,7 @@ export class Scene extends EditorWindow {
   private showGrid = true;
   private pendingFit = false;
   private viewportVisible = false;
+  private updatingInput = false;
   private readonly toolbar = new SceneToolbar();
 
   get is2DMode (): boolean {
@@ -48,6 +50,7 @@ export class Scene extends EditorWindow {
   }
 
   override update (): void {
+    this.title = 'Scene' + (sceneWorkspace.current?.dirty ? ' *' : '') + '###Scene';
     const composition = GalaceanEffects.player.getCompositions()[0];
 
     if (composition !== this.gizmo?.composition) {
@@ -74,8 +77,19 @@ export class Scene extends EditorWindow {
   }
 
   protected override onDisable (): void {
+    this.flushEdits();
     this.setViewportVisible(false);
   }
+
+  override flushEdits (): void {
+    if (this.updatingInput || !this.input || !this.gizmo) { return; }
+    sceneWorkspace.observe('Transform selection', () => {
+      this.input?.finish(); this.gizmo?.handler.resetEditMode();
+    }, this.gizmo.selectedItems);
+    sceneWorkspace.current?.setScopeActive(this, false);
+  }
+
+  override onUndoRedo (): void { this.input?.reset(); this.gizmo?.refreshSelection(); }
 
   protected override onGUI (): void {
     this.toolbar.draw({
@@ -138,7 +152,14 @@ export class Scene extends EditorWindow {
     const hovered = ImGui.IsItemHovered();
 
     if (this.gizmo && this.is2DMode) {
-      this.input?.update(origin, hovered, ImGui.IsWindowFocused());
+      const changed = sceneWorkspace.observe('Transform selection', () => {
+        this.updatingInput = true;
+        try { this.input?.update(origin, hovered, ImGui.IsWindowFocused()); } finally { this.updatingInput = false; }
+      }, this.gizmo.selectedItems);
+      const editingText = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
+
+      if (changed || editingText) { sceneWorkspace.current?.setScopeActive(this, true); }
+      if (!this.gizmo.handler.isMouseButtonPressed() && !editingText) { sceneWorkspace.current?.setScopeActive(this, false); }
     } else if (this.gizmo && hovered) {
       this.updatePerspective(size);
     }

@@ -80,14 +80,18 @@ export class SceneViewportInput {
     }
   }
 
-  readonly reset = (): void => {
+  finish (): void { this.resetInput(false); }
+
+  readonly reset = (): void => { this.resetInput(true); };
+
+  private resetInput (canceled: boolean): void {
     for (const { button, mask } of BUTTONS) {
       if ((this.buttons & mask) !== 0) {
         this.buttons &= ~mask;
         const event = this.mouseEvent(new InputEventMouseButton(), this.position);
 
         event.buttonIndex = button;
-        event.canceled = true;
+        event.canceled = canceled;
         this.emit(event);
       }
     }
@@ -108,7 +112,7 @@ export class SceneViewportInput {
     if (canvas) {
       canvas.style.cursor = '';
     }
-  };
+  }
 
   dispose (): void {
     this.reset();
