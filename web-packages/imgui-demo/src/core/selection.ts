@@ -5,18 +5,19 @@ export class Selection {
   private static readonly _listeners: Set<SelectionListener> = new Set();
 
   static select (object: object | null): void {
-    if (object === null) {
-      Selection.clear();
+    Selection.setObjects(object ? [object] : []);
+  }
 
+  /** 一次提交完整选区，避免多选同步时发出中间状态。 */
+  static setObjects (objects: object[]): void {
+    const next = Array.from(new Set(objects));
+    const current = Selection.getSelectedObjects();
+
+    if (next.length === current.length && next.every((object, index) => object === current[index])) {
       return;
     }
-
-    if (Selection._selectedObjects.has(object) && Selection._selectedObjects.size === 1) {
-      return;
-    }
-
     Selection._selectedObjects.clear();
-    Selection._selectedObjects.add(object);
+    next.forEach(object => Selection._selectedObjects.add(object));
     Selection.emitSelectionChanged();
   }
 

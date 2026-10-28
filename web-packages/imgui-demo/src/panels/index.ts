@@ -2,7 +2,7 @@ export * from './composition';
 export * from './project';
 export * from './hierarchy';
 export * from './preview';
-export * from './inspector';
+export * from './inspector/index';
 export * from './scene';
 export * from './content-browser';
 export * from './animation-clip';

@@ -143,7 +143,7 @@ function canvas_on_blur (event: FocusEvent): void {
   io.AddKeyEvent(ImGui.Key.Mod_Alt, false);
   io.AddKeyEvent(ImGui.Key.Mod_Super, false);
   for (let i = 0; i < io.MouseDown.length; ++i) {
-    io.MouseDown[i] = false;
+    io.AddMouseButtonEvent(i, false);
   }
 }
 
@@ -236,6 +236,10 @@ function ime_create (): void {
   ime_input.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!is_composing && !e.isComposing) {
       canvas_on_keydown(e);
+      // Enter is handled by the key event; suppress the textarea's duplicate newline input.
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+        e.preventDefault();
+      }
     }
   });
   ime_input.addEventListener('keyup', (e: KeyboardEvent) => {
@@ -285,8 +289,7 @@ function canvas_on_keypress (event: KeyboardEvent): void {
 function canvas_on_pointermove (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MousePos.x = event.offsetX;
-  io.MousePos.y = event.offsetY;
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
   if (io.WantCaptureMouse) {
     event.preventDefault();
   }
@@ -304,9 +307,10 @@ const mouse_button_map: number[] = [0, 2, 1, 3, 4];
 function canvas_on_pointerdown (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MousePos.x = event.offsetX;
-  io.MousePos.y = event.offsetY;
-  io.MouseDown[mouse_button_map[event.button]] = true;
+  // 将输入排队，保留两次渲染之间的快速按下与抬起。
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
+  io.AddMouseButtonEvent(mouse_button_map[event.button], true);
+  canvas?.setPointerCapture(event.pointerId);
   // if (io.WantCaptureMouse) {
   //     event.preventDefault();
   // }
@@ -322,9 +326,18 @@ function canvas_on_contextmenu (event: Event): void {
 function canvas_on_pointerup (event: PointerEvent): void {
   const io = ImGui.GetIO();
 
-  io.MouseDown[mouse_button_map[event.button]] = false;
+  io.AddMousePosEvent(event.offsetX, event.offsetY);
+  io.AddMouseButtonEvent(mouse_button_map[event.button], false);
   if (io.WantCaptureMouse) {
     event.preventDefault();
+  }
+}
+
+function canvas_on_pointercancel (): void {
+  const io = ImGui.GetIO();
+
+  for (let button = 0; button < io.MouseDown.length; button++) {
+    io.AddMouseButtonEvent(button, false);
   }
 }
 
@@ -343,8 +356,7 @@ function canvas_on_wheel (event: WheelEvent): void {
 
       break;
   }
-  io.MouseWheelH = event.deltaX * scale;
-  io.MouseWheel = -event.deltaY * scale; // Mouse wheel: 1 unit scrolls about 5 lines text.
+  io.AddMouseWheelEvent(event.deltaX * scale, -event.deltaY * scale);
   if (io.WantCaptureMouse) {
     event.preventDefault();
   }
@@ -430,6 +442,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
     canvas.addEventListener('pointerdown', canvas_on_pointerdown);
     canvas.addEventListener('contextmenu', canvas_on_contextmenu);
     canvas.addEventListener('pointerup', canvas_on_pointerup);
+    canvas.addEventListener('pointercancel', canvas_on_pointercancel);
     canvas.addEventListener('wheel', canvas_on_wheel);
   }
 
@@ -437,6 +450,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
 
   // Setup back-end capabilities flags
   io.BackendFlags |= ImGui.BackendFlags.HasMouseCursors;   // We can honor GetMouseCursor() values (optional)
+  if (gl || ctx) { io.BackendFlags |= ImGui.BackendFlags.RendererHasVtxOffset; }
 
   // Keyboard input is handled via AddKeyEvent in canvas_on_keydown/canvas_on_keyup
 
@@ -444,6 +458,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
 }
 
 export function Shutdown (): void {
+  ImGui.GetIO().BackendFlags &= ~ImGui.BackendFlags.RendererHasVtxOffset;
   DestroyDeviceObjects();
 
   if (canvas !== null) {
@@ -455,6 +470,7 @@ export function Shutdown (): void {
     canvas.removeEventListener('pointerdown', canvas_on_pointerdown);
     canvas.removeEventListener('contextmenu', canvas_on_contextmenu);
     canvas.removeEventListener('pointerup', canvas_on_pointerup);
+    canvas.removeEventListener('pointercancel', canvas_on_pointercancel);
     canvas.removeEventListener('wheel', canvas_on_wheel);
   }
 
@@ -691,10 +707,6 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
   gl && gl.enableVertexAttribArray(g_AttribLocationUV);
   gl && gl.enableVertexAttribArray(g_AttribLocationColor);
 
-  gl && gl.vertexAttribPointer(g_AttribLocationPosition, 2, gl.FLOAT, false, ImGui.DrawVertSize, ImGui.DrawVertPosOffset);
-  gl && gl.vertexAttribPointer(g_AttribLocationUV, 2, gl.FLOAT, false, ImGui.DrawVertSize, ImGui.DrawVertUVOffset);
-  gl && gl.vertexAttribPointer(g_AttribLocationColor, 4, gl.UNSIGNED_BYTE, true, ImGui.DrawVertSize, ImGui.DrawVertColOffset);
-
   // Draw
   const pos = draw_data.DisplayPos;
   const idx_buffer_type: GLenum = gl && ((ImGui.DrawIdxSize === 4) ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT) || 0;
@@ -704,7 +716,7 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
     gl || ctx || console.log('VtxBuffer.length', draw_list.VtxBuffer.length);
     gl || ctx || console.log('IdxBuffer.length', draw_list.IdxBuffer.length);
 
-    let idx_buffer_offset = 0;
+    let vertex_offset = -1;
 
     gl && gl.bindBuffer(gl.ARRAY_BUFFER, g_VboHandle);
     gl && gl.bufferData(gl.ARRAY_BUFFER, draw_list.VtxBuffer, gl.STREAM_DRAW);
@@ -712,6 +724,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
     gl && gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, draw_list.IdxBuffer, gl.STREAM_DRAW);
 
     draw_list.IterateDrawCmds((draw_cmd: ImGui.DrawCmd): void => {
+      const idx_buffer_offset = draw_cmd.IdxOffset * ImGui.DrawIdxSize;
+
       gl || ctx || console.log(draw_cmd);
       gl || ctx || console.log('ElemCount', draw_cmd.ElemCount);
       gl || ctx || console.log('ClipRect', draw_cmd.ClipRect.x, fb_height - draw_cmd.ClipRect.w, draw_cmd.ClipRect.z - draw_cmd.ClipRect.x, draw_cmd.ClipRect.w - draw_cmd.ClipRect.y);
@@ -732,6 +746,15 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
         const clip_rect = new ImGui.Vec4(draw_cmd.ClipRect.x - pos.x, draw_cmd.ClipRect.y - pos.y, draw_cmd.ClipRect.z - pos.x, draw_cmd.ClipRect.w - pos.y);
 
         if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0 && clip_rect.w >= 0.0) {
+          if (gl && vertex_offset !== draw_cmd.VtxOffset) {
+            const byte_offset = draw_cmd.VtxOffset * ImGui.DrawVertSize;
+
+            // WebGL applies each command's base vertex through attribute byte offsets.
+            gl.vertexAttribPointer(g_AttribLocationPosition, 2, gl.FLOAT, false, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertPosOffset);
+            gl.vertexAttribPointer(g_AttribLocationUV, 2, gl.FLOAT, false, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertUVOffset);
+            gl.vertexAttribPointer(g_AttribLocationColor, 4, gl.UNSIGNED_BYTE, true, ImGui.DrawVertSize, byte_offset + ImGui.DrawVertColOffset);
+            vertex_offset = draw_cmd.VtxOffset;
+          }
           // Apply scissor/clipping rectangle
           gl && gl.scissor(clip_rect.x, fb_height - clip_rect.w, clip_rect.z - clip_rect.x, clip_rect.w - clip_rect.y);
 
@@ -741,6 +764,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
           gl && gl.drawElements(gl.TRIANGLES, draw_cmd.ElemCount, idx_buffer_type, idx_buffer_offset);
 
           if (ctx) {
+            const vtx_buffer_offset = draw_list.VtxBuffer.byteOffset + draw_cmd.VtxOffset * ImGui.DrawVertSize;
+
             ctx.save();
             ctx.beginPath();
             ctx.rect(clip_rect.x, clip_rect.y, clip_rect.z - clip_rect.x, clip_rect.w - clip_rect.y);
@@ -753,15 +778,15 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
               const i0: number = idx[i + 0];
               const i1: number = idx[i + 1];
               const i2: number = idx[i + 2];
-              const v0: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i0 * ImGui.DrawVertSize);
-              const v1: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i1 * ImGui.DrawVertSize);
-              const v2: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i2 * ImGui.DrawVertSize);
+              const v0: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i0 * ImGui.DrawVertSize);
+              const v1: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i1 * ImGui.DrawVertSize);
+              const v2: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i2 * ImGui.DrawVertSize);
               const i3: number = idx[i + 3];
               const i4: number = idx[i + 4];
               const i5: number = idx[i + 5];
-              const v3: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i3 * ImGui.DrawVertSize);
-              const v4: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i4 * ImGui.DrawVertSize);
-              const v5: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, draw_list.VtxBuffer.byteOffset + i5 * ImGui.DrawVertSize);
+              const v3: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i3 * ImGui.DrawVertSize);
+              const v4: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i4 * ImGui.DrawVertSize);
+              const v5: ImGui.DrawVert = new ImGui.DrawVert(draw_list.VtxBuffer.buffer, vtx_buffer_offset + i5 * ImGui.DrawVertSize);
               let quad = true;
               let minmin: ImGui.DrawVert = v0;
               let minmax: ImGui.DrawVert = v0;
@@ -820,7 +845,6 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
           }
         }
       }
-      idx_buffer_offset += draw_cmd.ElemCount * ImGui.DrawIdxSize;
     });
   });
 

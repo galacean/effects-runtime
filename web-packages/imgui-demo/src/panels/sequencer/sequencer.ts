@@ -1,691 +1,902 @@
-import type { Composition } from '@galacean/effects';
-import { Component, CompositionComponent, TransformTrack, VFXItem } from '@galacean/effects';
+import { CompositionComponent, InterpolationMode, ObjectBindingTrack, TransformTrack, VFXItem } from '@galacean/effects';
+import type { TrackAsset } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
+import { Selection } from '../../core/selection';
+import { getEditorRotation } from '../../core/editor-transform';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
+import { searchBar } from '../../widgets';
+import { editorMenuSection } from '../../widgets/editor-menu';
 import { EditorWindow } from '../editor-window';
-import { Selection } from '../../core/selection';
-import { COLORS, LAYOUT } from './theme';
+import { SequencerCanvas } from './sequencer-canvas';
+import type { SequencerContext } from './sequencer-canvas';
+import { SequencerDocument } from './sequencer-document';
+import type { KeySelection, SequenceSection } from './sequencer-document';
 import { SequencerState } from './sequencer-state';
-import { splitter } from '../../widgets';
-import { TrackLabelRenderer } from './track-label-renderer';
-import { ClipRenderer } from './clip-renderer';
-import { KeyframeRenderer } from './keyframe-renderer';
-import { CurveRenderer } from './curve-renderer';
-import { timeToPixel, pixelToTime, drawTimeMarkers, beginScrub, endScrub } from './timeline-utils';
-import { collectCurveChannelsForSelection, computeSharedValueRange } from './data-extraction';
+import { updateAutoTangents } from './curve-data';
+import { SEQUENCE_COLORS as C, SEQUENCE_LAYOUT as L } from './sequencer-style';
+
+import { drawSequenceIcon } from './sequencer-icons';
+import type { SequenceIcon } from './sequencer-icons';
+import { findSequenceTimeline } from './sequencer-preview';
+type Interpolation = 'Auto' | 'User' | 'Break' | 'Linear' | 'Constant';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
-  private state = new SequencerState();
-  private trackLabelRenderer: TrackLabelRenderer;
-  private clipRenderer: ClipRenderer;
-  private keyframeRenderer: KeyframeRenderer;
-  private curveRenderer: CurveRenderer;
+  private readonly state = new SequencerState();
+  private readonly canvas = new SequencerCanvas(this.state, track => this.selectBoundItems(track));
+  private document?: SequencerDocument;
+  private searchBuffer: ImGui.ImScalar<string> = [''];
+  private renameTrack?: TrackAsset;
+  private renameValue = '';
+  private renameRequested = false;
+  private context?: SequencerContext;
+  private viewWidth = 500;
+  private autoKey = false;
+  private autoValues = new Map<string, number[]>();
+  private lastRevision = -1;
+  private syncingSelection = false;
+  private lastAutoTime = NaN;
+  private autoRecording = false;
+  private acceptsClipboard = false;
+  private clipboardCommands: string[] = [];
+  private readonly onClipboard = (event: ClipboardEvent): void => {
+    if (!this.acceptsClipboard || event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable="true"]')) { return; }
+    this.clipboardCommands.push(event.type);
+    event.preventDefault();
+  };
 
   @menuItem('Window/Sequencer')
-  static showWindow () {
-    EditorWindow.getWindow(Sequencer).open();
-  }
+  static showWindow (): void { EditorWindow.getWindow(Sequencer).open(); }
 
   constructor () {
-    super();
-    this.title = 'Sequencer';
+    super(); this.title = 'Sequencer';
+    this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
     this.open();
+  }
 
-    this.trackLabelRenderer = new TrackLabelRenderer(this.state);
-    this.clipRenderer = new ClipRenderer(this.state);
-    this.keyframeRenderer = new KeyframeRenderer(this.state);
-    this.curveRenderer = new CurveRenderer(this.state);
+  override update (): void {
+    const composition = GalaceanEffects.player.getCompositions()[0];
 
-    // 注入渲染器到 ClipRenderer 避免循环依赖
-    this.clipRenderer.setKeyframeRenderer(this.keyframeRenderer);
+    if (!composition) {
+      this.document?.dispose();
+      this.document = undefined;
+
+      return;
+    }
+    let component = composition.sceneRoot.getComponent(CompositionComponent);
+    const selected = Selection.getSelectedObjects()[0];
+
+    if (selected instanceof VFXItem) { component = selected.getComponent(CompositionComponent) ?? component; }
+    const timeline = component ? findSequenceTimeline(component) : undefined;
+
+    if (!component || !timeline) {
+      this.document?.dispose();
+      this.document = undefined;
+
+      return;
+    }
+    if (this.document?.component !== component || this.document.timeline !== timeline) {
+      this.document?.dispose();
+      this.document = new SequencerDocument(composition, component);
+      this.state.initialize(this.document); this.searchBuffer[0] = '';
+      this.autoValues.clear(); this.lastRevision = -1;
+      this.lastAutoTime = NaN; this.autoRecording = false;
+      this.onSelectionChange();
+    }
+    const document = this.document;
+
+    document.sync();
+    if (!composition.getPaused() && document.currentTime >= this.state.playbackEnd) {
+      document.setTime(this.state.loop ? this.state.playbackStart : this.state.playbackEnd);
+      if (this.state.loop) { void composition.resume(); }
+    }
+    this.updateAutoKey(document);
+  }
+
+  override onSelectionChange (): void {
+    const document = this.document;
+
+    if (!document || this.syncingSelection) { return; }
+    const objects = Selection.getSelectedObjects().filter((item): item is VFXItem => item instanceof VFXItem);
+
+    if (!objects.length) { return; }
+    document.clearSelection(); this.state.activeChannel = '';
+    for (const track of document.timeline.tracks) {
+      if (objects.includes(document.boundItem(track)!)) { document.selectedTracks.add(track.getInstanceId()); }
+    }
+    this.state.captureCurveSelection(document);
+  }
+
+  private selectBoundItems (track: TrackAsset): void {
+    const document = this.document;
+
+    if (!document) { return; }
+    const selected = document.tracks.filter(item => document.selectedTracks.has(item.getInstanceId()));
+
+    selected.push(...document.selectedSectionItems.map(section => section.track), ...document.selectedKeyItems().map(item => item.section.track));
+    if (!selected.length) { selected.push(track); }
+    if (!this.state.curveMode) {
+      this.state.curveTracks.clear(); selected.forEach(item => this.state.curveTracks.add(item.getInstanceId()));
+    }
+    const items = selected.map(item => document.boundItem(item)).filter((item): item is VFXItem => !!item);
+
+    this.syncingSelection = true;
+    try { Selection.setObjects(items); } finally { this.syncingSelection = false; }
+  }
+
+  override draw (): void {
+    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
+    ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
+    super.draw(); ImGui.PopStyleColor(); ImGui.PopStyleVar();
+  }
+
+  protected override onEnable (): void {
+    for (const command of ['copy', 'cut', 'paste'] as const) { window.document.addEventListener(command, this.onClipboard); }
+  }
+
+  protected override onDisable (): void {
+    this.acceptsClipboard = false; this.clipboardCommands.length = 0;
+    for (const command of ['copy', 'cut', 'paste'] as const) { window.document.removeEventListener(command, this.onClipboard); }
+    if (this.document) { this.canvas.cancel(this.document); this.document.commit(); }
   }
 
   protected override onGUI (): void {
-    if (GalaceanEffects.player.getCompositions().length === 0) {
+    const document = this.document;
+
+    if (!document) {
+      this.acceptsClipboard = false; this.clipboardCommands.length = 0;
+      ImGui.TextDisabled('Open a composition with a timeline to start editing.');
+
       return;
     }
-
-    const state = this.state;
-
-    state.currentComposition = GalaceanEffects.player.getCompositions()[0];
-    const currentComposition = state.currentComposition;
-
-    // 清除轨道颜色缓存当 composition 变化时
-    const compositionId = currentComposition.name ?? '';
-
-    if (state.lastCompositionId !== compositionId) {
-      state.trackColorMap.clear();
-      state.selectedTrack = null;
-      state.selectedClip = null;
-      state.selectedClipTrack = null;
-      state.selectedKeyframeInfo = null;
-      state.selectedKeyframes.clear();
-      state.selectedPropertyGroup = null;
-      state.selectedChannel = null;
-      state.expandedTracks.clear();
-      state.expandedPropertyGroups.clear();
-      state.lastCompositionId = compositionId;
-      // 合成切换时重置时间轴可见范围（不在每帧重置，否则会覆盖 ctrl+滚轮缩放）
-      state.timelineStartTime = 0;
-      if (typeof currentComposition.getDuration === 'function') {
-        state.timelineEndTime = currentComposition.getDuration();
+    for (const command of this.clipboardCommands.splice(0)) {
+      if (command === 'paste') { document.paste(); } else {
+        document.copySelection();
+        if (command === 'cut') { document.deleteSelection(); }
       }
     }
+    this.viewWidth = ImGui.GetContentRegionAvail().x;
+    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 4);
+    ImGui.PushStyleVar(ImGui.StyleVar.PopupRounding, 0);
+    ImGui.PushStyleVar(ImGui.StyleVar.PopupBorderSize, 1);
+    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(3, 3));
+    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, 3));
+    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 6));
+    const colors: [ImGui.Col, ImGui.Vec4][] = [
+      [ImGui.Col.Text, C.text], [ImGui.Col.TextDisabled, C.muted], [ImGui.Col.PopupBg, C.popup],
+      [ImGui.Col.Border, C.menuBorder], [ImGui.Col.Separator, C.menuSeparator],
+      [ImGui.Col.FrameBg, C.input], [ImGui.Col.FrameBgHovered, C.hover], [ImGui.Col.FrameBgActive, C.inputBorder],
+      [ImGui.Col.ButtonHovered, C.hover], [ImGui.Col.ButtonActive, C.inputBorder],
+      [ImGui.Col.Header, C.selection], [ImGui.Col.HeaderHovered, C.hover], [ImGui.Col.HeaderActive, C.selection],
+      [ImGui.Col.CheckMark, C.active],
+    ];
 
-    let compositionComponent = currentComposition.sceneRoot.getComponent(CompositionComponent);
+    colors.forEach(([name, color]) => ImGui.PushStyleColor(name, color));
+    this.drawToolbar(document);
+    if (this.state.curveMode) { this.drawCurveTools(document); }
+    const origin = ImGui.GetCursorScreenPos();
+    const availableHeight = ImGui.GetContentRegionAvail().y;
+    const hasDetails = !this.state.curveMode && this.state.showDetails && (document.selectedKeys.size > 0 || document.selectedSections.size > 0);
+    const detailsHeight = hasDetails && availableHeight > 150 ? L.detailsHeight : 0;
+    const bodyHeight = Math.max(65, availableHeight - L.footerHeight - detailsHeight);
 
-    const selectedObject = Selection.getSelectedObjects()[0];
-
-    if (selectedObject instanceof VFXItem && selectedObject.getComponent(CompositionComponent)) {
-      compositionComponent = selectedObject.getComponent(CompositionComponent);
+    this.canvas.draw(document, this.viewWidth, bodyHeight);
+    this.drawOutlinerHeader(document);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + bodyHeight));
+    if (detailsHeight) { this.drawDetails(document); }
+    this.drawTransport(document);
+    this.canvas.processInput(document);
+    if (this.canvas.context) {
+      this.context = this.canvas.context; this.canvas.context = undefined;
+      ImGui.OpenPopup('##SequencerContext');
     }
+    this.drawContextMenu(document);
+    this.drawRenamePopup(document);
+    this.handleShortcuts(document);
+    this.acceptsClipboard = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) && !ImGui.GetIO().WantTextInput &&
+      !ImGui.IsPopupOpen('', ImGui.PopupFlags.AnyPopup);
+    ImGui.PopStyleColor(colors.length); ImGui.PopStyleVar(6);
+  }
 
-    if (!compositionComponent) {
-      return;
+  private drawToolbar (document: SequencerDocument): void {
+    const origin = ImGui.GetCursorScreenPos();
+    const hasSelection = document.selectedKeys.size + document.selectedSections.size + document.selectedTracks.size > 0;
+
+    this.bar(origin, L.toolbarHeight);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + L.toolbarPadding, origin.y + L.toolbarPadding));
+    if (this.icon('actions', 'Actions', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequenceActions'); }
+    if (ImGui.BeginPopup('##SequenceActions')) {
+      this.section('Editing');
+      if (ImGui.MenuItem('Undo', 'Ctrl+Z', false, document.canUndo)) { document.undo(); }
+      if (ImGui.MenuItem('Redo', 'Ctrl+Y', false, document.canRedo)) { document.redo(); }
+      ImGui.Separator();
+      if (ImGui.MenuItem('Cut', 'Ctrl+X', false, hasSelection)) { document.copySelection(); document.deleteSelection(); }
+      if (ImGui.MenuItem('Copy', 'Ctrl+C', false, hasSelection)) { document.copySelection(); }
+      if (ImGui.MenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(); }
+      if (ImGui.MenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D', false, hasSelection)) { document.duplicateSelection(); }
+      if (ImGui.MenuItem('Delete', 'Delete', false, hasSelection)) { document.deleteSelection(); }
+      ImGui.Separator(); this.section('Sequence');
+      if (ImGui.MenuItem('Export Timeline...')) { this.exportTimeline(document); }
+      ImGui.EndPopup();
     }
+    ImGui.SameLine();
+    if (this.icon('view', 'View Options', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequenceView'); }
+    if (ImGui.BeginPopup('##SequenceView')) {
+      this.section('Framing');
+      if (ImGui.MenuItem('Frame Selection', 'F')) { this.state.fit(document); }
+      if (ImGui.MenuItem('Frame All', 'Home')) { this.state.fit(document, false); }
+      if (ImGui.MenuItem('Focus Playhead', 'A')) { this.focusPlayhead(document); }
+      ImGui.Separator(); this.section('Tracks');
+      if (ImGui.MenuItem('Expand All')) { this.state.expandAll(document, true); }
+      if (ImGui.MenuItem('Collapse All')) { this.state.expandAll(document, false); }
+      if (ImGui.MenuItem('Selection Details', '', this.state.showDetails)) { this.state.showDetails = !this.state.showDetails; }
+      ImGui.Separator(); this.section('Display');
+      if (ImGui.MenuItem('Frames', '', this.state.displayFrames)) { this.state.displayFrames = true; }
+      if (ImGui.MenuItem('Seconds', '', !this.state.displayFrames)) { this.state.displayFrames = false; }
+      if (ImGui.MenuItem('Show Tangents', '', this.state.showTangents)) { this.state.showTangents = !this.state.showTangents; }
+      ImGui.EndPopup();
+    }
+    ImGui.SameLine();
+    if (this.icon('play', 'Playback Options', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequencePlayback'); }
+    if (ImGui.BeginPopup('##SequencePlayback')) {
+      this.section('Playback Range');
+      const factor = this.state.displayFrames ? this.state.frameRate : 1;
 
-    // 更新窗口尺寸信息
-    this.updateWindowDimensions();
+      for (const side of ['Start', 'End'] as const) {
+        ImGui.SetNextItemWidth(180);
+        let value = (side === 'Start' ? this.state.playbackStart : this.state.playbackEnd) * factor;
 
-    const splitterEdgeGap = 24;
-    const splitterWidth = 2;
-    const mainAreaWidth = state.windowContentWidth;
-
-    // 开始左侧主区域
-    if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), ImGui.ChildFlags.None)) {
-      // 控制按钮区域
-      this.drawControlButtons(currentComposition);
-
-      // === 时间轴标尺区域 ===
-      const mainAreaContentHeight = ImGui.GetContentRegionAvail().y;
-
-      // 计算左右窗口宽度
-      const desiredLabelWidth = Math.min(Math.max(state.trackUIOffset, state.trackLabelMinWidth), state.trackLabelMaxWidth);
-      const leftPanelWidth = desiredLabelWidth;
-      const innerSplitterWidth = 2; // thinner splitter
-      const rightPanelWidth = Math.max(splitterEdgeGap, mainAreaWidth - leftPanelWidth - innerSplitterWidth);
-      const maxDuration = typeof currentComposition.getDuration === 'function' ? currentComposition.getDuration() : 0;
-
-      // === 时间轴导航条 + 缩放 + 平移（整个面板可用） ===
-      {
-        const overviewRowPos = ImGui.GetCursorScreenPos();
-        const overviewX = overviewRowPos.x + leftPanelWidth + innerSplitterWidth;
-
-        this.drawTimelineOverview(leftPanelWidth, innerSplitterWidth, rightPanelWidth, maxDuration);
-        // Ctrl+滚轮缩放 / 中键平移（锚点用右侧时间轴区，整个面板均可触发）
-        this.handleTimelineZoom(overviewX, rightPanelWidth, maxDuration);
-        this.handleTimelinePan(maxDuration);
-      }
-
-      // 左侧 "Tracks" 标题区域
-      if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
-        const windowPos = ImGui.GetCursorScreenPos();
-        const drawList = ImGui.GetWindowDrawList();
-
-        drawList.AddRectFilled(
-          windowPos,
-          new ImGui.Vec2(windowPos.x + leftPanelWidth, windowPos.y + state.timelineHeight),
-          ImGui.GetColorU32(COLORS.trackLabelBg)
-        );
-
-        const headerText = 'Tracks';
-        const headerTextSize = ImGui.CalcTextSize(headerText);
-        const headerTextPos = new ImGui.Vec2(
-          windowPos.x + LAYOUT.trackLabelPadding,
-          windowPos.y + (state.timelineHeight - headerTextSize.y) / 2
-        );
-
-        drawList.AddText(headerTextPos, ImGui.GetColorU32(COLORS.trackText), headerText);
-        state.currentLabelWidth = leftPanelWidth;
-      }
-      ImGui.EndChild();
-
-      // 中间分割器
-      ImGui.SameLine();
-      const dividerStartPos = ImGui.GetCursorScreenPos();
-      const drawList = ImGui.GetWindowDrawList();
-      const dividerColor = ImGui.GetColorU32(COLORS.trackRowDivider);
-
-      ImGui.Dummy(new ImGui.Vec2(innerSplitterWidth, state.timelineHeight));
-
-      // 右侧时间轴标尺区域
-      ImGui.SameLine();
-      if (ImGui.BeginChild('TimelineRuler', new ImGui.Vec2(rightPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
-        const windowPos = ImGui.GetCursorScreenPos();
-        const timelineStart = windowPos;
-        const timelineEndX = windowPos.x + rightPanelWidth;
-        const timelineEndPos = new ImGui.Vec2(timelineEndX, windowPos.y + state.timelineHeight);
-
-        state.timelineAreaWidth = rightPanelWidth;
-        const duration = Math.max(0, state.timelineEndTime - state.timelineStartTime);
-
-        if (duration > 0 && rightPanelWidth > 0) {
-          state.pixelsPerSecond = rightPanelWidth / duration;
-        }
-
-        // 时间轴背景
-        drawList.AddRectFilled(timelineStart, timelineEndPos, ImGui.GetColorU32(COLORS.timelineBg));
-
-        // 绘制时间刻度
-        drawTimeMarkers(drawList, timelineStart, timelineEndX, state);
-
-        // 时间轴交互层
-        ImGui.SetCursorScreenPos(timelineStart);
-        ImGui.PushID('TimelineInteraction');
-        ImGui.InvisibleButton('timeline_interact', new ImGui.Vec2(rightPanelWidth, state.timelineHeight));
-
-        if (ImGui.IsItemActivated()) {
-          beginScrub(state);
-        }
-
-        if (ImGui.IsItemActive()) {
-          const mousePos = ImGui.GetMousePos();
-          const clickPosX = mousePos.x - timelineStart.x - LAYOUT.clipsAreaLeftPadding;
-          const clickedTime = pixelToTime(clickPosX, state);
-
-          state.currentTime = Math.max(state.timelineStartTime, Math.min(clickedTime, state.timelineEndTime));
-          state.currentComposition.setTime(state.currentTime);
-        }
-
-        if (ImGui.IsItemDeactivated()) {
-          endScrub(state);
-        }
-
-        ImGui.PopID();
-
-        // === 绘制时间游标手柄 ===
-        // 对齐到整数防亚像素渲染导致的模糊/变粗
-        const cursorPixel = timeToPixel(state.currentTime, state);
-        const cursorX = Math.floor(timelineStart.x + LAYOUT.clipsAreaLeftPadding + cursorPixel) + 0.5;
-
-        state.timeCursorPositionX = Math.min(Math.max(cursorX, timelineStart.x + LAYOUT.clipsAreaLeftPadding), timelineEndX);
-
-        const cursorColorU32 = ImGui.GetColorU32(COLORS.cursor);
-        const handleHalfWidth = 5;
-        const handleHeight = 14;
-        const handleTopY = Math.floor(windowPos.y + 2) + 0.5;
-
-        drawList.AddRectFilled(
-          new ImGui.Vec2(state.timeCursorPositionX - handleHalfWidth, handleTopY),
-          new ImGui.Vec2(state.timeCursorPositionX + handleHalfWidth, handleTopY + handleHeight),
-          cursorColorU32,
-          3.0 // corner radius
-        );
-
-        // 此时，连线下半部分已经挪到所有 clip 画完后单独补齐，但为了从手柄顶无缝连下来，
-        // 最好是在 keyframeRenderer.drawTimeCursorLine 统一绘制以防粗细不一
-        // 这段下引线可以暂时留一段但不需要了，我们将依赖 fgDrawList 一次画完，以防重叠导致半透重叠变色或粗细感
-
-        // 游标交互区域
-        ImGui.SetCursorScreenPos(new ImGui.Vec2(state.timeCursorPositionX - 8, windowPos.y));
-        ImGui.PushID('TimeCursor');
-        ImGui.InvisibleButton('##cursor_handle', new ImGui.Vec2(16, state.timelineHeight));
-
-        if (ImGui.IsItemActivated()) {
-          beginScrub(state);
-        }
-
-        if (ImGui.IsItemActive()) {
-          const mousePos = ImGui.GetMousePos();
-          const relativeX = Math.min(Math.max(0, mousePos.x - timelineStart.x - LAYOUT.clipsAreaLeftPadding), rightPanelWidth - LAYOUT.clipsAreaLeftPadding);
-          const newTime = Math.min(Math.max(pixelToTime(relativeX, state), state.timelineStartTime), state.timelineEndTime);
-
-          state.currentTime = newTime;
-          state.currentComposition.setTime(newTime);
-        }
-
-        if (ImGui.IsItemDeactivated()) {
-          endScrub(state);
-        }
-
-        ImGui.PopID();
-      }
-      ImGui.EndChild();
-
-      // === 轨道区域 ===
-      const trackAreaStartY = ImGui.GetCursorScreenPos().y;
-      const availHeight = ImGui.GetContentRegionAvail().y;
-
-      // 左侧轨道名称子窗口
-      if (ImGui.BeginChild('TrackLabelsArea', new ImGui.Vec2(leftPanelWidth, availHeight), ImGui.ChildFlags.None)) {
-        // 滚动同步：检测本面板是否被用户滚动（滚轮/滚动条拖拽）
-        const leftNativeScroll = ImGui.GetScrollY();
-
-        if (Math.abs(leftNativeScroll - state.leftPanelLastScrollY) > 0.1) {
-          state.trackLabelsScrollY = leftNativeScroll;
-        }
-        ImGui.SetScrollY(state.trackLabelsScrollY);
-        state.leftPanelLastScrollY = state.trackLabelsScrollY;
-
-        state.trackRowCounter = 0;
-        //@ts-expect-error
-        const sceneBindings = compositionComponent.sceneBindings;
-
-        //@ts-expect-error
-        for (const track of compositionComponent.timelineAsset.tracks) {
-          const trackAsset = track;
-          const trackId = trackAsset.getInstanceId().toString();
-
-          if (!state.initializedTrackIds.has(trackId)) {
-            state.initializedTrackIds.add(trackId);
-          }
-
-          let boundObject: object | null = null;
-          let trackName = '';
-
-          for (const sceneBinding of sceneBindings) {
-            if (sceneBinding.key.getInstanceId() === trackAsset.getInstanceId()) {
-              boundObject = sceneBinding.value;
-
-              break;
-            }
-          }
-
-          if (boundObject instanceof VFXItem) {
-            trackName = boundObject.name || 'VFX Item';
-          } else if (boundObject instanceof Component) {
-            trackName = boundObject.constructor.name;
-          } else {
-            trackName = trackAsset.constructor.name;
-          }
-
-          this.trackLabelRenderer.drawTrackLabel(trackAsset, trackName, sceneBindings, 0);
-        }
-      }
-      ImGui.EndChild();
-
-      // 中间分割器区域
-      ImGui.SameLine();
-      ImGui.Dummy(new ImGui.Vec2(innerSplitterWidth, availHeight));
-
-      // 右侧clips区域子窗口
-      ImGui.SameLine();
-      if (ImGui.BeginChild('ClipsArea', new ImGui.Vec2(rightPanelWidth, availHeight), ImGui.ChildFlags.None)) {
-        // 滚动同步：检测本面板是否被用户滚动
-        const rightNativeScroll = ImGui.GetScrollY();
-
-        if (Math.abs(rightNativeScroll - state.rightPanelLastScrollY) > 0.1) {
-          state.trackLabelsScrollY = rightNativeScroll;
-        }
-        ImGui.SetScrollY(state.trackLabelsScrollY);
-        state.rightPanelLastScrollY = state.trackLabelsScrollY;
-
-        // 垂直网格线
-        const clipsDrawList = ImGui.GetWindowDrawList();
-        const clipsAreaPos = ImGui.GetCursorScreenPos();
-        const clipsAreaHeight = ImGui.GetContentRegionAvail().y;
-        const gridColor = ImGui.GetColorU32(COLORS.gridLine);
-
-        for (const tickX of state.majorTickXPositions) {
-          clipsDrawList.AddLine(
-            new ImGui.Vec2(tickX, clipsAreaPos.y),
-            new ImGui.Vec2(tickX, clipsAreaPos.y + clipsAreaHeight),
-            gridColor,
-            1
-          );
-        }
-
-        state.trackRowCounter = 0;
-
-        if (state.curveMode && state.selectedTrack instanceof TransformTrack) {
-          // 曲线画布模式：右侧整体渲染曲线画布
-          const channels = collectCurveChannelsForSelection(state, state.selectedTrack);
-          const canvasHeight = Math.max(clipsAreaHeight, 200);
-
-          this.curveRenderer.drawCurveCanvas(channels, canvasHeight);
-        } else {
-          //@ts-expect-error
-          const sceneBindings = compositionComponent.sceneBindings;
-
-          //@ts-expect-error
-          for (const track of compositionComponent.timelineAsset.tracks) {
-            const trackAsset = track;
-
-            let boundObject: object | null = null;
-            let trackName = '';
-
-            for (const sceneBinding of sceneBindings) {
-              if (sceneBinding.key.getInstanceId() === trackAsset.getInstanceId()) {
-                boundObject = sceneBinding.value;
-
-                break;
-              }
-            }
-
-            if (boundObject instanceof VFXItem) {
-              trackName = boundObject.name || 'VFX Item';
-            } else if (boundObject instanceof Component) {
-              trackName = boundObject.constructor.name;
-            } else {
-              trackName = trackAsset.constructor.name;
-            }
-
-            this.clipRenderer.drawTrackClips(trackAsset, trackName, sceneBindings, 0);
+        if (ImGui.DragFloat('##Playback' + side, next => value = next ?? value, factor / this.state.frameRate, 0, 1e8,
+          side + (this.state.displayFrames ? '  %.0f' : '  %.3f s'))) {
+          if (side === 'Start') { this.state.playbackStart = Math.max(0, Math.min(this.state.playbackEnd - 1 / this.state.frameRate, value / factor)); } else {
+            this.state.playbackEnd = Math.max(this.state.playbackStart + 1 / this.state.frameRate, value / factor);
           }
         }
-
-        // 绘制时间游标线，并覆盖掉间隙
-        // 传递明确的全局坐标起点和终点，避免子窗口计算产生的舍入差异
-        const cursorStartY = Math.floor(dividerStartPos.y + 16) + 0.5; // 与圆角矩形底端像素对齐
-        const cursorEndY = Math.floor(ImGui.GetWindowPos().y + availHeight) + 0.5;
-
-        this.keyframeRenderer.drawTimeCursorLine(cursorStartY, cursorEndY);
       }
-      ImGui.EndChild();
-
-      // === 贯通分割线和拖拽按钮 ===
-      const handleHalfWidth = state.trackLabelResizeHandleWidth / 2;
-      const handleStartX = dividerStartPos.x - handleHalfWidth;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(handleStartX, dividerStartPos.y));
-      ImGui.PushID('TrackLabelSplitter');
-      state.trackUIOffset = splitter('##track_label_splitter', state.trackUIOffset, {
-        thickness: state.trackLabelResizeHandleWidth,
-        length: mainAreaContentHeight,
-        min: state.trackLabelMinWidth,
-        max: Math.max(state.trackLabelMinWidth, mainAreaWidth - splitterEdgeGap - innerSplitterWidth),
+      ImGui.Separator();
+      ImGui.SetNextItemWidth(180);
+      ImGui.DragInt('Jump Frames', value => this.state.jumpFrames = value ?? this.state.jumpFrames, 1, 1, 10000);
+      if (ImGui.MenuItem('Loop Playback', '', this.state.loop)) { this.state.loop = !this.state.loop; }
+      if (ImGui.MenuItem('Jump to Start')) { document.setTime(this.state.playbackStart); }
+      if (ImGui.MenuItem('Jump to End')) { document.setTime(this.state.playbackEnd); }
+      ImGui.EndPopup();
+    }
+    this.divider();
+    if (this.icon('key', 'Add key at playhead (Enter)', false, hasSelection || this.state.curveMode && this.state.curveTracks.size > 0)) { this.addKeys(document); }
+    ImGui.SameLine();
+    if (this.icon('auto', 'Auto Key: record transform changes at the playhead', this.autoKey)) { this.autoKey = !this.autoKey; this.autoValues.clear(); }
+    this.divider();
+    if (this.icon('snap', 'Toggle snapping', this.state.snapping)) { this.state.snapping = !this.state.snapping; }
+    if (ImGui.IsItemClicked(ImGui.MouseButton.Right)) { ImGui.OpenPopup('##SequenceSnapping'); }
+    ImGui.SameLine(0, 0);
+    if (this.icon('chevron', 'Snapping Options', false, true, 18)) { this.openBelow('##SequenceSnapping'); }
+    if (ImGui.BeginPopup('##SequenceSnapping')) {
+      this.section('Snap To');
+      if (ImGui.MenuItem('Frames', '', this.state.snapFrames)) { this.state.snapFrames = !this.state.snapFrames; }
+      if (ImGui.MenuItem('Keyframes', '', this.state.snapKeys)) { this.state.snapKeys = !this.state.snapKeys; }
+      if (ImGui.MenuItem('Section Edges', '', this.state.snapSections)) { this.state.snapSections = !this.state.snapSections; }
+      ImGui.EndPopup();
+    }
+    ImGui.SameLine();
+    if (this.textButton(this.state.frameRate + ' fps', false, true)) { this.openBelow('##SequenceFPS'); }
+    if (ImGui.BeginPopup('##SequenceFPS')) {
+      this.section('Display Rate');
+      [12, 15, 24, 25, 30, 48, 50, 60, 120].forEach(rate => {
+        if (ImGui.MenuItem(rate + ' fps', '', this.state.frameRate === rate)) { this.state.frameRate = rate; }
       });
-
-      ImGui.PopID();
-
-      // === 绘制完整贯通游标线 ===
-      // （由于没有 ForegroundDrawList 支持，我们在各自 Child Window 内绘制，避免被遮挡）
+      ImGui.EndPopup();
     }
-    ImGui.EndChild();
+    this.divider();
+    if (this.icon('curve', 'Curve Editor', this.state.curveMode)) {
+      this.state.curveMode = !this.state.curveMode;
+      if (this.state.curveMode && document.selectedTracks.size) { this.state.captureCurveSelection(document); }
+      this.state.fitValues(document);
+    }
+    ImGui.SameLine(0, 12);
+    const labelPosition = ImGui.GetCursorScreenPos();
+    const available = origin.x + this.viewWidth - labelPosition.x - 26;
+
+    if (available > 100) {
+      drawSequenceIcon('folder', labelPosition.x, origin.y + 12, 16, C.text);
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(labelPosition.x + 22, origin.y + 10));
+      let name = document.composition.name || 'Sequence';
+
+      while (name.length > 1 && ImGui.CalcTextSize(name).x > available - 22) { name = name.slice(0, -2) + '…'; }
+      ImGui.TextColored(C.text, name);
+    }
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + L.toolbarHeight));
+    ImGui.Dummy(new ImGui.Vec2(this.viewWidth, 0));
   }
 
-  /**
-   * 更新窗口尺寸相关信息
-   */
-  private updateWindowDimensions (): void {
-    const state = this.state;
-    const splitterWidth = 2;
-    const splitterEdgeGap = 24;
+  private drawOutlinerHeader (document: SequencerDocument): void {
+    const header = this.canvas.header;
+    const compact = header.width < 250;
+    const addWidth = compact ? 28 : 70;
+    const timeWidth = compact ? 56 : 68;
 
-    state.windowContentWidth = ImGui.GetContentRegionAvail().x;
-    state.propertiesPanelWidth = Math.min(
-      Math.max(splitterEdgeGap, state.propertiesPanelWidth),
-      Math.max(splitterEdgeGap, state.windowContentWidth - splitterEdgeGap - splitterWidth),
-    );
+    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, Math.max(2, (24 - ImGui.GetFontSize()) / 2)));
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(header.x + 6, header.y + 7));
+    ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Vec4(0.18, 0.42, 0.20, 1));
+    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Vec4(0.22, 0.50, 0.25, 1));
+    const add = ImGui.Button('##SequenceAddTrack', new ImGui.Vec2(addWidth, 24));
+    const addMin = ImGui.GetItemRectMin();
 
-    const mainAreaWidth = Math.max(splitterEdgeGap, state.windowContentWidth - state.propertiesPanelWidth - splitterWidth);
-    const maxLabelWidth = Math.max(splitterEdgeGap, mainAreaWidth - splitterEdgeGap - splitterWidth);
-
-    state.trackLabelMinWidth = splitterEdgeGap;
-    state.trackLabelMaxWidth = maxLabelWidth;
-
-    const desiredLabelWidth = Math.min(Math.max(state.trackUIOffset, state.trackLabelMinWidth), state.trackLabelMaxWidth);
-    const labelWidth = Math.min(desiredLabelWidth, maxLabelWidth);
-
-    state.currentLabelWidth = labelWidth;
-    state.timelineAreaWidth = Math.max(0, mainAreaWidth - labelWidth - splitterWidth);
-
-    const duration = Math.max(0, state.timelineEndTime - state.timelineStartTime);
-
-    if (duration > 0 && state.timelineAreaWidth > 0) {
-      state.pixelsPerSecond = state.timelineAreaWidth / duration;
-    }
-  }
-
-  /**
-   * Ctrl + 滚轮缩放时间轴：以鼠标 x 对应的时间为锚点，缩放 [timelineStartTime, timelineEndTime] 可见窗口。
-   * pixelsPerSecond 由 width/duration 每帧重算，故缩放只需改 duration（起止时间）。
-   * 整个时间轴面板均可触发（不限定 hover 在轨道区）。
-   */
-  private handleTimelineZoom (areaScreenX: number, areaWidth: number, maxDuration: number): void {
-    const state = this.state;
-    const io = ImGui.GetIO();
-
-    if (!io.KeyCtrl || io.MouseWheel === 0 || ImGui.IsAnyItemActive() || maxDuration <= 0) {
-      return;
-    }
-    const mousePos = ImGui.GetMousePos();
-    const relX = mousePos.x - areaScreenX - LAYOUT.clipsAreaLeftPadding;
-
-    if (relX < 0 || relX > areaWidth) {
-      return;
-    }
-    const anchorTime = pixelToTime(relX, state);
-    const duration = state.timelineEndTime - state.timelineStartTime;
-    // 上滚放大（可见区间变小），下滚缩小（可见区间变大）
-    const zoom = io.MouseWheel > 0 ? 0.8 : 1.25;
-    let newDuration = Math.max(0.05, duration * zoom);
-
-    newDuration = Math.min(newDuration, maxDuration);
-    const ratio = (anchorTime - state.timelineStartTime) / Math.max(1e-6, duration);
-    let newStart = anchorTime - ratio * newDuration;
-
-    newStart = Math.max(0, Math.min(newStart, maxDuration - newDuration));
-    state.timelineStartTime = newStart;
-    state.timelineEndTime = newStart + newDuration;
-  }
-
-  /**
-   * 鼠标中键按住左右移动平移时间轴可见窗口（duration 不变，整体左右移）。
-   */
-  private handleTimelinePan (maxDuration: number): void {
-    const state = this.state;
-    const io = ImGui.GetIO();
-
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Middle) || ImGui.IsAnyItemActive()) {
-      return;
-    }
-    const delta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Middle);
-
-    if (Math.abs(delta.x) < 1) {
-      return;
-    }
-    const duration = state.timelineEndTime - state.timelineStartTime;
-    // 像素 → 时间：用当前 pixelsPerSecond 换算（右移 delta>0 → 时间往左看更早，故减）
-    const timeDelta = -delta.x / Math.max(1e-6, state.pixelsPerSecond);
-    let newStart = state.timelineStartTime + timeDelta;
-
-    newStart = Math.max(0, Math.min(newStart, maxDuration - duration));
-    state.timelineStartTime = newStart;
-    state.timelineEndTime = newStart + duration;
-    ImGui.ResetMouseDragDelta(ImGui.MouseButton.Middle);
-  }
-
-  /**
-   * 绘制时间轴导航条（overview）：左侧留白与轨道区对齐，右侧画整段时长 + 可见窗口框，
-   * 点击/拖动平移可见窗口。用正常 Dummy+SameLine+InvisibleButton 布局，不破坏后续行。
-   */
-  private drawTimelineOverview (leftPanelWidth: number, splitterWidth: number, areaWidth: number, maxDuration: number): void {
-    const state = this.state;
-    const drawList = ImGui.GetWindowDrawList();
-    const overviewHeight = 16;
-
-    // 左侧留白（与 TracksHeader/TrackLabelsArea 对齐）
-    ImGui.Dummy(new ImGui.Vec2(leftPanelWidth + splitterWidth, overviewHeight));
-    ImGui.SameLine();
-    // 右侧 overview 命中区
-    ImGui.PushID('TimelineOverview');
-    ImGui.InvisibleButton('overview', new ImGui.Vec2(areaWidth, overviewHeight));
-    ImGui.PopID();
-
-    const overviewMin = ImGui.GetItemRectMin();
-    const overviewMax = ImGui.GetItemRectMax();
-    const overviewRadius = 6;
-    const frameRadius = 3;
-    const isOverviewHovered = ImGui.IsItemHovered();
-    const isOverviewActive = ImGui.IsItemActive();
-
-    // 背景（圆角，无边框；hover/active 时提亮）
-    const bgAlpha = isOverviewActive ? 0.16 : (isOverviewHovered ? 0.14 : 0.11);
-
-    drawList.AddRectFilled(overviewMin, overviewMax, ImGui.GetColorU32(new ImGui.Vec4(0.12, 0.12, 0.14, bgAlpha)), overviewRadius);
-
-    if (maxDuration <= 0) {
-      return;
+    drawSequenceIcon('plus', addMin.x + (compact ? 7 : 5), addMin.y + 5, 14, C.selectedText);
+    if (!compact) {
+      ImGui.GetWindowDrawList().AddText(new ImGui.Vec2(addMin.x + 23, addMin.y + (24 - ImGui.GetTextLineHeight()) / 2),
+        ImGui.GetColorU32(C.selectedText), 'Track');
     }
 
-    // 交互：按住拖动平移可见窗口（增量平移，按下不瞬移）
-    if (isOverviewActive && ImGui.IsMouseDragging(ImGui.MouseButton.Left)) {
-      const delta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Left);
+    ImGui.PopStyleColor(2);
+    if (add) { this.openBelow('##SequenceAddTrack'); }
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(header.x + addWidth + 12, header.y + 7));
+    searchBar('##SequenceSearch', this.searchBuffer, { width: Math.max(24, header.width - addWidth - timeWidth - 27), hint: compact ? '' : 'Search' });
+    this.state.search = this.searchBuffer[0];
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(header.x + header.width - timeWidth - 5, header.y + 7));
+    ImGui.SetNextItemWidth(timeWidth);
+    ImGui.PushStyleColor(ImGui.Col.FrameBg, new ImGui.Vec4(0, 0, 0, 0));
+    ImGui.PushStyleColor(ImGui.Col.Text, C.time);
+    let time = this.state.displayFrames ? document.currentTime * this.state.frameRate : document.currentTime;
 
-      if (Math.abs(delta.x) >= 1) {
-        const duration = state.timelineEndTime - state.timelineStartTime;
-        // 像素 → 时间：overview 全宽对应 maxDuration
-        const timeDelta = (delta.x / areaWidth) * maxDuration;
-        let newStart = state.timelineStartTime + timeDelta;
+    if (ImGui.DragFloat('##CurrentFrame', value => time = value ?? time, this.state.displayFrames ? 1 : 0.01, 0, 1e6,
+      this.state.displayFrames ? '%04.0f' : '%.3f s')) { document.setTime(this.state.displayFrames ? time / this.state.frameRate : time); }
+    ImGui.PopStyleColor(2);
+    ImGui.PopStyleVar();
+    if (ImGui.BeginPopup('##SequenceAddTrack')) {
+      this.section('Add Selected Objects');
+      const selected = Selection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem && object.composition === document.composition);
 
-        newStart = Math.max(0, Math.min(newStart, maxDuration - duration));
-        state.timelineStartTime = newStart;
-        state.timelineEndTime = newStart + duration;
-        ImGui.ResetMouseDragDelta(ImGui.MouseButton.Left);
+      if (!selected.length) { ImGui.TextDisabled('Select an object in the scene or hierarchy.'); }
+      if (ImGui.MenuItem('Selected Objects with Transform', '', false, selected.length > 0)) {
+        document.edit('Add object tracks', () => selected.forEach(item => {
+          const binding = document.addBinding(item);
+
+          if (!binding.getChildTracks().some(track => track instanceof TransformTrack)) { document.addTrack(binding, 'transform'); }
+          this.state.expanded.add(binding.getInstanceId());
+        }));
       }
-    }
+      ImGui.Separator(); this.section('Scene Objects');
+      const items = document.composition.items.filter(item => item !== document.composition.pluginRoot && !item.name?.startsWith('__'));
 
-    // 可见窗口框（圆角，无边框；hover/active 时增强）
-    const startRatio = Math.max(0, state.timelineStartTime / maxDuration);
-    const endRatio = Math.min(1, state.timelineEndTime / maxDuration);
-    const frameX0 = overviewMin.x + startRatio * areaWidth;
-    const frameX1 = overviewMin.x + endRatio * areaWidth;
-    const frameMin = new ImGui.Vec2(frameX0, overviewMin.y);
-    const frameMax = new ImGui.Vec2(Math.max(frameX1, frameX0 + 4), overviewMax.y);
-    const frameBase = COLORS.selection;
-    const frameAlpha = isOverviewActive ? 0.9 : (isOverviewHovered ? 0.7 : 0.5);
+      for (const item of items) {
+        if (ImGui.MenuItem(item.name || 'Object')) {
+          document.edit('Add object track', () => {
+            const binding = document.addBinding(item);
 
-    drawList.AddRectFilled(
-      frameMin, frameMax,
-      ImGui.GetColorU32(new ImGui.Vec4(frameBase.x, frameBase.y, frameBase.z, frameAlpha)),
-      frameRadius,
-    );
-
-    // 当前可见窗口 tooltip
-    if (isOverviewHovered) {
-      ImGui.SetTooltip(`${state.timelineStartTime.toFixed(2)}s - ${state.timelineEndTime.toFixed(2)}s`);
+            document.addTrack(binding, 'transform'); this.state.expanded.add(binding.getInstanceId());
+          });
+        }
+      }
+      ImGui.EndPopup();
     }
   }
 
-  /**
-   * 绘制控制按钮区域
-   */
-  private drawControlButtons (currentComposition: Composition): void {
-    const state = this.state;
-    const btnSize = 20;
-    const drawList = ImGui.GetWindowDrawList();
-    const iconColor = ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.85, 0.85, 1.0));
+  private drawDetails (document: SequencerDocument): void {
+    const origin = ImGui.GetCursorScreenPos();
 
-    // === 跳转到开头按钮 ===
-    const skipPos = ImGui.GetCursorScreenPos();
+    this.bar(origin, L.detailsHeight);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 7, origin.y + 3));
+    const keys = document.selectedKeyItems();
 
-    if (ImGui.InvisibleButton('##skip_start', new ImGui.Vec2(btnSize, btnSize))) {
-      currentComposition.setTime(0);
-    }
-    if (ImGui.IsItemHovered()) {
-      drawList.AddRectFilled(skipPos, new ImGui.Vec2(skipPos.x + btnSize, skipPos.y + btnSize), ImGui.GetColorU32(COLORS.hover));
-      ImGui.SetTooltip('Skip to Start');
-    }
-    // 竖线 + 左三角
-    const skipCx = skipPos.x + btnSize / 2;
-    const skipCy = skipPos.y + btnSize / 2;
+    if (keys.length) {
+      const first = keys[0];
 
-    drawList.AddLine(new ImGui.Vec2(skipCx - 4, skipCy - 5), new ImGui.Vec2(skipCx - 4, skipCy + 5), iconColor, 2);
-    drawList.AddTriangleFilled(
-      new ImGui.Vec2(skipCx + 4, skipCy - 5),
-      new ImGui.Vec2(skipCx + 4, skipCy + 5),
-      new ImGui.Vec2(skipCx - 2, skipCy),
-      iconColor
-    );
+      ImGui.BeginDisabled(keys.every(item => document.isLocked(item.section.track)));
+      ImGui.AlignTextToFramePadding(); ImGui.Text(first.channel.label + '  Key');
+      ImGui.SameLine(); ImGui.SetNextItemWidth(85);
+      let time = this.state.displayFrames ? (first.section.clip.start + first.key.time * first.section.clip.duration) * this.state.frameRate :
+        first.section.clip.start + first.key.time * first.section.clip.duration;
 
-    ImGui.SameLine();
+      if (ImGui.DragFloat('##KeyTime', value => time = value ?? time, this.state.displayFrames ? 1 : 0.01, 0, 1e6,
+        this.state.displayFrames ? '%.0f' : '%.3f')) {
+        document.begin('Edit key time'); this.setKeyTime(document, keys, this.state.displayFrames ? time / this.state.frameRate : time);
+      }
+      if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+      if (first.channel.kind === 'number') {
+        ImGui.SameLine(); ImGui.SetNextItemWidth(95);
+        let value = first.key.value;
 
-    // === 播放/暂停按钮 ===
-    const isPlaying = !currentComposition.getPaused();
-    const playPos = ImGui.GetCursorScreenPos();
+        if (ImGui.DragFloat('##KeyValue', next => value = next ?? value, 0.01, -1e8, 1e8, '%.3f')) {
+          document.begin('Edit key values');
+          const delta = value - first.key.value;
 
-    if (ImGui.InvisibleButton('##play_pause', new ImGui.Vec2(btnSize, btnSize))) {
-      if (isPlaying) {
-        currentComposition.pause();
+          this.updateKeys(document, keys, item => item.key.value += delta);
+        }
+        if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+        ImGui.SameLine();
+        if (this.textButton(this.keyMode(first))) { this.openBelow('##KeyInterpolation'); }
+        if (ImGui.BeginPopup('##KeyInterpolation')) { this.drawInterpolation(document); ImGui.EndPopup(); }
+        if (this.viewWidth > 800) {
+          for (const side of ['in', 'out'] as const) {
+            ImGui.SameLine(); ImGui.SetNextItemWidth(105);
+            let slope = side === 'in' ? first.key.inSlope / first.section.clip.duration : first.key.outSlope / first.section.clip.duration;
+
+            if (ImGui.DragFloat(side === 'in' ? '##InSlope' : '##OutSlope', value => slope = value ?? slope, 0.01, -1e6, 1e6,
+              side === 'in' ? 'In %.2f' : 'Out %.2f')) {
+              document.begin('Edit tangent slopes');
+              this.updateKeys(document, keys, item => {
+                const value = slope * item.section.clip.duration;
+
+                item.key[side === 'in' ? 'inSlope' : 'outSlope'] = value;
+                if (item.key.tangentMode !== 'break') { item.key.inSlope = item.key.outSlope = value; item.key.tangentMode = 'user'; }
+              });
+            }
+            if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+          }
+        }
       } else {
-        void currentComposition.resume();
+        const reference = first.channel.references?.get(first.key.id);
+
+        ImGui.SameLine(); ImGui.TextDisabled(reference?.definition.name ?? reference?.getInstanceId().slice(0, 8) ?? 'None');
+      }
+      ImGui.EndDisabled();
+    } else {
+      const section = document.selectedSectionItems[0];
+
+      if (section) {
+        ImGui.BeginDisabled(document.isLocked(section.track));
+        ImGui.AlignTextToFramePadding(); ImGui.Text('Section');
+        ImGui.SameLine(); ImGui.SetNextItemWidth(100);
+        const factor = this.state.displayFrames ? this.state.frameRate : 1;
+        let start = section.clip.start * factor;
+
+        if (ImGui.DragFloat('##SectionStart', value => start = value ?? start, factor / this.state.frameRate, 0, 1e6,
+          this.state.displayFrames ? 'Start %04.0f' : 'Start %.3f s')) {
+          document.begin('Move section'); section.clip.start = Math.max(0, start / factor); document.write(section); document.changed();
+        }
+        if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+        ImGui.SameLine(); ImGui.SetNextItemWidth(115);
+        let duration = section.clip.duration * factor;
+
+        if (ImGui.DragFloat('##SectionDuration', value => duration = value ?? duration, factor / this.state.frameRate,
+          factor / this.state.frameRate, 1e6, this.state.displayFrames ? 'Length %.0f f' : 'Length %.3f s')) {
+          document.begin('Stretch section'); section.clip.duration = Math.max(1 / this.state.frameRate, duration / factor); document.write(section); document.changed();
+        }
+        if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+        if (this.viewWidth > 590) {
+          ImGui.SameLine();
+          if (this.textButton('Split at Playhead')) { document.splitSelection(document.currentTime); }
+        }
+        ImGui.EndDisabled();
       }
     }
-    if (ImGui.IsItemHovered()) {
-      drawList.AddRectFilled(playPos, new ImGui.Vec2(playPos.x + btnSize, playPos.y + btnSize), ImGui.GetColorU32(COLORS.hover));
-      ImGui.SetTooltip(isPlaying ? 'Pause' : 'Play');
-    }
-    const playCx = playPos.x + btnSize / 2;
-    const playCy = playPos.y + btnSize / 2;
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + L.detailsHeight));
+    ImGui.Dummy(new ImGui.Vec2(this.viewWidth, 0));
+  }
 
-    if (isPlaying) {
-      // 暂停图标 — 两条竖线
-      drawList.AddRectFilled(new ImGui.Vec2(playCx - 4, playCy - 5), new ImGui.Vec2(playCx - 1, playCy + 5), iconColor);
-      drawList.AddRectFilled(new ImGui.Vec2(playCx + 1, playCy - 5), new ImGui.Vec2(playCx + 4, playCy + 5), iconColor);
+  private drawTransport (document: SequencerDocument): void {
+    const origin = ImGui.GetCursorScreenPos();
+    const detailed = this.state.outlinerWidth >= 230;
+    const controls: { icon: SequenceIcon, hint: string, action: () => void, active?: boolean }[] = [
+      { icon: 'first', hint: 'Jump to Start', action: () => document.setTime(this.state.playbackStart) },
+      ...(detailed ? [{ icon: 'previous' as const, hint: 'Previous Key (,)', action: () => this.stepKey(document, -1) }] : []),
+      { icon: 'back', hint: 'Previous Frame', action: () => document.setTime(Math.max(this.state.playbackStart, document.currentTime - 1 / this.state.frameRate)) },
+      { icon: document.composition.getPaused() ? 'play' : 'pause', hint: 'Play / Pause (Space)', action: () => this.togglePlay(document) },
+      { icon: 'forward', hint: 'Next Frame', action: () => document.setTime(Math.min(this.state.playbackEnd, document.currentTime + 1 / this.state.frameRate)) },
+      ...(detailed ? [{ icon: 'next' as const, hint: 'Next Key (.)', action: () => this.stepKey(document, 1) }] : []),
+      { icon: 'last', hint: 'Jump to End', action: () => document.setTime(this.state.playbackEnd) },
+      { icon: 'loop', hint: 'Loop Playback', action: () => this.state.loop = !this.state.loop, active: this.state.loop },
+    ];
+
+    this.bar(origin, L.footerHeight);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 6, origin.y + 3));
+    const buttonWidth = detailed ? 24 : Math.max(20, Math.min(24, Math.floor((this.state.outlinerWidth - 16) / 6) - 2));
+
+    for (const [index, control] of controls.entries()) {
+      if (index) { ImGui.SameLine(0, 2); }
+      if (this.icon(control.icon, control.hint, control.active, true, buttonWidth, false, 24)) { control.action(); }
+    }
+    this.canvas.drawFooter(document, origin.y);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + L.footerHeight));
+    ImGui.Dummy(new ImGui.Vec2(this.viewWidth, 0));
+  }
+
+  private drawCurveTools (document: SequencerDocument): void {
+    const origin = ImGui.GetCursorScreenPos();
+    const keys = document.selectedKeyItems();
+    const first = keys[0];
+    const factor = this.state.displayFrames ? this.state.frameRate : 1;
+
+    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, Math.max(2, (L.toolbarButtonHeight - ImGui.GetFontSize()) / 2)));
+    this.bar(origin, L.curveToolbarHeight);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + L.toolbarPadding, origin.y + L.toolbarPadding));
+    ImGui.BeginDisabled(!first || keys.every(item => document.isLocked(item.section.track)));
+    ImGui.SetNextItemWidth(104);
+    let time = first ? (first.section.clip.start + first.key.time * first.section.clip.duration) * factor : 0;
+
+    if (ImGui.DragFloat('##CurveKeyTime', value => time = value ?? time, factor / this.state.frameRate, 0, 1e8,
+      this.state.displayFrames ? 'Time  %.0f' : 'Time  %.3f s') && first) {
+      document.begin('Edit key time'); this.setKeyTime(document, keys, time / factor);
+    }
+    if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+    ImGui.SameLine(); ImGui.SetNextItemWidth(112);
+    let value = first?.key.value ?? 0;
+
+    if (ImGui.DragFloat('##CurveKeyValue', next => value = next ?? value, 0.01, -1e8, 1e8, 'Value  %.3f') && first) {
+      document.begin('Edit key value');
+      const delta = value - first.key.value;
+
+      this.updateKeys(document, keys, item => item.key.value += delta);
+    }
+    if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+    this.divider();
+    const modes: { name: Interpolation, icon: SequenceIcon }[] = [
+      { name: 'Auto', icon: 'tangentAuto' }, { name: 'User', icon: 'tangentUser' }, { name: 'Break', icon: 'tangentBreak' },
+      { name: 'Linear', icon: 'linear' }, { name: 'Constant', icon: 'constant' },
+    ];
+
+    for (const [index, mode] of modes.entries()) {
+      if (index) { ImGui.SameLine(0, 1); }
+      if (this.icon(mode.icon, mode.name, !!first && this.keyMode(first) === mode.name)) { this.setInterpolation(document, mode.name); }
+    }
+    ImGui.EndDisabled();
+    if (this.viewWidth > 550) {
+      this.divider();
+      if (this.icon('flatten', 'Flatten Tangents', false, !!first)) {
+        document.edit('Flatten tangents', () => this.updateKeys(document, keys, item => {
+          item.key.inSlope = item.key.outSlope = 0; item.key.tangentMode = 'user'; item.key.interpolationMode = InterpolationMode.Cubic;
+        }));
+      }
+      ImGui.SameLine(0, 1);
+      if (this.icon('fit', 'Frame Selection (F)')) { this.state.fit(document); }
+    }
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + L.curveToolbarHeight));
+    ImGui.Dummy(new ImGui.Vec2(this.viewWidth, 0));
+    ImGui.PopStyleVar();
+  }
+
+  private drawContextMenu (document: SequencerDocument): void {
+    if (!ImGui.BeginPopup('##SequencerContext')) { return; }
+    const row = this.context?.row;
+    const section = this.context?.section ?? document.selectedSectionItems[0];
+    const keys = document.selectedKeyItems();
+
+    if (keys.length) {
+      this.section('Keyframes');
+      if (!this.state.curveMode && ImGui.MenuItem('Key Properties...')) { this.state.showDetails = true; }
+      if (ImGui.MenuItem('Add Key at Playhead', 'Enter')) { this.addKeys(document); }
+      if (ImGui.BeginMenu('Interpolation', keys.some(item => item.channel.kind === 'number'))) {
+        this.drawInterpolation(document); ImGui.EndMenu();
+      }
+      if (ImGui.MenuItem('Flatten Tangents')) {
+        document.edit('Flatten tangents', () => this.updateKeys(document, keys, item => {
+          item.key.inSlope = item.key.outSlope = 0; item.key.tangentMode = 'user'; item.key.interpolationMode = InterpolationMode.Cubic;
+        }));
+      }
+      ImGui.Separator();
+    }
+    if (section) {
+      ImGui.BeginDisabled(document.isLocked(section.track));
+      this.section('Section');
+      if (ImGui.MenuItem('Section Properties...')) { this.state.showDetails = true; }
+      if (ImGui.MenuItem('Split at Playhead', 'Ctrl+/')) { document.splitSelection(document.currentTime); }
+      const inside = document.currentTime > section.clip.start && document.currentTime < section.clip.start + section.clip.duration;
+
+      if (ImGui.MenuItem('Trim Left to Playhead', '', false, inside)) {
+        document.edit('Trim section left', () => document.resizeSection(section, document.currentTime, section.clip.start + section.clip.duration));
+      }
+      if (ImGui.MenuItem('Trim Right to Playhead', '', false, inside)) {
+        document.edit('Trim section right', () => document.resizeSection(section, section.clip.start, document.currentTime));
+      }
+      ImGui.Separator(); this.section('Post Roll');
+      for (const [name, behavior] of [['Finish', 0], ['Hold', 4], ['Loop', 5]] as const) {
+        if (ImGui.MenuItem(name, '', section.clip.endBehavior === behavior)) {
+          document.edit('Set section end behavior', () => { section.clip.endBehavior = behavior; document.write(section); });
+        }
+      }
+      ImGui.EndDisabled();
+      ImGui.Separator();
+    }
+    if (row) {
+      this.section('Track');
+      if (ImGui.MenuItem('Rename...')) {
+        this.renameTrack = row.track; this.renameValue = document.trackLabel(row.track); this.renameRequested = true;
+      }
+      if (ImGui.MenuItem('Mute Track', '', document.muted.has(row.track.getInstanceId()))) { document.toggleMute(row.track); }
+      const ownLock = document.locked.has(row.track.getInstanceId());
+
+      if (ImGui.MenuItem('Lock Track', '', ownLock)) {
+        document.edit('Toggle track lock', () => {
+          if (ownLock) { document.locked.delete(row.track.getInstanceId()); } else { document.locked.add(row.track.getInstanceId()); }
+        });
+      }
+      if (ImGui.MenuItem('Add Section', '', false, row.kind !== 'object' && !document.isLocked(row.track))) {
+        document.edit('Add section', () => { document.createSection(row.track); });
+      }
+      const parent = this.bindingParent(row.track);
+
+      if (parent && ImGui.BeginMenu('Add Property Track', !document.isLocked(parent))) {
+        for (const [name, kind] of [['Transform', 'transform'], ['Activation', 'activation'], ['Opacity', 'opacity']] as const) {
+          if (ImGui.MenuItem(name)) { document.edit('Add property track', () => { document.addTrack(parent, kind); this.state.expanded.add(parent.getInstanceId()); }); }
+        }
+        ImGui.EndMenu();
+      }
+      ImGui.Separator();
+    }
+    this.section('Edit');
+    if (ImGui.MenuItem('Copy', 'Ctrl+C')) { document.copySelection(); }
+    if (ImGui.MenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(this.context?.time ?? document.currentTime); }
+    if (ImGui.MenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D')) { document.duplicateSelection(); }
+    if (ImGui.MenuItem('Delete', 'Delete')) { document.deleteSelection(); }
+    ImGui.EndPopup();
+  }
+
+  private drawRenamePopup (document: SequencerDocument): void {
+    if (this.renameRequested) { ImGui.OpenPopup('##RenameTrack'); this.renameRequested = false; }
+    if (ImGui.BeginPopup('##RenameTrack')) {
+      ImGui.Text('Track Name');
+      ImGui.SetNextItemWidth(240);
+      if (ImGui.IsWindowAppearing()) { ImGui.SetKeyboardFocusHere(); }
+      const accepted = ImGui.InputText('##TrackName', value => {
+        if (value !== undefined) { this.renameValue = value; }
+
+        return this.renameValue;
+      }, undefined, ImGui.InputTextFlags.EnterReturnsTrue | ImGui.InputTextFlags.AutoSelectAll);
+
+      if ((accepted || ImGui.Button('Rename')) && this.renameTrack && this.renameValue.trim()) {
+        document.edit('Rename track', () => { this.renameTrack!.name = this.renameValue.trim(); });
+        this.renameTrack = undefined; ImGui.CloseCurrentPopup();
+      }
+      ImGui.SameLine();
+      if (ImGui.Button('Cancel') || ImGui.IsKeyPressed(ImGui.Key.Escape)) { this.renameTrack = undefined; ImGui.CloseCurrentPopup(); }
+      ImGui.EndPopup();
+    }
+  }
+
+  private drawInterpolation (document: SequencerDocument): void {
+    for (const mode of ['Auto', 'User', 'Break', 'Linear', 'Constant'] as Interpolation[]) {
+      const first = document.selectedKeyItems()[0];
+
+      if (ImGui.MenuItem(mode, '', !!first && this.keyMode(first) === mode, !!first)) { this.setInterpolation(document, mode); }
+    }
+  }
+
+  private setInterpolation (document: SequencerDocument, mode: Interpolation): void {
+    document.edit('Set key interpolation', () => {
+      this.updateKeys(document, document.selectedKeyItems(), item => {
+        if (item.channel.kind !== 'number') { return; }
+        item.key.interpolationMode = mode === 'Linear' ? InterpolationMode.Linear : mode === 'Constant' ? InterpolationMode.Constant : InterpolationMode.Cubic;
+        item.key.tangentMode = mode === 'Auto' ? 'auto' : mode === 'Break' ? 'break' : 'user';
+      });
+    });
+  }
+
+  private keyMode (item: KeySelection): Interpolation {
+    if (item.key.interpolationMode === InterpolationMode.Linear) { return 'Linear'; }
+    if (item.key.interpolationMode === InterpolationMode.Constant) { return 'Constant'; }
+
+    return item.key.tangentMode === 'auto' ? 'Auto' : item.key.tangentMode === 'break' ? 'Break' : 'User';
+  }
+
+  private updateKeys (document: SequencerDocument, keys: KeySelection[], action: (item: KeySelection) => void): void {
+    const sections = new Set<SequenceSection>();
+
+    keys.forEach(item => {
+      if (!document.isLocked(item.section.track)) { action(item); sections.add(item.section); }
+    });
+    sections.forEach(section => {
+      section.channels.forEach(channel => updateAutoTangents(channel.keys)); document.write(section);
+    });
+    document.changed();
+  }
+
+  private setKeyTime (document: SequencerDocument, keys: KeySelection[], time: number): void {
+    const first = keys[0];
+    let delta = time - (first.section.clip.start + first.key.time * first.section.clip.duration);
+
+    delta = Math.max(Math.max(...keys.map(item => -item.key.time * item.section.clip.duration)),
+      Math.min(Math.min(...keys.map(item => (1 - item.key.time) * item.section.clip.duration)), delta));
+    this.updateKeys(document, keys, item => item.key.time += delta / item.section.clip.duration);
+  }
+
+  private addKeys (document: SequencerDocument): void {
+    const row = this.state.rows(document).find(row => row.id === this.state.activeChannel);
+
+    if (row || this.state.curveMode) {
+      const channels = row?.channels ?? this.state.curveChannels(document, true);
+
+      if (!channels.length) { return; }
+      document.edit('Add channel keys', () => {
+        document.selectedKeys.clear();
+        channels.forEach(entry => document.insertKey(entry.section, entry.channel, document.currentTime));
+      });
+    } else { document.addKeys(document.currentTime); }
+  }
+
+  private bindingParent (track: TrackAsset): TrackAsset | undefined {
+    let parent: TrackAsset | undefined = track;
+
+    while (parent && !(parent instanceof ObjectBindingTrack)) { parent = parent.parent; }
+
+    return parent;
+  }
+
+  private stepKey (document: SequencerDocument, direction: number): void {
+    const selectedTracks = document.selectedTracks;
+    const channels = this.state.curveMode ? this.state.curveChannels(document) : document.allSections()
+      .filter(section => !selectedTracks.size || document.trackSelected(section.track)).flatMap(section => section.channels.map(channel => ({ section, channel })));
+    const times = channels.flatMap(({ section, channel }) => channel.keys.map(key => section.clip.start + key.time * section.clip.duration));
+    const candidates = times.filter(time => direction > 0 ? time > document.currentTime + 1e-6 : time < document.currentTime - 1e-6);
+
+    if (candidates.length) { document.setTime(direction > 0 ? Math.min(...candidates) : Math.max(...candidates)); }
+  }
+
+  private togglePlay (document: SequencerDocument): void {
+    if (!document.composition.getPaused()) { document.composition.pause(); } else {
+      if (document.currentTime >= this.state.playbackEnd || document.currentTime < this.state.playbackStart) { document.setTime(this.state.playbackStart); }
+      void document.composition.resume();
+    }
+  }
+
+  private focusPlayhead (document: SequencerDocument): void {
+    const range = this.state.viewEnd - this.state.viewStart;
+
+    this.state.viewStart = document.currentTime - range / 2; this.state.viewEnd = document.currentTime + range / 2;
+  }
+
+  private handleShortcuts (document: SequencerDocument): void {
+    if (!ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) || this.canvas.editingValue || ImGui.GetIO().WantTextInput || ImGui.IsPopupOpen('', ImGui.PopupFlags.AnyPopup)) { return; }
+    const io = ImGui.GetIO(), command = io.KeyCtrl || io.KeySuper;
+    const pressed = (key: ImGui.Key) => ImGui.IsKeyPressed(key, false);
+
+    if (pressed(ImGui.Key.Escape)) {
+      this.canvas.cancel(document); document.clearSelection();
+      if (!this.state.curveMode) { this.state.activeChannel = ''; this.state.captureCurveSelection(document); }
+    } else if (command && pressed(ImGui.Key.Z)) { if (io.KeyShift) { document.redo(); } else { document.undo(); } } else if (command && pressed(ImGui.Key.Y)) { document.redo(); } else if (command && pressed(ImGui.Key.D)) {
+      if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
+    } else if (command && pressed(ImGui.Key.A)) {
+      const channels = this.state.curveMode ? this.state.curveChannels(document).map(entry => entry.channel) : document.allSections().flatMap(section => section.channels);
+
+      channels.forEach(channel => channel.keys.forEach(key => document.selectedKeys.add(key.id)));
+    } else if (!command && pressed(ImGui.Key.V)) {
+      this.state.toggleSelectedExpansion(document, io.KeyShift);
+    } else if (pressed(ImGui.Key.DownArrow)) {
+      if (document.composition.getPaused()) { this.togglePlay(document); }
+    } else if (pressed(ImGui.Key.K)) {
+      document.composition.pause();
+    } else if (pressed(ImGui.Key.UpArrow)) {
+      document.setTime(command ? this.state.playbackEnd : this.state.playbackStart);
+    } else if (!command && !io.KeyAlt && pressed(ImGui.Key.LeftBracket)) {
+      this.state.playbackStart = Math.min(document.currentTime, this.state.playbackEnd - 1 / this.state.frameRate);
+    } else if (!command && !io.KeyAlt && pressed(ImGui.Key.RightBracket)) {
+      this.state.playbackEnd = Math.max(document.currentTime, this.state.playbackStart + 1 / this.state.frameRate);
+    } else if (command && pressed(ImGui.Key.Slash)) { document.splitSelection(document.currentTime); } else if (pressed(ImGui.Key.Delete) || pressed(ImGui.Key.Backspace)) { document.deleteSelection(); } else if (pressed(ImGui.Key.Space)) { this.togglePlay(document); } else if (pressed(ImGui.Key.Enter)) { this.addKeys(document); } else if (pressed(ImGui.Key.F)) { this.state.fit(document); } else if (pressed(ImGui.Key.Home)) { this.state.fit(document, false); } else if (pressed(ImGui.Key.A)) { this.focusPlayhead(document); } else if (pressed(ImGui.Key.Comma)) { this.stepKey(document, -1); } else if (pressed(ImGui.Key.Period)) { this.stepKey(document, 1); } else if (pressed(ImGui.Key.LeftArrow) || pressed(ImGui.Key.RightArrow)) {
+      const direction = pressed(ImGui.Key.LeftArrow) ? -1 : 1;
+
+      if (command && (document.selectedKeys.size || document.selectedSections.size)) {
+        document.edit('Nudge selection', () => {
+          const keys = document.selectedKeyItems();
+
+          if (keys.length) { this.setKeyTime(document, keys, keys[0].section.clip.start + keys[0].key.time * keys[0].section.clip.duration + direction / this.state.frameRate); } else {
+            const sections = document.selectedSectionItems.filter(section => !document.isLocked(section.track));
+            const delta = Math.max(-Math.min(...sections.map(section => section.clip.start)), direction / this.state.frameRate);
+
+            sections.forEach(section => { section.clip.start += delta; document.write(section); });
+          }
+        });
+      } else { document.setTime(Math.max(0, document.currentTime + direction * (io.KeyShift ? this.state.jumpFrames : 1) / this.state.frameRate)); }
     } else {
-      // 播放图标 — 右三角
-      drawList.AddTriangleFilled(
-        new ImGui.Vec2(playCx - 4, playCy - 6),
-        new ImGui.Vec2(playCx - 4, playCy + 6),
-        new ImGui.Vec2(playCx + 5, playCy),
-        iconColor
-      );
+      [ImGui.Key._1, ImGui.Key._2, ImGui.Key._3, ImGui.Key._4, ImGui.Key._5].forEach((key, index) => {
+        if (pressed(key)) { this.setInterpolation(document, ['Auto', 'User', 'Break', 'Linear', 'Constant'][index] as Interpolation); }
+      });
+    }
+  }
+
+  private updateAutoKey (document: SequencerDocument): void {
+    const shouldRecord = this.autoKey && document.composition.getPaused() && this.lastRevision === document.revision &&
+      Math.abs(this.lastAutoTime - document.currentTime) < 1e-8;
+
+    this.lastRevision = document.revision; this.lastAutoTime = document.currentTime;
+    const selected = Selection.getSelectedObjects().filter((object): object is VFXItem =>
+      object instanceof VFXItem && object.composition === document.composition);
+    const selectedIds = new Set(selected.map(object => object.getInstanceId()));
+    const transforms = selected.map(object => ({ object, values: [
+      ...object.transform.position.toArray(), ...getEditorRotation(object.transform).toArray(), ...object.transform.scale.toArray(),
+    ] }));
+    let recorded = false;
+
+    for (const id of this.autoValues.keys()) { if (!selectedIds.has(id)) { this.autoValues.delete(id); } }
+    for (const { object, values } of transforms) {
+      const previous = this.autoValues.get(object.getInstanceId());
+
+      this.autoValues.set(object.getInstanceId(), values);
+      if (!shouldRecord || !previous) { continue; }
+      const changed = values.map((value, index) => Math.abs(value - previous[index]) > 1e-6);
+
+      if (!changed.some(Boolean)) { continue; }
+      const sections = document.allSections().filter(section => section.channels.length === 9 && document.boundItem(section.track) === object &&
+        !document.isLocked(section.track) && !document.isMuted(section.track) && document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration &&
+        section.channels.some((channel, index) => changed[index]));
+
+      if (!sections.length) { continue; }
+      document.begin('Auto key transforms'); this.autoRecording = true;
+      sections.forEach(section => {
+        section.channels.forEach((channel, index) => {
+          if (changed[index]) {
+            document.insertKey(section, channel, document.currentTime, values[index]);
+          }
+        });
+      });
+      recorded = true;
+    }
+    if (recorded) {
+      // Evaluate only after every selected item's keys have been written.
+      document.changed();
+      this.lastRevision = document.revision;
+    }
+    if (this.autoRecording && (!this.autoKey || !ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive())) {
+      document.commit(); this.autoRecording = false;
+    }
+  }
+
+  private exportTimeline (document: SequencerDocument): void {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(document.exportData(), null, 2)], { type: 'application/json' }));
+    const anchor = window.document.createElement('a');
+
+    anchor.href = url; anchor.download = (document.composition.name || 'sequence') + '-timeline.json';
+    anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  private openBelow (id: string): void {
+    const min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax();
+
+    ImGui.OpenPopup(id);
+    ImGui.SetNextWindowPos(new ImGui.Vec2(min.x, max.y + 3));
+  }
+
+  private section (label: string): void { editorMenuSection(label); }
+  private textButton (label: string, active = false, menu = false): boolean {
+    ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Vec4(0, 0, 0, 0));
+    ImGui.PushStyleColor(ImGui.Col.Text, active ? C.active : C.text);
+    const result = ImGui.Button(menu ? '##SequenceText' + label : label, new ImGui.Vec2(ImGui.CalcTextSize(label).x + (menu ? 28 : 12), L.toolbarButtonHeight));
+
+    if (menu) {
+      const min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax();
+
+      ImGui.GetWindowDrawList().AddText(new ImGui.Vec2(min.x + 6, min.y + (max.y - min.y - ImGui.GetTextLineHeight()) / 2),
+        ImGui.GetColorU32(active ? C.active : C.text), label);
+      drawSequenceIcon('chevron', max.x - 20, min.y + (max.y - min.y - 16) / 2, 16, ImGui.IsItemHovered() ? C.selectedText : C.muted);
     }
 
-    ImGui.SameLine();
+    ImGui.PopStyleColor(2);
 
-    // === 停止按钮 ===
-    const stopPos = ImGui.GetCursorScreenPos();
+    return result;
+  }
+  private divider (): void {
+    ImGui.SameLine(0, 5);
+    const point = ImGui.GetCursorScreenPos();
 
-    if (ImGui.InvisibleButton('##stop', new ImGui.Vec2(btnSize, btnSize))) {
-      currentComposition.setTime(0);
-      currentComposition.pause();
-    }
-    if (ImGui.IsItemHovered()) {
-      drawList.AddRectFilled(stopPos, new ImGui.Vec2(stopPos.x + btnSize, stopPos.y + btnSize), ImGui.GetColorU32(COLORS.hover));
-      ImGui.SetTooltip('Stop');
-    }
-    // 停止图标 — 实心方块
-    const stopCx = stopPos.x + btnSize / 2;
-    const stopCy = stopPos.y + btnSize / 2;
+    ImGui.GetWindowDrawList().AddLine(new ImGui.Vec2(point.x, point.y + 2), new ImGui.Vec2(point.x, point.y + L.toolbarButtonHeight - 2), ImGui.GetColorU32(C.line));
+    ImGui.Dummy(new ImGui.Vec2(1, L.toolbarButtonHeight)); ImGui.SameLine(0, 5);
+  }
+  private bar (origin: ImGui.Vec2, height: number): void {
+    const dl = ImGui.GetWindowDrawList();
 
-    drawList.AddRectFilled(new ImGui.Vec2(stopCx - 4, stopCy - 4), new ImGui.Vec2(stopCx + 4, stopCy + 4), iconColor);
+    dl.AddRectFilled(origin, new ImGui.Vec2(origin.x + this.viewWidth, origin.y + height), ImGui.GetColorU32(C.toolbar));
+    dl.AddLine(new ImGui.Vec2(origin.x, origin.y), new ImGui.Vec2(origin.x + this.viewWidth, origin.y), ImGui.GetColorU32(C.line));
+  }
 
-    ImGui.SameLine();
+  private icon (icon: SequenceIcon, hint: string, active = false, enabled = true, width: number = L.toolbarButtonSize, menu = false, height: number = L.toolbarButtonHeight): boolean {
+    ImGui.BeginDisabled(!enabled);
+    const filled = active && icon !== 'loop';
 
-    // === 曲线模式切换按钮 ===
-    const curvePos = ImGui.GetCursorScreenPos();
-    const curveActive = state.curveMode;
+    ImGui.PushStyleColor(ImGui.Col.Button, filled ? C.selection : new ImGui.Vec4(0, 0, 0, 0));
+    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, filled ? C.selectionHovered : C.hover);
+    ImGui.PushStyleColor(ImGui.Col.ButtonActive, filled ? C.selectionPressed : C.inputBorder);
+    const clicked = ImGui.Button('##Sequence' + icon + hint, new ImGui.Vec2(width, height));
 
-    if (ImGui.InvisibleButton('##curve_mode', new ImGui.Vec2(btnSize, btnSize))) {
-      state.curveMode = !state.curveMode;
-    }
-    if (ImGui.IsItemHovered()) {
-      drawList.AddRectFilled(curvePos, new ImGui.Vec2(curvePos.x + btnSize, curvePos.y + btnSize), ImGui.GetColorU32(COLORS.hover));
-      ImGui.SetTooltip(curveActive ? 'Switch to Keyframe View' : 'Switch to Curve View');
-    }
-    // 曲线图标 — S 形波浪线
-    const curveCx = curvePos.x + btnSize / 2;
-    const curveCy = curvePos.y + btnSize / 2;
-    const curveIconColor = curveActive
-      ? ImGui.GetColorU32(COLORS.selection)
-      : iconColor;
+    ImGui.PopStyleColor(3);
+    const point = ImGui.GetItemRectMin();
+    const size = icon === 'chevron' ? 16 : L.toolbarIconSize;
+    const left = menu ? 6 : (width - size) / 2;
+    const tint = !enabled ? C.muted : filled ? C.selectedText : active ? C.active : ImGui.IsItemHovered() ? C.selectedText : C.text;
 
-    drawList.AddBezierCubic(
-      new ImGui.Vec2(curveCx - 6, curveCy + 4),
-      new ImGui.Vec2(curveCx - 2, curveCy + 4),
-      new ImGui.Vec2(curveCx + 2, curveCy - 4),
-      new ImGui.Vec2(curveCx + 6, curveCy - 4),
-      curveIconColor,
-      1.5
-    );
+    drawSequenceIcon(icon, point.x + left, point.y + (height - size) / 2, size, tint);
+    if (menu) { drawSequenceIcon('chevron', point.x + width - 18, point.y + (height - 16) / 2, 16, C.muted); }
+    if (ImGui.IsItemHovered()) { ImGui.SetTooltip(hint); }
+    ImGui.EndDisabled();
 
-    ImGui.SameLine();
-
-    const timeText = `${currentComposition.time.toFixed(2)}s / ${state.timelineEndTime.toFixed(1)}s`;
-    const timeTextWidth = ImGui.CalcTextSize(timeText).x;
-    const availWidth = ImGui.GetContentRegionAvail().x;
-
-    if (availWidth > timeTextWidth + 8) {
-      ImGui.SameLine(ImGui.GetCursorPosX() + availWidth - timeTextWidth - 8);
-    }
-    ImGui.Text(timeText);
-
-    state.currentTime = currentComposition.time;
-
-    ImGui.Separator();
+    return clicked;
   }
 }

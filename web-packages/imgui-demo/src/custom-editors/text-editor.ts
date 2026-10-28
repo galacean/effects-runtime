@@ -1,36 +1,26 @@
-import type { TextComponent } from '@galacean/effects';
-import { spec, TextComponentBase } from '@galacean/effects';
+import { TextComponent, TextComponentBase, spec } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { editor } from '../core/decorators';
 import { Editor } from './editor';
 import { EditorGUILayout } from '../widgets/editor-gui-layout';
+import { PropertyGrid } from '../widgets/property-grid';
 import { ImGui } from '../imgui';
 
-// 字体家族选项
-const FONT_FAMILY_OPTIONS = ['Inter', 'Arial', 'Helvetica', 'sans-serif', 'serif', 'monospace'];
-
-// 字重选项
-const FONT_WEIGHT_OPTIONS: { label: string, value: spec.TextWeight }[] = [
-  { label: 'Regular', value: spec.TextWeight.normal },
-  { label: 'Bold', value: spec.TextWeight.bold },
-  { label: 'Lighter', value: spec.TextWeight.lighter },
-];
-
-// 字体样式选项
-const FONT_STYLE_OPTIONS: { label: string, value: spec.FontStyle }[] = [
-  { label: 'Normal', value: spec.FontStyle.normal },
-  { label: 'Italic', value: spec.FontStyle.italic },
-  { label: 'Oblique', value: spec.FontStyle.oblique },
-];
+const FONT_FAMILIES = ['Inter', 'Arial', 'Helvetica', 'sans-serif', 'serif', 'monospace'];
+const FONT_WEIGHTS = [spec.TextWeight.normal, spec.TextWeight.bold, spec.TextWeight.lighter];
+const FONT_STYLES = [spec.FontStyle.normal, spec.FontStyle.italic, spec.FontStyle.oblique];
+const TEXT_PROPERTIES = {
+  Typography: ['Text', 'Font Family', 'Font Weight', 'Font Style', 'Font Size', 'Color'],
+  Layout: ['Auto Resize', 'Width', 'Height', 'Max Width', 'Max Height', 'Line Height', 'Letter Spacing', 'Horizontal Alignment', 'Vertical Alignment'],
+  Outline: ['Enabled', 'Width', 'Color'],
+  Shadow: ['Enabled', 'Color', 'Blur', 'Offset X', 'Offset Y'],
+  Rendering: ['Color', 'Render Order'],
+};
 
 @editor(TextComponentBase)
+@editor(TextComponent)
+@editor(RichTextComponent)
 export class TextComponentEditor extends Editor {
-  private fontFamilyIndex = 0;
-  private fontWeightIndex = 0;
-  private fontStyleIndex = 0;
-  private textAlignIndex = 0;
-  private verticalAlignIndex = 1; // 默认 middle
-  private letterSpacingPercent = 0;
-
   private hasTextBounds (layout: any): layout is { maxTextWidth: number, maxTextHeight: number } {
     return typeof layout?.maxTextWidth === 'number' && typeof layout?.maxTextHeight === 'number';
   }
@@ -91,435 +81,113 @@ export class TextComponentEditor extends Editor {
     }
   }
 
-  override onInspectorGUI (): void {
-    const textComponent = this.target as TextComponent;
-
-    if (!textComponent || !textComponent.textStyle || !textComponent.textLayout) {
-      return;
-    }
-
-    const style = textComponent.textStyle;
-    const layout = textComponent.textLayout;
-
-    // 同步当前值到编辑器状态
-    this.syncFromComponent(style, layout);
-
-    ImGui.Spacing();
-    ImGui.Separator();
-    ImGui.Spacing();
-
-    // Typography 标题区域 - 对齐到 Label 位置
-    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-    ImGui.Text('       TYPOGRAPHY');
-    ImGui.PopStyleColor();
-
-    // 按钮颜色定义 - 使用更深的蓝色
-    const buttonWidth = 100;
-    const buttonHeight = 24;
-    const buttonSize = new ImGui.Vec2(buttonWidth, buttonHeight);
-    const activeColor = new ImGui.Vec4(0.2, 0.47, 0.86, 1.0); // 更深的蓝色
-    const hoverColor = new ImGui.Vec4(0.26, 0.59, 0.98, 1.0); // hover 时稍亮
-    const inactiveColor = new ImGui.Vec4(0.2, 0.2, 0.2, 1.0);
-    const inactiveHoverColor = new ImGui.Vec4(0.3, 0.3, 0.3, 1.0);
-
-    // 字体家族
-    EditorGUILayout.Label('Font Family');
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.BeginCombo('##FontFamily', FONT_FAMILY_OPTIONS[this.fontFamilyIndex])) {
-      for (let i = 0; i < FONT_FAMILY_OPTIONS.length; i++) {
-        const isSelected = this.fontFamilyIndex === i;
-
-        if (ImGui.Selectable(FONT_FAMILY_OPTIONS[i], isSelected)) {
-          this.fontFamilyIndex = i;
-          style.fontFamily = FONT_FAMILY_OPTIONS[i];
-          textComponent.isDirty = true;
-        }
-        if (isSelected) {
-          ImGui.SetItemDefaultFocus();
-        }
-      }
-      ImGui.EndCombo();
-    }
-
-    ImGui.Spacing();
-
-    // 字重按钮组
-    EditorGUILayout.Label('Font Weight');
-    for (let i = 0; i < FONT_WEIGHT_OPTIONS.length; i++) {
-      if (i > 0) {
-        ImGui.SameLine();
-      }
-      const isActive = this.fontWeightIndex === i;
-
-      ImGui.PushStyleColor(ImGui.Col.Button, isActive ? activeColor : inactiveColor);
-      ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isActive ? hoverColor : inactiveHoverColor);
-      ImGui.PushStyleColor(ImGui.Col.ButtonActive, isActive ? activeColor : inactiveColor);
-      if (ImGui.Button(FONT_WEIGHT_OPTIONS[i].label + '##FontWeight' + i, buttonSize)) {
-        this.fontWeightIndex = i;
-        style.textWeight = FONT_WEIGHT_OPTIONS[i].value;
-        textComponent.isDirty = true;
-      }
-      ImGui.PopStyleColor(3);
-    }
-
-    ImGui.Spacing();
-
-    // 字体样式按钮组
-    EditorGUILayout.Label('Font Style');
-    for (let i = 0; i < FONT_STYLE_OPTIONS.length; i++) {
-      if (i > 0) {
-        ImGui.SameLine();
-      }
-      const isActive = this.fontStyleIndex === i;
-
-      ImGui.PushStyleColor(ImGui.Col.Button, isActive ? activeColor : inactiveColor);
-      ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isActive ? hoverColor : inactiveHoverColor);
-      ImGui.PushStyleColor(ImGui.Col.ButtonActive, isActive ? activeColor : inactiveColor);
-      if (ImGui.Button(FONT_STYLE_OPTIONS[i].label + '##FontStyle' + i, buttonSize)) {
-        this.fontStyleIndex = i;
-        style.fontStyle = FONT_STYLE_OPTIONS[i].value;
-        textComponent.isDirty = true;
-      }
-      ImGui.PopStyleColor(3);
-    }
-
-    ImGui.Spacing();
-
-    // 字号 - 可拖动控件
-    EditorGUILayout.Label('Font Size');
-    const fontSizeAccess = (value?: number): number => {
-      if (value !== undefined) {
-        const nextFontSize = Math.round(value);
-
-        if (style.fontSize !== nextFontSize) {
-          style.fontSize = nextFontSize;
-          textComponent.isDirty = true;
-        }
-      }
-
-      return style.fontSize;
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat('##FontSize', fontSizeAccess, 0.5, 8, 200, '%.0f')) {
-      // 字号已在 access 函数中更新
-    }
-
-    ImGui.Spacing();
-
-    // Text 输入框 - 支持多行换行
-    EditorGUILayout.Label('Text');
-    const textAccess = (value?: string): string => {
-      if (value !== undefined) {
-        textComponent.setText(value);
-      }
-
-      return textComponent.text || '';
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.InputTextMultiline('##Text', textAccess)) {
-      // 文本已在 access 函数中更新
-    }
-
-    ImGui.Spacing();
-
-    // Auto Resize 按钮组
-    EditorGUILayout.Label('Auto Resize');
-    const autoResizeButtonSize = new ImGui.Vec2(80, buttonHeight);
-
-    // Fixed 按钮
-    const isFixedActive = layout.autoResize === spec.TextSizeMode.fixed;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isFixedActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isFixedActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isFixedActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Fixed##AutoResizeFixed', autoResizeButtonSize)) {
-      layout.autoResize = spec.TextSizeMode.fixed;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Auto Width 按钮
-    const isAutoWidthActive = layout.autoResize === spec.TextSizeMode.autoWidth;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isAutoWidthActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isAutoWidthActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isAutoWidthActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Auto Width##AutoResizeAutoWidth', autoResizeButtonSize)) {
-      layout.autoResize = spec.TextSizeMode.autoWidth;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Auto Height 按钮
-    const isAutoHeightActive = layout.autoResize === spec.TextSizeMode.autoHeight;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isAutoHeightActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isAutoHeightActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isAutoHeightActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Auto Height##AutoResizeAutoHeight', autoResizeButtonSize)) {
-      layout.autoResize = spec.TextSizeMode.autoHeight;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.Spacing();
-
-    const widthLabel = this.hasTextBounds(layout) ? 'Max Width' : 'Width';
-    const heightLabel = this.hasTextBounds(layout) ? 'Max Height' : 'Height';
-
-    EditorGUILayout.Label(widthLabel);
-    const widthAccess = (value?: number): number => {
-      if (value !== undefined) {
-        this.setEditableWidth(textComponent, layout, value);
-      }
-
-      return this.getEditableWidth(layout);
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat('##TextWidthValue', widthAccess, 0.1, 0.01, 10000, '%.2f')) {
-      // 宽度已在 access 函数中更新
-    }
-
-    ImGui.Spacing();
-
-    EditorGUILayout.Label(heightLabel);
-    const heightAccess = (value?: number): number => {
-      if (value !== undefined) {
-        this.setEditableHeight(textComponent, layout, value);
-      }
-
-      return this.getEditableHeight(layout);
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat('##TextHeightValue', heightAccess, 0.1, 0.01, 10000, '%.2f')) {
-      // 高度已在 access 函数中更新
-    }
-
-    ImGui.Spacing();
-
-    // Line height - 直接数值输入
-    EditorGUILayout.Label('Line Height');
-    const lineHeightAccess = (value?: number): number => {
-      if (value !== undefined && layout.lineHeight !== value) {
-        layout.lineHeight = value;
-        textComponent.isDirty = true;
-      }
-
-      return layout.lineHeight;
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat('##LineHeightValue', lineHeightAccess, 0.5, 1, 200, '%.0f')) {
-      // 行高已在 access 函数中更新
-    }
-
-    ImGui.Spacing();
-
-    // Letter spacing
-    EditorGUILayout.Label('Letter Spacing');
-    const letterSpacingAccess = (value?: number): number => {
-      if (value !== undefined) {
-        this.letterSpacingPercent = value;
-      }
-
-      return this.letterSpacingPercent;
-    };
-
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat('##LetterSpacing', letterSpacingAccess, 0.1, -50, 100, '%.0f%%')) {
-      // 将百分比转换为实际像素值 (基于字号)
-      layout.letterSpace = (this.letterSpacingPercent / 100) * style.fontSize;
-      textComponent.isDirty = true;
-    }
-
-    ImGui.Spacing();
-    ImGui.Separator();
-    ImGui.Spacing();
-
-    // 对齐设置标签 - 对齐到 Label 位置
-    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-    ImGui.Text('       ALIGNMENT');
-    ImGui.PopStyleColor();
-    ImGui.Spacing();
-
-    // 水平对齐按钮组
-    EditorGUILayout.Label('Horizontal');
-    const alignButtonWidth = 80;
-    const alignButtonSize = new ImGui.Vec2(alignButtonWidth, buttonHeight);
-
-    // Left 按钮
-    const isLeftActive = this.textAlignIndex === 0;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isLeftActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isLeftActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isLeftActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Left##AlignLeft', alignButtonSize)) {
-      this.textAlignIndex = 0;
-      layout.textAlign = spec.TextAlignment.left;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Center 按钮
-    const isCenterActive = this.textAlignIndex === 1;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isCenterActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isCenterActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isCenterActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Center##AlignCenter', alignButtonSize)) {
-      this.textAlignIndex = 1;
-      layout.textAlign = spec.TextAlignment.middle;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Right 按钮
-    const isRightActive = this.textAlignIndex === 2;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isRightActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isRightActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isRightActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Right##AlignRight', alignButtonSize)) {
-      this.textAlignIndex = 2;
-      layout.textAlign = spec.TextAlignment.right;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.Spacing();
-
-    // 垂直对齐按钮组
-    EditorGUILayout.Label('Vertical');
-
-    // Top 按钮
-    const isTopActive = this.verticalAlignIndex === 0;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isTopActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isTopActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isTopActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Top##AlignTop', alignButtonSize)) {
-      this.verticalAlignIndex = 0;
-      layout.textVerticalAlign = spec.TextVerticalAlign.top;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Middle 按钮
-    const isMiddleActive = this.verticalAlignIndex === 1;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isMiddleActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isMiddleActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isMiddleActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Middle##AlignMiddle', alignButtonSize)) {
-      this.verticalAlignIndex = 1;
-      layout.textVerticalAlign = spec.TextVerticalAlign.middle;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.SameLine();
-
-    // Bottom 按钮
-    const isBottomActive = this.verticalAlignIndex === 2;
-
-    ImGui.PushStyleColor(ImGui.Col.Button, isBottomActive ? activeColor : inactiveColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isBottomActive ? hoverColor : inactiveHoverColor);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, isBottomActive ? activeColor : inactiveColor);
-    if (ImGui.Button('Bottom##AlignBottom', alignButtonSize)) {
-      this.verticalAlignIndex = 2;
-      layout.textVerticalAlign = spec.TextVerticalAlign.bottom;
-      textComponent.isDirty = true;
-    }
-    ImGui.PopStyleColor(3);
-
-    ImGui.Spacing();
-    ImGui.Separator();
-    ImGui.Spacing();
-
-    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-    ImGui.Text('       COMPONENT PROPERTIES');
-    ImGui.PopStyleColor();
-    ImGui.Spacing();
-
-    super.onInspectorGUI();
+  override getSearchTerms (): string[] {
+    return Object.entries(TEXT_PROPERTIES).flatMap(([name, properties]) => [name, ...properties]);
   }
 
-  /**
-   * 从组件同步状态到编辑器
-   */
-  private syncFromComponent (style: any, layout: any): void {
-    // 同步字体家族
-    const familyIndex = FONT_FAMILY_OPTIONS.indexOf(style.fontFamily);
+  override onInspectorGUI (): void {
+    const component = this.target as TextComponent;
 
-    if (familyIndex >= 0) {
-      this.fontFamilyIndex = familyIndex;
-    }
+    if (!component?.textStyle || !component.textLayout) { return; }
+    const style = component.textStyle, layout = component.textLayout;
+    const dirty = () => { component.isDirty = true; };
 
-    // 同步字重
-    const weightIndex = FONT_WEIGHT_OPTIONS.findIndex(opt => opt.value === style.textWeight);
+    this.group('Typography', () => {
+      EditorGUILayout.Property('Text', width => ImGui.InputTextMultiline('##Text', next => {
+        if (next !== undefined && next !== component.text) { component.setText(next); }
 
-    if (weightIndex >= 0) {
-      this.fontWeightIndex = weightIndex;
-    }
+        return component.text ?? '';
+      }, undefined, new ImGui.Vec2(width, 84)));
+      const families = FONT_FAMILIES.includes(style.fontFamily) ? FONT_FAMILIES : [style.fontFamily, ...FONT_FAMILIES];
 
-    // 同步字体样式
-    const styleIndex = FONT_STYLE_OPTIONS.findIndex(opt => opt.value === style.fontStyle);
+      EditorGUILayout.ComboField('Font Family', next => {
+        if (next !== undefined && families[next] !== style.fontFamily) { component.setFontFamily(families[next]); }
 
-    if (styleIndex >= 0) {
-      this.fontStyleIndex = styleIndex;
-    }
+        return Math.max(0, families.indexOf(style.fontFamily));
+      }, families);
+      EditorGUILayout.ComboField('Font Weight', next => {
+        if (next !== undefined) { component.setFontWeight(FONT_WEIGHTS[next]); }
 
-    // 字号现在直接从 style.fontSize 读取，不需要同步索引
+        return Math.max(0, FONT_WEIGHTS.indexOf(style.textWeight));
+      }, ['Regular', 'Bold', 'Lighter']);
+      EditorGUILayout.ComboField('Font Style', next => {
+        if (next !== undefined) { component.setFontStyle(FONT_STYLES[next]); }
 
-    // 同步字间距 (转换为百分比)
-    if (style.fontSize > 0) {
-      this.letterSpacingPercent = (layout.letterSpace / style.fontSize) * 100;
-    }
+        return Math.max(0, FONT_STYLES.indexOf(style.fontStyle));
+      }, ['Normal', 'Italic', 'Oblique']);
+      EditorGUILayout.NumberField('Font Size', next => {
+        if (next !== undefined && style.fontSize !== Math.round(next)) { style.fontSize = Math.max(1, Math.round(next)); dirty(); }
 
-    // 同步水平对齐
-    switch (layout.textAlign) {
-      case spec.TextAlignment.left:
-        this.textAlignIndex = 0;
+        return style.fontSize;
+      }, 0.5, 1, 1000, '%.0f');
+      if (EditorGUILayout.ColorField('Color', style.textColor)) { dirty(); }
+    });
+    this.group('Layout', () => {
+      const modes = [spec.TextSizeMode.fixed, spec.TextSizeMode.autoWidth, spec.TextSizeMode.autoHeight];
 
-        break;
-      case spec.TextAlignment.middle:
-        this.textAlignIndex = 1;
+      EditorGUILayout.ComboField('Auto Resize', next => {
+        if (next !== undefined && layout.autoResize !== modes[next]) { layout.autoResize = modes[next]; dirty(); }
 
-        break;
-      case spec.TextAlignment.right:
-        this.textAlignIndex = 2;
+        return Math.max(0, modes.indexOf(layout.autoResize));
+      }, ['Fixed', 'Auto Width', 'Auto Height']);
+      EditorGUILayout.NumberField(this.hasTextBounds(layout) ? 'Max Width' : 'Width', next => {
+        if (next !== undefined) { this.setEditableWidth(component, layout, next); }
 
-        break;
-    }
+        return this.getEditableWidth(layout);
+      }, 0.1, 0.01, 10000, '%.2f');
+      EditorGUILayout.NumberField(this.hasTextBounds(layout) ? 'Max Height' : 'Height', next => {
+        if (next !== undefined) { this.setEditableHeight(component, layout, next); }
 
-    // 同步垂直对齐
-    switch (layout.textVerticalAlign) {
-      case spec.TextVerticalAlign.top:
-        this.verticalAlignIndex = 0;
+        return this.getEditableHeight(layout);
+      }, 0.1, 0.01, 10000, '%.2f');
+      EditorGUILayout.NumberField('Line Height', next => {
+        if (next !== undefined && layout.lineHeight !== next) { layout.lineHeight = next; dirty(); }
 
-        break;
-      case spec.TextVerticalAlign.middle:
-        this.verticalAlignIndex = 1;
+        return layout.lineHeight;
+      }, 0.5, 1, 1000, '%.1f');
+      let spacing = style.fontSize ? layout.letterSpace / style.fontSize * 100 : 0;
 
-        break;
-      case spec.TextVerticalAlign.bottom:
-        this.verticalAlignIndex = 2;
+      if (EditorGUILayout.NumberField('Letter Spacing', next => {
+        if (next !== undefined) { spacing = next; }
 
-        break;
-    }
+        return spacing;
+      }, 0.1, -100, 1000, '%.1f%%')) { layout.letterSpace = spacing / 100 * style.fontSize; dirty(); }
+      const horizontal = [spec.TextAlignment.left, spec.TextAlignment.middle, spec.TextAlignment.right];
+      const vertical = [spec.TextVerticalAlign.top, spec.TextVerticalAlign.middle, spec.TextVerticalAlign.bottom];
+
+      EditorGUILayout.ComboField('Horizontal Alignment', next => {
+        if (next !== undefined) { component.setTextAlign(horizontal[next]); }
+
+        return Math.max(0, horizontal.indexOf(layout.textAlign));
+      }, ['Left', 'Center', 'Right']);
+      EditorGUILayout.ComboField('Vertical Alignment', next => {
+        if (next !== undefined) { component.setTextVerticalAlign(vertical[next]); }
+
+        return Math.max(0, vertical.indexOf(layout.textVerticalAlign));
+      }, ['Top', 'Center', 'Bottom']);
+    });
+    this.group('Outline', () => {
+      if (EditorGUILayout.Checkbox('Enabled', style, 'isOutlined')) { dirty(); }
+      ImGui.BeginDisabled(!style.isOutlined);
+      if (EditorGUILayout.FloatField('Width', style, 'outlineWidth')) { dirty(); }
+      if (EditorGUILayout.ColorField('Color', style.outlineColor)) { dirty(); }
+      ImGui.EndDisabled();
+    }, false);
+    this.group('Shadow', () => {
+      if (EditorGUILayout.Checkbox('Enabled', style, 'hasShadow')) { dirty(); }
+      ImGui.BeginDisabled(!style.hasShadow);
+      if (EditorGUILayout.ColorField('Color', style.shadowColor)) { dirty(); }
+      if (EditorGUILayout.FloatField('Blur', style, 'shadowBlur')) { dirty(); }
+      if (EditorGUILayout.FloatField('Offset X', style, 'shadowOffsetX')) { dirty(); }
+      if (EditorGUILayout.FloatField('Offset Y', style, 'shadowOffsetY')) { dirty(); }
+      ImGui.EndDisabled();
+    }, false);
+    this.group('Rendering', () => this.drawRenderingProperties(), false);
+  }
+
+  private group (name: keyof typeof TEXT_PROPERTIES, draw: () => void, defaultOpen = true): void {
+    if (!PropertyGrid.matches(name, ...TEXT_PROPERTIES[name])) { return; }
+    if (EditorGUILayout.BeginFoldoutHeaderGroup(name, defaultOpen)) { draw(); }
+    EditorGUILayout.EndFoldoutHeaderGroup();
   }
 }

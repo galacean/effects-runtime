@@ -8,8 +8,10 @@ export function setGetWindowProvider (fn: <T extends EditorWindow>(type: new () 
 
 export class EditorWindow {
   title = 'New Window';
+  protected initialSize = new ImGui.Vec2(500, 300);
 
   private opened = false;
+  private active = false;
   private hovered = false;
   private firstFrame = true;
   private windowFlags = ImGui.WindowFlags.None;
@@ -30,14 +32,25 @@ export class EditorWindow {
       return;
     }
     if (this.firstFrame) {
-      ImGui.SetNextWindowSize(new ImGui.Vec2(500, 300));
+      ImGui.SetNextWindowSize(this.initialSize);
       this.firstFrame = false;
     }
 
-    if (ImGui.Begin(this.title, (value = this.opened) => this.opened = value, this.windowFlags)) {
+    const visible = ImGui.Begin(this.title, (value = this.opened) => {
+      if (!value) {
+        this.close();
+      }
+
+      return this.opened;
+    }, this.windowFlags);
+
+    this.setActive(this.opened && visible);
+    if (this.opened && visible) {
       this.hovered = ImGui.IsWindowHovered();
 
       this.onGUI();
+    } else {
+      this.hovered = false;
     }
 
     ImGui.End();
@@ -48,7 +61,7 @@ export class EditorWindow {
       return;
     }
     this.opened = true;
-    this.onEnable();
+    this.setActive(true);
   }
 
   close () {
@@ -56,7 +69,7 @@ export class EditorWindow {
       return;
     }
     this.opened = false;
-    this.onDisable();
+    this.setActive(false);
   }
 
   isOpened () {
@@ -81,5 +94,18 @@ export class EditorWindow {
   }
 
   onSelectionChange () {
+  }
+
+  private setActive (active: boolean): void {
+    if (this.active === active) {
+      return;
+    }
+    this.active = active;
+    if (active) {
+      this.onEnable();
+    } else {
+      this.hovered = false;
+      this.onDisable();
+    }
   }
 }
