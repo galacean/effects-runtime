@@ -791,10 +791,13 @@ export class Sequencer extends EditorWindow {
     const selected = Selection.getSelectedObjects().filter((object): object is VFXItem =>
       object instanceof VFXItem && object.composition === document.composition);
     const selectedIds = new Set(selected.map(object => object.getInstanceId()));
+    const transforms = selected.map(object => ({ object, values: [
+      ...object.transform.position.toArray(), ...getEditorRotation(object.transform).toArray(), ...object.transform.scale.toArray(),
+    ] }));
+    let recorded = false;
 
     for (const id of this.autoValues.keys()) { if (!selectedIds.has(id)) { this.autoValues.delete(id); } }
-    for (const object of selected) {
-      const values = [...object.transform.position.toArray(), ...getEditorRotation(object.transform).toArray(), ...object.transform.scale.toArray()];
+    for (const { object, values } of transforms) {
       const previous = this.autoValues.get(object.getInstanceId());
 
       this.autoValues.set(object.getInstanceId(), values);
@@ -815,6 +818,10 @@ export class Sequencer extends EditorWindow {
           }
         });
       });
+      recorded = true;
+    }
+    if (recorded) {
+      // Evaluate only after every selected item's keys have been written.
       document.changed();
       this.lastRevision = document.revision;
     }
