@@ -9,7 +9,7 @@ import './panels';
 import './custom-editors';
 import { editorApp } from './core/editor-application';
 import { editorLayout } from './core/editor-layout';
-import { Project } from './panels';
+import { ContentImport } from './panels/content-browser/content-import';
 import { EditorThemeManager } from './panels/theme';
 
 let font: ImGui.Font | null = null;
@@ -129,8 +129,8 @@ async function _init (): Promise<void> {
     canvas.style.userSelect = 'none';
     canvas.style.outline = 'none';
 
-    canvas.addEventListener('dragover', Project.allowDrop);
-    canvas.addEventListener('drop', Project.drop);
+    canvas.addEventListener('dragover', ContentImport.preventNavigation);
+    canvas.addEventListener('drop', ContentImport.preventNavigation);
 
     ImGui.LoadIniSettingsFromMemory(editorLayout.loadIni(imGuiIni));
     ImGui_Impl.Init(canvas);

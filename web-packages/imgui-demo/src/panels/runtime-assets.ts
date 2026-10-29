@@ -66,7 +66,7 @@ function colU32 (c: readonly [number, number, number, number]): number {
 // ── 面板主体 ──────────────────────────────────────────────────────────
 
 @editorWindow()
-export class ContentBrowser extends EditorWindow {
+export class RuntimeAssets extends EditorWindow {
   private categoryMap: Map<Category, EffectsObject[]> = new Map();
   private totalCount = 0;
   private filteredCount = 0;
@@ -87,15 +87,14 @@ export class ContentBrowser extends EditorWindow {
     this.searchFilterBuffer[0] = value;
   }
 
-  @menuItem('Window/Content Browser')
+  @menuItem('Window/Runtime Assets')
   static showWindow () {
-    EditorWindow.getWindow(ContentBrowser).open();
+    EditorWindow.getWindow(RuntimeAssets).open();
   }
 
   constructor () {
     super();
-    this.title = 'Content Browser';
-    this.open();
+    this.title = 'Runtime Assets';
   }
 
   // ── 主渲染入口 ────────────────────────────────────────────────────

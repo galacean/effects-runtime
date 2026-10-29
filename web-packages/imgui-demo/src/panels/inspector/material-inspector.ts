@@ -4,6 +4,7 @@ import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { EditorGUILayout as Fields } from '../../widgets/editor-gui-layout';
 import { propertyLabel } from '../../custom-editors/editor';
+import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 
 interface MaterialProperty {
   name: string,
@@ -103,7 +104,15 @@ export function drawMaterialProperties (material: Material, skipColor = false): 
     } else if (type === '2D') {
       const reference = { texture: material.getTexture(name) };
 
-      if (Fields.ObjectField(label, reference, 'texture', Texture.name) && reference.texture) {
+      if (Fields.ObjectField(label, reference, 'texture', Texture.name, false, undefined, texture => {
+        if (!material.isRegistered) { return; }
+        sceneWorkspace.observe('Assign texture', () => {
+          const latest = material.toData();
+
+          latest.textures[name] = { ...latest.textures[name], texture: texture as unknown as spec.DataPath };
+          SerializationHelper.deserialize(latest, material); GalaceanEffects.assetDataBase.setDirty(material.getInstanceId());
+        }, [material]);
+      }) && reference.texture) {
         data.textures[name] = { ...data.textures[name], texture: reference.texture as unknown as spec.DataPath }; changed = true;
       }
     }

@@ -1,4 +1,10 @@
-import type { Keyframe, spec } from '@galacean/effects';
+import { glContext, spec, TextureSourceType } from '@galacean/effects';
+import type { Keyframe } from '@galacean/effects';
+import { AssetStorage, assetRequest, assetStorage } from '../asset-database/asset-storage';
+import { ASSET_ROOT } from '../asset-database/asset-types';
+import type { AssetEntry, AssetScene } from '../asset-database/asset-types';
+import { blobDataURL } from '../asset-database/asset-data';
+import { jsonData } from './scene-values';
 
 export interface SequenceChannelEditorData {
   group: string,
@@ -7,230 +13,108 @@ export interface SequenceChannelEditorData {
   source: string,
   keys: (Keyframe & { tangentMode: 'auto' | 'user' | 'break' })[],
 }
+export interface SequenceEditorData { timelineId: string, sections: Record<string, SequenceChannelEditorData[]> }
+export interface SceneEditorData { objects: Record<string, Record<string, any>>, sequences?: Record<string, SequenceEditorData> }
+export interface SceneMetadata { id: string, name: string, updatedAt: number, parentId?: string }
+export interface StoredScene extends SceneMetadata { scene: spec.JSONScene, editor: SceneEditorData }
 
-export interface SequenceEditorData {
-  timelineId: string,
-  sections: Record<string, SequenceChannelEditorData[]>,
-}
-
-export interface SceneEditorData {
-  objects: Record<string, Record<string, any>>,
-  sequences?: Record<string, SequenceEditorData>,
-}
-
-export interface SceneMetadata {
-  id: string,
-  name: string,
-  updatedAt: number,
-}
-
-export interface StoredScene extends SceneMetadata {
-  scene: spec.JSONScene,
-  editor: SceneEditorData,
-}
-
-interface SceneLibrary {
-  version: 1,
-  lastSceneId?: string,
-  scenes: StoredScene[],
-}
-
-const SCENES = 'scenes';
-const METADATA = 'sceneMetadata';
-const WORKSPACE = 'workspace';
-const LAST_SCENE = 'lastSceneId';
-const MIGRATED = 'migratedLocalStorageV1';
-
-function requestResult<T> (request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('The scene database request failed.'));
-  });
-}
-
-/** Resolve only after commit, including when all individual requests have succeeded. */
-function transaction<T> (database: IDBDatabase, stores: string[], mode: IDBTransactionMode,
-  action: (tx: IDBTransaction) => T | Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(stores, mode);
-    let result: T;
-    let failure: unknown;
-
-    tx.oncomplete = () => resolve(result);
-    tx.onabort = () => reject(failure ?? tx.error ?? new Error('The scene database transaction was aborted.'));
-    void (async () => {
-      try { result = await action(tx); } catch (error) {
-        failure = error;
-        try { tx.abort(); } catch { reject(error); }
-      }
-    })();
-  });
-}
-
-function metadata (scene: StoredScene): SceneMetadata {
-  return { id: scene.id, name: scene.name, updatedAt: scene.updatedAt };
-}
-
-function validateScene (scene: StoredScene): void {
-  if (!scene || typeof scene.id !== 'string' || !scene.id || typeof scene.name !== 'string' ||
-    !Number.isFinite(scene.updatedAt) || !scene.scene || !scene.editor || !scene.editor.objects) {
-    throw new Error('The local scene library contains an invalid scene.');
-  }
-}
+function metadata (entry: AssetEntry): SceneMetadata { return { id: entry.id, name: entry.name, updatedAt: entry.updatedAt, parentId: entry.parentId }; }
 
 export class SceneStorage {
-  private connection?: IDBDatabase;
-  private initialization?: Promise<void>;
+  readonly assets: AssetStorage;
 
-  constructor (private readonly databaseName = 'effects-editor', private readonly legacyKey = 'effects-editor.scenes.v1') { }
-
-  initialize (): Promise<void> {
-    this.initialization ??= this.open().then(database => this.migrate(database)).catch(error => {
-      this.initialization = undefined;
-
-      throw error;
-    });
-
-    return this.initialization;
+  constructor (databaseName = 'effects-editor', legacyKey = 'effects-editor.scenes.v1') {
+    this.assets = databaseName === 'effects-editor' && legacyKey === 'effects-editor.scenes.v1' ? assetStorage : new AssetStorage(databaseName, legacyKey, databaseName + '.legacy-content');
   }
 
-  async close (): Promise<void> {
-    await this.initialization?.catch(() => {});
-    this.connection?.close();
-    this.connection = undefined; this.initialization = undefined;
-  }
+  initialize (): Promise<void> { return this.assets.initialize(); }
+  close (): Promise<void> { return this.assets.close(); }
+  subscribe (listener: (entries: AssetEntry[]) => void): () => void { return this.assets.subscribe(listener); }
 
   async list (): Promise<SceneMetadata[]> {
-    const database = await this.database();
-    const entries = await transaction(database, [METADATA], 'readonly', tx => requestResult<SceneMetadata[]>(tx.objectStore(METADATA).getAll()));
-
-    return entries.sort((a, b) => b.updatedAt - a.updatedAt);
+    return (await this.assets.list()).filter(entry => entry.kind === 'scene' && !entry.deletedAt).map(metadata).sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   async get (id: string): Promise<StoredScene | undefined> {
-    const database = await this.database();
+    const [entry, payload] = await Promise.all([this.assets.entry(id), this.assets.payload(id)]);
 
-    return transaction(database, [SCENES], 'readonly', tx => requestResult(tx.objectStore(SCENES).get(id)));
+    if (entry?.kind !== 'scene' || entry.deletedAt || payload?.kind !== 'scene') { return; }
+    const scene = jsonData(payload.scene), references = { ...payload.textureReferences };
+    const textureAssets = new Map((await this.assets.list()).filter(asset => asset.kind === 'texture').map(asset => [asset.id, asset]));
+
+    scene.textures = (scene.textures ?? []).filter(texture => {
+      if (!texture.id || !textureAssets.has(texture.id)) { return true; }
+      const { source, image, ...definition } = texture as any;
+
+      references[texture.id] = definition;
+
+      return false;
+    });
+    const textures = await Promise.all(Object.entries(references).map(async ([textureId, definition]) => {
+      const image = await this.assets.image(textureId);
+
+      if (!image) { throw new Error('A texture used by this scene is missing: ' + textureId); }
+
+      return { flipY: true, minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE,
+        ...definition, id: textureId, name: textureAssets.get(textureId)?.name ?? definition.name,
+        dataType: spec.DataType.Texture, sourceType: TextureSourceType.image, source: await blobDataURL(image.blob) };
+    }));
+
+    scene.textures.push(...textures as any);
+
+    return { ...metadata(entry), scene, editor: jsonData(payload.editor) };
   }
 
-  async findByName (name: string): Promise<SceneMetadata | undefined> {
-    const database = await this.database();
+  async findByName (name: string, parentId = ASSET_ROOT): Promise<SceneMetadata | undefined> {
+    const entry = (await this.assets.list()).find(entry => entry.kind === 'scene' && !entry.deletedAt && entry.parentId === parentId && entry.name.toLowerCase() === name.toLowerCase());
 
-    return transaction(database, [METADATA], 'readonly', tx => requestResult(tx.objectStore(METADATA).index('name').get(name)));
+    return entry ? metadata(entry) : undefined;
   }
 
   async last (): Promise<StoredScene | undefined> {
-    const database = await this.database();
+    const id = await this.assets.setting<string>('lastSceneId');
 
-    return transaction(database, [SCENES, WORKSPACE], 'readonly', async tx => {
-      const setting = await requestResult(tx.objectStore(WORKSPACE).get(LAST_SCENE)) as { key: string, value: string } | undefined;
-
-      return setting ? requestResult(tx.objectStore(SCENES).get(setting.value)) : undefined;
-    });
+    return id ? this.get(id) : undefined;
   }
 
-  async save (scene: StoredScene): Promise<void> {
-    validateScene(scene);
-    const database = await this.database();
+  async save (record: StoredScene, folder?: string): Promise<void> {
+    if (!record.id || !record.name.trim() || !Number.isFinite(record.updatedAt) || !record.scene || !record.editor?.objects) { throw new Error('The scene cannot be saved because its data is invalid.'); }
+    const textureIds = new Set((await this.assets.list()).filter(entry => entry.kind === 'texture').map(entry => entry.id));
+    const payload: AssetScene = { id: record.id, kind: 'scene', scene: jsonData(record.scene), editor: jsonData(record.editor), textureReferences: {} };
 
-    await transaction(database, [SCENES, METADATA, WORKSPACE], 'readwrite', tx => {
-      tx.objectStore(SCENES).put(scene);
-      tx.objectStore(METADATA).put(metadata(scene));
-      tx.objectStore(WORKSPACE).put({ key: LAST_SCENE, value: scene.id });
+    payload.scene.textures = (payload.scene.textures ?? []).filter(texture => {
+      if (!texture.id || !textureIds.has(texture.id)) { return true; }
+      const { source, image, ...definition } = texture as any;
+
+      payload.textureReferences![texture.id] = definition;
+
+      return false;
+    });
+    await this.assets.mutate(async stores => {
+      const previous = await assetRequest<AssetEntry | undefined>(stores.entries.get(record.id));
+      const parentId = folder ?? previous?.parentId ?? ASSET_ROOT;
+      const siblings = await assetRequest<AssetEntry[]>(stores.entries.index('parentId').getAll(parentId));
+
+      if (previous && previous.kind !== 'scene') { throw new Error('This asset ID is already used by another resource.'); }
+      if ((!previous || previous.deletedAt || previous.name !== record.name || previous.parentId !== parentId) && siblings.some(entry => entry.id !== record.id && !entry.deletedAt && entry.name.toLowerCase() === record.name.toLowerCase())) { throw new Error('An asset with that name already exists in this folder.'); }
+      if (parentId !== ASSET_ROOT) {
+        const parent = await assetRequest<AssetEntry | undefined>(stores.entries.get(parentId));
+
+        if (parent?.kind !== 'folder' || parent.deletedAt) { throw new Error('Choose an existing content folder.'); }
+      }
+      const entry: AssetEntry = { ...previous, id: record.id, name: record.name, parentId, kind: 'scene', createdAt: previous?.createdAt ?? record.updatedAt, updatedAt: record.updatedAt, deletedAt: undefined };
+
+      stores.entries.put(entry); stores.payloads.put(payload); stores.workspace.put({ key: 'lastSceneId', value: record.id });
+
+      return [entry];
     });
   }
 
   async select (id: string): Promise<void> {
-    const database = await this.database();
+    await this.assets.mutate(stores => {
+      stores.workspace.put({ key: 'lastSceneId', value: id });
 
-    await transaction(database, [WORKSPACE], 'readwrite', tx => {
-      tx.objectStore(WORKSPACE).put({ key: LAST_SCENE, value: id });
+      return [];
     });
-  }
-
-  private async database (): Promise<IDBDatabase> {
-    await this.initialize();
-
-    return this.connection!;
-  }
-
-  private open (): Promise<IDBDatabase> {
-    if (this.connection) { return Promise.resolve(this.connection); }
-
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.databaseName, 1);
-      let blocked = false;
-
-      request.onupgradeneeded = () => {
-        const database = request.result;
-
-        database.createObjectStore(SCENES, { keyPath: 'id' });
-        database.createObjectStore(METADATA, { keyPath: 'id' }).createIndex('name', 'name');
-        database.createObjectStore(WORKSPACE, { keyPath: 'key' });
-      };
-      request.onerror = () => reject(request.error ?? new Error('Unable to open the scene database.'));
-      request.onblocked = () => {
-        blocked = true;
-        reject(new Error('The scene database is being upgraded. Close other editor tabs and try again.'));
-      };
-      request.onsuccess = () => {
-        const database = request.result;
-
-        if (blocked) {
-          database.close();
-
-          return;
-        }
-        database.onversionchange = () => {
-          database.close();
-          this.connection = undefined; this.initialization = undefined;
-        };
-        database.onclose = () => {
-          if (this.connection === database) { this.connection = undefined; this.initialization = undefined; }
-        };
-        this.connection = database;
-        resolve(database);
-      };
-    });
-  }
-
-  private async migrate (database: IDBDatabase): Promise<void> {
-    let legacy: string | null = null;
-
-    await transaction(database, [SCENES, METADATA, WORKSPACE], 'readwrite', async tx => {
-      const workspace = tx.objectStore(WORKSPACE);
-
-      if (await requestResult(workspace.get(MIGRATED))) { return; }
-      legacy = window.localStorage.getItem(this.legacyKey);
-      if (legacy) {
-        const library = JSON.parse(legacy) as SceneLibrary | null;
-
-        if (!library || library.version !== 1 || !Array.isArray(library.scenes)) { throw new Error('The local scene library has an unsupported format.'); }
-        const ids = new Set<string>();
-
-        for (const scene of library.scenes) {
-          validateScene(scene);
-          if (ids.has(scene.id)) { throw new Error('The local scene library contains duplicate scene IDs.'); }
-          ids.add(scene.id);
-        }
-        for (const scene of library.scenes) {
-          // A retry or another editor tab must not replace newer IndexedDB data.
-          if (await requestResult(tx.objectStore(SCENES).getKey(scene.id)) !== undefined) { continue; }
-          tx.objectStore(SCENES).put(scene);
-          tx.objectStore(METADATA).put(metadata(scene));
-        }
-        if (library.lastSceneId && ids.has(library.lastSceneId) && !await requestResult(workspace.get(LAST_SCENE))) {
-          workspace.put({ key: LAST_SCENE, value: library.lastSceneId });
-        }
-      }
-      workspace.put({ key: MIGRATED, value: true });
-    });
-
-    // Never delete the only copy until the entire migration transaction commits.
-    if (legacy !== null) {
-      try {
-        if (window.localStorage.getItem(this.legacyKey) === legacy) { window.localStorage.removeItem(this.legacyKey); }
-      } catch (error) { console.warn('The scene library was migrated, but its old local storage copy could not be removed.', error); }
-    }
   }
 }

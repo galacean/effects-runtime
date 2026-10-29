@@ -2,6 +2,9 @@ import { sceneWorkspace as workspace } from '../../core/scene-document/scene-wor
 import { ImGui } from '../../imgui';
 import { editorMenuSection } from '../../widgets/editor-menu';
 import { editorLayout } from '../../core/editor-layout';
+import { contentLibrary } from '../../core/content-library/content-library';
+import { CONTENT_ROOT } from '../../core/content-library/content-storage';
+import { searchBar } from '../../widgets/search-bar';
 
 function dialogTitle (kind: string): string {
   return kind === 'open' ? 'Open Scene' : kind === 'save' ? 'Save Scene As' : kind === 'replace' ? 'Replace Scene' : 'Unsaved Changes';
@@ -129,7 +132,7 @@ export class SceneFiles {
 
   private drawOpen (): void {
     ImGui.TextDisabled('Scenes saved in this browser');
-    ImGui.SetNextItemWidth(-1); ImGui.InputTextWithHint('##FindScene', 'Search scenes', this.search);
+    searchBar('##FindScene', this.search, { hint: 'Search scenes' });
     ImGui.Spacing();
     ImGui.BeginChild('##LocalScenes', new ImGui.Vec2(0, 260), ImGui.ChildFlags.Borders);
     const entries = workspace.scenes.filter(entry => entry.name.toLowerCase().includes(this.search[0].toLowerCase()));
@@ -150,6 +153,15 @@ export class SceneFiles {
   }
 
   private drawSave (): void {
+    ImGui.Text('Location'); ImGui.SetNextItemWidth(-1);
+    if (ImGui.BeginCombo('##SceneFolder', contentLibrary.pathText(workspace.saveFolder))) {
+      const folders = [{ id: CONTENT_ROOT, name: '/Game' }, ...contentLibrary.entries.filter(entry => entry.kind === 'folder' && !entry.deletedAt)
+        .map(entry => ({ id: entry.id, name: contentLibrary.pathText(entry.id) })).sort((a, b) => a.name.localeCompare(b.name))];
+
+      for (const folder of folders) { if (ImGui.Selectable(folder.name, workspace.saveFolder === folder.id)) { workspace.saveFolder = folder.id; } }
+      ImGui.EndCombo();
+    }
+    ImGui.Spacing();
     ImGui.Text('Scene Name'); ImGui.SetNextItemWidth(-1);
     if (ImGui.IsWindowAppearing()) { ImGui.SetKeyboardFocusHere(); }
     const enter = ImGui.InputText('##SceneName', workspace.nameBuffer, undefined, ImGui.InputTextFlags.EnterReturnsTrue);

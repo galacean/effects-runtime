@@ -19,7 +19,7 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
   // 命中缓存（缓存了 ImGui context 的 WebGLTexture 和该纹理来源对应的翻转标记）
   const cachedTex = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
 
-  if (cachedTex) {
+  if (cachedTex && (obj as any).__imguiAssetThumbSource === obj.source) {
     const cachedFlipped = !!(obj as any).__imguiAssetThumbFlipped;
 
     return {
@@ -28,6 +28,7 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
       uv1: cachedFlipped ? new ImGui.Vec2(1, 0) : new ImGui.Vec2(1, 1),
     };
   }
+  if (cachedTex) { imguiGl.deleteTexture(cachedTex); delete (obj as any).__imguiAssetThumb; }
 
   const tex = imguiGl.createTexture();
 
@@ -116,6 +117,7 @@ export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null 
   imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_WRAP_T, imguiGl.CLAMP_TO_EDGE);
 
   (obj as any).__imguiAssetThumb = tex;
+  (obj as any).__imguiAssetThumbSource = obj.source;
   (obj as any).__imguiAssetThumbFlipped = needsFlip;
 
   return {

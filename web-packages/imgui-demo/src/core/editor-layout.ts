@@ -33,6 +33,15 @@ class EditorLayout {
       this.data.ini = legacy;
     }
 
+    if (this.data.ini.includes('[Window][Project]') || 'Project' in this.data.windows) {
+      this.data.ini = this.data.ini.replace('[Window][Content Browser]', '[Window][Runtime Assets]').replace('[Window][Project]', '[Window][Content Browser]');
+      const windows = this.data.windows;
+
+      if (typeof windows['Content Browser'] === 'boolean') { windows['Runtime Assets'] = windows['Content Browser']; }
+      windows['Content Browser'] = windows.Project ?? true;
+      delete windows.Project;
+    }
+
     return this.data.ini;
   }
 

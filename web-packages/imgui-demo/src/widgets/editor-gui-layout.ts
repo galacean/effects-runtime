@@ -6,8 +6,19 @@ import type { PropertyHeaderIcon, PropertyRowAction } from './property-grid';
 import { drawEditorChevron } from './editor-arrow';
 import { getOrCreateTexturePreview } from './texture-preview';
 import { getSpriteThumbnail } from './sprite-thumbnail';
+import { contentLibrary } from '../core/content-library/content-library';
+import { CONTENT_ASSET_PAYLOAD } from '../core/content-library/asset-drag';
+import type { ContentAssetDrag } from '../core/content-library/asset-drag';
+import { GalaceanEffects } from '../ge';
+import { sceneWorkspace } from '../core/scene-document/scene-workspace';
+import { openTextureAsset } from '../core/content-library/asset-editor';
 
 type VectorDefaults = number[] | { values: number[], reset: () => void };
+
+function openReference (reference: object): void {
+  if (reference instanceof Texture && contentLibrary.entry(reference.getInstanceId())?.kind === 'texture' && openTextureAsset(reference.getInstanceId())) { return; }
+  Selection.select(reference);
+}
 
 function access (object: object, property: string) {
   const target = object as Record<string, any>;
@@ -178,21 +189,34 @@ export class EditorGUILayout {
     if (PropertyGrid.active) { PropertyGrid.endGroup(); } else { ImGui.Unindent(); }
   }
 
-  static ObjectField (label: string, object: object, property: string, expectedType?: string, readOnly = false, icon?: PropertyHeaderIcon): boolean {
+  static ObjectField (label: string, object: object, property: string, expectedType?: string, readOnly = false, icon?: PropertyHeaderIcon, onAssetDrop?: (texture: Texture) => void): boolean {
     const target = object as Record<string, any>;
     const reference = target[property];
 
     return this.Property(label, width => {
       let changed = false;
+
+      ImGui.BeginGroup();
       const origin = ImGui.GetCursorScreenPos();
       const preview = reference instanceof Texture ? getOrCreateTexturePreview(reference) : reference instanceof Sprite ? getSpriteThumbnail(reference) : null;
       let thumbnailWidth = 0;
 
       if (preview) {
-        const size = 48;
+        const size = 54, position = ImGui.GetCursorScreenPos();
 
-        if (ImGui.ImageButton('##Thumbnail', preview.tex, new ImGui.Vec2(size, size), preview.uv0, preview.uv1)) { Selection.select(reference); }
-        thumbnailWidth = size + 10;
+        if (ImGui.InvisibleButton('##Thumbnail', new ImGui.Vec2(size, size))) { openReference(reference); }
+        const draw = ImGui.GetWindowDrawList(), hovered = ImGui.IsItemHovered();
+        const texture = reference instanceof Texture ? reference : (reference as Sprite).texture;
+        const imageWidth = Math.max(1, (texture.width || 1) * (reference instanceof Sprite ? reference.rect[2] : 1));
+        const imageHeight = Math.max(1, (texture.height || 1) * (reference instanceof Sprite ? reference.rect[3] : 1));
+        const scale = Math.min((size - 6) / imageWidth, (size - 6) / imageHeight);
+        const width = imageWidth * scale, height = imageHeight * scale;
+        const min = new ImGui.Vec2(position.x + (size - width) / 2, position.y + (size - height) / 2);
+
+        draw.AddRectFilled(position, new ImGui.Vec2(position.x + size, position.y + size), ImGui.GetColorU32(PROPERTY_COLORS.input), 3);
+        draw.AddRect(position, new ImGui.Vec2(position.x + size, position.y + size), ImGui.GetColorU32(hovered ? PROPERTY_COLORS.hover : PROPERTY_COLORS.inputBorder), 3);
+        draw.AddImage(preview.tex, min, new ImGui.Vec2(min.x + width, min.y + height), preview.uv0, preview.uv1);
+        thumbnailWidth = size + 6;
         ImGui.SameLine(0, 6);
       }
       ImGui.SetNextItemWidth(width - thumbnailWidth);
@@ -202,17 +226,38 @@ export class EditorGUILayout {
       ImGui.PushStyleColor(ImGui.Col.Button, PROPERTY_COLORS.input);
       ImGui.PushStyleVar(ImGui.StyleVar.ButtonTextAlign, new ImGui.Vec2(0, 0.5));
       ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(icon ? 28 : ImGui.GetStyle().FramePadding.x, ImGui.GetStyle().FramePadding.y));
-      if (ImGui.Button(caption + '##Reference', new ImGui.Vec2(Math.max(20, width - thumbnailWidth), ImGui.GetFrameHeight())) && reference) { Selection.select(reference); }
+      if (ImGui.Button(caption + '##Reference', new ImGui.Vec2(Math.max(20, width - thumbnailWidth), ImGui.GetFrameHeight())) && reference) { openReference(reference); }
       ImGui.PopStyleVar(2); ImGui.PopStyleColor();
       if (icon) { icon(buttonOrigin.x + 6, buttonOrigin.y + (ImGui.GetFrameHeight() - 16) / 2, 16); }
-      if (ImGui.IsItemHovered()) { ImGui.SetTooltip(reference ? 'Open ' + caption + (readOnly ? '.' : '. Drop an asset here to replace it.') : 'Drop an asset here.'); }
+      if (thumbnailWidth) { ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 54)); ImGui.Dummy(new ImGui.Vec2(width, 0)); }
+      ImGui.EndGroup();
+      if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) { ImGui.SetTooltip(reference ? 'Open ' + caption + (readOnly ? '.' : '. Drop an asset here to replace it.') : 'Drop an asset here.'); }
       if (!readOnly && ImGui.BeginDragDropTarget()) {
-        const payload = ImGui.AcceptDragDropPayload(expectedType ?? reference?.constructor.name ?? 'EffectsObject');
+        const type = expectedType ?? reference?.constructor.name ?? 'EffectsObject';
+        const payload = ImGui.AcceptDragDropPayload(type);
 
         if (payload?.Data) { target[property] = payload.Data; changed = true; }
+        if (type === Texture.name) {
+          const asset = ImGui.AcceptDragDropPayload<ContentAssetDrag>(CONTENT_ASSET_PAYLOAD);
+          const id = asset?.Data?.ids.length === 1 ? asset.Data.ids[0] : undefined;
+
+          if (id && contentLibrary.entry(id)?.kind === 'texture') {
+            const engine = GalaceanEffects.player.engine, texture = contentLibrary.texture(engine, id);
+
+            if (texture?.isRegistered && !texture.isDestroyed) { target[property] = texture; changed = true; } else {
+              const selection = [...Selection.getSelectedObjects()], document = sceneWorkspace.current;
+
+              void contentLibrary.loadTexture(engine, id).then(loaded => {
+                const currentSelection = Selection.getSelectedObjects();
+
+                if (document !== sceneWorkspace.current || selection.length !== currentSelection.length || selection.some((entry, index) => entry !== currentSelection[index])) { return; }
+                if (onAssetDrop) { onAssetDrop(loaded); } else { sceneWorkspace.observe('Assign texture', () => target[property] = loaded, [object]); }
+              }).catch(error => contentLibrary.report(error));
+            }
+          }
+        }
         ImGui.EndDragDropTarget();
       }
-      if (thumbnailWidth) { ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 54)); ImGui.Dummy(new ImGui.Vec2(width, 0)); }
 
       return changed;
     }, label + ' ' + (reference?.name ?? ''));

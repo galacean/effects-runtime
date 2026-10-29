@@ -153,6 +153,8 @@ export class SceneDocument {
     this.savedVersion = revision ?? this.version;
   }
 
+  markUnsaved (): void { this.savedVersion = undefined; }
+
   begin (label: string, affectsContent = true): void {
     if (!this.restoring && !this.transaction) {
       this.transaction = { label, before: affectsContent ? this.snapshot() : undefined, version: this.version,
