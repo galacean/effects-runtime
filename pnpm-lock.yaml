@@ -347,7 +347,7 @@ importers:
         specifier: ^0.149.0
         version: 0.149.0
 
-  web-packages/imgui-demo:
+  web-packages/dev-tools:
     dependencies:
       '@galacean/effects':
         specifier: workspace:*

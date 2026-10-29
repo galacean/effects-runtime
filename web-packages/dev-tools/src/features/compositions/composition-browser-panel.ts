@@ -1,0 +1,223 @@
+import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
+import { EditorWindow } from '../../framework/windows/editor-window';
+import { ImGui } from '../../platform/imgui/index';
+import { drawEditorIcon } from '../../ui/icons/editor-icons';
+import { InteractionColors as I } from '../../ui/theme/editor-interaction';
+import { EditorColors } from '../../ui/theme/index';
+import { searchBar } from '../../ui/widgets/index';
+import { sceneWorkspace } from '../scene/scene-workspace';
+
+export interface CompositionSource { url: string, name: string }
+
+let compositionCatalog: readonly CompositionSource[] = [];
+
+export function configureCompositionCatalog (sources: readonly CompositionSource[]): void { compositionCatalog = sources; }
+
+const COLORS = {
+  selectedFocused: EditorColors.selectionFocused,
+  selectedUnfocused: EditorColors.selectionUnfocused,
+  hovered: EditorColors.selectionHovered,
+  playingBg: new ImGui.ImVec4(0.14, 0.35, 0.22, 1.0),
+  playingHovered: new ImGui.ImVec4(0.18, 0.42, 0.28, 1.0),
+  listBg: EditorColors.childBg,
+  listBorder: EditorColors.border,
+  searchIcon: EditorColors.iconDefault,
+  dimText: EditorColors.textWeak,
+} as const;
+
+const LAYOUT = {
+  iconSize: 14,
+  iconTextGap: 6,
+  rowPaddingLeft: 6,
+  rowHeight: 22,
+} as const;
+
+@editorPanel()
+export class CompositionBrowserPanel extends EditorWindow {
+
+  private currentItem = -1;
+  private compositionNames: string[] = [];
+  private compositionURLs: string[] = [];
+  private currentCompositionURL = '';
+  private activeSourceURL = '';
+  private playingIndex = -1;
+
+  private searchFilterBuffer: ImGui.ImScalar<string> = [''];
+  private filteredIndices: number[] = [];
+
+  @menuItem('Window/Composition')
+  static showWindow () {
+    EditorWindow.getWindow(CompositionBrowserPanel).open();
+  }
+
+  constructor () {
+    super();
+    this.title = 'Composition';
+
+    for (const entry of compositionCatalog) {
+      this.compositionNames.push(entry.name);
+      this.compositionURLs.push(entry.url);
+    }
+
+    this.updateFilteredList();
+    this.open();
+  }
+
+  protected override onGUI (): void {
+    const sourceURL = sceneWorkspace.sourceURL ?? '';
+
+    if (sourceURL !== this.activeSourceURL) {
+      this.activeSourceURL = sourceURL; this.currentCompositionURL = sourceURL;
+    }
+    this.currentItem = this.compositionURLs.indexOf(sourceURL); this.playingIndex = this.currentItem;
+    ImGui.BeginDisabled(sceneWorkspace.busy);
+    this.drawSearchBar();
+    ImGui.Spacing();
+    this.drawURLSection();
+
+    ImGui.Spacing();
+    ImGui.Separator();
+    ImGui.Spacing();
+
+    this.drawCompositionList();
+    ImGui.EndDisabled();
+  }
+
+  private drawURLSection (): void {
+    ImGui.AlignTextToFramePadding();
+    ImGui.Text('URL');
+    ImGui.SameLine();
+    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().x);
+    if (ImGui.InputText(
+      '##CompositionURL',
+      (value = this.currentCompositionURL) => this.currentCompositionURL = value,
+      undefined,
+      ImGui.InputTextFlags.EnterReturnsTrue,
+    )) {
+      this.playURL(this.currentCompositionURL);
+    }
+  }
+
+  private drawCompositionList (): void {
+    const listHeight = ImGui.GetContentRegionAvail().y;
+
+    ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, COLORS.listBg);
+    ImGui.PushStyleColor(ImGui.ImGuiCol.Border, COLORS.listBorder);
+    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.WindowPadding, new ImGui.Vec2(0, 2));
+    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.ItemSpacing, new ImGui.Vec2(0, 1));
+
+    if (ImGui.BeginChild('##CompositionList', new ImGui.Vec2(0, listHeight), ImGui.ChildFlags.Borders)) {
+      const indices = this.filteredIndices;
+      const focused = ImGui.IsWindowFocused();
+      const drawList = ImGui.GetWindowDrawList();
+      const windowPos = ImGui.GetWindowPos();
+      const rowFullRight = ImGui.GetCursorScreenPos().x + ImGui.GetContentRegionAvail().x;
+
+      for (const idx of indices) {
+        const isSelected = idx === this.currentItem;
+        const isPlaying = idx === this.playingIndex;
+
+        ImGui.PushID(idx);
+
+        const rowScreenPos = ImGui.GetCursorScreenPos();
+        const rowMinY = rowScreenPos.y;
+        const rowMaxY = rowMinY + LAYOUT.rowHeight;
+
+        const rowHovered = ImGui.IsMouseHoveringRect(
+          new ImGui.Vec2(windowPos.x, rowMinY),
+          new ImGui.Vec2(rowFullRight, rowMaxY),
+        );
+
+        if (isSelected) {
+          const bgColor = focused ? COLORS.selectedFocused : COLORS.selectedUnfocused;
+
+          drawList.AddRectFilled(
+            new ImGui.Vec2(windowPos.x, rowMinY),
+            new ImGui.Vec2(rowFullRight, rowMaxY),
+            ImGui.GetColorU32(bgColor),
+          );
+        } else if (isPlaying) {
+          const bgColor = rowHovered ? COLORS.playingHovered : COLORS.playingBg;
+
+          drawList.AddRectFilled(
+            new ImGui.Vec2(windowPos.x, rowMinY),
+            new ImGui.Vec2(rowFullRight, rowMaxY),
+            ImGui.GetColorU32(bgColor),
+          );
+        } else if (rowHovered) {
+          drawList.AddRectFilled(
+            new ImGui.Vec2(windowPos.x, rowMinY),
+            new ImGui.Vec2(rowFullRight, rowMaxY),
+            ImGui.GetColorU32(COLORS.hovered),
+          );
+        }
+
+        const iconX = rowScreenPos.x + LAYOUT.rowPaddingLeft;
+        const iconY = rowMinY + (LAYOUT.rowHeight - LAYOUT.iconSize) * 0.5;
+
+        drawEditorIcon('sequence', iconX, iconY, LAYOUT.iconSize, isSelected ? I.foregroundHover : I.foreground);
+
+        const textX = LAYOUT.rowPaddingLeft + LAYOUT.iconSize + LAYOUT.iconTextGap;
+        const textY = (LAYOUT.rowHeight - ImGui.GetTextLineHeight()) * 0.5;
+
+        ImGui.SetCursorPos(new ImGui.Vec2(textX, ImGui.GetCursorPos().y + textY));
+        ImGui.Text(this.compositionNames[idx]);
+
+        ImGui.SetCursorScreenPos(new ImGui.Vec2(windowPos.x, rowMinY));
+        ImGui.InvisibleButton(`##row_${idx}`, new ImGui.Vec2(rowFullRight - windowPos.x, LAYOUT.rowHeight));
+
+        if (ImGui.IsItemClicked()) {
+          this.playURL(this.compositionURLs[idx]);
+        }
+
+        ImGui.PopID();
+      }
+
+      if (indices.length === 0 && this.searchFilterBuffer[0].length > 0) {
+        const padding = LAYOUT.rowPaddingLeft + LAYOUT.iconSize + LAYOUT.iconTextGap;
+
+        ImGui.SetCursorPosX(padding);
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 8);
+        ImGui.PushStyleColor(ImGui.ImGuiCol.Text, COLORS.dimText);
+        ImGui.Text('没有匹配的合成');
+        ImGui.PopStyleColor(1);
+      }
+    }
+    ImGui.EndChild();
+
+    ImGui.PopStyleVar(2);
+    ImGui.PopStyleColor(2);
+  }
+
+  private drawSearchBar (): void {
+    if (searchBar('##CompositionSearch', this.searchFilterBuffer, { showClearButton: false })) {
+      this.updateFilteredList();
+    }
+  }
+
+  private updateFilteredList (): void {
+    const filter = this.searchFilterBuffer[0];
+
+    if (filter.length === 0) {
+      this.filteredIndices = this.compositionNames.map((_, i) => i);
+
+      return;
+    }
+
+    const filterLower = filter.toLowerCase();
+
+    this.filteredIndices = [];
+    for (let i = 0; i < this.compositionNames.length; i++) {
+      if (this.compositionNames[i].toLowerCase().includes(filterLower)) {
+        this.filteredIndices.push(i);
+      }
+    }
+  }
+
+  private playURL (url: string): void {
+    if (!url) {
+      return;
+    }
+    void sceneWorkspace.requestOpen(url);
+  }
+}
