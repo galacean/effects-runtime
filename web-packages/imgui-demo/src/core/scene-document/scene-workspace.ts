@@ -23,7 +23,10 @@ export class SceneWorkspace {
   flushEdits: () => void = () => {};
   onRestored: () => void = () => {};
   private loader?: Loader;
-  private pending?: OpenRequest;
+  private pending?: { run: () => Promise<void>, description: string };
+  private afterSave?: () => Promise<void>;
+  private transitioning = false;
+  private documentProjectId = '';
   private replacement?: SceneMetadata;
   private requests = Promise.resolve();
   private opening = false;
@@ -32,7 +35,7 @@ export class SceneWorkspace {
 
   constructor (readonly storage = new SceneStorage()) {
     storage.subscribe(entries => {
-      for (const entry of entries.filter(entry => entry.kind === 'scene')) {
+      for (const entry of entries.filter(entry => entry.kind === 'scene' && entry.projectId === storage.assets.projectId)) {
         this.scenes = this.scenes.filter(scene => scene.id !== entry.id);
         if (!entry.deletedAt) { this.scenes.push({ id: entry.id, name: entry.name, updatedAt: entry.updatedAt, parentId: entry.parentId }); }
         if (this.current?.storageId === entry.id) {
@@ -44,13 +47,16 @@ export class SceneWorkspace {
     });
   }
 
-  get busy (): boolean { return this.opening || !!this.saveRequest; }
+  get busy (): boolean { return this.opening || this.transitioning || !!this.saveRequest; }
+  get changingDocument (): boolean { return this.opening || this.transitioning; }
+  get pendingDescription (): string { return this.pending?.description ?? 'opening another scene'; }
   get sourceURL (): string | undefined { return this.current ? this.openedSourceURL : undefined; }
 
   async initialize (loader: Loader): Promise<StoredScene | undefined> {
     this.loader = loader;
     try {
-      const [scenes, last] = await Promise.all([this.storage.list(), this.storage.last()]);
+      await this.storage.initialize();
+      const [scenes, last] = await Promise.all([this.storage.list(), this.storage.initial()]);
 
       this.scenes = scenes;
 
@@ -78,17 +84,31 @@ export class SceneWorkspace {
   }
 
   private async request (request: OpenRequest): Promise<void> {
-    await this.saveRequest;
-    if (this.opening) { return; }
     if (this.current && !request.created && !request.stored && typeof request.source === 'string' && request.source === this.sourceURL) { return; }
+    await this.requestTransition(() => this.open(request), 'opening another scene');
+  }
+
+  async requestTransition (run: () => Promise<void>, description: string): Promise<void> {
+    await this.saveRequest;
+    if (this.opening || this.transitioning || this.pending) { return; }
     this.flushEdits();
     this.current?.commit();
     if (this.current?.dirty) {
-      this.pending = request; this.dialog = 'unsaved';
+      this.pending = { run, description }; this.dialog = 'unsaved';
 
       return;
     }
-    await this.open(request);
+    await this.runTransition(run);
+  }
+
+  private async runTransition (run: () => Promise<void>): Promise<void> {
+    this.transitioning = true;
+    try { await run(); } catch (error) { this.report(error); } finally { this.transitioning = false; }
+  }
+
+  async loadProject (stored?: StoredScene): Promise<void> {
+    await this.refreshScenes();
+    await this.open({ source: stored?.scene ?? createEmptyScene(), stored }, true);
   }
 
   async openSaved (entry: SceneMetadata): Promise<void> {
@@ -101,9 +121,9 @@ export class SceneWorkspace {
     } catch (error) { this.report(error); }
   }
 
-  private async open (request: OpenRequest): Promise<void> {
+  private async open (request: OpenRequest, propagate = false): Promise<void> {
     this.opening = true;
-    this.requests = this.requests.then(async () => {
+    this.requests = this.requests.catch(() => {}).then(async () => {
       try {
         const loaded = await this.loader!(request.source);
         const document = new SceneDocument(loaded.composition, loaded.source, request.stored?.editor);
@@ -112,14 +132,16 @@ export class SceneWorkspace {
         document.beforeSelectionChange = () => this.flushEdits();
         document.onRestored = () => this.onRestored();
         this.current = document;
+        this.documentProjectId = this.storage.assets.projectId;
         this.openedSourceURL = typeof request.source === 'string' ? request.source : undefined;
         // Existing source data is the initial baseline even when it has no local library entry.
         if (!request.created) { document.markSaved(); }
         if (request.stored) {
-          document.storageId = request.stored.id; document.name = request.stored.name;
-          await this.storage.select(request.stored.id);
+          document.storageId = request.stored.id || undefined; document.name = request.stored.name;
+          if (request.stored.id) { await this.storage.select(request.stored.id); }
         }
-      } catch (error) { this.report(error); } finally { this.opening = false; }
+        this.onRestored();
+      } catch (error) { this.report(error); if (propagate) { throw error; } } finally { this.opening = false; }
     });
     await this.requests;
   }
@@ -164,6 +186,19 @@ export class SceneWorkspace {
     });
   }
 
+  async saveAll (after?: () => Promise<void>): Promise<void> {
+    if (this.busy) { return; }
+    this.flushEdits(); this.current?.commit(true);
+    if (this.current && !this.current.storageId) {
+      this.afterSave = async () => { await contentLibrary.saveAll(); await after?.(); };
+      this.showSaveAs();
+
+      return;
+    }
+    if (this.current?.dirty && !await this.save()) { return; }
+    await contentLibrary.whenIdle(); await contentLibrary.saveAll(); await after?.();
+  }
+
   replace (): Promise<boolean> {
     const document = this.current;
     const replacement = this.replacement;
@@ -190,10 +225,14 @@ export class SceneWorkspace {
     const revision = document.revision;
     const updatedAt = Date.now();
 
-    await this.storage.save({ id, name, updatedAt, ...snapshot }, folder);
+    await this.storage.save({ id, projectId: this.documentProjectId, name, updatedAt, ...snapshot }, folder);
     document.storageId = id; document.name = name; document.markSaved(revision);
     this.scenes = [{ id, name, updatedAt, parentId: contentLibrary.entry(id)?.parentId }, ...this.scenes.filter(entry => entry.id !== id)].sort((a, b) => b.updatedAt - a.updatedAt);
     this.dialog = '';
+    const afterSave = this.afterSave;
+
+    this.afterSave = undefined;
+    await afterSave?.();
     if (this.pending) {
       // Edits made while the transaction was pending still need the user's decision.
       if (document.dirty) { this.dialog = 'unsaved'; } else { this.discardAndOpen(); }
@@ -206,10 +245,10 @@ export class SceneWorkspace {
     const request = this.pending;
 
     this.pending = undefined; this.dialog = '';
-    if (request) { void this.open(request); }
+    if (request) { void this.runTransition(request.run); }
   }
 
-  cancelOpen (): void { this.pending = undefined; this.dialog = ''; }
+  cancelOpen (): void { this.pending = undefined; this.afterSave = undefined; this.dialog = ''; }
 
   changeSelection (apply: () => void): void {
     if (this.current && !this.opening) { this.current.changeSelection(apply); } else { apply(); }

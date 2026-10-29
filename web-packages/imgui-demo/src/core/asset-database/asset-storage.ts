@@ -1,15 +1,18 @@
 import type { StoredScene } from '../scene-document/scene-storage';
 import { ASSET_ROOT } from './asset-types';
 import type { AssetEntry, AssetImage, AssetPayload, AssetPreferences } from './asset-types';
+import { DEFAULT_PROJECT_ID } from '../project/project-types';
+import type { ProjectRecord, ProjectSettings } from '../project/project-types';
 
 interface AssetStores {
+  projectId: string,
   entries: IDBObjectStore,
   payloads: IDBObjectStore,
   preferences: IDBObjectStore,
   workspace: IDBObjectStore,
 }
 type Listener = (entries: AssetEntry[]) => void;
-const STORES = ['assets', 'assetData', 'preferences', 'workspace'];
+const STORES = ['assets', 'assetData', 'preferences', 'workspace', 'projects'];
 
 export function assetRequest<T> (request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -41,7 +44,7 @@ function validateScene (scene: StoredScene): void {
 }
 
 function sceneEntry (scene: StoredScene): AssetEntry {
-  return { id: scene.id, name: scene.name, kind: 'scene', parentId: ASSET_ROOT, createdAt: scene.updatedAt, updatedAt: scene.updatedAt };
+  return { id: scene.id, projectId: DEFAULT_PROJECT_ID, name: scene.name, kind: 'scene', parentId: ASSET_ROOT, createdAt: scene.updatedAt, updatedAt: scene.updatedAt };
 }
 
 export class AssetStorage {
@@ -49,6 +52,17 @@ export class AssetStorage {
   private initialization?: Promise<void>;
   private listeners = new Set<Listener>();
   private channel?: BroadcastChannel;
+  private projectListeners = new Set<() => void>();
+  private activeProject?: ProjectRecord;
+
+  get projectId (): string { return this.activeProject?.id ?? DEFAULT_PROJECT_ID; }
+  get project (): ProjectRecord | undefined { return this.activeProject; }
+
+  subscribeProjects (listener: () => void): () => void {
+    this.projectListeners.add(listener);
+
+    return () => this.projectListeners.delete(listener);
+  }
 
   constructor (private readonly databaseName = 'effects-editor', private readonly legacySceneKey = 'effects-editor.scenes.v1', private readonly legacyContentName = 'effects-editor-content') { }
 
@@ -63,6 +77,14 @@ export class AssetStorage {
       const database = await this.open();
 
       await this.migrateScenes(database); await this.migrateContent(database);
+      await transaction(database, ['workspace', 'projects'], 'readwrite', async tx => {
+        const last = await assetRequest(tx.objectStore('workspace').get('lastProjectId'));
+        const selected = await assetRequest<ProjectRecord | undefined>(tx.objectStore('projects').get(last?.value ?? DEFAULT_PROJECT_ID));
+        const project = selected && !selected.deletedAt ? selected : await assetRequest<ProjectRecord>(tx.objectStore('projects').get(DEFAULT_PROJECT_ID));
+
+        this.activeProject = { ...project, lastOpenedAt: Date.now() };
+        tx.objectStore('projects').put(this.activeProject);
+      });
       if (typeof BroadcastChannel !== 'undefined' && !this.channel) {
         this.channel = new BroadcastChannel(this.databaseName + '.assets');
         this.channel.onmessage = event => {
@@ -71,6 +93,7 @@ export class AssetStorage {
           if (Array.isArray(entries) && entries.every(entry => entry && typeof entry.id === 'string' && ['folder', 'texture', 'scene'].includes(entry.kind))) {
             this.notify(entries, false);
           }
+          if (event.data?.projects) { void this.refreshProject().then(() => this.notifyProjects(false)); }
         };
       }
     })().catch(error => { this.initialization = undefined; throw error; });
@@ -94,16 +117,19 @@ export class AssetStorage {
     if (this.connection) { return Promise.resolve(this.connection); }
 
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.databaseName, 2);
+      const request = indexedDB.open(this.databaseName, 3);
       let blocked = false, upgradeError: unknown;
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = event => {
         const database = request.result, tx = request.transaction!;
-        const entries = database.createObjectStore('assets', { keyPath: 'id' });
-        const payloads = database.createObjectStore('assetData', { keyPath: 'id' });
+        const oldVersion = event.oldVersion;
+        const entries = oldVersion < 2 ? database.createObjectStore('assets', { keyPath: 'id' }) : tx.objectStore('assets');
+        const payloads = oldVersion < 2 ? database.createObjectStore('assetData', { keyPath: 'id' }) : tx.objectStore('assetData');
 
-        entries.createIndex('parentId', 'parentId'); entries.createIndex('name', 'name');
-        database.createObjectStore('preferences');
+        if (oldVersion < 2) {
+          entries.createIndex('parentId', 'parentId'); entries.createIndex('name', 'name');
+          database.createObjectStore('preferences');
+        }
         if (!database.objectStoreNames.contains('workspace')) { database.createObjectStore('workspace', { keyPath: 'key' }); }
         if (database.objectStoreNames.contains('scenes')) {
           const scenes = tx.objectStore('scenes').getAll();
@@ -117,6 +143,29 @@ export class AssetStorage {
               database.deleteObjectStore('scenes');
               if (database.objectStoreNames.contains('sceneMetadata')) { database.deleteObjectStore('sceneMetadata'); }
             } catch (error) { upgradeError = error; tx.abort(); }
+          };
+        }
+        if (oldVersion < 3) {
+          const now = Date.now();
+
+          database.createObjectStore('projects', { keyPath: 'id' }).put({ id: DEFAULT_PROJECT_ID, name: 'My Project', description: '', createdAt: now, updatedAt: now, lastOpenedAt: now });
+          entries.createIndex('projectId', 'projectId');
+          const cursor = entries.openCursor();
+
+          cursor.onsuccess = () => {
+            if (cursor.result) { cursor.result.update({ ...cursor.result.value, projectId: DEFAULT_PROJECT_ID }); cursor.result.continue(); }
+          };
+          const preferences = tx.objectStore('preferences'), browser = preferences.get('browser');
+
+          browser.onsuccess = () => { if (browser.result) { preferences.put(browser.result, DEFAULT_PROJECT_ID); preferences.delete('browser'); } };
+          const workspace = tx.objectStore('workspace'), lastScene = workspace.get('lastSceneId');
+
+          lastScene.onsuccess = () => {
+            if (lastScene.result) {
+              const key = DEFAULT_PROJECT_ID + ':lastSceneId';
+
+              workspace.put({ key, value: lastScene.result.value }); workspace.delete('lastSceneId');
+            }
           };
         }
       };
@@ -143,35 +192,86 @@ export class AssetStorage {
     return transaction(database, [store], 'readonly', tx => assetRequest(action(tx.objectStore(store))));
   }
 
-  list (): Promise<AssetEntry[]> { return this.read('assets', store => store.getAll()); }
-  entry (id: string): Promise<AssetEntry | undefined> { return this.read('assets', store => store.get(id)); }
-  payload (id: string): Promise<AssetPayload | undefined> { return this.read('assetData', store => store.get(id)); }
-  preferences (): Promise<AssetPreferences | undefined> { return this.read('preferences', store => store.get('browser')); }
-  async image (id: string): Promise<AssetImage | undefined> {
-    const payload = await this.payload(id);
+  async list (projectId?: string): Promise<AssetEntry[]> {
+    await this.initialize();
+
+    return this.read('assets', store => store.index('projectId').getAll(projectId ?? this.projectId));
+  }
+  async entry (id: string, projectId?: string): Promise<AssetEntry | undefined> {
+    await this.initialize(); projectId ??= this.projectId;
+    const entry = await this.read<AssetEntry | undefined>('assets', store => store.get(id));
+
+    return entry?.projectId === projectId ? entry : undefined;
+  }
+  async payload (id: string, projectId?: string): Promise<AssetPayload | undefined> {
+    const database = await this.database();
+
+    projectId ??= this.projectId;
+
+    return transaction(database, ['assets', 'assetData'], 'readonly', async tx => {
+      const entry = await assetRequest<AssetEntry | undefined>(tx.objectStore('assets').get(id));
+
+      return entry?.projectId === projectId ? assetRequest<AssetPayload | undefined>(tx.objectStore('assetData').get(id)) : undefined;
+    });
+  }
+  async preferences (projectId?: string): Promise<AssetPreferences | undefined> {
+    await this.initialize();
+
+    return this.read('preferences', store => store.get(projectId ?? this.projectId));
+  }
+  async image (id: string, projectId?: string): Promise<AssetImage | undefined> {
+    const payload = await this.payload(id, projectId);
 
     return payload?.kind === 'texture' ? payload : undefined;
   }
-  async setting<T> (key: string): Promise<T | undefined> { return (await this.read('workspace', store => store.get(key)))?.value; }
+  async setting<T> (key: string, projectId?: string): Promise<T | undefined> {
+    await this.initialize();
 
-  async mutate (action: (stores: AssetStores) => AssetEntry[] | Promise<AssetEntry[]>): Promise<void> {
-    const database = await this.database();
-    const entries = await transaction(database, STORES, 'readwrite', tx => action({
-      entries: tx.objectStore('assets'), payloads: tx.objectStore('assetData'), preferences: tx.objectStore('preferences'), workspace: tx.objectStore('workspace'),
-    }));
-
-    if (entries.length) { this.notify(entries); }
+    return (await this.read('workspace', store => store.get((projectId ?? this.projectId) + ':' + key)))?.value;
   }
 
-  async write (entries: AssetEntry[], payloads: AssetPayload[] = [], preferences?: AssetPreferences): Promise<void> {
+  async mutate (action: (stores: AssetStores) => AssetEntry[] | Promise<AssetEntry[]>, projectId?: string): Promise<void> {
+    const database = await this.database();
+
+    projectId ??= this.projectId;
+    let updatedProject: ProjectRecord | undefined;
+    const scope = projectId;
+    const entries = await transaction(database, STORES, 'readwrite', async tx => {
+      const projects = tx.objectStore('projects'), project = await assetRequest<ProjectRecord | undefined>(projects.get(scope));
+
+      if (!project || project.deletedAt) { throw new Error('This project is no longer available.'); }
+      const changes = await action({ projectId: scope, entries: tx.objectStore('assets'), payloads: tx.objectStore('assetData'), preferences: tx.objectStore('preferences'), workspace: tx.objectStore('workspace') });
+
+      if (changes.some(entry => entry.projectId !== scope)) { throw new Error('Assets can only be edited in their own project.'); }
+      if (changes.length) {
+        updatedProject = { ...project, updatedAt: Date.now(), startupSceneId: changes.some(entry => entry.id === project.startupSceneId && entry.deletedAt) ? undefined : project.startupSceneId };
+        projects.put(updatedProject);
+      }
+
+      return changes;
+    });
+
+    if (entries.length) {
+      if (this.projectId === scope && updatedProject) { this.activeProject = updatedProject; }
+      this.notify(entries); this.notifyProjects();
+    }
+  }
+
+  async write (entries: AssetEntry[], payloads: AssetPayload[] = [], preferences?: AssetPreferences, projectId = this.projectId): Promise<void> {
     await this.mutate(async stores => {
+      if (entries.some(entry => entry.projectId !== projectId)) { throw new Error('Assets can only be edited in their own project.'); }
+      for (const entry of entries) {
+        const previous = await assetRequest<AssetEntry | undefined>(stores.entries.get(entry.id));
+
+        if (previous && previous.projectId !== projectId) { throw new Error('This asset belongs to another project.'); }
+      }
       const changed = new Map(entries.map(entry => [entry.id, entry]));
       const parents = new Map<string, AssetEntry[]>();
 
       for (const entry of entries.filter(entry => !entry.deletedAt)) {
         let siblings = parents.get(entry.parentId);
 
-        if (!siblings) { siblings = await assetRequest<AssetEntry[]>(stores.entries.index('parentId').getAll(entry.parentId)); parents.set(entry.parentId, siblings); }
+        if (!siblings) { siblings = (await assetRequest<AssetEntry[]>(stores.entries.index('parentId').getAll(entry.parentId))).filter(entry => entry.projectId === projectId); parents.set(entry.parentId, siblings); }
         const previous = siblings.find(previous => previous.id === entry.id);
 
         if (!previous || previous.deletedAt || previous.name !== entry.name) {
@@ -182,19 +282,134 @@ export class AssetStorage {
         if (entry.parentId !== ASSET_ROOT) {
           const parent = changed.get(entry.parentId) ?? await assetRequest<AssetEntry | undefined>(stores.entries.get(entry.parentId));
 
-          if (parent?.kind !== 'folder' || parent.deletedAt) { throw new Error('Choose an existing content folder.'); }
+          if (parent?.kind !== 'folder' || parent.deletedAt || parent.projectId !== projectId) { throw new Error('Choose an existing content folder.'); }
         }
       }
+      for (const payload of payloads) {
+        const entry = changed.get(payload.id) ?? await assetRequest<AssetEntry | undefined>(stores.entries.get(payload.id));
+
+        if (entry?.projectId !== projectId || entry.kind !== payload.kind) { throw new Error('The asset data does not belong to this project.'); }
+      }
       entries.forEach(entry => stores.entries.put(entry)); payloads.forEach(payload => stores.payloads.put(payload));
-      if (preferences) { stores.preferences.put(preferences, 'browser'); }
+      if (preferences) { stores.preferences.put(preferences, projectId); }
 
       return entries;
-    });
+    }, projectId);
   }
 
   private notify (entries: AssetEntry[], broadcast = true): void {
     this.listeners.forEach(listener => { try { listener(entries); } catch (error) { console.error('The asset view could not be refreshed:', error); } });
     if (broadcast) { this.channel?.postMessage({ entries }); }
+  }
+
+  private notifyProjects (broadcast = true): void {
+    this.projectListeners.forEach(listener => { try { listener(); } catch (error) { console.error('The project view could not be refreshed:', error); } });
+    if (broadcast) { this.channel?.postMessage({ projects: true }); }
+  }
+
+  async projects (): Promise<ProjectRecord[]> { return this.read('projects', store => store.getAll()); }
+  async getProject (id: string): Promise<ProjectRecord | undefined> { return this.read('projects', store => store.get(id)); }
+
+  private async refreshProject (): Promise<void> {
+    if (this.activeProject) { this.activeProject = await this.getProject(this.activeProject.id); }
+  }
+
+  async activateProject (id: string): Promise<void> {
+    const database = await this.database();
+    const project = await transaction(database, ['projects', 'workspace'], 'readwrite', async tx => {
+      const project = await assetRequest<ProjectRecord | undefined>(tx.objectStore('projects').get(id));
+
+      if (!project || project.deletedAt) { throw new Error('This project is no longer available.'); }
+      const next = { ...project, lastOpenedAt: Date.now() };
+
+      tx.objectStore('projects').put(next); tx.objectStore('workspace').put({ key: 'lastProjectId', value: id });
+
+      return next;
+    });
+
+    this.activeProject = project; this.notifyProjects();
+  }
+
+  async createProject (project: ProjectRecord, entries: AssetEntry[], payloads: AssetPayload[], preferences?: AssetPreferences, lastSceneId?: string): Promise<void> {
+    const database = await this.database();
+
+    await transaction(database, STORES, 'readwrite', async tx => {
+      if (await assetRequest(tx.objectStore('projects').getKey(project.id)) !== undefined) { throw new Error('This project ID is already in use.'); }
+      const existing = await assetRequest<ProjectRecord[]>(tx.objectStore('projects').getAll());
+
+      if (existing.some(entry => !entry.deletedAt && entry.name.toLowerCase() === project.name.toLowerCase())) { throw new Error('A project with that name already exists.'); }
+      for (const entry of entries) {
+        if (entry.projectId !== project.id || await assetRequest(tx.objectStore('assets').getKey(entry.id)) !== undefined) { throw new Error('The project contains a conflicting asset ID.'); }
+      }
+      tx.objectStore('projects').put(project);
+      entries.forEach(entry => tx.objectStore('assets').put(entry)); payloads.forEach(payload => tx.objectStore('assetData').put(payload));
+      if (preferences) { tx.objectStore('preferences').put(preferences, project.id); }
+      if (lastSceneId) {
+        const key = project.id + ':lastSceneId';
+
+        tx.objectStore('workspace').put({ key, value: lastSceneId });
+      }
+    });
+    this.notifyProjects();
+  }
+
+  async saveProjectSettings (id: string, settings: ProjectSettings): Promise<void> {
+    const name = settings.name.trim(), description = settings.description.trim();
+
+    if (!name || name.length > 80) { throw new Error('Enter a project name with 1–80 characters.'); }
+    if (description.length > 4096) { throw new Error('The project description is too long.'); }
+    const database = await this.database();
+
+    await transaction(database, ['projects', 'assets'], 'readwrite', async tx => {
+      const projects = tx.objectStore('projects');
+      const current = await assetRequest<ProjectRecord | undefined>(projects.get(id));
+      const all = await assetRequest<ProjectRecord[]>(projects.getAll());
+
+      if (!current || current.deletedAt) { throw new Error('This project is no longer available.'); }
+      if (all.some(project => project.id !== id && !project.deletedAt && project.name.toLowerCase() === name.toLowerCase())) { throw new Error('A project with that name already exists.'); }
+      if (settings.startupSceneId) {
+        const scene = await assetRequest<AssetEntry | undefined>(tx.objectStore('assets').get(settings.startupSceneId));
+
+        if (scene?.projectId !== id || scene.kind !== 'scene' || scene.deletedAt) { throw new Error('Choose a scene from this project.'); }
+      }
+      projects.put({ ...current, name, description, startupSceneId: settings.startupSceneId, updatedAt: Date.now() });
+    });
+    await this.refreshProject(); this.notifyProjects();
+  }
+
+  async trashProject (id: string, restore = false): Promise<void> {
+    if (!restore && id === this.projectId) { throw new Error('Open another project before deleting this one.'); }
+    const database = await this.database();
+
+    await transaction(database, ['projects'], 'readwrite', async tx => {
+      const store = tx.objectStore('projects'), project = await assetRequest<ProjectRecord | undefined>(store.get(id));
+
+      if (!project) { throw new Error('This project is no longer available.'); }
+      const projects = await assetRequest<ProjectRecord[]>(store.getAll());
+      let name = project.name, suffix = 1;
+
+      if (restore) { while (projects.some(other => other.id !== id && !other.deletedAt && other.name.toLowerCase() === name.toLowerCase())) { name = project.name + '_' + suffix++; } }
+      store.put({ ...project, name, deletedAt: restore ? undefined : Date.now(), updatedAt: Date.now() });
+    });
+    this.notifyProjects();
+  }
+
+  async snapshotProject (id = this.projectId): Promise<{ project: ProjectRecord, entries: AssetEntry[], payloads: AssetPayload[], preferences?: AssetPreferences, lastSceneId?: string }> {
+    const database = await this.database();
+
+    return transaction(database, STORES, 'readonly', async tx => {
+      const project = await assetRequest<ProjectRecord | undefined>(tx.objectStore('projects').get(id));
+
+      if (!project || project.deletedAt) { throw new Error('This project is no longer available.'); }
+      const entries = await assetRequest<AssetEntry[]>(tx.objectStore('assets').index('projectId').getAll(id));
+      const payloads = await Promise.all(entries.filter(entry => entry.kind !== 'folder').map(entry => assetRequest<AssetPayload | undefined>(tx.objectStore('assetData').get(entry.id))));
+      const preferences = await assetRequest<AssetPreferences | undefined>(tx.objectStore('preferences').get(id));
+      const last = await assetRequest(tx.objectStore('workspace').get(id + ':lastSceneId'));
+
+      if (payloads.some(payload => !payload)) { throw new Error('A project asset is missing. The project could not be exported.'); }
+
+      return { project, entries, payloads: payloads as AssetPayload[], preferences, lastSceneId: last?.value };
+    });
   }
 
   private async migrateScenes (database: IDBDatabase): Promise<void> {
@@ -216,7 +431,9 @@ export class AssetStorage {
           if (await assetRequest(tx.objectStore('assets').getKey(scene.id)) !== undefined) { continue; }
           tx.objectStore('assets').put(sceneEntry(scene)); tx.objectStore('assetData').put({ id: scene.id, kind: 'scene', scene: scene.scene, editor: scene.editor });
         }
-        if (library.lastSceneId && ids.has(library.lastSceneId) && !await assetRequest(workspace.get('lastSceneId'))) { workspace.put({ key: 'lastSceneId', value: library.lastSceneId }); }
+        const key = DEFAULT_PROJECT_ID + ':lastSceneId';
+
+        if (library.lastSceneId && ids.has(library.lastSceneId) && !await assetRequest(workspace.get(key))) { workspace.put({ key, value: library.lastSceneId }); }
       }
       workspace.put({ key: 'migratedLocalStorageV1', value: true });
     });
@@ -250,14 +467,14 @@ export class AssetStorage {
             tx.objectStore('assetData').put({ ...image, kind: 'texture' });
           }
           let name = entry.name, suffix = 1;
-          const siblings = await assetRequest<AssetEntry[]>(tx.objectStore('assets').index('parentId').getAll(entry.parentId));
+          const siblings = (await assetRequest<AssetEntry[]>(tx.objectStore('assets').index('parentId').getAll(entry.parentId))).filter(entry => entry.projectId === DEFAULT_PROJECT_ID);
 
           if (!entry.deletedAt) {
             while (siblings.some(sibling => !sibling.deletedAt && sibling.name.toLowerCase() === name.toLowerCase())) { name = entry.name + '_' + suffix++; }
           }
-          tx.objectStore('assets').put({ ...entry, name });
+          tx.objectStore('assets').put({ ...entry, name, projectId: DEFAULT_PROJECT_ID });
         }
-        if (legacy.preferences && !await assetRequest(tx.objectStore('preferences').get('browser'))) { tx.objectStore('preferences').put(legacy.preferences, 'browser'); }
+        if (legacy.preferences && !await assetRequest(tx.objectStore('preferences').get(DEFAULT_PROJECT_ID))) { tx.objectStore('preferences').put(legacy.preferences, DEFAULT_PROJECT_ID); }
       }
       tx.objectStore('workspace').put({ key: 'migratedContentV1', value: true });
     });
@@ -276,7 +493,7 @@ export class AssetStorage {
         for (const store of ['entries', 'images', 'preferences']) { if (database.objectStoreNames.contains(store)) { database.deleteObjectStore(store); } }
         const migration = database.objectStoreNames.contains('migration') ? request.transaction!.objectStore('migration') : database.createObjectStore('migration');
 
-        migration.put({ database: this.databaseName, version: 2 }, 'target');
+        migration.put({ database: this.databaseName, version: 3 }, 'target');
       };
       request.onerror = () => reject(request.error);
       request.onblocked = () => reject(new Error('An older editor tab is still reading the old asset store.'));

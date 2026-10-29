@@ -11,8 +11,9 @@ export class ContentImport {
   private target = '';
   private replacement?: string;
   private dragDepth = 0;
+  private scope = '';
 
-  constructor (private readonly importFiles: (files: File[], folder: string, replacement?: string) => void) { }
+  constructor (private readonly importFiles: (files: File[], folder: string, replacement?: string) => void, private readonly context = () => '') { }
 
   enable (): void {
     window.addEventListener('dragenter', this.onDragEnter);
@@ -32,7 +33,7 @@ export class ContentImport {
   }
 
   choose (folder: string, replacement?: string): void {
-    this.target = folder; this.replacement = replacement;
+    this.target = folder; this.replacement = replacement; this.scope = this.context();
     if (!this.picker) {
       this.picker = document.createElement('input');
       this.picker.type = 'file'; this.picker.accept = 'image/*'; this.picker.dataset.contentImport = 'true';
@@ -40,7 +41,7 @@ export class ContentImport {
       this.picker.addEventListener('change', () => {
         const files = Array.from(this.picker!.files ?? []);
 
-        if (files.length) { this.importFiles(files, this.target, this.replacement); }
+        if (files.length && this.scope === this.context()) { this.importFiles(files, this.target, this.replacement); }
         this.picker!.value = '';
       });
     }

@@ -1,3 +1,4 @@
+import { beginEditorMenu, endEditorMenu, editorMenuItem } from '../../widgets/editor-menu';
 import type { spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
 
@@ -157,15 +158,15 @@ export class AnimationGraph extends EditorWindow {
   protected override onGUI (): void {
     // 绘制菜单栏
     if (ImGui.BeginMenuBar()) {
-      if (ImGui.BeginMenu('View')) {
-        if (ImGui.MenuItem('Parameters Panel', '', this.showParametersPanel)) {
+      if (beginEditorMenu('View', true, true)) {
+        if (editorMenuItem('Parameters Panel', '', this.showParametersPanel)) {
           this.showParametersPanel = !this.showParametersPanel;
         }
-        if (ImGui.MenuItem('Details Panel', '', this.showDetailsPanel)) {
+        if (editorMenuItem('Details Panel', '', this.showDetailsPanel)) {
           this.showDetailsPanel = !this.showDetailsPanel;
         }
 
-        ImGui.EndMenu();
+        endEditorMenu();
       }
       ImGui.EndMenuBar();
     }

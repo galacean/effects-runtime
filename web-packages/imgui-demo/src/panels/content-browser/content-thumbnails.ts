@@ -44,7 +44,7 @@ export class ContentThumbnails {
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiply);
         this.images.set(key, { texture, width: image.naturalWidth, height: image.naturalHeight });
       } finally { URL.revokeObjectURL(url); }
-    }).catch(error => contentLibrary.report(error));
+    }).catch(error => { if (generation === this.generation) { contentLibrary.report(error); } });
 
     return undefined;
   }

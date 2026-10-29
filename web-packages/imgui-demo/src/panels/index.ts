@@ -1,6 +1,5 @@
 export * from './composition';
 export * from './hierarchy';
-export * from './preview';
 export * from './inspector/index';
 export * from './scene';
 export * from './content-browser';
@@ -8,3 +7,4 @@ export * from './runtime-assets';
 export * from './animation-clip';
 export * from './node-graph';
 export * from './sequencer';
+export * from './asset-editor';

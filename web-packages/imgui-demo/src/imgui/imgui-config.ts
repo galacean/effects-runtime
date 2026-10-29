@@ -176,12 +176,6 @@ Size=902,462
 Collapsed=0
 DockId=0x00000005,1
 
-[Window][Preview]
-Pos=1828,983
-Size=732,322
-Collapsed=0
-DockId=0x8B93E3BD,0
-
 [Window][AnimationGraph]
 Pos=692,24
 Size=210,817

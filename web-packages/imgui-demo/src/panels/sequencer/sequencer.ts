@@ -6,8 +6,9 @@ import { getEditorRotation } from '../../core/editor-transform';
 import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
+import { editorButtonColors, InteractionColors } from '../theme/editor-interaction';
 import { searchBar } from '../../widgets';
-import { editorMenuSection } from '../../widgets/editor-menu';
+import { editorMenuSection, beginEditorPopup, endEditorPopup, beginEditorMenu, endEditorMenu, editorMenuItem } from '../../widgets/editor-menu';
 import { EditorWindow } from '../editor-window';
 import { SequencerCanvas } from './sequencer-canvas';
 import type { SequencerContext } from './sequencer-canvas';
@@ -188,17 +189,14 @@ export class Sequencer extends EditorWindow {
     }
     this.viewWidth = ImGui.GetContentRegionAvail().x;
     ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 4);
-    ImGui.PushStyleVar(ImGui.StyleVar.PopupRounding, 0);
-    ImGui.PushStyleVar(ImGui.StyleVar.PopupBorderSize, 1);
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(3, 3));
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, 3));
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 6));
     const colors: [ImGui.Col, ImGui.Vec4][] = [
-      [ImGui.Col.Text, C.text], [ImGui.Col.TextDisabled, C.muted], [ImGui.Col.PopupBg, C.popup],
-      [ImGui.Col.Border, C.menuBorder], [ImGui.Col.Separator, C.menuSeparator],
-      [ImGui.Col.FrameBg, C.input], [ImGui.Col.FrameBgHovered, C.hover], [ImGui.Col.FrameBgActive, C.inputBorder],
+      [ImGui.Col.Text, C.text], [ImGui.Col.TextDisabled, C.muted], [ImGui.Col.Border, C.inputBorder],
+      [ImGui.Col.FrameBg, C.input], [ImGui.Col.FrameBgHovered, C.input], [ImGui.Col.FrameBgActive, C.input],
       [ImGui.Col.ButtonHovered, C.hover], [ImGui.Col.ButtonActive, C.inputBorder],
-      [ImGui.Col.Header, C.selection], [ImGui.Col.HeaderHovered, C.hover], [ImGui.Col.HeaderActive, C.selection],
+      [ImGui.Col.Header, C.selection], [ImGui.Col.HeaderHovered, InteractionColors.panel], [ImGui.Col.HeaderActive, C.selection],
       [ImGui.Col.CheckMark, C.active],
     ];
 
@@ -226,7 +224,7 @@ export class Sequencer extends EditorWindow {
     this.handleShortcuts(document);
     this.acceptsClipboard = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) && !ImGui.GetIO().WantTextInput &&
       !ImGui.IsPopupOpen('', ImGui.PopupFlags.AnyPopup);
-    ImGui.PopStyleColor(colors.length); ImGui.PopStyleVar(6);
+    ImGui.PopStyleColor(colors.length); ImGui.PopStyleVar(4);
   }
 
   private drawToolbar (document: SequencerDocument): void {
@@ -236,40 +234,40 @@ export class Sequencer extends EditorWindow {
     this.bar(origin, L.toolbarHeight);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + L.toolbarPadding, origin.y + L.toolbarPadding));
     if (this.icon('actions', 'Actions', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequenceActions'); }
-    if (ImGui.BeginPopup('##SequenceActions')) {
+    if (beginEditorPopup('##SequenceActions')) {
       this.section('Editing');
-      if (ImGui.MenuItem('Undo', 'Ctrl+Z', false, document.canUndo)) { document.undo(); }
-      if (ImGui.MenuItem('Redo', 'Ctrl+Y', false, document.canRedo)) { document.redo(); }
+      if (editorMenuItem('Undo', 'Ctrl+Z', false, document.canUndo)) { document.undo(); }
+      if (editorMenuItem('Redo', 'Ctrl+Y', false, document.canRedo)) { document.redo(); }
       ImGui.Separator();
-      if (ImGui.MenuItem('Cut', 'Ctrl+X', false, hasSelection)) { document.copySelection(); document.deleteSelection(); }
-      if (ImGui.MenuItem('Copy', 'Ctrl+C', false, hasSelection)) { document.copySelection(); }
-      if (ImGui.MenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(); }
-      if (ImGui.MenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D', false, hasSelection)) { document.duplicateSelection(); }
-      if (ImGui.MenuItem('Delete', 'Delete', false, hasSelection)) { document.deleteSelection(); }
+      if (editorMenuItem('Cut', 'Ctrl+X', false, hasSelection)) { document.copySelection(); document.deleteSelection(); }
+      if (editorMenuItem('Copy', 'Ctrl+C', false, hasSelection)) { document.copySelection(); }
+      if (editorMenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(); }
+      if (editorMenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D', false, hasSelection)) { document.duplicateSelection(); }
+      if (editorMenuItem('Delete', 'Delete', false, hasSelection)) { document.deleteSelection(); }
       ImGui.Separator(); this.section('Sequence');
-      if (ImGui.MenuItem('Export Timeline...')) { this.exportTimeline(document); }
-      ImGui.EndPopup();
+      if (editorMenuItem('Export Timeline...')) { this.exportTimeline(document); }
+      endEditorPopup();
     }
     ImGui.SameLine();
     if (this.icon('view', 'View Options', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequenceView'); }
-    if (ImGui.BeginPopup('##SequenceView')) {
+    if (beginEditorPopup('##SequenceView')) {
       this.section('Framing');
-      if (ImGui.MenuItem('Frame Selection', 'F')) { this.state.fit(document); }
-      if (ImGui.MenuItem('Frame All', 'Home')) { this.state.fit(document, false); }
-      if (ImGui.MenuItem('Focus Playhead', 'A')) { this.focusPlayhead(document); }
+      if (editorMenuItem('Frame Selection', 'F')) { this.state.fit(document); }
+      if (editorMenuItem('Frame All', 'Home')) { this.state.fit(document, false); }
+      if (editorMenuItem('Focus Playhead', 'A')) { this.focusPlayhead(document); }
       ImGui.Separator(); this.section('Tracks');
-      if (ImGui.MenuItem('Expand All')) { this.state.expandAll(document, true); }
-      if (ImGui.MenuItem('Collapse All')) { this.state.expandAll(document, false); }
-      if (ImGui.MenuItem('Selection Details', '', this.state.showDetails)) { this.state.showDetails = !this.state.showDetails; }
+      if (editorMenuItem('Expand All')) { this.state.expandAll(document, true); }
+      if (editorMenuItem('Collapse All')) { this.state.expandAll(document, false); }
+      if (editorMenuItem('Selection Details', '', this.state.showDetails)) { this.state.showDetails = !this.state.showDetails; }
       ImGui.Separator(); this.section('Display');
-      if (ImGui.MenuItem('Frames', '', this.state.displayFrames)) { this.state.displayFrames = true; }
-      if (ImGui.MenuItem('Seconds', '', !this.state.displayFrames)) { this.state.displayFrames = false; }
-      if (ImGui.MenuItem('Show Tangents', '', this.state.showTangents)) { this.state.showTangents = !this.state.showTangents; }
-      ImGui.EndPopup();
+      if (editorMenuItem('Frames', '', this.state.displayFrames)) { this.state.displayFrames = true; }
+      if (editorMenuItem('Seconds', '', !this.state.displayFrames)) { this.state.displayFrames = false; }
+      if (editorMenuItem('Show Tangents', '', this.state.showTangents)) { this.state.showTangents = !this.state.showTangents; }
+      endEditorPopup();
     }
     ImGui.SameLine();
     if (this.icon('play', 'Playback Options', false, true, L.toolbarMenuWidth, true)) { this.openBelow('##SequencePlayback'); }
-    if (ImGui.BeginPopup('##SequencePlayback')) {
+    if (beginEditorPopup('##SequencePlayback')) {
       this.section('Playback Range');
       const factor = this.state.displayFrames ? this.state.frameRate : 1;
 
@@ -287,10 +285,10 @@ export class Sequencer extends EditorWindow {
       ImGui.Separator();
       ImGui.SetNextItemWidth(180);
       ImGui.DragInt('Jump Frames', value => this.state.jumpFrames = value ?? this.state.jumpFrames, 1, 1, 10000);
-      if (ImGui.MenuItem('Loop Playback', '', this.state.loop)) { this.state.loop = !this.state.loop; }
-      if (ImGui.MenuItem('Jump to Start')) { document.setTime(this.state.playbackStart); }
-      if (ImGui.MenuItem('Jump to End')) { document.setTime(this.state.playbackEnd); }
-      ImGui.EndPopup();
+      if (editorMenuItem('Loop Playback', '', this.state.loop)) { this.state.loop = !this.state.loop; }
+      if (editorMenuItem('Jump to Start')) { document.setTime(this.state.playbackStart); }
+      if (editorMenuItem('Jump to End')) { document.setTime(this.state.playbackEnd); }
+      endEditorPopup();
     }
     this.divider();
     if (this.icon('key', 'Add key at playhead (Enter)', false, hasSelection || this.state.curveMode && this.state.curveTracks.size > 0)) { this.addKeys(document); }
@@ -301,21 +299,21 @@ export class Sequencer extends EditorWindow {
     if (ImGui.IsItemClicked(ImGui.MouseButton.Right)) { ImGui.OpenPopup('##SequenceSnapping'); }
     ImGui.SameLine(0, 0);
     if (this.icon('chevron', 'Snapping Options', false, true, 18)) { this.openBelow('##SequenceSnapping'); }
-    if (ImGui.BeginPopup('##SequenceSnapping')) {
+    if (beginEditorPopup('##SequenceSnapping')) {
       this.section('Snap To');
-      if (ImGui.MenuItem('Frames', '', this.state.snapFrames)) { this.state.snapFrames = !this.state.snapFrames; }
-      if (ImGui.MenuItem('Keyframes', '', this.state.snapKeys)) { this.state.snapKeys = !this.state.snapKeys; }
-      if (ImGui.MenuItem('Section Edges', '', this.state.snapSections)) { this.state.snapSections = !this.state.snapSections; }
-      ImGui.EndPopup();
+      if (editorMenuItem('Frames', '', this.state.snapFrames)) { this.state.snapFrames = !this.state.snapFrames; }
+      if (editorMenuItem('Keyframes', '', this.state.snapKeys)) { this.state.snapKeys = !this.state.snapKeys; }
+      if (editorMenuItem('Section Edges', '', this.state.snapSections)) { this.state.snapSections = !this.state.snapSections; }
+      endEditorPopup();
     }
     ImGui.SameLine();
     if (this.textButton(this.state.frameRate + ' fps', false, true)) { this.openBelow('##SequenceFPS'); }
-    if (ImGui.BeginPopup('##SequenceFPS')) {
+    if (beginEditorPopup('##SequenceFPS')) {
       this.section('Display Rate');
       [12, 15, 24, 25, 30, 48, 50, 60, 120].forEach(rate => {
-        if (ImGui.MenuItem(rate + ' fps', '', this.state.frameRate === rate)) { this.state.frameRate = rate; }
+        if (editorMenuItem(rate + ' fps', '', this.state.frameRate === rate)) { this.state.frameRate = rate; }
       });
-      ImGui.EndPopup();
+      endEditorPopup();
     }
     this.divider();
     if (this.icon('curve', 'Curve Editor', this.state.curveMode)) {
@@ -373,12 +371,12 @@ export class Sequencer extends EditorWindow {
       this.state.displayFrames ? '%04.0f' : '%.3f s')) { document.setTime(this.state.displayFrames ? time / this.state.frameRate : time); }
     ImGui.PopStyleColor(2);
     ImGui.PopStyleVar();
-    if (ImGui.BeginPopup('##SequenceAddTrack')) {
+    if (beginEditorPopup('##SequenceAddTrack')) {
       this.section('Add Selected Objects');
       const selected = Selection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem && object.composition === document.composition);
 
       if (!selected.length) { ImGui.TextDisabled('Select an object in the scene or hierarchy.'); }
-      if (ImGui.MenuItem('Selected Objects with Transform', '', false, selected.length > 0)) {
+      if (editorMenuItem('Selected Objects with Transform', '', false, selected.length > 0)) {
         document.edit('Add object tracks', () => selected.forEach(item => {
           const binding = document.addBinding(item);
 
@@ -390,7 +388,7 @@ export class Sequencer extends EditorWindow {
       const items = document.composition.items.filter(item => item !== document.composition.pluginRoot && !item.name?.startsWith('__'));
 
       for (const item of items) {
-        if (ImGui.MenuItem(item.name || 'Object')) {
+        if (editorMenuItem(item.name || 'Object')) {
           document.edit('Add object track', () => {
             const binding = document.addBinding(item);
 
@@ -398,7 +396,7 @@ export class Sequencer extends EditorWindow {
           });
         }
       }
-      ImGui.EndPopup();
+      endEditorPopup();
     }
   }
 
@@ -436,7 +434,7 @@ export class Sequencer extends EditorWindow {
         if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
         ImGui.SameLine();
         if (this.textButton(this.keyMode(first))) { this.openBelow('##KeyInterpolation'); }
-        if (ImGui.BeginPopup('##KeyInterpolation')) { this.drawInterpolation(document); ImGui.EndPopup(); }
+        if (beginEditorPopup('##KeyInterpolation')) { this.drawInterpolation(document); endEditorPopup(); }
         if (this.viewWidth > 800) {
           for (const side of ['in', 'out'] as const) {
             ImGui.SameLine(); ImGui.SetNextItemWidth(105);
@@ -577,19 +575,19 @@ export class Sequencer extends EditorWindow {
   }
 
   private drawContextMenu (document: SequencerDocument): void {
-    if (!ImGui.BeginPopup('##SequencerContext')) { return; }
+    if (!beginEditorPopup('##SequencerContext')) { return; }
     const row = this.context?.row;
     const section = this.context?.section ?? document.selectedSectionItems[0];
     const keys = document.selectedKeyItems();
 
     if (keys.length) {
       this.section('Keyframes');
-      if (!this.state.curveMode && ImGui.MenuItem('Key Properties...')) { this.state.showDetails = true; }
-      if (ImGui.MenuItem('Add Key at Playhead', 'Enter')) { this.addKeys(document); }
-      if (ImGui.BeginMenu('Interpolation', keys.some(item => item.channel.kind === 'number'))) {
-        this.drawInterpolation(document); ImGui.EndMenu();
+      if (!this.state.curveMode && editorMenuItem('Key Properties...')) { this.state.showDetails = true; }
+      if (editorMenuItem('Add Key at Playhead', 'Enter')) { this.addKeys(document); }
+      if (beginEditorMenu('Interpolation', keys.some(item => item.channel.kind === 'number'))) {
+        this.drawInterpolation(document); endEditorMenu();
       }
-      if (ImGui.MenuItem('Flatten Tangents')) {
+      if (editorMenuItem('Flatten Tangents')) {
         document.edit('Flatten tangents', () => this.updateKeys(document, keys, item => {
           item.key.inSlope = item.key.outSlope = 0; item.key.tangentMode = 'user'; item.key.interpolationMode = InterpolationMode.Cubic;
         }));
@@ -599,19 +597,19 @@ export class Sequencer extends EditorWindow {
     if (section) {
       ImGui.BeginDisabled(document.isLocked(section.track));
       this.section('Section');
-      if (ImGui.MenuItem('Section Properties...')) { this.state.showDetails = true; }
-      if (ImGui.MenuItem('Split at Playhead', 'Ctrl+/')) { document.splitSelection(document.currentTime); }
+      if (editorMenuItem('Section Properties...')) { this.state.showDetails = true; }
+      if (editorMenuItem('Split at Playhead', 'Ctrl+/')) { document.splitSelection(document.currentTime); }
       const inside = document.currentTime > section.clip.start && document.currentTime < section.clip.start + section.clip.duration;
 
-      if (ImGui.MenuItem('Trim Left to Playhead', '', false, inside)) {
+      if (editorMenuItem('Trim Left to Playhead', '', false, inside)) {
         document.edit('Trim section left', () => document.resizeSection(section, document.currentTime, section.clip.start + section.clip.duration));
       }
-      if (ImGui.MenuItem('Trim Right to Playhead', '', false, inside)) {
+      if (editorMenuItem('Trim Right to Playhead', '', false, inside)) {
         document.edit('Trim section right', () => document.resizeSection(section, section.clip.start, document.currentTime));
       }
       ImGui.Separator(); this.section('Post Roll');
       for (const [name, behavior] of [['Finish', 0], ['Hold', 4], ['Loop', 5]] as const) {
-        if (ImGui.MenuItem(name, '', section.clip.endBehavior === behavior)) {
+        if (editorMenuItem(name, '', section.clip.endBehavior === behavior)) {
           document.edit('Set section end behavior', () => { section.clip.endBehavior = behavior; document.write(section); });
         }
       }
@@ -620,41 +618,41 @@ export class Sequencer extends EditorWindow {
     }
     if (row) {
       this.section('Track');
-      if (ImGui.MenuItem('Rename...')) {
+      if (editorMenuItem('Rename...')) {
         this.renameTrack = row.track; this.renameValue = document.trackLabel(row.track); this.renameRequested = true;
       }
-      if (ImGui.MenuItem('Mute Track', '', document.muted.has(row.track.getInstanceId()))) { document.toggleMute(row.track); }
+      if (editorMenuItem('Mute Track', '', document.muted.has(row.track.getInstanceId()))) { document.toggleMute(row.track); }
       const ownLock = document.locked.has(row.track.getInstanceId());
 
-      if (ImGui.MenuItem('Lock Track', '', ownLock)) {
+      if (editorMenuItem('Lock Track', '', ownLock)) {
         document.edit('Toggle track lock', () => {
           if (ownLock) { document.locked.delete(row.track.getInstanceId()); } else { document.locked.add(row.track.getInstanceId()); }
         }, false);
       }
-      if (ImGui.MenuItem('Add Section', '', false, row.kind !== 'object' && !document.isLocked(row.track))) {
+      if (editorMenuItem('Add Section', '', false, row.kind !== 'object' && !document.isLocked(row.track))) {
         document.edit('Add section', () => { document.createSection(row.track); });
       }
       const parent = this.bindingParent(row.track);
 
-      if (parent && ImGui.BeginMenu('Add Property Track', !document.isLocked(parent))) {
+      if (parent && beginEditorMenu('Add Property Track', !document.isLocked(parent))) {
         for (const [name, kind] of [['Transform', 'transform'], ['Activation', 'activation'], ['Opacity', 'opacity']] as const) {
-          if (ImGui.MenuItem(name)) { document.edit('Add property track', () => { document.addTrack(parent, kind); this.state.expanded.add(parent.getInstanceId()); }); }
+          if (editorMenuItem(name)) { document.edit('Add property track', () => { document.addTrack(parent, kind); this.state.expanded.add(parent.getInstanceId()); }); }
         }
-        ImGui.EndMenu();
+        endEditorMenu();
       }
       ImGui.Separator();
     }
     this.section('Edit');
-    if (ImGui.MenuItem('Copy', 'Ctrl+C')) { document.copySelection(); }
-    if (ImGui.MenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(this.context?.time ?? document.currentTime); }
-    if (ImGui.MenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D')) { document.duplicateSelection(); }
-    if (ImGui.MenuItem('Delete', 'Delete')) { document.deleteSelection(); }
-    ImGui.EndPopup();
+    if (editorMenuItem('Copy', 'Ctrl+C')) { document.copySelection(); }
+    if (editorMenuItem('Paste', 'Ctrl+V', false, document.hasClipboard)) { document.paste(this.context?.time ?? document.currentTime); }
+    if (editorMenuItem('Duplicate', this.state.curveMode ? '' : 'Ctrl+D')) { document.duplicateSelection(); }
+    if (editorMenuItem('Delete', 'Delete')) { document.deleteSelection(); }
+    endEditorPopup();
   }
 
   private drawRenamePopup (document: SequencerDocument): void {
     if (this.renameRequested) { ImGui.OpenPopup('##RenameTrack'); this.renameRequested = false; }
-    if (ImGui.BeginPopup('##RenameTrack')) {
+    if (beginEditorPopup('##RenameTrack')) {
       ImGui.Text('Track Name');
       ImGui.SetNextItemWidth(240);
       if (ImGui.IsWindowAppearing()) { ImGui.SetKeyboardFocusHere(); }
@@ -670,7 +668,7 @@ export class Sequencer extends EditorWindow {
       }
       ImGui.SameLine();
       if (ImGui.Button('Cancel') || ImGui.IsKeyPressed(ImGui.Key.Escape)) { this.renameTrack = undefined; ImGui.CloseCurrentPopup(); }
-      ImGui.EndPopup();
+      endEditorPopup();
     }
   }
 
@@ -678,7 +676,7 @@ export class Sequencer extends EditorWindow {
     for (const mode of ['Auto', 'User', 'Break', 'Linear', 'Constant'] as Interpolation[]) {
       const first = document.selectedKeyItems()[0];
 
-      if (ImGui.MenuItem(mode, '', !!first && this.keyMode(first) === mode, !!first)) { this.setInterpolation(document, mode); }
+      if (editorMenuItem(mode, '', !!first && this.keyMode(first) === mode, !!first)) { this.setInterpolation(document, mode); }
     }
   }
 
@@ -910,10 +908,11 @@ export class Sequencer extends EditorWindow {
   private icon (icon: SequenceIcon, hint: string, active = false, enabled = true, width: number = L.toolbarButtonSize, menu = false, height: number = L.toolbarButtonHeight): boolean {
     ImGui.BeginDisabled(!enabled);
     const filled = active && icon !== 'loop';
+    const [normal, hovered, pressed] = editorButtonColors(active, filled);
 
-    ImGui.PushStyleColor(ImGui.Col.Button, filled ? C.selection : new ImGui.Vec4(0, 0, 0, 0));
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, filled ? C.selectionHovered : C.hover);
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, filled ? C.selectionPressed : C.inputBorder);
+    ImGui.PushStyleColor(ImGui.Col.Button, normal);
+    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, hovered);
+    ImGui.PushStyleColor(ImGui.Col.ButtonActive, pressed);
     const clicked = ImGui.Button('##Sequence' + icon + hint, new ImGui.Vec2(width, height));
 
     ImGui.PopStyleColor(3);

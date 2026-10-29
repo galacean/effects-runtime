@@ -1,5 +1,5 @@
 import {
-  Component, CompositionComponent, EffectsObject, MaskableGraphic, Material, RendererComponent, ShapeComponent,
+  Component, CompositionComponent, EffectsObject, InteractComponent, MaskableGraphic, Material, ParticleSystem, ParticleSystemRenderer, RendererComponent, ShapeComponent,
   SpriteComponent, TimelineAsset, TimelineClip, TrackAsset, VFXItem, effectsClassStore, math,
 } from '@galacean/effects';
 import type { Composition, TextComponentBase, spec } from '@galacean/effects';
@@ -21,11 +21,17 @@ export function isTextComponent (object: EffectsObject): object is Component & T
 
 const TABLES = ['items', 'components', 'materials', 'shaders', 'geometries', 'textures', 'animations', 'miscs'] as const;
 const TRANSIENT = new Set(['engine', 'item', 'guid', 'definition', 'id', 'name', 'type', 'duration', 'endBehavior', 'transform',
-  'parent', 'parentId', 'children', 'components', 'composition', 'time', 'visible', 'enabled', 'isActive', 'active',
-  'disposed', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isDuringPlay', 'isEnded', 'isEndCalled',
+  'parent', 'parentId', 'children', 'components', 'composition', 'items', 'sceneBindings', 'timelineAsset', 'time', 'visible', 'enabled', 'isActive', 'active',
+  'disposed', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isEnabled', 'isDuringPlay', 'isEnded', 'isEndCalled',
   'isDirty', 'renderer', 'geometry', 'defaultGeometry', 'boundingBoxInfo', 'material', 'materials', 'canvas', 'context',
   'text', 'textStyle', 'textLayout', 'maxLineWidth', 'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'maskManager',
   'frameClipMasks', 'control', 'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty']);
+
+function isRuntimeField (object: EffectsObject, key: string): boolean {
+  return key.startsWith('_') || TRANSIENT.has(key) || object instanceof ParticleSystem ||
+    object instanceof ParticleSystemRenderer || object instanceof ShapeComponent || object instanceof InteractComponent ||
+    object instanceof VFXItem && key === 'props';
+}
 
 function editableValue (value: any, depth = 0, visited = new Set<object>()): any {
   if (typeof value === 'number') { return Number.isFinite(value) ? value : undefined; }
@@ -167,6 +173,9 @@ export class SceneSerializer {
       data.components = object.components.filter(component => component.definition.id).map(component => this.reference(component));
       data.children = object.children.filter(child => child.definition.id).map(child => this.reference(child));
       if (object.parent && object.parent !== this.composition.sceneRoot) { data.parentId = this.id(object.parent); } else { delete data.parentId; }
+      const interaction = this.syncInteractionContent(object);
+
+      if (interaction) { data.content = interaction; }
     }
     if (object instanceof Component && object.item) { data.item = this.reference(object.item); }
     if (object instanceof CompositionComponent) {
@@ -199,11 +208,22 @@ export class SceneSerializer {
     return object.definition.dataType ?? Object.keys(effectsClassStore).find(key => effectsClassStore[key] === object.constructor);
   }
 
+  private syncInteractionContent (item: VFXItem): Data | undefined {
+    const component = item.getComponent(InteractComponent);
+
+    if (!component) { return; }
+    const content = this.normalize(component.interactData);
+
+    item.props.content = content;
+
+    return content;
+  }
+
   read (object: EffectsObject): ObjectState {
     const data = this.structure(object), extras: Data = { fields: {} };
 
     for (const [key, value] of Object.entries(object)) {
-      if (key.startsWith('_') || TRANSIENT.has(key)) { continue; }
+      if (isRuntimeField(object, key)) { continue; }
       const field = editableValue(value);
 
       if (field !== undefined) { extras.fields[key] = this.normalize(field); }
@@ -335,6 +355,13 @@ export class SceneSerializer {
     return Array.isArray(value) ? value.map(entry => this.runtimeData(entry)) : Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, this.runtimeData(entry)]));
   }
 
+  private editorValue (value: any): any {
+    if (!value || typeof value !== 'object') { return value; }
+    if (Object.keys(value).length === 1 && typeof value.id === 'string') { return this.object(value.id); }
+
+    return Array.isArray(value) ? value.map(entry => this.editorValue(entry)) : Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, this.editorValue(entry)]));
+  }
+
   apply (state: ObjectState, other?: ObjectState): void {
     const { object, extras } = state;
     const data = this.runtimeData(state.data);
@@ -365,7 +392,7 @@ export class SceneSerializer {
     if (object instanceof Component && 'enabled' in extras) { object.enabled = extras.enabled; }
     if (object instanceof VFXItem) {
       if ('active' in extras) { object.setActive(extras.active); }
-      if ('renderOrder' in extras) { object.renderOrder = extras.renderOrder; }
+      if ('renderOrder' in extras && extras.fields?.isManuallySetRenderOrder !== false) { object.renderOrder = extras.renderOrder; }
       if ('visible' in extras && object.isVisible !== extras.visible) { object.setVisible(extras.visible); }
     }
     if (object instanceof RendererComponent && 'priority' in extras) { object.priority = extras.priority; }
@@ -385,13 +412,15 @@ export class SceneSerializer {
       object.fromData(data);
     }
     for (const [key, value] of Object.entries(extras.fields ?? {})) {
+      if (isRuntimeField(object, key)) { continue; }
       if (other && sameData(other.fields?.[key], value)) { continue; }
       const current = (object as any)[key];
-      const next = value && typeof value === 'object' && Object.keys(value).length === 1 && 'id' in value
-        ? this.objects.get((value as Data).id) : this.runtimeData(value);
+      const next = this.editorValue(value);
 
-      if (current && typeof current === 'object' && next && typeof next === 'object' && !(current instanceof EffectsObject)) {
-        Object.assign(current, jsonData(next));
+      if (Array.isArray(current) && Array.isArray(next)) {
+        current.splice(0, current.length, ...next);
+      } else if (current && typeof current === 'object' && next && typeof next === 'object' && !(current instanceof EffectsObject) && !(next instanceof EffectsObject)) {
+        Object.assign(current, next);
       } else { (object as any)[key] = next; }
     }
     if (object instanceof UIControl && object.control && extras.layout) {
@@ -415,6 +444,31 @@ export class SceneSerializer {
       const object = this.object(id);
 
       if (object) { this.applyExtras(object, extras); }
+    }
+    for (const object of this.objects.values()) { if (object instanceof VFXItem) { this.syncInteractionContent(object); } }
+  }
+
+  /** Preserve the order of transparent renderers when their visibility changes. */
+  stabilizeRenderOrder (scene: spec.JSONScene): void {
+    const groups = new Map<number, RendererComponent[]>();
+    const order = new Map(scene.items.map((item, index) => [item.id, index]));
+    const items = [...this.composition.items].sort((a, b) => (order.get(this.id(a)) ?? Infinity) - (order.get(this.id(b)) ?? Infinity));
+
+    for (const item of items) {
+      for (const component of item.getComponents(RendererComponent)) {
+        const group = groups.get(component.priority) ?? [];
+
+        group.push(component); groups.set(component.priority, group);
+      }
+    }
+    const priorities = [...groups.keys()].sort((a, b) => a - b);
+
+    for (let index = 0; index < priorities.length; index++) {
+      const priority = priorities[index], group = groups.get(priority)!;
+      const next = priorities[index + 1] ?? Infinity;
+      const step = Math.min(1e-4, (next - priority) / (group.length + 1));
+
+      group.forEach((component, offset) => { component.priority = priority + step * offset; });
     }
   }
 }

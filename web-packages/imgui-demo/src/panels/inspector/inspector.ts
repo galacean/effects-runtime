@@ -8,7 +8,7 @@ import { ImGui } from '../../imgui';
 import { EditorGUILayout as Fields } from '../../widgets/editor-gui-layout';
 import { PropertyGrid, PropertyGridState, PROPERTY_COLORS as C } from '../../widgets/property-grid';
 import { searchBar } from '../../widgets/search-bar';
-import { editorMenuSection } from '../../widgets/editor-menu';
+import { editorMenuSection, beginEditorPopup, endEditorPopup, editorMenuItem } from '../../widgets/editor-menu';
 import { getOrCreateTexturePreview } from '../../widgets/texture-preview';
 import { getSpriteThumbnail } from '../../widgets/sprite-thumbnail';
 import { Editor, propertyLabel } from '../../custom-editors/editor';
@@ -18,6 +18,7 @@ import { drawControlLayout, LAYOUT_TERMS } from './layout-inspector';
 import { drawMaterialProperties, materialSearchTerms } from './material-inspector';
 import { DebugInspector } from './debug-inspector';
 import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
+import type { SceneDocument } from '../../core/scene-document/scene-document';
 
 const TRANSFORM_TERMS = ['Location', 'Position', 'Rotation', 'Scale', 'Size', 'X', 'Y', 'Z'];
 const END_BEHAVIORS = [spec.EndBehavior.destroy, spec.EndBehavior.forward, spec.EndBehavior.freeze, spec.EndBehavior.restart];
@@ -43,6 +44,7 @@ export class Inspector extends EditorWindow {
   private scaleLocked = false;
   private editingName = false;
   private scrollToTop = false;
+  private document?: SceneDocument;
 
   @menuItem('Window/Inspector')
   static showWindow (): void { EditorWindow.getWindow(Inspector).open(); }
@@ -82,6 +84,7 @@ export class Inspector extends EditorWindow {
   }
 
   protected override onGUI (): void {
+    if (this.document !== sceneWorkspace.current) { this.document = sceneWorkspace.current; this.lockedObject = undefined; this.activeObject = undefined; this.editingName = false; }
     if (this.lockedObject instanceof VFXItem && !this.lockedObject.composition) { this.lockedObject = undefined; }
     const object = this.lockedObject ?? Selection.getSelectedObjects()[0];
 
@@ -196,23 +199,20 @@ export class Inspector extends EditorWindow {
     if (ImGui.IsPopupOpen('##DetailsOptionsMenu')) {
       ImGui.SetNextWindowPos(new ImGui.Vec2(origin.x + width - 8, origin.y + 34), ImGui.Cond.Appearing, new ImGui.Vec2(1, 0));
     }
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 4));
-    ImGui.PushStyleVar(ImGui.StyleVar.PopupRounding, 0);
-    if (ImGui.BeginPopup('##DetailsOptionsMenu')) {
+    if (beginEditorPopup('##DetailsOptionsMenu')) {
       const grid = this.debugMode ? this.debugGrid : this.grid;
 
       editorMenuSection('View Mode');
-      if (ImGui.MenuItem('Normal', '', !this.debugMode)) { this.setDebugMode(false); }
-      if (ImGui.MenuItem('Debug', '', this.debugMode)) { this.setDebugMode(true); }
+      if (editorMenuItem('Normal', '', !this.debugMode)) { this.setDebugMode(false); }
+      if (editorMenuItem('Debug', '', this.debugMode)) { this.setDebugMode(true); }
       if (ImGui.IsItemHovered()) { ImGui.SetTooltip('Show raw component fields, including internal state, without custom property editors.'); }
       editorMenuSection('Categories', true);
-      if (ImGui.MenuItem('Expand All')) { grid.expandAll(true); }
-      if (ImGui.MenuItem('Collapse All')) { grid.expandAll(false); }
+      if (editorMenuItem('Expand All')) { grid.expandAll(true); }
+      if (editorMenuItem('Collapse All')) { grid.expandAll(false); }
       editorMenuSection('Display', true);
-      if (ImGui.MenuItem('Show Advanced', '', this.showAdvanced, !this.debugMode)) { this.showAdvanced = !this.showAdvanced; }
-      ImGui.EndPopup();
+      if (editorMenuItem('Show Advanced', '', this.showAdvanced, !this.debugMode)) { this.showAdvanced = !this.showAdvanced; }
+      endEditorPopup();
     }
-    ImGui.PopStyleVar(2);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 36));
     ImGui.Dummy(new ImGui.Vec2(width, 0));
   }

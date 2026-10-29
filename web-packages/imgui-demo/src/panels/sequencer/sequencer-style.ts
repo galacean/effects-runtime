@@ -1,4 +1,5 @@
 import { ImGui } from '../../imgui';
+import { InteractionColors as I } from '../theme/editor-interaction';
 
 const color = (hex: string, alpha = 1) => new ImGui.Vec4(
   parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255, alpha,
@@ -6,12 +7,12 @@ const color = (hex: string, alpha = 1) => new ImGui.Vec4(
 
 export const SEQUENCE_COLORS = {
   background: color('202020'), toolbar: color('242424'), outliner: color('242424'), header: color('2F2F2F'),
-  row: color('242424'), rowAlt: color('272727'), channel: color('222222'), group: color('292929'),
+  row: I.recessed, rowAlt: I.background, channel: I.recessed, group: I.header,
   line: color('181818'), grid: color('343434'), minorGrid: color('2A2A2A'), text: color('C0C0C0'), muted: color('787878'),
-  input: color('0F0F0F'), inputBorder: color('383838'), hover: color('575757'), rowHover: color('383838'), popup: color('383838'),
-  menuLabel: color('A0A0A0'), menuSeparator: color('FFFFFF', 0.25), menuBorder: color('4C4C4C'), selectedText: color('FFFFFF'), curveBackground: color('181818'),
-  selection: color('0070E0'), selectionTint: color('0070E0', 0.12), selectedKey: color('FFAF39'),
-  selectionHovered: color('0E86FF'), selectionPressed: color('0050A0'),
+  input: I.input, inputBorder: I.outline, hover: I.hover, rowHover: I.panel,
+  selectedText: color('FFFFFF'), curveBackground: color('181818'),
+  selection: I.primary, selectionTint: color('0070E0', 0.12), selectedKey: color('FFAF39'),
+  selectionHovered: I.primaryHover, selectionPressed: I.primaryPress,
   keyAuto: color('FC7C7C'), keyUser: color('E7B7BC', 0.65), keyBreak: color('9DDABC', 0.91),
   keyLinear: color('00CEB3'), keyConstant: color('00B2D9'),
   playhead: color('FF4040'), playheadLine: color('FFFFFF', 0.5), time: color('E7A52B'),

@@ -1,3 +1,4 @@
+import { beginEditorMenu, endEditorMenu, editorMenuItem } from '../../../../widgets/editor-menu';
 import * as NodeGraph from '../../visual-graph';
 import { ImGui } from '../../../../imgui/index';
 import type { DrawContext } from '../../visual-graph/drawing-context';
@@ -336,17 +337,17 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
     const pGraphNodeContext = pUserContext as ToolsGraphUserContext;
 
     if (pGraphNodeContext.HasDebugData()) {
-      if (ImGui.BeginMenu('Runtime Node ID')) {
+      if (beginEditorMenu('Runtime Node ID')) {
         const runtimeNodeIdx = pGraphNodeContext.GetRuntimeGraphNodeIndex(this.GetID());
 
         if (runtimeNodeIdx !== InvalidIndex) {
           const label = `Runtime Index: ${runtimeNodeIdx}`;
 
-          if (ImGui.MenuItem(label)) {
+          if (editorMenuItem(label)) {
             ImGui.SetClipboardText(runtimeNodeIdx.toString());
           }
         }
-        ImGui.EndMenu();
+        endEditorMenu();
       }
     }
   }

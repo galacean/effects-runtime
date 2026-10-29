@@ -6,6 +6,8 @@ import { EditorWindow } from './editor-window';
 import { sceneWorkspace } from '../core/scene-document/scene-workspace';
 import { EditorColors } from './theme';
 import { searchBar } from '../widgets';
+import { drawEditorIcon } from '../widgets/editor-icons';
+import { InteractionColors as I } from './theme/editor-interaction';
 
 type InspireEntry = { url: string, name: string };
 
@@ -15,14 +17,6 @@ const COLORS = {
   hovered: EditorColors.selectionHovered,
   playingBg: new ImGui.ImVec4(0.14, 0.35, 0.22, 1.0),
   playingHovered: new ImGui.ImVec4(0.18, 0.42, 0.28, 1.0),
-  // 图标 - 深黄色文件夹风格
-  iconFill: new ImGui.ImVec4(0.78, 0.60, 0.18, 1.0),
-  iconBorder: new ImGui.ImVec4(0.62, 0.48, 0.14, 1.0),
-  iconHole: new ImGui.ImVec4(0.52, 0.40, 0.10, 1.0),
-  iconPlayingFill: new ImGui.ImVec4(0.30, 0.65, 0.40, 1.0),
-  iconSelectedFill: new ImGui.ImVec4(0.92, 0.78, 0.40, 1.0),
-  iconSelectedBorder: new ImGui.ImVec4(0.80, 0.66, 0.28, 1.0),
-  iconSelectedHole: new ImGui.ImVec4(0.70, 0.55, 0.18, 1.0),
   listBg: EditorColors.childBg,
   listBorder: EditorColors.border,
   searchIcon: EditorColors.iconDefault,
@@ -161,7 +155,7 @@ export class Composition extends EditorWindow {
         const iconX = rowScreenPos.x + LAYOUT.rowPaddingLeft;
         const iconY = rowMinY + (LAYOUT.rowHeight - LAYOUT.iconSize) * 0.5;
 
-        this.drawItemIcon(drawList, iconX, iconY, LAYOUT.iconSize, isSelected, isPlaying);
+        drawEditorIcon('sequence', iconX, iconY, LAYOUT.iconSize, isSelected ? I.foregroundHover : I.foreground);
 
         const textX = LAYOUT.rowPaddingLeft + LAYOUT.iconSize + LAYOUT.iconTextGap;
         const textY = (LAYOUT.rowHeight - ImGui.GetTextLineHeight()) * 0.5;
@@ -193,46 +187,6 @@ export class Composition extends EditorWindow {
 
     ImGui.PopStyleVar(2);
     ImGui.PopStyleColor(2);
-  }
-
-  private drawItemIcon (drawList: ImGui.DrawList, x: number, y: number, size: number, isSelected: boolean, isPlaying: boolean): void {
-    const fillColor = ImGui.GetColorU32(
-      isSelected ? COLORS.iconSelectedFill : isPlaying ? COLORS.iconPlayingFill : COLORS.iconFill,
-    );
-    const borderColor = ImGui.GetColorU32(isSelected ? COLORS.iconSelectedBorder : COLORS.iconBorder);
-    const holeColor = ImGui.GetColorU32(isSelected ? COLORS.iconSelectedHole : COLORS.iconHole);
-
-    const min = new ImGui.Vec2(x, y);
-    const max = new ImGui.Vec2(x + size, y + size);
-
-    drawList.AddRectFilled(min, max, fillColor, 2.0);
-    drawList.AddRect(min, max, borderColor, 2.0, 0, 1.0);
-
-    const holeW = 2;
-    const holeH = 3;
-    const margin = 1.5;
-    const gap = size * 0.36;
-
-    drawList.AddRectFilled(
-      new ImGui.Vec2(x + margin, y + margin + 1),
-      new ImGui.Vec2(x + margin + holeW, y + margin + 1 + holeH),
-      holeColor,
-    );
-    drawList.AddRectFilled(
-      new ImGui.Vec2(x + margin, y + margin + 1 + gap),
-      new ImGui.Vec2(x + margin + holeW, y + margin + 1 + gap + holeH),
-      holeColor,
-    );
-    drawList.AddRectFilled(
-      new ImGui.Vec2(x + size - margin - holeW, y + margin + 1),
-      new ImGui.Vec2(x + size - margin, y + margin + 1 + holeH),
-      holeColor,
-    );
-    drawList.AddRectFilled(
-      new ImGui.Vec2(x + size - margin - holeW, y + margin + 1 + gap),
-      new ImGui.Vec2(x + size - margin, y + margin + 1 + gap + holeH),
-      holeColor,
-    );
   }
 
   private drawSearchBar (): void {

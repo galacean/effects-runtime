@@ -1,5 +1,6 @@
 import { ImGui } from '../../imgui';
 import { EditorColors, EditorLayout } from './editor-style';
+import { InteractionColors as I } from './editor-interaction';
 
 /**
  * 编辑器主题管理器。
@@ -40,7 +41,7 @@ export class EditorThemeManager {
     c[ImGui.ImGuiCol.TitleBgCollapsed] = EditorColors.titleBarBg;
 
     // 菜单栏
-    c[ImGui.ImGuiCol.MenuBarBg] = EditorColors.titleBarBg;
+    c[ImGui.ImGuiCol.MenuBarBg] = I.panel;
 
     // 滚动条
     c[ImGui.ImGuiCol.ScrollbarBg] = EditorColors.scrollbarBg;

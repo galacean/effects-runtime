@@ -20,7 +20,10 @@ export class Scene extends EditorWindow {
   private gizmo?: SceneGizmo;
   private input?: SceneViewportInput;
   private showGrid = true;
+  private showFPS = false;
+  private frameTimeMS = 0;
   private pendingFit = false;
+  private pendingSelectionFit = false;
   private viewportVisible = false;
   private updatingInput = false;
   private readonly toolbar = new SceneToolbar();
@@ -49,7 +52,12 @@ export class Scene extends EditorWindow {
     this.open();
   }
 
-  override update (): void {
+  override update (dt: number): void {
+    if (dt > 0 && Number.isFinite(dt)) {
+      const sample = dt * 1000;
+
+      this.frameTimeMS = this.frameTimeMS > 0 ? this.frameTimeMS * 0.9 + sample * 0.1 : sample;
+    }
     this.title = 'Scene' + (sceneWorkspace.current?.dirty ? ' *' : '') + '###Scene';
     const composition = GalaceanEffects.player.getCompositions()[0];
 
@@ -91,13 +99,22 @@ export class Scene extends EditorWindow {
 
   override onUndoRedo (): void { this.input?.reset(); this.gizmo?.refreshSelection(); }
 
+  frameAll (): void { this.pendingFit = true; }
+
+  frameSelection (): void {
+    this.open();
+    this.pendingSelectionFit = true;
+  }
+
   protected override onGUI (): void {
     this.toolbar.draw({
       gizmo: this.gizmo,
       is2DMode: this.is2DMode,
       showGrid: this.showGrid,
+      showFPS: this.showFPS,
       set2DMode: value => this.is2DMode = value,
       setShowGrid: value => this.showGrid = value,
+      setShowFPS: value => this.showFPS = value,
       resetView: () => {
         this.gizmo?.resetView();
         this.cameraController = new OrbitController();
@@ -108,6 +125,7 @@ export class Scene extends EditorWindow {
     const origin = ImGui.GetCursorScreenPos();
     const available = ImGui.GetContentRegionAvail();
     const size = new ImGui.Vec2(available.x, available.y);
+    let resized = false;
 
     if (size.x < 1 || size.y < 1) {
       this.setViewportVisible(false);
@@ -121,7 +139,7 @@ export class Scene extends EditorWindow {
       if (player.container.style.width !== `${size.x}px` || player.container.style.height !== `${size.y}px`) {
         player.container.style.width = `${size.x}px`;
         player.container.style.height = `${size.y}px`;
-        player.resize();
+        player.resize(); resized = true;
       }
     }
 
@@ -129,7 +147,9 @@ export class Scene extends EditorWindow {
 
     drawList.AddRectFilled(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), ImGui.COL32(22, 24, 27, 255));
     if (this.gizmo) {
-      if (this.pendingFit && this.is2DMode) {
+      if (this.pendingSelectionFit && this.is2DMode && !resized) {
+        this.gizmo.frameSelection(); this.pendingSelectionFit = false; this.pendingFit = false;
+      } else if (this.pendingFit && this.is2DMode && !resized) {
         this.pendingFit = !this.gizmo.frameAll();
       }
       if (this.showGrid && this.is2DMode) {
@@ -146,6 +166,7 @@ export class Scene extends EditorWindow {
         ImGui.GetColorU32(EditorColors.textSecondary), message);
     }
 
+    if (this.showFPS) { this.drawFPS(origin, size); }
     ImGui.SetCursorScreenPos(origin);
     ImGui.InvisibleButton('##SceneViewport', size,
       ImGui.ButtonFlags.MouseButtonLeft | ImGui.ButtonFlags.MouseButtonRight | ImGui.ButtonFlags.MouseButtonMiddle);
@@ -163,6 +184,22 @@ export class Scene extends EditorWindow {
     } else if (this.gizmo && hovered) {
       this.updatePerspective(size);
     }
+  }
+
+  private drawFPS (origin: ImGui.Vec2, size: ImGui.Vec2): void {
+    const frameTime = this.frameTimeMS, fps = frameTime > 0 ? 1000 / frameTime : 0;
+    const color = frameTime > 50 ? ImGui.COL32(233, 109, 99, 255) : frameTime > 33.9 ? ImGui.COL32(244, 186, 112, 255) : ImGui.COL32(127, 202, 159, 255);
+    const draw = ImGui.GetWindowDrawList();
+    const lines = [`${fps.toFixed(2)} FPS`, `${frameTime.toFixed(2)} ms`];
+
+    draw.PushClipRect(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), true);
+    lines.forEach((text, index) => {
+      const x = origin.x + size.x - ImGui.CalcTextSize(text).x - 16, y = origin.y + 12 + index * ImGui.GetTextLineHeight() * 1.1;
+
+      draw.AddText(new ImGui.Vec2(x + 1, y + 1), ImGui.COL32(0, 0, 0, 220), text);
+      draw.AddText(new ImGui.Vec2(x, y), color, text);
+    });
+    draw.PopClipRect();
   }
 
   private drawGrid (origin: ImGui.Vec2, size: ImGui.Vec2): void {

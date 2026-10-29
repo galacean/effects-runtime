@@ -7,6 +7,9 @@ import { Selection } from './selection';
 import { sceneWorkspace } from './scene-document/scene-workspace';
 import { SceneFiles } from '../panels/scene/scene-files';
 import { editorLayout } from './editor-layout';
+import { projectWorkspace } from './project/project-workspace';
+import { Scene } from '../panels/scene/scene';
+import { editorMainMenuBar } from '../widgets/editor-menu';
 
 export class EditorApplication {
   private windows: EditorWindow[] = [];
@@ -26,6 +29,10 @@ export class EditorApplication {
 
       this.addMenuItem(path, entry.action, entry.priority, entry.shortcut);
     }
+    this.addMenuItem('Window/Layout/Default Editor Layout', () => {
+      sceneWorkspace.flushEdits(); editorLayout.requestDefault(); this.getWindow(Scene).frameAll();
+    }, 990, '');
+    this.addMenuItem('Window/Layout/Save Layout', () => editorLayout.requestSave(), 1000, '');
 
     this.sortMenuTree();
 
@@ -92,23 +99,31 @@ export class EditorApplication {
 
     this.drawMainMenuBar();
 
-    for (const w of this.windows) {
-      w.draw();
-    }
+    ImGui.BeginDisabled(sceneWorkspace.changingDocument);
+    for (const w of this.windows) { w.draw(); }
+    ImGui.EndDisabled();
     this.sceneFiles.shortcuts();
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive()) { sceneWorkspace.current?.commit(); }
+    if (!sceneWorkspace.changingDocument && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive()) { sceneWorkspace.current?.commit(); }
     this.sceneFiles.drawDialogs();
   }
 
   private drawMainMenuBar () {
-    if (ImGui.BeginMainMenuBar()) {
+    editorMainMenuBar(() => {
       this.sceneFiles.drawFileMenu();
       this.sceneFiles.drawEditMenu();
       for (const menuNode of this.menuNodes) {
-        menuNode.draw();
+        menuNode.draw(true);
       }
-      ImGui.EndMainMenuBar();
-    }
+      const projectName = projectWorkspace.current?.name;
+
+      if (projectName) {
+        const width = ImGui.CalcTextSize(projectName).x;
+
+        if (ImGui.GetContentRegionAvail().x > width + 40) {
+          ImGui.SetCursorPosX(ImGui.GetWindowWidth() - width - 18); ImGui.TextDisabled(projectName);
+        }
+      }
+    });
   }
 
   private sortMenuTree () {

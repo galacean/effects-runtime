@@ -1,5 +1,6 @@
 import { ImGui } from '../../imgui';
 import { Palette, lighten, darken, withAlpha } from './editor-palette';
+import { InteractionColors as I } from './editor-interaction';
 
 // ─── 语义颜色令牌 ────────────────────────────────────────
 // panel 代码只引用这一层；所有值从 Palette 派生。
@@ -16,7 +17,7 @@ export const EditorColors = {
   toolbarBg:        lighten(Palette.base, 0.079),                // #3A3A3A
 
   // 强调/选中（从 accent 派生）
-  accentPrimary:    Palette.accent,                              // #0960D1
+  accentPrimary:    Palette.accent,
   accentDim:        withAlpha(Palette.accent, 0.35),
   accentActive:     new ImGui.Vec4(0.149, 0.310, 0.471, 1.0),   // #264F78
 
@@ -37,8 +38,8 @@ export const EditorColors = {
 
   // 按钮
   button:           lighten(Palette.base, 0.059),                // #333333
-  buttonHovered:    lighten(Palette.base, 0.098),                // #3D3D3D
-  buttonActive:     new ImGui.Vec4(0.149, 0.310, 0.471, 1.0),   // #264F78
+  buttonHovered:    I.hover,
+  buttonActive:     I.secondary,
 
   // 滚动条
   scrollbarBg:      withAlpha(Palette.surface, 0.70),
@@ -60,14 +61,14 @@ export const EditorColors = {
   tabActive:        Palette.base,
 
   // Header（TreeNode, CollapsingHeader）
-  header:           darken(Palette.base, 0.023),
-  headerHovered:    lighten(Palette.base, 0.039),
-  headerActive:     Palette.accent,
+  header:           I.primary,
+  headerHovered:    I.panel,
+  headerActive:     I.primary,
 
   // 列表/树选中状态
-  selectionFocused:   Palette.accent,                              // #0960D1
-  selectionUnfocused: new ImGui.Vec4(0.25, 0.30, 0.35, 1.0),      // 灰蓝色
-  selectionHovered:   new ImGui.Vec4(1, 1, 1, 0.06),               // 微透明
+  selectionFocused:   I.primary,
+  selectionUnfocused: I.selectedInactive,
+  selectionHovered:   I.panel,
 
   // Splitter
   splitterNormal:   darken(Palette.base, 0.004),

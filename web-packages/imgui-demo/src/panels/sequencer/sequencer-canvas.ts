@@ -1,6 +1,7 @@
 import { BezierCurve, InterpolationMode } from '@galacean/effects';
 import type { TrackAsset } from '@galacean/effects';
 import { ImGui } from '../../imgui';
+import { editorRowColors, editorColumnTint, InteractionColors } from '../theme/editor-interaction';
 import { drawEditorArrow } from '../../widgets/editor-arrow';
 import { controlPoint, makeKey, updateAutoTangents } from './curve-data';
 import type { SequenceKey } from './curve-data';
@@ -64,6 +65,9 @@ export class SequencerCanvas {
   private valueEdit?: { id: string, cancelled: boolean };
   private valueHovered = false;
   private valueActive = false;
+  private hoveredRow?: string;
+  private focused = false;
+  private parentHighlights = new Set<string>();
 
   constructor (readonly state: SequencerState, private readonly selectTrack: (track: TrackAsset) => void) {}
 
@@ -104,6 +108,20 @@ export class SequencerCanvas {
     this.plot = { x: origin.x + this.state.outlinerWidth, y: origin.y + L.rulerHeight,
       width: Math.max(50, width - this.state.outlinerWidth - 10), height: Math.max(30, height - L.rulerHeight) };
     this.rows = this.state.rows(document);
+    this.focused = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows);
+    const mouse = ImGui.GetMousePos();
+
+    this.hoveredRow = ImGui.IsWindowHovered() && this.contains(this.rect, mouse.x, mouse.y) ? this.rowAt(mouse.y)?.id : undefined;
+    this.parentHighlights.clear();
+    const ancestors: SequenceRow[] = [];
+
+    for (const row of this.rows) {
+      while (ancestors.length && ancestors[ancestors.length - 1].depth >= row.depth) { ancestors.pop(); }
+      if (this.rowSelected(document, row) || row.channels.some(({ channel }) => channel.keys.some(key => document.selectedKeys.has(key.id)))) {
+        ancestors.forEach(parent => this.parentHighlights.add(parent.id));
+      }
+      ancestors.push(row);
+    }
     const last = this.rows.at(-1);
 
     this.scrollMax = Math.max(0, (last ? last.top + last.height : 0) - this.plot.height);
@@ -217,8 +235,9 @@ export class SequencerCanvas {
       const y = this.plot.y + row.top - this.state.scrollY;
 
       if (y + row.height < this.plot.y || y > this.plot.y + this.plot.height) { continue; }
-      this.fill({ x: this.plot.x, y, width: this.plot.width, height: row.height },
-        row.kind === 'object' ? C.group : row.kind === 'channel' ? C.channel : index % 2 ? C.rowAlt : C.row);
+      const appearance = editorRowColors({ parent: row.kind === 'object', alternate: index % 2 === 1, hovered: this.hoveredRow === row.id });
+
+      this.fill({ x: this.plot.x, y, width: this.plot.width, height: row.height }, appearance.background);
       if (document.selectedTracks.has(row.track.getInstanceId()) && (!this.state.activeChannel || row.id === this.state.activeChannel)) {
         this.fill({ x: this.plot.x, y, width: this.plot.width, height: row.height }, C.selectionTint);
       }
@@ -345,30 +364,30 @@ export class SequencerCanvas {
   private drawOutliner (document: SequencerDocument): void {
     const dl = ImGui.GetWindowDrawList(), mouse = ImGui.GetMousePos();
     const columns = this.outlinerColumns;
-    const selectedTracks = this.state.curveMode ? this.state.curveTracks : document.selectedTracks;
     let editingRowVisible = false;
 
     this.valueHovered = false; this.valueActive = false;
     ImGui.PushClipRect(new ImGui.Vec2(this.rect.x, this.plot.y), new ImGui.Vec2(this.plot.x - 3, this.plot.y + this.plot.height), true);
-    for (const row of this.rows) {
+    for (const [index, row] of this.rows.entries()) {
       const y = this.plot.y + row.top - this.state.scrollY;
 
       if (y + row.height < this.plot.y || y > this.plot.y + this.plot.height) { continue; }
-      const selected = this.state.activeChannel ? row.id === this.state.activeChannel : selectedTracks.has(row.id);
+      const selected = this.rowSelected(document, row);
       const hovered = ImGui.IsWindowHovered() && mouse.x < this.plot.x && mouse.x >= this.rect.x && mouse.y >= y && mouse.y < y + row.height;
-      const background = row.kind === 'object' ? C.header : row.kind === 'channel' ? C.outliner : C.group;
+      const appearance = editorRowColors({ selected, hovered: this.hoveredRow === row.id, focused: this.focused,
+        parent: row.kind === 'object', parentHighlighted: this.parentHighlights.has(row.id), alternate: index % 2 === 1 });
       const color = row.kind === 'channel' ? C.axes[row.channels[0]?.channel.axis ?? 3] : C.text;
       const center = y + row.height / 2, textY = y + (row.height - ImGui.GetTextLineHeight()) / 2;
       const x = this.rect.x + L.treePadding + row.depth * L.treeIndent;
 
-      this.fill({ x: this.rect.x, y, width: this.state.outlinerWidth - 3, height: row.height }, selected ? C.selection : hovered ? C.rowHover : background);
+      this.fill({ x: this.rect.x, y, width: this.state.outlinerWidth - 3, height: row.height }, appearance.background);
       if (row.kind === 'object') { this.line(this.rect.x, y, this.plot.x, y, C.line); }
       if (row.expandable) {
         const expanded = this.state.expanded.has(row.id);
         const caretHovered = hovered && mouse.x >= x && mouse.x < x + L.expanderSize;
 
         drawEditorArrow(x, center - L.expanderSize / 2, L.expanderSize, expanded ? 'down' : 'right',
-          selected || caretHovered ? C.selectedText : C.muted);
+          caretHovered ? C.selectedText : appearance.foreground);
       }
       const hasIcon = row.kind === 'object' || row.kind === 'track';
       const iconX = x + L.expanderSize + 2;
@@ -409,7 +428,7 @@ export class SequencerCanvas {
       }
 
       if (row.channels.length) {
-        this.drawOutlinerControl('key', columns.key, center, hovered, false, 'Add key at playhead');
+        this.drawOutlinerControl('addKey', columns.key, center, hovered, false, 'Add key at playhead');
         if (columns.navigation) {
           this.drawOutlinerControl('previousKey', columns.previous, center, hovered, false, 'Previous key');
           this.drawOutlinerControl('nextKey', columns.next, center, hovered, false, 'Next key');
@@ -430,6 +449,12 @@ export class SequencerCanvas {
     }
     ImGui.PopClipRect();
     if (this.valueEdit && !editingRowVisible) { document.commit(); this.valueEdit = undefined; }
+  }
+
+  private rowSelected (document: SequencerDocument, row: SequenceRow): boolean {
+    const tracks = this.state.curveMode ? this.state.curveTracks : document.selectedTracks;
+
+    return this.state.activeChannel ? row.id === this.state.activeChannel : tracks.has(row.id);
   }
 
   private outlinerHitArea (id: string, x: number, y: number, width: number, height: number): void {
@@ -501,8 +526,7 @@ export class SequencerCanvas {
 
   private drawOutlinerControl (icon: SequenceIcon, x: number, y: number, rowHovered: boolean, active: boolean, hint: string): void {
     const hovered = rowHovered && Math.abs(ImGui.GetMousePos().x - x) < L.columnSpacing / 2;
-    const alpha = hovered ? 0.8 : rowHovered ? 0.25 : 0.1;
-    const tint = active ? C.selectedKey : new ImGui.Vec4(1, 1, 1, alpha);
+    const tint = editorColumnTint(hovered, rowHovered, active);
     const pressedOffset = hovered && ImGui.IsMouseDown(ImGui.MouseButton.Left) ? 1 : 0;
 
     drawSequenceIcon(icon, x - L.columnIconSize / 2, y - L.columnIconSize / 2 + pressedOffset, L.columnIconSize, tint);
@@ -663,7 +687,9 @@ export class SequencerCanvas {
           }
         }
         if (this.curvePointVisible(x, y)) {
-          this.diamond(x, y, document.selectedKeys.has(key.id) ? C.selectedKey : color, document.selectedKeys.has(key.id) ? 5 : 4);
+          const hovered = ImGui.IsWindowHovered() && Math.hypot(ImGui.GetMousePos().x - x, ImGui.GetMousePos().y - y) <= 7;
+
+          this.diamond(x, y, document.selectedKeys.has(key.id) ? C.selectedKey : hovered ? C.selectedText : color, document.selectedKeys.has(key.id) || hovered ? 5 : 4);
           this.keyHits.push({ x, y, keys: [item] });
         }
       });
@@ -1213,8 +1239,9 @@ export class SequencerCanvas {
   }
 
   private drawNumericKey (x: number, y: number, key: SequenceKey, selected: boolean): void {
-    const dl = ImGui.GetWindowDrawList(), radius = selected ? 4.5 : 4;
-    const color = selected ? C.selectedKey : key.interpolationMode === InterpolationMode.Linear ? C.keyLinear :
+    const hovered = ImGui.IsWindowHovered() && Math.hypot(ImGui.GetMousePos().x - x, ImGui.GetMousePos().y - y) <= 7;
+    const dl = ImGui.GetWindowDrawList(), radius = selected || hovered ? 5 : 4;
+    const color = selected ? C.selectedKey : hovered ? InteractionColors.foregroundHover : key.interpolationMode === InterpolationMode.Linear ? C.keyLinear :
       key.interpolationMode === InterpolationMode.Constant ? C.keyConstant :
         key.tangentMode === 'auto' ? C.keyAuto : key.tangentMode === 'break' ? C.keyBreak : C.keyUser;
     const fill = ImGui.GetColorU32(color), border = ImGui.GetColorU32(C.line);

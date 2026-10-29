@@ -1,3 +1,4 @@
+import { beginEditorMenu, endEditorMenu, editorMenuItem } from '../../../../widgets/editor-menu';
 import type { BaseGraph } from '../../visual-graph/base-graph';
 import { SearchMode, SearchTypeMatch } from '../../visual-graph/base-graph';
 import type { DrawContext } from '../../visual-graph/drawing-context';
@@ -130,22 +131,22 @@ export class StateToolsNode extends NodeGraph.StateNode {
 
   override DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2): void {
     if (this.m_type === StateType.BlendTreeState && this.CanConvertToStateMachineState()) {
-      if (ImGui.MenuItem('Convert To State Machine State')) {
+      if (editorMenuItem('Convert To State Machine State')) {
         this.ConvertToStateMachineState();
       }
     }
 
     if (this.m_type === StateType.StateMachineState && this.CanConvertToBlendTreeState()) {
-      if (ImGui.MenuItem('Convert to Blend Tree State')) {
+      if (editorMenuItem('Convert to Blend Tree State')) {
         this.ConvertToBlendTreeState();
       }
     }
 
-    if (ImGui.BeginMenu('Node Info')) {
+    if (beginEditorMenu('Node Info')) {
       const IDStr = this.GetID().toString();
       let label = `UUID: ${IDStr}`;
 
-      if (ImGui.MenuItem(label)) {
+      if (editorMenuItem(label)) {
         ImGui.SetClipboardText(IDStr);
       }
 
@@ -156,13 +157,13 @@ export class StateToolsNode extends NodeGraph.StateNode {
 
         if (runtimeNodeIdx !== -1) {
           label = `Runtime Index: ${runtimeNodeIdx}`;
-          if (ImGui.MenuItem(label)) {
+          if (editorMenuItem(label)) {
             ImGui.SetClipboardText(runtimeNodeIdx.toString());
           }
         }
       }
 
-      ImGui.EndMenu();
+      endEditorMenu();
     }
   }
 

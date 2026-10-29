@@ -5,6 +5,7 @@ export const ASSET_ROOT = 'content';
 
 export interface AssetEntry {
   id: string,
+  projectId: string,
   parentId: string,
   name: string,
   kind: 'folder' | 'texture' | 'scene',

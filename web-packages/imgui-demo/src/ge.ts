@@ -10,6 +10,8 @@ import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { sceneWorkspace } from './core/scene-document/scene-workspace';
 import { jsonData, resolveSceneURLs } from './core/scene-document/scene-values';
+import { projectWorkspace } from './core/project/project-workspace';
+import { DEFAULT_PROJECT_ID } from './core/project/project-types';
 
 export class GalaceanEffects {
   static player: Player;
@@ -27,6 +29,7 @@ export class GalaceanEffects {
     GalaceanEffects.player.renderer.addOverlayRenderer({ render: GalaceanEffects.updateRenderTexture });
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.assetServer.database = GalaceanEffects.assetDataBase;
+    await projectWorkspace.initialize();
     const lastScene = await sceneWorkspace.initialize(async source => {
       const player = this.player;
       const manager = player.engine.assetServer.createAssetManager({ env: 'editor', autoplay: false, reusable: true });
@@ -60,6 +63,11 @@ export class GalaceanEffects {
     if (lastScene) {
       await sceneWorkspace.openSaved(lastScene);
       if (sceneWorkspace.current) { return; }
+    }
+    if (projectWorkspace.current?.id !== DEFAULT_PROJECT_ID) {
+      await sceneWorkspace.loadProject();
+
+      return;
     }
     await GalaceanEffects.playURL({
       'playerVersion': {

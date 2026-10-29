@@ -66,7 +66,9 @@ export class SceneDocument {
     for (const key of ['items', 'components', 'miscs', 'materials', 'geometries', 'shaders', 'textures', 'animations'] as const) { this.scene[key] ??= []; }
     this.serializer = new SceneSerializer(composition);
     this.serializer.bootstrap(this.scene);
+    this.serializer.stabilizeRenderOrder(this.scene);
     this.serializer.restoreEditor(this.editor);
+    this.serializer.stabilizeRenderOrder(this.scene);
     this.registerEditorState({
       read: () => Selection.getSelectedObjects().map(object => this.selectionKey(object)),
       restore: (keys: string[]) => Selection.setObjects(keys.map(key => this.selectionObject(key)).filter((object): object is object => !!object), 'history'),
@@ -216,6 +218,10 @@ export class SceneDocument {
     this.transaction!.mutations.get(after.object)!.bytes = historyBytes([edit.before.data, edit.before.extras, edit.after.data, edit.after.extras]);
 
     return true;
+  }
+
+  recordMutation (key: object, mutation: Mutation): void {
+    if (!this.restoring && this.transaction) { this.transaction.mutations.set(key, mutation); }
   }
 
   beginSequence (document: SequenceEditor, label: string, before: any, affectsContent = true): void {
@@ -397,6 +403,7 @@ export class SceneDocument {
           if (!state.valid || state.valid()) { state.restore(states.has(state) ? states.get(state) : initial); }
         }
       }, 'history');
+      this.serializer.stabilizeRenderOrder(this.scene);
       this.onRestored();
     } catch (error) {
       Selection.batch(() => {

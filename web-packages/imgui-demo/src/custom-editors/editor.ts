@@ -38,7 +38,7 @@ export class Editor {
     const component = this.target;
 
     if (component instanceof MaskableGraphic) {
-      const color = component.color.clone();
+      const color = (component.material.getColor('_Color') ?? component.color).clone();
 
       if (EditorGUILayout.ColorField('Color', color)) { component.color = color; }
     }

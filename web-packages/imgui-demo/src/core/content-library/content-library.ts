@@ -32,6 +32,7 @@ const DEFAULTS: ContentPreferences = {
 
 export class ContentLibrary {
   readonly storage = assetStorage;
+  projectId = '';
   entries: ContentEntry[] = [];
   preferences: ContentPreferences = { ...DEFAULTS, collections: [] };
   ready = false;
@@ -50,8 +51,10 @@ export class ContentLibrary {
 
   constructor () {
     this.storage.subscribe(entries => {
-      if (!this.ready) { entries.forEach(entry => this.pendingEntries.set(entry.id, entry)); }
-      this.mergeEntries(entries);
+      const scoped = entries.filter(entry => entry.projectId === this.projectId);
+
+      if (!this.ready) { scoped.forEach(entry => this.pendingEntries.set(entry.id, entry)); }
+      if (scoped.length) { this.mergeEntries(scoped); }
     });
   }
 
@@ -75,7 +78,11 @@ export class ContentLibrary {
   set notice (value: string) { this.status = value; this.statusTime = Date.now(); }
 
   initialize (): Promise<void> {
-    this.initialization ??= Promise.all([this.storage.list(), this.storage.preferences()]).then(([entries, preferences]) => {
+    this.initialization ??= (async () => {
+      await this.storage.initialize();
+      this.projectId = this.storage.projectId;
+      const [entries, preferences] = await Promise.all([this.storage.list(this.projectId), this.storage.preferences(this.projectId)]);
+
       this.entries = entries;
       this.mergeEntries([...this.pendingEntries.values()]); this.pendingEntries.clear();
       this.preferences = { ...DEFAULTS, ...preferences, collections: preferences?.collections ?? [] };
@@ -84,9 +91,20 @@ export class ContentLibrary {
       this.preferences.sourcesWidth = Math.max(140, Math.min(380, this.preferences.sourcesWidth));
       if (this.preferences.folder !== CONTENT_ROOT && (this.entry(this.preferences.folder)?.kind !== 'folder' || this.entry(this.preferences.folder)?.deletedAt)) { this.preferences.folder = CONTENT_ROOT; }
       this.ready = true; this.revision++;
-    }).catch(error => { this.initialization = undefined; this.report(error); });
+    })().catch(error => { this.initialization = undefined; this.report(error); });
 
     return this.initialization;
+  }
+
+  async whenIdle (): Promise<void> { await this.requests; }
+
+  async reloadProject (): Promise<void> {
+    await this.whenIdle();
+    this.ready = false; this.entries = []; this.initialization = undefined; this.pendingEntries.clear();
+    this.textures = new WeakMap(); this.textureRequests = new WeakMap(); this.liveTextures.clear();
+    this.error = ''; this.notice = '';
+    await this.initialize();
+    if (!this.ready) { throw new Error('The project content could not be opened.'); }
   }
 
   entry (id: string): ContentEntry | undefined { return this.entries.find(entry => entry.id === id); }
@@ -135,14 +153,16 @@ export class ContentLibrary {
     return next;
   }
 
-  private async update (entries: ContentEntry[], payloads: AssetPayload[] = []): Promise<void> { await this.storage.write(entries, payloads); }
+  private async update (entries: ContentEntry[], payloads: AssetPayload[] = []): Promise<void> { await this.storage.write(entries, payloads, undefined, this.projectId); }
 
   private async operation<T> (action: () => Promise<T>): Promise<T | undefined> {
     let result: T | undefined;
+    const projectId = this.projectId;
     const task = this.requests.then(async () => {
       this.busy = true;
       try {
         await this.initialize();
+        if (projectId && projectId !== this.projectId) { throw new Error('The active project changed before this operation finished.'); }
         if (!this.ready) { throw new Error('The content database could not be opened.'); }
         result = await action();
       } catch (error) { this.report(error); } finally { this.busy = false; this.progress = ''; }
@@ -158,7 +178,7 @@ export class ContentLibrary {
     return this.operation(async () => {
       const now = Date.now(), id = generateGUID();
 
-      await this.update([{ id, parentId, name: this.uniqueName('NewFolder', parentId), kind: 'folder', createdAt: now, updatedAt: now }]);
+      await this.update([{ id, projectId: this.projectId, parentId, name: this.uniqueName('NewFolder', parentId), kind: 'folder', createdAt: now, updatedAt: now }]);
 
       return id;
     });
@@ -167,7 +187,7 @@ export class ContentLibrary {
   async newScene (parentId: string): Promise<string | undefined> {
     return this.operation(async () => {
       const now = Date.now(), id = generateGUID();
-      const entry: ContentEntry = { id, parentId, name: this.uniqueName('NewScene', parentId), kind: 'scene', createdAt: now, updatedAt: now };
+      const entry: ContentEntry = { id, projectId: this.projectId, parentId, name: this.uniqueName('NewScene', parentId), kind: 'scene', createdAt: now, updatedAt: now };
 
       await this.update([entry], [{ id, kind: 'scene', scene: createEmptyScene(), editor: { objects: {} } }]);
 
@@ -192,7 +212,7 @@ export class ContentLibrary {
           const old = files.length === 1 && replaceId ? this.entry(replaceId) : undefined;
           const id = old?.id ?? generateGUID(), now = Date.now();
           const entry: ContentEntry = {
-            ...old, id, parentId: old?.parentId ?? folder, name: old?.name ?? this.uniqueName(file.name.replace(/\.[^.]+$/, '') || 'Texture', folder),
+            ...old, id, projectId: this.projectId, parentId: old?.parentId ?? folder, name: old?.name ?? this.uniqueName(file.name.replace(/\.[^.]+$/, '') || 'Texture', folder),
             kind: 'texture', width: image.naturalWidth, height: image.naturalHeight, mime: file.type || 'image/png',
             sourceName: file.name, size: file.size, createdAt: old?.createdAt ?? now, updatedAt: now,
           };
@@ -277,11 +297,11 @@ export class ContentLibrary {
   }
 
   async savePreferences (): Promise<void> {
-    try { await this.storage.write([], [], structuredClone(this.preferences)); } catch (error) { this.report(error); }
+    try { await this.storage.write([], [], structuredClone(this.preferences), this.projectId); } catch (error) { this.report(error); }
   }
 
   async saveAll (): Promise<void> {
-    await this.operation(async () => { await this.storage.write([], [], structuredClone(this.preferences)); this.notice = 'All assets saved'; });
+    await this.operation(async () => { await this.storage.write([], [], structuredClone(this.preferences), this.projectId); this.notice = 'All assets saved'; });
   }
 
   texture (engine: Engine, id: string): Texture | undefined {
@@ -293,6 +313,7 @@ export class ContentLibrary {
   }
 
   async loadTexture (engine: Engine, id: string): Promise<Texture> {
+    const projectId = this.projectId;
     const cached = this.texture(engine, id);
 
     if (cached?.isRegistered && !cached.isDestroyed) { return cached; }
@@ -303,11 +324,13 @@ export class ContentLibrary {
 
     if (pending) { return pending; }
     const task = (async () => {
-      const entry = this.entry(id), source = await this.storage.image(id);
+      const entry = this.entry(id), source = await this.storage.image(id, projectId);
 
       if (!entry || !source) { throw new Error('The source image is missing from the content library.'); }
       const dataURL = await blobDataURL(source.blob);
       const image = await loadImage(dataURL);
+
+      if (projectId !== this.projectId) { throw new Error('The texture belongs to a project that is no longer open.'); }
 
       if (this.entry(id)?.updatedAt !== entry.updatedAt) {
         requests.delete(id);

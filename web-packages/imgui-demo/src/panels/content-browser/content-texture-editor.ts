@@ -14,6 +14,7 @@ export class ContentTextureEditor {
   constructor (private readonly thumbnails: ContentThumbnails) { }
 
   open (id: string): void { this.asset = id; this.opened = true; this.fit = true; this.offset = new ImGui.Vec2(); }
+  close (): void { this.opened = false; this.asset = undefined; this.pan = undefined; }
 
   draw (): void {
     const entry = this.asset ? contentLibrary.entry(this.asset) : undefined;

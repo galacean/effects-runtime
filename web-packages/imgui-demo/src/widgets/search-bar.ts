@@ -1,5 +1,7 @@
 import { ImGui } from '../imgui';
 import { EditorColors } from '../panels/theme';
+import { InteractionColors as I } from '../panels/theme/editor-interaction';
+import { drawEditorIcon } from './editor-icons';
 
 export type SearchBarOptions = {
   /** 指定输入栏宽度，默认填满当前内容区域。 */
@@ -10,6 +12,7 @@ export type SearchBarOptions = {
   showClearButton?: boolean,
   /** 缓冲区大小（默认 256） */
   bufferSize?: number,
+  rounding?: number,
 };
 
 /**
@@ -29,12 +32,12 @@ export function searchBar (
 
   const availWidth = Math.min(opts.width ?? ImGui.GetContentRegionAvail().x, ImGui.GetContentRegionAvail().x);
   const frameHeight = Math.max(ImGui.GetFrameHeight(), 22);
-  const frameRounding = 4;
-  const leftPadding = 8;
-  const iconSize = 12;
-  const iconSpacing = 8;
-  const clearButtonSize = 16;
-  const rightPadding = 6;
+  const frameRounding = opts.rounding ?? 4;
+  const leftPadding = 4;
+  const iconSize = 14;
+  const iconSpacing = 4;
+  const clearButtonSize = 14;
+  const rightPadding = 4;
   const drawList = ImGui.GetWindowDrawList();
   const cursorLocalPos = ImGui.GetCursorPos();
   const cursorScreenPos = ImGui.GetCursorScreenPos();
@@ -80,44 +83,16 @@ export function searchBar (
   ImGui.PopStyleVar(3);
 
   const isFrameHovered = inputHovered || ImGui.IsMouseHoveringRect(frameMin, frameMax, false);
-  const backgroundColor = inputActive
-    ? new ImGui.Vec4(0.082, 0.082, 0.086, 1.0)
-    : isFrameHovered
-      ? new ImGui.Vec4(0.075, 0.075, 0.079, 1.0)
-      : new ImGui.Vec4(0.067, 0.067, 0.071, 1.0);
-  const borderColor = inputActive
-    ? new ImGui.Vec4(0.23, 0.43, 0.72, 0.65)
-    : isFrameHovered
-      ? new ImGui.Vec4(0.24, 0.24, 0.25, 1.0)
-      : new ImGui.Vec4(0.16, 0.16, 0.17, 1.0);
-  const iconColor = ImGui.GetColorU32(inputActive
-    ? new ImGui.Vec4(0.78, 0.82, 0.86, 1.0)
-    : new ImGui.Vec4(0.60, 0.65, 0.70, 1.0));
+  const borderColor = inputActive ? I.primary : isFrameHovered ? I.hover : I.secondary;
+  const iconTint = inputActive ? I.foregroundHover : I.foreground;
 
   drawList.ChannelsSetCurrent(0);
-  drawList.AddRectFilled(frameMin, frameMax, ImGui.GetColorU32(backgroundColor), frameRounding);
+  drawList.AddRectFilled(frameMin, frameMax, ImGui.GetColorU32(I.input), frameRounding);
   drawList.AddRect(frameMin, frameMax, ImGui.GetColorU32(borderColor), frameRounding, 0, 1.0);
 
   drawList.ChannelsSetCurrent(2);
 
-  // ── 放大镜图标 ──
-  const circleCenter = new ImGui.Vec2(
-    frameMin.x + leftPadding + iconSize * 0.5,
-    frameMin.y + frameHeight * 0.5,
-  );
-  const lensRadius = iconSize * 0.34;
-  const strokeThickness = 1.75;
-  const handleStart = new ImGui.Vec2(
-    circleCenter.x + lensRadius * 0.62,
-    circleCenter.y + lensRadius * 0.62,
-  );
-  const handleEnd = new ImGui.Vec2(
-    circleCenter.x + lensRadius * 1.7,
-    circleCenter.y + lensRadius * 1.7,
-  );
-
-  drawList.AddCircle(circleCenter, lensRadius, iconColor, 20, strokeThickness);
-  drawList.AddLine(handleStart, handleEnd, iconColor, strokeThickness);
+  drawEditorIcon('search', frameMin.x + leftPadding, frameMin.y + (frameHeight - iconSize) / 2, iconSize, iconTint);
 
   // ── 清除按钮 ──
   if (hasClearButton) {
@@ -151,19 +126,7 @@ export function searchBar (
       );
     }
 
-    const pad = 4.5;
-    const crossColor = ImGui.GetColorU32(isHovered ? EditorColors.iconActive : EditorColors.iconDefault);
-
-    drawList.AddLine(
-      new ImGui.Vec2(btnX + pad, btnY + pad),
-      new ImGui.Vec2(btnX + clearButtonSize - pad, btnY + clearButtonSize - pad),
-      crossColor, 1.5,
-    );
-    drawList.AddLine(
-      new ImGui.Vec2(btnX + clearButtonSize - pad, btnY + pad),
-      new ImGui.Vec2(btnX + pad, btnY + clearButtonSize - pad),
-      crossColor, 1.5,
-    );
+    drawEditorIcon('searchClear', btnX, btnY, clearButtonSize, isHovered ? I.foregroundHover : I.foreground);
   }
 
   drawList.ChannelsMerge();

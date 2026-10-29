@@ -1,4 +1,4 @@
-import { ImGui } from '../imgui';
+import { beginEditorMenu, endEditorMenu, editorMenuItem } from './editor-menu';
 
 export class MenuNode {
   name: string = '';
@@ -10,12 +10,12 @@ export class MenuNode {
     this.priority = priority;
   }
 
-  draw () {
-    if (ImGui.BeginMenu(this.name)) {
+  draw (menuBar = false) {
+    if (beginEditorMenu(this.name, true, menuBar)) {
       for (const child of this.children) {
         child.draw();
       }
-      ImGui.EndMenu();
+      endEditorMenu();
     }
   }
 
@@ -47,7 +47,7 @@ export class MenuItemNode extends MenuNode {
   shortcut = '';
 
   override draw (): void {
-    if (ImGui.MenuItem(this.name, this.shortcut)) {
+    if (editorMenuItem(this.name, this.shortcut)) {
       this.onClick();
     }
   }

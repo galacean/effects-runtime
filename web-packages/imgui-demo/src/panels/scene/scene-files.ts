@@ -1,10 +1,11 @@
 import { sceneWorkspace as workspace } from '../../core/scene-document/scene-workspace';
 import { ImGui } from '../../imgui';
-import { editorMenuSection } from '../../widgets/editor-menu';
-import { editorLayout } from '../../core/editor-layout';
+import { editorMenuSection, beginEditorMenu, endEditorMenu, editorMenuItem } from '../../widgets/editor-menu';
 import { contentLibrary } from '../../core/content-library/content-library';
 import { CONTENT_ROOT } from '../../core/content-library/content-storage';
 import { searchBar } from '../../widgets/search-bar';
+import { projectWorkspace as projects } from '../../core/project/project-workspace';
+import { projectBrowser } from '../project-browser/project-browser';
 
 function dialogTitle (kind: string): string {
   return kind === 'open' ? 'Open Scene' : kind === 'save' ? 'Save Scene As' : kind === 'replace' ? 'Replace Scene' : 'Unsaved Changes';
@@ -13,7 +14,7 @@ function dialogTitle (kind: string): string {
 export class SceneFiles {
   private displayedDialog = '';
   private search: [string] = [''];
-  private fileShortcut?: 'new' | 'save' | 'saveAs' | 'open';
+  private fileShortcut?: 'new' | 'save' | 'saveAs' | 'saveAll' | 'open';
 
   initialize (): void {
     if (typeof window !== 'undefined') { window.addEventListener('keydown', this.onKeyDown, true); }
@@ -25,40 +26,58 @@ export class SceneFiles {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) { return; }
+    if (!(event.ctrlKey || event.metaKey) || event.isComposing) { return; }
     const save = event.code === 'KeyS';
-    const open = event.code === 'KeyO' && !event.shiftKey;
-    const create = event.code === 'KeyN' && !event.shiftKey;
+    const open = event.code === 'KeyO' && !event.shiftKey && !event.altKey;
+    const create = event.code === 'KeyN' && !event.shiftKey && !event.altKey;
 
-    if (!save && !open && !create) { return; }
+    if ((!save && !open && !create) || save && event.shiftKey && event.altKey) { return; }
     // Cancel browser commands synchronously, then execute after the current edits have been drawn.
     event.preventDefault();
-    if (!event.repeat && !workspace.busy && !workspace.dialog && !workspace.error) {
-      this.fileShortcut = create ? 'new' : save ? event.shiftKey ? 'saveAs' : 'save' : 'open';
+    if (!event.repeat && !workspace.busy && !projects.busy && !workspace.dialog && !workspace.error) {
+      this.fileShortcut = create ? 'new' : save ? event.altKey ? 'saveAs' : event.shiftKey ? 'saveAll' : 'save' : 'open';
     }
   };
 
   drawFileMenu (): void {
     const document = workspace.current;
 
-    if (!ImGui.BeginMenu('File')) { return; }
-    editorMenuSection('Scene');
-    if (ImGui.MenuItem('New Scene', 'Ctrl+N', false, !workspace.busy)) { void workspace.newScene(); }
-    if (ImGui.MenuItem('Open Scene...', 'Ctrl+O', false, !workspace.busy)) { workspace.showOpen(); }
-    if (ImGui.MenuItem('Save Scene', 'Ctrl+S', false, !!document && !workspace.busy)) { void workspace.save(); }
-    if (ImGui.MenuItem('Save Scene As...', 'Ctrl+Shift+S', false, !!document && !workspace.busy)) { workspace.showSaveAs(); }
-    editorMenuSection('Editor', true);
-    if (ImGui.MenuItem('Save Layout')) { editorLayout.requestSave(); }
-    ImGui.EndMenu();
+    if (!beginEditorMenu('File', true, true)) { return; }
+    ImGui.BeginDisabled(projects.busy || workspace.busy);
+    editorMenuSection('Open');
+    if (editorMenuItem('New Scene', 'Ctrl+N', false, !workspace.busy)) { void workspace.newScene(); }
+    if (editorMenuItem('Open Scene...', 'Ctrl+O', false, !workspace.busy)) { workspace.showOpen(); }
+    editorMenuSection('Save', true);
+    if (editorMenuItem('Save Current Scene', 'Ctrl+S', false, !!document)) { void workspace.save(); }
+    if (editorMenuItem('Save Current Scene As...', 'Ctrl+Alt+S', false, !!document)) { workspace.showSaveAs(); }
+    if (editorMenuItem('Save All', 'Ctrl+Shift+S', false, !!document)) { void workspace.saveAll(); }
+    editorMenuSection('Project', true);
+    if (editorMenuItem('New Project...', '', false, projects.ready)) { projectBrowser.show('new'); }
+    if (editorMenuItem('Open Project...', '', false, projects.ready)) { projectBrowser.show(); }
+    if (beginEditorMenu('Recent Projects', projects.recent.length > 0)) {
+      for (const project of projects.recent) { if (editorMenuItem(project.name, '', project.id === projects.current?.id)) { void projects.open(project.id); } }
+      ImGui.Separator();
+      if (editorMenuItem('Browse Recent Projects...')) { projectBrowser.show('recent'); }
+      if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
+      endEditorMenu();
+    }
+    ImGui.Separator();
+    if (editorMenuItem('Import Project...', '', false, projects.ready)) { projects.chooseImport(); }
+    if (editorMenuItem('Export Project...', '', false, !!projects.current)) { void projects.export(); }
+    ImGui.EndDisabled();
+    if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
+    endEditorMenu();
   }
 
   drawEditMenu (): void {
     const document = workspace.current;
 
-    if (!ImGui.BeginMenu('Edit')) { return; }
-    if (ImGui.MenuItem('Undo' + (document?.canUndo ? ' ' + document.undoLabel : ''), 'Ctrl+Z', false, !!document?.canUndo && !workspace.busy)) { workspace.undo(); }
-    if (ImGui.MenuItem('Redo' + (document?.canRedo ? ' ' + document.redoLabel : ''), 'Ctrl+Shift+Z', false, !!document?.canRedo && !workspace.busy)) { workspace.redo(); }
-    ImGui.EndMenu();
+    if (!beginEditorMenu('Edit', true, true)) { return; }
+    if (editorMenuItem('Undo' + (document?.canUndo ? ' ' + document.undoLabel : ''), 'Ctrl+Z', false, !!document?.canUndo && !workspace.busy)) { workspace.undo(); }
+    if (editorMenuItem('Redo' + (document?.canRedo ? ' ' + document.redoLabel : ''), 'Ctrl+Shift+Z', false, !!document?.canRedo && !workspace.busy)) { workspace.redo(); }
+    ImGui.Separator();
+    if (editorMenuItem('Project Settings...', '', false, projects.ready && !projects.busy && !workspace.busy)) { projectBrowser.showSettings(); }
+    endEditorMenu();
   }
 
   shortcuts (): void {
@@ -66,7 +85,7 @@ export class SceneFiles {
     const shortcut = this.fileShortcut;
 
     this.fileShortcut = undefined;
-    if (workspace.busy || workspace.dialog || workspace.error) { return; }
+    if (workspace.busy || projects.busy || workspace.dialog || workspace.error) { return; }
     if (shortcut === 'new') {
       void workspace.newScene();
 
@@ -74,6 +93,11 @@ export class SceneFiles {
     }
     if (shortcut === 'save' || shortcut === 'saveAs') {
       if (shortcut === 'saveAs') { workspace.showSaveAs(); } else { void workspace.save(); }
+
+      return;
+    }
+    if (shortcut === 'saveAll') {
+      void workspace.saveAll();
 
       return;
     }
@@ -128,10 +152,11 @@ export class SceneFiles {
         ImGui.EndPopup();
       }
     }
+    projectBrowser.draw();
   }
 
   private drawOpen (): void {
-    ImGui.TextDisabled('Scenes saved in this browser');
+    ImGui.TextDisabled('Scenes in ' + (projects.current?.name ?? 'the current project'));
     searchBar('##FindScene', this.search, { hint: 'Search scenes' });
     ImGui.Spacing();
     ImGui.BeginChild('##LocalScenes', new ImGui.Vec2(0, 260), ImGui.ChildFlags.Borders);
@@ -175,7 +200,7 @@ export class SceneFiles {
   }
 
   private drawUnsaved (): void {
-    ImGui.TextWrapped('Save changes to "' + workspace.current?.name + '" before opening another scene?');
+    ImGui.TextWrapped('Save changes to "' + workspace.current?.name + '" before ' + workspace.pendingDescription + '?');
     ImGui.Spacing();
     if (ImGui.Button('Save', new ImGui.Vec2(90, 0))) { void workspace.save(); }
     ImGui.SameLine();

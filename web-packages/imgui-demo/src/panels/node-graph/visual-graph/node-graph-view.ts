@@ -1,3 +1,4 @@
+import { beginEditorContextItem, endEditorPopup, beginEditorMenu, endEditorMenu, editorMenuItem } from '../../../widgets/editor-menu';
 import { ImRect, ImVec2 } from './im-rect';
 import { DrawChannel, DrawContext } from './drawing-context';
 import { add, colorMultiplyScalar, div, fmodf, length, lengthSqr, lerp, multiplyScalar, normalize, subtract } from '../bezier-math';
@@ -2619,7 +2620,7 @@ export class GraphView {
     if (this.IsContextMenuOpen()) {
       ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(8, 8));
       ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(4, 8));
-      if (ImGui.BeginPopupContextItem('GraphContextMenu')) {
+      if (beginEditorContextItem('GraphContextMenu')) {
         if (this.m_contextMenuState.m_pNode instanceof CommentNode) {
           this.DrawCommentContextMenu(ctx);
         } else if (this.IsViewingFlowGraph()) {
@@ -2628,7 +2629,7 @@ export class GraphView {
           this.DrawStateMachineContextMenu(ctx);
         }
 
-        ImGui.EndPopup();
+        endEditorPopup();
       } else { // Close menu
         ImGui.SetWindowFocus();
         this.m_contextMenuState.Reset();
@@ -2639,14 +2640,14 @@ export class GraphView {
 
   private DrawSharedContextMenuOptions (ctx: DrawContext): void {
     // View
-    if (ImGui.MenuItem(' Reset View')) {
+    if (editorMenuItem(' Reset View')) {
       this.ResetView();
     }
 
     // Zoom
     if (this.m_pGraph !== null) {
       if (this.m_pGraph.m_viewScaleFactor !== 1.0) {
-        if (ImGui.MenuItem(' Reset Zoom')) {
+        if (editorMenuItem(' Reset Zoom')) {
           this.ChangeViewScale(ctx, 1.0);
         }
       }
@@ -2654,7 +2655,7 @@ export class GraphView {
 
     // Add comment node
     if (this.m_pGraph!.SupportsComments()) {
-      if (ImGui.MenuItem(' Add Comment')) {
+      if (editorMenuItem(' Add Comment')) {
         const pCommentNode = this.m_pGraph!.CreateNode<CommentNode>(CommentNode);
 
         pCommentNode.m_name = 'Comment';
@@ -2667,7 +2668,7 @@ export class GraphView {
   private DrawCommentContextMenu (ctx: DrawContext): void {
     const pCommentNode = this.m_contextMenuState.m_pNode as CommentNode;
 
-    if (ImGui.MenuItem(' Edit Comment')) {
+    if (editorMenuItem(' Edit Comment')) {
       this.BeginRenameNode(this.m_selectedNodes[0].m_pNode!);
     }
 
@@ -2703,19 +2704,19 @@ export class GraphView {
 
         // Dynamic Pins
         if (pFlowNode.SupportsUserEditableDynamicInputPins()) {
-          if (ImGui.MenuItem(' Add Input')) {
+          if (editorMenuItem(' Add Input')) {
             pFlowGraph.CreateDynamicPin(pFlowNode.GetID());
           }
 
           if (this.m_contextMenuState.m_pPin !== null && this.m_contextMenuState.m_pPin.IsDynamicPin()) {
-            if (ImGui.MenuItem(' Remove Input')) {
+            if (editorMenuItem(' Remove Input')) {
               pFlowGraph.DestroyDynamicPin(pFlowNode.GetID(), this.m_contextMenuState.m_pPin.m_ID);
             }
           }
         }
 
         // Connections
-        if (ImGui.MenuItem(' Break All Connections')) {
+        if (editorMenuItem(' Break All Connections')) {
           pFlowGraph.BreakAllConnectionsForNode(pFlowNode);
         }
       }
@@ -2726,28 +2727,28 @@ export class GraphView {
         ImGui.Separator();
         ImGui.Text('Node');
 
-        if (ImGui.BeginMenu(' Node ID')) {
+        if (beginEditorMenu(' Node ID')) {
           // UUID
           const IDStr = this.m_contextMenuState.m_pNode.GetID();
           const label = `${IDStr}`;
 
-          if (ImGui.MenuItem(label)) {
+          if (editorMenuItem(label)) {
             ImGui.SetClipboardText(IDStr);
           }
 
-          ImGui.EndMenu();
+          endEditorMenu();
         }
 
         // Renameable Nodes
         if (this.m_contextMenuState.m_pNode.IsRenameable()) {
-          if (ImGui.MenuItem(' Rename Node')) {
+          if (editorMenuItem(' Rename Node')) {
             this.BeginRenameNode(this.m_contextMenuState.m_pNode);
           }
         }
 
         // Destroyable Nodes
         if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph!.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
-          if (ImGui.MenuItem(' Delete Node')) {
+          if (editorMenuItem(' Delete Node')) {
             this.ClearSelection();
             this.m_contextMenuState.m_pNode.Destroy();
             this.m_contextMenuState.Reset();
@@ -2784,7 +2785,7 @@ export class GraphView {
       const pStateMachineNode = this.m_contextMenuState.GetAsStateMachineNode();
 
       if (!this.m_isReadOnly) {
-        if (ImGui.MenuItem('* Make Default Entry State')) {
+        if (editorMenuItem('* Make Default Entry State')) {
           const pParentStateMachineGraph = this.m_contextMenuState.m_pNode.GetParentGraph() as StateMachineGraph;
 
           pParentStateMachineGraph.SetDefaultEntryState(this.m_contextMenuState.m_pNode.GetID());
@@ -2797,14 +2798,14 @@ export class GraphView {
       if (!this.m_isReadOnly) {
         // Renameable Nodes
         if (this.m_contextMenuState.m_pNode.IsRenameable()) {
-          if (ImGui.MenuItem(' Rename Node')) {
+          if (editorMenuItem(' Rename Node')) {
             this.BeginRenameNode(this.m_contextMenuState.m_pNode);
           }
         }
 
         // Destroyable Nodes
         if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph!.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
-          if (ImGui.MenuItem(' Delete Node')) {
+          if (editorMenuItem(' Delete Node')) {
             this.ClearSelection();
             this.m_contextMenuState.m_pNode.Destroy();
             this.m_contextMenuState.Reset();

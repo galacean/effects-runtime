@@ -6,18 +6,20 @@ import { CONTENT_ROOT } from '../../core/content-library/content-storage';
 import type { ContentEntry } from '../../core/content-library/content-storage';
 import { CONTENT_ASSET_PAYLOAD as ITEMS_PAYLOAD } from '../../core/content-library/asset-drag';
 import type { ContentAssetDrag as ItemPayload } from '../../core/content-library/asset-drag';
-import { setTextureAssetOpener } from '../../core/content-library/asset-editor';
+import { setTextureAssetOpener, setContentBrowserActions } from '../../core/content-library/asset-editor';
 import { sceneWorkspace } from '../../core/scene-document/scene-workspace';
+import { projectWorkspace } from '../../core/project/project-workspace';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { splitter } from '../../widgets/splitter';
-import { editorMenuSection } from '../../widgets/editor-menu';
+import { editorMenuSection, beginEditorPopup, beginEditorContextItem, beginEditorContextWindow, endEditorPopup, beginEditorMenu, endEditorMenu, withEditorMenuStyle, editorMenuItem } from '../../widgets/editor-menu';
 import { searchBar } from '../../widgets/search-bar';
 import { EditorWindow } from '../editor-window';
 import { ContentImport } from './content-import';
 import { CONTENT_COLORS as C, checkerboard, contentButton, contentIcon, contentText, contentWindowBackground, contentWrappedText } from './content-style';
 import { ContentThumbnails } from './content-thumbnails';
 import { ContentTextureEditor } from './content-texture-editor';
+import { editorTileColor, editorRowColors } from '../theme/editor-interaction';
 
 interface ItemRect { id: string, min: ImGui.Vec2, max: ImGui.Vec2 }
 
@@ -30,7 +32,8 @@ export class ContentBrowser extends EditorWindow {
       this.thumbnails.clear();
       if (ids?.length) { this.selected = new Set(ids); this.anchor = ids[0]; }
     });
-  });
+  }, () => library.projectId);
+  private projectId = '';
   private folder = CONTENT_ROOT;
   private collection?: string;
   private search: [string] = [''];
@@ -71,6 +74,8 @@ export class ContentBrowser extends EditorWindow {
   private columns = 1;
   private preferencesTimer?: number;
   private loadingTextures = new Set<string>();
+  private focusBrowser = false;
+  private revealId?: string;
 
   @menuItem('Window/Content Browser')
   static showWindow (): void { EditorWindow.getWindow(ContentBrowser).open(); }
@@ -79,6 +84,17 @@ export class ContentBrowser extends EditorWindow {
     super(); this.title = 'Content Browser'; this.initialSize = new ImGui.Vec2(1080, 430);
     this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
     setTextureAssetOpener(id => this.textureEditor.open(id));
+    setContentBrowserActions({
+      selected: () => this.selectedEntries.map(entry => entry.id),
+      reveal: id => {
+        const entry = library.entry(id);
+
+        if (!entry || entry.deletedAt) { return; }
+        if (this.projectId !== library.projectId) { this.resetProject(); }
+        this.open(); this.navigate(entry.parentId); this.selected = new Set([id]); this.anchor = id;
+        this.focusArea = 'assets'; this.focusBrowser = true; this.revealId = id;
+      },
+    });
     void library.initialize().then(() => { this.folder = library.preferences.folder; this.history = [this.folder]; });
     this.open();
   }
@@ -88,11 +104,13 @@ export class ContentBrowser extends EditorWindow {
   }
 
   protected override onDisable (): void {
+    this.finishRename();
     this.importer.disable(); window.removeEventListener('keydown', this.onKeyDown, true);
     this.acceptsKeys = false; this.keys = []; this.dragging = undefined; this.pressedAsset = undefined; this.browserFocused = false;
   }
 
   override draw (): void {
+    if (this.focusBrowser) { ImGui.SetNextWindowFocus(); this.focusBrowser = false; }
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(4, 4));
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, 4));
@@ -107,6 +125,7 @@ export class ContentBrowser extends EditorWindow {
   }
 
   protected override onGUI (): void {
+    if (this.projectId !== library.projectId) { this.resetProject(); }
     const origin = ImGui.GetCursorScreenPos(), available = ImGui.GetContentRegionAvail();
 
     contentWindowBackground();
@@ -136,6 +155,7 @@ export class ContentBrowser extends EditorWindow {
       draw.AddRectFilled(new ImGui.Vec2(area.x, area.y), new ImGui.Vec2(area.x + area.width, area.y + area.height), ImGui.COL32(0, 112, 224, 36));
       draw.AddRect(new ImGui.Vec2(area.x + 1, area.y + 1), new ImGui.Vec2(area.x + area.width - 1, area.y + area.height - 1), C.drop, 2, 0, 2);
     }
+    if (sceneWorkspace.changingDocument) { this.importer.areas = []; }
     ImGui.PopStyleVar();
   }
 
@@ -143,11 +163,24 @@ export class ContentBrowser extends EditorWindow {
   private get selectedEntries (): ContentEntry[] { return [...this.selected].map(id => library.entry(id)).filter((entry): entry is ContentEntry => !!entry); }
 
   private saveSettings (): void {
+    const projectId = library.projectId;
+
     window.clearTimeout(this.preferencesTimer);
-    this.preferencesTimer = window.setTimeout(() => { void library.savePreferences(); }, 150);
+    this.preferencesTimer = window.setTimeout(() => { if (projectId === library.projectId) { void library.savePreferences(); } }, 150);
+  }
+
+  private resetProject (): void {
+    this.projectId = library.projectId; window.clearTimeout(this.preferencesTimer);
+    this.folder = library.preferences.folder; this.collection = undefined; this.history = [this.folder]; this.historyIndex = 0;
+    this.selected.clear(); this.anchor = undefined; this.search[0] = ''; this.pathSearch[0] = ''; this.searchPaths = false;
+    this.showTrash = false; this.assetType = ''; this.extension = ''; this.renameId = undefined; this.clipboard = undefined;
+    this.moveRequest = undefined; this.dialog = ''; this.pendingDelete = []; this.dragging = undefined; this.pressedAsset = undefined;
+    this.expanded = new Set([CONTENT_ROOT, ...library.path(this.folder).map(entry => entry.id)]);
+    this.thumbnails.clear(); this.loadingTextures.clear(); this.textureEditor.close();
   }
 
   private navigate (folder: string, history = true): void {
+    this.finishRename();
     if (folder !== CONTENT_ROOT && (!library.entry(folder) || library.entry(folder)?.deletedAt)) { folder = CONTENT_ROOT; }
     this.folder = folder; this.collection = undefined; this.showTrash = false; this.selected.clear(); this.anchor = undefined;
     this.search[0] = ''; this.renameId = undefined; library.notice = '';
@@ -164,15 +197,15 @@ export class ContentBrowser extends EditorWindow {
     ImGui.GetWindowDrawList().AddRectFilled(origin, new ImGui.Vec2(origin.x + width, origin.y + 36), C.toolbar);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 6, origin.y + 5));
     if (width > 400) {
-      if (contentButton('##Sources', 'sources', '', { active: library.preferences.sources, hint: 'Show or hide the Sources panel' })) { library.preferences.sources = !library.preferences.sources; this.saveSettings(); }
+      if (contentButton('##Sources', library.preferences.sources ? 'sourcesOpen' : 'sources', '', { active: library.preferences.sources, hint: 'Show or hide the Sources panel' })) { library.preferences.sources = !library.preferences.sources; this.saveSettings(); }
       ImGui.SameLine(0, 5);
     }
     if (contentButton('##Add', 'add', 'Add', { green: true, dropdown: true, disabled: library.busy })) { ImGui.OpenPopup('##ContentAdd'); }
-    if (ImGui.BeginPopup('##ContentAdd')) {
+    if (beginEditorPopup('##ContentAdd')) {
       editorMenuSection('Content');
-      if (ImGui.MenuItem('New Scene', '')) { this.newScene(); }
-      if (ImGui.MenuItem('New Folder', 'Ctrl+Shift+N')) { this.newFolder(); }
-      if (ImGui.MenuItem('Import...', '')) { this.importer.choose(this.folder); }
+      if (editorMenuItem('New Scene', '')) { this.newScene(); }
+      if (editorMenuItem('New Folder', 'Ctrl+Shift+N')) { this.newFolder(); }
+      if (editorMenuItem('Import...', '')) { this.importer.choose(this.folder); }
       this.endMenu();
     }
     if (width > 450) {
@@ -204,11 +237,11 @@ export class ContentBrowser extends EditorWindow {
       this.acceptDrop(crumb.id);
       ImGui.SameLine(0, 0);
       if (contentButton('##PathMenu', 'right', '', { width: 18, hint: 'Browse subfolders' })) { ImGui.OpenPopup('##CrumbChildren'); }
-      if (ImGui.BeginPopup('##CrumbChildren')) {
+      if (beginEditorPopup('##CrumbChildren')) {
         const children = library.children(crumb.id).filter(entry => entry.kind === 'folder').sort((a, b) => a.name.localeCompare(b.name));
 
         if (!children.length) { ImGui.TextDisabled('No subfolders'); }
-        for (const child of children) { if (ImGui.MenuItem(child.name, '')) { this.navigate(child.id); } }
+        for (const child of children) { if (editorMenuItem(child.name, '')) { this.navigate(child.id); } }
         this.endMenu();
       }
       ImGui.PopID();
@@ -221,7 +254,7 @@ export class ContentBrowser extends EditorWindow {
     this.pathRows = [];
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(4, 4));
     ImGui.BeginChild('##ContentSources', new ImGui.Vec2(width, height), ImGui.ChildFlags.AlwaysUseWindowPadding);
-    this.sourceHeading('Favorites', this.openFavorites, () => this.openFavorites = !this.openFavorites, 'star');
+    this.sourceHeading('Favorites', this.openFavorites, () => this.openFavorites = !this.openFavorites);
     if (this.openFavorites) {
       const favorites = library.entries.filter(entry => entry.kind === 'folder' && entry.favorite && !entry.deletedAt);
 
@@ -239,7 +272,7 @@ export class ContentBrowser extends EditorWindow {
     ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
     const heading = ImGui.GetCursorScreenPos();
 
-    this.sourceHeading('Project', this.openProject, () => this.openProject = !this.openProject, 'folder');
+    this.sourceHeading('Project', this.openProject, () => this.openProject = !this.openProject, projectWorkspace.current?.name);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(heading.x + width - 34, heading.y));
     if (contentButton('##FindFolders', 'search', '', { width: 24, active: this.searchPaths, hint: 'Search folders' })) {
       this.searchPaths = !this.searchPaths; this.openProject = true; this.focusPathSearch = this.searchPaths;
@@ -255,15 +288,15 @@ export class ContentBrowser extends EditorWindow {
     ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
     const collectionHeading = ImGui.GetCursorScreenPos();
 
-    this.sourceHeading('Collections', this.openCollections, () => this.openCollections = !this.openCollections, 'collection');
+    this.sourceHeading('Collections', this.openCollections, () => this.openCollections = !this.openCollections);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(collectionHeading.x + width - 34, collectionHeading.y));
     if (contentButton('##AddCollection', 'add', '', { width: 24, hint: 'Create a collection' })) { this.collectionName[0] = 'New Collection'; this.dialog = 'collection'; }
     if (this.openCollections) {
       for (const collection of library.preferences.collections) {
         ImGui.PushID(collection.id);
         this.sourceRow(collection.id, collection.name, 'collection', 0, () => { this.collection = collection.id; this.showTrash = false; this.selected.clear(); this.search[0] = ''; });
-        if (ImGui.BeginPopupContextItem('##CollectionContext')) {
-          if (ImGui.MenuItem('Delete Collection', '')) {
+        if (beginEditorContextItem('##CollectionContext')) {
+          if (editorMenuItem('Delete Collection', '')) {
             library.preferences.collections = library.preferences.collections.filter(entry => entry.id !== collection.id);
             if (this.collection === collection.id) { this.collection = undefined; }
             this.saveSettings();
@@ -277,14 +310,14 @@ export class ContentBrowser extends EditorWindow {
     ImGui.EndChild(); ImGui.PopStyleVar();
   }
 
-  private sourceHeading (name: string, expanded: boolean, toggle: () => void, icon: 'folder' | 'star' | 'collection'): void {
+  private sourceHeading (name: string, expanded: boolean, toggle: () => void, label = name): void {
     const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
 
     if (ImGui.InvisibleButton('##Heading' + name, new ImGui.Vec2(Math.max(40, width - 28), 26))) { toggle(); this.focusArea = 'sources'; }
     if (ImGui.IsItemHovered()) { ImGui.GetWindowDrawList().AddRectFilled(p, new ImGui.Vec2(p.x + width - 28, p.y + 26), C.hover, 2); }
     contentIcon(expanded ? 'down' : 'right', p.x + 1, p.y + 6, 14, C.muted);
-    contentIcon(icon, p.x + 18, p.y + 6, 14, C.muted);
-    contentText(name, p.x + 39, p.y + (26 - ImGui.GetFontSize()) / 2, C.text);
+    contentText(label, p.x + 21, p.y + (26 - ImGui.GetFontSize()) / 2, C.text, width - 49);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal) && label !== name) { ImGui.SetTooltip(label); }
   }
 
   private sourceHint (text: string): void {
@@ -302,9 +335,11 @@ export class ContentBrowser extends EditorWindow {
     const draw = ImGui.GetWindowDrawList();
     const dropTarget = icon === 'folder' && this.acceptDrop(id);
 
-    if (selected || ImGui.IsItemHovered() || dropTarget) { draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + 24), dropTarget ? C.selectionInactive : selected ? this.selectionColor(ImGui.IsItemHovered(), 'sources') : C.hover); }
+    const appearance = editorRowColors({ selected, hovered: ImGui.IsItemHovered(), focused: this.browserFocused && this.focusArea === 'sources' });
+
+    if (selected || ImGui.IsItemHovered() || dropTarget) { draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + 24), dropTarget ? C.selectionInactive : ImGui.GetColorU32(appearance.background)); }
     if (dropTarget) { draw.AddRect(p, new ImGui.Vec2(p.x + width, p.y + 24), C.drop, 1, 0, 2); }
-    contentIcon(icon, p.x + 22 + depth * 14, p.y + 5, 14, selected ? C.white : C.folder);
+    contentIcon(icon === 'folder' && this.expanded.has(id) ? 'folderOpen' : icon, p.x + 22 + depth * 14, p.y + 4, 16, selected ? C.white : icon === 'folder' ? C.folder : C.text);
     contentText(name, p.x + 43 + depth * 14, p.y + (24 - ImGui.GetFontSize()) / 2, selected ? C.white : C.text, width - 47 - depth * 14);
   }
 
@@ -332,9 +367,9 @@ export class ContentBrowser extends EditorWindow {
     if (entry) {
       this.contextMenu(entry, true);
       this.dragSource(entry);
-    } else if (ImGui.BeginPopupContextItem('##RootContext')) {
-      if (ImGui.MenuItem('New Folder', '')) { this.navigate(CONTENT_ROOT); this.newFolder(); }
-      if (ImGui.MenuItem('Import...', '')) { this.importer.choose(CONTENT_ROOT); }
+    } else if (beginEditorContextItem('##RootContext')) {
+      if (editorMenuItem('New Folder', '')) { this.navigate(CONTENT_ROOT); this.newFolder(); }
+      if (editorMenuItem('Import...', '')) { this.importer.choose(CONTENT_ROOT); }
       this.endMenu();
     }
     if (this.expanded.has(id) || filter) { children.forEach(child => this.drawFolderTree(child.id, depth + 1)); }
@@ -346,17 +381,17 @@ export class ContentBrowser extends EditorWindow {
 
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 6, origin.y + 5));
     if (contentButton('##Filters', 'filter', 'Filters', { dropdown: true, active: !!this.assetType || !!this.extension })) { ImGui.OpenPopup('##ContentFilters'); }
-    if (ImGui.BeginPopup('##ContentFilters')) {
+    if (beginEditorPopup('##ContentFilters')) {
       editorMenuSection('Asset Type');
       for (const [type, label] of [['scene', 'Scene'], ['texture', 'Texture']] as const) {
-        if (ImGui.MenuItem(label, '', this.assetType === type)) { this.assetType = this.assetType === type ? '' : type; if (type === 'scene') { this.extension = ''; } }
+        if (editorMenuItem(label, '', this.assetType === type)) { this.assetType = this.assetType === type ? '' : type; if (type === 'scene') { this.extension = ''; } }
       }
       editorMenuSection('Image Format', true);
       for (const format of ['PNG', 'JPEG', 'WEBP', 'GIF', 'AVIF', 'SVG', 'BMP']) {
-        if (ImGui.MenuItem(format, '', this.extension === format)) { this.extension = this.extension === format ? '' : format; this.assetType = 'texture'; }
+        if (editorMenuItem(format, '', this.extension === format)) { this.extension = this.extension === format ? '' : format; this.assetType = 'texture'; }
       }
       editorMenuSection('Filters', true);
-      if (ImGui.MenuItem('Clear All', '')) { this.assetType = ''; this.extension = ''; }
+      if (editorMenuItem('Clear All', '')) { this.assetType = ''; this.extension = ''; }
       this.endMenu();
     }
     ImGui.SameLine(0, 6);
@@ -366,13 +401,13 @@ export class ContentBrowser extends EditorWindow {
     searchBar('##ContentSearch', this.search, { width: Math.max(40, width - (p.x - origin.x) - 36), hint: this.collection ? 'Search Collection' : 'Search ' + (library.entry(this.folder)?.name ?? 'Content') });
     ImGui.SameLine(0, 2);
     if (contentButton('##Sort', 'sort', '', { hint: 'Sort assets' })) { ImGui.OpenPopup('##ContentSort'); }
-    if (ImGui.BeginPopup('##ContentSort')) {
+    if (beginEditorPopup('##ContentSort')) {
       editorMenuSection('Sort By');
       for (const [value, label] of [['name', 'Name'], ['type', 'Type'], ['size', 'File Size'], ['modified', 'Date Modified']] as const) {
-        if (ImGui.MenuItem(label, '', library.preferences.sort === value)) { library.preferences.sort = value; this.saveSettings(); }
+        if (editorMenuItem(label, '', library.preferences.sort === value)) { library.preferences.sort = value; this.saveSettings(); }
       }
       ImGui.Separator();
-      if (ImGui.MenuItem('Descending', '', library.preferences.descending)) { library.preferences.descending = !library.preferences.descending; this.saveSettings(); }
+      if (editorMenuItem('Descending', '', library.preferences.descending)) { library.preferences.descending = !library.preferences.descending; this.saveSettings(); }
       this.endMenu();
     }
     let height = 36;
@@ -434,48 +469,50 @@ export class ContentBrowser extends EditorWindow {
         this.drawTile(entry, index, entries, cardWidth);
       });
     } else if (library.preferences.view === 'columns') {
-      this.columns = 1;
-      if (ImGui.BeginTable('##ContentColumns', 5, ImGui.TableFlags.Resizable | ImGui.TableFlags.RowBg | ImGui.TableFlags.BordersInnerV | ImGui.TableFlags.ScrollY)) {
-        ImGui.TableSetupColumn('Name', ImGui.TableColumnFlags.WidthStretch, 3);
-        ImGui.TableSetupColumn('Type', ImGui.TableColumnFlags.WidthStretch, 1);
-        ImGui.TableSetupColumn('Dimensions', ImGui.TableColumnFlags.WidthStretch | ImGui.TableColumnFlags.NoSort, 1.2);
-        ImGui.TableSetupColumn('File Size', ImGui.TableColumnFlags.WidthStretch, 1);
-        ImGui.TableSetupColumn('Date Modified', ImGui.TableColumnFlags.WidthStretch, 1.8);
-        ImGui.TableNextRow(ImGui.TableRowFlags.Headers);
-        const headers = [['Name', 'name'], ['Type', 'type'], ['Dimensions', ''], ['File Size', 'size'], ['Date Modified', 'modified']] as const;
+      withEditorMenuStyle(() => {
+        this.columns = 1;
+        if (ImGui.BeginTable('##ContentColumns', 5, ImGui.TableFlags.Resizable | ImGui.TableFlags.RowBg | ImGui.TableFlags.BordersInnerV | ImGui.TableFlags.ScrollY)) {
+          ImGui.TableSetupColumn('Name', ImGui.TableColumnFlags.WidthStretch, 3);
+          ImGui.TableSetupColumn('Type', ImGui.TableColumnFlags.WidthStretch, 1);
+          ImGui.TableSetupColumn('Dimensions', ImGui.TableColumnFlags.WidthStretch | ImGui.TableColumnFlags.NoSort, 1.2);
+          ImGui.TableSetupColumn('File Size', ImGui.TableColumnFlags.WidthStretch, 1);
+          ImGui.TableSetupColumn('Date Modified', ImGui.TableColumnFlags.WidthStretch, 1.8);
+          ImGui.TableNextRow(ImGui.TableRowFlags.Headers);
+          const headers = [['Name', 'name'], ['Type', 'type'], ['Dimensions', ''], ['File Size', 'size'], ['Date Modified', 'modified']] as const;
 
-        headers.forEach(([label, sort], column) => {
-          ImGui.TableSetColumnIndex(column); ImGui.TableHeader(label);
-          if (!sort) { return; }
-          if (ImGui.IsItemClicked()) {
-            library.preferences.descending = library.preferences.sort === sort && !library.preferences.descending;
-            library.preferences.sort = sort; this.saveSettings();
-          }
-          if (library.preferences.sort === sort) {
-            const p = ImGui.GetItemRectMax(), y = ImGui.GetItemRectMin().y + 10;
-            const direction = library.preferences.descending ? 1 : -1;
+          headers.forEach(([label, sort], column) => {
+            ImGui.TableSetColumnIndex(column); ImGui.TableHeader(label);
+            if (!sort) { return; }
+            if (ImGui.IsItemClicked()) {
+              library.preferences.descending = library.preferences.sort === sort && !library.preferences.descending;
+              library.preferences.sort = sort; this.saveSettings();
+            }
+            if (library.preferences.sort === sort) {
+              const p = ImGui.GetItemRectMax(), y = ImGui.GetItemRectMin().y + 10;
+              const direction = library.preferences.descending ? 1 : -1;
 
-            ImGui.GetWindowDrawList().AddTriangleFilled(new ImGui.Vec2(p.x - 15, y - direction * 2), new ImGui.Vec2(p.x - 7, y - direction * 2), new ImGui.Vec2(p.x - 11, y + direction * 2), C.muted);
-          }
-        });
-        entries.forEach((entry, index) => {
-          ImGui.TableNextRow(); ImGui.TableNextColumn(); this.drawListItem(entry, index, entries, 28, true);
-          ImGui.TableNextColumn(); ImGui.Text(this.assetLabel(entry));
-          ImGui.TableNextColumn(); ImGui.Text(entry.width ? entry.width + ' × ' + entry.height : '—');
-          ImGui.TableNextColumn(); ImGui.Text(this.fileSize(entry.size));
-          ImGui.TableNextColumn(); ImGui.Text(new Date(entry.updatedAt).toLocaleDateString());
-        });
-        ImGui.EndTable();
-      }
+              ImGui.GetWindowDrawList().AddTriangleFilled(new ImGui.Vec2(p.x - 15, y - direction * 2), new ImGui.Vec2(p.x - 7, y - direction * 2), new ImGui.Vec2(p.x - 11, y + direction * 2), C.muted);
+            }
+          });
+          entries.forEach((entry, index) => {
+            ImGui.TableNextRow(); ImGui.TableNextColumn(); this.drawListItem(entry, index, entries, 28, true);
+            ImGui.TableNextColumn(); ImGui.Text(this.assetLabel(entry));
+            ImGui.TableNextColumn(); ImGui.Text(entry.width ? entry.width + ' × ' + entry.height : '—');
+            ImGui.TableNextColumn(); ImGui.Text(this.fileSize(entry.size));
+            ImGui.TableNextColumn(); ImGui.Text(new Date(entry.updatedAt).toLocaleDateString());
+          });
+          ImGui.EndTable();
+        }
+      });
     } else {
       this.columns = 1; entries.forEach((entry, index) => this.drawListItem(entry, index, entries, 50));
     }
-    if (ImGui.BeginPopupContextWindow('##ContentBackground', ImGui.PopupFlags.MouseButtonRight | ImGui.PopupFlags.NoOpenOverItems)) {
+    if (beginEditorContextWindow('##ContentBackground', ImGui.PopupFlags.MouseButtonRight | ImGui.PopupFlags.NoOpenOverItems)) {
       editorMenuSection('Content');
-      if (ImGui.MenuItem('New Scene', '', false, !this.showTrash)) { this.newScene(); }
-      if (ImGui.MenuItem('New Folder', 'Ctrl+Shift+N', false, !this.showTrash)) { this.newFolder(); }
-      if (ImGui.MenuItem('Import to ' + (library.entry(this.folder)?.name ?? 'Content') + '...', '', false, !this.showTrash)) { this.importer.choose(this.folder); }
-      if (ImGui.MenuItem('Paste', 'Ctrl+V', false, !!this.clipboard && !this.showTrash)) { this.paste(); }
+      if (editorMenuItem('New Scene', '', false, !this.showTrash)) { this.newScene(); }
+      if (editorMenuItem('New Folder', 'Ctrl+Shift+N', false, !this.showTrash)) { this.newFolder(); }
+      if (editorMenuItem('Import to ' + (library.entry(this.folder)?.name ?? 'Content') + '...', '', false, !this.showTrash)) { this.importer.choose(this.folder); }
+      if (editorMenuItem('Paste', 'Ctrl+V', false, !!this.clipboard && !this.showTrash)) { this.paste(); }
       this.endMenu();
     }
     this.marquee();
@@ -497,11 +534,12 @@ export class ContentBrowser extends EditorWindow {
   private drawTile (entry: ContentEntry, index: number, entries: ContentEntry[], width: number): void {
     ImGui.PushID(entry.id); ImGui.BeginGroup();
     const p = ImGui.GetCursorScreenPos(), thumbnailHeight = width - 8;
-    const nameLines = library.preferences.thumbnailSize < 72 ? 1 : library.preferences.thumbnailSize < 96 ? 2 : library.preferences.thumbnailSize < 144 ? 3 : library.preferences.thumbnailSize < 192 ? 4 : 5;
+    const nameLines = library.preferences.thumbnailSize < 72 ? 1 : library.preferences.thumbnailSize < 144 ? 2 : library.preferences.thumbnailSize < 192 ? 3 : 4;
     const height = thumbnailHeight + nameLines * ImGui.GetTextLineHeight() + 28;
 
     ImGui.InvisibleButton('##Asset', new ImGui.Vec2(width, height));
     if (this.renameId === entry.id && this.focusRename) { ImGui.SetScrollHereY(); }
+    if (this.revealId === entry.id) { ImGui.SetScrollHereY(0); this.revealId = undefined; }
     if (!ImGui.IsItemVisible()) {
       ImGui.EndGroup(); ImGui.PopID();
 
@@ -545,6 +583,7 @@ export class ContentBrowser extends EditorWindow {
       ImGui.PopStyleColor(3);
     } else { ImGui.InvisibleButton('##AssetRow', new ImGui.Vec2(Math.max(30, width), height)); }
     if (this.renameId === entry.id && this.focusRename) { ImGui.SetScrollHereY(); }
+    if (this.revealId === entry.id) { ImGui.SetScrollHereY(0); this.revealId = undefined; }
     if (!ImGui.IsItemVisible()) {
       ImGui.PopID();
 
@@ -575,7 +614,9 @@ export class ContentBrowser extends EditorWindow {
 
   private drawImage (entry: ContentEntry, x: number, y: number, width: number, height: number): void {
     if (entry.kind === 'scene') {
-      contentIcon('scene', x + width * 0.17, y + height * 0.17, Math.min(width, height) * 0.66, C.scene);
+      const size = Math.min(width, height);
+
+      contentIcon('scene', x + (width - size) / 2, y + (height - size) / 2, size, C.text);
 
       return;
     }
@@ -595,7 +636,9 @@ export class ContentBrowser extends EditorWindow {
 
     if (entry.kind !== 'texture' || !engine || sceneWorkspace.busy || this.showTrash || library.texture(engine, entry.id)?.isRegistered || this.loadingTextures.has(entry.id)) { return; }
     this.loadingTextures.add(entry.id);
-    void library.loadTexture(engine, entry.id).catch(error => library.report(error)).finally(() => this.loadingTextures.delete(entry.id));
+    const projectId = library.projectId;
+
+    void library.loadTexture(engine, entry.id).catch(error => { if (projectId === library.projectId) { library.report(error); } }).finally(() => this.loadingTextures.delete(entry.id));
   }
 
   private select (entry: ContentEntry, index: number, entries: ContentEntry[], modifiers?: { additive: boolean, range: boolean }): void {
@@ -614,6 +657,7 @@ export class ContentBrowser extends EditorWindow {
   }
 
   private assetInteraction (entry: ContentEntry, index: number, entries: ContentEntry[]): void {
+    if (this.renameId === entry.id) { return; }
     const hovered = ImGui.IsItemHovered(), io = ImGui.GetIO();
 
     if (ImGui.IsItemClicked(ImGui.MouseButton.Left)) {
@@ -635,12 +679,12 @@ export class ContentBrowser extends EditorWindow {
   }
 
   private selectionColor (hovered: boolean, area: 'sources' | 'assets'): number {
-    return this.browserFocused && this.focusArea === area ? hovered ? C.selectionHover : C.selection : hovered ? C.selectionInactiveHover : C.selectionInactive;
+    return ImGui.GetColorU32(editorTileColor(true, hovered, this.browserFocused && this.focusArea === area));
   }
 
   private endMenu (): void {
     if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
-    ImGui.EndPopup();
+    endEditorPopup();
   }
 
   private assetLabel (entry: ContentEntry): string { return entry.kind === 'folder' ? 'Folder' : entry.kind === 'scene' ? 'Scene' : 'Texture'; }
@@ -669,7 +713,13 @@ export class ContentBrowser extends EditorWindow {
     const texture = this.engine && entry.kind === 'texture' && ids.length === 1 ? library.texture(this.engine, entry.id) : undefined;
 
     if (texture?.isRegistered) { ImGui.SetDragDropPayload('Texture', texture); } else { ImGui.SetDragDropPayload(ITEMS_PAYLOAD, { ids }); }
-    ImGui.Text(ids.length > 1 ? ids.length + ' items' : entry.name);
+    const p = ImGui.GetCursorScreenPos(), size = 48;
+
+    if (entry.kind === 'folder') { contentIcon('folderOpen', p.x, p.y, size, C.folder); } else { this.drawImage(entry, p.x, p.y, size, size); }
+    ImGui.Dummy(new ImGui.Vec2(size, size)); ImGui.SameLine(0, 10); ImGui.BeginGroup();
+    ImGui.Text(entry.name);
+    ImGui.TextDisabled(ids.length > 1 ? ids.length + ' items' : this.assetLabel(entry));
+    ImGui.EndGroup();
     ImGui.EndDragDropSource();
   }
 
@@ -692,38 +742,45 @@ export class ContentBrowser extends EditorWindow {
   }
 
   private contextMenu (entry: ContentEntry, source = false): void {
-    if (!ImGui.BeginPopupContextItem('##AssetContext')) { return; }
+    if (!beginEditorContextItem('##AssetContext')) { return; }
     if (source) { this.selected = new Set([entry.id]); }
     editorMenuSection(entry.kind === 'folder' ? 'Folder' : 'Asset');
     if (entry.deletedAt) {
-      if (ImGui.MenuItem('Restore', '')) { void library.trash([...this.selected], true); }
+      if (editorMenuItem('Restore', '')) { void library.trash([...this.selected], true); }
     } else {
-      if (ImGui.MenuItem(entry.kind === 'folder' ? 'Open Folder' : 'Edit', 'Enter')) { this.openAsset(entry); }
-      if (ImGui.MenuItem('Rename', 'F2', false, this.selected.size <= 1)) {
+      if (editorMenuItem(entry.kind === 'folder' ? 'Open Folder' : 'Edit', 'Enter')) { this.openAsset(entry); }
+      if (editorMenuItem('Rename', 'F2', false, this.selected.size <= 1)) {
         if (source) { this.navigate(entry.parentId); this.selected = new Set([entry.id]); }
         this.startRename(entry);
       }
-      if (ImGui.MenuItem('Duplicate', 'Ctrl+D')) { void library.transfer([...this.selected], source ? entry.parentId : this.folder, true); }
-      if (ImGui.MenuItem('Delete', 'Delete')) { this.pendingDelete = [...this.selected]; this.dialog = 'delete'; }
-      if (entry.kind === 'folder' || library.preferences.collections.length || this.collection) { editorMenuSection('Organization', true); }
-      if (entry.kind === 'folder' && ImGui.MenuItem('New Folder', '')) { this.navigate(entry.id); this.newFolder(); }
-      if (entry.kind === 'folder' && ImGui.MenuItem(entry.favorite ? 'Remove From Favorites' : 'Add To Favorites', '')) { void library.favorite(entry.id); }
-      if (entry.kind !== 'folder' && library.preferences.collections.length && ImGui.BeginMenu('Add To Collection')) {
-        for (const collection of library.preferences.collections) {
-          if (ImGui.MenuItem(collection.name, '')) { collection.assets = [...new Set([...collection.assets, ...this.selectedEntries.filter(entry => entry.kind !== 'folder').map(entry => entry.id)])]; this.saveSettings(); }
+      if (editorMenuItem('Duplicate', 'Ctrl+D')) { void library.transfer([...this.selected], source ? entry.parentId : this.folder, true); }
+      if (editorMenuItem('Delete', 'Delete')) { this.pendingDelete = [...this.selected]; this.dialog = 'delete'; }
+      if (entry.kind === 'scene') {
+        if (editorMenuItem('Set as Startup Scene', '', projectWorkspace.current?.startupSceneId === entry.id)) {
+          const project = projectWorkspace.current;
+
+          if (project) { void projectWorkspace.settings({ name: project.name, description: project.description, startupSceneId: entry.id }); }
         }
-        ImGui.EndMenu();
       }
-      if (entry.kind !== 'folder' && this.collection && ImGui.MenuItem('Remove From Collection', '')) {
+      if (entry.kind === 'folder' || library.preferences.collections.length || this.collection) { editorMenuSection('Organization', true); }
+      if (entry.kind === 'folder' && editorMenuItem('New Folder', '')) { this.navigate(entry.id); this.newFolder(); }
+      if (entry.kind === 'folder' && editorMenuItem(entry.favorite ? 'Remove From Favorites' : 'Add To Favorites', '')) { void library.favorite(entry.id); }
+      if (entry.kind !== 'folder' && library.preferences.collections.length && beginEditorMenu('Add To Collection')) {
+        for (const collection of library.preferences.collections) {
+          if (editorMenuItem(collection.name, '')) { collection.assets = [...new Set([...collection.assets, ...this.selectedEntries.filter(entry => entry.kind !== 'folder').map(entry => entry.id)])]; this.saveSettings(); }
+        }
+        endEditorMenu();
+      }
+      if (entry.kind !== 'folder' && this.collection && editorMenuItem('Remove From Collection', '')) {
         const collection = library.preferences.collections.find(entry => entry.id === this.collection);
 
         if (collection) { collection.assets = collection.assets.filter(id => !this.selected.has(id)); this.saveSettings(); }
       }
       editorMenuSection('Asset Actions', true);
-      if (entry.kind === 'texture' && ImGui.MenuItem('Reimport...', '')) { this.importer.choose(entry.parentId, entry.id); }
-      if (ImGui.MenuItem('Copy', 'Ctrl+C')) { this.clipboard = { ids: [...this.selected], cut: false }; }
-      if (ImGui.MenuItem('Cut', 'Ctrl+X')) { this.clipboard = { ids: [...this.selected], cut: true }; }
-      if (ImGui.MenuItem('Copy Reference', '')) { ImGui.SetClipboardText(library.pathText(entry.parentId) + '/' + entry.name); }
+      if (entry.kind === 'texture' && editorMenuItem('Reimport...', '')) { this.importer.choose(entry.parentId, entry.id); }
+      if (editorMenuItem('Copy', 'Ctrl+C')) { this.clipboard = { ids: [...this.selected], cut: false }; }
+      if (editorMenuItem('Cut', 'Ctrl+X')) { this.clipboard = { ids: [...this.selected], cut: true }; }
+      if (editorMenuItem('Copy Reference', '')) { ImGui.SetClipboardText(library.pathText(entry.parentId) + '/' + entry.name); }
     }
     this.endMenu();
   }
@@ -732,14 +789,20 @@ export class ContentBrowser extends EditorWindow {
 
   private drawRename (entry: ContentEntry, x: number, y: number, width: number): void {
     ImGui.SetCursorScreenPos(new ImGui.Vec2(x, y)); ImGui.SetNextItemWidth(Math.max(30, width));
+    const appearing = this.focusRename;
+
     if (this.focusRename) { ImGui.SetKeyboardFocusHere(); this.focusRename = false; }
     const enter = ImGui.InputText('##Rename', this.renameBuffer, undefined, ImGui.InputTextFlags.EnterReturnsTrue | ImGui.InputTextFlags.AutoSelectAll);
     const cancel = ImGui.IsKeyPressed(ImGui.Key.Escape, false);
 
-    if (enter || ImGui.IsItemDeactivatedAfterEdit() || cancel) {
-      if (!cancel && this.renameBuffer[0] !== entry.name) { void library.rename(entry.id, this.renameBuffer[0]); }
-      this.renameId = undefined;
-    }
+    if (enter || ImGui.IsItemDeactivated() || cancel || !appearing && !ImGui.IsItemActive() && (!this.browserFocused || ImGui.IsMouseClicked(ImGui.MouseButton.Left))) { this.finishRename(cancel); }
+  }
+
+  private finishRename (cancel = false): void {
+    const entry = this.renameId ? library.entry(this.renameId) : undefined;
+
+    if (entry && !cancel && this.renameBuffer[0].trim() && this.renameBuffer[0] !== entry.name) { void library.rename(entry.id, this.renameBuffer[0]); }
+    this.renameId = undefined; this.focusRename = false;
   }
 
   private newFolder (): void {
@@ -762,8 +825,7 @@ export class ContentBrowser extends EditorWindow {
   }
 
   private async saveAll (): Promise<void> {
-    if (sceneWorkspace.current?.dirty && !await sceneWorkspace.save()) { return; }
-    await library.saveAll();
+    await sceneWorkspace.saveAll();
   }
 
   private marquee (): void {
@@ -861,20 +923,20 @@ export class ContentBrowser extends EditorWindow {
     contentText(text, origin.x + 10, origin.y + (28 - ImGui.GetFontSize()) / 2, C.text, width - 140);
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + Math.max(5, width - 120), origin.y + 1));
     if (contentButton('##Settings', 'settings', 'Settings', { dropdown: true, width: 115 })) { ImGui.OpenPopup('##ContentSettings'); }
-    ImGui.SetNextWindowPos(new ImGui.Vec2(origin.x + width - 6, origin.y - 2), ImGui.Cond.Always, new ImGui.Vec2(1, 1));
-    if (ImGui.BeginPopup('##ContentSettings')) {
+    if (ImGui.IsPopupOpen('##ContentSettings')) { ImGui.SetNextWindowPos(new ImGui.Vec2(origin.x + width - 6, origin.y - 2), ImGui.Cond.Always, new ImGui.Vec2(1, 1)); }
+    if (beginEditorPopup('##ContentSettings')) {
       editorMenuSection('View Type');
       for (const [value, label] of [['tiles', 'Tiles'], ['list', 'List'], ['columns', 'Columns']] as const) {
-        if (ImGui.MenuItem(label, '', library.preferences.view === value)) { library.preferences.view = value; this.saveSettings(); }
+        if (editorMenuItem(label, '', library.preferences.view === value)) { library.preferences.view = value; this.saveSettings(); }
       }
       editorMenuSection('View', true);
       for (const [key, label] of [['sources', 'Show Sources Panel'], ['showFolders', 'Show Folders'], ['recursive', 'Filter Recursively']] as const) {
-        if (ImGui.MenuItem(label, '', library.preferences[key])) { library.preferences[key] = !library.preferences[key]; this.saveSettings(); }
+        if (editorMenuItem(label, '', library.preferences[key])) { library.preferences[key] = !library.preferences[key]; this.saveSettings(); }
       }
-      if (ImGui.MenuItem('Show Deleted Assets', '', this.showTrash)) { this.showTrash = !this.showTrash; this.collection = undefined; this.selected.clear(); }
+      if (editorMenuItem('Show Deleted Assets', '', this.showTrash)) { this.showTrash = !this.showTrash; this.collection = undefined; this.selected.clear(); }
       editorMenuSection('Thumbnails', true);
       for (const [size, label] of [[48, 'Tiny'], [72, 'Small'], [96, 'Medium'], [144, 'Large'], [192, 'Huge']] as const) {
-        if (ImGui.MenuItem(label, '', library.preferences.thumbnailSize === size)) { library.preferences.thumbnailSize = size; this.saveSettings(); }
+        if (editorMenuItem(label, '', library.preferences.thumbnailSize === size)) { library.preferences.thumbnailSize = size; this.saveSettings(); }
       }
       this.endMenu();
     }
@@ -922,14 +984,14 @@ export class ContentBrowser extends EditorWindow {
     }
     if (this.moveRequest) {
       if (!this.movePopup) { ImGui.OpenPopup('##ContentMove'); this.movePopup = true; }
-      if (ImGui.BeginPopup('##ContentMove')) {
+      if (beginEditorPopup('##ContentMove')) {
         const request = this.moveRequest;
 
         editorMenuSection('Drop Actions');
-        if (ImGui.MenuItem('Move Here', '')) { void library.transfer(request.ids, request.folder); this.moveRequest = undefined; }
-        if (ImGui.MenuItem('Copy Here', '')) { void library.transfer(request.ids, request.folder, true); this.moveRequest = undefined; }
+        if (editorMenuItem('Move Here', '')) { void library.transfer(request.ids, request.folder); this.moveRequest = undefined; }
+        if (editorMenuItem('Copy Here', '')) { void library.transfer(request.ids, request.folder, true); this.moveRequest = undefined; }
         ImGui.Separator();
-        if (ImGui.MenuItem('Cancel', '')) { this.moveRequest = undefined; }
+        if (editorMenuItem('Cancel', '')) { this.moveRequest = undefined; }
         this.endMenu();
       } else if (this.movePopup && !ImGui.IsPopupOpen('##ContentMove')) { this.moveRequest = undefined; }
     }

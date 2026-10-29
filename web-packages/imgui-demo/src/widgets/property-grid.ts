@@ -1,15 +1,17 @@
 import { ImGui } from '../imgui';
 import { drawEditorArrow } from './editor-arrow';
+import { drawEditorIcon } from './editor-icons';
+import { InteractionColors as I } from '../panels/theme/editor-interaction';
 
 const color = (hex: string) => new ImGui.Vec4(
   parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255, 1,
 );
 
 export const PROPERTY_COLORS = {
-  background: color('242424'), header: color('303030'), nestedHeader: color('292929'), hover: color('383838'),
-  input: color('101010'), inputBorder: color('3A3A3A'), line: color('191919'), text: color('C4C4C4'),
+  background: I.panel, header: I.header, nestedHeader: color('292929'), hover: I.hover,
+  input: I.input, inputBorder: I.outline, line: color('191919'), text: I.foreground,
   headerText: color('DDDDDD'),
-  muted: color('858585'), selected: color('3E566C'), accent: color('0070E0'), reset: color('C8C8C8'),
+  muted: I.muted, selected: I.selectedInactive, accent: I.primary, reset: color('C8C8C8'),
   axes: [color('E34B42'), color('83BA36'), color('4C9FE6'), color('B7B7B7')],
 };
 
@@ -198,17 +200,8 @@ export class PropertyGrid {
       ImGui.SetCursorScreenPos(new ImGui.Vec2(end.x - 25, origin.y + 4));
       if (ImGui.InvisibleButton('##Reset', new ImGui.Vec2(22, 22))) { reset(); changed = true; }
       const resetHovered = ImGui.IsItemHovered();
-      const points: ImGui.Vec2[] = [];
-      const cx = end.x - 14, cy = origin.y + 15;
 
-      for (let index = 0; index <= 12; index++) {
-        const angle = -Math.PI * 0.6 + index / 12 * Math.PI * 1.5;
-
-        points.push(new ImGui.Vec2(cx + Math.cos(angle) * 5, cy + Math.sin(angle) * 5));
-      }
-      dl.AddPolyline(points, points.length, ImGui.GetColorU32(resetHovered ? PROPERTY_COLORS.text : PROPERTY_COLORS.muted), 0, 1.4);
-      dl.AddLine(points[0], new ImGui.Vec2(points[0].x + 1, points[0].y + 4), ImGui.GetColorU32(PROPERTY_COLORS.reset), 1.4);
-      dl.AddLine(points[0], new ImGui.Vec2(points[0].x + 4, points[0].y), ImGui.GetColorU32(PROPERTY_COLORS.reset), 1.4);
+      drawEditorIcon('reset', end.x - 20, origin.y + 9, 12, resetHovered ? PROPERTY_COLORS.text : PROPERTY_COLORS.muted);
       if (resetHovered) { ImGui.SetTooltip('Reset to default'); }
     }
     ImGui.SetCursorScreenPos(new ImGui.Vec2(divider - 2, origin.y));

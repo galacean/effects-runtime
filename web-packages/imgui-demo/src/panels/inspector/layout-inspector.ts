@@ -1,3 +1,4 @@
+import { beginEditorPopup, endEditorPopup } from '../../widgets/editor-menu';
 import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { ImGui } from '../../imgui';
 import { EditorGUILayout as Fields } from '../../widgets/editor-gui-layout';
@@ -29,7 +30,7 @@ export function drawControlLayout (control: Control): void {
 
       ImGui.SetNextWindowPos(new ImGui.Vec2(min.x, max.y + 3), ImGui.Cond.Appearing);
     }
-    if (ImGui.BeginPopup('##AnchorPresetPopup')) { drawAnchorPresets(control); ImGui.EndPopup(); }
+    if (beginEditorPopup('##AnchorPresetPopup')) { drawAnchorPresets(control); endEditorPopup(); }
   });
 }
 

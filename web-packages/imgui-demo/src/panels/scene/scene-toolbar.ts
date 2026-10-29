@@ -2,15 +2,19 @@ import { selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
 import type { SceneGizmo } from './scene-gizmo';
 import { ImGui } from '../../imgui';
 import { drawEditorChevron } from '../../widgets/editor-arrow';
-import { editorMenuSection } from '../../widgets/editor-menu';
+import { drawEditorIcon } from '../../widgets/editor-icons';
+import { drawCreateItemMenu } from '../../widgets/create-item-menu';
+import { editorMenuSection, beginEditorMenu, endEditorMenu, beginEditorPopup, endEditorPopup, editorMenuItem } from '../../widgets/editor-menu';
 import { EditorColors } from '../theme';
 
 interface SceneToolbarOptions {
   gizmo?: SceneGizmo,
   is2DMode: boolean,
   showGrid: boolean,
+  showFPS: boolean,
   set2DMode(value: boolean): void,
   setShowGrid(value: boolean): void,
+  setShowFPS(value: boolean): void,
   resetView(): void,
 }
 
@@ -24,12 +28,10 @@ interface ToolbarLayout {
   cameraLabel?: string,
 }
 
-type Icon = 'transform' | 'hand' | 'snap' | 'camera' | 'show' | 'more';
+type Icon = 'transform' | 'hand' | 'snap' | 'camera' | 'show' | 'more' | 'plus';
 
 const ACTIVE_COLOR = new ImGui.Vec4(38 / 255, 187 / 255, 1, 1);
 const HOVER_COLOR = new ImGui.Vec4(1, 1, 1, 1);
-const MENU_BACKGROUND = new ImGui.Vec4(56 / 255, 56 / 255, 56 / 255, 1);
-const MENU_BORDER = new ImGui.Vec4(76 / 255, 76 / 255, 76 / 255, 1);
 
 /** 控件与菜单继承编辑器字号；空间不足时只收纳当前隐藏的入口。 */
 export class SceneToolbar {
@@ -59,7 +61,7 @@ export class SceneToolbar {
       cameraLabel: options.is2DMode ? '2D' : 'Perspective',
     };
     const cameraWidth = () => layout.cameraLabel ? this.textButtonWidth(layout.cameraLabel, true) : menuWidth;
-    const leftWidth = () => 20 + (layout.transform ? this.buttonHeight + 2 : 0)
+    const leftWidth = () => 32 + menuWidth + (layout.transform ? this.buttonHeight + 2 : 0)
       + (layout.hand ? this.buttonHeight + 2 : 0) + (layout.snap ? this.buttonHeight + 12 : 0)
       + (layout.distance ? distanceWidth + 2 : 0);
     const rightWidth = () => cameraWidth() + (layout.zoom ? zoomWidth + 2 : 0) + (layout.show ? menuWidth + 2 : 0);
@@ -85,6 +87,8 @@ export class SceneToolbar {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 6));
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 4, origin.y + 3));
 
+    this.menu('Add Item', 'plus', { width: menuWidth, arrow: true, hint: 'Add an item to the scene' }, () => drawCreateItemMenu());
+    this.separator();
     ImGui.BeginDisabled(!editing);
     if (layout.transform) {
       if (this.button('Transform', 'transform', { active: gizmo?.tool === 'transform' })) { gizmo?.setTool('transform'); }
@@ -142,35 +146,35 @@ export class SceneToolbar {
     const editing = !!gizmo && is2DMode;
 
     this.menuSection('Editing');
-    if (!layout.transform && ImGui.MenuItem('Transform', 'V / W', gizmo?.tool === 'transform', editing)) { gizmo?.setTool('transform'); }
-    if (!layout.hand && ImGui.MenuItem('Pan', 'H', gizmo?.tool === 'hand', editing)) { gizmo?.setTool('hand'); }
-    if (ImGui.MenuItem('Edit Text', 'Enter', false, editing && gizmo?.canEditText)) { gizmo?.editText(); }
+    if (!layout.transform && editorMenuItem('Transform', 'V / W', gizmo?.tool === 'transform', editing)) { gizmo?.setTool('transform'); }
+    if (!layout.hand && editorMenuItem('Pan', 'H', gizmo?.tool === 'hand', editing)) { gizmo?.setTool('hand'); }
+    if (editorMenuItem('Edit Text', 'Enter', false, editing && gizmo?.canEditText)) { gizmo?.editText(); }
     if (!layout.snap || !layout.distance || !layout.zoom || !layout.show) {
       this.menuSection('Viewport Options', true);
     }
     if (!layout.snap) {
-      if (ImGui.BeginMenu('Snapping', editing)) {
+      if (beginEditorMenu('Snapping', editing)) {
         this.menuSection('Behavior');
-        if (ImGui.MenuItem('Enabled', '', gizmo?.snapping)) { gizmo!.snapping = !gizmo!.snapping; }
+        if (editorMenuItem('Enabled', '', gizmo?.snapping)) { gizmo!.snapping = !gizmo!.snapping; }
         this.drawSnapDistanceMenu(gizmo, true);
-        ImGui.EndMenu();
+        endEditorMenu();
       }
     } else if (!layout.distance) {
-      if (ImGui.BeginMenu('Snap Distance', editing)) {
+      if (beginEditorMenu('Snap Distance', editing)) {
         this.drawSnapDistanceMenu(gizmo);
-        ImGui.EndMenu();
+        endEditorMenu();
       }
     }
-    if (!layout.zoom && ImGui.BeginMenu('Zoom', editing)) {
+    if (!layout.zoom && beginEditorMenu('Zoom', editing)) {
       this.drawZoomMenu(gizmo);
-      ImGui.EndMenu();
+      endEditorMenu();
     }
-    if (!layout.show && ImGui.BeginMenu('Show')) {
+    if (!layout.show && beginEditorMenu('Show')) {
       this.drawShowMenu(options);
-      ImGui.EndMenu();
+      endEditorMenu();
     }
     this.menuSection('Help', true);
-    if (ImGui.BeginMenu('Keyboard Shortcuts')) {
+    if (beginEditorMenu('Keyboard Shortcuts')) {
       if (is2DMode) {
         this.menuSection('Tools');
         ImGui.TextUnformatted('V / W  Transform\nH  Pan');
@@ -182,7 +186,7 @@ export class SceneToolbar {
         this.menuSection('Navigation');
         ImGui.TextUnformatted('Left drag  Orbit\nMiddle drag  Pan\nWheel  Zoom');
       }
-      ImGui.EndMenu();
+      endEditorMenu();
     }
   }
 
@@ -190,12 +194,12 @@ export class SceneToolbar {
     const { gizmo, is2DMode } = options;
 
     this.menuSection('View Mode');
-    if (ImGui.MenuItem('2D Canvas', '', is2DMode)) { options.set2DMode(true); }
-    if (ImGui.MenuItem('Perspective', '', !is2DMode)) { options.set2DMode(false); }
+    if (editorMenuItem('2D Canvas', '', is2DMode)) { options.set2DMode(true); }
+    if (editorMenuItem('Perspective', '', !is2DMode)) { options.set2DMode(false); }
     this.menuSection('Viewport Navigation', true);
-    if (ImGui.MenuItem('Frame Selection', 'F', false, is2DMode && !!gizmo?.selectedItems.length)) { gizmo?.frameSelection(); }
-    if (ImGui.MenuItem('Frame All', 'Home', false, is2DMode && !!gizmo)) { gizmo?.frameAll(); }
-    if (ImGui.MenuItem('Reset View', '', false, !!gizmo)) { options.resetView(); }
+    if (editorMenuItem('Frame Selection', 'F', false, is2DMode && !!gizmo?.selectedItems.length)) { gizmo?.frameSelection(); }
+    if (editorMenuItem('Frame All', 'Home', false, is2DMode && !!gizmo)) { gizmo?.frameAll(); }
+    if (editorMenuItem('Reset View', '', false, !!gizmo)) { options.resetView(); }
   }
 
   private drawShowMenu (options: SceneToolbarOptions): void {
@@ -203,11 +207,13 @@ export class SceneToolbar {
 
     ImGui.BeginDisabled(!gizmo || !is2DMode);
     this.menuSection('Viewport');
-    if (ImGui.MenuItem('Grid', '', showGrid)) { options.setShowGrid(!showGrid); }
+    if (editorMenuItem('Grid', '', showGrid)) { options.setShowGrid(!showGrid); }
     this.menuSection('Selection', true);
-    if (ImGui.MenuItem('Selection Info', '', gizmo?.selectionInfo)) { gizmo!.selectionInfo = !gizmo!.selectionInfo; }
-    if (ImGui.MenuItem('Hover Highlight', '', gizmo?.hoverHighlight)) { gizmo!.hoverHighlight = !gizmo!.hoverHighlight; }
+    if (editorMenuItem('Selection Info', '', gizmo?.selectionInfo)) { gizmo!.selectionInfo = !gizmo!.selectionInfo; }
+    if (editorMenuItem('Hover Highlight', '', gizmo?.hoverHighlight)) { gizmo!.hoverHighlight = !gizmo!.hoverHighlight; }
     ImGui.EndDisabled();
+    this.menuSection('Performance', true);
+    if (editorMenuItem('Show FPS', '', options.showFPS)) { options.setShowFPS(!options.showFPS); }
   }
 
   private drawSnapDistanceMenu (gizmo?: SceneGizmo, separated = false): void {
@@ -216,14 +222,14 @@ export class SceneToolbar {
 
     this.menuSection('Snap Distance', separated);
     for (const value of [2, 5, 10, 20]) {
-      if (ImGui.MenuItem(`${value} px`, '', distance === value)) { configs?.set(selectionSnapConfig, { distance: value }); }
+      if (editorMenuItem(`${value} px`, '', distance === value)) { configs?.set(selectionSnapConfig, { distance: value }); }
     }
   }
 
   private drawZoomMenu (gizmo?: SceneGizmo): void {
     this.menuSection('Viewport Zoom');
     for (const scale of [0.25, 0.5, 1, 2, 4, 8, 16]) {
-      if (ImGui.MenuItem(`${scale * 100}%`, '', Math.abs((gizmo?.scale ?? 1) - scale) < 0.001)) { gizmo?.zoomTo(scale); }
+      if (editorMenuItem(`${scale * 100}%`, '', Math.abs((gizmo?.scale ?? 1) - scale) < 0.001)) { gizmo?.zoomTo(scale); }
     }
   }
 
@@ -245,18 +251,10 @@ export class SceneToolbar {
     if (ImGui.IsPopupOpen(id)) {
       ImGui.SetNextWindowPos(new ImGui.Vec2(min.x, max.y + 3));
     }
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 4));
-    ImGui.PushStyleVar(ImGui.StyleVar.PopupRounding, 0);
-    ImGui.PushStyleVar(ImGui.StyleVar.PopupBorderSize, 1);
-    ImGui.PushStyleColor(ImGui.Col.PopupBg, MENU_BACKGROUND);
-    ImGui.PushStyleColor(ImGui.Col.Border, MENU_BORDER);
-    ImGui.PushStyleColor(ImGui.Col.Separator, new ImGui.Vec4(1, 1, 1, 0.25));
-    if (ImGui.BeginPopup(id)) {
+    if (beginEditorPopup(id)) {
       draw();
-      ImGui.EndPopup();
+      endEditorPopup();
     }
-    ImGui.PopStyleColor(3);
-    ImGui.PopStyleVar(3);
   }
 
   private button (id: string, icon?: Icon, options: ButtonOptions = {}): boolean {
@@ -272,9 +270,8 @@ export class SceneToolbar {
     const drawList = ImGui.GetWindowDrawList();
     const tint = active ? ACTIVE_COLOR : ImGui.IsItemHovered() ? HOVER_COLOR : EditorColors.textPrimary;
     const color = ImGui.GetColorU32(tint);
-    const background = ImGui.IsItemActive() ? EditorColors.accentActive : ImGui.IsItemHovered() ? EditorColors.buttonHovered : normalBackground;
 
-    if (icon) { this.drawIcon(icon, min.x + (label || arrow ? 14 : width / 2), min.y + this.buttonHeight / 2, color, ImGui.GetColorU32(background)); }
+    if (icon) { drawEditorIcon(icon === 'show' ? 'view' : icon === 'snap' ? 'magnet' : icon, min.x + (label || arrow ? 14 : width / 2) - 10, min.y + (this.buttonHeight - 20) / 2, 20, tint); }
     if (label) {
       drawList.AddText(new ImGui.Vec2(min.x + (icon ? 28 : 8), min.y + (this.buttonHeight - ImGui.GetTextLineHeight()) / 2), color, label);
     }
@@ -294,60 +291,6 @@ export class SceneToolbar {
       ImGui.GetColorU32(EditorColors.borderStrong));
     ImGui.Dummy(new ImGui.Vec2(1, this.buttonHeight));
     ImGui.SameLine(0, 5);
-  }
-
-  private drawIcon (icon: Icon, x: number, y: number, color: number, background: number): void {
-    const drawList = ImGui.GetWindowDrawList();
-    const point = (dx: number, dy: number) => new ImGui.Vec2(x + dx, y + dy);
-    const line = (x1: number, y1: number, x2: number, y2: number) => drawList.AddLine(point(x1, y1), point(x2, y2), color, 1.3);
-
-    if (icon === 'transform') {
-      line(-6, 0, 6, 0); line(0, -6, 0, 6);
-      for (const direction of [-1, 1]) {
-        line(direction * 6, 0, direction * 3.5, -2.5); line(direction * 6, 0, direction * 3.5, 2.5);
-        line(0, direction * 6, -2.5, direction * 3.5); line(0, direction * 6, 2.5, direction * 3.5);
-      }
-    } else if (icon === 'hand') {
-      const outline = [[5, 2], [5, -3], [4.5, -4], [3.75, -4], [3.25, -3], [3.25, 0],
-        [2.25, 0], [2.25, -5], [1.75, -6], [1, -6], [0.5, -5], [0.5, 0],
-        [-0.5, 0], [-0.5, -7], [-1, -8], [-1.75, -8], [-2.25, -7], [-2.25, 0],
-        [-3.25, 0], [-3.25, -5], [-3.75, -6], [-4.5, -6], [-5, -5], [-5, 1],
-        [-6, -1], [-7.5, -1], [-8, 0], [-5, 5], [-3, 7], [2, 7], [4, 5], [5, 2]];
-
-      for (let index = 0; index + 1 < outline.length; index++) {
-        line(outline[index][0] + 1, outline[index][1], outline[index + 1][0] + 1, outline[index + 1][1]);
-      }
-    } else if (icon === 'snap') {
-      const magnetPoint = (dx: number, dy: number) => point((dx + dy) * Math.SQRT1_2, (dy - dx) * Math.SQRT1_2);
-      const stroke = (a: ImGui.Vec2, b: ImGui.Vec2, tint = color) => drawList.AddLine(a, b, tint, 3);
-
-      stroke(magnetPoint(-5, -6), magnetPoint(-5, 0));
-      stroke(magnetPoint(5, -6), magnetPoint(5, 0));
-      for (let segment = 0; segment < 12; segment++) {
-        const start = segment * Math.PI / 12;
-        const end = (segment + 1) * Math.PI / 12;
-
-        stroke(magnetPoint(Math.cos(start) * 5, Math.sin(start) * 5), magnetPoint(Math.cos(end) * 5, Math.sin(end) * 5));
-      }
-      drawList.AddLine(magnetPoint(-6.5, -3.5), magnetPoint(-3.5, -3.5), background, 1);
-      drawList.AddLine(magnetPoint(3.5, -3.5), magnetPoint(6.5, -3.5), background, 1);
-    } else if (icon === 'camera') {
-      drawList.AddRectFilled(point(-7, -4), point(2, 4), color, 1);
-      drawList.AddTriangleFilled(point(3, -2), point(7, -5), point(7, 5), color);
-      drawList.AddTriangleFilled(point(3, -2), point(7, 5), point(3, 2), color);
-    } else if (icon === 'show') {
-      drawList.PathClear();
-      for (let index = 0; index <= 24; index++) {
-        const t = index <= 12 ? index / 12 : (24 - index) / 12;
-
-        drawList.PathLineTo(point(-7 + 14 * t, Math.sin(t * Math.PI) * (index <= 12 ? -4 : 4)));
-      }
-      drawList.PathFillConvex(color);
-      drawList.AddCircleFilled(point(0, 0), 2.8, background, 16);
-      drawList.AddCircleFilled(point(0, 0), 1.4, color, 12);
-    } else {
-      for (const offset of [-4, 0, 4]) { drawList.AddCircleFilled(point(0, offset), 1.2, color); }
-    }
   }
 
   private tooltip (text: string): void {

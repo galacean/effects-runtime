@@ -1,3 +1,4 @@
+import { beginEditorMenu, endEditorMenu } from '../../../widgets/editor-menu';
 import { BaseNode } from './base-graph';
 import { ImGui } from '../../../imgui/index';
 import type { DrawContext } from './drawing-context';
@@ -59,7 +60,7 @@ export class CommentNode extends BaseNode {
 
     let result = false;
 
-    if (ImGui.BeginMenu(' Color')) {
+    if (beginEditorMenu(' Color')) {
       for (let n = 0; n < paletteSize; n++) {
         ImGui.PushID(n);
         if ((n % 8) !== 0) {
@@ -76,7 +77,7 @@ export class CommentNode extends BaseNode {
         ImGui.PopID();
       }
 
-      ImGui.EndMenu();
+      endEditorMenu();
     }
 
     return result;
