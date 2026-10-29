@@ -9,7 +9,7 @@ import { PROPERTY_COLORS as C, PropertyGrid, PropertyGridState } from '../../../
 import type { SceneDocument } from '../../scene/document/scene-document';
 import { sceneWorkspace } from '../../scene/scene-workspace';
 import { getSpriteThumbnail } from '../preview/sprite-thumbnail';
-import { getOrCreateTexturePreview } from '../preview/texture-preview';
+import { getOrCreateTexturePreview, texturePreviewImage } from '../preview/texture-preview';
 import { setRuntimeAssetOpener } from './asset-editor-registry';
 import { drawMaterialProperties } from './material-details';
 
@@ -50,7 +50,7 @@ export class RuntimeAssetEditor extends EditorWindow {
     if (asset instanceof Texture || asset instanceof Sprite) {
       const preview = asset instanceof Sprite ? getSpriteThumbnail(asset) : getOrCreateTexturePreview(asset);
 
-      if (preview) { ImGui.Image(preview.tex, new ImGui.Vec2(180, 180), preview.uv0, preview.uv1); }
+      if (preview) { texturePreviewImage(preview, new ImGui.Vec2(180, 180)); }
     } else if (asset instanceof Material) {
       const p = ImGui.GetCursorScreenPos();
 

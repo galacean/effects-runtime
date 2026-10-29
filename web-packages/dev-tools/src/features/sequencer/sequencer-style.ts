@@ -27,5 +27,6 @@ export const SEQUENCE_LAYOUT = {
   treePadding: 4, treeIndent: 10, expanderSize: 16, rowIconSize: 16, columnIconSize: 14,
   toolbarIconSize: 20, toolbarButtonSize: 36, toolbarButtonHeight: 28, toolbarMenuWidth: 44, toolbarPadding: 6,
   columnSpacing: 22, columnRightPadding: 14, valueWidth: 64, valueHeight: 20,
+  defaultOutlinerWidth: 360, minOutlinerWidth: 150, minTrackAreaWidth: 160, splitterWidth: 8,
 };
 export { curveTickStep as niceStep } from '../../ui/curve-editor/curve-screen-space';

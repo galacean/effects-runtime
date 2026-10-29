@@ -1,3 +1,4 @@
+import { editorTooltip } from '../widgets/editor-tooltip';
 import type { Texture } from '@galacean/effects';
 import { ImGui } from '../../platform/imgui/index';
 import { drawEditorChevron } from '../widgets/editor-arrow';
@@ -66,7 +67,7 @@ export class PropertyFields {
       dl.AddText(new ImGui.Vec2(point.x + 7, point.y + (ImGui.GetFrameHeight() - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(PROPERTY_COLORS.text), text);
       dl.PopClipRect();
       ImGui.Dummy(new ImGui.Vec2(width, ImGui.GetFrameHeight()));
-      if (ImGui.IsItemHovered() && ImGui.CalcTextSize(text).x > width) { ImGui.SetTooltip(text); }
+      if (ImGui.IsItemHovered() && ImGui.CalcTextSize(text).x > width) { editorTooltip(text); }
     });
   }
 
@@ -142,7 +143,7 @@ export class PropertyFields {
         const min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax();
 
         ImGui.GetWindowDrawList().AddRectFilled(new ImGui.Vec2(min.x + 2, min.y + 3), new ImGui.Vec2(min.x + 4, max.y - 3), ImGui.GetColorU32(PROPERTY_COLORS.axes[axis]), 1);
-        if (ImGui.IsItemHovered() && !ImGui.IsItemActive()) { ImGui.SetTooltip(['X', 'Y', 'Z'][axis] + ': ' + values[axis] + '\nClick to type, or drag to adjust.'); }
+        if (precision < 3 && values[axis] !== Number(values[axis].toFixed(precision))) { editorTooltip(['X', 'Y', 'Z'][axis] + ': ' + values[axis]); }
         ImGui.PopID();
       }
 

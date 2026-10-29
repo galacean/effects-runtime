@@ -8,6 +8,7 @@ import { setGetWindowProvider, type EditorWindow } from '../framework/windows/ed
 import { ImGui } from '../platform/imgui/index';
 import { MenuItemNode, MenuNode } from '../ui/menus/menu-tree';
 import { editorMainMenuBar } from '../ui/widgets/editor-menu';
+import { editorTooltips } from '../ui/widgets/editor-tooltip';
 import { EditorMenus } from './menus/editor-menus';
 
 export class EditorApplication {
@@ -19,6 +20,7 @@ export class EditorApplication {
 
   initialize () {
     this.menus.initialize();
+    editorTooltips.initialize();
     sceneWorkspace.flushEdits = () => { this.windows.forEach(window => window.flushEdits()); };
     sceneWorkspace.onRestored = () => { this.windows.forEach(window => window.onUndoRedo()); };
     EditorSelection.setChangeHandler(apply => sceneWorkspace.changeSelection(apply));
@@ -58,6 +60,7 @@ export class EditorApplication {
   }
 
   shutdown (): void {
+    editorTooltips.shutdown();
     editorLayout.shutdown();
     this.menus.shutdown();
     EditorSelection.setChangeHandler();
@@ -75,6 +78,7 @@ export class EditorApplication {
   }
 
   tick (time: number) {
+    editorTooltips.beginFrame();
     const dt = this.lastTime > 0 ? (time - this.lastTime) / 1000 : 0;
 
     this.lastTime = time;
@@ -91,6 +95,7 @@ export class EditorApplication {
     this.menus.shortcuts();
     if (!sceneWorkspace.changingDocument && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive()) { sceneWorkspace.current?.commit(); }
     this.menus.drawDialogs();
+    editorTooltips.draw();
   }
 
   private drawMainMenuBar () {

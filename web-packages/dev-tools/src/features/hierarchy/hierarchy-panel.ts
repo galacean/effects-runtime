@@ -365,7 +365,7 @@ export class HierarchyPanel extends EditorWindow {
 
       hierarchyText(label, start.x + 4, start.y + (L.header - 2 - ImGui.GetFontSize()) / 2, labelWidth, I.foreground);
       if (sorted) { drawEditorIcon(this.options.descending ? 'sortDescending' : 'sortAscending', start.x + 8 + labelWidth, start.y + (L.header - 14) / 2, 12, I.foreground); }
-      if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) { hierarchyHint(label); }
+      if (ImGui.IsItemHovered() && ImGui.CalcTextSize(label).x > labelWidth) { hierarchyHint(label); }
     } else {
       drawEditorIcon('view', start.x + 4, start.y + (L.header - 18) / 2, 16, this.options.sort === 'visibility' ? I.foregroundHover : I.foreground);
       if (hovered) { hierarchyHint('Sort by visibility', this.options.sort === 'visibility' ? this.options.descending ? 'Visible items first' : 'Hidden items first' : 'Click to sort visible and hidden items.'); }
@@ -403,7 +403,7 @@ export class HierarchyPanel extends EditorWindow {
       const color = node.item && !node.item.isActive ? I.muted : tint;
 
       hierarchyText(node.label, labelX, p.y + (rowHeight - ImGui.GetFontSize()) / 2, p.x + width - labelX - 5, color, this.search[0]);
-      if (hovered && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) {
+      if (hovered && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && ImGui.IsItemHovered()) {
         hierarchyHint(node.label, node.type);
       }
     }

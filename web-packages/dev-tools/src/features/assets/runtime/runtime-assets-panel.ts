@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorWindow } from '../../../framework/windows/editor-window';
@@ -87,7 +88,7 @@ export class RuntimeAssetsPanel extends EditorWindow {
 
         this.itemInput(item, visible, hovered);
         if (list) { paintAssetRow(item, rect, state); } else { paintAssetTile(item, rect, state); }
-        if (hovered && ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) { ImGui.SetTooltip(item.name + '\n' + item.type + '\n' + item.summary); }
+        if (hovered && ImGui.IsItemHovered()) { editorTooltip(item.name + '\n' + item.type + '\n' + item.summary); }
         if (ImGui.BeginDragDropSource()) {
           this.interaction.drag(item.id);
           ImGui.SetDragDropPayload(item.object.constructor.name, item.object);

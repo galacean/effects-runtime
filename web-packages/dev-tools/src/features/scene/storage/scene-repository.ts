@@ -4,6 +4,8 @@ import { requestResult } from '../../../platform/browser-storage/indexeddb';
 import type { AssetEntry, AssetScene } from '../../assets/model/asset-types';
 import { ASSET_ROOT } from '../../assets/model/asset-types';
 import { validateAssetWrite } from '../../assets/storage/asset-write-validation';
+import { resolveObjectAssets } from '../../assets/storage/object-asset-resolver';
+import { objectReferences } from '../../assets/model/object-asset-data';
 import { WorkspaceRepository, workspaceRepository } from '../../assets/storage/workspace-repository';
 import { jsonData } from '../serialization/scene-values';
 
@@ -32,7 +34,18 @@ export class SceneRepository {
 
     if (entry?.kind !== 'scene' || entry.deletedAt || payload?.kind !== 'scene') { return; }
     const scene = jsonData(payload.scene), references = { ...payload.textureReferences };
-    const textureAssets = new Map((await this.assets.list(projectId)).filter(asset => asset.kind === 'texture').map(asset => [asset.id, asset]));
+    const assets = await this.assets.list(projectId);
+    const textureAssets = new Map(assets.filter(asset => asset.kind === 'texture').map(asset => [asset.id, asset]));
+    const objects = await resolveObjectAssets([scene, payload.editor], assets, assetId => this.assets.payload(assetId, projectId));
+
+    for (const definition of objects) {
+      const table = definition.dataType === spec.DataType.Material ? 'materials' : definition.dataType === spec.DataType.Shader ? 'shaders' : 'miscs';
+      const data = (scene[table] ??= []) as any[];
+      const index = data.findIndex(object => object.id === definition.id);
+
+      if (index >= 0) { data[index] = definition; } else { data.push(definition); }
+    }
+    for (const id of objectReferences(objects)) { if (textureAssets.has(id)) { references[id] ??= {}; } }
 
     scene.textures = (scene.textures ?? []).filter(texture => {
       if (!texture.id || !textureAssets.has(texture.id)) { return true; }

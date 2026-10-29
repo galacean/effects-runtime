@@ -8,7 +8,21 @@ import { ImGui, ImGuiBackend } from '../../../platform/imgui/index';
  * 缓存于 texture.__imguiAssetThumb / __imguiAssetThumbFlipped，避免重复上传。
  * 从 content-browser 抽取为共享 util，供 sequencer sprite 缩略图等复用。
  */
-export type TexturePreview = { tex: WebGLTexture, uv0: ImGui.Vec2, uv1: ImGui.Vec2 };
+export type TexturePreview = { tex: WebGLTexture, uv0: ImGui.Vec2, uv1: ImGui.Vec2, corners?: [ImGui.Vec2, ImGui.Vec2, ImGui.Vec2, ImGui.Vec2] };
+
+export function drawTexturePreview (preview: TexturePreview, min: ImGui.Vec2, max: ImGui.Vec2): void {
+  const draw = ImGui.GetWindowDrawList();
+
+  if (preview.corners) {
+    draw.AddImageQuad(preview.tex, min, new ImGui.Vec2(max.x, min.y), max, new ImGui.Vec2(min.x, max.y), ...preview.corners);
+  } else { draw.AddImage(preview.tex, min, max, preview.uv0, preview.uv1); }
+}
+
+export function texturePreviewImage (preview: TexturePreview, size: ImGui.Vec2): void {
+  const origin = ImGui.GetCursorScreenPos();
+
+  ImGui.Dummy(size); drawTexturePreview(preview, origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y));
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null {

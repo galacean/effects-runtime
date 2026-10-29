@@ -1,11 +1,13 @@
-import type { Engine, Texture } from '@galacean/effects';
+import type { EffectsObject, Engine, Texture } from '@galacean/effects';
 import { generateGUID } from '@galacean/effects';
 import { createEmptyScene } from '../scene/factories/scene-template';
 import { createImageThumbnail, decodeImage } from './importers/image-importer';
-import type { AssetBrowserPreferences, AssetEntry, AssetPayload } from './model/asset-types';
-import { ASSET_ROOT } from './model/asset-types';
+import type { AssetBrowserPreferences, AssetEntry, AssetObject, AssetPayload, ObjectAssetKind } from './model/asset-types';
+import { ASSET_ROOT, isObjectAsset } from './model/asset-types';
+import { copyObjectAsset, newObjectAsset, validateObjectAsset } from './model/object-asset-data';
 import { assertUniqueAssetName, contentAssetName } from './model/asset-validation';
 import { AssetTextureCache } from './runtime/asset-texture-cache';
+import { AssetObjectCache } from './runtime/asset-object-cache';
 import { workspaceRepository } from './storage/workspace-repository';
 
 const DEFAULTS: AssetBrowserPreferences = {
@@ -33,6 +35,12 @@ export class AssetLibrary {
     image: (id, projectId) => this.storage.image(id, projectId),
   });
   private pendingEntries = new Map<string, AssetEntry>();
+  private readonly saveHandlers = new Set<() => Promise<void>>();
+  private readonly objectCache = new AssetObjectCache({
+    projectId: () => this.projectId, entry: id => this.entry(id),
+    payload: (id, project) => this.storage.payload(id, project),
+    loadTexture: (engine, id) => this.loadTexture(engine, id),
+  });
 
   constructor () {
     this.storage.subscribe(entries => {
@@ -48,6 +56,11 @@ export class AssetLibrary {
 
     this.entries = [...this.entries.filter(entry => !changes.has(entry.id)), ...entries]; this.revision++;
     entries.filter(entry => entry.kind === 'texture').forEach(entry => this.textureCache.rename(entry));
+    const project = this.projectId;
+
+    for (const entry of entries.filter(entry => ['material', 'shader', 'sprite'].includes(entry.kind))) {
+      void this.objectCache.refresh(entry).catch(error => { if (project === this.projectId) { this.report(error); } });
+    }
   }
 
   get notice (): string { return Date.now() - this.statusTime < 3500 ? this.status : ''; }
@@ -78,6 +91,7 @@ export class AssetLibrary {
     await this.whenIdle();
     this.ready = false; this.entries = []; this.initialization = undefined; this.pendingEntries.clear();
     this.textureCache.reset();
+    this.objectCache.reset();
     this.error = ''; this.notice = '';
     await this.initialize();
     if (!this.ready) { throw new Error('The project content could not be opened.'); }
@@ -168,6 +182,38 @@ export class AssetLibrary {
     });
   }
 
+  async newObject (kind: ObjectAssetKind, parentId: string, reference?: string): Promise<string | undefined> {
+    return this.operation(async () => {
+      const source = reference ? this.entry(reference) : undefined;
+
+      if (reference && (kind === 'shader' || !source || source.deletedAt || source.kind !== (kind === 'sprite' ? 'texture' : 'shader'))) { throw new Error('Choose a compatible asset from this project.'); }
+      const now = Date.now(), id = generateGUID();
+      const name = this.uniqueName(source && kind === 'sprite' ? source.name + '_Sprite' : 'New' + kind.charAt(0).toUpperCase() + kind.slice(1), parentId);
+      const payload = newObjectAsset(kind, id, name, reference);
+
+      await this.update([{ id, projectId: this.projectId, parentId, name, kind, createdAt: now, updatedAt: now, size: new TextEncoder().encode(JSON.stringify(payload)).length }], [payload]);
+
+      return id;
+    });
+  }
+
+  async saveObject (payload: AssetObject, engine?: Engine): Promise<boolean | undefined> {
+    return this.operation(async () => {
+      const entry = this.entry(payload.id);
+
+      if (!entry || entry.deletedAt || entry.kind !== payload.kind) { throw new Error('This asset is no longer available.'); }
+      validateObjectAsset(payload);
+      const data = structuredClone(payload);
+
+      data.objects.find(object => object.id === data.id)!.name = entry.name;
+      const next = { ...entry, updatedAt: Math.max(Date.now(), entry.updatedAt + 1), size: new TextEncoder().encode(JSON.stringify(data)).length };
+
+      await this.update([next], [data]); await this.objectCache.refresh(next, engine); this.notice = entry.name + ' saved';
+
+      return true;
+    });
+  }
+
   async importImages (files: File[], parentId: string, replaceId?: string): Promise<string[] | undefined> {
     return this.operation(async () => {
       const imported: string[] = [], failures: string[] = [];
@@ -245,12 +291,13 @@ export class AssetLibrary {
 
       if (parentId !== ASSET_ROOT && (this.entry(parentId)?.kind !== 'folder' || this.entry(parentId)?.deletedAt)) { throw new Error('Choose a valid destination folder.'); }
       const changes: AssetEntry[] = [], payloads: AssetPayload[] = [];
+      const copying = roots.flatMap(root => this.descendants(root.id).filter(entry => !entry.deletedAt));
+      const mapping = new Map(copying.map(entry => [entry.id, copy ? generateGUID() : entry.id]));
 
       for (const root of roots) {
         if (root.id === parentId || this.path(parentId).some(parent => parent.id === root.id)) { throw new Error('A folder cannot be moved into itself.'); }
         if (!copy && root.parentId === parentId) { continue; }
         const entries = copy ? this.descendants(root.id).filter(entry => !entry.deletedAt) : [root];
-        const mapping = new Map(entries.map(entry => [entry.id, copy ? generateGUID() : entry.id]));
 
         for (const entry of entries) {
           const parent = entry.id === root.id ? parentId : mapping.get(entry.parentId)!;
@@ -261,7 +308,7 @@ export class AssetLibrary {
             const payload = await this.storage.payload(entry.id);
 
             if (!payload) { throw new Error('The source asset is missing: ' + entry.name); }
-            payloads.push({ ...structuredClone(payload), id: next.id });
+            payloads.push(isObjectAsset(payload) ? copyObjectAsset(payload, next.id, mapping) : { ...structuredClone(payload), id: next.id });
           }
         }
       }
@@ -274,8 +321,19 @@ export class AssetLibrary {
   }
 
   async saveAll (): Promise<void> {
+    for (const save of this.saveHandlers) { await save(); }
     await this.operation(async () => { await this.storage.write([], [], structuredClone(this.preferences), this.projectId); this.notice = 'All assets saved'; });
   }
+
+  registerSaveHandler (save: () => Promise<void>): () => void {
+    this.saveHandlers.add(save);
+
+    return () => this.saveHandlers.delete(save);
+  }
+
+  asset (engine: Engine, id: string): EffectsObject | undefined { return this.entry(id)?.kind === 'texture' ? this.texture(engine, id) : this.objectCache.get(engine, id); }
+
+  loadAsset (engine: Engine, id: string): Promise<EffectsObject> { return this.entry(id)?.kind === 'texture' ? this.loadTexture(engine, id) : this.objectCache.load(engine, id); }
 
   texture (engine: Engine, id: string): Texture | undefined { return this.textureCache.get(engine, id); }
 

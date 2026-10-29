@@ -1,3 +1,4 @@
+import { editorTooltip } from '../widgets/editor-tooltip';
 import { ImGui } from '../../platform/imgui/index';
 import { drawEditorIcon } from '../icons/editor-icons';
 import { InteractionColors as I } from '../theme/editor-interaction';
@@ -143,7 +144,7 @@ export class PropertyGrid {
     dl.PushClipRect(origin, new ImGui.Vec2(origin.x + width - 8, origin.y + height), true);
     dl.AddText(new ImGui.Vec2(origin.x + labelOffset, origin.y + (height - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(PROPERTY_COLORS.headerText), label);
     dl.PopClipRect();
-    if (hovered && ImGui.CalcTextSize(label).x > width - labelOffset - 8) { ImGui.SetTooltip(label); }
+    if (hovered && ImGui.CalcTextSize(label).x > width - labelOffset - 8) { editorTooltip(label); }
 
     return open;
   }
@@ -189,12 +190,12 @@ export class PropertyGrid {
     dl.PushClipRect(new ImGui.Vec2(origin.x, origin.y), new ImGui.Vec2(divider - (action ? 28 : 5), end.y), true);
     dl.AddText(new ImGui.Vec2(textX, textY), ImGui.GetColorU32(PROPERTY_COLORS.text), caption);
     dl.PopClipRect();
-    if (hovered && ImGui.GetMousePos().x < divider && caption !== label) { ImGui.SetTooltip(label); }
+    editorTooltip(label, { id: '##PropertyLabel', hovered: hovered && ImGui.GetMousePos().x < divider && caption !== label });
     if (action) {
       ImGui.SetCursorScreenPos(new ImGui.Vec2(divider - 25, origin.y + 4));
       if (ImGui.InvisibleButton('##LabelAction', new ImGui.Vec2(22, 22))) { action.click(); }
       action.draw(divider - 22, origin.y + 7, 16);
-      if (ImGui.IsItemHovered()) { ImGui.SetTooltip(action.hint); }
+      if (ImGui.IsItemHovered()) { editorTooltip(action.hint); }
     }
     if (reset) {
       ImGui.SetCursorScreenPos(new ImGui.Vec2(end.x - 25, origin.y + 4));
@@ -202,7 +203,7 @@ export class PropertyGrid {
       const resetHovered = ImGui.IsItemHovered();
 
       drawEditorIcon('reset', end.x - 20, origin.y + 9, 12, resetHovered ? PROPERTY_COLORS.text : PROPERTY_COLORS.muted);
-      if (resetHovered) { ImGui.SetTooltip('Reset to default'); }
+      if (resetHovered) { editorTooltip('Reset to default'); }
     }
     ImGui.SetCursorScreenPos(new ImGui.Vec2(divider - 2, origin.y));
     ImGui.InvisibleButton('##ColumnDivider', new ImGui.Vec2(4, height));

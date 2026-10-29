@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import { ImGui } from '../../../platform/imgui/index';
 import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
 import { PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
@@ -188,10 +189,11 @@ export class ProjectBrowserDialog {
       if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
       endEditorPopup();
     }
-    if (hovered && ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal) && !ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      ImGui.BeginTooltip(); ImGui.Text(project.name);
-      if (project.description) { ImGui.PushTextWrapPos(320); ImGui.TextWrapped(project.description); ImGui.PopTextWrapPos(); }
-      ImGui.EndTooltip();
+    if (hovered && (project.description || ImGui.CalcTextSize(project.name).x > (width - 18) * 2)) {
+      editorTooltip(() => {
+        ImGui.Text(project.name);
+        if (project.description) { ImGui.PushTextWrapPos(320); ImGui.TextWrapped(project.description); ImGui.PopTextWrapPos(); }
+      }, { id: '##ProjectDescription', hovered });
     }
     ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + height)); ImGui.Dummy(new ImGui.Vec2(width, 0));
     ImGui.EndGroup(); ImGui.PopID();

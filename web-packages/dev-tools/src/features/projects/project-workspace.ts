@@ -70,7 +70,7 @@ class ProjectWorkspace {
     const previous = sceneWorkspace.current, previousId = workspaceRepository.projectId, dirty = previous?.dirty;
     const backup: StoredScene | undefined = previous ? { id: previous.storageId ?? '', projectId: previousId, name: previous.name, updatedAt: Date.now(), ...previous.snapshot() } : undefined;
 
-    await assetLibrary.whenIdle(); await assetLibrary.savePreferences();
+    await assetLibrary.whenIdle(); await assetLibrary.saveAll();
     try {
       await workspaceRepository.activateProject(id); await assetLibrary.reloadProject();
       await sceneWorkspace.loadProject(stored);

@@ -6,6 +6,7 @@ import { CurveDragGesture, CurveSelection, moveCurveKeys } from '../../ui/curve-
 import { CurveScreenSpace, zoomCurveBounds } from '../../ui/curve-editor/curve-screen-space';
 import { InteractionColors, editorColumnTint, editorRowColors } from '../../ui/theme/editor-interaction';
 import { drawEditorArrow } from '../../ui/widgets/editor-arrow';
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import type { SequenceKey } from './curve-data';
 import { controlPoint, makeKey, updateAutoTangents } from './curve-data';
 import { SequencerCurveModel } from './sequencer-curve-model';
@@ -64,6 +65,7 @@ export class SequencerCanvas {
   private hover = false;
   private outlinerHover = false;
   private overviewHover = false;
+  private splitterHovered = false;
   private scrollMax = 0;
   private readonly curveEditor = new CurveEditor();
   private readonly curveModels = new Map<SequenceChannel, SequencerCurveModel>();
@@ -113,7 +115,7 @@ export class SequencerCanvas {
     const origin = ImGui.GetCursorScreenPos();
 
     this.rect = { x: origin.x, y: origin.y, width, height };
-    this.state.outlinerWidth = Math.max(150, Math.min(this.state.outlinerWidth, Math.max(150, width * 0.62)));
+    this.state.layoutOutliner(width);
     this.plot = { x: origin.x + this.state.outlinerWidth, y: origin.y + L.rulerHeight,
       width: Math.max(50, width - this.state.outlinerWidth - 10), height: Math.max(30, height - L.rulerHeight) };
     this.rows = this.state.rows(document);
@@ -142,6 +144,8 @@ export class SequencerCanvas {
     if (this.state.curveMode) { this.fill(this.plot, C.curveBackground); }
     this.fill({ x: origin.x, y: origin.y, width: this.state.outlinerWidth, height }, C.outliner);
     this.fill({ x: this.plot.x, y: origin.y, width: this.plot.width + 10, height: L.rulerHeight }, C.toolbar);
+    this.splitterHovered = false;
+    this.drawSplitter(document, origin.y, height, 'Body');
     this.drawRuler(document);
     dl.PushClipRect(new ImGui.Vec2(this.plot.x, this.plot.y), new ImGui.Vec2(this.plot.x + this.plot.width, this.plot.y + this.plot.height), true);
     if (this.state.curveMode) { this.drawCurves(document); } else { this.drawTimeline(document); }
@@ -152,25 +156,30 @@ export class SequencerCanvas {
     this.drawScrollbar();
     this.line(this.plot.x - 1, origin.y, this.plot.x - 1, origin.y + height, C.line);
 
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(this.plot.x, this.rect.y));
-    ImGui.InvisibleButton('##SequencePlot', new ImGui.Vec2(this.plot.width + 10, height),
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(this.plot.x + L.splitterWidth / 2, this.rect.y));
+    ImGui.InvisibleButton('##SequencePlot', new ImGui.Vec2(Math.max(1, this.plot.width + 10 - L.splitterWidth / 2), height),
       ImGui.ButtonFlags.MouseButtonLeft | ImGui.ButtonFlags.MouseButtonRight | ImGui.ButtonFlags.MouseButtonMiddle);
     this.hover = ImGui.IsItemHovered();
     this.outlinerHover = ImGui.IsWindowHovered(ImGui.HoveredFlags.AllowWhenBlockedByActiveItem) &&
       this.contains({ x: this.rect.x, y: this.plot.y, width: this.state.outlinerWidth - 4, height: this.plot.height }, ImGui.GetMousePos().x, ImGui.GetMousePos().y);
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(this.plot.x - 4, this.rect.y));
-    ImGui.InvisibleButton('##SequenceSplitter', new ImGui.Vec2(7, height));
-    if (ImGui.IsItemHovered()) { ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW); }
-    if (ImGui.IsItemActivated()) { this.start('splitter', document); }
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + height));
     ImGui.Dummy(new ImGui.Vec2(width, 0));
   }
 
   processInput (document: SequencerDocument): void { this.interact(document); }
 
+  private drawSplitter (document: SequencerDocument, y: number, height: number, part: string): void {
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(this.plot.x - L.splitterWidth / 2, y));
+    ImGui.InvisibleButton('##SequenceSplitter' + part, new ImGui.Vec2(L.splitterWidth, height));
+    this.splitterHovered ||= ImGui.IsItemHovered();
+    if (ImGui.IsItemHovered() || ImGui.IsItemActive() || this.drag?.kind === 'splitter') { ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW); }
+    if (ImGui.IsItemActivated() && !this.drag) { this.start('splitter', document).value = this.state.outlinerWidth; }
+  }
+
   drawFooter (document: SequencerDocument, y: number): void {
     const saved = ImGui.GetCursorScreenPos();
 
+    this.drawSplitter(document, y, L.footerHeight, 'Footer');
     this.overview = { x: this.plot.x + 10, y: y + 8, width: Math.max(20, this.plot.width - 20), height: 14 };
     this.drawOverview(document);
     this.line(this.plot.x - 1, y, this.plot.x - 1, y + L.footerHeight, C.line);
@@ -411,9 +420,17 @@ export class SequencerCanvas {
         drawSequenceIcon(row.kind === 'object' ? 'cube' : type === 'TransformTrack' ? 'transform' : type === 'ActivationTrack' ? 'view' : 'opacity',
           iconX, center - L.rowIconSize / 2, L.rowIconSize, row.kind === 'object' ? C.object : C.text);
       }
+      const labelWidth = Math.max(0, labelRight - labelX);
+      let label = row.label;
+
+      if (ImGui.CalcTextSize(label).x > labelWidth) {
+        while (label && ImGui.CalcTextSize(label + '…').x > labelWidth) { label = label.slice(0, -1); }
+        label += '…';
+      }
       dl.PushClipRect(new ImGui.Vec2(labelX, y), new ImGui.Vec2(Math.max(labelX, labelRight), y + row.height), true);
-      this.text(labelX, textY, row.label, document.isLocked(row.track) ? C.muted : selected ? C.selectedText : color);
+      this.text(labelX, textY, label, document.isLocked(row.track) ? C.muted : selected ? C.selectedText : color);
       dl.PopClipRect();
+      editorTooltip(row.label, { id: '##TrackLabel:' + row.id, hovered: hovered && label !== row.label && mouse.x >= labelX && mouse.x < labelRight });
       const hasNumericEditor = this.showsRowValue(row) && row.channels[0]?.channel.kind === 'number';
 
       if (hasNumericEditor) {
@@ -527,8 +544,7 @@ export class SequencerCanvas {
     if (deactivated && this.valueEdit?.id === channel.id) { document.commit(); this.valueEdit = undefined; }
     if (hovered && !active) {
       if (!disabled) { ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW); }
-      ImGui.SetTooltip(disabled ? document.isLocked(row.track) ? 'Track is locked.' : 'Move the playhead inside this clip to edit.' :
-        'Click to type, or drag to adjust. Edits set a key at the playhead.');
+      if (disabled) { editorTooltip(document.isLocked(row.track) ? 'Track is locked.' : 'Move the playhead inside this clip to edit.'); }
     }
     ImGui.EndDisabled(); ImGui.PopStyleColor(3); ImGui.PopStyleVar(3);
   }
@@ -539,7 +555,7 @@ export class SequencerCanvas {
     const pressedOffset = hovered && ImGui.IsMouseDown(ImGui.MouseButton.Left) ? 1 : 0;
 
     drawSequenceIcon(icon, x - L.columnIconSize / 2, y - L.columnIconSize / 2 + pressedOffset, L.columnIconSize, tint);
-    if (hovered) { ImGui.SetTooltip(hint); }
+    editorTooltip(hint, { id: '##SequenceControl:' + icon + ':' + x + ':' + y, hovered });
   }
 
   private tickStep (): number {
@@ -722,6 +738,12 @@ export class SequencerCanvas {
   }
 
   private interact (document: SequencerDocument): void {
+    if (this.drag?.kind === 'splitter') {
+      this.updateDrag(document);
+
+      return;
+    }
+    if (this.splitterHovered && !this.drag) { return; }
     const mouse = ImGui.GetMousePos(), io = ImGui.GetIO();
     const modified = io.KeyCtrl || io.KeySuper;
     const keyHit = [...this.keyHits].reverse().find(hit => Math.hypot(hit.x - mouse.x, hit.y - mouse.y) <= 8);
@@ -969,7 +991,7 @@ export class SequencerCanvas {
     if (drag.kind === 'scrub') {
       document.setTime(Math.max(0, this.state.snap(this.timeAt(mouse.x), document, this.pixelsPerSecond)));
     } else if (drag.kind === 'splitter') {
-      this.state.outlinerWidth = Math.max(150, Math.min(this.rect.width * 0.62, mouse.x - this.rect.x));
+      this.state.resizeOutliner(drag.value + mouse.x - drag.x, this.rect.width);
     } else if (drag.kind === 'pan' && drag.view) {
       const axis = drag.horizontalOnly ? 'x' : drag.graph ? drag.axis : undefined;
       const dt = axis === 'y' ? 0 : dx / this.pixelsPerSecond;

@@ -31,7 +31,8 @@ export class SequencerState {
   viewEnd = 5;
   playbackStart = 0;
   playbackEnd = 5;
-  outlinerWidth = 320;
+  outlinerWidth: number = L.defaultOutlinerWidth;
+  private preferredOutlinerWidth: number = L.defaultOutlinerWidth;
   scrollY = 0;
   curveMin = -1;
   curveMax = 1;
@@ -43,6 +44,15 @@ export class SequencerState {
   get curveTracks (): Set<string> { return this.document?.curveTracks ?? this.emptyCurveTracks; }
   readonly expanded = new Set<string>();
   private readonly initialized = new Set<string>();
+
+  layoutOutliner (availableWidth: number): void {
+    this.outlinerWidth = Math.max(L.minOutlinerWidth, Math.min(this.preferredOutlinerWidth, availableWidth - L.minTrackAreaWidth));
+  }
+
+  resizeOutliner (width: number, availableWidth: number): void {
+    this.preferredOutlinerWidth = Math.max(L.minOutlinerWidth, Math.min(width, availableWidth - L.minTrackAreaWidth));
+    this.layoutOutliner(availableWidth);
+  }
 
   initialize (document: SequencerDocument): void {
     this.document = document;

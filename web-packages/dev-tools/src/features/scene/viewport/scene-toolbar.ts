@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import { selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
 import { ImGui } from '../../../platform/imgui/index';
 import { EditorColors } from '../../../ui/theme/index';
@@ -264,13 +265,7 @@ export class SceneToolbar {
 
   private separator (): void { toolbarSeparator(this.buttonHeight); }
 
-  private tooltip (text: string): void {
-    if (ImGui.IsItemHovered()) {
-      ImGui.BeginTooltip();
-      ImGui.TextUnformatted(text);
-      ImGui.EndTooltip();
-    }
-  }
+  private tooltip (text: string): void { editorTooltip(text); }
 }
 
 interface ButtonOptions {

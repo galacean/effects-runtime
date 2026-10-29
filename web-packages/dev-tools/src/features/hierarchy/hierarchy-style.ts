@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import { ImGui } from '../../platform/imgui/index';
 import type { EditorIcon } from '../../ui/icons/editor-icons';
 import { toolbarButton } from '../../ui/widgets/toolbar-button';
@@ -10,13 +11,10 @@ export function hierarchyButton (id: string, icon: EditorIcon, hint: string, ena
 }
 
 export function hierarchyHint (text: string, detail?: string): void {
-  ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(8, 6));
-  ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 2));
-  ImGui.BeginTooltip();
-  ImGui.Text(text);
-  if (detail) { ImGui.TextDisabled(detail); }
-  ImGui.EndTooltip();
-  ImGui.PopStyleVar(2);
+  editorTooltip(() => {
+    ImGui.Text(text);
+    if (detail) { ImGui.TextDisabled(detail); }
+  });
 }
 
 export function hierarchyText (text: string, x: number, y: number, width: number, tint: ImGui.Vec4, highlight = ''): void {

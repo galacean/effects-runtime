@@ -1,3 +1,4 @@
+import { editorTooltip } from './editor-tooltip';
 import { ImGui } from '../../platform/imgui';
 import type { EditorIcon } from '../icons/editor-icons';
 import { drawEditorIcon } from '../icons/editor-icons';
@@ -42,7 +43,7 @@ export function toolbarButton (id: string, options: ToolbarButtonOptions = {}): 
   if (options.drawIcon) { options.drawIcon(iconX, iconY, size, tint); } else if (options.icon) { drawEditorIcon(options.icon, iconX, iconY, size, tint); }
   if (options.label) { ImGui.GetWindowDrawList().AddText(new ImGui.Vec2(p.x + (options.labelLeft ?? (hasIcon ? 28 : 8)), p.y + (height - ImGui.GetTextLineHeight()) / 2), ImGui.GetColorU32(tint), options.label); }
   if (options.dropdown) { drawEditorChevron(p.x + width - 18, p.y + (height - 16) / 2, 16, tint); }
-  if (options.hint && ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenDisabled | ImGui.HoveredFlags.DelayNormal)) { ImGui.SetTooltip(options.hint); }
+  if (options.hint && ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenDisabled)) { editorTooltip(options.hint); }
   ImGui.PopStyleColor(3); ImGui.EndDisabled();
 
   return clicked;

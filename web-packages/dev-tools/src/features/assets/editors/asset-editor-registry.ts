@@ -1,8 +1,26 @@
 let textureOpener: ((id: string) => void) | undefined;
+let contentOpener: ((id: string) => void) | undefined;
+let focusedSave: (() => Promise<void>) | undefined;
 let runtimeOpener: ((asset: object) => void) | undefined;
 let browserActions: { reveal: (id: string) => void, selected: () => string[] } | undefined;
 
 export function setTextureAssetOpener (opener: (id: string) => void): void { textureOpener = opener; }
+
+export function setContentAssetOpener (opener: (id: string) => void): void { contentOpener = opener; }
+export function openContentAsset (id: string): boolean {
+  if (!contentOpener) { return false; }
+  contentOpener(id);
+
+  return true;
+}
+
+export function setFocusedAssetSave (save?: () => Promise<void>): void { focusedSave = save; }
+export function saveFocusedAsset (): boolean {
+  if (!focusedSave) { return false; }
+  void focusedSave();
+
+  return true;
+}
 
 export function openTextureAsset (id: string): boolean {
   if (!textureOpener) { return false; }

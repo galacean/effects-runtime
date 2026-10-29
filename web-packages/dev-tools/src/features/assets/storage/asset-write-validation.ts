@@ -1,7 +1,8 @@
 import { requestResult } from '../../../platform/browser-storage/indexeddb';
 import type { AssetEntry, AssetPayload } from '../model/asset-types';
-import { ASSET_ROOT } from '../model/asset-types';
+import { ASSET_ROOT, isObjectAsset } from '../model/asset-types';
 import { assertUniqueAssetName } from '../model/asset-validation';
+import { objectAssetDependencies, validateObjectAsset, validateObjectAssetReferences } from '../model/object-asset-data';
 import type { AssetStores } from './asset-stores';
 
 export async function validateAssetWrite (stores: AssetStores, entries: readonly AssetEntry[], payloads: readonly AssetPayload[] = []): Promise<void> {
@@ -37,5 +38,16 @@ export async function validateAssetWrite (stores: AssetStores, entries: readonly
     const entry = changed.get(payload.id) ?? await requestResult<AssetEntry | undefined>(stores.entries.get(payload.id));
 
     if (entry?.projectId !== stores.projectId || entry.kind !== payload.kind) { throw new Error('The asset data does not belong to this project.'); }
+    if (isObjectAsset(payload)) {
+      validateObjectAsset(payload);
+      const references = new Map<string, AssetEntry>();
+
+      for (const { id } of objectAssetDependencies(payload)) {
+        const dependency = changed.get(id) ?? await requestResult<AssetEntry | undefined>(stores.entries.get(id));
+
+        if (dependency?.projectId === stores.projectId) { references.set(id, dependency); }
+      }
+      validateObjectAssetReferences(payload, id => references.get(id));
+    }
   }
 }

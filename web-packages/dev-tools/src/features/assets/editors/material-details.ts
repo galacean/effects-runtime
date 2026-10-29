@@ -3,9 +3,12 @@ import { SerializationHelper, Texture, spec } from '@galacean/effects';
 import { ImGui } from '../../../platform/imgui/index';
 import { propertyLabel } from '../../../ui/property-editor/default-object-details';
 import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
+import { toolbarButton } from '../../../ui/widgets/toolbar-button';
 import { sceneWorkspace } from '../../scene/scene-workspace';
+import { assetLibrary } from '../asset-library';
+import { openContentAsset } from './asset-editor-registry';
 
-interface MaterialProperty {
+export interface MaterialProperty {
   name: string,
   label: string,
   type: string,
@@ -14,9 +17,7 @@ interface MaterialProperty {
   range?: [number, number],
 }
 
-function materialProperties (material: Material): MaterialProperty[] {
-  const source = material.shader?.shaderData.properties;
-
+export function materialProperties (source: string | undefined, data: { floats?: object, colors?: object, vector4s?: object, textures?: object }): MaterialProperty[] {
   if (source) {
     return source.split('\n').flatMap(line => {
       const match = line.match(/\s*(\s*\[[^\]]+\]\s*)*([^\s([\]]+)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/);
@@ -30,7 +31,6 @@ function materialProperties (material: Material): MaterialProperty[] {
         toggle: line.includes('[Toggle]'), range: range ? [Number(range[1]), Number(range[2])] as [number, number] : undefined }];
     });
   }
-  const data = material.toData();
 
   return [
     ...Object.keys(data.floats ?? {}).map(name => ({ name, type: 'Float' })),
@@ -41,11 +41,19 @@ function materialProperties (material: Material): MaterialProperty[] {
 }
 
 export function materialSearchTerms (material: Material, skipColor = false): string[] {
-  return ['Surface Type', 'Render Face', material.name ?? '', ...materialProperties(material)
+  return ['Surface Type', 'Render Face', material.name ?? '', ...materialProperties(material.shader?.shaderData.properties, material.toData())
     .filter(property => !skipColor || property.name !== '_Color').map(property => property.label)];
 }
 
 export function drawMaterialProperties (material: Material, skipColor = false): void {
+  const contentAsset = assetLibrary.entry(material.getInstanceId());
+
+  if (contentAsset?.kind === 'material') {
+    Fields.Property('Source Asset', () => {
+      if (toolbarButton('##EditMaterialAsset', { icon: 'materialAsset', label: 'Edit Material', height: 24, hint: 'Edit and save the shared material resource' })) { openContentAsset(contentAsset.id); }
+    });
+  }
+  ImGui.BeginDisabled(contentAsset?.kind === 'material');
   const data = material.toData();
   const renderTypes = [spec.RenderType.Opaque, spec.RenderType.Transparent];
   const renderFaces = [spec.RenderFace.Front, spec.RenderFace.Back, spec.RenderFace.Both];
@@ -62,7 +70,7 @@ export function drawMaterialProperties (material: Material, skipColor = false): 
 
     return Math.max(0, renderFaces.indexOf((data.stringTags.RenderFace ?? spec.RenderFace.Both) as spec.RenderFace));
   }, ['Front', 'Back', 'Both']) || changed;
-  for (const property of materialProperties(material)) {
+  for (const property of materialProperties(material.shader?.shaderData.properties, data)) {
     const { name, label, type } = property;
 
     if (skipColor && name === '_Color') { continue; }
@@ -120,4 +128,5 @@ export function drawMaterialProperties (material: Material, skipColor = false): 
   if (changed) {
     SerializationHelper.deserialize(data, material);
   }
+  ImGui.EndDisabled();
 }

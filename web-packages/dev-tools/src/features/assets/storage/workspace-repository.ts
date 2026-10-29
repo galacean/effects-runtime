@@ -2,6 +2,7 @@ import { EditorDatabase } from '../../../platform/browser-storage/editor-databas
 import type { ProjectRecord, ProjectSettings } from '../../projects/project-types';
 import { ProjectRepository } from '../../projects/storage/project-repository';
 import type { AssetBrowserPreferences, AssetEntry, AssetPayload } from '../model/asset-types';
+import { ASSET_KINDS } from '../model/asset-types';
 import { AssetRepository } from './asset-repository';
 import type { AssetStores } from './asset-stores';
 import { WorkspaceMigrations } from './workspace-migrations';
@@ -51,7 +52,7 @@ export class WorkspaceRepository {
         this.channel.onmessage = event => {
           const entries = event.data?.entries;
 
-          if (Array.isArray(entries) && entries.every(entry => entry && typeof entry.id === 'string' && ['folder', 'texture', 'scene'].includes(entry.kind))) { this.notify(entries, false); }
+          if (Array.isArray(entries) && entries.every(entry => entry && typeof entry.id === 'string' && ASSET_KINDS.includes(entry.kind))) { this.notify(entries, false); }
           if (event.data?.projects) { void this.projectRecords.getProject(this.projectId).then(project => { this.projectRecords.current = project; this.notifyProjects(false); }); }
         };
       }

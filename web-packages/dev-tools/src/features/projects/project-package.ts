@@ -1,7 +1,8 @@
-import { generateGUID } from '@galacean/effects';
+import { generateGUID, spec } from '@galacean/effects';
 import { blobDataURL } from '../../platform/browser-files/blob-data-url';
-import type { AssetBrowserPreferences, AssetEntry, AssetPayload, AssetScene } from '../assets/model/asset-types';
-import { ASSET_ROOT } from '../assets/model/asset-types';
+import type { AssetBrowserPreferences, AssetEntry, AssetObject, AssetPayload, AssetScene } from '../assets/model/asset-types';
+import { ASSET_KINDS, ASSET_ROOT, isObjectAsset } from '../assets/model/asset-types';
+import { validateObjectAsset, validateObjectAssetReferences } from '../assets/model/object-asset-data';
 import type { ProjectRecord } from './project-types';
 
 interface PackageImage { id: string, kind: 'texture', source: string, thumbnail: string }
@@ -10,7 +11,7 @@ interface ProjectPackage {
   version: 1,
   project: ProjectRecord,
   entries: AssetEntry[],
-  payloads: (AssetScene | PackageImage)[],
+  payloads: (AssetScene | AssetObject | PackageImage)[],
   preferences?: AssetBrowserPreferences,
   lastSceneId?: string,
 }
@@ -18,7 +19,7 @@ export interface ProjectSnapshot { project: ProjectRecord, entries: AssetEntry[]
 
 export async function encodeProject (snapshot: ProjectSnapshot): Promise<Blob> {
   const payloads = await Promise.all(snapshot.payloads.map(async payload => {
-    if (payload.kind === 'scene') { return payload; }
+    if (payload.kind !== 'texture') { return payload; }
     const mime = snapshot.entries.find(entry => entry.id === payload.id)?.mime ?? 'image/png';
     const source = payload.blob.type.startsWith('image/') ? payload.blob : new Blob([payload.blob], { type: mime });
 
@@ -49,7 +50,7 @@ export async function decodeProject (file: File, existingNames: string[]): Promi
   const entries = new Map<string, AssetEntry>(), payloads = new Map<string, AssetPayload>();
 
   for (const entry of archive.entries) {
-    if (!entry?.id || typeof entry.id !== 'string' || entries.has(entry.id) || !['folder', 'texture', 'scene'].includes(entry.kind) ||
+    if (!entry?.id || typeof entry.id !== 'string' || entries.has(entry.id) || !ASSET_KINDS.includes(entry.kind) ||
       typeof entry.name !== 'string' || !entry.name.trim() || /[/\\]/.test(entry.name) || Array.from(entry.name).some(character => character.charCodeAt(0) < 32) || typeof entry.parentId !== 'string') {
       throw new Error('The project contains invalid or duplicate assets.');
     }
@@ -72,16 +73,19 @@ export async function decodeProject (file: File, existingNames: string[]): Promi
     if (!entry || entry.kind === 'folder' || entry.kind !== payload.kind || payloads.has(payload.id)) { throw new Error('The project contains invalid asset data.'); }
     if (payload.kind === 'texture') {
       payloads.set(payload.id, { id: payload.id, kind: 'texture', blob: imageBlob(payload.source), thumbnail: imageBlob(payload.thumbnail) });
-    } else {
+    } else if (payload.kind === 'scene') {
       if (!payload.scene?.compositions || !Array.isArray(payload.scene.components) || !payload.editor?.objects) { throw new Error('A project scene is invalid.'); }
       for (const textureId of Object.keys(payload.textureReferences ?? {})) {
         if (entries.get(textureId)?.kind !== 'texture') { throw new Error('A scene references a texture that is missing from the project.'); }
       }
       payloads.set(payload.id, payload);
+    } else if (isObjectAsset(payload)) {
+      validateObjectAsset(payload); validateObjectAssetReferences(payload, id => entries.get(id)); payloads.set(payload.id, payload);
     }
   }
   if ([...entries.values()].some(entry => entry.kind !== 'folder' && !payloads.has(entry.id))) { throw new Error('An asset is missing from the project package.'); }
   const mapping = new Map([...entries.keys()].map(id => [id, generateGUID()]));
+  const builtins = new Set<string>(Object.values(spec.BuiltinObjectGUID));
   const mappedId = (id: string): string => {
     const separator = id.indexOf(':');
     const owner = separator > 0 ? mapping.get(id.slice(0, separator)) : undefined;
@@ -97,7 +101,7 @@ export async function decodeProject (file: File, existingNames: string[]): Promi
     }
     const object = value as Record<string, unknown>;
 
-    if (typeof object.id === 'string' && !mapping.has(object.id)) {
+    if (typeof object.id === 'string' && !mapping.has(object.id) && !builtins.has(object.id)) {
       const owner = object.id.split(':')[0];
 
       if (owner !== object.id && /^[\da-f-]{32,36}$/i.test(owner) && !mapping.has(owner)) { mapping.set(owner, generateGUID()); }
@@ -106,7 +110,7 @@ export async function decodeProject (file: File, existingNames: string[]): Promi
     Object.values(object).forEach(collect);
   };
 
-  for (const payload of payloads.values()) { if (payload.kind === 'scene') { collect(payload.scene); } }
+  for (const payload of payloads.values()) { if (payload.kind === 'scene') { collect(payload.scene); } else if (isObjectAsset(payload)) { collect(payload.objects); } }
   const textFields = new Set(['name', 'text', 'description', 'source', 'vertex', 'fragment']);
   const remap = (value: any, field = ''): any => {
     if (typeof value === 'string') { return textFields.has(field) ? value : mappedId(value); }
@@ -143,6 +147,6 @@ export async function decodeProject (file: File, existingNames: string[]): Promi
     project, preferences, lastSceneId: lastScene?.kind === 'scene' && !lastScene.deletedAt ? mapping.get(lastScene.id) : undefined,
     entries: [...entries.values()].map(entry => ({ ...entry, id: mapping.get(entry.id)!, projectId,
       parentId: entry.parentId === ASSET_ROOT ? ASSET_ROOT : mapping.get(entry.parentId)!, createdAt: Number.isFinite(entry.createdAt) ? entry.createdAt : now, updatedAt: now })),
-    payloads: [...payloads.values()].map(payload => payload.kind === 'scene' ? remap(payload) as AssetScene : { ...payload, id: mapping.get(payload.id)! }),
+    payloads: [...payloads.values()].map(payload => payload.kind !== 'texture' ? remap(payload) as AssetScene | AssetObject : { ...payload, id: mapping.get(payload.id)! }),
   };
 }

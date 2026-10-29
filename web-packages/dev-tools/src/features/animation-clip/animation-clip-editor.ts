@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import { AnimationClip } from '@galacean/effects';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
@@ -1057,8 +1058,10 @@ export class AnimationClipEditor extends EditorWindow {
     const mouse = ImGui.GetMousePos(), hit = this.curveEditor.keys.find(key => Math.abs(key.x - mouse.x) <= LAYOUT.keySize + 4 && Math.abs(key.y - mouse.y) <= LAYOUT.keySize + 4);
 
     if (hit && ImGui.IsWindowHovered()) {
-      ImGui.BeginTooltip(); ImGui.TextColored(ch.color, ch.label); ImGui.Separator();
-      ImGui.Text('Time: ' + this.fmtTime(hit.key.time)); ImGui.Text('Value: ' + hit.key.value.toFixed(4)); ImGui.EndTooltip();
+      editorTooltip(() => {
+        ImGui.TextColored(ch.color, ch.label); ImGui.Separator();
+        ImGui.Text('Time: ' + this.fmtTime(hit.key.time)); ImGui.Text('Value: ' + hit.key.value.toFixed(4));
+      }, { id: '##ChannelKey:' + ch.label + ':' + hit.key.id, hovered: true });
     }
     ImGui.SetCursorScreenPos(p); ImGui.Dummy(new ImGui.Vec2(width, height));
   }
@@ -1090,16 +1093,16 @@ export class AnimationClipEditor extends EditorWindow {
     }
 
     if (isHovered) {
-      ImGui.BeginTooltip();
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, evtColor);
-      ImGui.Text(evt.name || 'Event');
-      ImGui.PopStyleColor();
-      ImGui.Separator();
-      ImGui.Text(`Time: ${this.fmtTime(evt.startTime)}`);
-      if (evt.duration > 0) {
-        ImGui.Text(`Duration: ${this.fmtTime(evt.duration)}`);
-      }
-      ImGui.EndTooltip();
+      editorTooltip(() => {
+        ImGui.PushStyleColor(ImGui.ImGuiCol.Text, evtColor);
+        ImGui.Text(evt.name || 'Event');
+        ImGui.PopStyleColor();
+        ImGui.Separator();
+        ImGui.Text(`Time: ${this.fmtTime(evt.startTime)}`);
+        if (evt.duration > 0) {
+          ImGui.Text(`Duration: ${this.fmtTime(evt.duration)}`);
+        }
+      }, { id: '##Event:' + index, hovered: true });
     }
 
     ImGui.SetCursorScreenPos(pos);

@@ -1,5 +1,6 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import { toolbarButton } from '../../../ui/widgets/toolbar-button';
-import { EffectsObject, Material, Sprite, Texture, VFXItem } from '@galacean/effects';
+import { EffectsObject, Material, Shader, Sprite, Texture, VFXItem } from '@galacean/effects';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { ImGui } from '../../../platform/imgui/index';
@@ -12,13 +13,14 @@ import { beginEditorPopup, editorMenuItem, endEditorPopup } from '../../../ui/wi
 import { searchBar } from '../../../ui/widgets/search-bar';
 import { sceneWorkspace } from '../../scene/scene-workspace';
 import { assetLibrary } from '../asset-library';
-import { openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
+import { openContentAsset, openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import { getSpriteThumbnail } from '../preview/sprite-thumbnail';
-import { getOrCreateTexturePreview } from '../preview/texture-preview';
+import { drawTexturePreview, getOrCreateTexturePreview } from '../preview/texture-preview';
 import type { ContentAssetDrag } from './asset-drag';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
 
 const searches = new Map<number, [string]>();
+const assetKinds = { Texture: 'texture', Material: 'material', Shader: 'shader', Sprite: 'sprite' } as const;
 
 function openReference (reference: object): void {
   if (reference instanceof VFXItem) {
@@ -27,6 +29,7 @@ function openReference (reference: object): void {
     return;
   }
   if (reference instanceof Texture && assetLibrary.entry(reference.getInstanceId())?.kind === 'texture' && openTextureAsset(reference.getInstanceId())) { return; }
+  if (reference instanceof EffectsObject && assetLibrary.entry(reference.getInstanceId()) && openContentAsset(reference.getInstanceId())) { return; }
   openRuntimeAsset(reference);
 }
 
@@ -39,36 +42,41 @@ export function drawAssetReferenceField (object: object, property: string, width
   const payloadType = expectedType ?? reference?.constructor.name ?? 'EffectsObject';
   const type = reference instanceof Texture || payloadType === Texture.name || payloadType === 'Texture' ? 'Texture' :
     reference instanceof Sprite || payloadType === Sprite.name || payloadType === 'Sprite' ? 'Sprite' :
-      reference instanceof Material || payloadType === Material.name || payloadType === 'Material' ? 'Material' : payloadType;
-  const assetReference = ['Texture', 'Sprite', 'Material'].includes(type);
+      reference instanceof Material || payloadType === Material.name || payloadType === 'Material' ? 'Material' :
+        reference instanceof Shader || payloadType === Shader.name || payloadType === 'Shader' ? 'Shader' : payloadType;
+  const kind = assetKinds[type as keyof typeof assetKinds];
+  const assetReference = !!kind;
   const engine = EditorRuntimeSession.player.engine;
   const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
   const caption = entry?.name || reference?.name || (reference ? type : 'None');
-  const selectedTexture = selectedContentAssets().find(id => assetLibrary.entry(id)?.kind === 'texture');
+  const referenceHint = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : '';
+  const selectedAsset = selectedContentAssets().find(id => assetLibrary.entry(id)?.kind === kind && !assetLibrary.entry(id)?.deletedAt);
   const canBrowse = !!entry && !entry.deletedAt;
   let changed = false;
 
-  const assignTexture = (id: string) => {
-    const texture = assetLibrary.texture(engine, id);
+  const assignAsset = (id: string) => {
+    if (!kind || assetLibrary.entry(id)?.kind !== kind || assetLibrary.entry(id)?.deletedAt) { return; }
+    const cached = assetLibrary.asset(engine, id);
 
-    if (texture?.isRegistered && !texture.isDestroyed) {
-      target[property] = texture; changed = true;
+    if (cached?.isRegistered && !(cached instanceof Texture && cached.isDestroyed)) {
+      target[property] = cached; changed = true;
 
       return;
     }
     const selection = [...EditorSelection.getSelectedObjects()], document = sceneWorkspace.current, project = assetLibrary.projectId;
 
-    void assetLibrary.loadTexture(engine, id).then(loaded => {
+    void assetLibrary.loadAsset(engine, id).then(loaded => {
       const current = EditorSelection.getSelectedObjects();
 
       if (document !== sceneWorkspace.current || project !== assetLibrary.projectId || selection.length !== current.length || selection.some((item, index) => item !== current[index])) { return; }
-      if (onAssetDrop) { onAssetDrop(loaded); } else { sceneWorkspace.observe('Assign texture', () => target[property] = loaded, [object]); }
-    }).catch(error => assetLibrary.report(error));
+      if (onAssetDrop && loaded instanceof Texture) { onAssetDrop(loaded); } else { sceneWorkspace.observe('Assign ' + kind, () => target[property] = loaded, [...selection, object]); }
+    }).catch(error => { if (project === assetLibrary.projectId) { assetLibrary.report(error); } });
   };
 
   ImGui.BeginGroup();
   const origin = ImGui.GetCursorScreenPos();
-  const preview = reference instanceof Texture ? getOrCreateTexturePreview(reference) : reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
+  const spritePreview = reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
+  const preview = reference instanceof Texture ? getOrCreateTexturePreview(reference) : spritePreview;
   const thumbnail = !!preview || reference instanceof Material;
   const thumbnailWidth = thumbnail ? 60 : 0;
 
@@ -83,14 +91,14 @@ export function drawAssetReferenceField (object: object, property: string, width
     draw.AddRect(origin, new ImGui.Vec2(origin.x + size, origin.y + size), ImGui.GetColorU32(hovered ? I.hover : I.outline), 3);
     if (preview) {
       const texture = reference instanceof Texture ? reference : (reference as Sprite).texture;
-      const imageWidth = Math.max(1, texture.width * (reference instanceof Sprite ? reference.rect[2] : 1));
-      const imageHeight = Math.max(1, texture.height * (reference instanceof Sprite ? reference.rect[3] : 1));
+      const imageWidth = Math.max(1, spritePreview?.width ?? texture.width);
+      const imageHeight = Math.max(1, spritePreview?.height ?? texture.height);
       const scale = Math.min((size - 6) / imageWidth, (size - 6) / imageHeight), w = imageWidth * scale, h = imageHeight * scale;
       const min = new ImGui.Vec2(origin.x + (size - w) / 2, origin.y + (size - h) / 2);
 
-      draw.AddImage(preview.tex, min, new ImGui.Vec2(min.x + w, min.y + h), preview.uv0, preview.uv1);
+      drawTexturePreview(preview, min, new ImGui.Vec2(min.x + w, min.y + h));
     } else { drawAssetIcon('material', origin.x + 3, origin.y + 3, size - 6); }
-    if (hovered && ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) { ImGui.SetTooltip('Double-click to edit ' + caption); }
+    if (referenceHint) { editorTooltip(referenceHint); }
     ImGui.SameLine(0, 6);
   }
   const p = ImGui.GetCursorScreenPos(), captionWidth = Math.max(30, width - thumbnailWidth);
@@ -108,10 +116,10 @@ export function drawAssetReferenceField (object: object, property: string, width
   draw.PopClipRect(); drawEditorChevron(p.x + captionWidth - 18, p.y + (ImGui.GetFrameHeight() - 14) / 2, 14, hovered ? I.foregroundHover : I.foreground);
   ImGui.PopStyleColor(2);
   if (clicked) { ImGui.OpenPopup('##AssetPicker'); }
-  if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal)) { ImGui.SetTooltip(readOnly ? 'Reference actions' : 'Choose ' + type + '. Drop a compatible asset here to replace it.'); }
+  if (referenceHint) { editorTooltip(referenceHint); }
   if (assetReference) {
     ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + ImGui.GetFrameHeight() + 3));
-    if (actionButton('##UseSelected', 'use', !readOnly && type === 'Texture' && !!selectedTexture, 'Use selected asset from Content Browser') && selectedTexture) { assignTexture(selectedTexture); }
+    if (actionButton('##UseSelected', 'use', !readOnly && !!selectedAsset, 'Use selected asset from Content Browser') && selectedAsset) { assignAsset(selectedAsset); }
     ImGui.SameLine(0, 2);
     if (actionButton('##BrowseAsset', 'browse', canBrowse, canBrowse ? 'Browse to asset in Content Browser' : 'This reference is stored in the scene') && entry) { revealContentAsset(entry.id); }
   }
@@ -133,20 +141,20 @@ export function drawAssetReferenceField (object: object, property: string, width
       const query = search[0].trim().toLowerCase();
       let count = 0;
 
-      if (type === 'Texture') {
-        for (const asset of assetLibrary.entries.filter(asset => asset.kind === 'texture' && !asset.deletedAt && asset.name.toLowerCase().includes(query))) {
-          if (ImGui.Selectable(asset.name + '##' + asset.id, entry?.id === asset.id)) { assignTexture(asset.id); ImGui.CloseCurrentPopup(); }
+      if (kind) {
+        for (const asset of assetLibrary.entries.filter(asset => asset.kind === kind && !asset.deletedAt && asset.name.toLowerCase().includes(query))) {
+          if (ImGui.Selectable(asset.name + '##' + asset.id, entry?.id === asset.id)) { assignAsset(asset.id); ImGui.CloseCurrentPopup(); }
           count++;
         }
       }
-      const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material };
+      const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material, Shader };
       const constructor = constructors[type];
 
       if (constructor) {
         for (const asset of Object.values(engine.effectsObjectServer.objectInstance)) {
           const assetName = (asset as { name?: string })?.name || asset?.constructor.name;
 
-          if (!(asset instanceof constructor) || asset instanceof Texture && (asset.isDestroyed || assetLibrary.entry(asset.getInstanceId())) || !assetName.toLowerCase().includes(query)) { continue; }
+          if (!(asset instanceof constructor) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && asset.isDestroyed || !assetName.toLowerCase().includes(query)) { continue; }
           if (ImGui.Selectable(assetName + '##' + asset.getInstanceId(), reference === asset)) { target[property] = asset; changed = true; ImGui.CloseCurrentPopup(); }
           count++;
         }
@@ -168,11 +176,11 @@ export function drawAssetReferenceField (object: object, property: string, width
 
       if (legacy?.Data) { target[property] = legacy.Data; changed = true; }
     }
-    if (type === 'Texture') {
+    if (kind) {
       const asset = ImGui.AcceptDragDropPayload<ContentAssetDrag>(CONTENT_ASSET_PAYLOAD);
       const id = asset?.Data?.ids.length === 1 ? asset.Data.ids[0] : undefined;
 
-      if (id && assetLibrary.entry(id)?.kind === 'texture') { assignTexture(id); }
+      if (id && assetLibrary.entry(id)?.kind === kind) { assignAsset(id); }
     }
     ImGui.EndDragDropTarget();
   }

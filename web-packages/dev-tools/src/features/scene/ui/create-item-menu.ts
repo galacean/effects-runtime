@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import { ImGui } from '../../../platform/imgui/index';
 import { beginEditorMenu, editorIconMenuItem, editorMenuSection, endEditorMenu } from '../../../ui/widgets/editor-menu';
 import type { SceneItemPlacement } from '../operations/scene-item-operations';
@@ -17,7 +18,7 @@ export function drawCreateItemMenu (target?: SceneItemPlacement): void {
         if (editorIconMenuItem((entry.empty ? 'Empty ' : '') + entry.label, entry.icon)) {
           new SceneItemOperations(document!).create(entry, target);
         }
-        if (entry.empty && ImGui.IsItemHovered()) { ImGui.SetTooltip('Creates an empty ' + entry.label + ' item without a source asset.'); }
+        if (entry.empty && ImGui.IsItemHovered()) { editorTooltip('Creates an empty ' + entry.label + ' item without a source asset.'); }
       }
       endEditorMenu();
     }

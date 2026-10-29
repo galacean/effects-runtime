@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { ImGui } from '../../platform/imgui/index';
 import { PropertyFields as Fields } from '../../ui/property-editor/property-fields';
@@ -61,7 +62,7 @@ function drawAnchorPresets (control: Control): void {
 
       dl.AddRectFilled(point(column === 3 ? 10 : x, row === 3 ? 10 : y),
         point(column === 3 ? 28 : x + 4, row === 3 ? 28 : y + 4), ImGui.GetColorU32(C.accent));
-      if (ImGui.IsItemHovered()) { ImGui.SetTooltip(preset.replace(/([a-z])([A-Z])/g, '$1 $2') + '\nShift+click keeps the current rectangle.'); }
+      if (ImGui.IsItemHovered()) { editorTooltip(preset.replace(/([a-z])([A-Z])/g, '$1 $2') + '\nShift+click keeps the current rectangle.'); }
     }
     ImGui.Dummy(new ImGui.Vec2(0, 4));
   }

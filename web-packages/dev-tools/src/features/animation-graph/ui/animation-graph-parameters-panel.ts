@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
 import type { GraphInstance } from '@galacean/effects';
 import { ImGui } from '../../../platform/imgui/index';
 
@@ -292,7 +293,7 @@ export class AnimationGraphParametersPanel {
     }
 
     if (ImGui.IsItemHovered()) {
-      ImGui.SetTooltip('Click to trigger');
+      editorTooltip('Click to trigger');
     }
   }
 

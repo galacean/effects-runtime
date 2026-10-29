@@ -1003,9 +1003,6 @@ export class GraphEditorView {
 
       ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + nodeWindowWidth);
       ImGui.Text(`# ${pNode.GetName()}`);
-      if (ImGui.IsItemHovered()) {
-        ImGui.SetTooltip(pNode.GetName());
-      }
       ImGui.PopTextWrapPos();
 
       pNode.m_titleRectSize = ctx.WindowToCanvas(ImGui.GetItemRectSize());

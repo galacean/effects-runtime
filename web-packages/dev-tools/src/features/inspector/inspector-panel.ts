@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import { drawEditorIcon } from '../../ui/icons/editor-icons';
 import { inspectedObjectHeaderIcon, inspectedObjectIcon } from './inspected-object-icons';
 import { Component, EffectsObject, MaskableGraphic, Material, RendererComponent, Sprite, SpriteRotation, Texture, VFXItem, spec } from '@galacean/effects';
@@ -14,7 +15,7 @@ import { beginEditorPopup, editorMenuItem, editorMenuSection, endEditorPopup } f
 import { searchBar } from '../../ui/widgets/search-bar';
 import { drawMaterialProperties, materialSearchTerms } from '../assets/editors/material-details';
 import { getSpriteThumbnail } from '../assets/preview/sprite-thumbnail';
-import { getOrCreateTexturePreview } from '../assets/preview/texture-preview';
+import { getOrCreateTexturePreview, texturePreviewImage } from '../assets/preview/texture-preview';
 import type { SceneDocument } from '../scene/document/scene-document';
 import { getEditorRotation } from '../scene/operations/editor-transform';
 import { sceneWorkspace } from '../scene/scene-workspace';
@@ -206,7 +207,7 @@ export class InspectorPanel extends EditorWindow {
       editorMenuSection('View Mode');
       if (editorMenuItem('Normal', '', !this.debugMode)) { this.setDebugMode(false); }
       if (editorMenuItem('Debug', '', this.debugMode)) { this.setDebugMode(true); }
-      if (ImGui.IsItemHovered()) { ImGui.SetTooltip('Show raw component fields, including internal state, without custom property editors.'); }
+      if (ImGui.IsItemHovered()) { editorTooltip('Show raw component fields, including internal state, without custom property editors.'); }
       editorMenuSection('Categories', true);
       if (editorMenuItem('Expand All')) { grid.expandAll(true); }
       if (editorMenuItem('Collapse All')) { grid.expandAll(false); }
@@ -357,7 +358,7 @@ export class InspectorPanel extends EditorWindow {
         const preview = object instanceof Sprite ? getSpriteThumbnail(object) : getOrCreateTexturePreview(object);
 
         if (preview) {
-          Fields.Property('Preview', width => ImGui.Image(preview.tex, new ImGui.Vec2(Math.min(width, 144), Math.min(width, 144)), preview.uv0, preview.uv1));
+          Fields.Property('Preview', width => texturePreviewImage(preview, new ImGui.Vec2(Math.min(width, 144), Math.min(width, 144))));
         }
         Fields.Text(object instanceof Sprite ? 'Texture Width' : 'Width', texture.width + ' px');
         Fields.Text(object instanceof Sprite ? 'Texture Height' : 'Height', texture.height + ' px');

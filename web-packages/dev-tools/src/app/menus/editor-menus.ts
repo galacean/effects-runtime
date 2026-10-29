@@ -1,3 +1,4 @@
+import { saveFocusedAsset } from '../../features/assets/editors/asset-editor-registry';
 import { assetLibrary } from '../../features/assets/asset-library';
 import { ASSET_ROOT } from '../../features/assets/model/asset-types';
 import { projectWorkspace as projects } from '../../features/projects/project-workspace';
@@ -90,7 +91,7 @@ export class EditorMenus {
       return;
     }
     if (shortcut === 'save' || shortcut === 'saveAs') {
-      if (shortcut === 'saveAs') { editorCommands.execute('scene.save-as'); } else { editorCommands.execute('scene.save'); }
+      if (shortcut === 'saveAs') { editorCommands.execute('scene.save-as'); } else if (!saveFocusedAsset()) { editorCommands.execute('scene.save'); }
 
       return;
     }

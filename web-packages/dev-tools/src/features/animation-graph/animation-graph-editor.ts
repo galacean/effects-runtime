@@ -1,3 +1,4 @@
+import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import type { spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
 import { beginEditorMenu, editorMenuItem, endEditorMenu } from '../../ui/widgets/editor-menu';
@@ -609,7 +610,7 @@ export class AnimationGraphEditor extends EditorWindow {
       this.primaryGraphView.FitToView();
     }
     if (ImGui.IsItemHovered()) {
-      ImGui.SetTooltip('Fit all nodes in view');
+      editorTooltip('Fit all nodes in view');
     }
 
     ImGui.SameLine(0, 4);
@@ -620,7 +621,7 @@ export class AnimationGraphEditor extends EditorWindow {
       }
     }
     if (ImGui.IsItemHovered()) {
-      ImGui.SetTooltip('Reset zoom to 100%');
+      editorTooltip('Reset zoom to 100%');
     }
     ImGui.PopStyleColor(3);
 
