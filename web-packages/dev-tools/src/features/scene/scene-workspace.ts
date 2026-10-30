@@ -291,7 +291,7 @@ export class SceneWorkspace {
       const before = { ...after, data: jsonData(after.data) };
 
       before.data.options.text = source.options.text;
-      if (source.options.height !== undefined) { before.data.options.height = source.options.height; }
+      if (source.options.textHeight !== undefined) { before.data.options.textHeight = source.options.textHeight; }
       document.recordObject('Edit text', before, after);
     }
   }

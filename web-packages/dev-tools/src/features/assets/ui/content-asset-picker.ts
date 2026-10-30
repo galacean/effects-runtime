@@ -24,7 +24,8 @@ export function contentAssetPicker (kind: Exclude<AssetKind, 'folder' | 'scene'>
   let changed = false;
   const assign = (id?: string) => { if (id !== current) { choose(id); changed = true; } };
   const compatible = (id?: string) => id && assetLibrary.entry(id)?.kind === kind && !assetLibrary.entry(id)?.deletedAt;
-  const fieldWidth = Math.max(40, width - 52);
+  const stacked = width < 180;
+  const fieldWidth = Math.max(40, stacked ? width : width - 52);
 
   ImGui.BeginGroup();
   ImGui.PushStyleColor(ImGui.Col.Button, PROPERTY_COLORS.input); ImGui.PushStyleColor(ImGui.Col.ButtonHovered, PROPERTY_COLORS.input);
@@ -37,7 +38,7 @@ export function contentAssetPicker (kind: Exclude<AssetKind, 'folder' | 'scene'>
   draw.AddText(new ImGui.Vec2(origin.x + 26, origin.y + (height - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(ImGui.Col.Text), entry?.name ?? (current ? 'Missing ' + presentation.label : emptyLabel));
   draw.PopClipRect(); drawEditorChevron(origin.x + fieldWidth - 18, origin.y + (height - 14) / 2, 14, PROPERTY_COLORS.text);
   if (entry) { editorTooltip(assetLibrary.pathText(entry.parentId) + '/' + entry.name); }
-  ImGui.SameLine(0, 2);
+  if (stacked) { ImGui.SetCursorPosX(ImGui.GetCursorPosX() + Math.max(0, width - 48)); } else { ImGui.SameLine(0, 2); }
   if (toolbarButton('##UseSelected', { icon: 'useSelected', width: 24, height, enabled: !!selected, hint: 'Use selected asset' })) { assign(selected); }
   ImGui.SameLine(0, 0);
   if (toolbarButton('##Browse', { icon: 'browseContent', width: 24, height, enabled: !!entry && !entry.deletedAt, hint: 'Browse to asset' }) && entry) { revealContentAsset(entry.id); }

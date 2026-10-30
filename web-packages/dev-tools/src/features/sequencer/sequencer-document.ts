@@ -7,19 +7,22 @@ import {
   REFERENCE_CURVE,
   SpriteColorPlayableAsset, SpriteColorTrack, TransformPlayableAsset, TransformTrack,
   VFXItem,
-  createValueGetter, effectsClassStore, spec,
+  effectsClassStore, spec,
 } from '@galacean/effects';
 import { EditorHistory, historyBytes } from '../../framework/history/editor-history';
 import type { SequenceChannelEditorData, SequenceEditorData } from '../scene/document/scene-types';
 import { getEditorRotation } from '../scene/operations/editor-transform';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import type { SequenceKey } from './curve-data';
-import { curveSourceSignature, decodeCurve, decodeSpatialCurve, encodeCurve, insertBoundary, makeKey, sampleCurve, trimKeys, updateAutoTangents } from './curve-data';
-import { encodePositionPath } from './position-path';
+import { curveSourceSignature, decodeCurve, encodeCurve, insertBoundary, makeKey, sampleCurve, trimKeys, updateAutoTangents } from './curve-data';
+import type { PositionAnimationData, PositionPathSnapshot, SpatialKey } from './spatial-position';
+import { encodePositionAxes, PositionPathModel } from './spatial-position';
 import { findSequenceTimeline, sampleSequencePreview } from './sequencer-preview';
 
 type Payload = Record<string, unknown>;
-type TransformData = TransformPlayableAsset['transformAnimationData'];
+type TransformData = Omit<TransformPlayableAsset['transformAnimationData'], 'positionOverLifetime'> & {
+  positionOverLifetime?: PositionAnimationData,
+};
 
 export interface SequenceChannel {
   id: string,
@@ -30,6 +33,7 @@ export interface SequenceChannel {
   axis: number,
   kind: 'number' | 'reference',
   references?: Map<string, EffectsObject | null>,
+  pathView?: 'point' | 'timing',
 }
 export interface SequenceSection {
   clip: TimelineClip,
@@ -37,6 +41,7 @@ export interface SequenceSection {
   payload: Payload,
   channels: SequenceChannel[],
   channelState: Map<string, string>,
+  position?: PositionPathModel,
 }
 export interface KeySelection {
   section: SequenceSection,
@@ -61,6 +66,7 @@ interface SectionSnapshot {
   name: string,
   payload: Payload,
   channelState: Map<string, string>,
+  position?: PositionPathSnapshot,
   channels: { channel: SequenceChannel, keys: SequenceKey[], references?: Map<string, EffectsObject | null> }[],
 }
 export interface SequenceSnapshot {
@@ -79,6 +85,7 @@ interface KeyClipboard {
   track: string,
   key: SequenceKey,
   reference?: EffectsObject | null,
+  spatial?: SpatialKey,
 }
 interface SectionClipboard {
   source: SequenceSection,
@@ -251,6 +258,9 @@ export class SequencerDocument {
   }
 
   channelValue (section: SequenceSection, channel: SequenceChannel, time = this.currentTime): number {
+    if (section.position && channel.pathView) {
+      return section.position.evaluate((time - section.clip.start) / section.clip.duration, channel.axis);
+    }
     if (Math.abs(time - this.currentTime) < 1e-7) {
       const item = this.boundItem(section.track);
 
@@ -274,6 +284,58 @@ export class SequencerDocument {
     }
 
     return channel.keys.length ? sampleCurve(channel.keys, (time - section.clip.start) / section.clip.duration) : channel.defaultValue;
+  }
+
+  /** Convert explicitly, preparing every result before changing any scene data. */
+  separateDimensions (sections: SequenceSection[]): void {
+    const conversions = Array.from(new Set(sections)).filter(section => section.position && !this.isLocked(section.track))
+      .map(section => ({ section, keys: section.position!.separate() }));
+
+    if (!conversions.length) { return; }
+    this.edit('Separate position dimensions', () => {
+      this.selectedKeys.clear();
+      for (const { section, keys } of conversions) {
+        section.channels = section.channels.filter(channel => channel.pathView !== 'timing').map(channel => {
+          if (channel.pathView !== 'point') { return channel; }
+          const { pathView: _view, ...axis } = channel;
+
+          return { ...axis, keys: keys[channel.axis] };
+        });
+        section.position = undefined; section.channelState.delete('Location');
+        this.write(section);
+      }
+    });
+  }
+
+  temporalKeys (items: KeySelection[]): KeySelection[] {
+    const result = new Map<string, KeySelection>();
+
+    for (const item of items) {
+      if (!item.channel.pathView) { result.set(item.key.id, item); continue; }
+      const channel = item.section.channels.find(channel => channel.pathView === 'timing')!;
+      const key = channel.keys.find(key => key.pathKeyId === item.key.pathKeyId);
+
+      if (key) { result.set(key.id, { section: item.section, channel, key }); }
+    }
+
+    return Array.from(result.values());
+  }
+
+  duplicateKey (item: KeySelection, spatialCopies: Map<string, string>): KeySelection {
+    if (item.section.position && item.key.pathKeyId) {
+      let id = spatialCopies.get(item.key.pathKeyId);
+
+      if (!id) { id = item.section.position.duplicate(item.key.pathKeyId)!.id; spatialCopies.set(item.key.pathKeyId, id); }
+      item.section.position.project(item.section.channels.filter(channel => channel.pathView));
+
+      return { ...item, key: item.channel.keys.find(key => key.pathKeyId === id)! };
+    }
+    const key = { ...item.key, id: makeKey(0, 0).id };
+
+    item.channel.keys.push(key);
+    if (item.channel.references) { item.channel.references.set(key.id, item.channel.references.get(item.key.id) ?? null); }
+
+    return { ...item, key };
   }
 
   begin (label: string, affectsContent = true): void {
@@ -439,8 +501,15 @@ export class SequencerDocument {
     if (clip instanceof TransformPlayableAsset) {
       const data = payload as unknown as TransformData;
 
-      if (changed('Location')) {
-        const path = encodePositionPath(section.channels.filter(channel => channel.group === 'Location'));
+      if (section.position) {
+        section.position.update(section.channels.filter(channel => channel.pathView));
+        const path = section.position.runtimeExpression();
+
+        if (path) {
+          data.positionOverLifetime = { path };
+        } else { delete data.positionOverLifetime; }
+      } else if (changed('Location')) {
+        const path = encodePositionAxes(section.channels.filter(channel => channel.group === 'Location'));
 
         if (path) { data.positionOverLifetime = { path }; } else { delete data.positionOverLifetime; }
       }
@@ -479,6 +548,21 @@ export class SequencerDocument {
   insertKey (section: SequenceSection, channel: SequenceChannel, time: number, value?: number, preserveCurve = false): void {
     if (this.isLocked(section.track) || section.clip.duration <= 0 || time < section.clip.start - 1e-8 || time > section.clip.start + section.clip.duration + 1e-8) { return; }
     const normalized = Math.max(0, Math.min(1, (time - section.clip.start) / section.clip.duration));
+
+    if (section.position && channel.pathView) {
+      const sourceTime = section.position.range[0] + normalized * (section.position.range[1] - section.position.range[0]);
+      const existing = section.position.keys.find(key => Math.abs(key.timing.time - sourceTime) < 1e-8);
+      const point = existing ? [...existing.point] as spec.vec3 : [0, 1, 2].map(axis => section.position!.evaluate(normalized, axis)) as spec.vec3;
+
+      if (channel.pathView === 'point' && !preserveCurve) { point[channel.axis] = value ?? point[channel.axis]; }
+      const key = section.position.insert(normalized, channel.pathView === 'point' && !preserveCurve ? point : undefined);
+
+      section.position.project(section.channels.filter(channel => channel.pathView));
+      this.selectedKeys.add(key.id + ':' + channel.axis);
+      this.write(section);
+
+      return;
+    }
 
     if (preserveCurve && channel.kind === 'number' && channel.keys.length) {
       insertBoundary(channel.keys, normalized);
@@ -545,7 +629,14 @@ export class SequencerDocument {
       if (this.selectedKeys.size) {
         for (const section of this.allSections()) {
           if (this.isLocked(section.track)) { continue; }
-          for (const channel of section.channels) { channel.keys = channel.keys.filter(key => !this.selectedKeys.has(key.id)); }
+          if (section.position) {
+            const ids = new Set(section.channels.flatMap(channel => channel.keys.filter(key => this.selectedKeys.has(key.id) && key.pathKeyId).map(key => key.pathKeyId!)));
+
+            section.position.remove(ids); section.position.project(section.channels.filter(channel => channel.pathView));
+          }
+          for (const channel of section.channels) {
+            if (!channel.pathView) { channel.keys = channel.keys.filter(key => !this.selectedKeys.has(key.id)); }
+          }
           this.write(section);
         }
         this.selectedKeys.clear();
@@ -591,6 +682,7 @@ export class SequencerDocument {
     targetTrack.addClip(clip);
     const section: SequenceSection = {
       clip, track: targetTrack, payload: copy(state.payload), channelState: new Map(state.channelState),
+      position: state.position ? PositionPathModel.restore(state.position, true) : undefined,
       channels: state.channels.map(({ channel, keys: sourceKeys, references: sourceReferences }) => {
         const references = new Map<string, EffectsObject | null>();
         const keys = sourceKeys.map(key => {
@@ -605,6 +697,7 @@ export class SequencerDocument {
       }),
     };
 
+    section.position?.project(section.channels.filter(channel => channel.pathView));
     this.sections.set(clip, section); this.write(section);
 
     return section;
@@ -615,7 +708,9 @@ export class SequencerDocument {
     const oldStart = section.clip.start, duration = section.clip.duration;
 
     if (!stretch && duration > 0) {
+      section.position?.trim((start - oldStart) / duration, (end - oldStart) / duration);
       for (const channel of section.channels) {
+        if (channel.pathView) { continue; }
         const previous = channel.keys;
 
         channel.keys = trimKeys(previous, (start - oldStart) / duration, (end - oldStart) / duration);
@@ -630,6 +725,7 @@ export class SequencerDocument {
           }
         }
       }
+      section.position?.project(section.channels.filter(channel => channel.pathView));
     }
     section.clip.start = start; section.clip.duration = Math.max(1 / 240, end - start);
     this.write(section);
@@ -652,6 +748,10 @@ export class SequencerDocument {
 
         this.resizeSection(right, time, end);
         this.resizeSection(section, section.clip.start, time);
+        if (section.clip instanceof TransformPlayableAsset && (section.payload as unknown as TransformData).positionOverLifetime?.path) {
+          // A retained position path must stop contributing when its continuation starts.
+          section.clip.endBehavior = spec.EndBehavior.destroy; this.write(section);
+        }
         this.selectedSections.add(section.clip.getInstanceId());
         this.selectedSections.add(right.clip.getInstanceId());
       }
@@ -665,10 +765,19 @@ export class SequencerDocument {
     if (keys.length) {
       const first = Math.min(...keys.map(item => item.section.clip.start + item.key.time * item.section.clip.duration));
 
-      this.keyClipboard = keys.map(({ section, channel, key }) => ({
+      const spatial = new Set<string>();
+
+      this.keyClipboard = keys.filter(({ key }) => {
+        if (!key.pathKeyId) { return true; }
+        if (spatial.has(key.pathKeyId)) { return false; }
+        spatial.add(key.pathKeyId);
+
+        return true;
+      }).map(({ section, channel, key }) => ({
         offset: section.clip.start + key.time * section.clip.duration - first,
         track: section.track.getInstanceId(), channel: channel.group + '.' + channel.label,
         key: { ...key }, reference: channel.references?.get(key.id),
+        spatial: key.pathKeyId ? copy(section.position?.keys.find(entry => entry.id === key.pathKeyId)) : undefined,
       }));
     } else if (this.selectedSections.size) {
       const sections = this.selectedSectionItems;
@@ -695,9 +804,28 @@ export class SequencerDocument {
 
         for (const section of sections) {
           if (this.isLocked(section.track)) { continue; }
+          if (entry.spatial) {
+            const t = (time + entry.offset - section.clip.start) / section.clip.duration;
+
+            if (section.position) {
+              const key = section.position.insert(t, entry.spatial.point);
+
+              section.position.setControl(key.id, 'incoming', entry.spatial.incoming);
+              section.position.setControl(key.id, 'outgoing', entry.spatial.outgoing);
+              section.position.project(section.channels.filter(channel => channel.pathView));
+              this.selectedKeys.add(key.id + ':0'); this.write(section);
+            } else {
+              for (const channel of section.channels.filter(channel => channel.group === 'Location')) {
+                this.insertKey(section, channel, time + entry.offset, entry.spatial.point[channel.axis]);
+              }
+            }
+
+            continue;
+          }
           const channel = section.channels.find(item => item.group + '.' + item.label === entry.channel);
 
           if (!channel) { continue; }
+          if (channel.pathView) { this.insertKey(section, channel, time + entry.offset, entry.key.value); continue; }
           const t = (time + entry.offset - section.clip.start) / section.clip.duration;
 
           channel.keys = channel.keys.filter(key => Math.abs(key.time - t) > 1e-7);
@@ -774,6 +902,7 @@ export class SequencerDocument {
     return {
       section, start: section.clip.start, duration: section.clip.duration, endBehavior: section.clip.endBehavior,
       name: section.clip.name, payload: copy(section.payload), channelState: new Map(section.channelState),
+      position: section.position?.snapshot(),
       channels: section.channels.map(channel => ({ channel, keys: channel.keys.map(key => ({ ...key })), references: channel.references ? new Map(channel.references) : undefined })),
     };
   }
@@ -821,11 +950,13 @@ export class SequencerDocument {
 
       section.clip.start = state.start; section.clip.duration = state.duration;
       section.clip.endBehavior = state.endBehavior; section.clip.name = state.name; section.payload = copy(state.payload); section.channelState = new Map(state.channelState);
+      section.position = state.position ? PositionPathModel.restore(state.position) : undefined;
       section.channels = state.channels.map(channel => channel.channel);
       for (const channel of state.channels) {
         channel.channel.keys = channel.keys.map(key => ({ ...key }));
         channel.channel.references = channel.references ? new Map(channel.references) : undefined;
       }
+      section.position?.project(section.channels.filter(channel => channel.pathView));
       this.write(section);
     }
     for (const { item, position, rotation, scale } of snapshot.transforms) {
@@ -867,7 +998,11 @@ export class SequencerDocument {
 
     return {
       timelineId: id(this.timeline),
-      sections: Object.fromEntries(this.allSections().map(section => [id(section.clip), section.channels.filter(channel => channel.kind === 'number').map(channel => ({
+      version: 3,
+      positions: Object.fromEntries(this.allSections().filter(section => section.clip instanceof TransformPlayableAsset).map(section => [id(section.clip), {
+        mode: section.position ? 'path' : 'separated', source: curveSourceSignature(this.channelSource(section, 'Location')),
+      }])),
+      sections: Object.fromEntries(this.allSections().map(section => [id(section.clip), section.channels.filter(channel => channel.kind === 'number' && !channel.pathView).map(channel => ({
         group: channel.group, axis: channel.axis, defaultValue: channel.defaultValue,
         source: curveSourceSignature(this.channelSource(section, channel.group)),
         keys: channel.keys.map(({ id: _id, ...key }) => ({ ...key })),
@@ -885,16 +1020,33 @@ export class SequencerDocument {
     return section.clip instanceof SpriteColorPlayableAsset ? section.payload.colorOverLifetime : section.payload.curveData;
   }
 
-  private savedChannels (section: SequenceSection): SequenceChannelEditorData[] {
+  private savedEditorData (): SequenceEditorData | undefined {
     const document = this.sceneDocument;
 
-    if (!document) { return []; }
+    if (!document) { return; }
     const timelineId = document.serializer.id(this.timeline);
     const data = document.editor.sequences?.[timelineId] ?? document.editor.sequences?.[document.serializer.id(this.component)];
 
-    if (!data || data.timelineId !== timelineId) { return []; }
+    return data?.timelineId === timelineId ? data : undefined;
+  }
+
+  private separatedPosition (section: SequenceSection): boolean {
+    const path = (section.payload as unknown as TransformData).positionOverLifetime?.path;
+
+    if (path) { return path[0] === spec.ValueType.VECTOR3_CURVE; }
+    const clipId = this.sceneDocument?.serializer.id(section.clip);
+    const saved = clipId ? this.savedEditorData()?.positions?.[clipId] : undefined;
+
+    return saved?.mode === 'separated' && saved.source === curveSourceSignature(path);
+  }
+
+  private savedChannels (section: SequenceSection): SequenceChannelEditorData[] {
+    const document = this.sceneDocument, data = this.savedEditorData();
+
+    if (!document || !data) { return []; }
 
     return (data.sections?.[document.serializer.id(section.clip)] ?? []).filter(channel =>
+      (channel.group !== 'Location' || (data.version ?? 0) >= 2 && this.separatedPosition(section)) &&
       channel.source === curveSourceSignature(this.channelSource(section, channel.group)) && Number.isFinite(channel.defaultValue) &&
       Array.isArray(channel.keys) && channel.keys.every(key =>
         [key.time, key.value, key.inSlope, key.outSlope, key.inWeight, key.outWeight, key.weightedMode, key.interpolationMode].every(Number.isFinite) &&
@@ -921,32 +1073,21 @@ export class SequencerDocument {
     };
 
     if (clip instanceof TransformPlayableAsset) {
-      const data = clip.transformAnimationData;
+      const data = clip.transformAnimationData as TransformData | undefined;
       const path = data?.positionOverLifetime?.path;
+      const separated = this.separatedPosition(section);
       const defaults = item?.transform.position.toArray() ?? [0, 0, 0];
 
       for (let axis = 0; axis < 3; axis++) {
-        const channel = add('Location', ['X', 'Y', 'Z'][axis], axis, undefined, defaults[axis]);
+        const channel = add('Location', ['X', 'Y', 'Z'][axis], axis,
+          path?.[0] === spec.ValueType.VECTOR3_CURVE ? path[1][axis] : undefined, defaults[axis]);
 
-        if (saved.some(entry => entry.group === 'Location' && entry.axis === axis)) { continue; }
-        if (path && Array.isArray(path) && path[0] === spec.ValueType.CONSTANT_VEC3) {
-          channel.keys = [makeKey(0, path[1][axis])];
-        } else if (path?.[0] === spec.ValueType.LINEAR_PATH && path[1][0].every(key => key[2] === 1 && key[3] === 1)) {
-          channel.keys = path[1][0].map((key, index) => ({
-            ...makeKey(key[0], path[1][1][index][axis]), interpolationMode: InterpolationMode.Linear, tangentMode: 'break',
-          }));
-        } else if (path) {
-          const getter = createValueGetter(path);
-          const knots = Array.isArray(path) && path[0] === spec.ValueType.BEZIER_CURVE_PATH
-            ? decodeCurve([spec.ValueType.BEZIER_CURVE, path[1][0]]).map(key => key.time) :
-            path[0] === spec.ValueType.LINEAR_PATH ? path[1][0].map(key => key[0]) : [0, 1];
-
-          channel.keys = decodeSpatialCurve(time => {
-            const point = getter.getValue(time);
-
-            return Array.isArray(point) ? point[axis] : point[['x', 'y', 'z'][axis] as 'x' | 'y' | 'z'];
-          }, knots);
-        }
+        if (!separated) { channel.pathView = 'point'; }
+      }
+      if (!separated) {
+        section.position = new PositionPathModel(path as spec.FixedVec3Expression | undefined, defaults as spec.vec3);
+        add('Location', 'Timing', 3, undefined, 0).pathView = 'timing';
+        section.position.project(section.channels.filter(channel => channel.pathView));
       }
       const rotation = data?.rotationOverLifetime;
       const scale = data?.sizeOverLifetime;

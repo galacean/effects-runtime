@@ -1,7 +1,10 @@
 import { ContentImportController } from '../features/content-browser/content-import';
 import { editorLayout } from '../framework/layout/editor-layout';
 import { ImGui, ImGuiBackend } from '../platform/imgui/index';
-import { loadEditorIcons } from '../ui/icons/editor-icons';
+import { releaseImGuiTextureBindings } from '../platform/imgui/texture-binding';
+import { EditorRuntimeSession } from '../platform/effects-runtime/editor-runtime-session';
+import { clearEditorIcons, loadEditorIcons } from '../ui/icons/editor-icons';
+import { texturePreviewCache } from '../features/assets/preview/texture-preview-cache';
 import { EditorThemeManager } from '../ui/theme/index';
 import { editorApp } from './editor-application';
 import { initializeEditorRuntime } from './initialize-runtime';
@@ -46,26 +49,43 @@ async function initialize (): Promise<void> {
   editorLayout.configureDefault(DEFAULT_WINDOWS, defaultEditorLayout);
   ImGui.LoadIniSettingsFromMemory(editorLayout.loadIni(defaultEditorLayout()));
   ImGuiBackend.Init(canvas);
-  await Promise.all([initializeEditorRuntime(), loadEditorIcons()]);
+  await Promise.all([initializeEditorRuntime(canvas), loadEditorIcons()]);
   registerPropertyEditors();
   registerEditorCommands();
   editorApp.initialize();
+  EditorRuntimeSession.player.engine.on('contextlost', () => {
+    texturePreviewCache.clear(); clearEditorIcons(); ImGuiBackend.DestroyDeviceObjects();
+  });
+  EditorRuntimeSession.player.engine.on('contextrestored', () => {
+    ImGuiBackend.CreateDeviceObjects();
+    void loadEditorIcons().catch(console.error);
+  });
   window.requestAnimationFrame(frame);
 }
 
 function frame (time: number): void {
+  window.requestAnimationFrame(frame);
+  if (EditorRuntimeSession.device.contextWasLost || EditorRuntimeSession.device.gl.isContextLost()) {
+    EditorRuntimeSession.resetClock();
+
+    return;
+  }
   ImGuiBackend.NewFrame(time);
   editorLayout.beforeFrame();
   ImGui.NewFrame();
   ImGui.DockSpaceOverViewport(EDITOR_DOCKSPACE_ID, ImGui.GetMainViewport());
   editorApp.tick(time);
   ImGui.EndFrame();
+  EditorRuntimeSession.render(time);
+  texturePreviewCache.renderPending(time);
   ImGui.Render();
   editorLayout.endFrame();
 
   const gl = ImGuiBackend.gl;
 
   if (gl) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.disable(gl.SCISSOR_TEST); gl.colorMask(true, true, true, true);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0.14, 0.14, 0.14, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -74,7 +94,8 @@ function frame (time: number): void {
 
   if (context) { context.clearRect(0, 0, context.canvas.width, context.canvas.height); }
   ImGuiBackend.RenderDrawData(ImGui.GetDrawData());
-  window.requestAnimationFrame(frame);
+  releaseImGuiTextureBindings();
+  EditorRuntimeSession.device.prepareFrame();
 }
 
 void initialize().catch(console.error);

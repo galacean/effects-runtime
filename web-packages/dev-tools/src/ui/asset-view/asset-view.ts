@@ -10,7 +10,7 @@ export interface AssetViewItem {
   type: string,
   icon: AssetIcon,
   accent: number,
-  preview?: (rect: AssetViewRect) => void,
+  preview?: (rect: AssetViewRect, state: AssetViewState) => void,
 }
 export interface AssetViewState { selected?: boolean, hovered?: boolean, focused?: boolean, dropTarget?: boolean }
 
@@ -59,8 +59,9 @@ export function checkerboard (x: number, y: number, width: number, height: numbe
   draw.PopClipRect();
 }
 
-export function paintAssetPreview (item: AssetViewItem, rect: AssetViewRect): void {
-  if (item.preview) { item.preview(rect); } else {
+export function paintAssetPreview (item: AssetViewItem, rect: AssetViewRect, state: AssetViewState = {}): void {
+  if (!ImGui.IsRectVisible(new ImGui.Vec2(rect.x, rect.y), new ImGui.Vec2(rect.x + rect.width, rect.y + rect.height))) { return; }
+  if (item.preview) { item.preview(rect, state); } else {
     const size = Math.min(rect.width, rect.height) * (item.icon === 'folder' || item.icon === 'folderOpen' ? 0.7 : item.icon === 'scene' || item.icon === 'project' ? 1 : 0.72);
 
     drawAssetIcon(item.icon, rect.x + (rect.width - size) / 2, rect.y + (rect.height - size) / 2, size);
@@ -78,7 +79,7 @@ export function paintAssetTile (item: AssetViewItem, rect: AssetViewRect, state:
   if (!folder) {
     draw.AddRectFilled(new ImGui.Vec2(rect.x + 2, rect.y + 2), new ImGui.Vec2(rect.x + rect.width - 2, rect.y + thumbnailHeight), editorColorU32(I.input), 3);
   }
-  paintAssetPreview(item, { x: rect.x + 3, y: rect.y + 3, width: rect.width - 6, height: thumbnailHeight - 4 });
+  paintAssetPreview(item, { x: rect.x + 3, y: rect.y + 3, width: rect.width - 6, height: thumbnailHeight - 4 }, state);
   if (!folder) { draw.AddRectFilled(new ImGui.Vec2(rect.x + 2, rect.y + thumbnailHeight - 3), new ImGui.Vec2(rect.x + rect.width - 2, rect.y + thumbnailHeight), item.accent); }
   if (state.selected || state.hovered || state.dropTarget) { draw.AddRect(min, max, state.dropTarget ? editorColorU32(I.primaryHover) : background, 4, 0, 2); }
   assetWrappedText(item.name, rect.x + 7, rect.y + thumbnailHeight + 7, rect.width - 14, nameLines, text, folder);
@@ -93,7 +94,7 @@ export function paintAssetRow (item: AssetViewItem, rect: AssetViewRect, state: 
       ImGui.GetWindowDrawList().AddRectFilled(new ImGui.Vec2(rect.x, rect.y), new ImGui.Vec2(rect.x + rect.width, rect.y + rect.height), background, 2);
     }
   }
-  paintAssetPreview(item, { x: rect.x + 4, y: rect.y + 4, width: rect.height - 8, height: rect.height - 8 });
+  paintAssetPreview(item, { x: rect.x + 4, y: rect.y + 4, width: rect.height - 8, height: rect.height - 8 }, state);
   const color = editorColorU32(state.selected || state.hovered ? I.foregroundHover : I.foreground);
   const detailed = rect.height > 28 && item.icon !== 'folder';
 

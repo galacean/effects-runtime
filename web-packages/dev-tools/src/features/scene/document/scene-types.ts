@@ -7,7 +7,13 @@ export interface SequenceChannelEditorData {
   source: string,
   keys: (Keyframe & { tangentMode: 'auto' | 'user' | 'break' })[],
 }
-export interface SequenceEditorData { timelineId: string, sections: Record<string, SequenceChannelEditorData[]> }
+export interface SequenceEditorData {
+  timelineId: string,
+  version?: number,
+  sections: Record<string, SequenceChannelEditorData[]>,
+  /** Retain an explicit editing mode when position has no runtime curve. */
+  positions?: Record<string, { mode: 'path' | 'separated', source: string }>,
+}
 export interface SceneFolder { id: string, name: string, parentId?: string }
 export interface SceneHierarchyData { folders: SceneFolder[], itemFolders: Record<string, string> }
 export interface SceneEditorData {

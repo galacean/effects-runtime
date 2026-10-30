@@ -18,6 +18,7 @@ export const PROPERTY_COLORS = {
 
 export class PropertyGridState {
   columnRatio = 0.38;
+  minimumValueWidth = 228;
   defaultExpanded?: boolean;
   readonly expanded = new Map<string | number, boolean>();
   readonly searchExpanded = new Map<string | number, boolean>();
@@ -155,7 +156,7 @@ export class PropertyGrid {
     if (!context || !this.matches(label, id, label === 'Location' ? 'Position' : label === 'ID' ? 'GUID' : '')) { return false; }
     ImGui.PushID(id);
     const origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-    const labelWidth = Math.max(70, Math.min(width * context.state.columnRatio, width - 228));
+    const labelWidth = Math.max(70, Math.min(width * context.state.columnRatio, width - context.state.minimumValueWidth));
     const divider = origin.x + labelWidth;
     const valueX = divider + 10;
     const valueWidth = Math.max(40, width - labelWidth - 40);

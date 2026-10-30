@@ -8,8 +8,10 @@ import { InteractionColors, editorColumnTint, editorRowColors } from '../../ui/t
 import { drawEditorArrow } from '../../ui/widgets/editor-arrow';
 import { editorTooltip } from '../../ui/widgets/editor-tooltip';
 import type { SequenceKey } from './curve-data';
-import { controlPoint, makeKey, updateAutoTangents } from './curve-data';
+import { controlPoint, updateAutoTangents } from './curve-data';
 import { SequencerCurveModel } from './sequencer-curve-model';
+import type { PositionPathSnapshot } from './spatial-position';
+import { PositionPathModel } from './spatial-position';
 import type { KeySelection, SequenceChannel, SequenceSection, SequencerDocument } from './sequencer-document';
 import type { SequenceIcon } from './sequencer-icons';
 import { drawSequenceIcon } from './sequencer-icons';
@@ -20,7 +22,7 @@ interface Rect { x: number, y: number, width: number, height: number }
 interface KeyHit { x: number, y: number, keys: KeySelection[] }
 interface SectionHit extends Rect { section: SequenceSection }
 interface TangentHit { x: number, y: number, item: KeySelection, side: 'in' | 'out' }
-interface SectionSeed { section: SequenceSection, start: number, duration: number, keys: SequenceKey[][] }
+interface SectionSeed { section: SequenceSection, start: number, duration: number, keys: SequenceKey[][], position?: PositionPathSnapshot }
 interface Drag {
   gesture: CurveDragGesture,
   kind: 'keys' | 'section' | 'tangent' | 'marquee' | 'scrub' | 'pan' | 'zoom' | 'splitter' | 'scroll' | 'overview' | 'range-start' | 'range-end' | 'track',
@@ -496,7 +498,7 @@ export class SequencerCanvas {
     const io = ImGui.GetIO();
     const inRange = section.clip.duration > 0 && document.currentTime >= section.clip.start - 1e-8 &&
       document.currentTime <= section.clip.start + section.clip.duration + 1e-8;
-    const disabled = document.isLocked(row.track) || !inRange;
+    const disabled = document.isLocked(row.track) || !inRange || channel.pathView === 'timing';
     const hovered = rowHovered && this.contains(rect, io.MousePos.x, io.MousePos.y);
     const opacity = channel.group === 'Color' && channel.label === 'Opacity';
     const speed = channel.group === 'Rotation' ? 0.1 : 0.01;
@@ -544,7 +546,10 @@ export class SequencerCanvas {
     if (deactivated && this.valueEdit?.id === channel.id) { document.commit(); this.valueEdit = undefined; }
     if (hovered && !active) {
       if (!disabled) { ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW); }
-      if (disabled) { editorTooltip(document.isLocked(row.track) ? 'Track is locked.' : 'Move the playhead inside this clip to edit.'); }
+      if (disabled) {
+        editorTooltip(channel.pathView === 'timing' ? 'Edit the temporal tangent handles to change motion along the path.' :
+          document.isLocked(row.track) ? 'Track is locked.' : 'Move the playhead inside this clip to edit.');
+      }
     }
     ImGui.EndDisabled(); ImGui.PopStyleColor(3); ImGui.PopStyleVar(3);
   }
@@ -912,6 +917,7 @@ export class SequencerCanvas {
 
           drag.sections = document.selectedSectionItems.filter(item => !document.isLocked(item.track)).map(item => ({
             section: item, start: item.clip.start, duration: item.clip.duration, keys: item.channels.map(channel => channel.keys.map(key => ({ ...key }))),
+            position: item.position?.snapshot(),
           }));
           drag.edge = Math.abs(mouse.x - sectionHit.x) < 7 ? 'left' : Math.abs(mouse.x - sectionHit.x - sectionHit.width) < 7 ? 'right' : undefined;
           drag.duplicate = !drag.edge && io.KeyAlt;
@@ -968,14 +974,14 @@ export class SequencerCanvas {
       drag.duplicate = false;
       if (drag.keys) {
         document.selectedKeys.clear();
+        const spatialCopies = new Map<string, string>();
+
         drag.keys = drag.keys.map(seed => {
-          const key = { ...seed.item.key, id: makeKey(0, 0).id };
-          const channel = seed.item.channel;
+          const item = document.duplicateKey(seed.item, spatialCopies);
 
-          channel.keys.push(key); document.selectedKeys.add(key.id);
-          if (channel.references) { channel.references.set(key.id, channel.references.get(seed.item.key.id) ?? null); }
+          document.selectedKeys.add(item.key.id);
 
-          return { ...seed, item: { ...seed.item, key } };
+          return { ...seed, item };
         });
       } else if (drag.sections) {
         document.selectedSections.clear();
@@ -1034,6 +1040,7 @@ export class SequencerCanvas {
         const section = seed.section;
 
         section.clip.start = seed.start; section.clip.duration = seed.duration;
+        section.position = seed.position ? PositionPathModel.restore(seed.position) : undefined;
         section.channels.forEach((channel, index) => channel.keys = seed.keys[index].map(key => ({ ...key })));
         if (drag.edge) {
           const start = drag.edge === 'left' ? Math.max(0, Math.min(seed.start + seed.duration - 1 / this.state.frameRate, seed.start + dt)) : seed.start;

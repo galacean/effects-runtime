@@ -4,7 +4,6 @@ import { editorPanel, menuItem } from '../../../framework/registry/editor-regist
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { viewportRenderBridge } from '../../../platform/effects-runtime/viewport-render-bridge';
 import { ImGui } from '../../../platform/imgui/index';
 import { EditorColors } from '../../../ui/theme/index';
 import { sceneWorkspace } from '../scene-workspace';
@@ -156,9 +155,7 @@ export class SceneViewportPanel extends EditorWindow {
       if (this.showGrid && this.is2DMode) {
         this.drawGrid(origin, size);
       }
-      if (viewportRenderBridge.texture) {
-        ImGui.Image(viewportRenderBridge.texture, size, new ImGui.Vec2(0, 0), new ImGui.Vec2(1, 1));
-      }
+      ImGui.Image(EditorRuntimeSession.viewportTexture, size, new ImGui.Vec2(0, 1), new ImGui.Vec2(1, 0));
     } else {
       const message = 'Open a composition to start editing';
       const textSize = ImGui.CalcTextSize(message);

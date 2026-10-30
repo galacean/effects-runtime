@@ -1,22 +1,26 @@
 import { ShaderCompileResultStatus, spec } from '@galacean/effects';
+import { GLShaderLibrary } from '@galacean/effects-webgl';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { ImGui } from '../../../platform/imgui/index';
-import { drawAssetIcon } from '../../../ui/icons/asset-icons';
 import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
-import { PROPERTY_COLORS as C, PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
+import { PropertyGrid } from '../../../ui/property-editor/property-grid';
 import { toolbarButton } from '../../../ui/widgets/toolbar-button';
-import { checkerboard, contentWindowBackground } from '../../content-browser/content-style';
 import { assetLibrary as library } from '../asset-library';
 import type { AssetObject, AssetObjectData } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
 import { validateObjectAsset } from '../model/object-asset-data';
 import type { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
 import { spriteRegionPreview } from '../preview/sprite-thumbnail';
-import { drawTexturePreview } from '../preview/texture-preview';
+import { materialPreviews } from '../preview/material-preview';
+import { MaterialPreviewViewport } from '../preview/material-preview-widget';
+import { ImagePreviewViewport } from '../preview/image-preview-viewport';
+import { getOrCreateTexturePreview, imageTexturePreview } from '../preview/texture-preview';
 import { ASSET_PRESENTATION } from '../ui/asset-presentation';
 import { contentAssetPicker } from '../ui/content-asset-picker';
-import { setFocusedAssetSave } from './asset-editor-registry';
+import { revealContentAsset, setFocusedAssetSave } from './asset-editor-registry';
 import { materialProperties } from './material-details';
+import { AssetEditorLayout, assetEditorFooter, assetEditorMenu, assetEditorPanels, assetEditorToolbar,
+  beginAssetEditorStyle, constrainAssetEditor, endAssetEditorStyle } from './asset-editor-layout';
 
 export class ContentObjectAssetEditor {
   private draft?: AssetObject;
@@ -32,7 +36,10 @@ export class ContentObjectAssetEditor {
   private pending?: string;
   private pendingReady = false;
   private shaderProperties?: string;
-  private readonly grid = new PropertyGridState();
+  private readonly layout = new AssetEditorLayout();
+  private readonly materialViewport = new MaterialPreviewViewport();
+  private readonly imageViewport = new ImagePreviewViewport();
+  private sourceTexture = false;
 
   constructor (private readonly thumbnails: AssetThumbnailCache) { library.registerSaveHandler(() => this.save()); }
 
@@ -70,7 +77,11 @@ export class ContentObjectAssetEditor {
       if (generation !== this.generation || project !== library.projectId) { return; }
       if (!payload || !isObjectAsset(payload) || library.entry(id)?.deletedAt) { throw new Error('This asset is no longer available.'); }
       validateObjectAsset(payload);
-      this.draft = structuredClone(payload); this.baseline = JSON.stringify(this.draft);
+      this.draft = structuredClone(payload);
+      if (this.draft.previewMesh === 'sphere') { delete this.draft.previewMesh; }
+      this.baseline = JSON.stringify(this.draft);
+      this.materialViewport.view.primitive = this.draft.previewMesh ?? 'sphere'; this.materialViewport.resetCamera();
+      this.layout.search[0] = ''; this.imageViewport.reset();
       this.project = project; this.opened = true; this.focus = true; this.error = ''; this.status = '';
       await this.loadShaderProperties();
     } catch (error) { this.showError(error); library.report(error); } finally { if (generation === this.generation) { this.loading = false; } }
@@ -98,15 +109,7 @@ export class ContentObjectAssetEditor {
       try {
         if (this.project !== library.projectId) { throw new Error('This asset belongs to a project that is no longer open.'); }
         validateObjectAsset(draft);
-        for (const shader of draft.objects.filter(object => object.dataType === spec.DataType.Shader)) {
-          const shaderLibrary = EditorRuntimeSession.player?.engine.displayServer.renderingDevice.getShaderLibrary();
-
-          if (!shaderLibrary) { throw new Error('The renderer is not ready to compile this shader.'); }
-          const variant = shaderLibrary.createShader({ vertex: shader.vertex, fragment: shader.fragment, name: library.entry(draft.id)?.name, shared: true });
-
-          if (!variant.initialized) { variant.initialize(); }
-          if (variant.compileResult?.status !== ShaderCompileResultStatus.success) { throw new Error(variant.compileResult?.error || 'The shader could not be compiled.'); }
-        }
+        this.compileShaders(draft);
         if (await library.saveObject(draft, EditorRuntimeSession.player?.engine) !== true) { throw new Error(library.error || 'The asset could not be saved.'); }
         if (generation === this.generation) { this.baseline = JSON.stringify(this.draft); this.error = ''; this.status = 'Saved'; }
       } catch (error) { this.showError(error); throw error; }
@@ -125,56 +128,98 @@ export class ContentObjectAssetEditor {
 
     if (entry?.deletedAt) { this.close(); }
     if (!this.opened || !draft || !entry) { return; }
-    const presentation = ASSET_PRESENTATION[draft.kind];
-    const display = ImGui.GetIO().DisplaySize;
+    const presentation = ASSET_PRESENTATION[draft.kind], display = ImGui.GetIO().DisplaySize;
 
+    beginAssetEditorStyle(); constrainAssetEditor();
     if (this.focus) { ImGui.SetNextWindowFocus(); this.focus = false; }
     ImGui.SetNextWindowPos(new ImGui.Vec2(display.x / 2, display.y / 2), ImGui.Cond.Appearing, new ImGui.Vec2(0.5, 0.5));
-    ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(Math.min(440, display.x - 24), 300), new ImGui.Vec2(display.x - 24, display.y - 24));
-    ImGui.SetNextWindowSize(new ImGui.Vec2(800, 580), ImGui.Cond.FirstUseEver);
-    ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
     if (ImGui.Begin(entry.name + (this.dirty ? '*' : '') + ' — ' + presentation.label + ' Editor###ContentObjectAssetEditor', next => {
-      if (next === false && !this.loading && !this.saving) { if (this.dirty) { this.pending = 'close'; this.focus = true; } else { this.opened = false; } }
+      if (next === false && !this.loading && !this.saving) { this.requestClose(); }
 
       return this.opened;
-    }, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse | (this.dirty ? ImGui.WindowFlags.UnsavedDocument : 0))) {
-      contentWindowBackground();
+    }, ImGui.WindowFlags.MenuBar | ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse | (this.dirty ? ImGui.WindowFlags.UnsavedDocument : 0))) {
       if (this.pending || ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows)) { setFocusedAssetSave(this.saveFromToolbar); }
-      ImGui.BeginDisabled(!!this.saving || this.loading);
-      ImGui.SetCursorPos(new ImGui.Vec2(8, ImGui.GetCursorPosY() + 4));
-      if (toolbarButton('##Save', { icon: 'save', label: 'Save', height: 28, enabled: this.dirty, hint: 'Save asset (Ctrl+S)' })) { void this.saveFromToolbar(); }
-      ImGui.SameLine(0, 6);
-      if (toolbarButton('##Revert', { icon: 'reset', label: 'Revert', height: 28, enabled: this.dirty, hint: 'Discard changes since the last save' })) { void this.load(draft.id); }
-      ImGui.SameLine(0, 12); ImGui.AlignTextToFramePadding(); ImGui.TextDisabled(this.saving ? 'Saving...' : this.dirty ? 'Unsaved changes' : this.status || presentation.label);
-      ImGui.Separator();
-      const footer = this.error ? 100 : 25;
+      const actions = {
+        save: () => { void this.saveFromToolbar(); }, revert: () => { void this.load(draft.id); },
+        browse: () => revealContentAsset(entry.id), close: () => this.requestClose(),
+        compile: draft.kind === 'shader' ? () => this.compile() : undefined, dirty: this.dirty, busy: !!this.saving || this.loading,
+      };
 
-      ImGui.BeginChild('##AssetProperties', new ImGui.Vec2(0, -footer));
-      if (draft.kind === 'shader') { this.drawShader(); } else {
-        if (draft.kind === 'sprite') { this.drawSpritePreview(); } else {
-          const p = ImGui.GetCursorScreenPos();
-
-          drawAssetIcon('material', p.x + 16, p.y + 10, 80); ImGui.Dummy(new ImGui.Vec2(110, 100));
-        }
-        PropertyGrid.begin(this.grid, '');
-        try {
-          if (draft.kind === 'material') { this.drawMaterial(); } else { this.drawSprite(); }
-        } finally { PropertyGrid.end(); }
-      }
-      ImGui.EndChild();
+      assetEditorMenu(this.layout, actions);
+      assetEditorToolbar(actions, draft.kind === 'sprite' ? () => {
+        if (toolbarButton('##SpriteView', { label: 'Sprite', checked: !this.sourceTexture, height: 32 })) { this.sourceTexture = false; this.imageViewport.reset(); }
+        ImGui.SameLine(0, 4);
+        if (toolbarButton('##SpriteSourceView', { label: 'Source Texture', checked: this.sourceTexture, height: 32 })) { this.sourceTexture = true; this.imageViewport.reset(); }
+      } : undefined);
+      ImGui.BeginDisabled(actions.busy);
+      assetEditorPanels(this.layout, () => {
+        if (draft.kind === 'material') { this.materialViewport.draw(request => materialPreviews.draft(draft, 512, request), materialPreviews.draftError(draft)); } else if (draft.kind === 'sprite') { this.drawSpritePreview(); } else { this.drawShader(); }
+      }, () => {
+        if (draft.kind === 'material') { this.drawMaterial(); this.materialViewport.drawInspector(); } else if (draft.kind === 'sprite') { this.drawSprite(); } else { this.drawShaderInspector(); }
+      }, draft.kind === 'shader' ? 'Source' : 'Viewport');
       ImGui.EndDisabled();
-      if (this.error) {
-        ImGui.BeginChild('##AssetError', new ImGui.Vec2(0, 90));
-        ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().x); ImGui.TextColored(new ImGui.Vec4(1, 0.42, 0.35, 1), this.error); ImGui.PopTextWrapPos(); ImGui.EndChild();
-      } else { ImGui.TextDisabled(library.pathText(entry.parentId) + '/' + entry.name); }
+      if (draft.kind === 'material' && (draft.previewMesh ?? 'sphere') !== this.materialViewport.view.primitive) {
+        if (this.materialViewport.view.primitive === 'sphere') { delete draft.previewMesh; } else { draft.previewMesh = this.materialViewport.view.primitive; }
+      }
+      assetEditorFooter(library.pathText(entry.parentId) + '/' + entry.name,
+        this.saving ? 'Saving...' : this.dirty ? 'Unsaved Changes' : this.status || presentation.label, this.error);
     }
-    ImGui.End(); this.drawUnsavedDialog(); ImGui.PopStyleColor();
+    ImGui.End(); this.drawUnsavedDialog(); endAssetEditorStyle();
+  }
+
+  private requestClose (): void {
+    if (this.dirty) { this.pending = 'close'; this.focus = true; } else { this.opened = false; }
+  }
+
+  private compile (): void {
+    if (!this.draft) { return; }
+    try { this.compileShaders(this.draft); this.error = ''; this.status = 'Compile Succeeded'; } catch (error) { this.showError(error); }
+  }
+
+  private compileShaders (draft: AssetObject): void {
+    const shaders = draft.objects.filter(object => object.dataType === spec.DataType.Shader);
+    const device = EditorRuntimeSession.player?.engine.displayServer.renderingDevice;
+
+    if (!device || device.contextWasLost) { throw new Error('The renderer is not ready to compile this shader.'); }
+    const shaderLibrary = new GLShaderLibrary(EditorRuntimeSession.device);
+    let error: string | undefined;
+
+    for (const shader of shaders) {
+      const variant = shaderLibrary.createShader({ vertex: shader.vertex, fragment: shader.fragment, name: library.entry(draft.id)?.name, shared: true });
+
+      variant.unregisterObject(); shaderLibrary.compileShader(variant);
+      if (variant.compileResult?.status !== ShaderCompileResultStatus.success) {
+        error = variant.compileResult?.error || 'The shader could not be compiled.';
+
+        break;
+      }
+    }
+    shaderLibrary.dispose();
+    if (error) { throw new Error(error); }
+  }
+
+  private drawShaderInspector (): void {
+    const data = this.data;
+
+    PropertyGrid.category('Shader', 'Shader', ['Name', 'Language', 'Vertex', 'Fragment'], () => {
+      Fields.Text('Name', library.entry(this.draft!.id)?.name ?? 'Shader'); Fields.Text('Language', 'GLSL');
+      Fields.Text('Vertex Lines', String(data.vertex.split('\n').length)); Fields.Text('Fragment Lines', String(data.fragment.split('\n').length));
+    });
+    PropertyGrid.category('Properties', 'Exposed Parameters', ['Properties', 'Parameters', ...materialProperties(data.properties, {}).map(property => property.label)], () => {
+      const properties = materialProperties(data.properties, {});
+
+      if (!properties.length) { Fields.Text('Parameters', 'None'); }
+      for (const property of properties) { Fields.Text(property.label, property.type); }
+    });
+    PropertyGrid.category('Compilation', 'Compilation', ['Status', 'Error'], () => {
+      Fields.Text('Status', this.error ? 'Failed' : this.dirty ? 'Modified' : this.status || 'Ready');
+      if (this.error) { Fields.Text('Error', this.error.split('\n')[0]); }
+    });
   }
 
   private drawShader (): void {
     const data = this.data;
 
-    ImGui.SetCursorPosX(8); ImGui.TextDisabled('GLSL source');
     if (ImGui.BeginTabBar('##ShaderTabs')) {
       for (const [key, label] of [['vertex', 'Vertex'], ['fragment', 'Fragment'], ['properties', 'Properties']] as const) {
         if (ImGui.BeginTabItem(label)) {
@@ -193,7 +238,7 @@ export class ContentObjectAssetEditor {
   private drawMaterial (): void {
     const data = this.data;
 
-    PropertyGrid.category('Material', 'Material', [], () => {
+    PropertyGrid.category('Material', 'Material', ['Shader', 'Surface Type', 'Render Face'], () => {
       Fields.Property('Shader', width => {
         const owned = this.draft!.objects.find(object => object.dataType === spec.DataType.Shader);
 
@@ -214,7 +259,8 @@ export class ContentObjectAssetEditor {
         return Math.max(0, faces.indexOf(data.stringTags.RenderFace));
       }, ['Front', 'Back', 'Both']);
     });
-    PropertyGrid.category('Parameters', 'Parameters', [], () => {
+    PropertyGrid.category('Parameters', 'Parameters', materialProperties(this.shaderProperties,
+      { floats: data.floats, colors: data.colors, vector4s: data.vector4s, textures: data.textures }).map(property => property.label), () => {
       for (const property of materialProperties(this.shaderProperties, { floats: data.floats, colors: data.colors, vector4s: data.vector4s, textures: data.textures })) {
         const { name, label, type } = property;
 
@@ -250,7 +296,7 @@ export class ContentObjectAssetEditor {
   private drawSprite (): void {
     const data = this.data;
 
-    PropertyGrid.category('Sprite', 'Sprite', [], () => {
+    PropertyGrid.category('Sprite', 'Sprite', ['Texture', 'U', 'V', 'Width', 'Height', 'Rotation'], () => {
       Fields.Property('Texture', width => contentAssetPicker('texture', data.texture?.id, width, id => { if (id) { data.texture = { id }; } else { delete data.texture; } }, 'White'));
       for (const [index, label] of ['U', 'V', 'Width', 'Height'].entries()) {
         Fields.NumberField(label, next => {
@@ -281,21 +327,31 @@ export class ContentObjectAssetEditor {
   }
 
   private drawSpritePreview (): void {
-    const data = this.data, origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x, height = 160;
+    const data = this.data;
     const image = data.texture?.id ? this.thumbnails.get(data.texture.id, true) : undefined;
-    const draw = ImGui.GetWindowDrawList(), x = origin.x + (width - height) / 2, y = origin.y + 8;
+    const white = EditorRuntimeSession.player.engine.assetServer.whiteTexture;
+    const base = image ? imageTexturePreview(image) : getOrCreateTexturePreview(white);
 
-    checkerboard(x, y, height - 16, height - 16, 8);
-    if (image) {
-      const [, , w, h] = data.rect, rotated = data.rotation === 1;
-      const imageWidth = (rotated ? image.height : image.width) * w, imageHeight = (rotated ? image.width : image.height) * h;
-      const scale = Math.min((height - 16) / imageWidth, (height - 16) / imageHeight);
-      const size = new ImGui.Vec2(imageWidth * scale, imageHeight * scale);
-      const min = new ImGui.Vec2(x + (height - 16 - size.x) / 2, y + (height - 16 - size.y) / 2);
+    if (!base) {
+      this.imageViewport.draw();
 
-      drawTexturePreview(spriteRegionPreview({ tex: image.texture, uv0: new ImGui.Vec2(0, 0), uv1: new ImGui.Vec2(1, 1) }, data.rect, data.rotation), min, new ImGui.Vec2(min.x + size.x, min.y + size.y));
-    } else { draw.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + height - 16, y + height - 16), ImGui.COL32_WHITE); }
-    ImGui.Dummy(new ImGui.Vec2(width, height));
+      return;
+    }
+    const width = image?.width ?? 1, height = image?.height ?? 1;
+    const rotated = data.rotation === 1;
+
+    if (this.sourceTexture) {
+      this.imageViewport.draw({ preview: base, width, height }, rect => {
+        const [u, v, w, h] = data.rect;
+        const regionWidth = rotated ? h : w, regionHeight = rotated ? w : h;
+        const min = new ImGui.Vec2(rect.x + u * rect.width, rect.y + (1 - v - regionHeight) * rect.height);
+
+        ImGui.GetWindowDrawList().AddRect(min, new ImGui.Vec2(min.x + regionWidth * rect.width, min.y + regionHeight * rect.height), ImGui.COL32(247, 177, 45, 255), 0, 0, 2);
+      });
+    } else {
+      this.imageViewport.draw({ preview: spriteRegionPreview(base, data.rect, data.rotation),
+        width: (rotated ? height : width) * data.rect[2], height: (rotated ? width : height) * data.rect[3] });
+    }
   }
 
   private drawUnsavedDialog (): void {

@@ -1,3 +1,5 @@
+import { texturePreviewCache } from '../features/assets/preview/texture-preview-cache';
+import { materialPreviews } from '../features/assets/preview/material-preview';
 import { projectWorkspace } from '../features/projects/project-workspace';
 import { sceneWorkspace } from '../features/scene/scene-workspace';
 import { SceneViewportPanel } from '../features/scene/viewport/scene-viewport-panel';
@@ -60,6 +62,7 @@ export class EditorApplication {
   }
 
   shutdown (): void {
+    texturePreviewCache.clear();
     editorTooltips.shutdown();
     editorLayout.shutdown();
     this.menus.shutdown();
@@ -78,6 +81,8 @@ export class EditorApplication {
   }
 
   tick (time: number) {
+    texturePreviewCache.beginFrame();
+    materialPreviews.beginFrame();
     editorTooltips.beginFrame();
     const dt = this.lastTime > 0 ? (time - this.lastTime) / 1000 : 0;
 
@@ -96,6 +101,7 @@ export class EditorApplication {
     if (!sceneWorkspace.changingDocument && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && !ImGui.IsAnyItemActive()) { sceneWorkspace.current?.commit(); }
     this.menus.drawDialogs();
     editorTooltips.draw();
+    texturePreviewCache.prune();
   }
 
   private drawMainMenuBar () {
