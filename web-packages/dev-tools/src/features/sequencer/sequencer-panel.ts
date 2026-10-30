@@ -1,5 +1,5 @@
 import type { TrackAsset } from '@galacean/effects';
-import { CompositionComponent, InterpolationMode, ObjectBindingTrack, TransformTrack, VFXItem } from '@galacean/effects';
+import { CompositionComponent, InterpolationMode, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem } from '@galacean/effects';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
 import { EditorWindow } from '../../framework/windows/editor-window';
@@ -16,7 +16,7 @@ import { sceneWorkspace } from '../scene/scene-workspace';
 import { updateAutoTangents } from './curve-data';
 import type { SequencerContext } from './sequencer-canvas';
 import { SequencerCanvas } from './sequencer-canvas';
-import type { KeySelection, SequenceSection } from './sequencer-document';
+import type { KeySelection, SequenceChannel, SequenceSection } from './sequencer-document';
 import { SequencerDocument } from './sequencer-document';
 import { SequencerState } from './sequencer-state';
 import { SEQUENCE_COLORS as C, SEQUENCE_LAYOUT as L } from './sequencer-style';
@@ -25,6 +25,11 @@ import type { SequenceIcon } from './sequencer-icons';
 import { drawSequenceIcon } from './sequencer-icons';
 import { findSequenceTimeline } from './sequencer-preview';
 type Interpolation = 'Auto' | 'User' | 'Break' | 'Linear' | 'Constant';
+
+function transformChannelIndex (channel: SequenceChannel): number {
+  return channel.axis < 3 ? channel.group === 'Location' ? channel.axis : channel.group === 'Rotation' ? 3 + channel.axis :
+    channel.group === 'Scale' ? 6 + channel.axis : -1 : -1;
+}
 
 @editorPanel()
 export class SequencerPanel extends EditorWindow {
@@ -47,6 +52,8 @@ export class SequencerPanel extends EditorWindow {
   private autoRecording = false;
   private acceptsClipboard = false;
   private clipboardCommands: string[] = [];
+  private positionError = '';
+  private showPositionError = false;
   private readonly onClipboard = (event: ClipboardEvent): void => {
     if (!this.acceptsClipboard || event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable="true"]')) { return; }
     this.clipboardCommands.push(event.type);
@@ -89,6 +96,7 @@ export class SequencerPanel extends EditorWindow {
     }
     if (this.document?.component !== component || this.document.timeline !== timeline) {
       this.document?.commit();
+      this.positionError = '';
       const cached = this.documents.get(component);
 
       if (cached && cached.timeline !== timeline) { cached.dispose(); }
@@ -104,7 +112,7 @@ export class SequencerPanel extends EditorWindow {
 
     if (sceneWorkspace.current) {
       sceneWorkspace.current.autoKeyTarget = item => this.autoKey && document.composition.getPaused() && document.allSections().some(section =>
-        section.channels.length === 9 && document.boundItem(section.track) === item && !document.isLocked(section.track) && !document.isMuted(section.track) &&
+        section.clip instanceof TransformPlayableAsset && document.boundItem(section.track) === item && !document.isLocked(section.track) && !document.isMuted(section.track) &&
         document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration);
     }
 
@@ -223,6 +231,7 @@ export class SequencerPanel extends EditorWindow {
       ImGui.OpenPopup('##SequencerContext');
     }
     this.drawContextMenu(document);
+    this.drawPositionError();
     this.drawRenamePopup(document);
     this.handleShortcuts(document);
     this.acceptsClipboard = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) && !ImGui.GetIO().WantTextInput &&
@@ -433,6 +442,7 @@ export class SequencerPanel extends EditorWindow {
         ImGui.SameLine(); ImGui.SetNextItemWidth(95);
         let value = first.key.value;
 
+        ImGui.BeginDisabled(first.channel.pathView === 'timing');
         if (ImGui.DragFloat('##KeyValue', next => value = next ?? value, 0.01, -1e8, 1e8, '%.3f')) {
           document.begin('Edit key values');
           const delta = value - first.key.value;
@@ -440,10 +450,11 @@ export class SequencerPanel extends EditorWindow {
           this.updateKeys(document, keys, item => item.key.value += delta);
         }
         if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+        ImGui.EndDisabled();
         ImGui.SameLine();
         if (this.textButton(this.keyMode(first))) { this.openBelow('##KeyInterpolation'); }
         if (beginEditorPopup('##KeyInterpolation')) { this.drawInterpolation(document); endEditorPopup(); }
-        if (this.viewWidth > 800) {
+        if (this.viewWidth > 800 && first.channel.pathView !== 'point') {
           for (const side of ['in', 'out'] as const) {
             ImGui.SameLine(); ImGui.SetNextItemWidth(105);
             let slope = side === 'in' ? first.key.inSlope / first.section.clip.duration : first.key.outSlope / first.section.clip.duration;
@@ -549,6 +560,7 @@ export class SequencerPanel extends EditorWindow {
     ImGui.SameLine(); ImGui.SetNextItemWidth(112);
     let value = first?.key.value ?? 0;
 
+    ImGui.BeginDisabled(first?.channel.pathView === 'timing');
     if (ImGui.DragFloat('##CurveKeyValue', next => value = next ?? value, 0.01, -1e8, 1e8, 'Value  %.3f') && first) {
       document.begin('Edit key value');
       const delta = value - first.key.value;
@@ -556,6 +568,7 @@ export class SequencerPanel extends EditorWindow {
       this.updateKeys(document, keys, item => item.key.value += delta);
     }
     if (ImGui.IsItemDeactivatedAfterEdit()) { document.commit(); }
+    ImGui.EndDisabled();
     this.divider();
     const modes: { name: Interpolation, icon: SequenceIcon }[] = [
       { name: 'Auto', icon: 'tangentAuto' }, { name: 'User', icon: 'tangentUser' }, { name: 'Break', icon: 'tangentBreak' },
@@ -570,7 +583,7 @@ export class SequencerPanel extends EditorWindow {
     if (this.viewWidth > 550) {
       this.divider();
       if (this.icon('flatten', 'Flatten Tangents', false, !!first)) {
-        document.edit('Flatten tangents', () => this.updateKeys(document, keys, item => {
+        document.edit('Flatten tangents', () => this.updateKeys(document, document.temporalKeys(keys), item => {
           item.key.inSlope = item.key.outSlope = 0; item.key.tangentMode = 'user'; item.key.interpolationMode = InterpolationMode.Cubic;
         }));
       }
@@ -587,6 +600,18 @@ export class SequencerPanel extends EditorWindow {
     const row = this.context?.row;
     const section = this.context?.section ?? document.selectedSectionItems[0];
     const keys = document.selectedKeyItems();
+    const positions = Array.from(new Set(section ? [section] : row ? row.channels.map(entry => entry.section) : keys.map(item => item.section)))
+      .filter(section => section.position && !document.isLocked(section.track));
+
+    if (positions.length) {
+      this.section('Position');
+      if (editorMenuItem('Separate Dimensions')) {
+        try { document.separateDimensions(positions); this.positionError = ''; } catch (error) {
+          this.positionError = error instanceof Error ? error.message : String(error); this.showPositionError = true;
+        }
+      }
+      ImGui.Separator();
+    }
 
     if (keys.length) {
       this.section('Keyframes');
@@ -596,7 +621,7 @@ export class SequencerPanel extends EditorWindow {
         this.drawInterpolation(document); endEditorMenu();
       }
       if (editorMenuItem('Flatten Tangents')) {
-        document.edit('Flatten tangents', () => this.updateKeys(document, keys, item => {
+        document.edit('Flatten tangents', () => this.updateKeys(document, document.temporalKeys(keys), item => {
           item.key.inSlope = item.key.outSlope = 0; item.key.tangentMode = 'user'; item.key.interpolationMode = InterpolationMode.Cubic;
         }));
       }
@@ -680,6 +705,15 @@ export class SequencerPanel extends EditorWindow {
     }
   }
 
+  private drawPositionError (): void {
+    if (this.showPositionError) { ImGui.OpenPopup('##PositionSeparationError'); this.showPositionError = false; }
+    if (beginEditorPopup('##PositionSeparationError')) {
+      ImGui.Text('Separate Dimensions'); ImGui.TextWrapped(this.positionError);
+      if (ImGui.Button('Close')) { ImGui.CloseCurrentPopup(); }
+      endEditorPopup();
+    }
+  }
+
   private drawInterpolation (document: SequencerDocument): void {
     for (const mode of ['Auto', 'User', 'Break', 'Linear', 'Constant'] as Interpolation[]) {
       const first = document.selectedKeyItems()[0];
@@ -690,7 +724,7 @@ export class SequencerPanel extends EditorWindow {
 
   private setInterpolation (document: SequencerDocument, mode: Interpolation): void {
     document.edit('Set key interpolation', () => {
-      this.updateKeys(document, document.selectedKeyItems(), item => {
+      this.updateKeys(document, document.temporalKeys(document.selectedKeyItems()), item => {
         if (item.channel.kind !== 'number') { return; }
         item.key.interpolationMode = mode === 'Linear' ? InterpolationMode.Linear : mode === 'Constant' ? InterpolationMode.Constant : InterpolationMode.Cubic;
         item.key.tangentMode = mode === 'Auto' ? 'auto' : mode === 'Break' ? 'break' : 'user';
@@ -699,6 +733,11 @@ export class SequencerPanel extends EditorWindow {
   }
 
   private keyMode (item: KeySelection): Interpolation {
+    if (item.channel.pathView === 'point') {
+      const key = item.section.position?.keys.find(key => key.id === item.key.pathKeyId)?.timing;
+
+      if (key) { item = { ...item, key }; }
+    }
     if (item.key.interpolationMode === InterpolationMode.Linear) { return 'Linear'; }
     if (item.key.interpolationMode === InterpolationMode.Constant) { return 'Constant'; }
 
@@ -841,14 +880,16 @@ export class SequencerPanel extends EditorWindow {
       const changed = values.map((value, index) => Math.abs(value - previous[index]) > 1e-6);
 
       if (!changed.some(Boolean)) { continue; }
-      const sections = document.allSections().filter(section => section.channels.length === 9 && document.boundItem(section.track) === object &&
+      const sections = document.allSections().filter(section => section.clip instanceof TransformPlayableAsset && document.boundItem(section.track) === object &&
         !document.isLocked(section.track) && !document.isMuted(section.track) && document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration &&
-        section.channels.some((channel, index) => changed[index]));
+        section.channels.some(channel => changed[transformChannelIndex(channel)]));
 
       if (!sections.length) { continue; }
       document.begin('Auto key transforms'); this.autoRecording = true;
       sections.forEach(section => {
-        section.channels.forEach((channel, index) => {
+        section.channels.forEach(channel => {
+          const index = transformChannelIndex(channel);
+
           if (changed[index]) {
             document.insertKey(section, channel, document.currentTime, values[index]);
           }
