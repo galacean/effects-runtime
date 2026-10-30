@@ -75,13 +75,14 @@ export function drawAssetReferenceField (object: object, property: string, width
 
   ImGui.BeginGroup();
   const origin = ImGui.GetCursorScreenPos();
-  const spritePreview = reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
-  const preview = reference instanceof Texture ? getOrCreateTexturePreview(reference) : spritePreview;
-  const thumbnail = !!preview || reference instanceof Material;
+  const thumbnail = reference instanceof Texture || reference instanceof Sprite || reference instanceof Material;
   const thumbnailWidth = thumbnail ? 60 : 0;
 
   if (thumbnail) {
     const size = 54, draw = ImGui.GetWindowDrawList();
+    const visible = ImGui.IsRectVisible(origin, new ImGui.Vec2(origin.x + size, origin.y + size));
+    const spritePreview = visible && reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
+    const preview = visible && reference instanceof Texture ? getOrCreateTexturePreview(reference, () => target[property]) : spritePreview;
 
     ImGui.InvisibleButton('##Thumbnail', new ImGui.Vec2(size, size));
     const hovered = ImGui.IsItemHovered();
@@ -97,7 +98,7 @@ export function drawAssetReferenceField (object: object, property: string, width
       const min = new ImGui.Vec2(origin.x + (size - w) / 2, origin.y + (size - h) / 2);
 
       drawTexturePreview(preview, min, new ImGui.Vec2(min.x + w, min.y + h));
-    } else { drawAssetIcon('material', origin.x + 3, origin.y + 3, size - 6); }
+    } else if (visible) { drawAssetIcon(kind ?? 'material', origin.x + 3, origin.y + 3, size - 6); }
     if (referenceHint) { editorTooltip(referenceHint); }
     ImGui.SameLine(0, 6);
   }
@@ -154,7 +155,7 @@ export function drawAssetReferenceField (object: object, property: string, width
         for (const asset of Object.values(engine.effectsObjectServer.objectInstance)) {
           const assetName = (asset as { name?: string })?.name || asset?.constructor.name;
 
-          if (!(asset instanceof constructor) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && asset.isDestroyed || !assetName.toLowerCase().includes(query)) { continue; }
+          if (!(asset instanceof constructor) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && (asset.isDestroyed || EditorRuntimeSession.device.isSceneTexture(asset)) || !assetName.toLowerCase().includes(query)) { continue; }
           if (ImGui.Selectable(assetName + '##' + asset.getInstanceId(), reference === asset)) { target[property] = asset; changed = true; ImGui.CloseCurrentPopup(); }
           count++;
         }

@@ -16,7 +16,7 @@ export function spriteRegionPreview (base: TexturePreview, rect: readonly number
 }
 
 export function getSpriteThumbnail (sprite: Sprite): SpriteThumbnail | null {
-  const base = getOrCreateTexturePreview(sprite.texture);
+  const base = getOrCreateTexturePreview(sprite.texture, () => sprite.texture);
 
   if (!base) { return null; }
   const rotated = sprite.rotation === SpriteRotation.Rotate90;

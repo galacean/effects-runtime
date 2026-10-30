@@ -109,7 +109,11 @@ export function drawMaterialProperties (material: Material, skipColor = false): 
         return ImGui.DragFloat4('##Vector', vector, 0.02);
       })) { data.vector4s[name] = vector; changed = true; }
     } else if (type === '2D') {
-      const reference = { texture: material.getTexture(name) };
+      let assigned: Texture | null | undefined;
+      const reference = {
+        get texture () { return assigned ?? material.getTexture(name); },
+        set texture (texture: Texture | null) { assigned = texture; },
+      };
 
       if (Fields.ObjectField(label, reference, 'texture', Texture.name, false, undefined, texture => {
         if (!material.isRegistered) { return; }

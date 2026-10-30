@@ -2,6 +2,7 @@ import { ImGui } from '../../../platform/imgui/index';
 import { CONTENT_COLORS as C, checkerboard, contentText, contentWindowBackground } from '../../content-browser/content-style';
 import { assetLibrary } from '../asset-library';
 import type { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
+import { drawTexturePreview, imageTexturePreview } from '../preview/texture-preview';
 
 export class TextureAssetEditor {
   private asset?: string;
@@ -70,7 +71,7 @@ export class TextureAssetEditor {
 
         draw.PushClipRect(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), true);
         checkerboard(Math.max(origin.x, x), Math.max(origin.y, y), Math.max(0, Math.min(origin.x + size.x, x + w) - Math.max(origin.x, x)), Math.max(0, Math.min(origin.y + size.y, y + h) - Math.max(origin.y, y)), 12);
-        draw.AddImage(image.texture, new ImGui.Vec2(x, y), new ImGui.Vec2(x + w, y + h)); draw.PopClipRect();
+        drawTexturePreview(imageTexturePreview(image), new ImGui.Vec2(x, y), new ImGui.Vec2(x + w, y + h)); draw.PopClipRect();
       } else { contentText('Loading texture...', origin.x + 20, origin.y + 20, C.muted); }
       ImGui.EndChild();
       if (side) {

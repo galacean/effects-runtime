@@ -12,7 +12,7 @@ import { isObjectAsset } from '../model/asset-types';
 import { validateObjectAsset } from '../model/object-asset-data';
 import type { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
 import { spriteRegionPreview } from '../preview/sprite-thumbnail';
-import { drawTexturePreview } from '../preview/texture-preview';
+import { drawTexturePreview, imageTexturePreview } from '../preview/texture-preview';
 import { ASSET_PRESENTATION } from '../ui/asset-presentation';
 import { contentAssetPicker } from '../ui/content-asset-picker';
 import { setFocusedAssetSave } from './asset-editor-registry';
@@ -293,7 +293,7 @@ export class ContentObjectAssetEditor {
       const size = new ImGui.Vec2(imageWidth * scale, imageHeight * scale);
       const min = new ImGui.Vec2(x + (height - 16 - size.x) / 2, y + (height - 16 - size.y) / 2);
 
-      drawTexturePreview(spriteRegionPreview({ tex: image.texture, uv0: new ImGui.Vec2(0, 0), uv1: new ImGui.Vec2(1, 1) }, data.rect, data.rotation), min, new ImGui.Vec2(min.x + size.x, min.y + size.y));
+      drawTexturePreview(spriteRegionPreview(imageTexturePreview(image), data.rect, data.rotation), min, new ImGui.Vec2(min.x + size.x, min.y + size.y));
     } else { draw.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + height - 16, y + height - 16), ImGui.COL32_WHITE); }
     ImGui.Dummy(new ImGui.Vec2(width, height));
   }

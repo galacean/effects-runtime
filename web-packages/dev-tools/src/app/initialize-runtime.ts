@@ -1,4 +1,5 @@
 import { getClass } from '@galacean/effects';
+import { assetLibrary } from '../features/assets/asset-library';
 import { createDefaultDemoScene } from '../examples/scenes/default-scene';
 import { DEFAULT_PROJECT_ID } from '../features/projects/project-types';
 import { projectWorkspace } from '../features/projects/project-workspace';
@@ -7,8 +8,9 @@ import { jsonData, resolveSceneURLs } from '../features/scene/serialization/scen
 import { EditorSelection } from '../framework/selection/editor-selection';
 import { EditorRuntimeSession } from '../platform/effects-runtime/editor-runtime-session';
 
-export async function initializeEditorRuntime (): Promise<void> {
-  EditorRuntimeSession.initialize(document.getElementById('J-container'));
+export async function initializeEditorRuntime (surface: HTMLCanvasElement): Promise<void> {
+  EditorRuntimeSession.initialize(document.getElementById('J-container'), surface);
+  assetLibrary.registerEngine(EditorRuntimeSession.player.engine);
   await projectWorkspace.initialize();
   const lastScene = await sceneWorkspace.initialize(async source => {
     const player = EditorRuntimeSession.player;

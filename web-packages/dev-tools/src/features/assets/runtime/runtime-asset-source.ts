@@ -1,6 +1,7 @@
 import type { EffectsObject, Engine } from '@galacean/effects';
 import { AnimationClip, Geometry, Material, Shader, ShaderVariant, Texture } from '@galacean/effects';
 import { ImGui } from '../../../platform/imgui';
+import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import type { AssetViewItem } from '../../../ui/asset-view/asset-view';
 import { checkerboard } from '../../../ui/asset-view/asset-view';
 import type { AssetIcon } from '../../../ui/icons/asset-icons';
@@ -18,7 +19,7 @@ export class RuntimeAssetSource {
         object instanceof Shader || object instanceof ShaderVariant ? ['Shaders', 'shader', 'Shader'] : object instanceof Geometry ? ['Geometries', 'geometry', 'Geometry'] :
           object instanceof AnimationClip ? ['AnimationClips', 'animationClip', 'AnimationClip'] : undefined;
 
-      if (!kind || object instanceof Texture && object.isDestroyed) { return []; }
+      if (!kind || object instanceof Texture && (object.isDestroyed || EditorRuntimeSession.device.isSceneTexture(object))) { return []; }
       const icon = kind[1] as AssetIcon;
       const name = (object as { name?: string }).name || (object instanceof Shader ? object.shaderData?.name : object instanceof ShaderVariant ? object.source?.name : '') || object.getInstanceId();
       const summary = object instanceof Texture ? object.width + ' × ' + object.height : object instanceof Geometry ? object.subMeshes.length + ' submeshes' :

@@ -8,7 +8,7 @@ import { InteractionColors as I } from '../../ui/theme/editor-interaction';
 import type { AssetEntry } from '../assets/model/asset-types';
 import type { AssetThumbnailCache } from '../assets/preview/asset-thumbnail-cache';
 import { getSpriteThumbnail } from '../assets/preview/sprite-thumbnail';
-import { drawTexturePreview } from '../assets/preview/texture-preview';
+import { drawTexturePreview, imageTexturePreview } from '../assets/preview/texture-preview';
 import { ASSET_PRESENTATION } from '../assets/ui/asset-presentation';
 
 export class ContentAssetSource {
@@ -28,7 +28,7 @@ export class ContentAssetSource {
           const x = rect.x + (rect.width - width) / 2, y = rect.y + (rect.height - height) / 2;
 
           checkerboard(x, y, width, height, 8);
-          drawTexturePreview(preview ?? { tex: image.texture, uv0: new ImGui.Vec2(0, 0), uv1: new ImGui.Vec2(1, 1) }, new ImGui.Vec2(x, y), new ImGui.Vec2(x + width, y + height));
+          drawTexturePreview(preview ?? imageTexturePreview(image), new ImGui.Vec2(x, y), new ImGui.Vec2(x + width, y + height));
         } else {
           const size = Math.min(rect.width, rect.height) * 0.4;
 

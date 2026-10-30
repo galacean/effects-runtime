@@ -55,9 +55,11 @@ export class AssetLibrary {
     const changes = new Map(entries.map(entry => [entry.id, entry]));
 
     this.entries = [...this.entries.filter(entry => !changes.has(entry.id)), ...entries]; this.revision++;
-    entries.filter(entry => entry.kind === 'texture').forEach(entry => this.textureCache.rename(entry));
     const project = this.projectId;
 
+    for (const entry of entries.filter(entry => entry.kind === 'texture')) {
+      void this.textureCache.refresh(entry).catch(error => { if (project === this.projectId) { this.report(error); } });
+    }
     for (const entry of entries.filter(entry => ['material', 'shader', 'sprite'].includes(entry.kind))) {
       void this.objectCache.refresh(entry).catch(error => { if (project === this.projectId) { this.report(error); } });
     }
@@ -336,6 +338,8 @@ export class AssetLibrary {
   loadAsset (engine: Engine, id: string): Promise<EffectsObject> { return this.entry(id)?.kind === 'texture' ? this.loadTexture(engine, id) : this.objectCache.load(engine, id); }
 
   texture (engine: Engine, id: string): Texture | undefined { return this.textureCache.get(engine, id); }
+
+  registerEngine (engine: Engine): void { this.textureCache.registerEngine(engine); }
 
   loadTexture (engine: Engine, id: string): Promise<Texture> { return this.textureCache.load(engine, id); }
 

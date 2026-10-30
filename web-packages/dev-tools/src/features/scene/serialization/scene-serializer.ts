@@ -259,7 +259,7 @@ export class SceneSerializer {
       data.options = { ...data.options, text: object.text, fontFamily: style.fontFamily, fontSize: style.fontSize,
         fontWeight: style.textWeight, fontStyle: style.fontStyle, textColor: jsonData(style.textColor),
         textAlign: layout.textAlign, textVerticalAlign: layout.textVerticalAlign, autoResize: layout.autoResize,
-        width: layout.width, height: layout.height, lineHeight: layout.lineHeight, letterSpace: layout.letterSpace,
+        textWidth: layout.width, textHeight: layout.height, lineHeight: layout.lineHeight, letterSpace: layout.letterSpace,
         textOverflow: layout.overflow, maxTextWidth: layout.maxTextWidth, maxTextHeight: layout.maxTextHeight,
         wrapEnabled: layout.wrapEnabled, useLegacyRichText: layout.useLegacyRichText,
         outline: style.isOutlined ? { ...data.options?.outline, outlineWidth: style.outlineWidth, outlineColor: jsonData(style.outlineColor) } : undefined,

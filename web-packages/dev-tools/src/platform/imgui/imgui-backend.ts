@@ -3,6 +3,7 @@
 /* eslint-disable no-console */
 //@ts-nocheck
 import * as ImGui from 'maoan-imgui-js';
+import { isImGuiTexturePremultiplied, resolveImGuiTexture } from './texture-binding';
 
 let clipboard_text: string = '';
 
@@ -14,6 +15,7 @@ export function getCanvas (): HTMLCanvasElement | null {
 
 export let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
 let g_ShaderHandle: WebGLProgram | null = null;
+let g_AttribLocationPremultiplied: WebGLUniformLocation | null = null;
 let g_VertHandle: WebGLShader | null = null;
 let g_FragHandle: WebGLShader | null = null;
 let g_AttribLocationTex: WebGLUniformLocation | null = null;
@@ -620,6 +622,7 @@ export function NewFrame (time: number): void {
 }
 
 export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDrawData()): void {
+  if (gl && (!g_ShaderHandle || gl.isContextLost())) { return; }
   const io = ImGui.GetIO();
 
   if (draw_data === null) { throw new Error(); }
@@ -657,6 +660,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
   const last_enable_blend: GLboolean | null = gl && gl.getParameter(gl.BLEND) || null;
   const last_enable_cull_face: GLboolean | null = gl && gl.getParameter(gl.CULL_FACE) || null;
   const last_enable_depth_test: GLboolean | null = gl && gl.getParameter(gl.DEPTH_TEST) || null;
+  const last_enable_stencil_test = gl && gl.isEnabled(gl.STENCIL_TEST);
+  const last_color_mask = gl && gl.getParameter(gl.COLOR_WRITEMASK);
   const last_enable_scissor_test: GLboolean | null = gl && gl.getParameter(gl.SCISSOR_TEST) || null;
 
   // Setup desired GL state
@@ -670,6 +675,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
   gl && gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl && gl.disable(gl.CULL_FACE);
   gl && gl.disable(gl.DEPTH_TEST);
+  gl && gl.disable(gl.STENCIL_TEST);
+  gl && gl.colorMask(true, true, true, true);
   gl && gl.enable(gl.SCISSOR_TEST);
   // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -752,8 +759,14 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
 
           // Bind texture, Draw
           gl && gl.activeTexture(gl.TEXTURE0);
-          gl && gl.bindTexture(gl.TEXTURE_2D, draw_cmd.TextureId);
-          gl && gl.drawElements(gl.TRIANGLES, draw_cmd.ElemCount, idx_buffer_type, idx_buffer_offset);
+          const texture = gl ? resolveImGuiTexture(draw_cmd.TextureId) : null;
+
+          gl && gl.bindTexture(gl.TEXTURE_2D, texture);
+          const premultiplied = isImGuiTexturePremultiplied(draw_cmd.TextureId);
+
+          gl && gl.uniform1i(g_AttribLocationPremultiplied, premultiplied ? 1 : 0);
+          gl && gl.blendFunc(premultiplied ? gl.ONE : gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl && texture && gl.drawElements(gl.TRIANGLES, draw_cmd.ElemCount, idx_buffer_type, idx_buffer_offset);
 
           if (ctx) {
             const vtx_buffer_offset = draw_list.VtxBuffer.byteOffset + draw_cmd.VtxOffset * ImGui.DrawVertSize;
@@ -855,6 +868,8 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
   gl && (last_enable_blend ? gl.enable(gl.BLEND) : gl.disable(gl.BLEND));
   gl && (last_enable_cull_face ? gl.enable(gl.CULL_FACE) : gl.disable(gl.CULL_FACE));
   gl && (last_enable_depth_test ? gl.enable(gl.DEPTH_TEST) : gl.disable(gl.DEPTH_TEST));
+  gl && (last_enable_stencil_test ? gl.enable(gl.STENCIL_TEST) : gl.disable(gl.STENCIL_TEST));
+  gl && last_color_mask && gl.colorMask(...last_color_mask);
   gl && (last_enable_scissor_test ? gl.enable(gl.SCISSOR_TEST) : gl.disable(gl.SCISSOR_TEST));
   // glPolygonMode(GL_FRONT_AND_BACK, (GLenum)last_polygon_mode[0]);
   gl && (last_viewport !== null) && gl.viewport(last_viewport[0], last_viewport[1], last_viewport[2], last_viewport[3]);
@@ -866,6 +881,8 @@ export function CreateFontsTexture (): void {
 
   // Backup GL state
   const last_texture: WebGLTexture | null = gl && gl.getParameter(gl.TEXTURE_BINDING_2D);
+  const last_flip_y = gl && gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+  const last_premultiply_alpha = gl && gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL);
 
   // Build texture atlas
   // const width: number = 256;
@@ -877,6 +894,8 @@ export function CreateFontsTexture (): void {
   // Upload texture to graphics system
   g_FontTexture = gl && gl.createTexture();
   gl && gl.bindTexture(gl.TEXTURE_2D, g_FontTexture);
+  gl && gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl && gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl && gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl && gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   // gl && gl.pixelStorei(gl.UNPACK_ROW_LENGTH); // WebGL2
@@ -902,7 +921,9 @@ export function CreateFontsTexture (): void {
   }
 
   // Restore modified GL state
-  gl && last_texture && gl.bindTexture(gl.TEXTURE_2D, last_texture);
+  gl && gl.bindTexture(gl.TEXTURE_2D, last_texture);
+  gl && gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, last_flip_y);
+  gl && gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, last_premultiply_alpha);
 }
 
 export function DestroyFontsTexture (): void {
@@ -930,10 +951,11 @@ export function CreateDeviceObjects (): void {
   const fragment_shader: string[] = [
     'precision mediump float;', // WebGL requires precision specifiers
     'uniform sampler2D Texture;',
+    'uniform bool TexturePremultipliedAlpha;',
     'varying vec2 Frag_UV;',
     'varying vec4 Frag_Color;',
     'void main() {',
-    '	gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV);',
+    '	vec4 sampled = texture2D(Texture, Frag_UV); if (TexturePremultipliedAlpha) sampled.rgb *= Frag_Color.a; gl_FragColor = Frag_Color * sampled;',
     '}',
   ];
 
@@ -949,6 +971,7 @@ export function CreateDeviceObjects (): void {
   gl && gl.linkProgram(g_ShaderHandle);
 
   g_AttribLocationTex = gl && gl.getUniformLocation(g_ShaderHandle, 'Texture');
+  g_AttribLocationPremultiplied = gl && gl.getUniformLocation(g_ShaderHandle, 'TexturePremultipliedAlpha');
   g_AttribLocationProjMtx = gl && gl.getUniformLocation(g_ShaderHandle, 'ProjMtx');
   g_AttribLocationPosition = gl && gl.getAttribLocation(g_ShaderHandle, 'Position') || 0;
   g_AttribLocationUV = gl && gl.getAttribLocation(g_ShaderHandle, 'UV') || 0;
@@ -967,6 +990,7 @@ export function DestroyDeviceObjects (): void {
   gl && gl.deleteBuffer(g_ElementsHandle); g_ElementsHandle = null;
 
   g_AttribLocationTex = null;
+  g_AttribLocationPremultiplied = null;
   g_AttribLocationProjMtx = null;
   g_AttribLocationPosition = -1;
   g_AttribLocationUV = -1;
