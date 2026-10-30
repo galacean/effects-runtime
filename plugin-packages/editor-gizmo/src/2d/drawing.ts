@@ -1,4 +1,6 @@
-import type { Control } from '@galacean/effects-plugin-gui';
+import { TextCache } from '@galacean/effects';
+import { ellipsizeText } from '@galacean/effects-plugin-gui';
+import type { Control, TextMeasure } from '@galacean/effects-plugin-gui';
 import { type Box2 } from '@galacean/effects-math/es/extension/index';
 import type { Vector2 } from './math';
 import { Color, Matrix3, Vector3, getBoxCorners } from './math';
@@ -7,13 +9,6 @@ import { Color, Matrix3, Vector3, getBoxCorners } from './math';
 export const INFO_TEXT_FONT_SIZE = 14;
 /** 信息标签默认字体。 */
 export const INFO_TEXT_FONT_FAMILY = 'sans-serif';
-
-/** effects Control 字符 atlas 的固定单边留白。 */
-export const CONTROL_TEXT_GLYPH_PADDING = 4;
-/** 用于测量字体高度的代表字符。 */
-export const METRICS_STRING = '|ÉqÅ';
-/** 用于测量字体基线的字符。 */
-export const BASELINE_SYMBOL = 'M';
 
 /**
  * 颜色缓存：`hex_alpha` → effects Color。键到颜色映射不可变，全局缓存无需清理。
@@ -46,120 +41,14 @@ export function toColor (hex: number, alpha = 1): Color {
 }
 
 /**
- * 离屏文本测量上下文，懒加载并复用。
- */
-let _measureCtx: CanvasRenderingContext2D | null = null;
-
-/** 文本宽度和可见字形边界。 */
-export type MeasuredTextMetrics = {
-  /** 文本宽度。 */
-  width: number,
-  /** 基线到可见字形顶部的距离。 */
-  actualBoundingBoxAscent: number,
-  /** 基线到可见字形底部的距离。 */
-  actualBoundingBoxDescent: number,
-};
-
-/**
- * 测量文本的宽度与可见字形边界。
- * @param text 文本内容
- * @param fontSize 字号
- * @param fontFamily 字体
- * @param fontWeight 字重
- * @param fontStyle 字体样式
- * @returns 文本测量结果
- */
-export function measureTextMetrics (
-  text: string,
-  fontSize = INFO_TEXT_FONT_SIZE,
-  fontFamily = INFO_TEXT_FONT_FAMILY,
-  fontWeight?: string,
-  fontStyle?: string,
-): MeasuredTextMetrics {
-  _measureCtx ??= document.createElement('canvas').getContext('2d');
-  if (!_measureCtx) {
-    return { width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 };
-  }
-  _measureCtx.font = `${fontStyle ? `${fontStyle} ` : ''}${fontWeight ? `${fontWeight} ` : ''}${fontSize}px ${fontFamily}`;
-  const metrics = _measureCtx.measureText(text);
-
-  return {
-    width: metrics.width,
-    actualBoundingBoxAscent: metrics.actualBoundingBoxAscent ?? 0,
-    actualBoundingBoxDescent: metrics.actualBoundingBoxDescent ?? 0,
-  };
-}
-
-/**
- * 计算 effects Control.drawText 实际使用的 atlas cell 高度。
- * @param fontSize 字号
- * @param fontFamily 字体
- * @param fontWeight 字重
- * @param fontStyle 字体样式
- * @param resolution 渲染分辨率
- * @returns 字符图集单元格高度
- */
-export function measureControlTextCellHeight (
-  fontSize = INFO_TEXT_FONT_SIZE,
-  fontFamily = INFO_TEXT_FONT_FAMILY,
-  fontWeight?: string,
-  fontStyle?: string,
-  resolution = 1,
-): number {
-  const safeResolution = Number.isFinite(resolution) && resolution > 0 ? resolution : 1;
-  const scaledFontSize = fontSize * safeResolution;
-  const metrics = measureTextMetrics(
-    METRICS_STRING + BASELINE_SYMBOL,
-    scaledFontSize,
-    fontFamily,
-    fontWeight,
-    fontStyle,
-  );
-  const ascent = metrics.actualBoundingBoxAscent || scaledFontSize * 0.8;
-  const descent = metrics.actualBoundingBoxDescent || scaledFontSize * 0.2;
-
-  return Math.ceil(ascent + descent + CONTROL_TEXT_GLYPH_PADDING * 2 * safeResolution) / safeResolution;
-}
-
-/**
- * 测量文本宽度（逻辑像素），用于信息标签的溢出判断与右对齐定位。
- * @param text 文本内容
- * @param fontSize 字号
- * @param fontFamily 字体
- * @param fontWeight 字重
- * @returns 文本宽度
- */
-export function measureTextWidth (
-  text: string,
-  fontSize = INFO_TEXT_FONT_SIZE,
-  fontFamily = INFO_TEXT_FONT_FAMILY,
-  fontWeight?: string,
-): number {
-  return measureTextMetrics(text, fontSize, fontFamily, fontWeight).width;
-}
-
-/**
- * 单行文本截断：逐字符累加，超出可用宽度时把最后两个字符替换为省略号。
+ * 按完整 grapheme 截断，并将省略号计入最终宽度。
  * @param text 文本内容
  * @param maxWidth 可用宽度
- * @param fontSize 字号
- * @param fontFamily 字体
+ * @param measure 绘制文本所用的测量函数
  * @returns 截断后的文本
  */
-export function truncateText (text: string, maxWidth: number, fontSize = INFO_TEXT_FONT_SIZE, fontFamily = INFO_TEXT_FONT_FAMILY): string {
-  if (measureTextWidth(text, fontSize, fontFamily) <= maxWidth) {
-    return text;
-  }
-  let current = '';
-
-  for (const char of text) {
-    if (measureTextWidth(current + char, fontSize, fontFamily) > maxWidth) {
-      return current.length > 2 ? current.slice(0, -2) + '...' : '...';
-    }
-    current += char;
-  }
-
-  return current;
+export function truncateText (text: string, maxWidth: number, measure: TextMeasure): string {
+  return ellipsizeText(text, maxWidth, measure, '...');
 }
 
 /**
@@ -167,38 +56,28 @@ export function truncateText (text: string, maxWidth: number, fontSize = INFO_TE
  * @param text 文本内容
  * @param maxWidth 单行可用宽度
  * @param maxLines 最大行数
- * @param fontSize 字号
- * @param fontFamily 字体
+ * @param measure 绘制文本所用的测量函数
  * @returns 折行后的文本行数组
  */
-export function wrapText (text: string, maxWidth: number, maxLines: number, fontSize = INFO_TEXT_FONT_SIZE, fontFamily = INFO_TEXT_FONT_FAMILY): string[] {
+export function wrapText (text: string, maxWidth: number, maxLines: number, measure: TextMeasure): string[] {
+  if (maxLines <= 0 || !text) {return [];}
   const lines: string[] = [];
-  let currentLine = '';
-  const chars = text.split('');
 
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    const testLine = currentLine + char;
+  for (const paragraph of text.split(/\r\n|\r|\n/)) {
+    let currentLine = '';
 
-    if (measureTextWidth(testLine, fontSize, fontFamily) > maxWidth) {
-      lines.push(currentLine);
-
-      if (lines.length >= maxLines) {
-        const lastLine = lines[maxLines - 1];
-
-        lines[maxLines - 1] = lastLine.length > 2 ? lastLine.slice(0, -2) + '...' : '...';
-
-        break;
+    for (const char of TextCache.graphemeSegmenter(paragraph)) {
+      if (currentLine && measure(currentLine + char).width > maxWidth) {
+        lines.push(currentLine);
+        currentLine = char;
+      } else {
+        currentLine += char;
       }
-
-      currentLine = char;
-    } else {
-      currentLine = testLine;
     }
-
-    if (i === chars.length - 1 && currentLine) {
-      lines.push(currentLine);
-    }
+    lines.push(currentLine);
+  }
+  if (lines.length > maxLines) {
+    lines[maxLines - 1] = ellipsizeText(lines[maxLines - 1], maxWidth, measure, '...', true);
   }
 
   return lines.slice(0, maxLines);

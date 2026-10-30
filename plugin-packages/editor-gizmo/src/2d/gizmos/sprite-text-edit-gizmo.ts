@@ -14,7 +14,7 @@ import { Vector2, getNormalizeBoxByBoxes, getTransformedBoxCorners, setBoxFromPo
 import type { SpriteTextEditConfig } from '../configs/types';
 import { spriteTextEditConfig } from '../configs/builtin-configs';
 import { getPlayerItemById, getItemViewBox, getItemViewTransform } from '../items';
-import { toColor, drawCorners, drawWithBoxTransform, fillBoxByCorners, wrapText, measureTextWidth } from '../drawing';
+import { toColor, drawCorners, drawWithBoxTransform, fillBoxByCorners, wrapText } from '../drawing';
 
 /**
  * 图层文字信息
@@ -360,7 +360,8 @@ export class SpriteTextEditGizmo extends Gizmo {
       const width = leftTop.distance(rightTop);
       const height = leftTop.distance(leftBottom);
       const maxLines = Math.max(1, Math.floor(height / lineHeight));
-      const lines = wrapText(value.text, width / scale, maxLines, EDIT_TEXT_FONT_SIZE, EDIT_TEXT_FONT_FAMILY);
+      const measure = (text: string) => control.measureText(text, fontSize, EDIT_TEXT_FONT_FAMILY);
+      const lines = wrapText(value.text, width, maxLines, measure);
 
       if (lines.length === 0) {
         return;
@@ -373,9 +374,10 @@ export class SpriteTextEditGizmo extends Gizmo {
         const topY = (height - blockHeight) / 2;
 
         lines.forEach((line, li) => {
-          const lineWidth = measureTextWidth(line, fontSize, EDIT_TEXT_FONT_FAMILY);
+          const measurement = measure(line);
+          const y = topY + li * lineHeight + (lineHeight - measurement.lineHeight) / 2;
 
-          control.drawText((width - lineWidth) / 2, topY + li * lineHeight, line, fontSize, textFill, EDIT_TEXT_FONT_FAMILY);
+          control.drawText((width - measurement.width) / 2, y, line, fontSize, textFill, EDIT_TEXT_FONT_FAMILY);
         });
       });
     });

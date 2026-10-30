@@ -11,7 +11,7 @@ import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
-import type { FontStyle, FontWeight } from './text-cache';
+import type { FontStyle, FontWeight, GlyphAtlas } from './text-cache';
 import { TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
@@ -36,11 +36,29 @@ export type NinePatchDrawOptions = {
 };
 
 /** Logical text metrics produced by the glyph atlas used for rendering. */
-export type TextMeasurement = {
+export type TextLineLayout = {
+  characters: string[],
+  /** UTF-16 offsets relative to this line, including its end. */
+  boundaries: number[],
+  /** Grapheme origins in display pixels, followed by the untrimmed end position. */
+  positions: number[],
   width: number,
   lineHeight: number,
-  advances: number[],
 };
+
+export type TextMeasurement = {
+  /** Layout width, excluding trailing spaces and tabs when trimEnd is enabled. */
+  width: number,
+  lineHeight: number,
+  /** Per-grapheme advances in display pixels, including kerning from the preceding grapheme. */
+  advances: number[],
+  lines: TextLineLayout[],
+  /** Visible glyph bounds relative to the text's vertical layout origin. */
+  inkTop: number,
+  inkHeight: number,
+};
+
+type GlyphInkMetrics = { ascent: number, descent: number };
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 const NINE_PATCH_DRAW_SOURCE_SIZE = 'aDrawSourceSize';
@@ -95,6 +113,7 @@ export class Graphics {
 
   /** 文本纹理 LRU 缓存,drawText 用 */
   private textCache: TextCache;
+  private textInkMetrics = new WeakMap<GlyphAtlas, Map<string, GlyphInkMetrics>>();
 
   // 变换栈和缓存(使用 Matrix3 进行 2D 变换)
   private transformStack: Matrix3[] = [];
@@ -866,7 +885,7 @@ export class Graphics {
    * `color` 与 atlas 字形 RGBA 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
-   * @param x - 文本左上角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
+   * @param x - 文本排版起点 X 坐标，字形 bearing 和透明 padding 由缓存计算
    * @param y - 文本 cell 顶部 Y 坐标
    * @param text - 要绘制的文本内容，空串直接 return
    * @param fontSize - 字号（逻辑像素）
@@ -887,62 +906,151 @@ export class Graphics {
     if (!text) {
       return;
     }
-    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const layout = atlas.getLayout(text, fontSize);
+    let currentY = atlas.baseLineOffset;
+    let linePositionYShift = (atlas.lineHeight - atlas.fontMetrics.fontSize) / 2;
 
-    this.ensureBatch('text', atlas.texture);
+    if (linePositionYShift - atlas.baseLineOffset < 0) {
+      linePositionYShift = 0;
+    }
+    for (const line of layout.lines) {
+      for (let i = 0; i < line.charPositions.length; i++) {
+        const data = atlas.chars[line.chars[i]];
 
-    const lineHeight = atlas.lineHeight;
-    let cursorX = x;
-    const characters = Array.from(text);
+        if (data?.page === undefined || !data.frame) {
+          continue;
+        }
+        const page = atlas.pages[data.page];
+        const frame = data.frame;
 
-    // ensureChar 可能往 atlas canvas 写新字并打 dirty 标；实际 upload 推迟到
-    // flushBatch 统一处理，这样一帧多次 drawText 共写同一 atlas 只 upload 一次
-    for (let i = 0; i < characters.length; i++) {
-      const info = atlas.ensureChar(characters[i]);
-
-      if (!info) {
-        continue;
+        this.ensureBatch('text', page.texture);
+        this.pushQuad(
+          x + Math.round(line.charPositions[i] + data.xOffset) * layout.scale,
+          y + Math.round(currentY + data.yOffset + linePositionYShift) * layout.scale,
+          frame.width * layout.scale, frame.height * layout.scale,
+          color, {
+            u0: frame.x / page.width,
+            u1: (frame.x + frame.width) / page.width,
+            v0: 1 - (frame.y + frame.height) / page.height,
+            v1: 1 - frame.y / page.height,
+          },
+        );
       }
-      // atlas 像素坐标 → UV（纹理 flipY 后，canvas 顶 → v=1，canvas 底 → v=0）
-      const atlasWidth = atlas.canvas.width;
-      const atlasHeight = atlas.canvas.height;
-      const u0 = info.px / atlasWidth;
-      const u1 = (info.px + info.pw) / atlasWidth;
-      const v0 = 1 - (info.py + info.ph) / atlasHeight;
-      const v1 = 1 - info.py / atlasHeight;
-
-      // quad 宽与采样区都含四周 padding（cell 留白透明）；但光标只按 advance 前进，
-      // quad 起点左偏 paddingLeft 使字形 ink 落在 cursorX — padding 区重叠无妨
-      this.pushQuad(
-        cursorX - info.paddingLeft, y,
-        info.pw / atlas.resolution, lineHeight,
-        color, { u0, v0, u1, v1 },
-      );
-      cursorX += info.advance;
+      currentY += atlas.lineHeight;
     }
   }
 
-  /** Measures text with the same glyph metrics used by {@link drawText}. */
+  /** Measures the same grapheme layout and font scale used for rendering. */
   measureText (
     text: string,
     fontSize: number,
     fontFamily: string = 'sans-serif',
     fontWeight: FontWeight = 'normal',
     fontStyle: FontStyle = 'normal',
+    trimEnd = true,
   ): TextMeasurement {
-    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
-    const characters = Array.from(text);
+    const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const layout = atlas.getLayout(text, fontSize, trimEnd);
     const advances: number[] = [];
-    let width = 0;
+    const lineBreaks: string[] = [];
+    let previous: string | undefined;
 
-    for (const character of characters) {
-      const advance = atlas.ensureChar(character)?.advance ?? 0;
+    for (const char of TextCache.graphemeSegmenter(text)) {
+      const data = atlas.chars[char];
 
-      advances.push(advance);
-      width += advance;
+      advances.push((data.xAdvance + (data.kerning[previous!] || 0)) * layout.scale);
+      if (char === '\r' || char === '\n') {lineBreaks.push(char);}
+      previous = char;
     }
 
-    return { width, lineHeight: atlas.lineHeight, advances };
+    const lineHeight = atlas.lineHeight * layout.scale;
+    const lines: TextLineLayout[] = [];
+    const lineShift = Math.max(0, (atlas.lineHeight - atlas.fontMetrics.fontSize) / 2);
+    let inkTop = Infinity;
+    let inkBottom = -Infinity;
+
+    // The final empty line is a layout sentinel, including for empty input.
+    for (let lineIndex = 0; lineIndex < layout.lines.length - 1; lineIndex++) {
+      const line = layout.lines[lineIndex];
+      const boundaries = [0];
+      const positions: number[] = [];
+      let offset = 0;
+      let cursor = 0;
+      let previousCharacter: string | undefined = lineBreaks[lineIndex - 1];
+
+      for (let i = 0; i < line.chars.length; i++) {
+        const character = line.chars[i];
+        const glyph = atlas.chars[character];
+        // Whitespace has no drawable origin in the bitmap layout, but still occupies editing space.
+        const position = /\s/.test(character)
+          ? cursor + (glyph.kerning[previousCharacter] || 0)
+          : line.charPositions[i];
+
+        positions.push((Math.round(position + glyph.xOffset) - glyph.xOffset) * layout.scale);
+        cursor = position + glyph.xAdvance;
+        offset += character.length;
+        boundaries.push(offset);
+        previousCharacter = character;
+
+        if (glyph.page !== undefined) {
+          const metrics = this.getGlyphInkMetrics(atlas, character);
+
+          if (metrics.ascent !== 0 || metrics.descent !== 0) {
+            const top = Math.round(atlas.baseLineOffset + lineIndex * atlas.lineHeight + glyph.yOffset + lineShift) - glyph.yOffset;
+            const baseline = top + atlas.fontMetrics.ascent;
+
+            inkTop = Math.min(inkTop, (baseline - metrics.ascent) * layout.scale);
+            inkBottom = Math.max(inkBottom, (baseline + metrics.descent) * layout.scale);
+          }
+        }
+      }
+      positions.push(cursor * layout.scale);
+      lines.push({
+        characters: line.chars, boundaries, positions,
+        width: line.width * layout.scale, lineHeight,
+      });
+    }
+
+    return {
+      width: layout.width * layout.scale,
+      lineHeight, advances, lines,
+      inkTop: inkTop === Infinity ? 0 : inkTop,
+      inkHeight: inkTop === Infinity ? 0 : inkBottom - inkTop,
+    };
+  }
+
+  private getGlyphInkMetrics (atlas: GlyphAtlas, character: string): GlyphInkMetrics {
+    let cache = this.textInkMetrics.get(atlas);
+
+    if (!cache) {
+      cache = new Map();
+      this.textInkMetrics.set(atlas, cache);
+    }
+    let metrics = cache.get(character);
+
+    if (!metrics) {
+      const context = atlas.pages[0].canvasAndContext.context;
+      const measured = context.measureText(character);
+      const scale = atlas.baseMeasurementFontSize / atlas.baseRenderedFontSize;
+
+      metrics = {
+        ascent: (measured.actualBoundingBoxAscent ?? 0) * scale,
+        descent: (measured.actualBoundingBoxDescent ?? 0) * scale,
+      };
+      cache.set(character, metrics);
+    }
+
+    return metrics;
+  }
+
+  private getTextAtlas (fontSize: number, fontFamily: string, fontWeight: FontWeight, fontStyle: FontStyle): GlyphAtlas {
+    if (this.textCache.resolution !== this.engine.displayServer.pixelRatio) {
+      // Submit pending text before the resolution change destroys its pages.
+      this.flushBatch();
+    }
+
+    return this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   dispose (): void {

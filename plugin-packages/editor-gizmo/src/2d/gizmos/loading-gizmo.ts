@@ -16,14 +16,7 @@ import {
   viewPositionToWorld,
   viewSizeToWorld,
 } from '../viewport/coordinates';
-import {
-  BASELINE_SYMBOL,
-  CONTROL_TEXT_GLYPH_PADDING,
-  METRICS_STRING,
-  toColor,
-  measureTextMetrics,
-  type MeasuredTextMetrics,
-} from '../drawing';
+import { toColor } from '../drawing';
 import type { LoadingConfig } from '../configs/types';
 import type { ConfigChange } from '../configs/config-definition';
 import { loadingConfig } from '../configs/loading-config';
@@ -217,15 +210,8 @@ export class LoadingGizmo extends Gizmo {
      * @param fontSize 字号。
      * @returns 文本字形尺寸。
      */
-    const measureTipText = (text: string, fontSize: number): MeasuredTextMetrics => {
-      const metrics = measureTextMetrics(text, fontSize, LOADING_TIP_FONT_FAMILY, 'bold');
-
-      return {
-        width: metrics.width || Array.from(text).length * fontSize,
-        actualBoundingBoxAscent: metrics.actualBoundingBoxAscent || fontSize * 0.8,
-        actualBoundingBoxDescent: metrics.actualBoundingBoxDescent || fontSize * 0.2,
-      };
-    };
+    const measureTipText = (text: string, fontSize: number) =>
+      control.measureText(text, fontSize, LOADING_TIP_FONT_FAMILY, 'bold');
 
     // 步骤 2：测量文本并缩小字号以适应可用宽度。
     const measuredAtBaseSize = measureTipText(tip.text, LOADING_TIP_FONT_SIZE);
@@ -241,18 +227,13 @@ export class LoadingGizmo extends Gizmo {
 
     // 步骤 3：按字形基线计算最终绘制位置。
     const textLeft = tip.position ? left : loadingBox.min.x + (width - textMetrics.width) / 2;
-    const inkHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
     const top = tip.position
       ? itemBox.min.y + (Number.isFinite(tip.position.y) ? tip.position.y : 0)
-      : loadingBox.min.y + (height - inkHeight) / 2;
-    const probeMetrics = measureTipText(METRICS_STRING + BASELINE_SYMBOL, fontSize);
-    const inkTopFromCellTop = CONTROL_TEXT_GLYPH_PADDING
-      + probeMetrics.actualBoundingBoxAscent
-      - textMetrics.actualBoundingBoxAscent;
+      : loadingBox.min.y + (height - textMetrics.inkHeight) / 2;
 
     control.drawText(
       textLeft,
-      top - inkTopFromCellTop,
+      top - textMetrics.inkTop,
       tip.text,
       fontSize,
       toColor(LOADING_TIP_COLOR, 1),
