@@ -72,7 +72,6 @@ export function searchBar (
 
   ImGui.SetCursorScreenPos(new ImGui.Vec2(textStartX, frameMin.y));
   ImGui.PushItemWidth(Math.max(32, textWidth));
-  ImGui.SetNextItemAllowOverlap();
   const changed = ImGui.InputTextWithHint(id, opts.hint ?? 'Search', buffer, bufferSize);
   const inputHovered = ImGui.IsItemHovered();
   const inputActive = ImGui.IsItemActive() || ImGui.IsItemFocused();

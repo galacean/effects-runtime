@@ -1,4 +1,5 @@
 import { texturePreviewCache } from '../features/assets/preview/texture-preview-cache';
+import { materialPreviews } from '../features/assets/preview/material-preview';
 import { projectWorkspace } from '../features/projects/project-workspace';
 import { sceneWorkspace } from '../features/scene/scene-workspace';
 import { SceneViewportPanel } from '../features/scene/viewport/scene-viewport-panel';
@@ -81,6 +82,7 @@ export class EditorApplication {
 
   tick (time: number) {
     texturePreviewCache.beginFrame();
+    materialPreviews.beginFrame();
     editorTooltips.beginFrame();
     const dt = this.lastTime > 0 ? (time - this.lastTime) / 1000 : 0;
 

@@ -1,29 +1,41 @@
-import { EffectsObject, Material, Sprite, Texture } from '@galacean/effects';
+import { EffectsObject, Material, Shader, Sprite, Texture } from '@galacean/effects';
 import { editorPanel } from '../../../framework/registry/editor-registry';
 import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../../platform/imgui/index';
-import { drawAssetIcon } from '../../../ui/icons/asset-icons';
+import { ImGui } from '../../../platform/imgui';
 import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
-import { PROPERTY_COLORS as C, PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
+import { PropertyGrid } from '../../../ui/property-editor/property-grid';
 import type { SceneDocument } from '../../scene/document/scene-document';
 import { sceneWorkspace } from '../../scene/scene-workspace';
+import { assetLibrary } from '../asset-library';
+import { ImagePreviewViewport } from '../preview/image-preview-viewport';
+import { materialPreviews } from '../preview/material-preview';
+import { MaterialPreviewViewport } from '../preview/material-preview-widget';
 import { getSpriteThumbnail } from '../preview/sprite-thumbnail';
-import { getOrCreateTexturePreview, texturePreviewImage } from '../preview/texture-preview';
-import { setRuntimeAssetOpener } from './asset-editor-registry';
-import { drawMaterialProperties } from './material-details';
+import { getOrCreateTexturePreview } from '../preview/texture-preview';
+import { revealContentAsset, setFocusedAssetSave, setRuntimeAssetOpener } from './asset-editor-registry';
+import { AssetEditorLayout, assetEditorFooter, assetEditorMenu, assetEditorPanels, assetEditorToolbar,
+  beginAssetEditorStyle, constrainAssetEditor, endAssetEditorStyle } from './asset-editor-layout';
+import { drawMaterialProperties, materialSearchTerms } from './material-details';
 
 @editorPanel()
 export class RuntimeAssetEditor extends EditorWindow {
   private asset?: object;
   private document?: SceneDocument;
   private focus = false;
-  private readonly grid = new PropertyGridState();
+  private readonly layout = new AssetEditorLayout();
+  private readonly materialViewport = new MaterialPreviewViewport();
+  private readonly imageViewport = new ImagePreviewViewport();
 
   constructor () {
-    super(); this.title = 'Asset Editor'; this.initialSize = new ImGui.Vec2(660, 560);
+    super(); this.title = 'Asset Editor'; this.initialSize = new ImGui.Vec2(1120, 720);
+    this.setWindowFlags(ImGui.WindowFlags.MenuBar | ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
     setRuntimeAssetOpener(asset => {
-      this.asset = asset; this.document = sceneWorkspace.current; this.focus = true;
+      if (this.asset !== asset) {
+        this.materialViewport.view.primitive = asset instanceof EffectsObject ? assetLibrary.entry(asset.getInstanceId())?.previewMesh ?? 'sphere' : 'sphere';
+        this.materialViewport.resetCamera();
+      }
+      this.asset = asset; this.document = sceneWorkspace.current; this.focus = true; this.layout.search[0] = ''; this.imageViewport.reset();
       this.title = ((asset as { name?: string }).name || asset.constructor.name) + ' — ' +
         (asset instanceof Material ? 'Material' : asset instanceof Texture ? 'Texture' : asset.constructor.name) + ' Editor###Asset Editor';
       this.open();
@@ -32,48 +44,65 @@ export class RuntimeAssetEditor extends EditorWindow {
 
   override draw (): void {
     if (this.document !== sceneWorkspace.current) { this.close(); this.asset = undefined; }
+    if (!this.isOpened()) { return; }
+    beginAssetEditorStyle(); constrainAssetEditor();
     if (this.focus) { ImGui.SetNextWindowFocus(); this.focus = false; }
-    ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
     sceneWorkspace.observe('Edit asset properties', () => super.draw(), [this.asset]);
     if (!ImGui.IsAnyItemActive()) { sceneWorkspace.current?.setScopeActive(this, false); }
-    ImGui.PopStyleColor();
+    endAssetEditorStyle();
   }
 
   protected override onGUI (): void {
     const asset = this.asset;
 
     if (!asset) { return; }
-    const position = ImGui.GetWindowPos(), size = ImGui.GetWindowSize(), draw = ImGui.GetWindowDrawList();
+    const entry = asset instanceof EffectsObject ? assetLibrary.entry(asset.getInstanceId()) : undefined;
+    const actions = { save: () => { void sceneWorkspace.save(); }, dirty: !!sceneWorkspace.current?.dirty,
+      browse: entry ? () => revealContentAsset(entry.id) : undefined, close: () => this.close(), busy: sceneWorkspace.busy };
 
-    draw.AddRectFilled(new ImGui.Vec2(position.x + 1, ImGui.GetCursorScreenPos().y), new ImGui.Vec2(position.x + size.x - 1, position.y + size.y - 1), ImGui.GetColorU32(C.background));
-    ImGui.Text((asset as { name?: string }).name || asset.constructor.name); ImGui.Separator();
-    if (asset instanceof Texture || asset instanceof Sprite) {
-      const preview = asset instanceof Sprite ? getSpriteThumbnail(asset) : getOrCreateTexturePreview(asset);
-
-      if (preview) { texturePreviewImage(preview, new ImGui.Vec2(180, 180)); }
-    } else if (asset instanceof Material) {
-      const p = ImGui.GetCursorScreenPos();
-
-      drawAssetIcon('material', p.x, p.y, 96); ImGui.Dummy(new ImGui.Vec2(96, 104));
-    }
-    PropertyGrid.begin(this.grid, '');
-    ImGui.PushID(asset instanceof EffectsObject ? asset.getInstanceId() : asset.constructor.name);
-    try {
-      if (asset instanceof Material) {
-        PropertyGrid.category('Material', 'Material', [], () => drawMaterialProperties(asset));
-      } else if (asset instanceof Texture || asset instanceof Sprite) {
+    if (ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows)) { setFocusedAssetSave(async () => { await sceneWorkspace.save(); }); }
+    assetEditorMenu(this.layout, actions); assetEditorToolbar(actions);
+    assetEditorPanels(this.layout, () => {
+      if (asset instanceof Material) { this.materialViewport.draw(request => materialPreviews.runtime(asset, 512, request)); } else if (asset instanceof Texture || asset instanceof Sprite) {
+        const preview = asset instanceof Sprite ? getSpriteThumbnail(asset) : getOrCreateTexturePreview(asset);
         const texture = asset instanceof Sprite ? asset.texture : asset;
 
-        PropertyGrid.category('Image', asset.constructor.name, [], () => {
+        this.imageViewport.draw(preview ? { preview, width: 'width' in preview ? Number(preview.width) : texture.width,
+          height: 'height' in preview ? Number(preview.height) : texture.height } : undefined);
+      } else if (asset instanceof Shader) {
+        if (ImGui.BeginTabBar('##RuntimeShaderSource')) {
+          for (const [key, label] of [['vertex', 'Vertex'], ['fragment', 'Fragment']] as const) {
+            if (ImGui.BeginTabItem(label)) {
+              ImGui.InputTextMultiline('##Source', () => asset.shaderData[key], 262145, new ImGui.Vec2(-1, Math.max(50, ImGui.GetContentRegionAvail().y - 4)), ImGui.InputTextFlags.ReadOnly);
+              ImGui.EndTabItem();
+            }
+          }
+          ImGui.EndTabBar();
+        }
+      } else { ImGui.TextDisabled(asset.constructor.name); }
+    }, () => {
+      if (asset instanceof Material) { PropertyGrid.category('Material', 'Material', materialSearchTerms(asset), () => drawMaterialProperties(asset)); this.materialViewport.drawInspector(); } else if (asset instanceof Texture || asset instanceof Sprite) {
+        const texture = asset instanceof Sprite ? asset.texture : asset;
+
+        PropertyGrid.category('Image', asset.constructor.name, ['Width', 'Height', 'Texture', 'UV', 'Rotation'], () => {
           Fields.Text('Width', texture.width + ' px'); Fields.Text('Height', texture.height + ' px');
-          if (asset instanceof Sprite) { Fields.ObjectField('Texture', asset, 'texture', 'Texture', true); }
+          if (asset instanceof Sprite) {
+            Fields.ObjectField('Texture', asset, 'texture', 'Texture', true);
+            Fields.Text('UV Rect', asset.rect.map(value => value.toFixed(3)).join(', ')); Fields.Text('Rotation', asset.rotation ? '90°' : 'None');
+          }
         });
-      } else { Fields.Text('Type', asset.constructor.name); }
-    } finally { ImGui.PopID(); PropertyGrid.end(); }
+      }
+      PropertyGrid.category('Asset', 'Asset', ['Name', 'Type', 'ID'], () => {
+        Fields.Text('Name', (asset as { name?: string }).name || asset.constructor.name); Fields.Text('Type', asset.constructor.name);
+        if (asset instanceof EffectsObject) { Fields.Text('ID', asset.getInstanceId()); }
+      });
+    }, asset instanceof Shader ? 'Source' : 'Viewport');
+    assetEditorFooter(entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : 'Scene Resource', asset.constructor.name);
     if (ImGui.IsAnyItemActive()) { sceneWorkspace.current?.setScopeActive(this, true); }
   }
 
   override flushEdits (): void { sceneWorkspace.current?.setScopeActive(this, false); }
+
   override onUndoRedo (): void {
     if (this.document !== sceneWorkspace.current) {
       this.close(); this.asset = undefined;
@@ -85,5 +114,6 @@ export class RuntimeAssetEditor extends EditorWindow {
       if (!this.asset) { this.close(); }
     }
   }
+
   protected override onDisable (): void { this.flushEdits(); }
 }

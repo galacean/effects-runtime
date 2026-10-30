@@ -8,6 +8,7 @@ import { InteractionColors as I } from '../../ui/theme/editor-interaction';
 import type { AssetEntry } from '../assets/model/asset-types';
 import type { AssetThumbnailCache } from '../assets/preview/asset-thumbnail-cache';
 import { getSpriteThumbnail } from '../assets/preview/sprite-thumbnail';
+import { materialPreviews } from '../assets/preview/material-preview';
 import { drawTexturePreview, imageTexturePreview } from '../assets/preview/texture-preview';
 import { ASSET_PRESENTATION } from '../assets/ui/asset-presentation';
 
@@ -18,10 +19,11 @@ export class ContentAssetSource {
     const presentation = ASSET_PRESENTATION[entry.kind];
 
     return { id: entry.id, name, type: presentation.label, icon: presentation.icon, accent: presentation.accent,
-      preview: entry.kind === 'texture' || entry.kind === 'sprite' ? rect => {
+      preview: entry.kind === 'texture' || entry.kind === 'sprite' || entry.kind === 'material' ? (rect, state) => {
         const sprite = entry.kind === 'sprite' ? this.resolve(entry.id) : undefined;
         const preview = sprite instanceof Sprite ? getSpriteThumbnail(sprite) : undefined;
-        const image = preview ? { texture: preview.tex, width: preview.width, height: preview.height } : entry.kind === 'texture' ? this.thumbnails.get(entry.id) : undefined;
+        const image = preview ? { texture: preview.tex, width: preview.width, height: preview.height } :
+          entry.kind === 'material' ? materialPreviews.asset(entry.id, 128, { realtime: state.hovered }) : entry.kind === 'texture' ? this.thumbnails.get(entry.id) : undefined;
 
         if (image) {
           const scale = Math.min(rect.width / image.width, rect.height / image.height), width = image.width * scale, height = image.height * scale;

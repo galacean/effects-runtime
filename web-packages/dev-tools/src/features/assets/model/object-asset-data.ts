@@ -35,6 +35,7 @@ export function objectReferences (value: unknown, result = new Set<string>()): S
 }
 
 export function validateObjectAsset (payload: AssetObject): void {
+  if (payload.previewMesh !== undefined && (payload.kind !== 'material' || !['sphere', 'plane', 'cube', 'cylinder'].includes(payload.previewMesh))) { throw new Error('The preview mesh is invalid.'); }
   if (!Array.isArray(payload.objects) || !payload.objects.length || payload.objects.length > 1024 ||
     payload.objects.some(object => !object || typeof object.id !== 'string' || typeof object.dataType !== 'string') ||
     new Set(payload.objects.map(object => object.id)).size !== payload.objects.length || payload.objects.some(object => BUILTIN_IDS.has(object.id)) ||

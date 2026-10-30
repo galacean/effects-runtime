@@ -915,6 +915,7 @@ export class ContentBrowserPanel extends EditorWindow {
       }
       if (editorMenuItem('Show Deleted Assets', '', this.showTrash)) { this.showTrash = !this.showTrash; this.collection = undefined; this.selected.clear(); }
       editorMenuSection('Thumbnails', true);
+      if (editorMenuItem('Real-Time Thumbnails', '', library.preferences.realtimeThumbnails)) { library.preferences.realtimeThumbnails = !library.preferences.realtimeThumbnails; this.saveSettings(); }
       for (const [size, label] of [[48, 'Tiny'], [72, 'Small'], [96, 'Medium'], [144, 'Large'], [192, 'Huge']] as const) {
         if (editorMenuItem(label, '', library.preferences.thumbnailSize === size)) { library.preferences.thumbnailSize = size; this.saveSettings(); }
       }

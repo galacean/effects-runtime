@@ -1,8 +1,11 @@
 import { ImGuiContext } from 'maoan-imgui-js';
 
+export interface ImGuiTextureDisplay { channels: [number, number, number, number], desaturate: boolean }
+
 /** Resolves a borrowed texture at draw time, after scene rendering and resource replacement. */
 export class ImGuiTextureBinding {
-  constructor (readonly resolve: () => WebGLTexture | null, readonly premultipliedAlpha: boolean | (() => boolean) = false) { }
+  constructor (readonly resolve: () => WebGLTexture | null, readonly premultipliedAlpha: boolean | (() => boolean) = false,
+    readonly display?: () => ImGuiTextureDisplay) { }
 }
 
 export type ImGuiTexture = WebGLTexture | ImGuiTextureBinding;
@@ -13,6 +16,10 @@ export function resolveImGuiTexture (texture: ImGuiTexture): WebGLTexture | null
 
 export function isImGuiTexturePremultiplied (texture: ImGuiTexture): boolean {
   return texture instanceof ImGuiTextureBinding && (typeof texture.premultipliedAlpha === 'function' ? texture.premultipliedAlpha() : texture.premultipliedAlpha);
+}
+
+export function getImGuiTextureDisplay (texture: ImGuiTexture): ImGuiTextureDisplay | undefined {
+  return texture instanceof ImGuiTextureBinding ? texture.display?.() : undefined;
 }
 /** The backend's object-ID table outlives draw lists; drop submitted bindings so its slots can be reused. */
 export function releaseImGuiTextureBindings (): void {

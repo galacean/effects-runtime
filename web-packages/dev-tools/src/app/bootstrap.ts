@@ -77,6 +77,7 @@ function frame (time: number): void {
   editorApp.tick(time);
   ImGui.EndFrame();
   EditorRuntimeSession.render(time);
+  texturePreviewCache.renderPending(time);
   ImGui.Render();
   editorLayout.endFrame();
 

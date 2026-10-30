@@ -15,7 +15,8 @@ import { sceneWorkspace } from '../../scene/scene-workspace';
 import { assetLibrary } from '../asset-library';
 import { openContentAsset, openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import { getSpriteThumbnail } from '../preview/sprite-thumbnail';
-import { drawTexturePreview, getOrCreateTexturePreview } from '../preview/texture-preview';
+import { materialPreviews } from '../preview/material-preview';
+import { drawTexturePreview, getOrCreateTexturePreview, imageTexturePreview } from '../preview/texture-preview';
 import type { ContentAssetDrag } from './asset-drag';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
 
@@ -82,18 +83,20 @@ export function drawAssetReferenceField (object: object, property: string, width
     const size = 54, draw = ImGui.GetWindowDrawList();
     const visible = ImGui.IsRectVisible(origin, new ImGui.Vec2(origin.x + size, origin.y + size));
     const spritePreview = visible && reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
-    const preview = visible && reference instanceof Texture ? getOrCreateTexturePreview(reference, () => target[property]) : spritePreview;
 
     ImGui.InvisibleButton('##Thumbnail', new ImGui.Vec2(size, size));
     const hovered = ImGui.IsItemHovered();
+    const materialPreview = visible && reference instanceof Material ? materialPreviews.runtime(reference, 96, { realtime: hovered }) : undefined;
+    const preview = visible && reference instanceof Texture ? getOrCreateTexturePreview(reference, () => target[property]) :
+      materialPreview ? imageTexturePreview(materialPreview) : spritePreview;
 
     if (hovered && ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) { openReference(reference); }
     draw.AddRectFilled(origin, new ImGui.Vec2(origin.x + size, origin.y + size), ImGui.GetColorU32(C.input), 3);
     draw.AddRect(origin, new ImGui.Vec2(origin.x + size, origin.y + size), ImGui.GetColorU32(hovered ? I.hover : I.outline), 3);
     if (preview) {
-      const texture = reference instanceof Texture ? reference : (reference as Sprite).texture;
-      const imageWidth = Math.max(1, spritePreview?.width ?? texture.width);
-      const imageHeight = Math.max(1, spritePreview?.height ?? texture.height);
+      const texture = reference instanceof Texture ? reference : reference instanceof Sprite ? reference.texture : undefined;
+      const imageWidth = Math.max(1, materialPreview?.width ?? spritePreview?.width ?? texture?.width ?? 1);
+      const imageHeight = Math.max(1, materialPreview?.height ?? spritePreview?.height ?? texture?.height ?? 1);
       const scale = Math.min((size - 6) / imageWidth, (size - 6) / imageHeight), w = imageWidth * scale, h = imageHeight * scale;
       const min = new ImGui.Vec2(origin.x + (size - w) / 2, origin.y + (size - h) / 2);
 

@@ -11,7 +11,7 @@ import { AssetObjectCache } from './runtime/asset-object-cache';
 import { workspaceRepository } from './storage/workspace-repository';
 
 const DEFAULTS: AssetBrowserPreferences = {
-  folder: ASSET_ROOT, view: 'tiles', thumbnailSize: 96, sourcesWidth: 216, sources: true,
+  folder: ASSET_ROOT, view: 'tiles', thumbnailSize: 96, realtimeThumbnails: true, sourcesWidth: 216, sources: true,
   showFolders: true, recursive: true, sort: 'name', descending: false, collections: [],
 };
 
@@ -209,6 +209,8 @@ export class AssetLibrary {
 
       data.objects.find(object => object.id === data.id)!.name = entry.name;
       const next = { ...entry, updatedAt: Math.max(Date.now(), entry.updatedAt + 1), size: new TextEncoder().encode(JSON.stringify(data)).length };
+
+      if (data.kind === 'material') { next.previewMesh = data.previewMesh; }
 
       await this.update([next], [data]); await this.objectCache.refresh(next, engine); this.notice = entry.name + ' saved';
 

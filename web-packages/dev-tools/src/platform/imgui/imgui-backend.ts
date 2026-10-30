@@ -3,7 +3,7 @@
 /* eslint-disable no-console */
 //@ts-nocheck
 import * as ImGui from 'maoan-imgui-js';
-import { isImGuiTexturePremultiplied, resolveImGuiTexture } from './texture-binding';
+import { getImGuiTextureDisplay, isImGuiTexturePremultiplied, resolveImGuiTexture } from './texture-binding';
 
 let clipboard_text: string = '';
 
@@ -16,6 +16,8 @@ export function getCanvas (): HTMLCanvasElement | null {
 export let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
 let g_ShaderHandle: WebGLProgram | null = null;
 let g_AttribLocationPremultiplied: WebGLUniformLocation | null = null;
+let g_AttribLocationChannels: WebGLUniformLocation | null = null;
+let g_AttribLocationDesaturate: WebGLUniformLocation | null = null;
 let g_VertHandle: WebGLShader | null = null;
 let g_FragHandle: WebGLShader | null = null;
 let g_AttribLocationTex: WebGLUniformLocation | null = null;
@@ -763,9 +765,13 @@ export function RenderDrawData (draw_data: ImGui.DrawData | null = ImGui.GetDraw
 
           gl && gl.bindTexture(gl.TEXTURE_2D, texture);
           const premultiplied = isImGuiTexturePremultiplied(draw_cmd.TextureId);
+          const display = getImGuiTextureDisplay(draw_cmd.TextureId), channels = display?.channels ?? [1, 1, 1, 1];
+          const straight = channels[3] < 0.5 || channels[0] + channels[1] + channels[2] < 0.5;
 
           gl && gl.uniform1i(g_AttribLocationPremultiplied, premultiplied ? 1 : 0);
-          gl && gl.blendFunc(premultiplied ? gl.ONE : gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl && gl.uniform4f(g_AttribLocationChannels, ...channels);
+          gl && gl.uniform1i(g_AttribLocationDesaturate, display?.desaturate ? 1 : 0);
+          gl && gl.blendFunc(premultiplied && !straight ? gl.ONE : gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
           gl && texture && gl.drawElements(gl.TRIANGLES, draw_cmd.ElemCount, idx_buffer_type, idx_buffer_offset);
 
           if (ctx) {
@@ -952,10 +958,21 @@ export function CreateDeviceObjects (): void {
     'precision mediump float;', // WebGL requires precision specifiers
     'uniform sampler2D Texture;',
     'uniform bool TexturePremultipliedAlpha;',
+    'uniform vec4 TextureChannels;',
+    'uniform bool TextureDesaturate;',
     'varying vec2 Frag_UV;',
     'varying vec4 Frag_Color;',
     'void main() {',
-    '	vec4 sampled = texture2D(Texture, Frag_UV); if (TexturePremultipliedAlpha) sampled.rgb *= Frag_Color.a; gl_FragColor = Frag_Color * sampled;',
+    '	vec4 sampled = texture2D(Texture, Frag_UV);',
+    '	bool alphaOnly = dot(TextureChannels.rgb, vec3(1.0)) < 0.5 && TextureChannels.a > 0.5;',
+    '	bool straight = TextureChannels.a < 0.5 || alphaOnly;',
+    '	if (alphaOnly) { sampled = vec4(vec3(sampled.a), 1.0); } else {',
+    '	  if (TexturePremultipliedAlpha && straight && sampled.a > 0.00001) sampled.rgb /= sampled.a;',
+    '	  sampled.rgb *= TextureChannels.rgb; if (TextureChannels.a < 0.5) sampled.a = 1.0;',
+    '	}',
+    '	if (TextureDesaturate) sampled.rgb = vec3(dot(sampled.rgb, vec3(0.2126, 0.7152, 0.0722)));',
+    '	if (TexturePremultipliedAlpha && !straight) sampled.rgb *= Frag_Color.a;',
+    '	gl_FragColor = Frag_Color * sampled;',
     '}',
   ];
 
@@ -972,6 +989,8 @@ export function CreateDeviceObjects (): void {
 
   g_AttribLocationTex = gl && gl.getUniformLocation(g_ShaderHandle, 'Texture');
   g_AttribLocationPremultiplied = gl && gl.getUniformLocation(g_ShaderHandle, 'TexturePremultipliedAlpha');
+  g_AttribLocationChannels = gl && gl.getUniformLocation(g_ShaderHandle, 'TextureChannels');
+  g_AttribLocationDesaturate = gl && gl.getUniformLocation(g_ShaderHandle, 'TextureDesaturate');
   g_AttribLocationProjMtx = gl && gl.getUniformLocation(g_ShaderHandle, 'ProjMtx');
   g_AttribLocationPosition = gl && gl.getAttribLocation(g_ShaderHandle, 'Position') || 0;
   g_AttribLocationUV = gl && gl.getAttribLocation(g_ShaderHandle, 'UV') || 0;
@@ -991,6 +1010,8 @@ export function DestroyDeviceObjects (): void {
 
   g_AttribLocationTex = null;
   g_AttribLocationPremultiplied = null;
+  g_AttribLocationChannels = null;
+  g_AttribLocationDesaturate = null;
   g_AttribLocationProjMtx = null;
   g_AttribLocationPosition = -1;
   g_AttribLocationUV = -1;
