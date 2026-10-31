@@ -258,10 +258,7 @@ export class SequencerDocument {
   }
 
   channelValue (section: SequenceSection, channel: SequenceChannel, time = this.currentTime): number {
-    if (section.position && channel.pathView) {
-      return section.position.evaluate((time - section.clip.start) / section.clip.duration, channel.axis);
-    }
-    if (Math.abs(time - this.currentTime) < 1e-7) {
+    if (channel.pathView !== 'timing' && Math.abs(time - this.currentTime) < 1e-7) {
       const item = this.boundItem(section.track);
 
       if (item && section.clip instanceof TransformPlayableAsset) {
@@ -281,6 +278,10 @@ export class SequencerDocument {
         }
         if (typeof target === 'number') { return target; }
       }
+    }
+
+    if (section.position && channel.pathView) {
+      return section.position.evaluate((time - section.clip.start) / section.clip.duration, channel.axis);
     }
 
     return channel.keys.length ? sampleCurve(channel.keys, (time - section.clip.start) / section.clip.duration) : channel.defaultValue;
@@ -338,9 +339,14 @@ export class SequencerDocument {
     return { ...item, key };
   }
 
-  begin (label: string, affectsContent = true): void {
+  begin (label: string, affectsContent = true, initialTransforms?: ReadonlyMap<VFXItem, number[]>): void {
     if (!this.transaction) {
       this.transaction = { label, before: this.snapshot(), changed: false, affectsContent };
+      for (const transform of this.transaction.before.transforms) {
+        const values = initialTransforms?.get(transform.item);
+
+        if (values) { transform.position = values.slice(0, 3); transform.rotation = values.slice(3, 6); transform.scale = values.slice(6, 9); }
+      }
       this.sceneDocument?.beginSequence(this, label, this.transaction.before, affectsContent);
     } else if (affectsContent && !this.transaction.affectsContent) {
       this.transaction.affectsContent = true;
@@ -554,7 +560,7 @@ export class SequencerDocument {
       const existing = section.position.keys.find(key => Math.abs(key.timing.time - sourceTime) < 1e-8);
       const point = existing ? [...existing.point] as spec.vec3 : [0, 1, 2].map(axis => section.position!.evaluate(normalized, axis)) as spec.vec3;
 
-      if (channel.pathView === 'point' && !preserveCurve) { point[channel.axis] = value ?? point[channel.axis]; }
+      if (channel.pathView === 'point' && !preserveCurve) { point[channel.axis] = value ?? this.channelValue(section, channel, time); }
       const key = section.position.insert(normalized, channel.pathView === 'point' && !preserveCurve ? point : undefined);
 
       section.position.project(section.channels.filter(channel => channel.pathView));

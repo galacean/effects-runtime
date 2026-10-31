@@ -1,11 +1,11 @@
-import type { ImGui } from '../../platform/imgui';
+import type { math } from '@galacean/effects';
 
 export interface CurvePoint { time: number, value: number }
 export interface CurveKey extends CurvePoint { id: string, handles?: Partial<Record<'in' | 'out', CurvePoint>> }
 export interface CurveModel {
   id: string,
   label: string,
-  color: ImGui.Vec4,
+  color: math.Color,
   readOnly: boolean,
   keys(): CurveKey[],
   evaluate(time: number): number,

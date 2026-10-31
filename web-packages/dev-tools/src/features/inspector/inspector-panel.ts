@@ -1,391 +1,246 @@
-import { editorTooltip } from '../../ui/widgets/editor-tooltip';
-import { drawEditorIcon } from '../../ui/icons/editor-icons';
-import { inspectedObjectHeaderIcon, inspectedObjectIcon } from './inspected-object-icons';
-import { Component, EffectsObject, MaskableGraphic, Material, RendererComponent, Sprite, SpriteRotation, Texture, VFXItem, spec } from '@galacean/effects';
+import { EditorSearchField } from '../../ui/controls/search-field';
+import { Component, Composition, EffectsObject, MaskableGraphic, Material, RendererComponent, Sprite, SpriteRotation, Texture, VFXItem, spec, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import type { InputEventKey } from '@galacean/effects';
+import type { Label, Control, LineEdit } from '@galacean/effects-plugin-gui';
 import { UIControl } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem, resolveDetailsCustomization } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
 import { EditorWindow } from '../../framework/windows/editor-window';
-import { ImGui } from '../../platform/imgui/index';
-import { drawObjectIcon, objectIconButton } from '../../ui/icons/object-icons';
+import { append, column, expand, label, margin, row } from '../../ui/controls/layout';
+import { EditorMenuButton } from '../../ui/controls/menu';
+import { EditorTextField } from '../../ui/controls/text-field';
+import { EditorIconButton, EditorIconControl } from '../../ui/icons/control-icons';
 import { DefaultObjectDetails, propertyLabel } from '../../ui/property-editor/default-object-details';
-import { PropertyFields as Fields } from '../../ui/property-editor/property-fields';
-import { PROPERTY_COLORS as C, PropertyGrid, PropertyGridState } from '../../ui/property-editor/property-grid';
-import { beginEditorPopup, editorMenuItem, editorMenuSection, endEditorPopup } from '../../ui/widgets/editor-menu';
-import { searchBar } from '../../ui/widgets/search-bar';
-import { drawMaterialProperties, materialSearchTerms } from '../assets/editors/material-details';
-import { getSpriteThumbnail } from '../assets/preview/sprite-thumbnail';
-import { getOrCreateTexturePreview, texturePreviewImage } from '../assets/preview/texture-preview';
-import type { SceneDocument } from '../scene/document/scene-document';
+import { PropertySheet, propertyBinding } from '../../ui/property-editor/property-sheet';
+import type { PropertyGroup } from '../../ui/property-editor/property-sheet';
+import { editorBox, editorColors as C } from '../../ui/theme/control-theme';
+import { buildMaterialProperties } from '../assets/editors/material-details';
+import { AssetPreviewControl } from '../assets/preview/asset-preview-control';
 import { getEditorRotation } from '../scene/operations/editor-transform';
 import { sceneWorkspace } from '../scene/scene-workspace';
+import type { SceneDocument } from '../scene/document/scene-document';
+import { inspectedObjectIcon } from './inspected-object-icons';
 import { DebugInspector } from './debug-inspector';
-import { LAYOUT_TERMS, drawControlLayout } from './layout-details';
+import { buildControlLayout } from './layout-details';
 
-const TRANSFORM_TERMS = ['Location', 'Position', 'Rotation', 'Scale', 'Size', 'X', 'Y', 'Z'];
 const END_BEHAVIORS = [spec.EndBehavior.destroy, spec.EndBehavior.forward, spec.EndBehavior.freeze, spec.EndBehavior.restart];
-const HEADER_ICONS = {
-  object: drawObjectIcon.bind(undefined, 'object'),
-  layout: (x: number, y: number, size: number) => drawEditorIcon('sceneComponent', x, y, size, C.text),
-  material: drawObjectIcon.bind(undefined, 'material'),
-  transform: drawObjectIcon.bind(undefined, 'transform'),
-};
 
+class ObjectNameEdit extends EditorTextField {
+  committed?: () => void;
+  private original = '';
+  override onGotFocus (): void { this.original = this.text; super.onGotFocus(); }
+  acceptName (): void { this.original = this.text; this.committed?.(); }
+  override onLostFocus (): void { super.onLostFocus(); this.committed?.(); }
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode === 'Escape') { this.text = this.original; this.releaseFocus(); event.accept(); } else { super.onKeyDown(event); }
+  }
+}
 @editorPanel()
 export class InspectorPanel extends EditorWindow {
   private lockedObject?: object;
   private activeObject?: object;
-  private readonly grid = new PropertyGridState();
-  private readonly debugGrid = new PropertyGridState();
-  private readonly search: [string] = [''];
-  private readonly nameBuffer: [string] = [''];
-  private readonly defaultEditor = new DefaultObjectDetails();
-  private readonly debugInspector = new DebugInspector();
+  private activeStructure = '';
+  private document?: SceneDocument;
+  private sheet?: PropertySheet;
+  private name?: ObjectNameEdit;
+  private icon?: EditorIconControl;
+  private lock?: EditorIconButton;
+  private search?: LineEdit;
+  private empty?: Control;
+  private header?: Control;
+  private toolbar?: Control;
   private debugMode = false;
   private showAdvanced = false;
+  private searching = false;
   private scaleLocked = false;
-  private editingName = false;
-  private scrollToTop = false;
-  private document?: SceneDocument;
+  private readonly defaultEditor = new DefaultObjectDetails();
+  private readonly debugInspector = new DebugInspector();
+  private unsubscribeWorkspace?: () => void;
+  private unsubscribeDocument?: () => void;
+  private readonly editing = new Set<Control>();
 
   @menuItem('Window/Inspector')
   static showWindow (): void { EditorWindow.getWindow(InspectorPanel).open(); }
 
-  constructor () {
-    super(); this.title = 'Inspector'; this.open();
-    this.initialSize = new ImGui.Vec2(440, 640);
-    this.debugGrid.expanded.set('Debug:Object', false);
-    this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
-  }
+  constructor () { super(); this.title = 'Inspector'; this.open(); }
 
-  override draw (): void {
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
-    ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
-    const changed = sceneWorkspace.observe('Edit properties', () => super.draw(),
-      [this.activeObject, this.lockedObject ?? EditorSelection.getSelectedObjects()[0]]);
+  protected override createContent (engine: Engine): Control {
+    const content = column(engine);
 
-    if (changed) { sceneWorkspace.current?.setScopeActive(this, true); }
-    if (!ImGui.IsAnyItemActive()) { sceneWorkspace.current?.setScopeActive(this, false); }
-    ImGui.PopStyleColor(); ImGui.PopStyleVar();
-  }
+    this.empty = append(content, margin(engine, label(engine, 'Select an object to view details.', C.muted), 20, 24));
+    this.icon = new EditorIconControl(engine, 'object', 18);
+    this.name = expand(new ObjectNameEdit(engine), true, false);
+    this.name.setThemeStyleBoxOverride('normal', editorBox(C.clear, 5));
+    this.name.committed = () => this.commitName(); this.name.on('textSubmitted', () => this.name?.acceptName());
+    this.lock = new EditorIconButton(engine, 'unlock');
+    this.lock.on('pressed', () => { this.flushEdits(); this.lockedObject = this.lockedObject ? undefined : this.activeObject; this.refreshSelection(); });
+    this.header = append(content, margin(engine, row(engine, [this.icon, this.name, this.lock]), 10, 7));
+    this.search = expand(new EditorSearchField(engine), true, false); this.search.placeholderText = 'Search...';
+    this.search.on('textChanged', value => {
+      if (!!value.trim() !== this.searching) { this.searching = !!value.trim(); this.rebuild(); }
+      this.sheet?.filter(value);
+    });
+    const options = new EditorMenuButton(engine, '');
 
-  override flushEdits (): void {
-    if (this.activeObject && this.editingName) {
-      sceneWorkspace.observe('Rename object', () => this.commitName(this.activeObject!), [this.activeObject]);
-      this.editingName = false;
-    }
-    sceneWorkspace.current?.setScopeActive(this, false);
-  }
+    options.iconName = 'settings'; options.setCustomMinimumSize(24, 24);
 
-  override onUndoRedo (): void {
-    this.editingName = false; this.activeObject = undefined;
-  }
-
-  override onSelectionChange (): void {
-    if (EditorSelection.changeSource === 'history') { this.onUndoRedo(); }
-  }
-
-  protected override onGUI (): void {
-    if (this.document !== sceneWorkspace.current) { this.document = sceneWorkspace.current; this.lockedObject = undefined; this.activeObject = undefined; this.editingName = false; }
-    if (this.lockedObject instanceof VFXItem && !this.lockedObject.composition) { this.lockedObject = undefined; }
-    const object = this.lockedObject ?? EditorSelection.getSelectedObjects()[0];
-
-    if (object !== this.activeObject) {
-      if (this.activeObject && this.editingName) { this.commitName(this.activeObject); }
-      this.activeObject = object; this.editingName = false;
-      this.nameBuffer[0] = this.objectName(object); this.scrollToTop = true;
-    }
-    const colors: [ImGui.Col, ImGui.Vec4][] = [
-      [ImGui.Col.Text, C.text], [ImGui.Col.TextDisabled, C.muted], [ImGui.Col.ChildBg, C.background],
-      [ImGui.Col.FrameBg, C.input], [ImGui.Col.FrameBgHovered, C.input], [ImGui.Col.FrameBgActive, C.input],
-      [ImGui.Col.Border, C.inputBorder], [ImGui.Col.Button, C.header], [ImGui.Col.ButtonHovered, C.hover],
-      [ImGui.Col.ButtonActive, C.selected], [ImGui.Col.CheckMark, C.text], [ImGui.Col.Header, C.selected],
+    options.actions = () => [
+      { label: 'Normal', checked: !this.debugMode, action: () => { this.debugMode = false; this.rebuild(); } },
+      { label: 'Debug', checked: this.debugMode, action: () => { this.debugMode = true; this.rebuild(); } },
+      { label: '', separator: true },
+      { label: 'Expand All', action: () => this.sheet?.expandAll(true) },
+      { label: 'Collapse All', action: () => this.sheet?.expandAll(false) },
+      { label: 'Show Advanced', checked: this.showAdvanced, enabled: !this.debugMode, action: () => { this.showAdvanced = !this.showAdvanced; this.rebuild(); } },
     ];
-    const clickToInput = ImGui.GetIO().ConfigDragClickToInputText;
+    this.toolbar = append(content, margin(engine, row(engine, [this.search, options]), 8, 4));
+    this.sheet = append(content, expand(new PropertySheet(engine, {
+      change: (title, owner, action) => {
+        sceneWorkspace.observe('Edit ' + title, action, [this.activeObject]);
+        this.editing.add(owner); sceneWorkspace.current?.setScopeActive(owner, true);
+      },
+      finish: owner => { this.editing.delete(owner); sceneWorkspace.current?.setScopeActive(owner, false); },
+    })));
+    this.unsubscribeWorkspace = sceneWorkspace.subscribeDocument(document => this.bindDocument(document));
+    this.bindDocument(sceneWorkspace.current); this.rebuild();
 
-    ImGui.GetIO().ConfigDragClickToInputText = true;
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(8, 8));
-    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(7, 3));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemInnerSpacing, new ImGui.Vec2(4, 3));
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 3);
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameBorderSize, 1);
-    ImGui.PushStyleVar(ImGui.StyleVar.ScrollbarSize, 10);
-    colors.forEach(([key, color]) => ImGui.PushStyleColor(key, color));
-    try {
-      if (!object) {
-        ImGui.Dummy(new ImGui.Vec2(0, 24));
-        ImGui.SetCursorPosX(20); ImGui.TextDisabled('Select an object to view details.');
-
-        return;
-      }
-      this.drawNameArea(object);
-      this.drawSearch();
-      ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
-      const visible = ImGui.BeginChild('##InspectorProperties', new ImGui.Vec2(0, 0), ImGui.ChildFlags.None);
-
-      ImGui.PopStyleVar();
-      if (visible) {
-        if (this.scrollToTop) { ImGui.SetScrollY(0); this.scrollToTop = false; }
-        PropertyGrid.begin(this.debugMode ? this.debugGrid : this.grid, this.search[0]);
-        ImGui.PushID(object instanceof EffectsObject ? object.getInstanceId() : object.constructor.name);
-        try {
-          const count = this.drawProperties(object);
-
-          if (!count && PropertyGrid.filtering) {
-            ImGui.Dummy(new ImGui.Vec2(0, 16)); ImGui.SetCursorPosX(20); ImGui.TextDisabled('No matching properties.');
-          }
-        } finally { ImGui.PopID(); PropertyGrid.end(); }
-      }
-      ImGui.EndChild();
-    } finally {
-      ImGui.PopStyleColor(colors.length); ImGui.PopStyleVar(7);
-      ImGui.GetIO().ConfigDragClickToInputText = clickToInput;
+    return content;
+  }
+  private bindDocument (document?: SceneDocument): void {
+    if (this.document !== document) {
+      this.flushEdits(); this.unsubscribeDocument?.(); this.document = document; this.lockedObject = undefined; this.activeObject = undefined;
+      this.unsubscribeDocument = document?.subscribe(() => {
+        if (this.lockedObject instanceof VFXItem && !this.lockedObject.composition) { this.lockedObject = undefined; }
+        this.refreshSelection();
+      });
     }
+    this.refreshSelection();
   }
+  private refreshSelection (): void {
+    const next = this.lockedObject ?? EditorSelection.getSelectedObjects()[0];
 
-  private objectName (object?: object): string {
-    return object ? (object as { name?: string }).name || object.constructor.name : '';
+    const structure = next instanceof VFXItem ? next.components.map(component => component.getInstanceId() + (component instanceof RendererComponent ? ':' + component.materials.map(material => material?.getInstanceId() + '/' + material?.shader?.getInstanceId()).join(',') : '')).join('|') : '';
+
+    if (this.activeObject !== next || this.activeStructure !== structure) { this.flushEdits(); this.activeObject = next; this.activeStructure = structure; this.rebuild(); }
+    this.lock!.iconName = this.lockedObject ? 'lock' : 'unlock';
+    if (this.name && !this.name.hasFocus()) { this.name.text = this.objectName(next); }
   }
+  private objectName (object?: object): string { return object ? (object as { name?: string }).name || object.constructor.name : ''; }
+  private commitName (): void {
+    const object = this.activeObject as { name?: string } | undefined, name = this.name?.text.trim();
 
-  private commitName (object: object): void {
-    const named = object as { name?: string };
-
-    if (typeof named.name === 'string' && this.nameBuffer[0].trim()) { named.name = this.nameBuffer[0].trim(); }
+    if (!object || !name || typeof object.name !== 'string' || name === object.name) { return; }
+    sceneWorkspace.observe('Rename object', () => object.name = name, [object]); sceneWorkspace.current?.commit();
   }
-
-  private componentType (component: Component): string {
-    return typeof component.definition.dataType === 'string' ? component.definition.dataType : component.constructor.name;
+  override flushEdits (): void {
+    this.commitName(); for (const owner of this.editing) { sceneWorkspace.current?.setScopeActive(owner, false); } this.editing.clear();
   }
+  override onSelectionChange (): void { if (this.sheet) { this.refreshSelection(); } }
+  override onUndoRedo (): void { if (this.sheet) { this.bindDocument(sceneWorkspace.current); this.rebuild(); } }
+  override dispose (): void { this.unsubscribeWorkspace?.(); this.unsubscribeDocument?.(); super.dispose(); }
 
-  private drawNameArea (object: object): void {
-    const origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
+  private rebuild (): void {
+    const sheet = this.sheet, object = this.activeObject;
 
-    drawEditorIcon(inspectedObjectIcon(object), origin.x + 10, origin.y + 11, 18, C.text);
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 34, origin.y + 7));
-    const named = object as { name?: string };
-
-    if (typeof named.name === 'string') {
-      if (!this.editingName) { this.nameBuffer[0] = named.name; }
-      ImGui.PushStyleColor(ImGui.Col.FrameBg, new ImGui.Vec4(0, 0, 0, 0));
-      ImGui.PushStyleVar(ImGui.StyleVar.FrameBorderSize, 0);
-      ImGui.SetNextItemWidth(Math.max(40, width - 78 - (this.debugMode ? 58 : 0)));
-      const commit = ImGui.InputTextWithHint('##ObjectName' + (object instanceof EffectsObject ? object.getInstanceId() : object.constructor.name), object.constructor.name, this.nameBuffer, undefined, ImGui.InputTextFlags.EnterReturnsTrue);
-
-      if (commit || ImGui.IsItemDeactivatedAfterEdit()) { this.commitName(object); }
-      this.editingName = ImGui.IsItemActive();
-      ImGui.PopStyleVar(); ImGui.PopStyleColor();
-    } else { ImGui.AlignTextToFramePadding(); ImGui.Text(this.objectName(object)); }
-    if (this.debugMode) {
-      const dl = ImGui.GetWindowDrawList();
-      const min = new ImGui.Vec2(origin.x + width - 90, origin.y + 10);
-
-      dl.AddRectFilled(min, new ImGui.Vec2(min.x + 48, min.y + 22), ImGui.GetColorU32(C.header), 3);
-      dl.AddText(new ImGui.Vec2(min.x + 5, min.y + (22 - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(C.text), 'Debug');
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + width - 34, origin.y + 7));
-    if (objectIconButton('##LockInspector', this.lockedObject ? 'lock' : 'unlock', this.lockedObject ? 'Unlock selection' : 'Lock this selection')) {
-      this.lockedObject = this.lockedObject ? undefined : object;
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 42));
-    ImGui.Dummy(new ImGui.Vec2(width, 0));
-  }
-
-  private drawSearch (): void {
-    const origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 8, origin.y + 4));
-    if (searchBar('##SearchDetails', this.search, { width: Math.max(50, width - 48), hint: this.debugMode ? 'Search Debug Properties' : 'Search Details' })) { this.scrollToTop = true; }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + width - 34, origin.y + 4));
-    if (objectIconButton('##DetailsOptions', 'settings', 'View options')) { ImGui.OpenPopup('##DetailsOptionsMenu'); }
-    if (ImGui.IsPopupOpen('##DetailsOptionsMenu')) {
-      ImGui.SetNextWindowPos(new ImGui.Vec2(origin.x + width - 8, origin.y + 34), ImGui.Cond.Appearing, new ImGui.Vec2(1, 0));
-    }
-    if (beginEditorPopup('##DetailsOptionsMenu')) {
-      const grid = this.debugMode ? this.debugGrid : this.grid;
-
-      editorMenuSection('View Mode');
-      if (editorMenuItem('Normal', '', !this.debugMode)) { this.setDebugMode(false); }
-      if (editorMenuItem('Debug', '', this.debugMode)) { this.setDebugMode(true); }
-      if (ImGui.IsItemHovered()) { editorTooltip('Show raw component fields, including internal state, without custom property editors.'); }
-      editorMenuSection('Categories', true);
-      if (editorMenuItem('Expand All')) { grid.expandAll(true); }
-      if (editorMenuItem('Collapse All')) { grid.expandAll(false); }
-      editorMenuSection('Display', true);
-      if (editorMenuItem('Show Advanced', '', this.showAdvanced, !this.debugMode)) { this.showAdvanced = !this.showAdvanced; }
-      endEditorPopup();
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + 36));
-    ImGui.Dummy(new ImGui.Vec2(width, 0));
-  }
-
-  private setDebugMode (enabled: boolean): void {
-    if (this.debugMode === enabled) { return; }
-    this.debugMode = enabled; this.scrollToTop = true;
-  }
-
-  private drawProperties (object: object): number {
-    let count = 0;
-
+    if (!sheet) { return; }
+    sheet.clear(); this.empty!.visible = !object; this.header!.visible = this.toolbar!.visible = sheet.visible = !!object;
+    if (!object) { return; }
+    this.name!.text = this.objectName(object); this.name!.editable = typeof (object as { name?: string }).name === 'string';
+    this.icon!.iconName = inspectedObjectIcon(object);
+    this.search!.placeholderText = this.debugMode ? 'Search Debug Properties' : 'Search...';
     if (object instanceof VFXItem) {
-      count += this.debugMode ? this.drawDebugObject(object, 'Debug:Object', 'VFXItem') : this.drawVFXItem(object);
-      count += Number(PropertyGrid.category('Transform', 'Transform', TRANSFORM_TERMS, () => this.drawTransform(object), { icon: HEADER_ICONS.transform }));
-    }
-    count += this.debugMode ? this.drawDebug(object) : object instanceof VFXItem ? this.drawItem(object) : this.drawAsset(object);
+      if (this.debugMode) { this.buildDebug(object, 'Debug:Object', 'VFXItem'); } else { this.buildItemFields(object); }
+      this.buildTransform(sheet.section('Transform', 'Transform', true, 'transform'), object);
+      if (!this.debugMode) {
+        const control = object.getComponent(UIControl)?.control;
 
-    return count;
-  }
+        if (control) { buildControlLayout(sheet.section('Layout', 'Layout', true, 'sceneComponent'), control); }
+      }
+      for (const component of object.components) {
+        const type = typeof component.definition.dataType === 'string' ? component.definition.dataType : component.constructor.name;
 
-  private drawDebugObject (target: object, id: string, label: string): number {
-    this.debugInspector.target = target;
+        if (this.debugMode) { this.buildDebug(component, 'Debug:' + component.getInstanceId(), type); continue; }
+        const group = sheet.section('Component:' + component.getInstanceId(), propertyLabel(type), true, inspectedObjectIcon(component));
+        const editor = resolveDetailsCustomization(component.constructor) ?? this.defaultEditor;
 
-    return Number(PropertyGrid.category(id, label, this.debugInspector.getSearchTerms(), () => {
-      this.debugInspector.target = target;
-      this.debugInspector.onInspectorGUI(target instanceof Component ? ['enabled'] : target instanceof VFXItem ? ['isActive'] : []);
-    }, { icon: inspectedObjectHeaderIcon(target) }));
-  }
+        group.boolean('Enabled', propertyBinding(component, 'enabled')); editor.target = component; editor.build(group);
+      }
+      if (!this.debugMode) {
+        const renderers = object.components.filter((component): component is RendererComponent => component instanceof RendererComponent);
+        const withMaterials = renderers.filter(renderer => renderer.materials.length);
 
-  private drawDebug (object: object): number {
-    if (!(object instanceof VFXItem)) { return this.drawDebugObject(object, 'Debug:Properties', object.constructor.name); }
-    let count = 0;
+        if (withMaterials.length) {
+          const materials = sheet.section('Materials', 'Materials', true, 'material');
 
-    for (const component of object.components) {
-      count += this.drawDebugObject(component, 'Debug:Component:' + component.getInstanceId(), this.componentType(component));
-    }
+          for (const renderer of withMaterials) {
+            renderer.materials.forEach((material, index) => {
+              const group = materials.group(renderer.getInstanceId() + ':' + index, withMaterials.length > 1 ? propertyLabel(renderer.constructor.name) : 'Element ' + index);
 
-    return count;
-  }
-
-  private drawItem (item: VFXItem): number {
-    let count = 0;
-    const control = item.getComponent(UIControl)?.control;
-
-    if (control) {
-      count += Number(PropertyGrid.category('Layout', 'Layout', LAYOUT_TERMS, () => drawControlLayout(control), { icon: HEADER_ICONS.layout }));
-    }
-    for (const component of item.components) {
-      const editor = resolveDetailsCustomization(component.constructor) ?? this.defaultEditor;
-
-      editor.target = component;
-      count += Number(PropertyGrid.category('Component:' + this.componentType(component) + ':' + item.components.indexOf(component), propertyLabel(this.componentType(component)), ['Enabled', ...editor.getSearchTerms()],
-        () => { Fields.Checkbox('Enabled', component, 'enabled'); editor.onInspectorGUI(); }, { icon: inspectedObjectHeaderIcon(component) }));
-    }
-    const renderers = item.components.filter((component): component is RendererComponent => component instanceof RendererComponent);
-    const materials = Array.from(new Set(renderers.flatMap(renderer => renderer.materials))).filter(Boolean);
-
-    if (materials.length) {
-      const skipColor = renderers.every(renderer => renderer instanceof MaskableGraphic);
-
-      count += Number(PropertyGrid.category('Materials', 'Materials', ['Element', ...materials.flatMap(material => materialSearchTerms(material, skipColor))], () => {
-        for (const renderer of renderers) {
-          for (let index = 0; index < renderer.materials.length; index++) {
-            ImGui.PushID(renderer.getInstanceId() + ':' + index);
-            Fields.ObjectField(renderers.length > 1 ? propertyLabel(renderer.constructor.name) : 'Element ' + index, renderer.materials, index.toString(), 'Material', false, HEADER_ICONS.material);
-            const material = renderer.materials[index];
-
-            if (material) { drawMaterialProperties(material, renderer instanceof MaskableGraphic); }
-            ImGui.PopID();
+              group.reference('Material', { read: () => renderer.materials[index], write: value => { if (value instanceof Material) { renderer.materials[index] = value; } } }, 'Material', false, false);
+              if (material) { buildMaterialProperties(group, material, renderer instanceof MaskableGraphic); }
+            });
           }
         }
-      }, { icon: HEADER_ICONS.material }));
-    }
-    count += this.drawIdentifiers(item);
-
-    return count;
-  }
-
-  private drawVFXItem (item: VFXItem): number {
-    return Number(PropertyGrid.category('VFXItem', 'VFXItem', ['Active', 'Item Type', 'Parent', 'Duration', 'Time', 'End Behavior', 'Render Order'], () => {
-      const itemType = Object.entries(spec.ItemType).find(([, value]) => String(value) === String(item.type))?.[0];
-
-      Fields.Checkbox('Active', item, 'isActive');
-      Fields.Text('Item Type', propertyLabel(itemType ?? String(item.type)));
-      Fields.ObjectField('Parent', item, 'parent', undefined, true, HEADER_ICONS.object);
-      Fields.NumberField('Duration', next => {
-        if (next !== undefined) { item.duration = Math.max(0, next); }
-
-        return item.duration;
-      }, 0.03, 0, 1e8, '%.3f s');
-      Fields.Text('Time', item.time.toFixed(3) + ' s');
-      Fields.ComboField('End Behavior', next => {
-        if (next !== undefined) { item.endBehavior = END_BEHAVIORS[next]; }
-
-        return Math.max(0, END_BEHAVIORS.indexOf(item.endBehavior));
-      }, ['Destroy', 'Forward', 'Freeze', 'Restart']);
-      Fields.NumberField('Render Order', next => {
-        if (next !== undefined && Number.isFinite(next) && Math.round(next) !== item.renderOrder) { item.renderOrder = Math.round(next); }
-
-        return item.renderOrder;
-      }, 1, 0, 0, '%.0f');
-    }, { icon: inspectedObjectHeaderIcon(item) }));
-  }
-
-  private drawTransform (item: VFXItem): void {
-    const transform = item.transform;
-    const position = transform.position.clone(), rotation = getEditorRotation(transform), scale = transform.scale.clone(), size = transform.size.clone();
-    const previous = scale.toArray();
-    let resetScale = false;
-
-    if (Fields.Vector3Field('Location', position, undefined, [0, 0, 0])) { transform.setPosition(position.x, position.y, position.z); }
-    if (Fields.Vector3Field('Rotation', rotation, undefined, [0, 0, 0])) { transform.setRotation(rotation.x, rotation.y, rotation.z); }
-    if (Fields.Vector3Field('Scale', scale, undefined, { values: [1, 1, 1], reset: () => resetScale = true }, {
-      draw: (x, y, length) => drawObjectIcon(this.scaleLocked ? 'lock' : 'unlock', x, y, length, this.scaleLocked ? C.text : C.muted),
-      click: () => this.scaleLocked = !this.scaleLocked,
-      hint: this.scaleLocked ? 'Unlock scale axes' : 'Preserve scale proportions',
-    })) {
-      if (this.scaleLocked && !resetScale) {
-        const current = scale.toArray(), axis = current.findIndex((value, index) => Math.abs(value - previous[index]) > 1e-8);
-
-        if (axis >= 0) {
-          const values = previous.map(value => previous[axis] ? value * current[axis] / previous[axis] : current[axis]);
-
-          scale.set(values[0], values[1], values[2]);
-        }
       }
-      transform.setScale(scale.x, scale.y, scale.z);
+    } else if (this.debugMode) { this.buildDebug(object, 'Debug:Properties', object.constructor.name); } else { this.buildAsset(object); }
+    if (object instanceof EffectsObject && (this.showAdvanced || this.search!.text.trim())) {
+      const identifiers = sheet.section('Object', 'Object', true, 'object');
+
+      identifiers.readOnly('ID', () => object.getInstanceId()); identifiers.readOnly('Type', () => object instanceof Composition ? 'Scene' : object.constructor.name);
     }
-    if (Fields.Vector2Field('Size', size, undefined, [1, 1])) { transform.setSize(size.x, size.y); }
+    sheet.filter(this.search!.text); sheet.vScroll = 0;
   }
+  private buildDebug (object: object, id: string, title: string): void {
+    this.debugInspector.target = object;
+    this.debugInspector.build(this.sheet!.section(id, title, id !== 'Debug:Object', inspectedObjectIcon(object)), object instanceof Component ? ['enabled'] : object instanceof VFXItem ? ['isActive'] : []);
+  }
+  private buildItemFields (item: VFXItem): void {
+    const group = this.sheet!.section('VFXItem', 'VFXItem', true, inspectedObjectIcon(item));
 
-  private drawAsset (object: object): number {
-    let count = 0;
+    group.boolean('Active', propertyBinding(item, 'isActive'));
+    group.readOnly('Item Type', () => propertyLabel(Object.entries(spec.ItemType).find(([, value]) => String(value) === String(item.type))?.[0] ?? String(item.type)));
+    group.reference('Parent', propertyBinding(item, 'parent'), undefined, true);
+    group.number('Duration', propertyBinding(item, 'duration'), { min: 0, max: 1e8, suffix: ' s' });
+    group.readOnly('Time', () => item.time.toFixed(3) + ' s');
+    group.choice('End Behavior', { read: () => Math.max(0, END_BEHAVIORS.indexOf(item.endBehavior)), write: index => { item.endBehavior = END_BEHAVIORS[index]; } }, ['Destroy', 'Forward', 'Freeze', 'Restart']);
+    group.number('Render Order', { read: () => item.renderOrder, write: value => { item.renderOrder = Math.round(value); } }, { step: 1, precision: 0 });
+  }
+  private buildTransform (group: PropertyGroup, item: VFXItem): void {
+    const transform = item.transform;
 
-    if (object instanceof Material) {
-      count += Number(PropertyGrid.category('Material', 'Material', materialSearchTerms(object), () => drawMaterialProperties(object), { icon: HEADER_ICONS.material }));
-    } else if (object instanceof Texture || object instanceof Sprite) {
-      count += Number(PropertyGrid.category('Image', object instanceof Sprite ? 'Sprite' : 'Texture', ['Preview', 'Width', 'Height', 'Texture', 'UV Rectangle', 'Rotation'], () => {
-        const texture = object instanceof Sprite ? object.texture : object;
-        const preview = object instanceof Sprite ? getSpriteThumbnail(object) : getOrCreateTexturePreview(object);
+    group.vector('Location', { read: () => transform.position.toArray(), write: values => transform.setPosition(values[0], values[1], values[2]) }, 3,
+      { reset: () => transform.setPosition(0, 0, 0), resetVisible: () => transform.position.toArray().some(value => Math.abs(value) > 1e-6) });
+    group.vector('Rotation', { read: () => getEditorRotation(transform).toArray(), write: values => transform.setRotation(values[0], values[1], values[2]) }, 3,
+      { step: .1, reset: () => transform.setRotation(0, 0, 0), resetVisible: () => getEditorRotation(transform).toArray().some(value => Math.abs(value) > 1e-6) });
+    group.vector('Scale', { read: () => transform.scale.toArray(), write: values => {
+      const before = transform.scale.toArray(), axis = values.findIndex((value, index) => Math.abs(value - before[index]) > 1e-8);
+      const next = this.scaleLocked && axis >= 0 ? before.map(value => before[axis] ? value * values[axis] / before[axis] : values[axis]) : values;
 
-        if (preview) {
-          Fields.Property('Preview', width => texturePreviewImage(preview, new ImGui.Vec2(Math.min(width, 144), Math.min(width, 144))));
-        }
-        Fields.Text(object instanceof Sprite ? 'Texture Width' : 'Width', texture.width + ' px');
-        Fields.Text(object instanceof Sprite ? 'Texture Height' : 'Height', texture.height + ' px');
-        if (object instanceof Sprite) {
-          Fields.ObjectField('Texture', object, 'texture', 'Texture', true);
-          Fields.Text('UV Rectangle', object.rect.map(value => Number(value.toFixed(3))).join(', '));
-          Fields.Text('Rotation', object.rotation === SpriteRotation.Rotate90 ? '90°' : 'None');
-        }
-      }, { icon: inspectedObjectHeaderIcon(object) }));
+      transform.setScale(next[0], next[1], next[2]);
+    } }, 3, {
+      reset: () => transform.setScale(1, 1, 1), resetVisible: () => transform.scale.toArray().some(value => Math.abs(value - 1) > 1e-6),
+      captionAction: { icon: () => this.scaleLocked ? 'lock' : 'unlock', hint: 'Preserve Scale Proportions', pressed: () => { this.scaleLocked = !this.scaleLocked; } },
+    });
+    group.vector('Size', { read: () => transform.size.toArray(), write: values => transform.setSize(values[0], values[1]) }, 2,
+      { reset: () => transform.setSize(1, 1), resetVisible: () => transform.size.toArray().some(value => Math.abs(value - 1) > 1e-6) });
+  }
+  private buildAsset (object: object): void {
+    if (object instanceof Material) { buildMaterialProperties(this.sheet!.section('Material', 'Material', true, 'material'), object); } else if (object instanceof Texture || object instanceof Sprite) {
+      const group = this.sheet!.section('Image', object instanceof Sprite ? 'Sprite' : 'Texture', true, inspectedObjectIcon(object));
+
+      group.add('Preview', new AssetPreviewControl(this.sheet!.engine, () => object, 144));
+      group.readOnly(object instanceof Sprite ? 'Texture Width' : 'Width', () => (object instanceof Sprite ? object.texture : object).width + ' px');
+      group.readOnly(object instanceof Sprite ? 'Texture Height' : 'Height', () => (object instanceof Sprite ? object.texture : object).height + ' px');
+      if (object instanceof Sprite) {
+        group.reference('Texture', propertyBinding(object, 'texture'), 'Texture', true);
+        group.readOnly('UV Rectangle', () => object.rect.map(value => Number(value.toFixed(3))).join(', '));
+        group.readOnly('Rotation', () => object.rotation === SpriteRotation.Rotate90 ? '90°' : 'None');
+      }
     } else {
-      this.defaultEditor.target = object;
-      count += Number(PropertyGrid.category('Properties', propertyLabel(object.constructor.name), [...this.defaultEditor.getSearchTerms(), ...(object instanceof Component ? ['Enabled'] : [])],
-        () => {
-          if (object instanceof Component) { Fields.Checkbox('Enabled', object, 'enabled'); }
-          this.defaultEditor.onInspectorGUI();
-        }, { icon: inspectedObjectHeaderIcon(object) }));
+      const group = this.sheet!.section('Properties', propertyLabel(object.constructor.name), true, inspectedObjectIcon(object));
+
+      if (object instanceof Component) { group.boolean('Enabled', propertyBinding(object, 'enabled')); }
+      this.defaultEditor.target = object; this.defaultEditor.build(group);
     }
-    if (object instanceof EffectsObject) { count += this.drawIdentifiers(object); }
-
-    return count;
-  }
-
-  private drawIdentifiers (object: EffectsObject): number {
-    if (!this.showAdvanced && !PropertyGrid.filtering) { return 0; }
-
-    return Number(PropertyGrid.category('Object', 'Object', ['ID', 'GUID', 'Type'], () => {
-      Fields.Text('ID', object.getInstanceId()); Fields.Text('Type', object.constructor.name);
-    }, { icon: HEADER_ICONS.object }));
   }
 }

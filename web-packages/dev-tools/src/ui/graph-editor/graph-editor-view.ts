@@ -1,2895 +1,631 @@
-import { generateGUID } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui/index';
-import { beginEditorContextItem, beginEditorMenu, editorMenuItem, endEditorMenu, endEditorPopup } from '../widgets/editor-menu';
+import { setTooltip } from '../controls/tooltip';
+import { EffectsObject, math, MouseButton } from '@galacean/effects';
+import type { Engine, InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
+import type { Label, LineEdit } from '@galacean/effects-plugin-gui';
+import { Container, Control, FocusMode, MouseFilter, TextOverflow, VerticalAlignment, VBoxContainer } from '@galacean/effects-plugin-gui';
+import { append, column, expand, label, place, screenPosition } from '../controls/layout';
+import { EditorDialog } from '../controls/dialog';
+import { EditorSearchField } from '../controls/search-field';
+import { EditorTextField } from '../controls/text-field';
+import { EditorSelectableRow } from '../controls/selectable-row';
+import { EditorMenu } from '../controls/menu';
+import type { MenuAction } from '../controls/menu';
+import { VirtualList } from '../controls/virtual-list';
+import { PropertySheet } from '../property-editor/property-sheet';
+import { editorBox, editorColors as C, EDITOR_FONT } from '../theme/control-theme';
 import { CommentGraphNode } from './comment-graph-node';
 import type { Pin } from './flow-graph-model';
-import { Connection, FlowGraphModel, FlowGraphNode, PinDirection } from './flow-graph-model';
-import { GraphColors } from './graph-colors';
-import { DragAndDropState } from './graph-drag-state';
-import { DrawChannel, DrawContext } from './graph-draw-context';
-import type { GraphEditorContext } from './graph-editor-context';
+import { FlowGraphModel, FlowGraphNode } from './flow-graph-model';
 import { GraphNodeSelection } from './graph-editor-context';
-import { GraphResizeHandle } from './graph-interaction-types';
-import { add, colorMultiplyScalar, div, fmodf, length, lengthSqr, lerp, multiplyScalar, normalize, subtract } from './graph-math';
-import { GraphModel, GraphNode, NodeVisualState, ScopedGraphModification, ScopedNodeModification } from './graph-model';
-import { GraphStyle } from './graph-style';
-import type { UUID } from './graph-types';
-import * as ImGuiX from './graph-widgets';
-import { ImRect, ImVec2 } from './im-rect';
-import { StateGraphNode, StateMachineGraphModel, StateMachineGraphNode, TransitionGraphNode } from './state-machine-graph-model';
+import type { GraphEditorContext } from './graph-editor-context';
+import type { GraphModel } from './graph-model';
+import { GraphNode, NodeVisualState } from './graph-model';
+import { GraphRect } from './graph-rect';
+import { GraphViewGeometry } from './graph-view-geometry';
+import { StateGraphNode, StateMachineGraphModel, TransitionGraphNode } from './state-machine-graph-model';
 
-type Color = ImGui.Color;
-const Color = ImGui.Color;
+export interface GraphNodeType { label: string, category: string, create(graph: GraphModel, position: math.Vector2): GraphNode }
+class GraphActionRow extends EditorSelectableRow {
+  private entry!: GraphNodeType;
+  constructor (engine: Engine, choose: (type: GraphNodeType) => void) { super(engine, 'graph'); this.on('pressed', () => choose(this.entry)); }
+  bind (type: GraphNodeType): void { this.entry = type; this.text = type.category + ' / ' + type.label; }
+}
+export interface GraphNodeContent { control: Control, refresh?(): void }
+interface PinEndpoint { node: FlowGraphNode, pin: Pin }
+interface GraphDrag {
+  kind: 'pan' | 'nodes' | 'marquee' | 'connection' | 'transition' | 'resize',
+  origin: math.Vector2, mouse: math.Vector2, offset: math.Vector2,
+  positions?: Map<GraphNode, math.Vector2>, selection?: GraphNode[], pin?: PinEndpoint,
+  state?: StateGraphNode, comment?: CommentGraphNode, size?: math.Vector2,
+  resizeEdges?: { left: boolean, right: boolean, top: boolean, bottom: boolean },
+}
+let copiedNodes: GraphNode[] = [];
+let copiedConnections: FlowGraphModel['m_connections'] = [];
 
-const g_graphTitleMargin = new ImVec2(16, 10);
-const g_gridSpacing = 30;
-const g_nodeSelectionBorderThickness = 2.0;
-const g_connectionSelectionExtraRadius = 5.0;
-const g_transitionArrowWidth = 3.0;
-const g_transitionArrowOffset = 8.0;
-const g_titleBarColorItemWidth = 8.0;
-const g_spacingBetweenTitleAndNodeContents = 6.0;
-const g_pinRadius = 6.0;
-const g_spacingBetweenInputOutputPins = 16.0;
-const g_autoConnectMaxDistanceThreshold = 200.0;
+/** Copies graph data while retaining runtime asset references and class methods. */
+function copyGraphData<T> (value: T, seen = new Map<object, unknown>(), ownedNodes?: Set<GraphNode>): T {
+  if (value === null || typeof value !== 'object' || value instanceof EffectsObject) { return value; }
+  if (value instanceof GraphNode && ownedNodes && !ownedNodes.has(value)) { return value; }
+  if (seen.has(value)) { return seen.get(value) as T; }
+  const result = value instanceof Map ? new Map() : value instanceof Set ? new Set() : Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
 
-const g_gridBackgroundColor = new Color(0.157, 0.157, 0.157, 0.784);
-const g_gridLineColor = new Color(0.784, 0.784, 0.784, 0.157);
-const g_graphTitleColor = new Color(1, 1, 1, 1);
+  seen.set(value, result);
+  if (value instanceof Map) { value.forEach((entry, key) => result.set(key, copyGraphData(entry, seen, ownedNodes))); } else if (value instanceof Set) { value.forEach(entry => result.add(copyGraphData(entry, seen, ownedNodes))); } else { for (const key of Object.keys(value)) { if (key !== 'm_pParentGraph' && key !== 'm_pParentNode') { result[key] = copyGraphData(Reflect.get(value, key), seen, ownedNodes); } } }
 
-const g_selectionBoxOutlineColor = new Color(0.239, 0.878, 0.522, 0.588);
-const g_selectionBoxFillColor = new Color(0.239, 0.878, 0.522, 0.118);
-const g_readOnlyCanvasBorderColor = new Color(0.941, 0.502, 0.502, 1);
+  return result as T;
+}
+function copyNodeSelection (nodes: GraphNode[]): GraphNode[] {
+  const owned = new Set<GraphNode>();
+  const visit = (node: GraphNode): void => {
+    if (owned.has(node)) { return; }
+    owned.add(node);
+    for (const graph of [node.GetChildGraph(), node.GetSecondaryGraph()]) { graph?.m_nodes.forEach(visit); }
+  };
 
-function GetConnectionPointsBetweenStateMachineNodes (startNodeRect: ImRect, endNodeRect: ImRect): [ImVec2, ImVec2] {
-  let startPoint = startNodeRect.GetCenter();
-  let endPoint = endNodeRect.GetCenter();
-  const midPoint = add(startPoint, multiplyScalar(subtract(endPoint, startPoint), 0.5));
+  nodes.forEach(visit);
 
-  startPoint = ImGuiX.GetClosestPointOnRectBorder(startNodeRect, midPoint);
-  endPoint = ImGuiX.GetClosestPointOnRectBorder(endNodeRect, midPoint);
-
-  return [startPoint, endPoint];
+  return copyGraphData(nodes, new Map(), owned);
+}
+function attachGraph (node: GraphNode, graph: GraphModel): void {
+  node.m_pParentGraph = graph;
+  for (const child of [node.GetChildGraph(), node.GetSecondaryGraph()]) {
+    if (child) { child.m_pParentNode = node; child.m_nodes.forEach(item => attachGraph(item, child)); }
+  }
 }
 
-function IsHoveredOverCurve (p1: ImVec2, p2: ImVec2, p3: ImVec2, p4: ImVec2, mousePosition: ImVec2, hoverThreshold: number): boolean {
-  const min = new ImVec2(Math.min(p1.x, p4.x), Math.min(p1.y, p4.y));
-  const max = new ImVec2(Math.max(p1.x, p4.x), Math.max(p1.y, p4.y));
+class GraphPinControl extends Control {
+  constructor (engine: Engine, readonly graphView: GraphEditorView, readonly endpoint: PinEndpoint, readonly input: boolean) {
+    super(engine); this.setCustomMinimumSize(80, 24); setTooltip(this, endpoint.pin.m_name + ' (' + endpoint.pin.m_type + ')');
+  }
+  override draw (): void {
+    const node = this.endpoint.node, pin = this.endpoint.pin, x = this.input ? 8 : this.width - 8;
+    const connected = this.graphView.GetFlowGraph()?.m_connections.some(connection => connection.m_inputPinID === pin.m_ID || connection.m_outputPinID === pin.m_ID);
+    const color = node.GetPinColor(pin);
 
-  const rect = new ImRect(min, max);
+    if (connected) { this.fillCircle(x, this.height / 2, 5, color); } else { this.drawCircle(x, this.height / 2, 5, color, 1.5); }
+    const metrics = this.measureText(pin.m_name, 12, EDITOR_FONT);
 
-  rect.Add(p2);
-  rect.Add(p3);
-  rect.Expand(new ImVec2(hoverThreshold, hoverThreshold));
+    this.drawText(this.input ? 19 : this.width - 19 - metrics.width, (this.height - metrics.lineHeight) / 2, pin.m_name, 12, C.foreground, EDITOR_FONT);
+  }
+  override onMouseDown (event: InputEventMouseButton): void {
+    if (event.buttonIndex === MouseButton.Left) { this.graphView.startConnection(this.endpoint, event); } else if (event.buttonIndex === MouseButton.Right) { this.graphView.showContext(event.globalPosition, this.endpoint.node, this.endpoint.pin); }
+    event.accept();
+  }
+  override onMouseMove (event: InputEventMouseMotion): void { this.graphView.pointerMove(event); }
+  override onMouseUp (event: InputEventMouseButton): void { this.graphView.pointerUp(event); }
+}
+class GraphNodeControl extends Container {
+  private readonly caption: Label;
+  private readonly pins: GraphPinControl[] = [];
+  private pinSignature = '';
+  private nodeContent?: GraphNodeContent;
+  constructor (engine: Engine, readonly graphView: GraphEditorView, readonly node: GraphNode) {
+    super(engine); this.focusMode = FocusMode.Click;
+    this.caption = append(this, label(engine, node.GetName())); this.caption.mouseFilter = MouseFilter.Ignore; this.caption.textOverflow = TextOverflow.Ellipsis; this.caption.verticalAlignment = VerticalAlignment.Center;
+    this.nodeContent = graphView.createNodeContent?.(node);
+    if (this.nodeContent) { append(this, this.nodeContent.control); this.nodeContent.control.mouseFilter = MouseFilter.Pass; }
+    this.sync();
+  }
+  sync (): void {
+    this.caption.text = this.node.GetName(); this.node.updateDebugState(this.graphView.context); this.nodeContent?.refresh?.();
+    const node = this.node;
 
-  if (rect.Contains(mousePosition)) {
-    const closestPointToCurve = ImGuiX.ImBezierCubicClosestPointCasteljau(p1, p2, p3, p4, mousePosition, ImGui.GetStyle().CurveTessellationTol);
+    if (node instanceof FlowGraphNode) {
+      const signature = [...node.m_inputPins, ...node.m_outputPins].map(pin => pin.m_ID).join(',');
 
-    if (length(subtract(closestPointToCurve, mousePosition)) < hoverThreshold) {
-      return true;
+      if (signature !== this.pinSignature) {
+        this.pinSignature = signature; this.pins.splice(0).forEach(pin => pin.dispose());
+        for (const [pins, input] of [[node.m_inputPins, true], [node.m_outputPins, false]] as const) {
+          pins.forEach(pin => this.pins.push(append(this, new GraphPinControl(this.engine, this.graphView, { node, pin }, input))));
+        }
+      }
+    }
+    this.queueSort();
+  }
+  override getMinimumSize (): math.Vector2 {
+    if (this.node instanceof CommentGraphNode) { return this.node.getCommentBoxSize(); }
+    const node = this.node, count = node instanceof FlowGraphNode ? Math.max(node.m_inputPins.length, node.m_outputPins.length) : 0;
+    const content = this.nodeContent?.control.getCombinedMinimumSize();
+
+    return new math.Vector2(Math.max(240, Math.min(400, content?.x ?? 0) + 20), 38 + count * 24 + (content?.y ?? 0) + 10);
+  }
+  protected override sortChildren (): void {
+    place(this.caption, 12, 6, this.width - 24, 24);
+    const node = this.node;
+
+    if (node instanceof FlowGraphNode) {
+      this.pins.forEach(pin => {
+        const index = (pin.input ? node.m_inputPins : node.m_outputPins).indexOf(pin.endpoint.pin);
+
+        place(pin, pin.input ? 0 : this.width / 2, 38 + index * 24, this.width / 2, 24); pin.endpoint.pin.m_position.set(node.m_canvasPosition.x + (pin.input ? 8 : this.width - 8), node.m_canvasPosition.y + 50 + index * 24);
+      });
+    }
+    if (this.nodeContent) {
+      const count = node instanceof FlowGraphNode ? Math.max(node.m_inputPins.length, node.m_outputPins.length) : 0;
+
+      place(this.nodeContent.control, 10, 38 + count * 24, this.width - 20, Math.max(0, this.height - 48 - count * 24));
     }
   }
+  pinAt (position: math.Vector2): PinEndpoint | undefined {
+    return this.pins.find(pin => pin.hasPoint(pin.makePositionLocal(position)))?.endpoint;
+  }
+  override draw (): void {
+    const node = this.node, selected = this.graphView.IsNodeSelected(node), active = node.IsActive(this.graphView.context);
+    const comment = node instanceof CommentGraphNode;
+    const background = comment ? new math.Color(node.color.r, node.color.g, node.color.b, .18) : C.panel;
 
-  return false;
+    this.drawStyleBox(editorBox(background, 0, 5, selected ? C.primary : active ? new math.Color(.2, .8, .2, 1) : C.outline), 0, 0, this.width, this.height);
+    const title = comment ? node.color : node.GetTitleBarColor();
+
+    this.fillRect(1, 1, this.width - 2, 31, title); this.fillRect(0, 32, this.width, 1, C.outline);
+    if (comment) { this.drawLine(this.width - 12, this.height - 3, this.width - 3, this.height - 12, C.muted); }
+  }
+  override onMouseDown (event: InputEventMouseButton): void {
+    if (event.buttonIndex === MouseButton.Right) {
+      this.graphView.showContext(event.globalPosition, this.node); event.accept();
+
+      return;
+    }
+    if (event.buttonIndex === MouseButton.Middle) {
+      this.graphView.startPan(event); event.accept();
+
+      return;
+    }
+    if (event.buttonIndex !== MouseButton.Left) { return; }
+    if (event.doubleClick) {
+      const target = this.node.GetNavigationTarget();
+
+      if (target) { this.graphView.context.NavigateTo(target); } else { this.graphView.context.DoubleClick(this.node); }
+    } else if (this.node instanceof CommentGraphNode && (event.position.x < 8 || event.position.x > this.width - 8 || event.position.y < 5 || event.position.y > this.height - 8)) {
+      this.graphView.startResize(this.node, event, { left: event.position.x < 8, right: event.position.x > this.width - 8, top: event.position.y < 5, bottom: event.position.y > this.height - 8 });
+    } else if (this.node instanceof StateGraphNode && event.shiftPressed) { this.graphView.startTransition(this.node, event); } else { this.graphView.startNodeDrag(this.node, event); }
+    event.accept();
+  }
+  override onMouseMove (event: InputEventMouseMotion): void { this.graphView.pointerMove(event); }
+  override onMouseUp (event: InputEventMouseButton): void { this.graphView.pointerUp(event); }
+  override onKeyDown (event: InputEventKey): void { this.graphView.onKeyDown(event); }
 }
 
-function GetNodeBackgroundAndBorderColors (titleBarColor: Color, baseColor: Color, visualState: Map<NodeVisualState, boolean>): [Color, Color, Color] {
-  let outTitleBarColor: Color, outBackgroundColor: Color, outBorderColor: Color;
-
-  if (visualState.get(NodeVisualState.Selected) && visualState.get(NodeVisualState.Hovered)) {
-    outTitleBarColor = colorMultiplyScalar(titleBarColor, 1.6);
-    outBackgroundColor = colorMultiplyScalar(baseColor, 1.6);
-    const s_nodeSelectedBorderColor = GraphStyle.s_nodeSelectedBorderColor.Value;
-
-    outBorderColor = colorMultiplyScalar(new Color(s_nodeSelectedBorderColor.x, s_nodeSelectedBorderColor.y, s_nodeSelectedBorderColor.z, s_nodeSelectedBorderColor.w), 1.5);
-  } else if (visualState.get(NodeVisualState.Selected)) {
-    outTitleBarColor = colorMultiplyScalar(titleBarColor, 1.45);
-    outBackgroundColor = colorMultiplyScalar(baseColor, 1.45);
-    outBorderColor = GraphStyle.s_nodeSelectedBorderColor;
-  } else if (visualState.get(NodeVisualState.Hovered)) {
-    outTitleBarColor = colorMultiplyScalar(titleBarColor, 1.15);
-    outBackgroundColor = colorMultiplyScalar(baseColor, 1.15);
-    outBorderColor = new Color(0, 0, 0, 0);
-  } else {
-    outTitleBarColor = titleBarColor;
-    outBackgroundColor = baseColor;
-    outBorderColor = new Color(0, 0, 0, 0);
+export class GraphEditorView extends Container {
+  readonly context: GraphEditorContext;
+  createNodeContent?: (node: GraphNode) => GraphNodeContent;
+  nodeTypes?: (graph: GraphModel) => GraphNodeType[];
+  extraActions?: (node: GraphNode) => MenuAction[];
+  private graph: GraphModel | null = null;
+  private selected: GraphNode[] = [];
+  private readonly nodeLayer: Control;
+  private readonly commentLayer: Control;
+  private readonly nodeControls = new Map<GraphNode, GraphNodeControl>();
+  private readonly menu: EditorMenu;
+  private readonly dialog: EditorDialog;
+  private drag?: GraphDrag;
+  private readOnly = false;
+  private fitRequested = false;
+  private transitions: { node: TransitionGraphNode, from: math.Vector2, to: math.Vector2 }[] = [];
+  private pointer = new math.Vector2();
+  private readonly geometry = new GraphViewGeometry();
+  private readonly clipboardEvent = (event: ClipboardEvent): void => {
+    if (!this.HasFocus() || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) { return; }
+    if (event.type === 'paste') { this.PasteNodes(this.canvasPosition(this.pointer)); } else { this.CopySelectedNodes(); event.clipboardData?.setData('text/plain', JSON.stringify({ nodes: copiedNodes.map(node => ({ type: node.GetTypeName(), name: node.GetName() })) })); if (event.type === 'cut') { this.DestroySelectedNodes(); } }
+    event.preventDefault();
+  };
+  constructor (engine: Engine, context: GraphEditorContext) {
+    super(engine); this.context = context; this.focusMode = FocusMode.All; this.clipContents = true;
+    this.commentLayer = append(this, new Control(engine)); this.commentLayer.mouseFilter = MouseFilter.Pass;
+    this.nodeLayer = append(this, new Control(engine)); this.nodeLayer.mouseFilter = MouseFilter.Ignore;
+    this.menu = new EditorMenu(engine); this.dialog = new EditorDialog(engine);
+    for (const name of ['copy', 'cut', 'paste'] as const) { window.document.addEventListener(name, this.clipboardEvent); }
   }
-
-  return [outTitleBarColor, outBackgroundColor, outBorderColor];
-}
-
-function clamp (value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-enum DragMode {
-  None,
-  View,
-  Selection,
-  Node,
-  Connection,
-  ResizeComment,
-}
-
-// Drag state
-//-------------------------------------------------------------------------
-
-class DragState {
-  m_mode: DragMode = DragMode.None;
-  m_startValue: ImVec2 = new ImVec2(0, 0);
-  m_lastFrameDragDelta: ImVec2 = new ImVec2(0, 0);
-  m_pNode: GraphNode | null = null;
-  m_pPin: Pin | null = null;
-  m_draggedNodes: GraphNode[] = [];
-  m_resizeHandle: GraphResizeHandle = GraphResizeHandle.None;
-  m_dragReadyToStart: boolean = false;
-
-  GetAsFlowNode (): FlowGraphNode | null {
-    return this.m_pNode instanceof FlowGraphNode ? this.m_pNode : null;
-  }
-
-  GetAsStateMachineNode (): StateMachineGraphNode | null {
-    return this.m_pNode instanceof StateMachineGraphNode ? this.m_pNode : null;
-  }
-
-  Reset (): void {
-    Object.assign(this, new DragState());
-  }
-}
-
-// Context menu state
-//-------------------------------------------------------------------------
-
-class ContextMenuState {
-  m_mouseCanvasPos: ImVec2 = new ImVec2();
-  m_pNode: GraphNode | null = null;
-  m_pPin: Pin | null = null;
-  m_requestOpenMenu: boolean = false;
-  m_menuOpened: boolean = false;
-  m_isAutoConnectMenu: boolean = false;
-  m_isDragReady: boolean = false;
-  m_filterWidget: ImGuiX.FilterWidget = new ImGuiX.FilterWidget();
-
-  IsNodeContextMenu (): boolean {
-    return this.m_pNode !== null;
-  }
-
-  GetAsFlowNode (): FlowGraphNode | null {
-    return this.m_pNode instanceof FlowGraphNode ? this.m_pNode : null;
-  }
-
-  GetAsStateMachineNode (): StateMachineGraphNode | null {
-    return this.m_pNode instanceof StateMachineGraphNode ? this.m_pNode : null;
-  }
-
-  Reset (): void {
-    this.m_mouseCanvasPos = new ImVec2();
-    this.m_pNode = null;
-    this.m_menuOpened = false;
-    this.m_pPin = null;
-    this.m_requestOpenMenu = false;
-    this.m_isAutoConnectMenu = false;
-    this.m_filterWidget.clear();
-  }
-}
-
-// Drag and Drop State
-//-------------------------------------------------------------------------
-
-export class GraphEditorView {
-  private static readonly s_graphCopiedDataNodeName = 'AnimGraphCopiedData';
-  private static readonly s_copiedNodesNodeName = 'Nodes';
-  private static readonly s_copiedConnectionsNodeName = 'Connections';
-  private static readonly s_dialogID_Rename = 'Rename ';
-  private static readonly s_dialogID_Comment = 'Comment';
-
-  m_ID: UUID;
-  private m_pUserContext: GraphEditorContext;
-  private m_graphEndModificationBindingID: number;
-  private m_pGraph: GraphModel | null = null;
-  private m_pHoveredNode: GraphNode | null = null;
-  private m_defaultViewOffset: ImVec2 = new ImVec2();
-  private m_pViewOffset: ImVec2 = this.m_defaultViewOffset;
-  private m_canvasSize: ImVec2 = new ImVec2(0, 0);
-  private m_selectedNodes: GraphNodeSelection[] = [];
-  private m_hasFocus: boolean = false;
-  private m_isViewHovered: boolean = false;
-  private m_selectionChanged: boolean = false;
-  private m_isReadOnly: boolean = false;
-  private m_requestFocus: boolean = false;
-  private m_dragState: DragState = new DragState();
-  private m_contextMenuState: ContextMenuState = new ContextMenuState();
-  private m_dragAndDropState: DragAndDropState = new DragAndDropState();
-  private m_pHoveredPin: Pin | null = null;
-  private m_hoveredConnectionID: UUID = generateGUID();
-  private m_textBuffer: string = '';
-  private m_pNodeBeingOperatedOn: GraphNode | null = null;
-  private m_pendingFitToView = false;
-  private m_freezeNodeLayoutCacheFromScaleChange = false;
-
-  constructor (pUserContext: GraphEditorContext) {
-    this.m_ID = generateGUID();
-    this.m_pUserContext = pUserContext;
-    this.m_graphEndModificationBindingID = GraphModel.OnEndRootGraphModification().push(this.OnGraphModified.bind(this));
-  }
-
+  GetViewedGraph (): GraphModel | null { return this.graph; }
+  GetFlowGraph (): FlowGraphModel | null { return this.graph instanceof FlowGraphModel ? this.graph : null; }
+  GetStateMachineGraph (): StateMachineGraphModel | null { return this.graph instanceof StateMachineGraphModel ? this.graph : null; }
+  IsViewingFlowGraph (): boolean { return this.graph instanceof FlowGraphModel; }
+  IsViewingStateMachineGraph (): boolean { return this.graph instanceof StateMachineGraphModel; }
+  IsReadOnly (): boolean { return this.readOnly; }
+  SetReadOnly (value: boolean): void { this.readOnly = value; }
   HasFocus (): boolean {
-    return this.m_hasFocus;
-  }
+    for (let node = this.root?.guiGetFocusOwner(); node; node = node.parent) { if (node === this) { return true; } }
 
-  GetViewedGraph (): GraphModel | null {
-    return this.m_pGraph;
+    return false;
   }
+  GetSelectedNodes (): GraphNodeSelection[] { return this.selected.map(node => new GraphNodeSelection(node)); }
+  HasSelectedNodes (): boolean { return !!this.selected.length; }
+  IsNodeSelected (node: GraphNode): boolean { return this.selected.includes(node); }
+  SelectNode (node: GraphNode): void { this.SelectNodes([node]); }
+  SelectNodes (nodes: GraphNode[]): void {
+    const next = [...new Set(nodes)].filter(node => node.GetParentGraph() === this.graph);
 
-  IsViewingFlowGraph (): boolean {
-    return this.m_pGraph !== null && this.m_pGraph instanceof FlowGraphModel;
+    if (next.length === this.selected.length && next.every((node, index) => node === this.selected[index])) { return; }
+    const previous = this.GetSelectedNodes();
+
+    this.selected = next; this.context.NotifySelectionChanged(previous, this.GetSelectedNodes());
   }
-
-  IsViewingStateMachineGraph (): boolean {
-    return this.m_pGraph !== null && this.m_pGraph instanceof StateMachineGraphModel;
+  ClearSelection (): void { this.SelectNodes([]); }
+  SetGraphToView (graph: GraphModel | null, maintainSelection = false): void {
+    this.finishDrag(true); this.graph = graph;
+    if (!maintainSelection) { this.ClearSelection(); }
+    this.nodeControls.forEach(control => control.dispose()); this.nodeControls.clear(); graph?.OnShowGraph(); this.refreshNodes();
   }
+  override update (dt: number): void { this.refreshNodes(); if (this.fitRequested && this.width > 0 && this.height > 0) { this.fitRequested = false; this.FitToView(); } super.update(dt); }
+  private refreshNodes (): void {
+    const nodes = this.graph?.m_nodes.filter(node => !(node instanceof TransitionGraphNode) && node.IsVisible()) ?? [];
 
-  GetFlowGraph (): FlowGraphModel | null {
-    return this.m_pGraph instanceof FlowGraphModel ? this.m_pGraph : null;
+    for (const [node, control] of this.nodeControls) { if (!nodes.includes(node)) { control.dispose(); this.nodeControls.delete(node); } }
+    for (const node of nodes) {
+      let control = this.nodeControls.get(node);
+
+      if (!control) { control = append(node instanceof CommentGraphNode ? this.commentLayer : this.nodeLayer, new GraphNodeControl(this.engine, this, node)); this.nodeControls.set(node, control); }
+      control.sync(); const size = control.getCombinedMinimumSize();
+
+      node.SetCalculatedNodeSize(size);
+      place(control, node.m_canvasPosition.x, node.m_canvasPosition.y, size.x, size.y);
+    }
+    this.SelectNodes(this.selected.filter(node => this.graph?.m_nodes.includes(node))); this.queueSort();
   }
+  protected override sortChildren (): void {
+    const graph = this.graph;
 
-  GetStateMachineGraph (): StateMachineGraphModel | null {
-    return this.m_pGraph instanceof StateMachineGraphModel ? this.m_pGraph : null;
+    if (!graph) { return; }
+    for (const layer of [this.commentLayer, this.nodeLayer]) {
+      layer.setPosition(-graph.m_viewOffset.x * graph.m_viewScaleFactor, -graph.m_viewOffset.y * graph.m_viewScaleFactor);
+      layer.setSize(Math.max(1, this.width / graph.m_viewScaleFactor), Math.max(1, this.height / graph.m_viewScaleFactor));
+      layer.setScale(graph.m_viewScaleFactor, graph.m_viewScaleFactor);
+    }
+    this.geometry.m_viewOffset.copyFrom(graph.m_viewOffset); this.geometry.SetViewScaleFactor(graph.m_viewScaleFactor);
   }
+  canvasPosition (position: math.Vector2): math.Vector2 {
+    const g = this.graph;
 
-  IsReadOnly (): boolean {
-    return this.m_isReadOnly;
+    return g ? new math.Vector2(position.x / g.m_viewScaleFactor + g.m_viewOffset.x, position.y / g.m_viewScaleFactor + g.m_viewOffset.y) : position.clone();
   }
+  private viewPosition (position: math.Vector2): math.Vector2 {
+    const g = this.graph!;
 
-  SetReadOnly (isReadOnly: boolean): void {
-    this.m_isReadOnly = isReadOnly;
+    return new math.Vector2((position.x - g.m_viewOffset.x) * g.m_viewScaleFactor, (position.y - g.m_viewOffset.y) * g.m_viewScaleFactor);
   }
+  override draw (): void {
+    this.fillRect(0, 0, this.width, this.height, C.recessed);
+    const graph = this.graph;
 
-  HasSelectionChangedThisFrame (): boolean {
-    return this.m_selectionChanged;
-  }
+    if (!graph) { return; }
+    const spacing = 30 * graph.m_viewScaleFactor;
 
-  HasSelectedNodes (): boolean {
-    return this.m_selectedNodes.length > 0;
-  }
+    for (let x = -graph.m_viewOffset.x * graph.m_viewScaleFactor % spacing; x < this.width; x += spacing) { this.drawLine(x, 0, x, this.height, C.outline); }
+    for (let y = -graph.m_viewOffset.y * graph.m_viewScaleFactor % spacing; y < this.height; y += spacing) { this.drawLine(0, y, this.width, y, C.outline); }
+    if (graph instanceof FlowGraphModel) {
+      for (const connection of graph.m_connections) {
+        const from = graph.FindNode(connection.m_fromNodeID) as FlowGraphNode, to = graph.FindNode(connection.m_toNodeID) as FlowGraphNode;
+        const output = from?.m_outputPins.find(pin => pin.m_ID === connection.m_outputPinID), input = to?.m_inputPins.find(pin => pin.m_ID === connection.m_inputPinID);
 
-  IsNodeSelected (pNode: GraphNode): boolean {
-    return this.m_selectedNodes.some(selectedNode => selectedNode.m_pNode === pNode);
-  }
+        if (output && input) { this.bezier(this.viewPosition(output.m_position), this.viewPosition(input.m_position), from.GetPinColor(output)); }
+      }
+    }
+    this.transitions = [];
+    for (const node of graph.m_nodes) {
+      if (!(node instanceof TransitionGraphNode)) { continue; }
+      node.updateDebugState(this.context);
+      const a = graph.FindNode(node.GetStartStateID()), b = graph.FindNode(node.GetEndStateID());
 
-  GetSelectedNodes (): GraphNodeSelection[] {
-    return this.m_selectedNodes;
-  }
+      if (!a || !b) { continue; }
+      const ac = a.GetRect().GetCenter(), bc = b.GetRect().GetCenter();
+      const from = this.viewPosition(this.borderPoint(a.GetRect(), bc)), to = this.viewPosition(this.borderPoint(b.GetRect(), ac));
+      const color = node.GetConduitColor(this.geometry, this.context, new Map([[NodeVisualState.Selected, this.IsNodeSelected(node)]]));
 
-  protected GetDragMode (): DragMode {
-    return this.m_dragState.m_mode;
-  }
+      this.drawLine(from.x, from.y, to.x, to.y, color, 2); this.arrow(from, to, color);
+      if (node.m_transitionProgress > 0) {
+        const t = node.m_transitionProgress;
 
-  protected IsNotDragging (): boolean {
-    return this.GetDragMode() === DragMode.None;
-  }
+        this.fillCircle(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, 5, C.foreground);
+      }
+      this.transitions.push({ node, from, to });
+    }
+    if (this.drag?.kind === 'connection' && this.drag.pin) {
+      const source = this.viewPosition(this.drag.pin.pin.m_position), target = this.drag.mouse;
 
-  protected IsDraggingView (): boolean {
-    return this.GetDragMode() === DragMode.View;
-  }
+      if (this.drag.pin.node.HasInputPin(this.drag.pin.pin.m_ID)) { this.bezier(target, source, C.foreground); } else { this.bezier(source, target, C.foreground); }
+    }
+    if (this.drag?.kind === 'transition' && this.drag.state) {
+      const source = this.viewPosition(this.drag.state.GetRect().GetCenter());
 
-  protected IsDraggingSelection (): boolean {
-    return this.GetDragMode() === DragMode.Selection;
-  }
-
-  protected IsDraggingNode (): boolean {
-    return this.GetDragMode() === DragMode.Node;
-  }
-
-  protected IsDraggingConnection (): boolean {
-    return this.GetDragMode() === DragMode.Connection;
-  }
-
-  protected IsResizingCommentBox (): boolean {
-    return this.GetDragMode() === DragMode.ResizeComment;
-  }
-
-  private GetViewScaleFactor (): number {
-    return (this.m_pGraph === null) ? 1.0 : this.m_pGraph.m_viewScaleFactor;
-  }
-
-  private IsContextMenuOpen (): boolean {
-    return this.m_contextMenuState.m_menuOpened;
-  }
-
-  destructor (): void {
-    GraphModel.OnEndRootGraphModification().length = 0;
-  }
-
-  private OnGraphModified (pModifiedGraph: GraphModel): void {
-    if (pModifiedGraph === this.m_pGraph) {
-      this.m_freezeNodeLayoutCacheFromScaleChange = false;
-      this.m_pGraph.OnShowGraph();
+      this.drawLine(source.x, source.y, this.drag.mouse.x, this.drag.mouse.y, C.foreground, 2);
     }
   }
+  protected override drawChildren (): void {
+    super.drawChildren();
+    if (this.drag?.kind === 'marquee') {
+      const a = this.drag.origin, b = this.drag.mouse;
 
-  SetGraphToView (pGraph: GraphModel | null, tryMaintainSelection: boolean = false): void {
-    if (this.m_pGraph === pGraph) {
+      this.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y), new math.Color(0, .44, .88, .15)); this.drawRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y), C.primary);
+    }
+  }
+  private borderPoint (rect: GraphRect, target: math.Vector2): math.Vector2 {
+    const center = rect.GetCenter(), dx = target.x - center.x, dy = target.y - center.y;
+    const t = Math.min(rect.GetWidth() / 2 / Math.max(.001, Math.abs(dx)), rect.GetHeight() / 2 / Math.max(.001, Math.abs(dy)));
+
+    return new math.Vector2(center.x + dx * t, center.y + dy * t);
+  }
+  private arrow (from: math.Vector2, to: math.Vector2, color: math.Color): void {
+    const dx = to.x - from.x, dy = to.y - from.y, length = Math.hypot(dx, dy) || 1, ux = dx / length, uy = dy / length;
+
+    this.fillTriangle(to.x, to.y, to.x - ux * 12 + uy * 5, to.y - uy * 12 - ux * 5, to.x - ux * 12 - uy * 5, to.y - uy * 12 + ux * 5, color);
+  }
+  private bezier (a: math.Vector2, b: math.Vector2, color: math.Color): void {
+    const delta = Math.max(50, Math.abs(b.x - a.x) * .5), points: number[] = [];
+
+    for (let i = 0; i <= 32; i++) {
+      const t = i / 32, q = 1 - t;
+
+      points.push(q ** 3 * a.x + 3 * q * q * t * (a.x + delta) + 3 * q * t * t * (b.x - delta) + t ** 3 * b.x, q ** 3 * a.y + 3 * q * q * t * a.y + 3 * q * t * t * b.y + t ** 3 * b.y);
+    }
+    this.drawPolyline(points, color, 2);
+  }
+  private transitionAt (point: math.Vector2): TransitionGraphNode | undefined {
+    return this.transitions.find(({ from, to }) => {
+      const dx = to.x - from.x, dy = to.y - from.y; const t = Math.max(0, Math.min(1, ((point.x - from.x) * dx + (point.y - from.y) * dy) / (dx * dx + dy * dy || 1)));
+
+      return Math.hypot(point.x - from.x - dx * t, point.y - from.y - dy * t) < 7;
+    })?.node;
+  }
+  override onMouseDown (event: InputEventMouseButton): void {
+    if (!this.graph) { return; } this.pointer.copyFrom(event.position); this.grabFocus();
+    const transition = this.transitionAt(event.position);
+
+    if (event.buttonIndex === MouseButton.Right) { this.showContext(event.globalPosition, transition); } else if (event.buttonIndex === MouseButton.Middle) { this.startPan(event); } else if (event.buttonIndex === MouseButton.Left) {
+      if (transition) { this.SelectNode(transition); if (event.doubleClick && transition.GetNavigationTarget()) { this.context.NavigateTo(transition.GetNavigationTarget()!); } } else { if (!event.ctrlPressed && !event.metaPressed && !event.shiftPressed) { this.ClearSelection(); } this.drag = this.newDrag('marquee', event); this.drag.selection = [...this.selected]; }
+    }
+    event.accept();
+  }
+  private newDrag (kind: GraphDrag['kind'], event: InputEventMouseButton): GraphDrag {
+    const point = this.makePositionLocal(event.globalPosition);
+
+    this.grabFocus();
+
+    return { kind, origin: point, mouse: point.clone(), offset: this.graph!.m_viewOffset.clone() };
+  }
+  startPan (event: InputEventMouseButton): void { if (this.graph) { this.drag = this.newDrag('pan', event); } }
+  startNodeDrag (node: GraphNode, event: InputEventMouseButton): void {
+    if (event.ctrlPressed || event.metaPressed) { this.SelectNodes(this.IsNodeSelected(node) ? this.selected.filter(item => item !== node) : [...this.selected, node]); } else if (!this.IsNodeSelected(node)) { this.SelectNodes(event.shiftPressed ? [...this.selected, node] : [node]); }
+    if (this.readOnly || !this.IsNodeSelected(node)) { return; }
+    this.drag = this.newDrag('nodes', event); let nodes = this.selected;
+
+    if (node instanceof CommentGraphNode && !event.altPressed) { nodes = [...new Set([...nodes, ...this.graph!.m_nodes.filter(item => !(item instanceof TransitionGraphNode) && node.GetRect().Contains(item.GetPosition()))])]; }
+    this.drag.positions = new Map(nodes.map(item => [item, item.GetPosition()])); this.graph!.BeginModification();
+  }
+  startConnection (pin: PinEndpoint, event: InputEventMouseButton): void {
+    if (this.readOnly || !this.graph) { return; }
+    if (event.altPressed) {
+      this.GetFlowGraph()?.BreakAnyConnectionsForPin(pin.pin.m_ID);
+
       return;
     }
-
-    const oldSelection = [...this.m_selectedNodes];
-
-    this.ResetInternalState();
-    this.m_freezeNodeLayoutCacheFromScaleChange = false;
-
-    this.m_pGraph = pGraph;
-    if (this.m_pGraph !== null) {
-      this.m_pViewOffset = this.m_pGraph.m_viewOffset;
-
-      const drawingContext = new DrawContext();
-
-      drawingContext.SetViewScaleFactor(this.m_pGraph.m_viewScaleFactor);
-
-      const canvasAreaWithNodes = new ImRect();
-
-      for (const nodeInstance of this.m_pGraph.m_nodes) {
-        canvasAreaWithNodes.Add(nodeInstance.GetRect());
-      }
-
-      const visibleCanvasRect = new ImRect(this.m_pViewOffset, add(this.m_pViewOffset, this.m_canvasSize));
-
-      if (!visibleCanvasRect.Overlaps(canvasAreaWithNodes)) {
-        this.m_pViewOffset = canvasAreaWithNodes.Min;
-        this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
-      }
-
-      this.m_pGraph.OnShowGraph();
-    } else {
-      this.m_defaultViewOffset = ImVec2.ZERO;
-      this.m_pViewOffset = this.m_defaultViewOffset;
-    }
-
-    this.RefreshNodeSizes();
-
-    if (tryMaintainSelection) {
-      const newSelection: GraphNodeSelection[] = [];
-
-      for (const oldSelectedNode of oldSelection) {
-        const pFoundNode = this.GetViewedGraph()!.FindNode(oldSelectedNode.m_nodeID);
-
-        if (pFoundNode !== null) {
-          newSelection.push(new GraphNodeSelection(pFoundNode));
-        }
-      }
-
-      this.UpdateSelection(newSelection);
+    this.drag = this.newDrag('connection', event); this.drag.pin = pin;
+  }
+  startTransition (node: StateGraphNode, event: InputEventMouseButton): void { if (!this.readOnly) { this.drag = this.newDrag('transition', event); this.drag.state = node; } }
+  startResize (node: CommentGraphNode, event: InputEventMouseButton, edges: NonNullable<GraphDrag['resizeEdges']>): void {
+    if (!this.readOnly) {
+      this.drag = this.newDrag('resize', event); this.drag.comment = node; this.drag.size = node.getCommentBoxSize().clone();
+      this.drag.positions = new Map([[node, node.GetPosition()]]); this.drag.resizeEdges = edges; this.graph!.BeginModification();
     }
   }
+  override onMouseMove (event: InputEventMouseMotion): void { this.pointerMove(event); }
+  pointerMove (event: InputEventMouseMotion): void {
+    const point = this.makePositionLocal(event.globalPosition);
 
-  private ResetInternalState (): void {
-    // this.m_pViewOffset = null;
-    this.m_hasFocus = false;
-    this.m_selectionChanged = false;
-    this.m_pHoveredNode = null;
-    this.m_pHoveredPin = null;
-    this.m_contextMenuState.Reset();
-    this.m_dragState.Reset();
-    this.m_dragAndDropState.Reset();
-    this.m_freezeNodeLayoutCacheFromScaleChange = false;
-    this.ClearSelection();
+    this.pointer.copyFrom(point);
+    const drag = this.drag, graph = this.graph;
+
+    if (!drag || !graph) { return; }
+    drag.mouse = point; const delta = new math.Vector2((point.x - drag.origin.x) / graph.m_viewScaleFactor, (point.y - drag.origin.y) / graph.m_viewScaleFactor);
+
+    if (drag.kind === 'pan') { graph.m_viewOffset.set(drag.offset.x - delta.x, drag.offset.y - delta.y); }
+    if (drag.kind === 'nodes') { drag.positions?.forEach((start, node) => node.m_canvasPosition.set(start.x + delta.x, start.y + delta.y)); }
+    if (drag.kind === 'resize') {
+      const edges = drag.resizeEdges!, size = drag.size!, node = drag.comment!, origin = drag.positions!.get(node)!;
+      const width = Math.max(80, size.x + (edges.left ? -delta.x : edges.right ? delta.x : 0));
+      const height = Math.max(80, size.y + (edges.top ? -delta.y : edges.bottom ? delta.y : 0));
+
+      node.m_commentBoxSize.set(width, height); node.m_canvasPosition.set(origin.x + (edges.left ? size.x - width : 0), origin.y + (edges.top ? size.y - height : 0));
+    }
+    if (drag.kind === 'marquee') {
+      const a = this.canvasPosition(drag.origin), b = this.canvasPosition(point), rect = new GraphRect(new math.Vector2(Math.min(a.x, b.x), Math.min(a.y, b.y)), new math.Vector2(Math.max(a.x, b.x), Math.max(a.y, b.y)));
+
+      this.SelectNodes([...drag.selection!, ...graph.m_nodes.filter(node => !(node instanceof TransitionGraphNode) && rect.Overlaps(node.GetRect()))]);
+    }
+    this.queueSort(); event.accept();
   }
+  override onMouseUp (event: InputEventMouseButton): void { this.pointerUp(event); }
+  pointerUp (event: InputEventMouseButton): void {
+    const drag = this.drag;
 
-  BeginDrawCanvas (childHeightOverride: number): boolean {
-    this.m_selectionChanged = false;
-    this.m_isViewHovered = false;
-    this.m_canvasSize = new ImVec2(0, 0);
+    if (!drag) { return; }
+    const point = this.canvasPosition(this.makePositionLocal(event.globalPosition));
 
-    ImGui.PushID(this.m_ID);
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, g_gridBackgroundColor);
-    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.ItemSpacing, new ImVec2(4, 4));
+    if (!event.canceled && drag.kind === 'connection' && drag.pin) {
+      const flow = this.GetFlowGraph(), source = drag.pin;
+      let target: PinEndpoint | undefined, distance = 18 / this.graph!.m_viewScaleFactor;
 
-    if (this.m_requestFocus) {
-      ImGui.SetNextWindowFocus();
-      this.m_requestFocus = false;
-    }
+      for (const control of this.nodeControls.values()) {
+        const pin = control.pinAt(event.globalPosition);
 
-    const childVisible = ImGui.BeginChild('GraphCanvas', new ImVec2(0, childHeightOverride), ImGui.ChildFlags.Borders, ImGui.ImGuiWindowFlags.NoScrollbar | ImGui.ImGuiWindowFlags.NoMove | ImGui.ImGuiWindowFlags.NoScrollWithMouse);
+        if (pin && pin.node !== source.node && pin.node.HasInputPin(pin.pin.m_ID) !== source.node.HasInputPin(source.pin.m_ID)) {
+          target = pin;
 
-    if (childVisible) {
-    //   const pWindow = ImGui.GetCurrentWindow();
-      const pDrawList = ImGui.GetWindowDrawList();
-
-      this.m_hasFocus = ImGui.IsWindowFocused(ImGui.ImGuiFocusedFlags.ChildWindows | ImGui.ImGuiFocusedFlags.NoPopupHierarchy);
-      this.m_isViewHovered = ImGui.IsWindowHovered();
-      this.m_canvasSize = multiplyScalar(ImGui.GetContentRegionAvail(), 1.0 / this.GetViewScaleFactor());
-
-      //   const windowRect = pWindow.Rect();
-      const windowPos = ImGui.GetWindowPos();
-      const windowSize = ImGui.GetWindowSize();
-      const windowRect = new ImRect(windowPos, add(windowPos, windowSize));
-      const windowTL = windowRect.GetTL();
-      const canvasWidth = windowRect.GetWidth();
-      const canvasHeight = windowRect.GetHeight();
-
-      const gridLineColor = this.IsReadOnly() ? colorMultiplyScalar(g_readOnlyCanvasBorderColor, 0.4) : g_gridLineColor;
-
-      for (let x = fmodf(0, g_gridSpacing); x < canvasWidth; x += g_gridSpacing) {
-        pDrawList.AddLine(add(windowTL, new ImVec2(x, 0.0)), add(windowTL, new ImVec2(x, canvasHeight)), gridLineColor.toImU32());
+          break;
+        }
       }
+      for (const node of flow?.m_nodes ?? []) {
+        if (!(node instanceof FlowGraphNode)) { continue; } for (const pin of [...node.m_inputPins, ...node.m_outputPins]) {
+          const d = Math.hypot(pin.m_position.x - point.x, pin.m_position.y - point.y);
 
-      for (let y = fmodf(0, g_gridSpacing); y < canvasHeight; y += g_gridSpacing) {
-        pDrawList.AddLine(add(windowTL, new ImVec2(0.0, y)), add(windowTL, new ImVec2(canvasWidth, y)), gridLineColor.toImU32());
+          if (d < distance && node !== source.node && node.HasInputPin(pin.m_ID) !== source.node.HasInputPin(source.pin.m_ID)) { target = { node, pin }; distance = d; }
+        }
       }
+      if (target) { if (source.node.HasInputPin(source.pin.m_ID)) { flow?.TryMakeConnection(target.node, target.pin, source.node, source.pin); } else { flow?.TryMakeConnection(source.node, source.pin, target.node, target.pin); } } else { this.showCreateDialog(event.globalPosition, source); }
     }
+    if (!event.canceled && drag.kind === 'transition' && drag.state) {
+      const target = this.graph?.m_nodes.find(node => node instanceof StateGraphNode && node.GetRect().Contains(point)) as StateGraphNode | undefined;
+      const graph = this.GetStateMachineGraph();
 
-    return childVisible;
+      if (target && graph?.CanCreateTransitionConduit(drag.state, target)) { graph.CreateTransitionConduit(drag.state, target); }
+    }
+    this.finishDrag(event.canceled); event.accept();
   }
+  private finishDrag (cancel = false): void {
+    const drag = this.drag;
 
-  EndDrawCanvas (ctx: DrawContext): void {
-    if (ctx.m_pDrawList !== null) {
-      if (this.IsReadOnly()) {
-        const rectThickness = 8.0;
-        const rectMargin = 2.0;
-        const offset = new ImVec2((rectThickness / 2) + rectMargin, (rectThickness / 2) + rectMargin);
-
-        ctx.m_pDrawList.AddRect(add(ctx.m_windowRect.Min, offset), subtract(ctx.m_windowRect.Max, offset), g_readOnlyCanvasBorderColor.toImU32(), 8.0, 0, rectThickness);
-      }
-
-      let textPosition = add(ctx.m_windowRect.Min, g_graphTitleMargin);
-
-      {
-        const pViewedGraph = this.GetViewedGraph();
-
-        const textDisabledColor = ImGui.GetStyleColorVec4(ImGui.ImGuiCol.TextDisabled);
-        const s_colorTextDisabled = new Color(textDisabledColor.x, textDisabledColor.y, textDisabledColor.z, textDisabledColor.w);
-
-        if (pViewedGraph !== null) {
-          const pTitleFont = ImGui.GetFont();
-          const largeFontSize = pTitleFont.FontSize * 1.35;
-          const title = `${pViewedGraph.GetName()}${this.IsReadOnly() ? ' (Read-Only)' : ''}`;
-
-          ctx.m_pDrawList.AddText(pTitleFont, largeFontSize, textPosition, this.IsReadOnly() ? s_colorTextDisabled.toImU32() : g_graphTitleColor.toImU32(), title);
-          textPosition = add(textPosition, new ImVec2(0, largeFontSize));
-
-          const pMediumFont = ImGui.GetFont();
-
-          if (this.m_pUserContext.GetExtraGraphTitleInfoText() !== '') {
-            ctx.m_pDrawList.AddText(pMediumFont, pMediumFont.FontSize, textPosition, this.m_pUserContext.GetExtraTitleInfoTextColor(), this.m_pUserContext.GetExtraGraphTitleInfoText());
-          }
-        } else {
-          ctx.m_pDrawList.AddText(textPosition, s_colorTextDisabled.toImU32(), this.m_isReadOnly ? 'Nothing to Show (Read-Only)' : 'Nothing to Show');
-        }
-      }
-    }
-    ImGui.EndChild();
-    ImGui.PopStyleColor();
-    ImGui.PopStyleVar();
-    ImGui.PopID();
+    if (!drag) { return; }
+    if (cancel) { drag.positions?.forEach((position, node) => node.m_canvasPosition.copyFrom(position)); if (drag.comment && drag.size) { drag.comment.m_commentBoxSize.copyFrom(drag.size); } }
+    if (drag.kind === 'nodes' || drag.kind === 'resize') { this.graph?.EndModification(); }
+    this.drag = undefined;
   }
+  override onMouseWheel (event: InputEventMouseButton): void {
+    const graph = this.graph;
 
-  private ChangeViewScale (ctx: DrawContext, newViewScale: number): void {
-    if (this.m_pGraph === null) {return;}
+    if (!graph) { return; }
+    const anchor = this.canvasPosition(event.position), factor = event.buttonIndex === MouseButton.WheelUp ? 1.1 : 1 / 1.1;
 
-    const deltaScale = newViewScale - this.m_pGraph.m_viewScaleFactor;
-
-    if (!(Math.abs(deltaScale) < Number.EPSILON)) {
-      const newOffset = add(this.m_pViewOffset,
-        multiplyScalar(subtract(ctx.m_mouseCanvasPos, this.m_pViewOffset), deltaScale * 1 / newViewScale)
-      );
-
-      this.m_pViewOffset = newOffset;
-      this.m_pGraph.m_viewOffset = new ImVec2(newOffset.x, newOffset.y);
-      this.m_pGraph.m_viewScaleFactor = newViewScale;
-      this.m_freezeNodeLayoutCacheFromScaleChange = true;
-
-      for (const nodeInstance of this.m_pGraph.m_nodes) {
-        nodeInstance.ResetCalculatedNodeSizes();
-      }
-    }
+    graph.m_viewScaleFactor = Math.max(.2, Math.min(2, graph.m_viewScaleFactor * factor)); graph.m_viewOffset.set(anchor.x - event.position.x / graph.m_viewScaleFactor, anchor.y - event.position.y / graph.m_viewScaleFactor); this.queueSort(); event.accept();
   }
+  override onKeyDown (event: InputEventKey): void {
+    const command = event.ctrlPressed || event.metaPressed, key = event.keycode.toLowerCase();
 
-  private DrawStateMachineNode (ctx: DrawContext, pNode: StateMachineGraphNode): void {
-    if (!pNode.IsVisible()) {
-      return;
-    }
+    if (command && key === 'c') { this.CopySelectedNodes(); } else if (command && key === 'x') { this.CopySelectedNodes(); this.DestroySelectedNodes(); } else if (command && key === 'v') { this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'escape') { this.finishDrag(true); } else if (key === 'delete' || key === 'backspace') { this.DestroySelectedNodes(); } else if (key === 'f' || key === 'home') { this.FitToView(); } else if (key === 'f2' && this.selected[0]?.IsRenameable()) { this.rename(this.selected[0]); } else if (command && key === 'a') { this.SelectNodes(this.graph?.m_nodes ?? []); } else if (command && key === 'd') { this.CopySelectedNodes(); this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'c' && !command) { this.CreateCommentAroundSelectedNodes(); } else if (event.altPressed && key === 'arrowup') {
+      const parent = this.graph?.GetNavigationTarget();
 
-    ImGui.PushID(pNode.m_ID);
-    ctx.SplitDrawChannels();
-
-    ctx.SetDrawChannel(DrawChannel.Foreground);
-
-    const newNodeWindowSize = new ImVec2(0, 0);
-    const windowPosition = ctx.CanvasToWindowPosition(pNode.GetPosition());
-    const scaledNodeMargin = ctx.CanvasToWindow(pNode.GetNodeMargin());
-    const shouldCommitLayoutCache = !this.m_freezeNodeLayoutCacheFromScaleChange;
-    const frozenNodeWindowWidth = this.m_freezeNodeLayoutCacheFromScaleChange && pNode.HasCachedCalculatedSize()
-      ? ctx.CanvasToWindow(pNode.GetCachedWidth())
-      : -1;
-    const scaledColorItemSpacing = new ImVec2(
-      (g_titleBarColorItemWidth * ctx.m_viewScaleFactor) - scaledNodeMargin.x,
-      0
-    );
-
-    ImGui.SetCursorPos(windowPosition);
-    ImGui.BeginGroup();
-    {
-      const titleFont = ImGui.GetFont();
-
-      ImGui.PushFont(titleFont, titleFont.FontSize * 1.1);
-      const titleClipMin = ctx.WindowToScreenPosition(ImGui.GetCursorPos());
-      const titleClipMax = add(titleClipMin, new ImVec2(Math.max(frozenNodeWindowWidth, 0), ctx.CanvasToWindow(32)));
-
-      if (frozenNodeWindowWidth >= 0) {
-        ImGui.PushClipRect(titleClipMin, titleClipMax, true);
-      }
-
-      ImGui.BeginGroup();
-      ImGui.Dummy(scaledColorItemSpacing);
-      ImGui.SameLine();
-      if (pNode.GetIcon() !== null) {
-        ImGui.Text(pNode.GetIcon()!);
-        ImGui.SameLine();
-      }
-      ImGui.Text(pNode.GetName());
-      ImGui.EndGroup();
-
-      if (frozenNodeWindowWidth >= 0) {
-        ImGui.PopClipRect();
-      }
-
-      newNodeWindowSize.Copy(ImGui.GetItemRectSize());
-      if (frozenNodeWindowWidth >= 0) {
-        newNodeWindowSize.x = frozenNodeWindowWidth;
-      }
-      pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
-      ImGui.PopFont();
-
-      const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
-
-      ImGui.SetCursorPosY(ImGui.GetCursorPos().y + scaledSpacing);
-      newNodeWindowSize.y += scaledSpacing;
-
-      {
-        const tinyFont = ImGui.GetFont();
-
-        ImGui.PushFont(tinyFont, tinyFont.FontSize * 0.82);
-        const cursorStartPos = ImGui.GetCursorPos();
-
-        ImGui.BeginGroup();
-        pNode.DrawExtraControls(ctx, this.m_pUserContext);
-        const cursorEndPos = ImGui.GetCursorPos();
-
-        ImGui.SetCursorPos(cursorStartPos);
-        ImGui.Dummy(subtract(cursorEndPos, cursorStartPos));
-        ImGui.EndGroup();
-        ImGui.PopFont();
-      }
-
-      const extraControlsRectSize = ImGui.GetItemRectSize();
-
-      newNodeWindowSize.x = Math.max(newNodeWindowSize.x, extraControlsRectSize.x);
-      if (frozenNodeWindowWidth >= 0) {
-        newNodeWindowSize.x = frozenNodeWindowWidth;
-      }
-      newNodeWindowSize.y += extraControlsRectSize.y;
-    }
-    ImGui.EndGroup();
-
-    pNode.SetCalculatedNodeSize(ctx.WindowToCanvas(newNodeWindowSize), shouldCommitLayoutCache || !pNode.HasCachedCalculatedSize());
-
-    const visualState = new Map<NodeVisualState, boolean>();
-
-    visualState.set(NodeVisualState.Active, pNode.IsActive(this.m_pUserContext));
-    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pNode));
-    visualState.set(NodeVisualState.Hovered, pNode.m_isHovered);
-
-    const [, nodeBackgroundColor, nodeBorderColor] = GetNodeBackgroundAndBorderColors(
-      GraphStyle.s_defaultTitleColor,
-      GraphStyle.s_nodeBackgroundColor,
-      visualState
-    );
-
-    const backgroundRectMin = ctx.WindowToScreenPosition(subtract(windowPosition, scaledNodeMargin));
-    const backgroundRectMax = ctx.WindowToScreenPosition(add(add(windowPosition, newNodeWindowSize), scaledNodeMargin));
-    const rectTitleBarMax = ctx.WindowToScreenPosition(add(add(windowPosition, new ImVec2(newNodeWindowSize.x, ctx.CanvasToWindow(pNode.m_titleRectSize.y))), scaledNodeMargin));
-    const rectTitleBarColorItemMax = new ImVec2(backgroundRectMin.x + (ctx.m_viewScaleFactor * g_titleBarColorItemWidth), rectTitleBarMax.y);
-    const scaledCornerRounding = 2 * ctx.m_viewScaleFactor;
-    const scaledBorderThickness = g_nodeSelectionBorderThickness * ctx.m_viewScaleFactor;
-
-    ctx.SetDrawChannel(DrawChannel.Background);
-
-    if (pNode instanceof StateGraphNode) {
-      if (visualState.get(NodeVisualState.Active)) {
-        const activeBorderPadding = new ImVec2(GraphStyle.s_activeBorderIndicatorPadding, GraphStyle.s_activeBorderIndicatorPadding);
-
-        ctx.m_pDrawList!.AddRect(
-          subtract(backgroundRectMin, activeBorderPadding),
-          add(backgroundRectMax, activeBorderPadding),
-          GraphStyle.s_activeIndicatorBorderColor.toImU32(),
-          scaledCornerRounding,
-          ImGui.ImDrawCornerFlags.All,
-          GraphStyle.s_activeBorderIndicatorThickness
-        );
-      }
-
-      ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, backgroundRectMax, nodeBackgroundColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All);
-      ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarMax, GraphStyle.s_defaultTitleColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.Top);
-      ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarColorItemMax, pNode.GetTitleBarColor().toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.TopLeft);
-      ctx.m_pDrawList!.AddRect(backgroundRectMin, backgroundRectMax, nodeBorderColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All, scaledBorderThickness);
-    } else {
-      ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, backgroundRectMax, nodeBackgroundColor.toImU32(), scaledCornerRounding);
-      ctx.m_pDrawList!.AddRect(backgroundRectMin, backgroundRectMax, nodeBorderColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All, scaledBorderThickness);
-    }
-
-    ctx.MergeDrawChannels();
-    ImGui.PopID();
-
-    const nodeRect = pNode.GetRect();
-
-    pNode.m_isHovered = this.m_isViewHovered && nodeRect.Contains(ctx.m_mouseCanvasPos);
+      if (parent) { this.context.NavigateTo(parent); }
+    } else { return; }
+    event.accept();
   }
-
-  private DrawStateMachineTransitionConduit (ctx: DrawContext, pTransitionConduit: TransitionGraphNode): void {
-    if (pTransitionConduit.m_startStateID === '' || pTransitionConduit.m_endStateID === '') {
-      return;
-    }
-
-    const pStartState = this.m_pGraph!.FindNode(pTransitionConduit.m_startStateID) as StateGraphNode | null;
-    const pEndState = this.m_pGraph!.FindNode(pTransitionConduit.m_endStateID) as StateGraphNode | null;
-
-    if (!pStartState || !pEndState) {
-      return;
-    }
-
-    const startNodeRect = pStartState.GetRect();
-    const scaledEndNodeRect = pEndState.GetRect();
-
-    let [startPoint, endPoint] = GetConnectionPointsBetweenStateMachineNodes(startNodeRect, scaledEndNodeRect);
-
-    const arrowDir = normalize(subtract(endPoint, startPoint));
-    const orthogonalDir = new ImGui.ImVec2(-arrowDir.y, arrowDir.x);
-    const offset = multiplyScalar(orthogonalDir, g_transitionArrowOffset);
-
-    startPoint = add(startPoint, offset);
-    endPoint = add(endPoint, offset);
-
-    const scaledSelectionExtraRadius = ctx.WindowToCanvas(g_connectionSelectionExtraRadius);
-    const closestPointOnTransitionToMouse = ImGuiX.ImLineClosestPoint(startPoint, endPoint, ctx.m_mouseCanvasPos);
-
-    if (this.m_isViewHovered && lengthSqr(subtract(closestPointOnTransitionToMouse, ctx.m_mouseCanvasPos)) < Math.pow(scaledSelectionExtraRadius, 2)) {
-      pTransitionConduit.m_isHovered = true;
-    } else {
-      pTransitionConduit.m_isHovered = false;
-    }
-
-    const visualState = new Map<NodeVisualState, boolean>();
-
-    visualState.set(NodeVisualState.Active, pTransitionConduit.IsActive(this.m_pUserContext));
-    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pTransitionConduit));
-    visualState.set(NodeVisualState.Hovered, pTransitionConduit.m_isHovered);
-
-    pTransitionConduit.DrawExtraControls(ctx, this.m_pUserContext, startPoint, endPoint);
-
-    const scaledArrowHeadWidth = ctx.CanvasToWindow(5.0);
-    const scaledArrowWidth = ctx.CanvasToWindow(g_transitionArrowWidth);
-    // Source code:
-    // const transitionProgress = pTransitionConduit.m_transitionProgress.GetNormalizedTime();
-    const transitionProgress = pTransitionConduit.m_transitionProgress;
-    const hasTransitionProgress = transitionProgress > 0.0;
-    const transitionColor = pTransitionConduit.GetConduitColor(ctx, this.m_pUserContext, visualState);
-
-    if (hasTransitionProgress) {
-      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), new Color(GraphColors.DimGray), scaledArrowWidth, scaledArrowHeadWidth);
-      const progressEndPoint = lerp(startPoint, endPoint, transitionProgress);
-
-      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(progressEndPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
-    } else {
-      if (visualState.get(NodeVisualState.Selected)) {
-        ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth * 1.5, scaledArrowHeadWidth * 1.5);
-      } else {
-        ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
-      }
-    }
-
-    const min = new ImVec2(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y));
-    const max = new ImVec2(Math.max(startPoint.x, endPoint.x), Math.max(startPoint.y, endPoint.y));
-
-    pTransitionConduit.m_canvasPosition = min;
-    pTransitionConduit.SetCalculatedNodeSize(subtract(max, min));
-  }
-
-  private DrawFlowNode (ctx: DrawContext, pNode: FlowGraphNode): void {
-    if (!pNode.IsVisible()) {
-      return;
-    }
-
-    ImGui.PushID(pNode.GetID());
-    ctx.SplitDrawChannels();
-
-    ctx.SetDrawChannel(DrawChannel.Foreground);
-
-    const newNodeWindowSize = new ImVec2(0, 0);
-    const windowPosition = ctx.CanvasToWindowPosition(pNode.GetPosition());
-    const scaledNodeMargin = ctx.CanvasToWindow(pNode.GetNodeMargin());
-    const shouldCommitLayoutCache = !this.m_freezeNodeLayoutCacheFromScaleChange;
-    const frozenNodeWindowWidth = this.m_freezeNodeLayoutCacheFromScaleChange && pNode.HasCachedCalculatedSize()
-      ? ctx.CanvasToWindow(pNode.GetCachedWidth())
-      : -1;
-    const layoutNodeWindowWidth = frozenNodeWindowWidth >= 0 ? frozenNodeWindowWidth : ctx.CanvasToWindow(pNode.GetWidth());
-    const scaledColorItemSpacing = new ImVec2((g_titleBarColorItemWidth * ctx.m_viewScaleFactor) - scaledNodeMargin.x, 0);
-
-    ImGui.SetCursorPos(windowPosition);
-    ImGui.BeginGroup();
-    {
-      {
-        const titleFont = ImGui.GetFont();
-
-        ImGui.PushFont(titleFont, titleFont.FontSize * 1.1);
-        const titleClipMin = ctx.WindowToScreenPosition(ImGui.GetCursorPos());
-        const titleClipMax = add(titleClipMin, new ImVec2(Math.max(frozenNodeWindowWidth, 0), ctx.CanvasToWindow(32)));
-
-        if (frozenNodeWindowWidth >= 0) {
-          ImGui.PushClipRect(titleClipMin, titleClipMax, true);
-        }
-
-        ImGui.BeginGroup();
-        ImGui.Dummy(scaledColorItemSpacing);
-        ImGui.SameLine();
-        if (pNode.GetIcon() !== null) {
-          ImGui.Text(pNode.GetIcon()!);
-          ImGui.SameLine();
-        }
-        ImGui.Text(pNode.GetName());
-        ImGui.EndGroup();
-
-        if (frozenNodeWindowWidth >= 0) {
-          ImGui.PopClipRect();
-        }
-
-        newNodeWindowSize.Copy(ImGui.GetItemRectSize());
-        if (frozenNodeWindowWidth >= 0) {
-          newNodeWindowSize.x = frozenNodeWindowWidth;
-        }
-        pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
-        ImGui.PopFont();
-
-        const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
-
-        ImGui.SetCursorPosY(ImGui.GetCursorPos().y + scaledSpacing);
-        newNodeWindowSize.y += scaledSpacing;
-      }
-
-      let hasPinControlsOnLastRow = false;
-
-      {
-        const pinFont = ImGui.GetFont();
-
-        ImGui.PushFont(pinFont, pinFont.FontSize * 0.82);
-        ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(0, 2 * ctx.m_viewScaleFactor));
-
-        pNode.m_pHoveredPin = null;
-
-        const pinRectSize = new ImVec2(0, 0);
-        const numPinRows = Math.max(pNode.GetNumInputPins(), pNode.GetNumOutputPins());
-
-        for (let i = 0; i < numPinRows; i++) {
-
-          const hasInputPin = i < pNode.m_inputPins.length;
-          const hasOutputPin = i < pNode.m_outputPins.length;
-          let estimatedSpacingBetweenPins = 0;
-
-          const DrawPin = (pin: Pin, isInputPin: boolean) => {
-            const frozenPinWindowWidth = this.m_freezeNodeLayoutCacheFromScaleChange && pin.HasCachedSize()
-              ? pin.GetCachedWidth(ctx)
-              : -1;
-            const pinCursorStartPos = ImGui.GetCursorPos();
-
-            if (frozenPinWindowWidth >= 0) {
-              const pinClipMin = ctx.WindowToScreenPosition(pinCursorStartPos);
-              const pinClipMax = add(pinClipMin, new ImVec2(frozenPinWindowWidth, ctx.CanvasToWindow(32)));
-
-              ImGui.PushClipRect(pinClipMin, pinClipMax, true);
-            }
-
-            ImGui.BeginGroup();
-            ImGui.AlignTextToFramePadding();
-
-            if (isInputPin) {
-              ImGui.Text(pin.m_name);
-            }
-
-            if (pNode.DrawPinControls(ctx, this.m_pUserContext, pin)) {
-              hasPinControlsOnLastRow = (i === (numPinRows - 1));
-            }
-
-            if (!isInputPin) {
-              ImGui.Text(pin.m_name);
-            }
-            ImGui.EndGroup();
-
-            const measuredPinWindowSize = ImGui.GetItemRectSize();
-
-            if (frozenPinWindowWidth >= 0) {
-              ImGui.PopClipRect();
-              ImGui.SetCursorPos(pinCursorStartPos);
-              ImGui.Dummy(new ImVec2(frozenPinWindowWidth, measuredPinWindowSize.y));
-            }
-
-            const pinRect = new ImRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax());
-
-            pin.SetCalculatedSize(ImGui.GetItemRectSize(), ctx, shouldCommitLayoutCache || !pin.HasCachedSize());
-
-            const pinOffsetY = ImGui.GetFrameHeightWithSpacing() / 2;
-
-            if (isInputPin) {
-              pin.m_position = new ImVec2(pinRect.Min.x - scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
-            } else {
-              pin.m_position = new ImVec2(pinRect.Max.x + scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
-            }
-
-            let pinColor = pNode.GetPinColor(pin);
-            const isPinHovered = length(subtract(new ImVec2().Copy(pin.m_position), ImGui.GetMousePos())) < ctx.CanvasToWindow(g_pinRadius + FlowGraphNode.S_PinSelectionExtraRadius);
-
-            if (isPinHovered) {
-              pNode.m_pHoveredPin = pin;
-              pinColor = colorMultiplyScalar(pinColor, 1.55);
-            }
-
-            const scaledPinRadius = ctx.CanvasToWindow(g_pinRadius);
-
-            ctx.m_pDrawList!.AddCircleFilled(pin.m_position, scaledPinRadius, pinColor.toImU32());
-          };
-
-          const pinRowCursorStartY = ImGui.GetCursorPosY();
-
-          if (hasInputPin) {
-            DrawPin(pNode.m_inputPins[i], true);
-          }
-
-          if (hasOutputPin) {
-            if (!hasInputPin) {
-              ImGui.NewLine();
-            }
-
-            const inputPinWidth = hasInputPin
-              ? (frozenNodeWindowWidth >= 0 ? pNode.m_inputPins[i].GetCachedWidth(ctx) : pNode.m_inputPins[i].GetWidthForLayout(ctx))
-              : 0;
-            const outputPinWidth = frozenNodeWindowWidth >= 0
-              ? pNode.m_outputPins[i].GetCachedWidth(ctx)
-              : pNode.m_outputPins[i].GetWidthForLayout(ctx);
-            const scaledSpacingBetweenPins = ctx.CanvasToWindow(g_spacingBetweenInputOutputPins);
-
-            estimatedSpacingBetweenPins = layoutNodeWindowWidth - inputPinWidth - outputPinWidth;
-            estimatedSpacingBetweenPins = Math.max(estimatedSpacingBetweenPins, scaledSpacingBetweenPins);
-            ImGui.SameLine(0, estimatedSpacingBetweenPins);
-          }
-
-          if (hasOutputPin) {
-            ImGui.SetCursorPosY(pinRowCursorStartY);
-            DrawPin(pNode.m_outputPins[i], false);
-          }
-
-          const pinRowRectSize = new ImVec2(0, 0);
-          const inputPinWidth = hasInputPin
-            ? (frozenNodeWindowWidth >= 0 ? pNode.m_inputPins[i].GetCachedWidth(ctx) : pNode.m_inputPins[i].GetWidthForLayout(ctx))
-            : 0;
-          const outputPinWidth = hasOutputPin
-            ? (frozenNodeWindowWidth >= 0 ? pNode.m_outputPins[i].GetCachedWidth(ctx) : pNode.m_outputPins[i].GetWidthForLayout(ctx))
-            : 0;
-
-          if (hasInputPin) {
-            pinRowRectSize.x += inputPinWidth;
-            pinRowRectSize.y = pNode.m_inputPins[i].GetHeight();
-          }
-
-          if (hasOutputPin) {
-            pinRowRectSize.x += outputPinWidth;
-            pinRowRectSize.y = Math.max(pinRowRectSize.y, pNode.m_outputPins[i].GetHeight());
-          }
-
-          pinRowRectSize.x += estimatedSpacingBetweenPins;
-          pinRectSize.x = Math.max(pinRectSize.x, pinRowRectSize.x);
-          pinRectSize.y += pinRowRectSize.y + ImGui.GetStyle().ItemSpacing.y;
-        }
-
-        newNodeWindowSize.x = Math.max(newNodeWindowSize.x, pinRectSize.x);
-        if (frozenNodeWindowWidth >= 0) {
-          newNodeWindowSize.x = frozenNodeWindowWidth;
-        }
-        newNodeWindowSize.y += pinRectSize.y;
-
-        ImGui.PopStyleVar();
-        ImGui.PopFont();
-      }
-
-      {
-        const extraFont = ImGui.GetFont();
-
-        ImGui.PushFont(extraFont, extraFont.FontSize * 0.82);
-
-        const offsetY = (hasPinControlsOnLastRow ? ImGui.GetStyle().ItemSpacing.y : 0);
-
-        const cursorStartPos = ImGui.GetCursorPos();
-
-        ImGui.BeginGroup();
-        ImGui.SetCursorPos(add(cursorStartPos, new ImVec2(0, offsetY)));
-
-        pNode.DrawExtraControls(ctx, this.m_pUserContext);
-
-        const cursorEndPos = ImGui.GetCursorPos();
-
-        ImGui.SetCursorPos(cursorStartPos);
-        ImGui.Dummy(subtract(cursorEndPos, cursorStartPos));
-        ImGui.EndGroup();
-        ImGui.PopFont();
-      }
-
-      const extraControlsRectSize = ImGui.GetItemRectSize();
-
-      newNodeWindowSize.x = Math.max(newNodeWindowSize.x, extraControlsRectSize.x);
-      if (frozenNodeWindowWidth >= 0) {
-        newNodeWindowSize.x = frozenNodeWindowWidth;
-      }
-      newNodeWindowSize.y += extraControlsRectSize.y;
-    }
-    ImGui.EndGroup();
-
-    pNode.SetCalculatedNodeSize(ctx.WindowToCanvas(newNodeWindowSize), shouldCommitLayoutCache || !pNode.HasCachedCalculatedSize());
-
-    const visualState = new Map<NodeVisualState, boolean>();
-
-    visualState.set(NodeVisualState.Active, pNode.IsActive(this.m_pUserContext));
-    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pNode));
-    visualState.set(NodeVisualState.Hovered, pNode.m_isHovered && pNode.m_pHoveredPin === null);
-
-    const [nodeTitleBarColor, nodeBackgroundColor, nodeBorderColor] = GetNodeBackgroundAndBorderColors(
-      GraphStyle.s_defaultTitleColor,
-      GraphStyle.s_nodeBackgroundColor,
-      visualState
-    );
-
-    const backgroundRectMin = ctx.WindowToScreenPosition(subtract(windowPosition, scaledNodeMargin));
-    const backgroundRectMax = ctx.WindowToScreenPosition(add(add(windowPosition, newNodeWindowSize), scaledNodeMargin));
-    const rectTitleBarMax = ctx.WindowToScreenPosition(add(add(windowPosition, new ImVec2(newNodeWindowSize.x, ctx.CanvasToWindow(pNode.m_titleRectSize.y))), scaledNodeMargin));
-    const rectTitleBarColorItemMax = new ImVec2(backgroundRectMin.x + (ctx.m_viewScaleFactor * g_titleBarColorItemWidth), rectTitleBarMax.y);
-    const scaledCornerRounding = 8 * ctx.m_viewScaleFactor;
-    const scaledBorderThickness = g_nodeSelectionBorderThickness * ctx.m_viewScaleFactor;
-
-    ctx.SetDrawChannel(DrawChannel.Background);
-
-    if (visualState.get(NodeVisualState.Active)) {
-      const activeBorderPadding = new ImVec2(GraphStyle.s_activeBorderIndicatorPadding, GraphStyle.s_activeBorderIndicatorPadding);
-
-      ctx.m_pDrawList!.AddRect(
-        subtract(backgroundRectMin, activeBorderPadding),
-        add(backgroundRectMax, activeBorderPadding),
-        GraphStyle.s_activeIndicatorBorderColor.toImU32(),
-        scaledCornerRounding,
-        ImGui.ImDrawCornerFlags.All,
-        GraphStyle.s_activeBorderIndicatorThickness
-      );
-    }
-
-    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, backgroundRectMax, nodeBackgroundColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All);
-    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarMax, nodeTitleBarColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.Top);
-    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarColorItemMax, pNode.GetTitleBarColor().toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.TopLeft);
-    ctx.m_pDrawList!.AddRect(backgroundRectMin, backgroundRectMax, nodeBorderColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All, scaledBorderThickness);
-
-    ctx.MergeDrawChannels();
-    ImGui.PopID();
-
-    const nodeRect = pNode.GetRect();
-
-    pNode.m_isHovered = this.m_isViewHovered && nodeRect.Contains(ctx.m_mouseCanvasPos) || pNode.m_pHoveredPin !== null;
-  }
-
-  private DrawCommentNode (ctx: DrawContext, pNode: CommentGraphNode): void {
-    if (!pNode.IsVisible()) {
-      return;
-    }
-
-    ImGui.PushID(pNode.GetID());
-    ctx.SplitDrawChannels();
-
-    const windowPosition = ctx.CanvasToWindowPosition(pNode.GetPosition());
-    const textOffset = ctx.CanvasToWindow(ImGui.GetStyle().WindowPadding);
-    const textCursorStartPos = add(windowPosition, textOffset);
-
-    ctx.SetDrawChannel(DrawChannel.Foreground);
-    ImGui.SetCursorPos(textCursorStartPos);
-    ImGui.BeginGroup();
-    {
-      const commentFont = ImGui.GetFont();
-
-      ImGui.PushFont(commentFont, commentFont.FontSize * 1.1);
-      const nodeWindowWidth = ctx.CanvasToWindow(pNode.m_commentBoxSize.x);
-
-      ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + nodeWindowWidth);
-      ImGui.Text(`# ${pNode.GetName()}`);
-      ImGui.PopTextWrapPos();
-
-      pNode.m_titleRectSize = ctx.WindowToCanvas(ImGui.GetItemRectSize());
-      pNode.SetCalculatedNodeSize(pNode.getCommentBoxSize());
-      ImGui.PopFont();
-    }
-    ImGui.EndGroup();
-
-    const visualState = new Map<NodeVisualState, boolean>();
-
-    visualState.set(NodeVisualState.Active, pNode.IsActive(this.m_pUserContext));
-    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pNode));
-    visualState.set(NodeVisualState.Hovered, pNode.m_isHovered);
-
-    const windowNodeMargin = ctx.CanvasToWindow(pNode.GetNodeMargin());
-    const rectMin = ctx.WindowToScreenPosition(subtract(windowPosition, windowNodeMargin));
-    const rectMax = ctx.WindowToScreenPosition(add(add(windowPosition, ctx.CanvasToWindow(pNode.getCommentBoxSize())), windowNodeMargin));
-    const titleRectMax = new ImVec2(rectMax.x, ctx.WindowToScreenPosition(textCursorStartPos).y + (ctx.CanvasToWindow(pNode.m_titleRectSize.y)) + windowNodeMargin.y);
-
-    const scaledBorderThickness = ctx.CanvasToWindow(g_nodeSelectionBorderThickness);
-
-    const [, nodeBackgroundColor, nodeBorderColor] = GetNodeBackgroundAndBorderColors(
-      pNode.getCommentBoxColor(),
-      pNode.getCommentBoxColor(),
-      visualState
-    );
-
-    ctx.SetDrawChannel(DrawChannel.Background);
-
-    // Body fill - semi transparent
-    const bgVal = nodeBackgroundColor.Value;
-    const bodyFillColor = new Color(bgVal.x, bgVal.y, bgVal.z, 0.1).toImU32();
-
-    ctx.m_pDrawList!.AddRectFilled(rectMin, rectMax, bodyFillColor, 0, 0);
-
-    // Title fill - slightly more opaque
-    const titleFillColor = new Color(bgVal.x, bgVal.y, bgVal.z, 0.3).toImU32();
-
-    ctx.m_pDrawList!.AddRectFilled(rectMin, titleRectMax, titleFillColor, 0, 0);
-
-    // Inner border
-    ctx.m_pDrawList!.AddRect(rectMin, rectMax, nodeBackgroundColor.toImU32(), 0, 0, scaledBorderThickness);
-
-    // Outer border
-    ctx.m_pDrawList!.AddRect(
-      subtract(rectMin, new ImVec2(scaledBorderThickness, scaledBorderThickness)),
-      add(rectMax, new ImVec2(scaledBorderThickness, scaledBorderThickness)),
-      nodeBorderColor.toImU32(),
-      0,
-      0,
-      scaledBorderThickness
-    );
-
-    ctx.MergeDrawChannels();
-    ImGui.PopID();
-
-    pNode.m_isHovered = false;
-
-    if (this.m_isViewHovered) {
-      const dilationRadius = ctx.WindowToCanvas(CommentGraphNode.s_resizeSelectionRadius / 2);
-
-      // Broad hit-test
-      const commentNodeRect = pNode.GetRect();
-
-      commentNodeRect.Expand(new ImVec2(dilationRadius, dilationRadius));
-      if (commentNodeRect.Contains(ctx.m_mouseCanvasPos)) {
-        // Test title region
-        const commentNodeTitleRect = new ImRect(pNode.GetRect().Min, ctx.ScreenToCanvasPosition(titleRectMax));
-
-        commentNodeTitleRect.Expand(new ImVec2(dilationRadius, dilationRadius));
-        if (commentNodeTitleRect.Contains(ctx.m_mouseCanvasPos)) {
-          pNode.m_isHovered = true;
-        } else if (pNode.GetHoveredResizeHandle(ctx) !== GraphResizeHandle.None) {
-          // Test Edges
-          pNode.m_isHovered = true;
-        }
-      }
-    }
-  }
-
-  UpdateAndDraw (childHeightOverride: number = 0): void {
-    if (this.m_pUserContext === null) {
-      throw new Error('User context is null');
-    }
-
-    // Update context
-    this.m_pUserContext.m_isAltDown = ImGui.GetIO().KeyAlt;
-    this.m_pUserContext.m_isCtrlDown = ImGui.GetIO().KeyCtrl;
-    this.m_pUserContext.m_isShiftDown = ImGui.GetIO().KeyShift;
-
-    // Node visual update
-    if (this.m_pGraph !== null) {
-      for (const nodeInstance of this.m_pGraph.m_nodes) {
-        nodeInstance.PreDrawUpdate(this.m_pUserContext);
-      }
-    }
-
-    // Draw Graph
-    const drawingContext = new DrawContext();
-
-    drawingContext.m_isReadOnly = this.m_isReadOnly;
-
-    if (this.BeginDrawCanvas(childHeightOverride)) {
-      if (this.m_pendingFitToView) {
-        this.m_pendingFitToView = false;
-        this.FitToView();
-      }
-
-      drawingContext.SetViewScaleFactor(this.m_pGraph !== null ? this.m_pGraph.m_viewScaleFactor : 1.0);
-      drawingContext.m_pDrawList = ImGui.GetWindowDrawList();
-      drawingContext.m_viewOffset = this.m_pViewOffset;
-      drawingContext.m_windowRect = new ImRect(ImGui.GetWindowPos(), add(ImGui.GetWindowPos(), ImGui.GetWindowSize()));
-      drawingContext.m_canvasVisibleRect = new ImRect(drawingContext.m_viewOffset, add(drawingContext.m_viewOffset, drawingContext.m_windowRect.GetSize()));
-      drawingContext.m_mouseScreenPos = ImGui.GetMousePos();
-      drawingContext.m_mouseCanvasPos = drawingContext.ScreenToCanvasPosition(drawingContext.m_mouseScreenPos);
-
-      // Apply imgui scale
-      const unscaledStyle = new ImGui.ImGuiStyle().Copy(ImGui.GetStyle());
-
-      ImGui.SetWindowFontScale(drawingContext.m_viewScaleFactor);
-      ImGui.GetStyle().ScaleAllSizes(drawingContext.m_viewScaleFactor);
-
-      // Draw nodes
-      if (this.m_pGraph !== null) {
-        this.m_pHoveredNode = null;
-        this.m_pHoveredPin = null;
-
-        // Comment nodes
-        for (const nodeInstance of this.m_pGraph.m_nodes) {
-          const pCommentNode = nodeInstance as CommentGraphNode;
-
-          if (pCommentNode instanceof CommentGraphNode) {
-            this.DrawCommentNode(drawingContext, pCommentNode);
-
-            if (pCommentNode.m_isHovered) {
-              this.m_pHoveredNode = pCommentNode;
-            }
-          }
-        }
-
-        // State Machine Graph
-        if (this.IsViewingStateMachineGraph()) {
-          for (const nodeInstance of this.m_pGraph.m_nodes) {
-            // Ignore comment nodes
-            if (nodeInstance instanceof CommentGraphNode) {
-              continue;
-            }
-
-            if (nodeInstance instanceof TransitionGraphNode) {
-              this.DrawStateMachineTransitionConduit(drawingContext, nodeInstance);
-            } else {
-              const pStateMachineNode = nodeInstance as StateMachineGraphNode;
-
-              this.DrawStateMachineNode(drawingContext, pStateMachineNode);
-            }
-
-            if (nodeInstance.m_isHovered) {
-              this.m_pHoveredNode = nodeInstance;
-            }
-          }
-        } else { // Flow Graph
-          const pFlowGraph = this.GetFlowGraph()!;
-
-          // Draw Nodes
-          for (const nodeInstance of this.m_pGraph.m_nodes) {
-            // Ignore comment nodes
-            if (nodeInstance instanceof CommentGraphNode) {
-              continue;
-            }
-
-            const pFlowNode = nodeInstance as FlowGraphNode;
-
-            this.DrawFlowNode(drawingContext, pFlowNode);
-
-            if (pFlowNode.m_isHovered) {
-              this.m_pHoveredNode = pFlowNode;
-              this.m_pHoveredPin = pFlowNode.m_pHoveredPin;
-            }
-          }
-
-          // Draw connections
-          this.m_hoveredConnectionID = '';
-          for (const connection of pFlowGraph.m_connections) {
-            const pFromNode = pFlowGraph.GetNode(connection.m_fromNodeID) as FlowGraphNode;
-            const pStartPin = pFromNode.GetOutputPin(connection.m_outputPinID)!;
-            const pToNode = pFlowGraph.GetNode(connection.m_toNodeID) as FlowGraphNode;
-            const pEndPin = pToNode.GetInputPin(connection.m_inputPinID)!;
-
-            const invertOrder = pStartPin.m_position.x > pEndPin.m_position.x;
-            const p1 = invertOrder ? pEndPin.m_position : pStartPin.m_position;
-            const p4 = invertOrder ? pStartPin.m_position : pEndPin.m_position;
-            const p2 = add(p1, new ImVec2(50, 0));
-            const p3 = add(p4, new ImVec2(-50, 0));
-
-            let connectionColor = pFromNode.GetPinColor(pStartPin);
-
-            if (this.m_hasFocus && IsHoveredOverCurve(p1, p2, p3, p4, drawingContext.m_mouseScreenPos, g_connectionSelectionExtraRadius)) {
-              this.m_hoveredConnectionID = connection.m_ID;
-              connectionColor = new Color(GraphStyle.s_connectionColorHovered.toImU32());
-            }
-
-            drawingContext.m_pDrawList.AddBezierCubic(p1, p2, p3, p4, connectionColor.toImU32(), Math.max(1.0, 3.0 * drawingContext.m_viewScaleFactor));
-          }
-        }
-
-        // Extra
-        this.m_pGraph.DrawExtraInformation(drawingContext, this.m_pUserContext);
-      }
-
-      // Restore original scale value
-      ImGui.GetStyle().Copy(unscaledStyle);
-    }
-
-    this.EndDrawCanvas(drawingContext);
-
-    this.HandleInput(drawingContext);
-    this.HandleContextMenu(drawingContext);
-    this.DrawDialogs();
-
-    // Handle drag and drop
-    const ResetDragAndDropState = () => {
-      if (this.m_dragAndDropState.m_isActiveDragAndDrop) {
-        this.m_dragAndDropState.Reset();
-      }
-    };
-
-    if (this.m_pGraph !== null) {
-      if (this.m_isReadOnly) {
-        ResetDragAndDropState();
-      } else { // Drag and drop allowed
-        if (this.m_dragAndDropState.m_isActiveDragAndDrop) {
-          if (this.m_pGraph.HandleDragAndDrop(this.m_pUserContext, this.m_dragAndDropState)) {
-            ResetDragAndDropState();
-          }
-        } else { // Check for drag and drop
-          if (ImGui.BeginDragDropTarget()) {
-            const supportedPayloadIDs: string[] = [];
-
-            this.m_pGraph.GetSupportedDragAndDropPayloadIDs(supportedPayloadIDs);
-
-            for (const pPayloadID of supportedPayloadIDs) {
-              if (this.m_dragAndDropState.TryAcceptDragAndDrop(pPayloadID)) {
-                this.m_dragAndDropState.m_mouseCanvasPos = drawingContext.m_mouseCanvasPos;
-                this.m_dragAndDropState.m_mouseScreenPos = drawingContext.m_mouseScreenPos;
-                this.m_dragAndDropState.m_isActiveDragAndDrop = true;
-
-                break;
-              }
-            }
-
-            ImGui.EndDragDropTarget();
-          }
-        }
-      }
-    } else {
-      ResetDragAndDropState();
-    }
-  }
-
-  ResetView (): void {
-    if (this.m_pGraph === null || this.m_pGraph.m_nodes.length === 0) {
-      return;
-    }
-
-    const pMostSignificantNode = this.m_pGraph.GetMostSignificantNode();
-
-    if (pMostSignificantNode !== null) {
-      this.CenterView(pMostSignificantNode);
-    } else {
-      const numNodes = this.m_pGraph.m_nodes.length;
-      const totalRect = new ImRect(this.m_pGraph.m_nodes[0].GetPosition(), add(this.m_pGraph.m_nodes[0].GetPosition(), this.m_pGraph.m_nodes[0].GetSize()));
-
-      for (let i = 1; i < numNodes; i++) {
-        const nodeInstance = this.m_pGraph.m_nodes[i];
-
-        if (nodeInstance.IsVisible()) {
-          const nodeRect = new ImRect(nodeInstance.GetPosition(), add(nodeInstance.GetPosition(), nodeInstance.GetSize()));
-
-          totalRect.Add(nodeRect);
-        }
-      }
-
-      this.m_pViewOffset = subtract(totalRect.GetCenter(), div(this.m_canvasSize, 2));
-      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
-    }
-  }
-
-  RequestFitToView (): void {
-    this.m_pendingFitToView = true;
-  }
-
+  ResetView (): void { if (this.graph) { this.graph.m_viewScaleFactor = 1; this.graph.m_viewOffset.set(-40, -40); this.queueSort(); } }
+  RequestFitToView (): void { this.fitRequested = true; }
   FitToView (): void {
-    if (this.m_pGraph === null || this.m_pGraph.m_nodes.length === 0) {
-      return;
-    }
+    const graph = this.graph, nodes = this.selected.length ? this.selected : graph?.m_nodes.filter(node => !(node instanceof TransitionGraphNode));
 
-    // 计算所有可见节点的包围盒
-    let hasVisibleNodes = false;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-    for (const node of this.m_pGraph.m_nodes) {
-      if (node.IsVisible()) {
-        const pos = node.GetPosition();
-        const size = node.GetSize();
-
-        minX = Math.min(minX, pos.x);
-        minY = Math.min(minY, pos.y);
-        maxX = Math.max(maxX, pos.x + size.x);
-        maxY = Math.max(maxY, pos.y + size.y);
-        hasVisibleNodes = true;
-      }
-    }
-
-    if (!hasVisibleNodes) {
-      return;
-    }
-
-    // 添加 padding
-    const padding = 80;
-
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-
-    const contentWidth = maxX - minX;
-    const contentHeight = maxY - minY;
-
-    // 恢复像素尺寸（m_canvasSize 已除过 scale，需要乘回来）
-    const currentScale = this.m_pGraph.m_viewScaleFactor;
-    const pixelWidth = this.m_canvasSize.x * currentScale;
-    const pixelHeight = this.m_canvasSize.y * currentScale;
-
-    if (pixelWidth <= 0 || pixelHeight <= 0) {
-      return;
-    }
-
-    // 计算缩放比例：内容 * scale 应适配像素视口
-    const scaleX = pixelWidth / contentWidth;
-    const scaleY = pixelHeight / contentHeight;
-    const desiredScale = clamp(Math.min(scaleX, scaleY), 0.2, 1.0);
-
-    this.m_pGraph.m_viewScaleFactor = desiredScale;
-
-    // 居中：视口在 canvas 坐标系下的尺寸 = pixelSize / newScale
-    const viewCanvasWidth = pixelWidth / desiredScale;
-    const viewCanvasHeight = pixelHeight / desiredScale;
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    this.m_pViewOffset = new ImVec2(centerX - viewCanvasWidth / 2, centerY - viewCanvasHeight / 2);
-    this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
-    this.m_freezeNodeLayoutCacheFromScaleChange = true;
-
-    for (const node of this.m_pGraph.m_nodes) {
-      node.ResetCalculatedNodeSizes();
-    }
-  }
-
-  CenterView (pNode: GraphNode): void {
-    if (this.m_pGraph === null) {
-      throw new Error('Graph is null');
-    }
-    if (this.m_pGraph.FindNode(pNode.GetID()) === null) {
-      throw new Error('Node not found in graph');
-    }
-
-    const nodeHalfSize = div(pNode.GetSize(), 2);
-    const nodeCenter = add(pNode.GetPosition(), nodeHalfSize);
-
-    this.m_pViewOffset = subtract(nodeCenter, div(this.m_canvasSize, 2));
-    if (this.m_pGraph !== null) {
-      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
-    }
-  }
-
-  RefreshNodeSizes (): void {
-    if (this.m_pGraph !== null) {
-      this.m_freezeNodeLayoutCacheFromScaleChange = false;
-      for (const nodeInstance of this.m_pGraph.m_nodes) {
-        nodeInstance.ResetCalculatedNodeSizes();
-      }
-    }
-  }
-
-  SelectNode (pNode: GraphNode): void {
-    if (this.GetViewedGraph()!.FindNode(pNode.GetID()) === null) {
-      throw new Error('Node not found in graph');
-    }
-    this.ClearSelection();
-    this.AddToSelection(pNode);
-  }
-
-  SelectNodes (pNodes: GraphNode[]): void {
-    this.ClearSelection();
-    for (const pNode of pNodes) {
-      if (this.GetViewedGraph()!.FindNode(pNode.GetID()) === null) {
-        throw new Error('Node not found in graph');
-      }
-      this.AddToSelection(pNode);
-    }
-  }
-
-  ClearSelection (): void {
-    const oldSelection = [...this.m_selectedNodes];
-
-    this.m_selectedNodes = [];
-    this.m_selectionChanged = true;
-    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
-  }
-
-  private UpdateSelection (pNewSelectedNode: GraphNode): void;
-
-  private UpdateSelection (newSelection: GraphNodeSelection[]): void;
-
-  private UpdateSelection (arg: GraphNode | GraphNodeSelection[]): void {
-    const oldSelection = [...this.m_selectedNodes];
-
-    if (arg instanceof GraphNode) {
-      // 处理单个 BaseNode 的情况
-      if (arg === null) {
-        throw new Error('New selected node is null');
-      }
-      this.m_selectedNodes = [new GraphNodeSelection(arg)];
-    } else {
-      // 处理 SelectedNode[] 的情况
-      for (const selectedNode of arg) {
-        if (selectedNode.m_pNode === null) {
-          throw new Error('Selected node is null');
-        }
-      }
-      this.m_selectedNodes = arg;
-    }
-
-    this.m_selectionChanged = true;
-    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
-  }
-
-  private AddToSelection (pNodeToAdd: GraphNode): void {
-    if (pNodeToAdd === null) {
-      throw new Error('Node to add is null');
-    }
-    if (this.IsNodeSelected(pNodeToAdd)) {
-      throw new Error('Node is already selected');
-    }
-
-    const oldSelection = [...this.m_selectedNodes];
-
-    this.m_selectedNodes.push(new GraphNodeSelection(pNodeToAdd));
-    this.m_selectionChanged = true;
-    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
-  }
-
-  private RemoveFromSelection (pNodeToRemove: GraphNode): void {
-    if (pNodeToRemove === null) {
-      throw new Error('Node to remove is null');
-    }
-    if (!this.IsNodeSelected(pNodeToRemove)) {
-      throw new Error('Node is not selected');
-    }
-
-    const oldSelection = [...this.m_selectedNodes];
-
-    this.m_selectedNodes = this.m_selectedNodes.filter(node => node.m_pNode !== pNodeToRemove);
-    this.m_selectionChanged = true;
-    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
-  }
-
-  DestroySelectedNodes (): void {
-    const pGraph = this.GetViewedGraph()!;
-
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-
-    const sgm = new ScopedGraphModification(pGraph);
-
-    // Exclude any state machine transitions, as we will end up double deleting them since they are removed if the state is removed
-    if (this.IsViewingStateMachineGraph()) {
-      this.m_selectedNodes = this.m_selectedNodes.filter(node => !(node.m_pNode instanceof TransitionGraphNode));
-    }
-
-    // Delete selected nodes
-    for (const selectedNode of this.m_selectedNodes) {
-      if (pGraph.CanDestroyNode(selectedNode.m_pNode!) && selectedNode.m_pNode!.IsDestroyable()) {
-        pGraph.DestroyNode(selectedNode.m_nodeID);
-      }
-    }
-
-    this.ClearSelection();
-    sgm.End();
-  }
-
-  CreateCommentAroundSelectedNodes (): void {
-    if (this.m_selectedNodes.length === 0 || this.m_pGraph === null) {
-      return;
-    }
-
-    // Calculate comment size
-    const firstNode = this.m_selectedNodes[0].m_pNode!;
-    const selectedNodesRect = new ImRect(
-      firstNode.GetPosition(),
-      add(firstNode.GetPosition(), firstNode.GetSize())
-    );
-
-    for (let i = 1; i < this.m_selectedNodes.length; i++) {
-      const pNode = this.m_selectedNodes[i].m_pNode!;
-
-      if (pNode.IsVisible()) {
-        const nodeRect = new ImRect(pNode.GetPosition(), add(pNode.GetPosition(), pNode.GetSize()));
-
-        selectedNodesRect.Add(nodeRect);
-      }
-    }
-
-    const commentPadding = new ImVec2(60, 60);
-    const canvasPos = subtract(selectedNodesRect.Min, commentPadding);
-    const canvasBoxSize = add(selectedNodesRect.GetSize(), multiplyScalar(commentPadding, 2));
-
-    // Create comment
-    const sgm = new ScopedGraphModification(this.m_pGraph);
-    const pCommentNode = this.m_pGraph.CreateNode<CommentGraphNode>(CommentGraphNode);
-
-    pCommentNode.m_name = 'Comment';
-    pCommentNode.m_canvasPosition = canvasPos;
-    pCommentNode.m_commentBoxSize = canvasBoxSize;
-    sgm.End();
-  }
-
-  CopySelectedNodes (): void {
-    if (this.m_selectedNodes.length === 0) {
-      return;
-    }
-
-    // Prepare list of nodes to copy
-    const nodesToCopy: GraphNode[] = [];
-
-    for (const selectedNode of this.m_selectedNodes) {
-      // Do not copy any selected conduits, as conduits are automatically copied
-      if (selectedNode.m_pNode instanceof TransitionGraphNode) {
-        continue;
-      }
-
-      if (selectedNode.m_pNode!.IsUserCreatable()) {
-        nodesToCopy.push(selectedNode.m_pNode!);
-      }
-    }
-
-    // Ensure that all transitions between copied states are also copied
-    if (this.IsViewingStateMachineGraph()) {
-      for (const nodeInstance of this.m_pGraph!.m_nodes) {
-        if (nodeInstance instanceof TransitionGraphNode) {
-          if (nodesToCopy.includes(nodeInstance)) {
-            continue;
-          }
-
-          const wasStartStateCopied = nodesToCopy.some(node => node.GetID() === nodeInstance.GetStartStateID());
-          const wasEndStateCopied = nodesToCopy.some(node => node.GetID() === nodeInstance.GetEndStateID());
-
-          if (wasStartStateCopied && wasEndStateCopied) {
-            nodesToCopy.push(nodeInstance);
-          }
-        }
-      }
-    }
-
-    if (nodesToCopy.length === 0) {
-      return;
-    }
-
-    // Serialize nodes to JSON
-    const copiedData: { nodes: Record<string, unknown>[], connections: Record<string, unknown>[] } = { nodes: [], connections: [] };
-
-    for (const pNode of nodesToCopy) {
-      pNode.PreCopy();
-      const nodeData: Record<string, unknown> = {
-        typeName: pNode.GetTypeName(),
-        id: pNode.GetID(),
-        name: pNode.GetName(),
-        position: { x: pNode.GetPosition().x, y: pNode.GetPosition().y },
-      };
-
-      if (pNode instanceof CommentGraphNode) {
-        const size = pNode.getCommentBoxSize();
-
-        nodeData.commentBoxSize = { x: size.x, y: size.y };
-        nodeData.nodeColor = pNode.getCommentBoxColor().toImU32();
-      }
-
-      if (pNode instanceof FlowGraphNode) {
-        nodeData.inputPins = pNode.m_inputPins.map(p => ({
-          id: p.m_ID, name: p.m_name, type: p.m_type,
-          isDynamic: p.m_isDynamic,
-          allowMultipleOutConnections: p.m_allowMultipleOutConnections,
-        }));
-        nodeData.outputPins = pNode.m_outputPins.map(p => ({
-          id: p.m_ID, name: p.m_name, type: p.m_type,
-          isDynamic: p.m_isDynamic,
-          allowMultipleOutConnections: p.m_allowMultipleOutConnections,
-        }));
-      }
-
-      if (pNode instanceof TransitionGraphNode) {
-        nodeData.startStateID = pNode.GetStartStateID();
-        nodeData.endStateID = pNode.GetEndStateID();
-      }
-
-      copiedData.nodes.push(nodeData);
-    }
-
-    // Serialize connections for flow graphs
-    if (this.IsViewingFlowGraph()) {
-      const pFlowGraph = this.GetFlowGraph()!;
-
-      for (const connection of pFlowGraph.m_connections) {
-        const wasFromNodeCopied = nodesToCopy.some(node => node.GetID() === connection.m_fromNodeID);
-        const wasToNodeCopied = nodesToCopy.some(node => node.GetID() === connection.m_toNodeID);
-
-        if (wasFromNodeCopied && wasToNodeCopied) {
-          copiedData.connections.push({
-            id: connection.m_ID,
-            fromNodeID: connection.m_fromNodeID,
-            outputPinID: connection.m_outputPinID,
-            toNodeID: connection.m_toNodeID,
-            inputPinID: connection.m_inputPinID,
-          });
-        }
-      }
-    }
-
-    ImGui.SetClipboardText(JSON.stringify(copiedData));
-  }
-
-  PasteNodes (canvasPastePosition: ImVec2): void {
-    if (this.m_pGraph === null) {
-      throw new Error('Graph is null');
-    }
-
-    if (this.m_isReadOnly) {
-      return;
-    }
-
-    // Get pasted data from clipboard
-    const pClipboardText = ImGui.GetClipboardText();
-
-    if (!pClipboardText) {
-      return;
-    }
-
-    let copiedData: { nodes: Record<string, unknown>[], connections: Record<string, unknown>[] };
-
-    try {
-      copiedData = JSON.parse(pClipboardText);
-    } catch {
-      return;
-    }
-
-    if (!copiedData.nodes || copiedData.nodes.length === 0) {
-      return;
-    }
-
-    // Deserialize pasted nodes and regenerate IDs
-    const IDMapping = new Map<UUID, UUID>();
-    const pastedNodes: GraphNode[] = [];
-
-    for (const nodeData of copiedData.nodes) {
-      const typeName = nodeData.typeName as string;
-      let pPastedNode: GraphNode | null = null;
-
-      // Try graph-specific factory first, then fall back to CommentNode
-      pPastedNode = this.m_pGraph.CreateNodeFromTypeName(typeName);
-      if (!pPastedNode && typeName === 'Comment') {
-        pPastedNode = new CommentGraphNode();
-      }
-
-      if (!pPastedNode) {
-        continue;
-      }
-
-      // Restore node data
-      pPastedNode.m_ID = nodeData.id as string;
-      pPastedNode.Rename(nodeData.name as string);
-      const pos = nodeData.position as { x: number, y: number };
-
-      pPastedNode.SetPosition(new ImVec2(pos.x, pos.y));
-
-      if (pPastedNode instanceof CommentGraphNode && nodeData.commentBoxSize) {
-        const size = nodeData.commentBoxSize as { x: number, y: number };
-
-        pPastedNode.m_commentBoxSize = new ImVec2(size.x, size.y);
-      }
-
-      // Set parent graph
-      pPastedNode.m_pParentGraph = this.m_pGraph;
-
-      // Set child graph parent pointers
-      if (pPastedNode.HasChildGraph()) {
-        pPastedNode.GetChildGraph()!.m_pParentNode = pPastedNode;
-      }
-
-      if (pPastedNode.HasSecondaryGraph()) {
-        pPastedNode.GetSecondaryGraph()!.m_pParentNode = pPastedNode;
-      }
-
-      pPastedNode.RegenerateIDs(IDMapping);
-      pPastedNode.PostPaste();
-      pastedNodes.push(pPastedNode);
-    }
-
-    if (pastedNodes.length === 0) {
-      return;
-    }
-
-    // Add nodes to the graph
-    this.m_pGraph.BeginModification();
-
-    for (const pPastedNode of pastedNodes) {
-      if (pPastedNode.IsRenameable()) {
-        pPastedNode.Rename(pPastedNode.GetName());
-      }
-      this.m_pGraph.m_nodes.push(pPastedNode);
-      this.m_pGraph.OnNodeAdded(pPastedNode);
-    }
-
-    // Fix connections
-    if (this.IsViewingFlowGraph()) {
-      const pFlowGraph = this.GetFlowGraph()!;
-
-      for (const connData of (copiedData.connections || [])) {
-        const pPastedConnection = new Connection();
-
-        pPastedConnection.m_fromNodeID = IDMapping.get(connData.fromNodeID as string) ?? connData.fromNodeID as string;
-        pPastedConnection.m_outputPinID = IDMapping.get(connData.outputPinID as string) ?? connData.outputPinID as string;
-        pPastedConnection.m_toNodeID = IDMapping.get(connData.toNodeID as string) ?? connData.toNodeID as string;
-        pPastedConnection.m_inputPinID = IDMapping.get(connData.inputPinID as string) ?? connData.inputPinID as string;
-
-        if (pFlowGraph.IsValidConnection(pPastedConnection.m_fromNodeID, pPastedConnection.m_outputPinID, pPastedConnection.m_toNodeID, pPastedConnection.m_inputPinID)) {
-          pFlowGraph.m_connections.push(pPastedConnection);
-        }
-      }
-    } else {
-      // State Machine: remap conduit state IDs
-      for (const pPastedNode of pastedNodes) {
-        if (pPastedNode instanceof TransitionGraphNode) {
-          pPastedNode.m_startStateID = IDMapping.get(pPastedNode.m_startStateID) ?? pPastedNode.m_startStateID;
-          pPastedNode.m_endStateID = IDMapping.get(pPastedNode.m_endStateID) ?? pPastedNode.m_endStateID;
-        }
-      }
-    }
-
-    // Update pasted node positions
-    let leftMostNodePosition = new ImVec2(Number.MAX_VALUE, Number.MAX_VALUE);
-
-    for (const pPastedNode of pastedNodes) {
-      if (pPastedNode.GetPosition().x < leftMostNodePosition.x) {
-        leftMostNodePosition = pPastedNode.GetPosition();
-      }
-    }
-
-    for (const pPastedNode of pastedNodes) {
-      const offset = subtract(pPastedNode.GetPosition(), leftMostNodePosition);
-
-      pPastedNode.SetPosition(add(offset, canvasPastePosition));
-    }
-
-    // Notify graph that nodes were pasted
-    this.m_pGraph.PostPasteNodes(pastedNodes);
-    this.m_pUserContext.NotifyNodesPasted(pastedNodes);
-    this.m_pGraph.EndModification();
-  }
-
-  private BeginRenameNode (pNode: GraphNode): void {
-    if (pNode === null || !pNode.IsRenameable()) {
-      throw new Error('Node is null or not renameable');
-    }
-    this.m_textBuffer = pNode.GetName();
-    this.m_pNodeBeingOperatedOn = pNode;
-  }
-
-  private EndRenameNode (shouldUpdateNode: boolean): void {
-    if (this.m_pNodeBeingOperatedOn === null || !this.m_pNodeBeingOperatedOn.IsRenameable()) {
-      throw new Error('Node being operated on is null or not renameable');
-    }
-
-    if (shouldUpdateNode) {
-      if (this.m_isReadOnly) {
-        throw new Error('Graph is read-only');
-      }
-      const snm = new ScopedNodeModification(this.m_pNodeBeingOperatedOn);
-      const pParentGraph = this.m_pNodeBeingOperatedOn.GetParentGraph();
-
-      this.m_pNodeBeingOperatedOn.Rename(this.m_textBuffer);
-
-      if (!(this.m_pNodeBeingOperatedOn instanceof CommentGraphNode)) {
-        const uniqueName = pParentGraph!.GetUniqueNameForRenameableNode(this.m_textBuffer, this.m_pNodeBeingOperatedOn);
-
-        this.m_pNodeBeingOperatedOn.Rename(uniqueName);
-      }
-
-      snm.End();
-    }
-
-    this.m_pNodeBeingOperatedOn = null;
-  }
-
-  private StartDraggingView (ctx: DrawContext): void {
-    if (this.m_dragState.m_mode !== DragMode.None) {
-      throw new Error('Drag state is not None');
-    }
-    this.m_dragState.m_mode = DragMode.View;
-    this.m_dragState.m_startValue = new ImVec2().Copy(this.m_pViewOffset);
-  }
-
-  private OnDragView (ctx: DrawContext): void {
-    if (this.m_dragState.m_mode !== DragMode.View) {
-      throw new Error('Drag state is not View');
-    }
-
-    let mouseDragDelta = new ImVec2(0, 0);
-
-    if (ImGui.IsMouseDown(ImGui.MouseButton.Right)) {
-      mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Right);
-    } else if (ImGui.IsMouseDown(ImGui.MouseButton.Middle)) {
-      mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Middle);
-    } else {
-      this.StopDraggingView(ctx);
-
-      return;
-    }
-
-    this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
-
-    this.m_pViewOffset = subtract(this.m_dragState.m_startValue, ctx.WindowToCanvas(mouseDragDelta));
-    if (this.m_pGraph !== null) {
-      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
-    }
-  }
-
-  private StopDraggingView (ctx: DrawContext): void {
-    this.m_dragState.Reset();
-  }
-
-  private StartDraggingSelection (ctx: DrawContext): void {
-    if (this.m_pGraph === null) {
-      throw new Error('Graph is null');
-    }
-    if (this.m_dragState.m_mode !== DragMode.None) {
-      throw new Error('Drag state is not None');
-    }
-    this.m_dragState.m_mode = DragMode.Selection;
-    this.m_dragState.m_startValue = ImGui.GetMousePos();
-  }
-
-  private OnDragSelection (ctx: DrawContext): void {
-    if (this.m_pGraph === null) {
-      throw new Error('Graph is null');
-    }
-
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      this.StopDraggingSelection(ctx);
-
-      return;
-    }
-
-    ctx.m_pDrawList!.AddRectFilled(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxFillColor.toImU32());
-    ctx.m_pDrawList!.AddRect(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxOutlineColor.toImU32());
-  }
-
-  private StopDraggingSelection (ctx: DrawContext): void {
-    if (this.m_pGraph === null) {
-      throw new Error('Graph is null');
-    }
-
-    const mousePos = ImGui.GetMousePos();
-    const min = new ImVec2(Math.min(this.m_dragState.m_startValue.x, mousePos.x), Math.min(this.m_dragState.m_startValue.y, mousePos.y));
-    const max = new ImVec2(Math.max(this.m_dragState.m_startValue.x, mousePos.x), Math.max(this.m_dragState.m_startValue.y, mousePos.y));
-    const selectionWindowRect = new ImRect(subtract(min, ctx.m_windowRect.Min), subtract(max, ctx.m_windowRect.Min));
-
-    const newSelection: GraphNodeSelection[] = [];
-
-    for (const nodeInstance of this.GetViewedGraph()!.m_nodes) {
-      const nodeWindowRect = ctx.CanvasToWindowRect(nodeInstance.GetRect());
-
-      if (!nodeWindowRect.Contains(selectionWindowRect)) {
-        if (selectionWindowRect.Overlaps(nodeWindowRect)) {
-          newSelection.push(new GraphNodeSelection(nodeInstance));
-        }
-      }
-    }
-
-    this.UpdateSelection(newSelection);
-    this.m_dragState.Reset();
-  }
-
-  private StartDraggingNode (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    if (this.m_dragState.m_mode !== DragMode.None) {
-      throw new Error('Drag state is not None');
-    }
-    if (this.m_dragState.m_pNode === null) {
-      throw new Error('Drag state node is null');
-    }
-
-    this.m_dragState.m_mode = DragMode.Node;
-    this.m_dragState.m_startValue = this.m_dragState.m_pNode.GetPosition();
-
-    const ProcessCommentNode = (pCommentNode: CommentGraphNode) => {
-      const unscaledCommentRect = pCommentNode.GetRect();
-
-      for (const nodeInstance of this.m_pGraph!.m_nodes) {
-        if (unscaledCommentRect.Contains(nodeInstance.GetRect())) {
-          if (!this.m_dragState.m_draggedNodes.includes(nodeInstance)) {
-            this.m_dragState.m_draggedNodes.push(nodeInstance);
-          }
-        }
-      }
-    };
-
-    // Create the dragged set of nodes
-    for (const selectedNode of this.m_selectedNodes) {
-      if (!this.m_dragState.m_draggedNodes.includes(selectedNode.m_pNode!)) {
-        this.m_dragState.m_draggedNodes.push(selectedNode.m_pNode!);
-      }
-
-      // Add all enclosed nodes to the dragged set
-      if (selectedNode.m_pNode instanceof CommentGraphNode) {
-        ProcessCommentNode(selectedNode.m_pNode);
-      }
-    }
-
-    // Add any child comments nodes as well
-    for (let i = 0; i < this.m_dragState.m_draggedNodes.length; i++) {
-      if (this.m_dragState.m_draggedNodes[i] instanceof CommentGraphNode) {
-        ProcessCommentNode(this.m_dragState.m_draggedNodes[i] as CommentGraphNode);
-      }
-    }
-
-    this.GetViewedGraph()!.BeginModification();
-  }
-
-  private OnDragNode (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    if (this.m_dragState.m_mode !== DragMode.Node) {
-      throw new Error('Drag state is not Node');
-    }
-
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      this.StopDraggingNode(ctx);
-
-      return;
-    }
-
-    const mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Left);
-
-    if (ctx.m_viewScaleFactor === 0) {
-      throw new Error('View scale factor is zero');
-    }
-    const canvasFrameDragDelta = ctx.WindowToCanvas(subtract(mouseDragDelta, this.m_dragState.m_lastFrameDragDelta));
-
-    this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
-
-    for (const pDraggedNode of this.m_dragState.m_draggedNodes) {
-      pDraggedNode.SetPosition(add(pDraggedNode.GetPosition(), canvasFrameDragDelta));
-    }
-  }
-
-  private StopDraggingNode (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    this.m_dragState.Reset();
-    this.GetViewedGraph()!.EndModification();
-  }
-
-  private TryGetAutoConnectionNodeAndPin (ctx: DrawContext): [FlowGraphNode | null, Pin | null] {
-    const pFlowGraph = this.GetFlowGraph()!;
-    const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
-    const autoConnectThreshold = ctx.m_viewScaleFactor * g_autoConnectMaxDistanceThreshold;
-
-    let pOutNode: FlowGraphNode | null = null;
-    let pOutPin: Pin | null = null;
-
-    // Find nodes within detection distance
-    const options: FlowGraphNode[] = [];
-
-    for (const pNode of pFlowGraph.m_nodes) {
-      if (this.m_dragState.m_pNode === pNode) {
-        continue;
-      }
-
-      const closestPointToRect = ImGuiX.GetClosestPointOnRectBorder(pNode.GetRect(), ctx.m_mouseCanvasPos);
-      const distanceToNodeRect = length(subtract(new ImVec2().Copy(closestPointToRect), ctx.m_mouseCanvasPos));
-
-      if (distanceToNodeRect < autoConnectThreshold) {
-        options.push(pNode as FlowGraphNode);
-      }
-    }
-
-    // Find closest pin on across all options
-    if (options.length > 0) {
-      let closestValidPinDistance = Number.MAX_VALUE;
-
-      const EvaluatePinOption = (pNode: FlowGraphNode, pin: Pin) => {
-        const distanceToPin = length(subtract(pin.m_position, ctx.m_mouseScreenPos));
-
-        if (distanceToPin < autoConnectThreshold && distanceToPin < closestValidPinDistance) {
-          closestValidPinDistance = distanceToPin;
-          pOutNode = pNode;
-          pOutPin = pin;
-        }
-      };
-
-      for (const pOptionNode of options) {
-        const draggedPinDirection = (this.m_dragState.m_pNode as FlowGraphNode).GetPinDirection(this.m_dragState.m_pPin!);
-
-        if (draggedPinDirection === PinDirection.Output) {
-          for (const pin of pOptionNode.GetInputPins()) {
-            if (pFlowGraph.IsValidConnection(pDraggedFlowNode!, this.m_dragState.m_pPin!, pOptionNode, pin)) {
-              EvaluatePinOption(pOptionNode, pin);
-            }
-          }
-        } else { // Dragging an input pin
-          for (const pin of pOptionNode.GetOutputPins()) {
-            if (pFlowGraph.IsValidConnection(pOptionNode, pin, pDraggedFlowNode!, this.m_dragState.m_pPin!)) {
-              EvaluatePinOption(pOptionNode, pin);
-            }
-          }
-        }
-      }
-    }
-
-    return [pOutNode, pOutPin];
-  }
-
-  private StartDraggingConnection (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    if (this.m_dragState.m_mode !== DragMode.None) {
-      throw new Error('Drag state is not None');
-    }
-    if (this.m_dragState.m_pNode === null) {
-      throw new Error('Drag state node is null');
-    }
-
-    this.m_dragState.m_mode = DragMode.Connection;
-
-    if (this.IsViewingStateMachineGraph()) {
-      this.m_dragState.m_startValue = ctx.CanvasToScreenPosition(this.m_dragState.m_pNode.GetPosition());
-    } else {
-      this.m_dragState.m_startValue = this.m_dragState.m_pPin!.m_position;
-    }
-  }
-
-  private OnDragConnection (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    if (this.m_dragState.m_mode !== DragMode.Connection) {
-      throw new Error('Drag state is not Connection');
-    }
-
-    const IO = ImGui.GetIO();
-
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      this.StopDraggingConnection(ctx);
-
-      return;
-    }
-
-    if (this.IsViewingStateMachineGraph()) {
-      const pStateMachineGraph = this.GetStateMachineGraph();
-      const pEndState = this.m_pHoveredNode instanceof StateGraphNode ? this.m_pHoveredNode : null;
-
-      const isValidConnection = pEndState !== null && pStateMachineGraph!.CanCreateTransitionConduit(this.m_dragState.m_pNode as StateGraphNode, pEndState);
-      const connectionColor = isValidConnection ? GraphStyle.s_connectionColorValid : GraphStyle.s_connectionColorInvalid;
-
-      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(this.m_dragState.m_pNode!.GetRect().GetCenter()), ctx.m_mouseScreenPos, connectionColor, g_transitionArrowWidth);
-    } else {
-      const pFlowGraph = this.GetFlowGraph();
-      const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
-      let connectionColor = pDraggedFlowNode!.GetPinColor(this.m_dragState.m_pPin!);
-
-      // Auto connection
-      if (IO.KeyAlt) {
-        const [, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
-
-        if (pAutoConnectPin !== null) {
-          ctx.m_pDrawList!.AddLine(ctx.m_mouseScreenPos, pAutoConnectPin.m_position, new Color(0.678, 1.000, 0.184, 0.85).toImU32(), 4.0 * ctx.m_viewScaleFactor);
-        }
-      }
-
-      // Validity check for hovered pin
-      if (this.m_pHoveredPin !== null) {
-        const pHoveredFlowNode = this.m_pHoveredNode as FlowGraphNode;
-        const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
-        const draggedPinDirection = (this.m_dragState.m_pNode as FlowGraphNode).GetPinDirection(this.m_dragState.m_pPin!);
-
-        // Trying to make an invalid connection to a pin with the same direction or the same node
-        if (hoveredPinDirection === draggedPinDirection || this.m_pHoveredNode === this.m_dragState.m_pNode) {
-          connectionColor = GraphStyle.s_connectionColorInvalid;
-        } else { // Check connection validity
-          if (draggedPinDirection === PinDirection.Output) {
-            if (!pFlowGraph!.IsValidConnection(pDraggedFlowNode!, this.m_dragState.m_pPin!, pHoveredFlowNode, this.m_pHoveredPin)) {
-              connectionColor = GraphStyle.s_connectionColorInvalid;
-            }
-          } else { // The hovered pin is the output pin
-            if (!pFlowGraph!.IsValidConnection(pHoveredFlowNode, this.m_pHoveredPin, pDraggedFlowNode!, this.m_dragState.m_pPin!)) {
-              connectionColor = GraphStyle.s_connectionColorInvalid;
-            }
-          }
-        }
-      }
-
-      const invertOrder = this.m_dragState.m_pPin!.m_position.x > ctx.m_mouseScreenPos.x;
-      const p1 = invertOrder ? ctx.m_mouseScreenPos : this.m_dragState.m_pPin!.m_position;
-      const p2 = invertOrder ? this.m_dragState.m_pPin!.m_position : ctx.m_mouseScreenPos;
-
-      ctx.m_pDrawList!.AddBezierCubic(p1, add(p1, new ImVec2(50, 0)), add(p2, new ImVec2(-50, 0)), p2, connectionColor.toImU32(), 3.0 * ctx.m_viewScaleFactor);
-    }
-  }
-
-  private StopDraggingConnection (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-
-    if (this.IsViewingStateMachineGraph()) {
-      const pStateMachineGraph = this.GetStateMachineGraph();
-      const pStartState = this.m_dragState.m_pNode as StateGraphNode;
-      const pEndState = this.m_pHoveredNode instanceof StateGraphNode ? this.m_pHoveredNode : null;
-
-      if (pEndState !== null && pStateMachineGraph!.CanCreateTransitionConduit(pStartState, pEndState)) {
-        const sgm = new ScopedGraphModification(pStateMachineGraph!);
-
-        pStateMachineGraph!.CreateTransitionConduit(pStartState, pEndState);
-
-        sgm.End();
-      }
-    } else {
-      const pFlowGraph = this.GetFlowGraph()!;
-
-      if (this.m_pHoveredPin !== null) {
-        const pHoveredFlowNode = this.m_pHoveredNode as FlowGraphNode;
-        const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
-        const draggedPinDirection = (this.m_dragState.m_pNode as FlowGraphNode).GetPinDirection(this.m_dragState.m_pPin!);
-
-        if (hoveredPinDirection !== draggedPinDirection) {
-          if (draggedPinDirection === PinDirection.Output) {
-            pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!, pHoveredFlowNode, this.m_pHoveredPin);
-          } else { // The hovered pin is the output pin
-            pFlowGraph.TryMakeConnection(pHoveredFlowNode, this.m_pHoveredPin, this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!);
-          }
-        }
-      } else {
-        // Auto connection
-        let showNodeCreationMenu = true;
-        const IO = ImGui.GetIO();
-
-        if (IO.KeyAlt) {
-          const [pAutoConnectNode, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
-
-          if (pAutoConnectPin !== null) {
-            const draggedPinDirection = (this.m_dragState.m_pNode as FlowGraphNode).GetPinDirection(this.m_dragState.m_pPin!);
-
-            if (draggedPinDirection === PinDirection.Output) {
-              pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!, pAutoConnectNode!, pAutoConnectPin);
-            } else { // The auto-connect pin is the output pin
-              pFlowGraph.TryMakeConnection(pAutoConnectNode!, pAutoConnectPin, this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!);
-            }
-
-            showNodeCreationMenu = false;
-          }
-        }
-
-        // Node Creation
-        if (showNodeCreationMenu && pFlowGraph.SupportsNodeCreationFromConnection()) {
-          this.m_contextMenuState.m_pNode = this.m_dragState.m_pNode;
-          this.m_contextMenuState.m_pPin = this.m_dragState.m_pPin;
-          this.m_contextMenuState.m_requestOpenMenu = true;
-          this.m_contextMenuState.m_isAutoConnectMenu = true;
-        }
-      }
-    }
-
-    this.m_dragState.Reset();
-  }
-
-  private StartResizingCommentBox (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    if (this.m_dragState.m_mode !== DragMode.None) {
-      throw new Error('Drag state is not None');
-    }
-    if (this.m_dragState.m_pNode === null) {
-      throw new Error('Drag state node is null');
-    }
-    this.m_dragState.m_mode = DragMode.ResizeComment;
-
-    this.GetViewedGraph()!.BeginModification();
-  }
-
-  private OnResizeCommentBox (ctx: DrawContext): void {
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      this.StopResizingCommentBox(ctx);
-
-      return;
-    }
-
-    if (this.m_dragState.m_mode !== DragMode.ResizeComment) {
-      throw new Error('Drag state is not ResizeComment');
-    }
-    if (this.m_dragState.m_pNode === null) {
-      throw new Error('Drag state node is null');
-    }
-    if (this.m_dragState.m_resizeHandle === GraphResizeHandle.None) {
-      throw new Error('Resize handle is None');
-    }
-
-    const pCommentNode = this.m_dragState.m_pNode as CommentGraphNode;
-
-    pCommentNode.AdjustSizeBasedOnMousePosition(ctx, this.m_dragState.m_resizeHandle);
-  }
-
-  private StopResizingCommentBox (ctx: DrawContext): void {
-    if (this.m_isReadOnly) {
-      throw new Error('Graph is read-only');
-    }
-    this.m_dragState.Reset();
-    this.GetViewedGraph()!.EndModification();
-  }
-
-  private HandleInput (ctx: DrawContext): void {
-    const IO = ImGui.GetIO();
-
-    if (this.m_pGraph === null) {
-      return;
-    }
-
-    // Zoom
-    if (this.m_isViewHovered && IO.MouseWheel !== 0) {
-      const desiredViewScale = clamp(this.m_pGraph.m_viewScaleFactor + IO.MouseWheel * 0.05, 0.2, 1.4);
-
-      this.ChangeViewScale(ctx, desiredViewScale);
-    }
-
-    // Allow selection without focus
-    if (this.m_isViewHovered) {
-      if (ImGui.IsMouseClicked(ImGui.MouseButton.Left)) {
-        if (IO.KeyCtrl || IO.KeyShift) {
-          if (this.m_pHoveredNode !== null) {
-            if (this.IsNodeSelected(this.m_pHoveredNode)) {
-              this.RemoveFromSelection(this.m_pHoveredNode);
-            } else {
-              this.AddToSelection(this.m_pHoveredNode);
-            }
-          }
-        } else if (IO.KeyAlt) {
-          if (!this.m_isReadOnly) {
-            if (this.IsViewingFlowGraph()) {
-              const pFlowGraph = this.GetFlowGraph()!;
-
-              if (this.m_hoveredConnectionID !== '') {
-                pFlowGraph.BreakConnection(this.m_hoveredConnectionID);
-              } else if (this.m_pHoveredPin !== null) {
-                pFlowGraph.BreakAnyConnectionsForPin(this.m_pHoveredPin.m_ID);
-              }
-            } else { // State Machine
-              if (this.m_pHoveredNode !== null && this.m_pHoveredNode instanceof TransitionGraphNode) {
-                this.ClearSelection();
-                this.m_pGraph.DestroyNode(this.m_pHoveredNode.GetID());
-                this.m_pHoveredNode = null;
-              }
-            }
-          }
-        } else { // No modifier
-          if (this.m_pHoveredNode !== null) {
-            if (!this.IsNodeSelected(this.m_pHoveredNode)) {
-              this.UpdateSelection(this.m_pHoveredNode);
-            }
-          } else if (this.m_isViewHovered) {
-            this.ClearSelection();
-          }
-        }
-
-        this.m_requestFocus = true;
-      }
-    }
-
-    // Double Clicks
-    if (this.m_isViewHovered) {
-      if (ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) {
-        if (this.m_pHoveredNode !== null) {
-          if (this.m_pHoveredNode instanceof CommentGraphNode) {
-            this.BeginRenameNode(this.m_pHoveredNode);
-          } else {
-            const pNavChildGraph = this.m_pHoveredNode.GetNavigationTarget();
-
-            if (pNavChildGraph !== null) {
-              this.m_pUserContext.NavigateTo(pNavChildGraph);
-            } else {
-              this.m_pUserContext.DoubleClick(this.m_pHoveredNode);
-            }
-          }
-        } else {
-          if (this.m_pGraph !== null) {
-            const pNavParentGraph = this.m_pGraph.GetNavigationTarget();
-
-            if (pNavParentGraph !== null) {
-              this.m_pUserContext.NavigateTo(pNavParentGraph);
-            } else {
-              this.m_pUserContext.DoubleClick(this.m_pGraph);
-            }
-          }
-        }
-
-        this.m_requestFocus = true;
-      }
-    }
-
-    // Dragging
-    switch (this.m_dragState.m_mode) {
-      case DragMode.None:
-        if (this.m_isViewHovered) {
-          // Update drag state resize handle
-          if (!this.m_dragState.m_dragReadyToStart) {
-            const pCommentNode = this.m_pHoveredNode instanceof CommentGraphNode ? this.m_pHoveredNode : null;
-
-            if (pCommentNode !== null) {
-              this.m_dragState.m_resizeHandle = pCommentNode.GetHoveredResizeHandle(ctx);
-            } else {
-              this.m_dragState.m_resizeHandle = GraphResizeHandle.None;
-            }
-          }
-
-          // Prepare drag state - this needs to be done in advance since we only start the drag operation once we detect a mouse drag and at that point we might not be hovered over the node anymore
-          if (this.m_dragState.m_dragReadyToStart) {
-            if (!(ImGui.IsMouseDown(ImGui.MouseButton.Left) || ImGui.IsMouseDown(ImGui.MouseButton.Right) || ImGui.IsMouseDown(ImGui.MouseButton.Middle))) {
-              this.m_dragState.m_pNode = null;
-              this.m_dragState.m_pPin = null;
-              this.m_dragState.m_dragReadyToStart = false;
-            }
-          } else {
-            if (ImGui.IsMouseClicked(ImGui.MouseButton.Left) || ImGui.IsMouseClicked(ImGui.MouseButton.Right) || ImGui.IsMouseClicked(ImGui.MouseButton.Middle)) {
-              this.m_dragState.m_pNode = this.m_pHoveredNode;
-              this.m_dragState.m_pPin = this.m_pHoveredPin;
-              this.m_dragState.m_dragReadyToStart = true;
-              this.m_requestFocus = true;
-            }
-          }
-
-          // Check for drag inputs
-          if (this.m_dragState.m_dragReadyToStart) {
-            const nodeDragInput = ImGui.IsMouseDragging(ImGui.MouseButton.Left, 3);
-            const viewDragInput = ImGui.IsMouseDragging(ImGui.MouseButton.Right, 3) || ImGui.IsMouseDragging(ImGui.MouseButton.Middle, 3);
-
-            if (nodeDragInput) {
-              if (!this.IsReadOnly()) {
-                const pCommentNode = this.m_dragState.m_pNode instanceof CommentGraphNode ? this.m_dragState.m_pNode : null;
-
-                if (pCommentNode !== null) {
-                  if (this.m_dragState.m_resizeHandle === GraphResizeHandle.None) {
-                    this.StartDraggingNode(ctx);
-                  } else {
-                    this.StartResizingCommentBox(ctx);
-                  }
-                } else if (this.IsViewingFlowGraph()) {
-                  if (this.m_dragState.m_pNode !== null) {
-                    if (this.m_dragState.m_pPin !== null) {
-                      this.StartDraggingConnection(ctx);
-                    } else {
-                      this.StartDraggingNode(ctx);
-                    }
-                  } else {
-                    if (this.m_pGraph !== null) {
-                      this.StartDraggingSelection(ctx);
-                    }
-                  }
-                } else { // State Machine
-                  if (this.m_dragState.m_pNode !== null) {
-                    if (IO.KeyAlt && this.m_dragState.m_pNode instanceof StateGraphNode) {
-                      this.StartDraggingConnection(ctx);
-                    } else if (!(this.m_dragState.m_pNode instanceof TransitionGraphNode)) {
-                      this.StartDraggingNode(ctx);
-                    }
-                  } else {
-                    if (this.m_pGraph !== null) {
-                      this.StartDraggingSelection(ctx);
-                    }
-                  }
-                }
-              }
-            } else if (viewDragInput) {
-              this.StartDraggingView(ctx);
-            } else if (ImGui.IsMouseReleased(ImGui.MouseButton.Right)) {
-              this.m_contextMenuState.m_requestOpenMenu = true;
-            }
-
-            this.m_requestFocus = true;
-          } else if (ImGui.IsMouseReleased(ImGui.MouseButton.Right)) {
-            this.m_contextMenuState.m_requestOpenMenu = true;
-          }
-        }
-
-        break; case DragMode.Node:
-        this.OnDragNode(ctx);
-
-        break; case DragMode.Connection:
-        this.OnDragConnection(ctx);
-
-        break; case DragMode.Selection:
-        this.OnDragSelection(ctx);
-
-        break; case DragMode.View:
-        this.OnDragView(ctx);
-
-        break; case DragMode.ResizeComment:
-        this.OnResizeCommentBox(ctx);
-
-        break;
-    }
-
-    // Mouse Cursor
-    if (this.IsDraggingView()) {
-      ImGui.SetMouseCursor(ImGui.MouseCursor.Hand);
-    } else { // Change cursor to match current resize state
-      switch (this.m_dragState.m_resizeHandle) {
-        case GraphResizeHandle.N:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
-
-          break;
-        case GraphResizeHandle.NW:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNWSE);
-
-          break;
-        case GraphResizeHandle.W:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
-
-          break;
-        case GraphResizeHandle.SW:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNESW);
-
-          break;
-        case GraphResizeHandle.S:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
-
-          break;
-        case GraphResizeHandle.SE:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNWSE);
-
-          break;
-        case GraphResizeHandle.E:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
-
-          break;
-        case GraphResizeHandle.NE:
-          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNESW);
-
-          break;
-        default:
-          break;
-      }
-    }
-
-    // Keyboard
-    // These operations require the graph view to be focused!
-    if (this.m_hasFocus) {
-      // General operations
-      if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.C)) {
-        this.CopySelectedNodes();
-      }
-
-      // Operations that modify the graph
-      if (!this.m_isReadOnly) {
-        if (ImGui.IsKeyPressed(ImGui.Key.F2)) {
-          if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode!.IsRenameable()) {
-            this.BeginRenameNode(this.m_selectedNodes[0].m_pNode!);
-          }
-        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.X)) {
-          this.CopySelectedNodes();
-          this.DestroySelectedNodes();
-        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.V)) {
-          let pasteLocation = new ImVec2(0.0, 0.0);
-
-          if (this.m_isViewHovered) {
-            pasteLocation = ctx.m_mouseCanvasPos;
-          } else {
-            pasteLocation = ctx.m_canvasVisibleRect.GetCenter();
-          }
-
-          this.PasteNodes(pasteLocation);
-        }
-
-        if (this.m_selectedNodes.length > 0) {
-          if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(ImGui.Key.Delete)) {
-            this.DestroySelectedNodes();
-          }
-
-          if (IO.KeyShift && ImGui.IsKeyPressed(ImGui.Key.C)) {
-            this.CreateCommentAroundSelectedNodes();
-          }
-        }
-      }
-    }
-  }
-
-  private HandleContextMenu (ctx: DrawContext): void {
-    if (this.m_pGraph === null) {
-      return;
-    }
-
-    if (this.m_isViewHovered && !this.m_contextMenuState.m_menuOpened && this.m_contextMenuState.m_requestOpenMenu) {
-      this.m_contextMenuState.m_mouseCanvasPos = ctx.m_mouseCanvasPos;
-      this.m_contextMenuState.m_menuOpened = true;
-
-      // If this isn't an auto-connect request, then use the hovered data
-      if (!this.m_contextMenuState.m_isAutoConnectMenu) {
-        this.m_contextMenuState.m_pNode = this.m_pHoveredNode;
-        this.m_contextMenuState.m_pPin = this.m_pHoveredPin;
-      }
-
-      // If we are opening a context menu for a node, set that node as selected
-      if (this.m_contextMenuState.m_pNode !== null) {
-        this.UpdateSelection(this.m_contextMenuState.m_pNode);
-      }
-
-      ImGui.OpenPopup('GraphContextMenu');
-    }
-
-    this.m_contextMenuState.m_requestOpenMenu = false;
-
-    if (this.IsContextMenuOpen()) {
-      ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(8, 8));
-      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(4, 8));
-      if (beginEditorContextItem('GraphContextMenu')) {
-        if (this.m_contextMenuState.m_pNode instanceof CommentGraphNode) {
-          this.DrawCommentContextMenu(ctx);
-        } else if (this.IsViewingFlowGraph()) {
-          this.DrawFlowGraphContextMenu(ctx);
-        } else if (this.IsViewingStateMachineGraph()) {
-          this.DrawStateMachineContextMenu(ctx);
-        }
-
-        endEditorPopup();
-      } else { // Close menu
-        ImGui.SetWindowFocus();
-        this.m_contextMenuState.Reset();
-      }
-      ImGui.PopStyleVar(2);
-    }
-  }
-
-  private DrawSharedContextMenuOptions (ctx: DrawContext): void {
-    // View
-    if (editorMenuItem(' Reset View')) {
+    if (!graph || !nodes?.length) {
       this.ResetView();
-    }
 
-    // Zoom
-    if (this.m_pGraph !== null) {
-      if (this.m_pGraph.m_viewScaleFactor !== 1.0) {
-        if (editorMenuItem(' Reset Zoom')) {
-          this.ChangeViewScale(ctx, 1.0);
-        }
-      }
-    }
-
-    // Add comment node
-    if (this.m_pGraph!.SupportsComments()) {
-      if (editorMenuItem(' Add Comment')) {
-        const pCommentNode = this.m_pGraph!.CreateNode<CommentGraphNode>(CommentGraphNode);
-
-        pCommentNode.m_name = 'Comment';
-        pCommentNode.m_canvasPosition = this.m_contextMenuState.m_mouseCanvasPos;
-        pCommentNode.m_commentBoxSize = new ImVec2(100, 100);
-      }
-    }
-  }
-
-  private DrawCommentContextMenu (ctx: DrawContext): void {
-    const pCommentNode = this.m_contextMenuState.m_pNode as CommentGraphNode;
-
-    if (editorMenuItem(' Edit Comment')) {
-      this.BeginRenameNode(this.m_selectedNodes[0].m_pNode!);
-    }
-
-    if (pCommentNode.drawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos)) {
-      this.m_contextMenuState.Reset();
-      ImGui.CloseCurrentPopup();
-    }
-  }
-
-  private DrawFlowGraphContextMenu (ctx: DrawContext): void {
-    if (!this.IsViewingFlowGraph()) {
-      throw new Error('Not viewing flow graph');
-    }
-
-    const pFlowGraph = this.GetFlowGraph()!;
-
-    // Node Menu
-    if (!this.m_contextMenuState.m_isAutoConnectMenu && this.m_contextMenuState.m_pNode !== null) {
-      if (this.m_contextMenuState.m_pNode instanceof CommentGraphNode) {
-        throw new Error('Unexpected comment node');
-      }
-
-      const pFlowNode = this.m_contextMenuState.GetAsFlowNode()!;
-
-      // Default node Menu
-      pFlowNode.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_pPin);
-
-      if (!this.m_isReadOnly) {
-        // Source:
-        // ImGui.SeparatorText('Connections');
-        ImGui.Separator();
-        ImGui.Text('Connections');
-
-        // Dynamic Pins
-        if (pFlowNode.SupportsUserEditableDynamicInputPins()) {
-          if (editorMenuItem(' Add Input')) {
-            pFlowGraph.CreateDynamicPin(pFlowNode.GetID());
-          }
-
-          if (this.m_contextMenuState.m_pPin !== null && this.m_contextMenuState.m_pPin.IsDynamicPin()) {
-            if (editorMenuItem(' Remove Input')) {
-              pFlowGraph.DestroyDynamicPin(pFlowNode.GetID(), this.m_contextMenuState.m_pPin.m_ID);
-            }
-          }
-        }
-
-        // Connections
-        if (editorMenuItem(' Break All Connections')) {
-          pFlowGraph.BreakAllConnectionsForNode(pFlowNode);
-        }
-      }
-
-      if (!this.m_isReadOnly) {
-        // Source:
-        // ImGui.SeparatorText('Node');
-        ImGui.Separator();
-        ImGui.Text('Node');
-
-        if (beginEditorMenu(' Node ID')) {
-          // UUID
-          const IDStr = this.m_contextMenuState.m_pNode.GetID();
-          const label = `${IDStr}`;
-
-          if (editorMenuItem(label)) {
-            ImGui.SetClipboardText(IDStr);
-          }
-
-          endEditorMenu();
-        }
-
-        // Renameable Nodes
-        if (this.m_contextMenuState.m_pNode.IsRenameable()) {
-          if (editorMenuItem(' Rename Node')) {
-            this.BeginRenameNode(this.m_contextMenuState.m_pNode);
-          }
-        }
-
-        // Destroyable Nodes
-        if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph!.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
-          if (editorMenuItem(' Delete Node')) {
-            this.ClearSelection();
-            this.m_contextMenuState.m_pNode.Destroy();
-            this.m_contextMenuState.Reset();
-          }
-        }
-      }
-    } else { // Graph Menu
-      if (pFlowGraph.HasContextMenuFilter()) {
-        this.m_contextMenuState.m_filterWidget.updateAndDraw(-1, ImGuiX.FilterWidget.Flags.TakeInitialFocus);
-      }
-
-      this.DrawSharedContextMenuOptions(ctx);
-
-      if (pFlowGraph.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_filterWidget.getFilterTokens(), this.m_contextMenuState.GetAsFlowNode(), this.m_contextMenuState.m_pPin)) {
-        this.m_contextMenuState.Reset();
-        ImGui.CloseCurrentPopup();
-      }
-    }
-  }
-
-  private DrawStateMachineContextMenu (ctx: DrawContext): void {
-    if (!this.IsViewingStateMachineGraph()) {
-      throw new Error('Not viewing state machine graph');
-    }
-
-    const pStateMachineGraph = this.GetStateMachineGraph()!;
-
-    // Node Menu
-    if (this.m_contextMenuState.m_pNode !== null) {
-      if (this.m_contextMenuState.m_pNode instanceof CommentGraphNode) {
-        throw new Error('Unexpected comment node');
-      }
-
-      const pStateMachineNode = this.m_contextMenuState.GetAsStateMachineNode();
-
-      if (!this.m_isReadOnly) {
-        if (editorMenuItem('* Make Default Entry State')) {
-          const pParentStateMachineGraph = this.m_contextMenuState.m_pNode.GetParentGraph() as StateMachineGraphModel;
-
-          pParentStateMachineGraph.SetDefaultEntryState(this.m_contextMenuState.m_pNode.GetID());
-        }
-      }
-
-      // Default node menu
-      pStateMachineNode!.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos);
-
-      if (!this.m_isReadOnly) {
-        // Renameable Nodes
-        if (this.m_contextMenuState.m_pNode.IsRenameable()) {
-          if (editorMenuItem(' Rename Node')) {
-            this.BeginRenameNode(this.m_contextMenuState.m_pNode);
-          }
-        }
-
-        // Destroyable Nodes
-        if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph!.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
-          if (editorMenuItem(' Delete Node')) {
-            this.ClearSelection();
-            this.m_contextMenuState.m_pNode.Destroy();
-            this.m_contextMenuState.Reset();
-          }
-        }
-      }
-    } else { // Graph Menu
-      if (pStateMachineGraph.HasContextMenuFilter()) {
-        this.m_contextMenuState.m_filterWidget.updateAndDraw(-1, ImGuiX.FilterWidget.Flags.TakeInitialFocus);
-      }
-
-      this.DrawSharedContextMenuOptions(ctx);
-
-      if (pStateMachineGraph.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_filterWidget.getFilterTokens())) {
-        this.m_contextMenuState.Reset();
-        ImGui.CloseCurrentPopup();
-      }
-    }
-  }
-
-  private static FilterNodeNameChars (data: ImGui.ImGuiInputTextCallbackData<any>): number {
-    if (data.EventChar >= 48 && data.EventChar <= 57 || // 0-9
-      data.EventChar >= 65 && data.EventChar <= 90 || // A-Z
-      data.EventChar >= 97 && data.EventChar <= 122 || // a-z
-      data.EventChar === 95) { // _
-      return 0;
-    }
-
-    return 1;
-  }
-
-  private DrawDialogs (): void {
-    if (this.m_pNodeBeingOperatedOn === null) {
       return;
     }
+    const minX = Math.min(...nodes.map(node => node.GetRect().Min.x)), minY = Math.min(...nodes.map(node => node.GetRect().Min.y)), maxX = Math.max(...nodes.map(node => node.GetRect().Max.x)), maxY = Math.max(...nodes.map(node => node.GetRect().Max.y));
 
-    const style = ImGui.GetStyle();
-    const buttonWidth = 75;
-    const buttonSectionWidth = (buttonWidth * 2) + style.ItemSpacing.x;
+    graph.m_viewScaleFactor = Math.max(.2, Math.min(1, this.width / (maxX - minX + 100), this.height / (maxY - minY + 100)));
+    graph.m_viewOffset.set((minX + maxX) / 2 - this.width / graph.m_viewScaleFactor / 2, (minY + maxY) / 2 - this.height / graph.m_viewScaleFactor / 2); this.queueSort();
+  }
+  CenterView (node: GraphNode): void {
+    if (this.graph) {
+      const center = node.GetRect().GetCenter();
 
-    const isCommentNode = this.m_pNodeBeingOperatedOn instanceof CommentGraphNode;
-
-    if (isCommentNode) {
-      ImGui.OpenPopup(GraphEditorView.s_dialogID_Comment);
-      ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 6));
-      ImGui.SetNextWindowSize(new ImVec2(600, -1));
-      if (ImGui.BeginPopupModal(GraphEditorView.s_dialogID_Comment, null, ImGui.WindowFlags.NoSavedSettings)) {
-        if (ImGui.IsKeyPressed(ImGui.Key.Escape) || this.m_selectedNodes.length !== 1) {
-          this.EndRenameNode(false);
-          ImGui.CloseCurrentPopup();
-        } else {
-          const pNode = this.m_selectedNodes[0].m_pNode!;
-
-          if (!pNode.IsRenameable()) {
-            throw new Error('Node is not renameable');
-          }
-          let updateConfirmed = false;
-
-          ImGui.AlignTextToFramePadding();
-          ImGui.Text('Comment: ');
-          ImGui.SameLine();
-
-          ImGui.SetNextItemWidth(-1);
-
-          if (ImGui.IsWindowAppearing()) {
-            ImGui.SetKeyboardFocusHere();
-          }
-
-          let _: string;
-
-          if (ImGui.InputTextMultiline('##NodeName', (_ = this.m_textBuffer) => this.m_textBuffer = _, 255, new ImVec2(0, ImGui.GetFrameHeightWithSpacing() * 5), ImGui.InputTextFlags.EnterReturnsTrue)) {
-            if (this.m_textBuffer.length > 0) {
-              updateConfirmed = true;
-            }
-          }
-
-          ImGui.NewLine();
-
-          const dialogWidth = ImGui.GetContentRegionAvail().x;
-
-          ImGui.SameLine(0, dialogWidth - buttonSectionWidth);
-
-          if (ImGui.Button('Ok', new ImVec2(buttonWidth, 0)) || updateConfirmed) {
-            this.EndRenameNode(true);
-            ImGui.CloseCurrentPopup();
-          }
-
-          ImGui.SameLine(0, 4);
-
-          if (ImGui.Button('Cancel', new ImVec2(buttonWidth, 0))) {
-            this.EndRenameNode(false);
-            ImGui.CloseCurrentPopup();
-          }
-        }
-
-        ImGui.EndPopup();
-      }
-      ImGui.PopStyleVar();
-    } else { // Rename
-      ImGui.OpenPopup(GraphEditorView.s_dialogID_Rename);
-      ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 6));
-      ImGui.SetNextWindowSize(new ImVec2(400, -1));
-      if (ImGui.BeginPopupModal(GraphEditorView.s_dialogID_Rename, null, ImGui.WindowFlags.NoSavedSettings)) {
-        if (ImGui.IsKeyPressed(ImGui.Key.Escape) || this.m_selectedNodes.length !== 1) {
-          this.EndRenameNode(false);
-          ImGui.CloseCurrentPopup();
-        } else {
-          const pNode = this.m_selectedNodes[0].m_pNode!;
-
-          if (!pNode.IsRenameable()) {
-            throw new Error('Node is not renameable');
-          }
-          let updateConfirmed = false;
-
-          ImGui.AlignTextToFramePadding();
-          ImGui.Text('Name: ');
-          ImGui.SameLine();
-
-          ImGui.SetNextItemWidth(-1);
-
-          if (ImGui.IsWindowAppearing()) {
-            ImGui.SetKeyboardFocusHere();
-          }
-
-          let _: string;
-
-          if (ImGui.InputText('##NodeName', (_ = this.m_textBuffer) => this.m_textBuffer = _, 255, ImGui.InputTextFlags.EnterReturnsTrue | ImGui.InputTextFlags.CallbackCharFilter, GraphEditorView.FilterNodeNameChars)) {
-            if (this.m_textBuffer.length > 0) {
-              updateConfirmed = true;
-            }
-          }
-
-          ImGui.NewLine();
-
-          const dialogWidth = ImGui.GetContentRegionAvail().x;
-
-          ImGui.SameLine(0, dialogWidth - buttonSectionWidth);
-
-          if (this.m_textBuffer.length > 0) {
-            if (ImGui.Button('Ok', new ImVec2(buttonWidth, 0)) || updateConfirmed) {
-              this.EndRenameNode(true);
-              ImGui.CloseCurrentPopup();
-            }
-          } else {
-            ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.ImVec4(0.3, 0.3, 0.3, 1.0));
-            ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.ImVec4(0.3, 0.3, 0.3, 1.0));
-            ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.ImVec4(0.3, 0.3, 0.3, 1.0));
-            ImGui.Button('Ok', new ImVec2(buttonWidth, 0));
-            ImGui.PopStyleColor(3);
-          }
-
-          ImGui.SameLine(0, 4);
-
-          if (ImGui.Button('Cancel', new ImVec2(buttonWidth, 0))) {
-            this.EndRenameNode(false);
-            ImGui.CloseCurrentPopup();
-          }
-        }
-
-        ImGui.EndPopup();
-      }
-      ImGui.PopStyleVar();
+      this.graph.m_viewOffset.set(center.x - this.width / this.graph.m_viewScaleFactor / 2, center.y - this.height / this.graph.m_viewScaleFactor / 2); this.queueSort();
     }
   }
+  RefreshNodeSizes (): void { this.refreshNodes(); }
+  DestroySelectedNodes (): void { if (!this.graph || this.readOnly) { return; } this.graph.BeginModification(); for (const node of this.selected) { if (node.IsDestroyable() && this.graph.CanDestroyNode(node)) { node.Destroy(); } } this.graph.EndModification(); this.ClearSelection(); }
+  CreateCommentAroundSelectedNodes (): void {
+    if (!this.graph || this.readOnly || !this.graph.SupportsComments()) { return; }
+    const node = this.graph.CreateNode(CommentGraphNode), selected = this.selected;
+
+    if (selected.length) {
+      const x = Math.min(...selected.map(node => node.GetPosition().x)) - 30, y = Math.min(...selected.map(node => node.GetPosition().y)) - 50;
+
+      node.SetPosition(new math.Vector2(x, y)); node.m_commentBoxSize.set(Math.max(...selected.map(node => node.GetRect().Max.x)) - x + 30, Math.max(...selected.map(node => node.GetRect().Max.y)) - y + 30);
+    } else { node.SetPosition(this.canvasPosition(this.pointer)); }
+    this.SelectNode(node); this.rename(node);
+  }
+  CopySelectedNodes (): void {
+    const nodes = this.selected.filter(node => node.IsUserCreatable() && !(node instanceof TransitionGraphNode));
+    const transitions = this.graph?.m_nodes.filter((node): node is TransitionGraphNode => node instanceof TransitionGraphNode && nodes.some(item => item.GetID() === node.GetStartStateID()) && nodes.some(item => item.GetID() === node.GetEndStateID())) ?? [];
+
+    copiedNodes = copyNodeSelection([...nodes, ...transitions]);
+    copiedConnections = copyGraphData(this.GetFlowGraph()?.m_connections.filter(connection => nodes.some(node => node.GetID() === connection.m_fromNodeID) && nodes.some(node => node.GetID() === connection.m_toNodeID)) ?? []);
+  }
+  PasteNodes (position: math.Vector2): void {
+    const graph = this.graph;
+
+    if (!graph || this.readOnly || !copiedNodes.length) { return; }
+    const nodes = copyNodeSelection(copiedNodes).filter(node => graph.CanCreateNode(node.constructor as new () => GraphNode));
+
+    if (!nodes.length) { return; }
+    const map = new Map<string, string>(), x = Math.min(...nodes.map(node => node.GetPosition().x)), y = Math.min(...nodes.map(node => node.GetPosition().y));
+
+    graph.BeginModification();
+    for (const node of nodes) { attachGraph(node, graph); node.RegenerateIDs(map); node.m_canvasPosition.set(node.m_canvasPosition.x - x + position.x, node.m_canvasPosition.y - y + position.y); graph.m_nodes.push(node); node.PostPaste(); graph.OnNodeAdded(node); if (node.IsRenameable()) { node.Rename(node.GetName()); } }
+    for (const node of nodes) { if (node instanceof TransitionGraphNode) { node.m_startStateID = map.get(node.m_startStateID) ?? node.m_startStateID; node.m_endStateID = map.get(node.m_endStateID) ?? node.m_endStateID; } }
+    if (graph instanceof FlowGraphModel) {
+      for (const connection of copiedConnections) {
+        const from = graph.FindNode(map.get(connection.m_fromNodeID)!) as FlowGraphNode, to = graph.FindNode(map.get(connection.m_toNodeID)!) as FlowGraphNode; const output = from?.m_outputPins.find(pin => pin.m_ID === map.get(connection.m_outputPinID)), input = to?.m_inputPins.find(pin => pin.m_ID === map.get(connection.m_inputPinID));
+
+        if (output && input) { graph.TryMakeConnection(from, output, to, input); }
+      }
+    }
+    graph.PostPasteNodes(nodes); this.context.NotifyNodesPasted(nodes); graph.EndModification(); this.SelectNodes(nodes);
+  }
+  showContext (position: math.Vector2, node?: GraphNode, pin?: Pin): void {
+    if (node && !this.IsNodeSelected(node)) { this.SelectNode(node); }
+    const actions: MenuAction[] = [{ label: 'Add Node…', enabled: !this.readOnly, action: () => this.showCreateDialog(position) },
+      { label: 'Fit to View', shortcut: 'F', action: () => this.FitToView() }, { label: 'Reset View', action: () => this.ResetView() },
+      { label: 'Reset Zoom', enabled: this.graph?.m_viewScaleFactor !== 1, action: () => this.resetZoom(this.makePositionLocal(position)) }];
+
+    if (node) { actions.push({ label: 'Node Actions', heading: true }); }
+    if (node instanceof CommentGraphNode) { actions.push({ label: 'Edit Comment', enabled: !this.readOnly, action: () => this.editComment(node) }); }
+    if (node?.IsRenameable()) { actions.push({ label: 'Rename', shortcut: 'F2', enabled: !this.readOnly, action: () => this.rename(node) }); }
+    if (node instanceof FlowGraphNode) {
+      const graph = this.GetFlowGraph()!;
+
+      actions.push({ label: 'Break All Connections', enabled: !this.readOnly, action: () => graph.BreakAllConnectionsForNode(node) });
+      if (pin) { actions.push({ label: 'Break Pin Connections', enabled: !this.readOnly, action: () => graph.BreakAnyConnectionsForPin(pin.m_ID) }); }
+      if (node.SupportsUserEditableDynamicInputPins()) { actions.push({ label: 'Add Input', enabled: !this.readOnly, action: () => graph.CreateDynamicPin(node.GetID()) }); if (pin?.m_isDynamic) { actions.push({ label: 'Remove Input', enabled: !this.readOnly, action: () => graph.DestroyDynamicPin(node.GetID(), pin.m_ID) }); } }
+    }
+    if (node instanceof StateGraphNode) { actions.push({ label: 'Make Default Entry State', enabled: !this.readOnly, action: () => this.GetStateMachineGraph()?.SetDefaultEntryState(node.GetID()) }); }
+    if (node) { actions.push(...this.extraActions?.(node) ?? [], { label: 'Copy Node ID', action: () => { void navigator.clipboard.writeText(node.GetID()); } }); }
+    actions.push({ label: 'Copy', enabled: !!this.selected.length, action: () => this.CopySelectedNodes() }, { label: 'Paste', enabled: !this.readOnly && !!copiedNodes.length, action: () => this.PasteNodes(this.canvasPosition(this.makePositionLocal(position))) }, { label: 'Delete', enabled: !this.readOnly && !!this.selected.length, action: () => this.DestroySelectedNodes() });
+    if (this.graph?.SupportsComments()) { actions.push({ label: 'Organization', heading: true }, { label: 'Create Comment', shortcut: 'C', enabled: !this.readOnly, action: () => this.CreateCommentAroundSelectedNodes() }); }
+    this.menu.setActions(actions); this.menu.show(this, position);
+  }
+  private resetZoom (point: math.Vector2): void {
+    if (!this.graph) { return; }
+    const anchor = this.canvasPosition(point);
+
+    this.graph.m_viewScaleFactor = 1; this.graph.m_viewOffset.set(anchor.x - point.x, anchor.y - point.y); this.queueSort();
+  }
+  private editComment (node: CommentGraphNode): void {
+    const draft = { text: node.GetName(), color: node.color.clone() };
+
+    this.dialog.show(this, 'Edit Comment', body => {
+      const sheet = append(body, new PropertySheet(this.engine, { change: (_label, _owner, action) => action(), finish: () => {} }));
+      const group = sheet.section('comment', 'Comment');
+
+      group.text('Text', { read: () => draft.text, write: value => draft.text = value });
+      group.color('Color', { read: () => draft.color, write: value => draft.color = value });
+    }, [{ label: 'Apply', primary: true, action: () => { node.BeginModification(); node.Rename(draft.text); node.color = draft.color; node.EndModification(); this.dialog.close(); } },
+      { label: 'Cancel', action: () => this.dialog.close() }]);
+  }
+  private showCreateDialog (position: math.Vector2, source?: PinEndpoint): void {
+    const graph = this.graph;
+
+    if (!graph || this.readOnly) { return; }
+    const types = this.nodeTypes?.(graph) ?? [], location = this.canvasPosition(this.makePositionLocal(position)); let search: LineEdit;
+
+    this.dialog.show(this, 'Add Node', body => {
+      search = append(body, new EditorSearchField(this.engine)); search.placeholderText = 'Search node types';
+      const list = append(body, new VirtualList<GraphNodeType>(this.engine, 24, type => type.category + '/' + type.label, () =>
+        new GraphActionRow(this.engine, entry => {
+          const node = entry.create(graph, location);
+
+          if (source && node instanceof FlowGraphNode && graph instanceof FlowGraphModel) {
+            const input = source.node.HasInputPin(source.pin.m_ID); const pin = (input ? node.m_outputPins : node.m_inputPins).find(pin => pin.m_type === source.pin.m_type);
+
+            if (pin) { if (input) { graph.TryMakeConnection(node, pin, source.node, source.pin); } else { graph.TryMakeConnection(source.node, source.pin, node, pin); } }
+          } this.SelectNode(node); this.dialog.close();
+        })));
+
+      list.setCustomMinimumSize(380, 280); list.setRows(types); search.on('textChanged', value => list.setRows(types.filter(type => (type.label + ' ' + type.category).toLowerCase().includes(value.toLowerCase()))));
+    }, [{ label: 'Cancel', action: () => this.dialog.close() }]); search!.grabFocus();
+  }
+  private rename (node: GraphNode): void {
+    if (this.readOnly) { return; } let field: LineEdit;
+    const accept = (): void => { if (field.text.trim()) { node.Rename(field.text.trim()); this.dialog.close(); } };
+
+    this.dialog.show(this, 'Rename Node', body => { field = append(body, new EditorTextField(this.engine)); field.text = node.GetName(); field.on('textSubmitted', accept); }, [{ label: 'Rename', primary: true, enabled: () => !!field?.text.trim(), action: accept }, { label: 'Cancel', action: () => this.dialog.close() }]); field!.grabFocus(); field!.selectAll();
+  }
+  override dispose (): void { this.finishDrag(); for (const name of ['copy', 'cut', 'paste'] as const) { window.document.removeEventListener(name, this.clipboardEvent); } this.menu.dispose(); this.dialog.dispose(); super.dispose(); }
 }

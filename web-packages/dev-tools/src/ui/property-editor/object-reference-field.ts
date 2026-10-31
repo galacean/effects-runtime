@@ -1,15 +1,19 @@
-import type { Texture } from '@galacean/effects';
-import type { PropertyHeaderIcon } from './property-grid';
+import type { Engine } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import type { ValueBinding } from './property-sheet';
 
-export type ObjectReferenceRenderer = (object: object, property: string, width: number, expectedType?: string,
-  readOnly?: boolean, icon?: PropertyHeaderIcon, onAssetDrop?: (texture: Texture) => void) => boolean;
+export interface ObjectReferenceOptions {
+  expectedType?: string,
+  readOnly?: boolean,
+  allowEmpty?: boolean,
+  changed?: (action: () => void) => void,
+}
+export type ObjectReferenceFactory = (engine: Engine, binding: ValueBinding<object | null>, options: ObjectReferenceOptions) => Control;
+let factory: ObjectReferenceFactory | undefined;
 
-let renderer: ObjectReferenceRenderer | undefined;
+export function registerObjectReferenceFactory (next: ObjectReferenceFactory): void { factory = next; }
+export function createObjectReferenceControl (engine: Engine, binding: ValueBinding<object | null>, options: ObjectReferenceOptions = {}): Control {
+  if (!factory) { throw new Error('The object reference factory has not been registered.'); }
 
-export function registerObjectReferenceRenderer (next: ObjectReferenceRenderer): void { renderer = next; }
-
-export const objectReferenceField: ObjectReferenceRenderer = (...args) => {
-  if (!renderer) { throw new Error('The object reference renderer has not been registered.'); }
-
-  return renderer(...args);
-};
+  return factory(engine, binding, options);
+}

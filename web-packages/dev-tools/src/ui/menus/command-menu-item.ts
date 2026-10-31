@@ -1,14 +1,12 @@
 import { editorCommands } from '../../framework/commands/editor-commands';
-import { editorMenuItem } from '../widgets/editor-menu';
+import type { MenuAction } from '../controls/menu';
+import type { EditorIcon } from '../icons/control-icons';
 
-export function commandMenuItem (id: string, options: { label?: string, shortcut?: string } = {}): boolean {
+const icons: Record<string, EditorIcon> = { 'scene.new': 'scene', 'scene.open': 'folderOpen', 'scene.save': 'save', 'scene.save-as': 'save', 'scene.save-all': 'save', 'document.undo': 'undo', 'document.redo': 'redo', 'project.settings': 'settings', 'project.new': 'project', 'project.open': 'folderOpen', 'project.import': 'import', 'project.export': 'export' };
+
+export function commandMenuItem (id: string): MenuAction {
   const command = editorCommands.get(id);
 
-  if (!command) { return false; }
-  const label = options.label ?? (typeof command.label === 'function' ? command.label() : command.label);
-  const clicked = editorMenuItem(label, options.shortcut ?? command.shortcut, command.isChecked?.() ?? false, editorCommands.canExecute(id));
-
-  if (clicked) { editorCommands.execute(id); }
-
-  return clicked;
+  return { label: command ? typeof command.label === 'function' ? command.label() : command.label : id, shortcut: command?.shortcut, icon: icons[id],
+    enabled: editorCommands.canExecute(id), checked: command?.isChecked?.(), action: () => editorCommands.execute(id) };
 }

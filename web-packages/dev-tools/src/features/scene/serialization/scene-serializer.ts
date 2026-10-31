@@ -242,6 +242,7 @@ export class SceneSerializer {
     }
     if (object instanceof RendererComponent) {
       extras.priority = object.priority;
+      extras.materials = object.materials.map(material => this.reference(material));
       const materials = object.materials.filter(material => material.definition.id).map(material => this.reference(material));
 
       if (materials.length || object.definition.materials) { data.materials = materials; }
@@ -395,7 +396,18 @@ export class SceneSerializer {
       if ('renderOrder' in extras && extras.fields?.isManuallySetRenderOrder !== false) { object.renderOrder = extras.renderOrder; }
       if ('visible' in extras && object.isVisible !== extras.visible) { object.setVisible(extras.visible); }
     }
-    if (object instanceof RendererComponent && 'priority' in extras) { object.priority = extras.priority; }
+    if (object instanceof RendererComponent) {
+      if ('priority' in extras) { object.priority = extras.priority; }
+      if (extras.materials) {
+        object.materials = extras.materials.map((reference: { id: string }) => {
+          const material = this.object(reference.id);
+
+          if (!(material instanceof Material)) { throw new Error('The referenced material is no longer available: ' + reference.id); }
+
+          return material;
+        });
+      }
+    }
     if (object instanceof MaskableGraphic && extras.graphicColor) {
       const color = extras.graphicColor;
       const current = object.material.getColor('_Color') ?? object.color;

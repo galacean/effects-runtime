@@ -32,6 +32,13 @@ export class SceneWorkspace {
   private opening = false;
   private openedSourceURL?: string;
   private saveRequest?: Promise<boolean>;
+  private readonly documentListeners = new Set<(document: SceneDocument) => void>();
+
+  subscribeDocument (listener: (document: SceneDocument) => void): () => void {
+    this.documentListeners.add(listener);
+
+    return () => { this.documentListeners.delete(listener); };
+  }
 
   constructor (readonly storage = new SceneRepository()) {
     storage.subscribe(entries => {
@@ -141,6 +148,7 @@ export class SceneWorkspace {
           if (request.stored.id) { await this.storage.select(request.stored.id); }
         }
         this.onRestored();
+        this.documentListeners.forEach(listener => listener(document));
       } catch (error) { this.report(error); if (propagate) { throw error; } } finally { this.opening = false; }
     });
     await this.requests;

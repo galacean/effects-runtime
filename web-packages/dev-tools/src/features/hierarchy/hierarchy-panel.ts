@@ -1,32 +1,32 @@
+import { EditorSearchField } from '../../ui/controls/search-field';
 import { VFXItem } from '@galacean/effects';
+import type { Engine, InputEventMouseButton, InputEventKey, math } from '@galacean/effects';
+import type { Control, Label } from '@galacean/effects-plugin-gui';
+import { LineEdit, PanelContainer, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
 import { EditorWindow } from '../../framework/windows/editor-window';
-import { EditorRuntimeSession } from '../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../platform/imgui/index';
-import { drawEditorIcon } from '../../ui/icons/editor-icons';
+import { append, column, row, margin, expand, label } from '../../ui/controls/layout';
+import { EditorMenu, EditorMenuButton } from '../../ui/controls/menu';
+import type { MenuAction } from '../../ui/controls/menu';
+import { EditorIconButton } from '../../ui/icons/control-icons';
 import { ListSelection } from '../../ui/list-view/list-selection';
-import { InteractionColors as I, editorRowColors } from '../../ui/theme/editor-interaction';
-import { drawEditorArrow } from '../../ui/widgets/editor-arrow';
-import { beginEditorMenu, editorMenuItem, editorMenuSection, editorPopup, endEditorMenu, withEditorMenuStyle } from '../../ui/widgets/editor-menu';
-import { inlineRename } from '../../ui/widgets/inline-rename';
-import { searchBar } from '../../ui/widgets/search-bar';
+import { editorColors, editorBox } from '../../ui/theme/control-theme';
 import { projectWorkspace } from '../projects/project-workspace';
 import type { SceneDocument } from '../scene/document/scene-document';
 import { sceneWorkspace } from '../scene/scene-workspace';
-import { drawCreateItemMenu } from '../scene/ui/create-item-menu';
+import { SceneItemOperations } from '../scene/operations/scene-item-operations';
+import { SCENE_ITEM_DESCRIPTORS } from '../scene/ui/scene-item-palette';
 import { SceneViewportPanel } from '../scene/viewport/scene-viewport-panel';
 import { HierarchyActions } from './hierarchy-actions';
 import type { HierarchyNode, HierarchyOptions } from './hierarchy-model';
 import { HierarchyModel, itemKey } from './hierarchy-model';
-import { FOLDER_TINT, HIERARCHY_SIZE as L, hierarchyButton, hierarchyHint, hierarchyText } from './hierarchy-style';
+import { HierarchyTree } from './hierarchy-tree';
+import type { DropZone } from './hierarchy-tree';
 
-const PAYLOAD = 'OutlinerItems';
 const PREFERENCES = 'effects-editor.hierarchy.v2';
 
-interface ItemPayload { document: SceneDocument, ids: string[] }
-interface PressedRow { id: string, deferred: boolean, dragged: boolean, arrow: boolean }
-type DropZone = 'before' | 'inside' | 'after';
+interface ItemPayload { kind: 'hierarchy-items', document: SceneDocument, ids: string[] }
 
 @editorPanel()
 export class HierarchyPanel extends EditorWindow {
@@ -34,29 +34,17 @@ export class HierarchyPanel extends EditorWindow {
   private actions?: HierarchyActions;
   private model?: HierarchyModel;
   private releaseState?: () => void;
-  private expanded = new Set(['world']);
+  private unsubscribe?: () => void;
+  private unsubscribeWorkspace?: () => void;
+  private expanded = new Set(['level']);
   private selectedFolders = new Set<string>();
-  private readonly rowSelection = new ListSelection<string>();
-  private get anchor (): string | undefined { return this.rowSelection.anchor; }
-  private set anchor (value: string | undefined) { this.rowSelection.anchor = value; }
-  private focused?: string;
+  private readonly selection = new ListSelection<string>();
   private applyingSelection = false;
-  private pendingReveal?: string;
-  private search: [string] = [''];
-  private searchFocused = false;
-  private focusSearch = false;
-  private rename?: string;
-  private renameText: [string] = [''];
-  private focusRename = false;
-  private pressed?: PressedRow;
-  private hoveredRow = false;
-  private listFocused = false;
-  private contextRows: string[] = [];
-  private openContext = false;
-  private columnUpdate = true;
+  private tree?: HierarchyTree;
+  private search?: LineEdit;
+  private status?: Label;
+  private context?: EditorMenu;
   private visibilityDrag?: { visible: boolean, visited: Set<string> };
-  private hoverDrop?: { id: string, since: number, frame: number };
-  private dropHint?: { text: string, frame: number };
   private options: HierarchyOptions = {
     autoFrame: true, showInternal: false, onlySelected: false, hideInvisible: false,
     showVisibility: true, showType: true, typeFilter: '', sort: 'hierarchy', descending: false,
@@ -67,121 +55,106 @@ export class HierarchyPanel extends EditorWindow {
 
   constructor () {
     super(); this.title = 'Hierarchy'; this.open();
-    this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
     try {
-      const stored = window.localStorage.getItem(PREFERENCES);
-      const data = JSON.parse(stored ?? window.localStorage.getItem('effects-editor.outliner.v1') ?? '{}');
+      const data = JSON.parse(window.localStorage.getItem(PREFERENCES) ?? '{}');
 
       for (const key of ['autoFrame', 'showInternal', 'onlySelected', 'hideInvisible', 'showVisibility', 'showType', 'descending'] as const) {
         if (typeof data[key] === 'boolean') { this.options[key] = data[key]; }
       }
-      if (stored && ['hierarchy', 'label', 'type', 'visibility'].includes(data.sort)) { this.options.sort = data.sort; }
+      if (['hierarchy', 'label', 'type', 'visibility'].includes(data.sort)) { this.options.sort = data.sort; }
     } catch (error) { console.warn('Unable to read hierarchy preferences.', error); }
   }
 
-  override draw (): void {
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
-    ImGui.PushStyleVar(ImGui.StyleVar.ScrollbarSize, 12);
-    ImGui.PushStyleColor(ImGui.Col.WindowBg, I.recessed);
-    ImGui.PushStyleColor(ImGui.Col.ScrollbarBg, I.recessed);
-    ImGui.PushStyleColor(ImGui.Col.ScrollbarGrab, I.secondary);
-    ImGui.PushStyleColor(ImGui.Col.ScrollbarGrabHovered, I.hover);
-    ImGui.PushStyleColor(ImGui.Col.ScrollbarGrabActive, I.muted);
-    super.draw();
-    ImGui.PopStyleColor(5); ImGui.PopStyleVar(3);
-  }
+  protected override createContent (engine: Engine): Control {
+    const content = column(engine);
+    const search = this.search = expand(new EditorSearchField(engine, 'Search…'), true, false);
 
-  override onSelectionChange (): void {
-    if (this.applyingSelection || !this.document) { return; }
-    if (EditorSelection.changeSource !== 'history') { this.selectedFolders.clear(); }
-    if (this.options.autoFrame) { this.revealSelection(); }
-  }
+    search.placeholderText = 'Search...'; search.on('textChanged', () => this.refresh());
+    const folder = new EditorIconButton(engine, 'newFolder');
 
-  override onUndoRedo (): void { this.rename = undefined; this.pressed = undefined; this.revealSelection(); }
+    folder.on('pressed', () => this.newFolder());
+    const options = new EditorMenuButton(engine, '');
 
-  override flushEdits (): void {
-    if (this.rename) { this.finishRename(false); }
-    this.finishVisibility();
-  }
+    options.iconName = 'settings'; options.setCustomMinimumSize(24, 24);
+    options.actions = () => this.settingsMenu();
+    append(content, margin(engine, row(engine, [search, folder, options]), 8, 6));
+    this.context = new EditorMenu(engine);
+    this.tree = append(content, expand(new HierarchyTree(engine, this.options, {
+      select: (node, event) => this.clickRow(node, event), toggle: (node, recursive) => this.toggle(node, recursive),
+      context: (node, position) => this.showContext(node, position), activate: node => node.kind === 'folder' ? this.toggle(node, false) : this.focusScene(),
+      rename: (node, name) => { this.actions?.rename(node, name); this.refresh(); },
+      visibility: (node, begin) => this.changeVisibility(node, begin), finishVisibility: () => this.finishVisibility(),
+      dragData: node => node.editable ? { kind: 'hierarchy-items', document: this.document!, ids: (this.selectedKeys().has(node.id) ? this.selectedRows() : [node]).filter(row => row.editable).map(row => row.id) } satisfies ItemPayload : null,
+      canDrop: (node, data, zone) => this.canDrop(node, data, zone), drop: (node, data, zone) => this.drop(node, data, zone),
+      key: event => this.keyboard(event), sort: column => {
+        if (this.options.sort === column && this.options.descending) { this.options.sort = 'hierarchy'; this.options.descending = false; } else { this.options.descending = this.options.sort === column; this.options.sort = column; }
+        this.saveOptions(); this.refresh();
+      },
+    })));
+    this.status = label(engine, '', editorColors.foreground); this.status.verticalAlignment = VerticalAlignment.Center;
+    const status = append(content, new PanelContainer(engine));
 
-  protected override onEnable (): void { window.addEventListener('keydown', this.cancelBrowserShortcut, true); }
+    status.setThemeStyleBoxOverride('panel', editorBox(editorColors.header));
+    append(status, margin(engine, this.status, 14, 9));
+    this.unsubscribeWorkspace = sceneWorkspace.subscribeDocument(document => this.bind(document));
+    this.bind(sceneWorkspace.current);
 
-  protected override onDisable (): void {
-    this.listFocused = false; this.flushEdits();
-    window.removeEventListener('keydown', this.cancelBrowserShortcut, true);
-  }
-
-  private readonly cancelBrowserShortcut = (event: KeyboardEvent): void => {
-    if (this.listFocused && !ImGui.GetIO().WantTextInput && (event.ctrlKey || event.metaKey) &&
-      !event.isComposing && ['KeyA', 'KeyD', 'KeyF'].includes(event.code)) { event.preventDefault(); }
-  };
-
-  protected override onGUI (): void {
-    const document = sceneWorkspace.current;
-    const composition = EditorRuntimeSession.player.getCompositions()[0];
-
-    if (document !== this.document) { this.bind(document); }
-    this.buildModel();
-    if (this.rename && !this.model?.rows.some(node => node.id === this.rename)) { this.finishRename(false); }
-    const origin = ImGui.GetCursorScreenPos(), size = ImGui.GetContentRegionAvail();
-
-    this.drawToolbar();
-    if (!document || !composition || !this.model) {
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 12, origin.y + this.toolbarHeight + 16)); ImGui.TextDisabled('Open a scene to view its items.');
-
-      return;
-    }
-    const footer = ImGui.GetFontSize() + 18;
-
-    this.drawTree(Math.max(60, size.y - this.toolbarHeight - footer));
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + size.y - footer));
-    this.drawStatus(size.x, footer);
-    this.drawContextMenu(); this.keyboard();
-    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) { this.pressed = undefined; this.finishVisibility(); }
+    return content;
   }
 
   private bind (document?: SceneDocument): void {
-    this.releaseState?.(); this.document = document;
+    if (!this.tree) { return; }
+    if (document === this.document) {
+      this.refresh();
+
+      return;
+    }
+    this.finishVisibility(); this.releaseState?.(); this.unsubscribe?.(); this.document = document;
     this.actions = document ? new HierarchyActions(document) : undefined;
-    this.expanded = new Set(['world']); this.selectedFolders.clear(); this.anchor = undefined; this.focused = undefined;
+    this.expanded = new Set(['level']); this.selectedFolders.clear(); this.selection.replace([]); this.search!.text = '';
     if (document) {
       try {
         const saved = JSON.parse(window.localStorage.getItem(this.expansionKey()) ?? 'null');
 
-        if (Array.isArray(saved) && saved.every(id => typeof id === 'string')) { this.expanded = new Set(saved); }
-      } catch (error) { console.warn('Unable to read outliner expansion state.', error); }
-    }
-    this.rename = undefined; this.search[0] = ''; this.pendingReveal = undefined;
-    if (document) {
+        if (Array.isArray(saved) && saved.every(id => typeof id === 'string')) { this.expanded = new Set(saved.map(id => id === 'world' ? 'level' : id)); }
+      } catch (error) { console.warn('Unable to read hierarchy expansion.', error); }
       this.releaseState = document.registerEditorState({
-        read: () => ({ folders: [...this.selectedFolders], anchor: this.anchor, focused: this.focused }),
-        restore: state => { this.selectedFolders = new Set(state.folders); this.anchor = state.anchor; this.focused = state.focused; },
+        read: () => ({ folders: [...this.selectedFolders], anchor: this.selection.anchor, focused: this.selection.focused }),
+        restore: state => { this.selectedFolders = new Set(state.folders); this.selection.anchor = state.anchor; this.selection.focused = state.focused; },
       });
+      this.unsubscribe = document.subscribe(() => this.refresh());
     }
+    this.refresh();
   }
 
-  private buildModel (): void {
+  private refresh (): void {
+    if (!this.tree) { return; }
     const document = this.document;
 
     if (!document) {
-      this.model = undefined;
+      this.model = undefined; this.tree.setRows([], new Set(), this.expanded); this.status!.text = 'Open a scene to view its items.';
 
       return;
     }
-    const selected = this.selectedKeys();
-
-    this.model = new HierarchyModel(document, document.composition, this.search[0], this.options, this.expanded, selected);
-    if (this.pendingReveal) {
-      let changed = false;
-
-      for (let node = this.model.nodes.get(this.pendingReveal)?.parent; node; node = node.parent) {
-        if (!this.expanded.has(node.id)) { this.expanded.add(node.id); changed = true; }
-      }
-      if (changed) { this.saveExpanded(); }
-      this.model = new HierarchyModel(document, document.composition, this.search[0], this.options, this.expanded, selected);
-    }
+    this.model = new HierarchyModel(document, document.composition, this.search!.text, this.options, this.expanded, this.selectedKeys());
+    this.tree.highlight = this.search!.text;
     for (const id of this.selectedFolders) { if (!this.model.nodes.has(id)) { this.selectedFolders.delete(id); } }
+    this.tree.setRows(this.model.rows, this.selectedKeys(), this.expanded);
+    const count = this.model.items.length, selected = this.selectedRows().filter(node => node.kind !== 'level').length;
+
+    this.status!.text = (this.model.filtering ? `${this.model.matchedCount} of ${count} items` : `${count} ${count === 1 ? 'item' : 'items'}`) + (selected ? ` (${selected} selected)` : '');
+  }
+
+  override onSelectionChange (): void {
+    if (this.applyingSelection) { return; }
+    if (EditorSelection.changeSource !== 'history') { this.selectedFolders.clear(); }
+    this.refresh();
+    if (this.options.autoFrame) { this.revealSelection(); }
+  }
+  override onUndoRedo (): void { this.bind(sceneWorkspace.current); this.revealSelection(); }
+  override flushEdits (): void { this.finishVisibility(); }
+  override dispose (): void {
+    this.unsubscribeWorkspace?.(); this.unsubscribe?.(); this.releaseState?.(); this.context?.dispose(); super.dispose();
   }
 
   private selectedKeys (): Set<string> {
@@ -189,515 +162,173 @@ export class HierarchyPanel extends EditorWindow {
 
     if (document) {
       for (const object of EditorSelection.getSelectedObjects()) {
-        if (object === document.composition) { keys.add('world'); } else if (object instanceof VFXItem && object.composition === document.composition) { keys.add(itemKey(document, object)); }
+        if (object === document.composition) { keys.add('level'); } else if (object instanceof VFXItem && object.composition === document.composition) { keys.add(itemKey(document, object)); }
       }
     }
 
     return keys;
   }
-
-  private selectedRows (): HierarchyNode[] {
-    const model = this.model;
-
-    return model ? [...this.selectedKeys()].flatMap(id => model.nodes.get(id) ? [model.nodes.get(id)!] : []) : [];
-  }
-
-  private select (ids: string[], anchor = ids.at(-1)): void {
+  private selectedRows (): HierarchyNode[] { return [...this.selectedKeys()].flatMap(id => this.model?.nodes.get(id) ? [this.model.nodes.get(id)!] : []); }
+  private select (ids: string[]): void {
     const model = this.model, document = this.document;
 
     if (!model || !document) { return; }
     document.observeEditor('Select objects', () => {
       this.applyingSelection = true;
-      try {
-        this.selectedFolders = new Set(ids.filter(id => model.nodes.get(id)?.kind === 'folder'));
-        this.anchor = anchor; this.focused = ids.at(-1);
-        EditorSelection.setObjects(ids.flatMap<object>(id => {
-          const node = model.nodes.get(id);
+      this.selectedFolders = new Set(ids.filter(id => model.nodes.get(id)?.kind === 'folder'));
+      this.selection.focused = ids.at(-1);
+      EditorSelection.setObjects(ids.flatMap<object>(id => {
+        const node = model.nodes.get(id);
 
-          return node?.item ? [node.item] : node?.kind === 'world' ? [document.composition] : [];
-        }));
-      } finally { this.applyingSelection = false; }
+        return node?.item ? [node.item] : node?.kind === 'level' ? [document.composition] : [];
+      }));
+      this.applyingSelection = false;
     });
+    document.commit(); this.refresh();
   }
+  private clickRow (node: HierarchyNode | undefined, event: InputEventMouseButton): void {
+    if (!node) {
+      if (!event.ctrlPressed && !event.metaPressed) { this.select([]); }
 
-  private clickRow (node: HierarchyNode): void {
-    const io = ImGui.GetIO();
-
-    this.rowSelection.replace(this.selectedKeys(), this.anchor);
-    this.rowSelection.choose(node.id, this.model?.rows.map(row => row.id) ?? [], { additive: io.KeyCtrl || io.KeySuper, range: io.KeyShift });
-    this.select([...this.rowSelection.selected], this.rowSelection.anchor); this.focused = node.id;
+      return;
+    }
+    this.selection.replace(this.selectedKeys());
+    this.selection.choose(node.id, this.model?.rows.map(row => row.id) ?? [], { additive: event.ctrlPressed || event.metaPressed, range: event.shiftPressed });
+    this.select([...this.selection.selected]);
   }
+  private toggle (node: HierarchyNode, recursive: boolean): void {
+    const open = !this.expanded.has(node.id);
 
-  private drawToolbar (): void {
-    const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-    const fieldHeight = Math.max(22, ImGui.GetFontSize() + 6);
-    const buttonY = p.y + 8 + (fieldHeight - 24) / 2;
-
-    ImGui.GetWindowDrawList().AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + this.toolbarHeight), ImGui.GetColorU32(I.panel));
-    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(4, 3));
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x + 8, p.y + 8));
-    if (this.focusSearch) { ImGui.SetKeyboardFocusHere(); this.focusSearch = false; }
-    searchBar('##OutlinerSearch', this.search, { hint: 'Search...', width: Math.max(40, width - 68), rounding: fieldHeight / 2 });
-    this.searchFocused = ImGui.IsAnyItemActive() && ImGui.GetIO().WantTextInput;
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x + width - 56, buttonY));
-    if (hierarchyButton('##NewFolder', 'newFolder', 'Create a folder containing the current selection', !!this.document)) { this.newFolder(); }
-    ImGui.SameLine(0, 0);
-    if (hierarchyButton('##OutlinerOptions', 'settings', 'Hierarchy settings')) { ImGui.OpenPopup('##OutlinerSettings'); }
-    editorPopup('##OutlinerSettings', () => this.settingsMenu());
-    ImGui.PopStyleVar();
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + this.toolbarHeight));
+    for (const target of recursive ? [node, ...this.model!.descendants(node)] : [node]) {
+      if (open && target.children.length) { this.expanded.add(target.id); } else { this.expanded.delete(target.id); }
+    }
+    this.saveExpanded(); this.refresh();
   }
+  private revealSelection (): void {
+    const item = EditorSelection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem).at(-1);
+    const id = item && this.document && item.composition === this.document.composition ? itemKey(this.document, item) : this.selection.focused;
 
-  private get toolbarHeight (): number { return Math.max(22, ImGui.GetFontSize() + 6) + 12; }
-
-  private drawTree (height: number): void {
-    withEditorMenuStyle(() => this.drawTreeContent(height));
+    if (!id) { return; }
+    for (let node = this.model?.nodes.get(id)?.parent; node; node = node.parent) { this.expanded.add(node.id); }
+    this.refresh(); this.tree?.reveal(id);
   }
+  private changeVisibility (node: HierarchyNode, begin: boolean): void {
+    if (!this.model || !this.document) { return; }
+    if (begin) { this.visibilityDrag = { visible: !node.visible, visited: new Set() }; }
+    const drag = this.visibilityDrag;
 
-  private drawTreeContent (height: number): void {
-    const model = this.model!, p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-    const rowHeight = Math.max(L.row, ImGui.GetFontSize());
-
-    this.hoveredRow = false;
-    ImGui.PushStyleVar(ImGui.StyleVar.CellPadding, new ImGui.Vec2(0, 0));
-    ImGui.PushStyleColor(ImGui.Col.TableHeaderBg, I.header);
-    ImGui.PushStyleColor(ImGui.Col.TableBorderLight, I.recessed);
-    const flags = ImGui.TableFlags.ScrollY | ImGui.TableFlags.Resizable | ImGui.TableFlags.Reorderable | ImGui.TableFlags.Hideable |
-      ImGui.TableFlags.NoPadOuterX;
-
-    if (ImGui.BeginTable('##OutlinerTree', 3, flags, new ImGui.Vec2(0, height))) {
-      ImGui.TableSetupColumn('Visibility', ImGui.TableColumnFlags.WidthFixed | ImGui.TableColumnFlags.NoResize | ImGui.TableColumnFlags.NoSort | ImGui.TableColumnFlags.NoReorder, L.gutter);
-      ImGui.TableSetupColumn('Item Label', ImGui.TableColumnFlags.WidthStretch | ImGui.TableColumnFlags.NoHide, 5);
-      ImGui.TableSetupColumn('Type', ImGui.TableColumnFlags.WidthStretch, 2);
-      ImGui.TableSetupScrollFreeze(0, 1);
-      if (this.columnUpdate) {
-        ImGui.TableSetColumnEnabled(0, this.options.showVisibility); ImGui.TableSetColumnEnabled(2, this.options.showType); this.columnUpdate = false;
-      }
-      ImGui.TableNextRow(ImGui.TableRowFlags.Headers, L.header);
-      for (let column = 0; column < 3; column++) {
-        if (!ImGui.TableSetColumnIndex(column)) { continue; }
-        this.drawColumnHeader(column);
-      }
-      const visible = (ImGui.TableGetColumnFlags(0) & ImGui.TableColumnFlags.IsEnabled) !== 0;
-      const type = (ImGui.TableGetColumnFlags(2) & ImGui.TableColumnFlags.IsEnabled) !== 0;
-
-      if (visible !== this.options.showVisibility || type !== this.options.showType) { this.options.showVisibility = visible; this.options.showType = type; this.saveOptions(); }
-      this.listFocused = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) && !this.searchFocused;
-      const keys = this.selectedKeys(), ancestors = new Set<string>();
-
-      for (const key of keys) { for (let node = model.nodes.get(key)?.parent; node; node = node.parent) { ancestors.add(node.id); } }
-      const clipper = new ImGui.ListClipper();
-
-      clipper.Begin(model.rows.length, rowHeight);
-      const reveal = model.rows.findIndex(node => node.id === this.pendingReveal || node.id === this.rename);
-
-      if (reveal >= 0) { clipper.IncludeItemByIndex(reveal); }
-      while (clipper.Step()) {
-        for (let index = clipper.DisplayStart; index < clipper.DisplayEnd; index++) {
-          const node = model.rows[index];
-
-          ImGui.PushID(node.id); ImGui.TableNextRow(ImGui.TableRowFlags.None, rowHeight);
-          ImGui.TableSetColumnIndex(1);
-          const row = ImGui.GetCursorScreenPos(), mouse = ImGui.GetMousePos();
-          const hovered = ImGui.IsWindowHovered(ImGui.HoveredFlags.AllowWhenBlockedByActiveItem) && mouse.y >= row.y && mouse.y < row.y + rowHeight && mouse.x >= p.x && mouse.x < p.x + width - ImGui.GetStyle().ScrollbarSize;
-          const selected = keys.has(node.id);
-          const colors = editorRowColors({ selected, hovered, focused: this.listFocused, parentHighlighted: ancestors.has(node.id), alternate: index % 2 !== 0 });
-
-          this.hoveredRow ||= hovered;
-          ImGui.TableSetBgColor(ImGui.TableBgTarget.RowBg0, ImGui.GetColorU32(colors.background));
-          const gutter = ImGui.TableSetColumnIndex(0);
-
-          if (gutter) { this.drawVisibility(node, rowHeight, selected, hovered); }
-          ImGui.TableSetColumnIndex(1);
-          const labelX = ImGui.GetCursorScreenPos().x;
-          let dropping = this.drawLabel(node, rowHeight, colors.foreground);
-
-          if (ImGui.TableSetColumnIndex(2)) {
-            const start = ImGui.GetCursorScreenPos(), available = ImGui.GetContentRegionAvail().x;
-
-            ImGui.InvisibleButton('##TypeCell', new ImGui.Vec2(Math.max(1, available), rowHeight));
-            this.rowInteraction(node, false); this.dragSource(node); dropping ??= this.dropTarget(node);
-            hierarchyText(node.type, start.x + 5, start.y + (rowHeight - ImGui.GetFontSize()) / 2, available - 9, selected ? colors.foreground : I.muted, this.search[0]);
-          }
-          if (dropping === 'inside') { ImGui.TableSetBgColor(ImGui.TableBgTarget.RowBg1, ImGui.GetColorU32(I.selectedInactive)); } else if (dropping) {
-            const draw = ImGui.GetWindowDrawList(), x = labelX + 6 + node.depth * L.indent + 16;
-            const y = row.y + (dropping === 'before' ? 1 : rowHeight - 1);
-            const color = ImGui.GetColorU32(I.primary);
-
-            draw.PushClipRect(new ImGui.Vec2(p.x, p.y + L.header), new ImGui.Vec2(p.x + width - ImGui.GetStyle().ScrollbarSize, p.y + height), false);
-            draw.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(p.x + width - ImGui.GetStyle().ScrollbarSize - 2, y), color, 2);
-            draw.AddCircleFilled(new ImGui.Vec2(x, y), 3, color);
-            draw.PopClipRect();
-          }
-          if (this.pendingReveal === node.id || this.rename === node.id && this.focusRename) { ImGui.SetScrollHereY(0.5); this.pendingReveal = undefined; }
-          ImGui.PopID();
-        }
-      }
-      clipper.End(); clipper.delete();
-      this.drawEmptyArea(p.x, width, rowHeight, model.rows.length === 0);
-      ImGui.EndTable();
-    }
-    ImGui.PopStyleColor(2); ImGui.PopStyleVar();
+    if (!drag || drag.visited.has(node.id)) { return; }
+    drag.visited.add(node.id);
+    this.actions?.setVisible(this.model.elements(begin && this.selectedKeys().has(node.id) ? this.selectedRows() : [node]), drag.visible);
+    this.document.setScopeActive(this, true); this.refresh();
   }
-
-  private drawColumnHeader (column: number): void {
-    const start = ImGui.GetCursorScreenPos(), label = column === 1 ? 'Item Label' : 'Type';
-
-    ImGui.TableHeader('##HierarchyColumn' + column);
-    const max = ImGui.GetItemRectMax(), draw = ImGui.GetWindowDrawList();
-    const hovered = ImGui.IsItemHovered();
-
-    if (ImGui.IsItemClicked(ImGui.MouseButton.Left)) {
-      const sort = column === 0 ? 'visibility' : column === 1 ? 'label' : 'type';
-
-      if (this.options.sort === sort && this.options.descending) {
-        this.options.sort = 'hierarchy'; this.options.descending = false;
-      } else {
-        this.options.descending = this.options.sort === sort; this.options.sort = sort;
-      }
-      this.saveOptions();
-    }
-    draw.PushClipRect(start, new ImGui.Vec2(max.x, start.y + L.header), true);
-    draw.AddRectFilled(start, new ImGui.Vec2(max.x, start.y + L.header), ImGui.GetColorU32(hovered ? I.secondary : I.header));
-    if (column) {
-      const sorted = this.options.sort === (column === 1 ? 'label' : 'type');
-      const labelWidth = Math.min(ImGui.CalcTextSize(label).x, Math.max(0, max.x - start.x - (sorted ? 24 : 8)));
-
-      hierarchyText(label, start.x + 4, start.y + (L.header - 2 - ImGui.GetFontSize()) / 2, labelWidth, I.foreground);
-      if (sorted) { drawEditorIcon(this.options.descending ? 'sortDescending' : 'sortAscending', start.x + 8 + labelWidth, start.y + (L.header - 14) / 2, 12, I.foreground); }
-      if (ImGui.IsItemHovered() && ImGui.CalcTextSize(label).x > labelWidth) { hierarchyHint(label); }
-    } else {
-      drawEditorIcon('view', start.x + 4, start.y + (L.header - 18) / 2, 16, this.options.sort === 'visibility' ? I.foregroundHover : I.foreground);
-      if (hovered) { hierarchyHint('Sort by visibility', this.options.sort === 'visibility' ? this.options.descending ? 'Visible items first' : 'Hidden items first' : 'Click to sort visible and hidden items.'); }
-    }
-    draw.AddLine(new ImGui.Vec2(max.x - 1, start.y), new ImGui.Vec2(max.x - 1, start.y + L.header), ImGui.GetColorU32(I.recessed));
-    draw.AddRectFilled(new ImGui.Vec2(start.x, start.y + L.header - 2), new ImGui.Vec2(max.x, start.y + L.header), ImGui.GetColorU32(I.recessed));
-    draw.PopClipRect();
-  }
-
-  private drawLabel (node: HierarchyNode, rowHeight: number, tint: ImGui.Vec4): DropZone | undefined {
-    const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-    const arrowX = p.x + 6 + node.depth * L.indent, iconX = arrowX + 16, labelX = iconX + 22;
-    const y = p.y + (rowHeight - L.icon) / 2;
-    const open = this.expanded.has(node.id) || !!this.model?.filtering;
-
-    ImGui.InvisibleButton('##LabelCell', new ImGui.Vec2(Math.max(1, width), rowHeight));
-    const mouse = ImGui.GetMousePos(), arrow = node.children.length > 0 && mouse.x >= arrowX && mouse.x < arrowX + 16;
-    const hovered = ImGui.IsItemHovered();
-
-    if (this.rename !== node.id) { this.rowInteraction(node, arrow); this.dragSource(node); }
-    const dropping = this.dropTarget(node);
-
-    if (node.children.length) { drawEditorArrow(arrowX, y, 16, open ? 'down' : 'right', hovered && arrow ? I.foregroundHover : this.selectedKeys().has(node.id) ? I.foreground : I.muted); }
-    drawEditorIcon(node.kind === 'folder' ? open ? 'folderOpen' : 'folder' : node.icon, iconX, y, L.icon, node.kind === 'folder' ? FOLDER_TINT : tint);
-    if (this.rename === node.id) {
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(labelX - 3, p.y));
-      ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(3, Math.max(1, (rowHeight - ImGui.GetFontSize()) / 2)));
-      const result = inlineRename('##Rename', this.renameText, p.x + width - labelX, this.focusRename, ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows));
-
-      this.focusRename = false;
-      if (result.committed || result.cancelled) { this.finishRename(result.cancelled); }
-      ImGui.PopStyleVar();
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + rowHeight));
-    } else {
-      const color = node.item && !node.item.isActive ? I.muted : tint;
-
-      hierarchyText(node.label, labelX, p.y + (rowHeight - ImGui.GetFontSize()) / 2, p.x + width - labelX - 5, color, this.search[0]);
-      if (hovered && !ImGui.IsMouseDown(ImGui.MouseButton.Left) && ImGui.IsItemHovered()) {
-        hierarchyHint(node.label, node.type);
-      }
-    }
-
-    return dropping;
-  }
-
-  private rowInteraction (node: HierarchyNode, arrow: boolean): void {
-    if (ImGui.IsItemClicked(ImGui.MouseButton.Left)) {
-      const io = ImGui.GetIO(), selected = this.selectedKeys().has(node.id);
-
-      this.pressed = { id: node.id, deferred: selected && !io.KeyShift && !io.KeyCtrl && !io.KeySuper, dragged: false, arrow };
-      if (arrow) { this.toggle(node, io.KeyShift); } else if (!this.pressed.deferred) { this.clickRow(node); }
-    }
-    const pressed = this.pressed;
-
-    if (pressed?.id === node.id && pressed.deferred && !pressed.arrow && !pressed.dragged && ImGui.IsItemHovered() && ImGui.IsMouseReleased(ImGui.MouseButton.Left)) { this.clickRow(node); this.pressed = undefined; }
-    if (ImGui.IsItemHovered() && !arrow && ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) {
-      if (node.kind === 'folder') { this.toggle(node, false); } else { this.focusScene(); }
-    }
-    if (ImGui.IsItemClicked(ImGui.MouseButton.Right)) {
-      if (!this.selectedKeys().has(node.id)) { this.select([node.id]); }
-      this.contextRows = [...this.selectedKeys()]; this.openContext = true;
-    }
-  }
-
-  private drawVisibility (node: HierarchyNode, rowHeight: number, selected: boolean, hovered: boolean): void {
-    if (node.kind === 'world' || node.kind === 'item' && !node.editable) { return; }
-    const p = ImGui.GetCursorScreenPos(), items = this.model!.elements([node]);
-    const visible = items.length === 0 || items.some(item => item.isVisible);
-
-    ImGui.InvisibleButton('##Visibility', new ImGui.Vec2(L.gutter, rowHeight));
-    if (ImGui.IsItemClicked(ImGui.MouseButton.Left) && items.length) {
-      this.visibilityDrag = { visible: !visible, visited: new Set() };
-      const targets = selected ? this.model!.elements(this.selectedRows()) : items;
-
-      this.actions?.setVisible(targets, !visible); this.visibilityDrag.visited.add(node.id);
-      this.document?.setScopeActive(this, true);
-    }
-    const mouse = ImGui.GetMousePos();
-
-    if (this.visibilityDrag && ImGui.IsMouseDown(ImGui.MouseButton.Left) && hovered && mouse.x >= p.x && mouse.x < p.x + L.gutter && !this.visibilityDrag.visited.has(node.id)) {
-      this.actions?.setVisible(items, this.visibilityDrag.visible); this.visibilityDrag.visited.add(node.id);
-    }
-    if (!visible || selected || hovered) {
-      drawEditorIcon(visible ? 'view' : 'hidden', p.x + 4, p.y + (rowHeight - L.icon) / 2, L.icon,
-        ImGui.IsItemHovered() ? I.foregroundHover : selected ? I.foregroundHover : I.foreground);
-    }
-    if (ImGui.IsItemHovered()) { hierarchyHint(visible ? 'Hide in editor. Drag to hide more items.' : 'Show in editor. Drag to show more items.'); }
-  }
-
   private finishVisibility (): void {
     if (!this.visibilityDrag) { return; }
     this.visibilityDrag = undefined; this.document?.setScopeActive(this, false);
   }
+  private payloadRows (data: unknown): HierarchyNode[] {
+    const payload = data as ItemPayload;
 
-  private dragSource (node: HierarchyNode): void {
-    if (!node.editable || this.rename || this.pressed?.arrow || !ImGui.BeginDragDropSource()) { return; }
-    if (this.pressed) { this.pressed.dragged = true; }
-    const rows = this.selectedKeys().has(node.id) ? this.selectedRows().filter(row => row.editable) : [node];
-
-    ImGui.SetDragDropPayload(PAYLOAD, { document: this.document!, ids: rows.map(row => row.id) } satisfies ItemPayload);
-    const p = ImGui.GetCursorScreenPos();
-
-    drawEditorIcon(node.kind === 'folder' ? 'folderOpen' : node.icon, p.x, p.y + 2, 20, node.kind === 'folder' ? FOLDER_TINT : I.foreground);
-    ImGui.Dummy(new ImGui.Vec2(20, 24)); ImGui.SameLine(0, 8);
-    ImGui.Text(rows.length === 1 ? node.label : rows.length + ' items');
-    if (this.dropHint && this.dropHint.frame >= ImGui.GetFrameCount() - 1) { ImGui.TextDisabled(this.dropHint.text); }
-    ImGui.EndDragDropSource();
+    return payload?.kind === 'hierarchy-items' && payload.document === this.document ? payload.ids.flatMap(id => this.model?.nodes.get(id) ? [this.model.nodes.get(id)!] : []) : [];
   }
+  private canDrop (node: HierarchyNode | undefined, data: unknown, zone: DropZone): boolean {
+    const target = node ?? this.model?.level;
+    const rows = this.payloadRows(data);
 
-  private dropTarget (node: HierarchyNode): DropZone | undefined {
-    if (!ImGui.BeginDragDropTarget()) { return; }
-    const min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax(), mouse = ImGui.GetMousePos();
-    const edge = Math.max(3, Math.min(10, (max.y - min.y) * 0.25));
-    const zone: DropZone = node.kind === 'item' && node.editable ? mouse.y < min.y + edge ? 'before' : mouse.y > max.y - edge ? 'after' : 'inside' : 'inside';
-    const flags = ImGui.DragDropFlags.AcceptBeforeDelivery | ImGui.DragDropFlags.AcceptNoDrawDefaultRect;
-    const payload = ImGui.AcceptDragDropPayload<ItemPayload>(PAYLOAD, flags);
-    const data = payload?.Data;
-    const rows = data && data.document === this.document ? data.ids.flatMap(id => this.model!.nodes.get(id) ? [this.model!.nodes.get(id)!] : []) : [];
-    const valid = !!rows.length && !!(zone === 'inside' ? this.actions?.canMove(rows, node) : this.actions?.canReorder(rows, node));
-
-    if (data) {
-      if (valid) {
-        if (zone === 'inside') {
-          const frame = ImGui.GetFrameCount();
-
-          if (this.hoverDrop?.id !== node.id || this.hoverDrop.frame < frame - 1) { this.hoverDrop = { id: node.id, since: ImGui.GetTime(), frame }; }
-          this.hoverDrop.frame = frame;
-          if (ImGui.GetTime() - this.hoverDrop.since > 0.6 && !this.expanded.has(node.id)) { this.expanded.add(node.id); this.saveExpanded(); }
-        } else { this.hoverDrop = undefined; }
-        this.dropHint = { frame: ImGui.GetFrameCount(), text: zone === 'inside' ? 'Move into ' + node.label :
-          'Place ' + zone + ' ' + node.label + (this.options.sort !== 'hierarchy' ? '\nSwitches to Hierarchy Order.' : '') };
-        const delivered = ImGui.AcceptDragDropPayload<ItemPayload>(PAYLOAD, ImGui.DragDropFlags.AcceptNoDrawDefaultRect);
-
-        if (delivered) {
-          if (zone === 'inside') { this.actions?.move(this.model!, rows, node); this.expanded.add(node.id); this.saveExpanded(); } else if (this.actions?.reorder(this.model!, rows, node, zone)) {
-            this.options.sort = 'hierarchy'; this.options.descending = false; this.saveOptions(); this.pendingReveal = rows[0].id;
-          }
-          this.hoverDrop = undefined;
-        }
-      } else { ImGui.SetMouseCursor(ImGui.MouseCursor.NotAllowed); }
-    }
-    ImGui.EndDragDropTarget();
-
-    return valid ? zone : undefined;
+    return !!target && !!rows.length && !!(zone === 'inside' ? this.actions?.canMove(rows, target) : this.actions?.canReorder(rows, target));
   }
+  private drop (node: HierarchyNode | undefined, data: unknown, zone: DropZone): void {
+    const target = node ?? this.model?.level, rows = this.payloadRows(data);
 
-  private drawEmptyArea (x: number, width: number, rowHeight: number, empty: boolean): void {
-    ImGui.TableNextRow(); ImGui.TableSetColumnIndex(1);
-    const p = ImGui.GetCursorScreenPos(), available = Math.max(rowHeight, ImGui.GetContentRegionAvail().y);
-
-    ImGui.InvisibleButton('##EmptyOutliner', new ImGui.Vec2(Math.max(1, ImGui.GetContentRegionAvail().x), available));
-    this.dropTarget(this.model!.world);
-    const mouse = ImGui.GetMousePos(), inArea = mouse.x >= x && mouse.x < x + width && mouse.y >= p.y && ImGui.IsWindowHovered();
-
-    if (inArea && !this.hoveredRow) {
-      if (ImGui.IsMouseClicked(ImGui.MouseButton.Left) && !ImGui.GetIO().KeyCtrl && !ImGui.GetIO().KeySuper) { this.select([]); }
-      if (ImGui.IsMouseClicked(ImGui.MouseButton.Right)) { this.contextRows = []; this.openContext = true; }
-    }
-    if (empty) { hierarchyText('No matching items', p.x + 8, p.y + 12, width - 24, I.muted); }
+    if (!target || !this.model || !this.canDrop(target, data, zone)) { return; }
+    if (zone === 'inside') { this.actions?.move(this.model, rows, target); this.expanded.add(target.id); this.saveExpanded(); } else { this.actions?.reorder(this.model, rows, target, zone); this.options.sort = 'hierarchy'; this.options.descending = false; this.saveOptions(); }
+    this.refresh(); if (rows[0]) { this.tree?.reveal(rows[0].id); }
   }
-
-  private toggle (node: HierarchyNode, recursive: boolean): void {
-    const open = !this.expanded.has(node.id);
-    const nodes = recursive ? [node, ...this.model!.descendants(node)] : [node];
-
-    nodes.forEach(node => { if (open && node.children.length) { this.expanded.add(node.id); } else { this.expanded.delete(node.id); } });
-    this.saveExpanded();
-  }
-
-  private startRename (node: HierarchyNode): void {
-    if (!node.editable) { return; }
-    this.rename = node.id; this.renameText[0] = node.label; this.focusRename = true; this.pendingReveal = node.id;
-  }
-
-  private finishRename (cancel: boolean): void {
-    const node = this.rename && this.model?.nodes.get(this.rename);
-    const name = this.renameText[0].trim();
-
-    this.rename = undefined; this.focusRename = false;
-    if (!cancel && node && name) { this.actions?.rename(node, name); }
-  }
-
   private newFolder (): void {
     if (!this.model || !this.actions) { return; }
     const id = this.actions.createFolder(this.model, this.selectedRows(), id => {
-      this.applyingSelection = true;
-      try { this.selectedFolders = new Set([id]); this.anchor = id; this.focused = id; EditorSelection.clear(); } finally { this.applyingSelection = false; }
+      this.applyingSelection = true; this.selectedFolders = new Set([id]); this.selection.anchor = this.selection.focused = id;
+      EditorSelection.clear(); this.applyingSelection = false;
     });
 
-    if (id) {
-      this.expanded.add(id); this.saveExpanded();
-      this.buildModel();
-      const node = this.model.nodes.get(id);
-
-      if (node) { this.startRename(node); }
-    }
+    this.refresh(); if (id) { this.tree?.rename(id); }
   }
-
   private focusScene (): void {
     const scene = EditorWindow.getWindow(SceneViewportPanel);
 
     scene?.open();
-    if (this.selectedRows().some(node => node.kind === 'world')) { scene?.frameAll(); } else { scene?.frameSelection(); }
+    if (this.selectedRows().some(node => node.kind === 'level')) { scene?.frameAll(); } else { scene?.frameSelection(); }
   }
+  private keyboard (event: InputEventKey): void {
+    if (!this.model || this.tree?.root?.guiGetFocusOwner() instanceof LineEdit) { return; }
+    const modifier = event.ctrlPressed || event.metaPressed, code = event.physicalKeycode || event.keycode;
+    const rows = this.model.rows, selected = this.selectedRows();
+    const index = Math.max(0, rows.findIndex(node => node.id === this.selection.focused));
+    const node = rows[index];
+    let handled = true, next = -1;
 
-  private revealSelection (): void {
-    const item = EditorSelection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem).at(-1);
-
-    if (item && this.document && item.composition === this.document.composition) { this.pendingReveal = itemKey(this.document, item); }
+    if (modifier && code === 'KeyA') { this.select(rows.filter(row => row.kind !== 'level').map(row => row.id)); } else if (modifier && code === 'KeyF') { this.search?.grabFocus(); } else if (modifier && code === 'KeyD') { this.actions?.duplicate(this.model, selected); } else if (code === 'F2' && selected.length === 1 && selected[0].editable) { this.tree?.rename(selected[0].id); } else if (!modifier && code === 'KeyF') { this.focusScene(); } else if (code === 'Delete') { this.actions?.remove(this.model, selected.filter(node => node.editable)); } else if (code === 'Escape') { this.select([]); } else if (code === 'ArrowDown') { next = Math.min(rows.length - 1, index + 1); } else if (code === 'ArrowUp') { next = Math.max(0, index - 1); } else if (code === 'Home') { next = 0; } else if (code === 'End') { next = rows.length - 1; } else if (code === 'ArrowLeft' && node) {
+      if (this.expanded.has(node.id) && node.children.length) { this.toggle(node, event.shiftPressed); } else if (node.parent) { this.select([node.parent.id]); this.tree?.reveal(node.parent.id); }
+    } else if (code === 'ArrowRight' && node?.children.length) {
+      if (!this.expanded.has(node.id)) { this.toggle(node, event.shiftPressed); } else { this.select([node.children[0].id]); this.tree?.reveal(node.children[0].id); }
+    } else { handled = false; }
+    if (rows[next]) {
+      this.selection.replace(this.selectedKeys()); this.selection.choose(rows[next].id, rows.map(row => row.id), { range: event.shiftPressed, additive: modifier });
+      this.select([...this.selection.selected]); this.tree?.reveal(rows[next].id);
+    }
+    if (handled) { event.accept(); }
   }
+  private showContext (node: HierarchyNode | undefined, position: math.Vector2): void {
+    if (!this.context || !this.tree || !this.model) { return; }
+    if (node && !this.selectedKeys().has(node.id)) { this.select([node.id]); }
+    const rows = node ? this.selectedRows() : [], editable = rows.filter(row => row.editable);
+    const model = this.model, actions = this.actions!, document = this.document!;
+    const items = model.elements(rows);
+    const path = (node: HierarchyNode): string => node.parent?.folder ? path(node.parent) + '/' + node.label : node.label;
 
-  private keyboard (): void {
-    if (!this.model || !this.listFocused || this.searchFocused || this.rename || ImGui.GetIO().WantTextInput || ImGui.IsPopupOpen('', ImGui.PopupFlags.AnyPopup)) { return; }
-    const io = ImGui.GetIO(), modifier = io.KeyCtrl || io.KeySuper;
-    const rows = this.model.rows;
-    const current = Math.max(0, rows.findIndex(node => node.id === this.focused));
-    const selected = this.selectedRows();
-
-    if (modifier && ImGui.IsKeyPressed(ImGui.Key.A, false)) { this.select(rows.filter(row => row.kind !== 'world').map(row => row.id)); }
-    if (modifier && ImGui.IsKeyPressed(ImGui.Key.F, false)) { this.focusSearch = true; }
-    if (modifier && ImGui.IsKeyPressed(ImGui.Key.D, false)) { this.actions?.duplicate(this.model, selected); }
-    if (ImGui.IsKeyPressed(ImGui.Key.F2, false) && selected.length === 1) { this.startRename(selected[0]); }
-    if (!modifier && ImGui.IsKeyPressed(ImGui.Key.F, false)) { this.focusScene(); }
-    if (ImGui.IsKeyPressed(ImGui.Key.Delete, false)) { this.actions?.remove(this.model, selected.filter(node => node.editable)); }
-    if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { this.select([]); }
-    let next = -1;
-
-    if (ImGui.IsKeyPressed(ImGui.Key.DownArrow)) { next = Math.min(rows.length - 1, current + 1); }
-    if (ImGui.IsKeyPressed(ImGui.Key.UpArrow)) { next = Math.max(0, current - 1); }
-    if (ImGui.IsKeyPressed(ImGui.Key.Home)) { next = 0; }
-    if (ImGui.IsKeyPressed(ImGui.Key.End)) { next = rows.length - 1; }
-    if (rows[next]) { this.clickRow(rows[next]); this.focused = rows[next].id; this.pendingReveal = rows[next].id; }
-    const node = rows[current];
-
-    if (!node) { return; }
-    if (ImGui.IsKeyPressed(ImGui.Key.LeftArrow)) {
-      if (this.expanded.has(node.id) && node.children.length) { this.toggle(node, io.KeyShift); } else if (node.parent) { this.select([node.parent.id]); this.pendingReveal = node.parent.id; }
-    }
-    if (ImGui.IsKeyPressed(ImGui.Key.RightArrow) && node.children.length) {
-      if (!this.expanded.has(node.id)) { this.toggle(node, io.KeyShift); } else { this.select([node.children[0].id]); this.pendingReveal = node.children[0].id; }
-    }
+    this.context.setActions([
+      { label: 'Outliner', heading: true },
+      { label: 'Create', children: [...new Set(SCENE_ITEM_DESCRIPTORS.map(item => item.group))].map(group => ({ label: group, children: SCENE_ITEM_DESCRIPTORS.filter(item => item.group === group && item.creatable !== false).map(item => ({ label: item.label, action: () => { new SceneItemOperations(document).create(item, node?.kind === 'folder' ? { folderId: node.folder!.id } : { parent: node?.item }); } })) })) },
+      { label: 'Rename', shortcut: 'F2', enabled: editable.length === 1, action: () => this.tree?.rename(editable[0].id) },
+      { label: 'Duplicate', shortcut: 'Ctrl+D', enabled: editable.some(node => !!node.item), action: () => { actions.duplicate(model, editable); } },
+      { label: 'Delete', shortcut: 'Delete', enabled: !!editable.length, action: () => actions.remove(model, editable) },
+      { label: 'Frame Selection', shortcut: 'F', enabled: !!rows.length, action: () => this.focusScene() },
+      { label: 'Select Descendants', enabled: rows.some(row => row.children.length > 0), action: () => this.select([...new Set(rows.flatMap(row => model.descendants(row).map(child => child.id)))]) },
+      { label: 'Hierarchy', heading: true },
+      { label: 'Create Folder', action: () => this.newFolder() },
+      { label: 'Move To', enabled: !!editable.length, children: [...model.nodes.values()].filter(target => target.kind === 'level' || target.kind === 'folder').map(target => ({ label: target.kind === 'level' ? 'Scene Root' : path(target), enabled: actions.canMove(editable, target), action: () => actions.move(model, editable, target) })) },
+      { label: 'Detach', enabled: editable.some(node => node.item && node.item.parent !== document.composition.sceneRoot), action: () => actions.move(model, editable, model.level) },
+      { label: 'Show', heading: true },
+      { label: 'Show', enabled: !!items.length, action: () => actions.setVisible(items, true) },
+      { label: 'Hide', enabled: !!items.length, action: () => actions.setVisible(items, false) },
+      { label: 'Show All', action: () => actions.setVisible(model.items, true) },
+    ]);
+    this.context.show(this.tree, position);
   }
+  private settingsMenu (): MenuAction[] {
+    const toggle = (key: keyof HierarchyOptions, title: string): MenuAction => ({ label: title, checked: !!this.options[key], action: () => {
+      Reflect.set(this.options, key, !this.options[key]); this.saveOptions(); this.refresh();
+    } });
+    const types = [...new Set([...this.model?.nodes.values() ?? []].filter(node => node.editable && node.kind === 'item').map(node => node.type))].sort();
 
-  private drawContextMenu (): void {
-    if (this.openContext) { ImGui.OpenPopup('##OutlinerContext'); this.openContext = false; }
-    editorPopup('##OutlinerContext', () => this.contextMenuContent());
+    return [
+      { label: 'Hierarchy', heading: true },
+      { label: 'Expand All', action: () => { this.model?.nodes.forEach(node => { if (node.children.length) { this.expanded.add(node.id); } }); this.saveExpanded(); this.refresh(); } },
+      { label: 'Collapse All', action: () => { this.expanded.clear(); this.saveExpanded(); this.refresh(); } },
+      toggle('autoFrame', 'Always Frame Selection'), { label: '', separator: true },
+      ...([['hierarchy', 'Hierarchy Order'], ['label', 'Item Label'], ['type', 'Type'], ['visibility', 'Visibility']] as const).map(([sort, label]) => ({ label, checked: this.options.sort === sort, action: () => { this.options.sort = sort; this.options.descending = false; this.saveOptions(); this.refresh(); } })),
+      toggle('descending', 'Descending'), { label: 'Show', heading: true },
+      toggle('onlySelected', 'Only Selected'), toggle('hideInvisible', 'Hide Invisible Items'), toggle('showInternal', 'Show Runtime Objects'),
+      { label: 'Filter by Type', children: ['', ...types].map(type => ({ label: type || 'All Types', checked: this.options.typeFilter === type, action: () => { this.options.typeFilter = type; this.refresh(); } })) },
+      { label: '', separator: true }, toggle('showVisibility', 'Visibility Column'), toggle('showType', 'Type Column'),
+    ];
   }
-
-  private contextMenuContent (): void {
-    const nodes = this.contextRows.flatMap(id => this.model?.nodes.get(id) ? [this.model.nodes.get(id)!] : []);
-    const editable = nodes.filter(node => node.editable);
-    const items = this.model!.elements(editable.filter(node => node.kind === 'item'));
-
-    editorMenuSection('Create');
-    if (beginEditorMenu('Add Item', !!this.document)) {
-      drawCreateItemMenu(nodes.length === 1 && nodes[0].editable ? { parent: nodes[0].item, folderId: nodes[0].folder?.id } : undefined);
-      endEditorMenu();
-    }
-    editorMenuSection('Selection', true);
-    if (editorMenuItem('Focus Selection', 'F', false, !!items.length)) { this.focusScene(); }
-    if (editorMenuItem('Select Descendants', '', false, nodes.some(node => node.children.length))) { this.select([...new Set(nodes.flatMap(node => this.model!.descendants(node).map(child => child.id)))]); }
-    editorMenuSection('Edit', true);
-    if (editorMenuItem('Rename', 'F2', false, nodes.length === 1 && !!editable.length)) { this.startRename(editable[0]); }
-    if (editorMenuItem('Duplicate', 'Ctrl+D', false, !!items.length)) { this.actions?.duplicate(this.model!, editable); }
-    if (editorMenuItem('Delete', 'Delete', false, !!editable.length)) { this.actions?.remove(this.model!, editable); }
-    editorMenuSection('Organization', true);
-    if (editorMenuItem('Create Folder', '', false, !!this.document)) { this.newFolder(); }
-    if (beginEditorMenu('Move To', !!editable.length)) {
-      for (const target of [...this.model!.nodes.values()].filter(node => node.kind === 'world' || node.kind === 'folder')) {
-        if (editorMenuItem(target.kind === 'world' ? 'Scene Root' : this.folderPath(target), '', false, this.actions!.canMove(editable, target))) { this.actions?.move(this.model!, editable, target); }
-      }
-      endEditorMenu();
-    }
-    if (editorMenuItem('Detach', '', false, items.some(item => item.parent !== this.document!.composition.sceneRoot))) { this.actions?.move(this.model!, editable, this.model!.world); }
-    editorMenuSection('Visibility', true);
-    const targets = this.model!.elements(nodes);
-
-    if (editorMenuItem('Show', '', false, !!targets.length)) { this.actions?.setVisible(targets, true); }
-    if (editorMenuItem('Hide', '', false, !!targets.length)) { this.actions?.setVisible(targets, false); }
-    if (editorMenuItem('Show All', '', false, !!this.model!.items.length)) { this.actions?.setVisible(this.model!.items, true); }
-    if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
-  }
-
-  private folderPath (node: HierarchyNode): string { return node.parent?.folder ? this.folderPath(node.parent) + '/' + node.label : node.label; }
-
-  private settingsMenu (): void {
-    editorMenuSection('Hierarchy');
-    if (editorMenuItem('Expand All')) { this.model?.nodes.forEach(node => { if (node.children.length) { this.expanded.add(node.id); } }); this.saveExpanded(); }
-    if (editorMenuItem('Collapse All')) { this.expanded.clear(); this.saveExpanded(); }
-    if (editorMenuItem('Always Frame Selection', '', this.options.autoFrame)) { this.options.autoFrame = !this.options.autoFrame; this.saveOptions(); }
-    editorMenuSection('Sort', true);
-    for (const [sort, label] of [['hierarchy', 'Hierarchy Order'], ['label', 'Item Label'], ['type', 'Type'], ['visibility', 'Visibility']] as const) {
-      if (editorMenuItem(label, '', this.options.sort === sort)) { this.options.sort = sort; this.options.descending = false; this.saveOptions(); }
-    }
-    if (editorMenuItem('Descending', '', this.options.descending && this.options.sort !== 'hierarchy', this.options.sort !== 'hierarchy')) { this.options.descending = !this.options.descending; this.saveOptions(); }
-    editorMenuSection('Show', true);
-    for (const [key, label] of [['onlySelected', 'Only Selected'], ['hideInvisible', 'Hide Invisible Items'], ['showInternal', 'Show Runtime Objects']] as const) {
-      if (editorMenuItem(label, '', this.options[key])) { this.options[key] = !this.options[key]; this.saveOptions(); }
-    }
-    if (beginEditorMenu('Filter by Type')) {
-      if (editorMenuItem('All Types', '', !this.options.typeFilter)) { this.options.typeFilter = ''; }
-      const types = [...new Set([...this.model?.nodes.values() ?? []].filter(node => node.editable && node.kind === 'item').map(node => node.type))].sort();
-
-      for (const type of types) { if (editorMenuItem(type, '', this.options.typeFilter === type)) { this.options.typeFilter = type; } }
-      endEditorMenu();
-    }
-    editorMenuSection('Columns', true);
-    for (const [key, label] of [['showVisibility', 'Visibility'], ['showType', 'Type']] as const) {
-      if (editorMenuItem(label, '', this.options[key])) { this.options[key] = !this.options[key]; this.columnUpdate = true; this.saveOptions(); }
-    }
-  }
-
-  private drawStatus (width: number, height: number): void {
-    const p = ImGui.GetCursorScreenPos(), model = this.model!, count = model.items.length;
-    const selected = this.selectedRows().filter(node => node.kind !== 'world').length;
-    const text = model.filtering ? `${model.matchedCount} of ${count} items` : `${count} ${count === 1 ? 'item' : 'items'}`;
-
-    ImGui.GetWindowDrawList().AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + height), ImGui.GetColorU32(I.header));
-    hierarchyText(text + (selected ? ` (${selected} selected)` : ''), p.x + 14, p.y + 9, width - 28, model.filtering && !model.matchedCount ? I.muted : I.foreground);
-    ImGui.Dummy(new ImGui.Vec2(width, height));
-  }
-
-  private expansionKey (): string {
-    return 'effects-editor.outliner.expanded.' + projectWorkspace.current?.id + ':' + this.document?.composition.id;
-  }
-
+  private expansionKey (): string { return 'effects-editor.outliner.expanded.' + projectWorkspace.current?.id + ':' + this.document?.composition.id; }
   private saveExpanded (): void {
     if (!this.document) { return; }
-    try { window.localStorage.setItem(this.expansionKey(), JSON.stringify([...this.expanded])); } catch (error) { console.warn('Unable to save outliner expansion state.', error); }
+    try { window.localStorage.setItem(this.expansionKey(), JSON.stringify([...this.expanded])); } catch (error) { console.warn('Unable to save hierarchy expansion.', error); }
   }
-
   private saveOptions (): void {
-    try { window.localStorage.setItem(PREFERENCES, JSON.stringify(this.options)); } catch (error) { console.warn('Unable to save outliner preferences.', error); }
+    try { window.localStorage.setItem(PREFERENCES, JSON.stringify(this.options)); } catch (error) { console.warn('Unable to save hierarchy preferences.', error); }
   }
 }

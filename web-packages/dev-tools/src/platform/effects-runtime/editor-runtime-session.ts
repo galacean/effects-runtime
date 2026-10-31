@@ -1,13 +1,12 @@
 import type { Database, Engine } from '@galacean/effects';
 import { Player, RenderingDevice } from '@galacean/effects';
-import { ImGuiTextureBinding } from '../imgui/texture-binding';
 import { EditorRenderingDevice } from './editor-rendering-device';
 
 export class EditorRuntimeSession {
   static player: Player;
   static assetDatabase?: Database;
   static device: EditorRenderingDevice;
-  static readonly viewportTexture = new ImGuiTextureBinding(() => this.device?.sceneTexture ?? null, true);
+
   private static lastTime = 0;
 
   static initialize (container: HTMLElement | null, surface: HTMLCanvasElement, createDatabase?: (engine: Engine) => Database): void {

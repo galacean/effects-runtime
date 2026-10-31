@@ -24,7 +24,6 @@ export class ResultEditorNode extends AnimationGraphNode {
   }
 
   override Compile (context: AnimationGraphCompilationContext): number {
-    // Get connected node and compile it
     const pConnectedNode = this.GetConnectedInputNode<AnimationGraphNode>(0);
 
     if (pConnectedNode !== null) {
@@ -35,15 +34,11 @@ export class ResultEditorNode extends AnimationGraphNode {
   }
 }
 
-//-------------------------------------------------------------------------
-
 export class PoseResultEditorNode extends ResultEditorNode {
   constructor () {
     super(GraphValueType.Pose);
   }
 }
-
-//-------------------------------------------------------------------------
 
 export class BoolResultEditorNode extends ResultEditorNode {
   constructor () {
@@ -51,15 +46,11 @@ export class BoolResultEditorNode extends ResultEditorNode {
   }
 }
 
-//-------------------------------------------------------------------------
-
 export class IDResultEditorNode extends ResultEditorNode {
   constructor () {
     super(GraphValueType.ID);
   }
 }
-
-//-------------------------------------------------------------------------
 
 export class FloatResultEditorNode extends ResultEditorNode {
   constructor () {
@@ -67,23 +58,17 @@ export class FloatResultEditorNode extends ResultEditorNode {
   }
 }
 
-//-------------------------------------------------------------------------
-
 export class VectorResultEditorNode extends ResultEditorNode {
   constructor () {
     super(GraphValueType.Vector);
   }
 }
 
-//-------------------------------------------------------------------------
-
 export class TargetResultEditorNode extends ResultEditorNode {
   constructor () {
     super(GraphValueType.Target);
   }
 }
-
-//-------------------------------------------------------------------------
 
 export class BoneMaskResultEditorNode extends ResultEditorNode {
   constructor () {

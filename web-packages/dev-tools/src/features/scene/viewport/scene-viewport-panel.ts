@@ -1,11 +1,14 @@
-import type { InputEventKey } from '@galacean/effects';
+import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
+import { InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
+import { Control, FocusMode } from '@galacean/effects-plugin-gui';
 import { GizmoViewportUtils } from '@galacean/effects-plugin-editor-gizmo';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../../platform/imgui/index';
-import { EditorColors } from '../../../ui/theme/index';
+import { append, column, expand, screenPosition } from '../../../ui/controls/layout';
+import { editorColors, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { TexturePresentation, imageTexturePreview } from '../../assets/preview/texture-preview';
 import { sceneWorkspace } from '../scene-workspace';
 import { OrbitController } from './orbit-controller';
 import { SceneGizmo } from './scene-gizmo';
@@ -15,262 +18,181 @@ import { SceneViewportInput } from './scene-viewport-input';
 @editorPanel()
 export class SceneViewportPanel extends EditorWindow {
   cameraController = new OrbitController();
-
   private _is2DMode = true;
   private gizmo?: SceneGizmo;
   private input?: SceneViewportInput;
+  private viewport?: SceneViewport;
   private showGrid = true;
   private showFPS = false;
   private frameTimeMS = 0;
   private pendingFit = false;
   private pendingSelectionFit = false;
-  private viewportVisible = false;
   private updatingInput = false;
-  private readonly toolbar = new SceneToolbar();
+  private stableViewportFrames = 0;
 
-  get is2DMode (): boolean {
-    return this._is2DMode;
-  }
-
+  get is2DMode (): boolean { return this._is2DMode; }
   set is2DMode (value: boolean) {
-    if (this._is2DMode !== value) {
-      this.input?.reset();
-      this._is2DMode = value;
-      this.gizmo?.set2DMode(value);
-    }
+    if (this._is2DMode !== value) { this.input?.reset(); this._is2DMode = value; this.gizmo?.set2DMode(value); }
   }
-
   @menuItem('Window/Scene')
-  static showWindow () {
-    EditorWindow.getWindow(SceneViewportPanel).open();
-  }
+  static showWindow (): void { EditorWindow.getWindow(SceneViewportPanel).open(); }
+  constructor () { super(); this.title = 'Scene'; this.open(); }
+  override get layoutId (): string { return 'Scene'; }
+  protected override createContent (engine: Engine): Control {
+    const root = column(engine);
+    const toolbar = new SceneToolbar(engine, () => ({
+      gizmo: this.gizmo, is2DMode: this.is2DMode, showGrid: this.showGrid, showFPS: this.showFPS,
+      set2DMode: value => this.is2DMode = value, setShowGrid: value => this.showGrid = value, setShowFPS: value => this.showFPS = value,
+      resetView: () => { this.gizmo?.resetView(); this.cameraController = new OrbitController(); },
+    }));
 
-  constructor () {
-    super();
-    this.title = 'Scene';
-    this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
-    this.open();
-  }
+    append(root, toolbar);
+    this.viewport = append(root, expand(new SceneViewport(engine, this)));
 
+    return root;
+  }
   override update (dt: number): void {
-    if (dt > 0 && Number.isFinite(dt)) {
-      const sample = dt * 1000;
-
-      this.frameTimeMS = this.frameTimeMS > 0 ? this.frameTimeMS * 0.9 + sample * 0.1 : sample;
-    }
-    this.title = 'Scene' + (sceneWorkspace.current?.dirty ? ' *' : '') + '###Scene';
+    this.title = 'Scene' + (sceneWorkspace.current?.dirty ? ' *' : '');
+    if (dt > 0 && Number.isFinite(dt)) { this.frameTimeMS = this.frameTimeMS ? this.frameTimeMS * .9 + dt * 100 : dt * 1000; }
     const composition = EditorRuntimeSession.player.getCompositions()[0];
 
     if (composition !== this.gizmo?.composition) {
-      this.input?.dispose();
-      this.gizmo?.dispose();
-      this.input = undefined;
-      this.gizmo = undefined;
-      this.viewportVisible = false;
-      if (composition && this.isOpened()) {
-        this.gizmo = new SceneGizmo(composition);
-        this.gizmo.set2DMode(this.is2DMode);
-        this.gizmo.setVisible(false);
+      this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined;
+      if (composition) {
+        this.gizmo = new SceneGizmo(composition); this.gizmo.set2DMode(this.is2DMode);
         this.input = new SceneViewportInput(composition.engine, event => this.handleShortcut(event));
-        this.cameraController = new OrbitController();
-        this.pendingFit = true;
+        this.cameraController = new OrbitController(); this.pendingFit = true;
       }
     }
+    this.gizmo?.setVisible(!!this.viewport?.visibleInHierarchy);
   }
-
-  override draw (): void {
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
-    super.draw();
-    ImGui.PopStyleVar();
-  }
-
   protected override onDisable (): void {
-    this.flushEdits();
-    this.setViewportVisible(false);
+    this.flushEdits(); this.input?.reset(); this.gizmo?.setVisible(false);
+    EditorRuntimeSession.player?.container?.style.setProperty('--scene-text-edit-visibility', 'hidden');
   }
-
   override flushEdits (): void {
     if (this.updatingInput || !this.input || !this.gizmo) { return; }
-    sceneWorkspace.observe('Transform selection', () => {
-      this.input?.finish(); this.gizmo?.handler.resetEditMode();
-    }, this.gizmo.selectedItems);
+    sceneWorkspace.observe('Transform selection', () => { this.input?.finish(); this.gizmo?.handler.resetEditMode(); }, this.gizmo.selectedItems);
     sceneWorkspace.current?.setScopeActive(this, false);
   }
-
   override onUndoRedo (): void { this.input?.reset(); this.gizmo?.refreshSelection(); }
-
   frameAll (): void { this.pendingFit = true; }
+  frameSelection (): void { this.open(); this.pendingSelectionFit = true; }
+  resizeViewport (viewport: Control): void {
+    const player = EditorRuntimeSession.player, container = player.container;
 
-  frameSelection (): void {
-    this.open();
-    this.pendingSelectionFit = true;
+    if (!container || !viewport.visibleInHierarchy || viewport.width < 1 || viewport.height < 1) { return; }
+    const origin = screenPosition(viewport), width = Math.floor(viewport.width), height = Math.floor(viewport.height);
+
+    container.style.left = Math.floor(origin.x) + 'px'; container.style.top = Math.floor(origin.y) + 'px';
+    const resized = container.style.width !== width + 'px' || container.style.height !== height + 'px';
+
+    if (resized) { container.style.width = width + 'px'; container.style.height = height + 'px'; player.resize(); }
+    this.stableViewportFrames = resized ? 0 : this.stableViewportFrames + 1;
+    if (this.gizmo && this.is2DMode && this.stableViewportFrames >= 2) {
+      if (this.pendingSelectionFit) { this.gizmo.frameSelection(); this.pendingSelectionFit = this.pendingFit = false; } else if (this.pendingFit) { this.pendingFit = !this.gizmo.frameAll(); }
+    }
+    if (this.gizmo && !this.is2DMode) { this.cameraController.update(this.gizmo.composition.camera, width, height); }
+    container.style.setProperty('--scene-text-edit-visibility', viewport.hasFocus() ? 'visible' : 'hidden');
   }
+  mouse (event: InputEventMouseButton | InputEventMouseMotion, click = false): void {
+    if (!this.gizmo) { return; }
+    if (this.is2DMode) {
+      this.updatingInput = true;
+      const changed = sceneWorkspace.observe('Transform selection', () => this.input?.mouse(event), this.gizmo.selectedItems);
 
-  protected override onGUI (): void {
-    this.toolbar.draw({
-      gizmo: this.gizmo,
-      is2DMode: this.is2DMode,
-      showGrid: this.showGrid,
-      showFPS: this.showFPS,
-      set2DMode: value => this.is2DMode = value,
-      setShowGrid: value => this.showGrid = value,
-      setShowFPS: value => this.showFPS = value,
-      resetView: () => {
-        this.gizmo?.resetView();
-        this.cameraController = new OrbitController();
-      },
-    });
+      this.updatingInput = false;
+      const editing = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
 
-    const player = EditorRuntimeSession.player;
-    const origin = ImGui.GetCursorScreenPos();
-    const available = ImGui.GetContentRegionAvail();
-    const size = new ImGui.Vec2(available.x, available.y);
-    let resized = false;
+      if (changed || editing) { sceneWorkspace.current?.setScopeActive(this, true); }
+      if (!this.gizmo.handler.isMouseButtonPressed() && !editing) { sceneWorkspace.current?.setScopeActive(this, false); }
+    } else if (event instanceof InputEventMouseMotion) {
+      if (event.buttonMask & MouseButtonMask.Left) { this.cameraController.handleRotate(event.relative.x, event.relative.y); }
+      if (event.buttonMask & MouseButtonMask.Middle) { this.cameraController.handlePan(event.relative.x, event.relative.y); }
+    } else if (event.buttonIndex === MouseButton.WheelUp || event.buttonIndex === MouseButton.WheelDown) {
+      this.cameraController.handleZoom(event.factor * (event.buttonIndex === MouseButton.WheelUp ? 1 : -1));
+    } else if (click && this.viewport) {
+      const hits = this.gizmo.composition.hitTest(event.position.x / this.viewport.width * 2 - 1, 1 - event.position.y / this.viewport.height * 2, true);
 
-    if (size.x < 1 || size.y < 1) {
-      this.setViewportVisible(false);
-
-      return;
-    }
-    this.setViewportVisible(true);
-    if (player.container) {
-      player.container.style.left = `${origin.x}px`;
-      player.container.style.top = `${origin.y}px`;
-      if (player.container.style.width !== `${size.x}px` || player.container.style.height !== `${size.y}px`) {
-        player.container.style.width = `${size.x}px`;
-        player.container.style.height = `${size.y}px`;
-        player.resize(); resized = true;
-      }
-    }
-
-    const drawList = ImGui.GetWindowDrawList();
-
-    drawList.AddRectFilled(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), ImGui.COL32(22, 24, 27, 255));
-    if (this.gizmo) {
-      if (this.pendingSelectionFit && this.is2DMode && !resized) {
-        this.gizmo.frameSelection(); this.pendingSelectionFit = false; this.pendingFit = false;
-      } else if (this.pendingFit && this.is2DMode && !resized) {
-        this.pendingFit = !this.gizmo.frameAll();
-      }
-      if (this.showGrid && this.is2DMode) {
-        this.drawGrid(origin, size);
-      }
-      ImGui.Image(EditorRuntimeSession.viewportTexture, size, new ImGui.Vec2(0, 1), new ImGui.Vec2(1, 0));
-    } else {
-      const message = 'Open a composition to start editing';
-      const textSize = ImGui.CalcTextSize(message);
-
-      drawList.AddText(new ImGui.Vec2(origin.x + (size.x - textSize.x) / 2, origin.y + size.y / 2),
-        ImGui.GetColorU32(EditorColors.textSecondary), message);
-    }
-
-    if (this.showFPS) { this.drawFPS(origin, size); }
-    ImGui.SetCursorScreenPos(origin);
-    ImGui.InvisibleButton('##SceneViewport', size,
-      ImGui.ButtonFlags.MouseButtonLeft | ImGui.ButtonFlags.MouseButtonRight | ImGui.ButtonFlags.MouseButtonMiddle);
-    const hovered = ImGui.IsItemHovered();
-
-    if (this.gizmo && this.is2DMode) {
-      const changed = sceneWorkspace.observe('Transform selection', () => {
-        this.updatingInput = true;
-        try { this.input?.update(origin, hovered, ImGui.IsWindowFocused()); } finally { this.updatingInput = false; }
-      }, this.gizmo.selectedItems);
-      const editingText = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
-
-      if (changed || editingText) { sceneWorkspace.current?.setScopeActive(this, true); }
-      if (!this.gizmo.handler.isMouseButtonPressed() && !editingText) { sceneWorkspace.current?.setScopeActive(this, false); }
-    } else if (this.gizmo && hovered) {
-      this.updatePerspective(size);
-    }
-  }
-
-  private drawFPS (origin: ImGui.Vec2, size: ImGui.Vec2): void {
-    const frameTime = this.frameTimeMS, fps = frameTime > 0 ? 1000 / frameTime : 0;
-    const color = frameTime > 50 ? ImGui.COL32(233, 109, 99, 255) : frameTime > 33.9 ? ImGui.COL32(244, 186, 112, 255) : ImGui.COL32(127, 202, 159, 255);
-    const draw = ImGui.GetWindowDrawList();
-    const lines = [`${fps.toFixed(2)} FPS`, `${frameTime.toFixed(2)} ms`];
-
-    draw.PushClipRect(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), true);
-    lines.forEach((text, index) => {
-      const x = origin.x + size.x - ImGui.CalcTextSize(text).x - 16, y = origin.y + 12 + index * ImGui.GetTextLineHeight() * 1.1;
-
-      draw.AddText(new ImGui.Vec2(x + 1, y + 1), ImGui.COL32(0, 0, 0, 220), text);
-      draw.AddText(new ImGui.Vec2(x, y), color, text);
-    });
-    draw.PopClipRect();
-  }
-
-  private drawGrid (origin: ImGui.Vec2, size: ImGui.Vec2): void {
-    const engine = this.gizmo!.composition.engine;
-    const translation = GizmoViewportUtils.getViewportTranslation(engine);
-    const scale = this.gizmo!.scale;
-    const spacing = 32 * scale * Math.pow(2, -Math.floor(Math.log2(scale)));
-    const centerX = origin.x + size.x * (0.5 + translation.x / 2);
-    const centerY = origin.y + size.y * (0.5 - translation.y / 2);
-    const drawList = ImGui.GetWindowDrawList();
-    const color = ImGui.COL32(255, 255, 255, 13);
-
-    drawList.PushClipRect(origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y), true);
-    for (let x = origin.x + ((centerX - origin.x) % spacing + spacing) % spacing; x < origin.x + size.x; x += spacing) {
-      drawList.AddLine(new ImGui.Vec2(x, origin.y), new ImGui.Vec2(x, origin.y + size.y), color);
-    }
-    for (let y = origin.y + ((centerY - origin.y) % spacing + spacing) % spacing; y < origin.y + size.y; y += spacing) {
-      drawList.AddLine(new ImGui.Vec2(origin.x, y), new ImGui.Vec2(origin.x + size.x, y), color);
-    }
-    drawList.AddLine(new ImGui.Vec2(origin.x, centerY), new ImGui.Vec2(origin.x + size.x, centerY), ImGui.COL32(170, 70, 70, 90));
-    drawList.AddLine(new ImGui.Vec2(centerX, origin.y), new ImGui.Vec2(centerX, origin.y + size.y), ImGui.COL32(80, 150, 100, 90));
-    drawList.PopClipRect();
-  }
-
-  private updatePerspective (size: ImGui.Vec2): void {
-    if (ImGui.IsMouseReleased(ImGui.MouseButton.Left)) {
-      const drag = ImGui.GetMouseDragDelta(ImGui.MouseButton.Left, 0);
-
-      if (Math.hypot(drag.x, drag.y) < 5) {
-        const min = ImGui.GetItemRectMin();
-        const mouse = ImGui.GetMousePos();
-        const hits = this.gizmo!.composition.hitTest((mouse.x - min.x) / size.x * 2 - 1, 1 - (mouse.y - min.y) / size.y * 2, true);
-
-        EditorSelection.select(hits[hits.length - 1]?.item ?? null);
-      }
-    }
-    this.cameraController.update(this.gizmo!.composition.camera, size.x, size.y);
-  }
-
-  private handleShortcut (event: InputEventKey): void {
-    const gizmo = this.gizmo;
-
-    if (!gizmo || !this.is2DMode || event.echo || event.ctrlPressed || event.metaPressed || event.altPressed) {
-      return;
-    }
-    if (event.physicalKeycode === 'Escape') {
-      if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
-    } else if (gizmo.handler.isMouseButtonPressed()) {
-      return;
-    } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') {
-      gizmo.setTool('transform');
-    } else if (event.physicalKeycode === 'KeyH') {
-      gizmo.setTool('hand');
-    } else if (event.physicalKeycode === 'KeyF') {
-      gizmo.frameSelection();
-    } else if (event.physicalKeycode === 'Home') {
-      gizmo.frameAll();
-    } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) {
-      gizmo.editText();
-    } else {
-      return;
+      EditorSelection.select(hits[hits.length - 1]?.item ?? null);
     }
     event.accept();
   }
+  key (event: InputEventKey): void { this.input?.key(event); }
+  leave (): void { this.input?.leave(); }
+  drawBackground (control: Control): void {
+    control.fillRect(0, 0, control.width, control.height, new math.Color(22 / 255, 24 / 255, 27 / 255, 1));
+    if (!this.gizmo) {
+      const text = 'Open a composition to start editing', size = control.measureText(text, EDITOR_FONT_SIZE, EDITOR_FONT);
 
-  private setViewportVisible (visible: boolean): void {
-    if (!visible && this.viewportVisible) {
-      this.input?.reset();
+      control.drawText((control.width - size.width) / 2, (control.height - size.lineHeight) / 2, text, EDITOR_FONT_SIZE, editorColors.muted, EDITOR_FONT);
+
+      return;
     }
-    this.viewportVisible = visible;
-    this.gizmo?.setVisible(visible);
-    const showTextOverlay = visible && ImGui.IsWindowFocused() && !ImGui.IsPopupOpen('', ImGui.PopupFlags.AnyPopup);
+    if (!this.showGrid || !this.is2DMode) { return; }
+    const translation = GizmoViewportUtils.getViewportTranslation(this.gizmo.composition.engine), scale = this.gizmo.scale;
+    const spacing = 32 * scale * Math.pow(2, -Math.floor(Math.log2(scale)));
+    const cx = control.width * (.5 + translation.x / 2), cy = control.height * (.5 - translation.y / 2);
+    const grid = new math.Color(1, 1, 1, .05);
 
-    EditorRuntimeSession.player.container?.style.setProperty('--scene-text-edit-visibility', showTextOverlay ? 'visible' : 'hidden');
+    for (let x = (cx % spacing + spacing) % spacing; x < control.width; x += spacing) { control.drawLine(x, 0, x, control.height, grid); }
+    for (let y = (cy % spacing + spacing) % spacing; y < control.height; y += spacing) { control.drawLine(0, y, control.width, y, grid); }
+    control.drawLine(0, cy, control.width, cy, new math.Color(.67, .27, .27, .35));
+    control.drawLine(cx, 0, cx, control.height, new math.Color(.31, .59, .39, .35));
   }
+  drawOverlay (control: Control): void {
+    if (!this.showFPS) { return; }
+    const ms = this.frameTimeMS, tint = ms > 50 ? new math.Color(.91, .43, .39, 1) : ms > 33.9 ? new math.Color(.96, .73, .44, 1) : new math.Color(.5, .79, .62, 1);
+
+    [(ms > 0 ? 1000 / ms : 0).toFixed(2) + ' FPS', ms.toFixed(2) + ' ms'].forEach((text, index) => {
+      control.drawText(control.width - control.measureText(text, EDITOR_FONT_SIZE, EDITOR_FONT).width - 16, 12 + index * 18, text, EDITOR_FONT_SIZE, tint, EDITOR_FONT);
+    });
+  }
+  private handleShortcut (event: InputEventKey): void {
+    const gizmo = this.gizmo;
+
+    if (!gizmo || !this.is2DMode || event.echo || event.ctrlPressed || event.metaPressed || event.altPressed) { return; }
+    if (event.physicalKeycode === 'Escape') {
+      if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
+    } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }
+    event.accept();
+  }
+}
+
+class SceneViewport extends Control {
+  private readonly presentation: TexturePresentation;
+  private pressedAt?: math.Vector2;
+  private dragDistance = 0;
+  constructor (engine: Engine, private readonly panel: SceneViewportPanel) {
+    super(engine); this.focusMode = FocusMode.All;
+    this.presentation = new TexturePresentation(engine);
+  }
+  override update (dt: number): void {
+    this.panel.resizeViewport(this);
+    if (this.visibleInHierarchy) { this.presentation.update(imageTexturePreview({ texture: () => EditorRuntimeSession.device.sceneTexture, flipY: true }), undefined, Math.max(this.width, this.height) * window.devicePixelRatio); }
+    super.update(dt);
+  }
+  override draw (): void {
+    const graphics = this.engine.renderingServer.graphics;
+
+    graphics.pushClipRect(0, 0, this.width, this.height);
+    this.panel.drawBackground(this); this.presentation.draw(this, 0, 0, this.width, this.height); this.panel.drawOverlay(this);
+    graphics.popClipRect();
+  }
+  override onMouseDown (event: InputEventMouseButton): void {
+    this.grabFocus(); this.pressedAt = event.position.clone(); this.dragDistance = 0; this.panel.mouse(event);
+  }
+  override onMouseMove (event: InputEventMouseMotion): void {
+    if (this.pressedAt) { this.dragDistance = Math.max(this.dragDistance, event.position.clone().subtract(this.pressedAt).length()); }
+    this.panel.mouse(event);
+  }
+  override onMouseUp (event: InputEventMouseButton): void {
+    this.panel.mouse(event, !!this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Left && !event.canceled);
+    this.pressedAt = undefined;
+  }
+  override onMouseWheel (event: InputEventMouseButton): void { this.panel.mouse(event); }
+  override onMouseLeave (): void { this.panel.leave(); }
+  override onKeyDown (event: InputEventKey): void { this.panel.key(event); }
+  override onKeyUp (event: InputEventKey): void { this.panel.key(event); }
+  override onDestroy (): void { this.presentation.dispose(); super.onDestroy(); }
 }

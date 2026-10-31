@@ -1,122 +1,126 @@
-import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
+import { EditorSearchField } from '../../../ui/controls/search-field';
+import type { Engine } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import { HSlider, HorizontalAlignment, Label, LineEdit, VerticalAlignment } from '@galacean/effects-plugin-gui';
+import type { ButtonDrawMode, ContentInsets } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../../platform/imgui';
-import { assetDragPreview, assetTileHeight, paintAssetRow, paintAssetTile } from '../../../ui/asset-view/asset-view';
-import { drawEditorIcon } from '../../../ui/icons/editor-icons';
-import { ListItemInteraction, ListSelection } from '../../../ui/list-view/list-selection';
-import { InteractionColors as I, editorRowColors } from '../../../ui/theme/editor-interaction';
-import { searchBar } from '../../../ui/widgets/search-bar';
-import { splitter } from '../../../ui/widgets/splitter';
+import { AssetView } from '../../../ui/asset-view/asset-view';
+import { append, column, expand, margin, place } from '../../../ui/controls/layout';
+import { EditorSelectableRow } from '../../../ui/controls/selectable-row';
+import { drawAssetIcon, type AssetIcon } from '../../../ui/icons/asset-icons';
+import { editorColors, EDITOR_COMPACT_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { EditorSplitContainer } from '../../../ui/controls/split-container';
+import { EditorToolbar } from '../../../ui/controls/toolbar';
+import { ListSelection } from '../../../ui/list-view/list-selection';
 import { openRuntimeAsset } from '../editors/asset-editor-registry';
-import type { RuntimeAssetCategory, RuntimeAssetItem } from './runtime-asset-source';
-import { RUNTIME_ASSET_CATEGORIES, RuntimeAssetSource } from './runtime-asset-source';
+import { RUNTIME_ASSET_CATEGORIES, RuntimeAssetSource, type RuntimeAssetCategory, type RuntimeAssetItem } from './runtime-asset-source';
+
+class AssetCategoryRow extends EditorSelectableRow {
+  readonly count: Label;
+  constructor (engine: Engine, private readonly assetIcon: AssetIcon, title: string) {
+    super(engine, 'folder', title); this.setCustomMinimumSize(0, 22);
+    this.count = append(this, new Label(engine)); this.count.horizontalAlignment = HorizontalAlignment.Right; this.count.verticalAlignment = VerticalAlignment.Center;
+    this.count.setThemeFontSizeOverride('fontSize', EDITOR_COMPACT_FONT_SIZE); this.count.setThemeColorOverride('fontColor', editorColors.muted);
+    this.on('sizeChanged', () => place(this.count, this.width - 38, 0, 32, this.height));
+  }
+  protected override getContentInsets (): ContentInsets { return { left: 25, right: 42, top: 0, bottom: 0 }; }
+  protected override drawDecoration (_mode: ButtonDrawMode): void { drawAssetIcon(this, this.assetIcon, 4, (this.height - 16) / 2, 16); }
+  override update (dt: number): void { this.count.setThemeColorOverride('fontColor', this.selected ? editorColors.foregroundHover : editorColors.muted); super.update(dt); }
+}
 
 @editorPanel()
 export class RuntimeAssetsPanel extends EditorWindow {
   private readonly source = new RuntimeAssetSource();
   private readonly selection = new ListSelection<string>();
-  private readonly interaction = new ListItemInteraction<string>();
-  private readonly search: [string] = [''];
   private category: RuntimeAssetCategory = 'All';
+  private query = '';
   private scale = 96;
-  private sourcesWidth = 180;
+  private assetView!: AssetView;
+  private status!: Label;
+  private categories = new Map<RuntimeAssetCategory, AssetCategoryRow>();
+  private items: RuntimeAssetItem[] = [];
+  private visible: RuntimeAssetItem[] = [];
+  private signature = '';
 
-  constructor () {
-    super(); this.title = 'Runtime Assets';
-    this.setWindowFlags(ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
-  }
-
+  constructor () { super(); this.title = 'Runtime Assets'; }
   @menuItem('Window/Runtime Assets')
   static showWindow (): void { EditorWindow.getWindow(RuntimeAssetsPanel).open(); }
+  protected override createContent (engine: Engine): Control {
+    const root = column(engine), search = new EditorSearchField(engine), sources = column(engine);
 
-  protected override onDisable (): void { this.interaction.reset(); }
+    search.placeholderText = 'Search assets'; search.on('textChanged', text => { this.query = text.toLowerCase(); this.refresh(); });
+    append(root, margin(engine, search, 6));
+    const icons: Record<RuntimeAssetCategory, AssetIcon> = { All: 'folder', Textures: 'texture', Materials: 'material', Shaders: 'shader', Geometries: 'geometry', AnimationClips: 'animationClip' };
 
-  protected override onGUI (): void {
-    const engine = EditorRuntimeSession.player?.engine;
-
-    if (!engine) {
-      ImGui.TextDisabled('No engine loaded');
-
-      return;
-    }
-    const items = this.source.items(engine);
-    const byId = new Map(items.map(item => [item.object, item.id]));
-
-    this.selection.replace(EditorSelection.getSelectedObjects().flatMap(object => byId.has(object as RuntimeAssetItem['object']) ? [byId.get(object as RuntimeAssetItem['object'])!] : []));
-    searchBar('##RuntimeAssetSearch', this.search, { hint: 'Search assets' });
-    const available = ImGui.GetContentRegionAvail(), height = Math.max(30, available.y - 32);
-
-    ImGui.PushStyleColor(ImGui.Col.ChildBg, I.recessed);
-    ImGui.BeginChild('##RuntimeAssetSources', new ImGui.Vec2(Math.min(this.sourcesWidth, available.x * 0.4), height), ImGui.ChildFlags.Borders);
     for (const category of RUNTIME_ASSET_CATEGORIES) {
-      const count = category === 'All' ? items.length : items.filter(item => item.category === category).length;
-      const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-      const selected = this.category === category;
-      const clicked = ImGui.InvisibleButton(category, new ImGui.Vec2(width, 24));
-      const colors = editorRowColors({ selected, hovered: ImGui.IsItemHovered(), focused: ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows) });
+      const button = append(sources, new AssetCategoryRow(engine, icons[category], category === 'AnimationClips' ? 'Animation Clips' : category));
 
-      ImGui.GetWindowDrawList().AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + 24), ImGui.GetColorU32(colors.background));
-      drawEditorIcon('folder', p.x + 4, p.y + 4, 16, colors.foreground);
-      ImGui.GetWindowDrawList().AddText(new ImGui.Vec2(p.x + 26, p.y + 3), ImGui.GetColorU32(colors.foreground), category);
-      ImGui.GetWindowDrawList().AddText(new ImGui.Vec2(p.x + width - ImGui.CalcTextSize(String(count)).x - 6, p.y + 3), ImGui.GetColorU32(I.muted), String(count));
-      if (clicked) { this.category = category; }
+      button.on('pressed', () => { this.category = category; this.refresh(); });
+      this.categories.set(category, button);
     }
-    ImGui.EndChild(); ImGui.PopStyleColor(); ImGui.SameLine(0, 0);
-    this.sourcesWidth = splitter('##RuntimeAssetSplitter', this.sourcesWidth, { length: height, min: 120, max: Math.max(120, available.x * 0.4) });
-    ImGui.SameLine(0, 0);
-    const query = this.search[0].trim().toLowerCase();
-    const visible = items.filter(item => (this.category === 'All' || this.category === item.category) && (!query || (item.name + ' ' + item.type).toLowerCase().includes(query)));
+    this.assetView = new AssetView(engine, {
+      selected: id => this.selection.selected.has(id),
+      choose: (id, modifiers) => {
+        this.selection.choose(id, this.visible.map(item => item.id), modifiers);
+        EditorSelection.setObjects(this.items.filter(item => this.selection.selected.has(item.id)).map(item => item.object));
+      },
+      open: id => {
+        const item = this.items.find(item => item.id === id);
 
-    ImGui.PushStyleColor(ImGui.Col.ChildBg, I.recessed);
-    ImGui.BeginChild('##RuntimeAssetItems', new ImGui.Vec2(0, height));
-    const origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x;
-    const list = this.scale <= 40, tileWidth = this.scale + 16, itemHeight = list ? 28 : assetTileHeight(tileWidth, 2);
-    const columns = list ? 1 : Math.max(1, Math.floor((width + 8) / (tileWidth + 8)));
-    const focused = ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows);
+        if (item) { openRuntimeAsset(item.object); }
+      },
+      context: () => {}, rename: () => {}, canDrop: () => false, drop: () => {},
+      drag: id => {
+        const object = this.items.find(item => item.id === id)?.object;
 
-    for (let index = 0; index < visible.length; index++) {
-      const item = visible[index], x = origin.x + index % columns * (tileWidth + 8), y = origin.y + Math.floor(index / columns) * (itemHeight + 8);
-      const rect = { x, y, width: list ? width : tileWidth, height: itemHeight };
+        return object && { type: object.constructor.name, data: object };
+      },
+      marquee: ids => { this.selection.replace(ids); EditorSelection.setObjects(this.items.filter(item => this.selection.selected.has(item.id)).map(item => item.object)); },
+      key: event => {
+        if ((event.ctrlPressed || event.metaPressed) && event.keycode.toLowerCase() === 'a') {
+          this.selection.replace(this.visible.map(item => item.id)); EditorSelection.setObjects(this.visible.map(item => item.object)); event.accept();
+        } else if (event.keycode.startsWith('Arrow') && this.visible.length) {
+          const index = Math.max(0, this.visible.findIndex(item => item.id === this.selection.focused));
+          const delta = event.keycode === 'ArrowLeft' ? -1 : event.keycode === 'ArrowRight' ? 1 : event.keycode === 'ArrowUp' ? -this.assetView.columns : this.assetView.columns;
+          const item = this.visible[Math.max(0, Math.min(this.visible.length - 1, index + delta))];
 
-      ImGui.PushID(item.id); ImGui.SetCursorScreenPos(new ImGui.Vec2(x, y));
-      ImGui.InvisibleButton('##RuntimeAsset', new ImGui.Vec2(rect.width, rect.height));
-      if (ImGui.IsItemVisible()) {
-        const hovered = ImGui.IsItemHovered(), state = { selected: this.selection.selected.has(item.id), hovered, focused };
+          this.assetView.actions.choose(item.id, { additive: event.ctrlPressed || event.metaPressed, range: event.shiftPressed }); this.assetView.revealAsset(item.id); event.accept();
+        } else if (event.keycode === 'Enter' && this.selection.focused) { this.assetView.actions.open(this.selection.focused); event.accept(); }
+      },
+    });
+    append(root, expand(new EditorSplitContainer(engine, sources, this.assetView, false, .2)));
+    const footer = new EditorToolbar(engine, 24);
 
-        this.itemInput(item, visible, hovered);
-        if (list) { paintAssetRow(item, rect, state); } else { paintAssetTile(item, rect, state); }
-        if (hovered && ImGui.IsItemHovered()) { editorTooltip(item.name + '\n' + item.type + '\n' + item.summary); }
-        if (ImGui.BeginDragDropSource()) {
-          this.interaction.drag(item.id);
-          ImGui.SetDragDropPayload(item.object.constructor.name, item.object);
-          assetDragPreview(item, 1); ImGui.EndDragDropSource();
-        }
-      }
-      ImGui.PopID();
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + Math.ceil(visible.length / columns) * (itemHeight + 8)));
-    ImGui.Dummy(new ImGui.Vec2(Math.max(1, width), 1));
-    ImGui.EndChild(); ImGui.PopStyleColor();
-    ImGui.TextDisabled(visible.length + ' of ' + items.length + ' assets'); ImGui.SameLine();
-    ImGui.SetNextItemWidth(Math.min(160, ImGui.GetContentRegionAvail().x));
-    ImGui.SliderFloat('##RuntimeAssetSize', next => this.scale = next ?? this.scale, 28, 192, '');
+    this.status = expand(footer.label(''), true, false);
+    const slider = append(footer, new HSlider(engine));
+
+    slider.minValue = 28; slider.maxValue = 192; slider.value = this.scale; slider.setCustomMinimumSize(160, 24);
+    slider.on('valueChanged', value => { this.scale = value; this.assetView.configure(value <= 40 ? 'list' : 'tiles', value); });
+    append(root, margin(engine, footer, 6, 2));
+
+    return root;
   }
+  override update (): void {
+    if (!this.assetView) { return; }
+    const items = this.source.items(EditorRuntimeSession.player.engine);
+    const signature = items.map(item => item.id + item.name + item.summary).join('|');
 
-  private itemInput (item: RuntimeAssetItem, order: RuntimeAssetItem[], hovered: boolean): void {
-    const io = ImGui.GetIO();
+    if (signature !== this.signature) { this.items = items; this.signature = signature; this.refresh(); }
+    const objects = new Set(EditorSelection.getSelectedObjects());
 
-    if (ImGui.IsItemClicked(ImGui.MouseButton.Left)) { this.interaction.press(item.id, { additive: io.KeyCtrl || io.KeySuper, range: io.KeyShift }, true); }
-    if (ImGui.IsMouseReleased(ImGui.MouseButton.Left)) {
-      const modifiers = this.interaction.release(item.id);
-
-      if (modifiers && hovered) {
-        this.selection.choose(item.id, order.map(entry => entry.id), modifiers);
-        EditorSelection.setObjects(order.filter(entry => this.selection.selected.has(entry.id)).map(entry => entry.object));
-      }
+    this.selection.replace(this.items.filter(item => objects.has(item.object)).map(item => item.id));
+  }
+  private refresh (): void {
+    if (!this.assetView) { return; }
+    this.visible = this.items.filter(item => (this.category === 'All' || this.category === item.category) && (item.name + ' ' + item.type).toLowerCase().includes(this.query));
+    this.assetView.setItems(this.visible); this.assetView.configure(this.scale <= 40 ? 'list' : 'tiles', this.scale);
+    this.status.text = this.visible.length + ' of ' + this.items.length + ' assets';
+    for (const [category, button] of this.categories) {
+      button.count.text = String(category === 'All' ? this.items.length : this.items.filter(item => item.category === category).length);
+      button.selected = category === this.category;
     }
-    if (hovered && ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) { openRuntimeAsset(item.object); }
   }
 }

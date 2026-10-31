@@ -1,5 +1,5 @@
 import type { Composition, VFXItem, spec } from '@galacean/effects';
-import type { EditorIcon } from '../../ui/icons/editor-icons';
+import type { EditorIcon } from '../../ui/icons/control-icons';
 import type { SceneDocument } from '../scene/document/scene-document';
 import type { SceneFolder, SceneHierarchyData } from '../scene/document/scene-types';
 import { SCENE_ITEM_DESCRIPTORS } from '../scene/ui/scene-item-palette';
@@ -21,7 +21,7 @@ export interface HierarchyNode {
   label: string,
   type: string,
   icon: EditorIcon,
-  kind: 'world' | 'folder' | 'item',
+  kind: 'level' | 'folder' | 'item',
   item?: VFXItem,
   folder?: SceneFolder,
   parent?: HierarchyNode,
@@ -30,6 +30,7 @@ export interface HierarchyNode {
   matched: boolean,
   retained: boolean,
   visible: boolean,
+  highlighted: boolean,
   depth: number,
 }
 
@@ -60,14 +61,14 @@ export class HierarchyModel {
   readonly nodes = new Map<string, HierarchyNode>();
   readonly rows: HierarchyNode[] = [];
   readonly items: VFXItem[] = [];
-  readonly world: HierarchyNode;
+  readonly level: HierarchyNode;
   readonly filtering: boolean;
   matchedCount = 0;
 
   constructor (readonly document: SceneDocument, readonly composition: Composition, query: string,
     options: HierarchyOptions, expanded: Set<string>, selected: Set<string>) {
     this.filtering = !!query.trim() || options.onlySelected || options.hideInvisible || !!options.typeFilter;
-    this.world = this.add({ id: 'world', label: (document.name || composition.name) + ' (Editor)', type: 'World', icon: 'scene', kind: 'world', editable: false });
+    this.level = this.add({ id: 'level', label: document.name || composition.name, type: 'Scene', icon: 'scene', kind: 'level', editable: false });
     const data = hierarchyData(document);
     const folders = new Map(data.folders.map(folder => [folder.id, this.add({ id: folderKey(folder.id), label: folder.name,
       type: 'Folder', icon: 'folder', kind: 'folder', folder, editable: true })]));
@@ -86,7 +87,7 @@ export class HierarchyModel {
         }
         seen.add(ancestor.folder!.id); ancestor = folders.get(ancestor.folder!.parentId ?? '');
       }
-      this.attach(node, parent ?? this.world);
+      this.attach(node, parent ?? this.level);
     }
     const visit = (item: VFXItem, parent: HierarchyNode): void => {
       const editable = !!item.definition.id && item !== composition.sceneRoot && item !== composition.root;
@@ -100,15 +101,15 @@ export class HierarchyModel {
       const node = this.add({ id: itemKey(document, item), label: item.name, type: editable ? type : 'Runtime Object', icon, kind: 'item', item, editable });
 
       if (editable) { this.items.push(item); }
-      const folder = parent === this.world ? folders.get(data.itemFolders[document.serializer.id(item)]) : undefined;
+      const folder = parent === this.level ? folders.get(data.itemFolders[document.serializer.id(item)]) : undefined;
 
       this.attach(node, folder ?? parent);
       item.children.forEach(child => visit(child, node));
     };
 
-    composition.sceneRoot.children.forEach(item => visit(item, this.world));
+    composition.sceneRoot.children.forEach(item => visit(item, this.level));
     if (options.showInternal) {
-      for (const item of composition.root.children) { if (item !== composition.sceneRoot) { visit(item, this.world); } }
+      for (const item of composition.root.children) { if (item !== composition.sceneRoot) { visit(item, this.level); } }
     }
     const filter = (node: HierarchyNode): boolean => {
       const childMatches = node.children.map(filter).some(Boolean);
@@ -119,6 +120,7 @@ export class HierarchyModel {
         (!options.hideInvisible || !isItem || !!node.item?.isVisible) && (!options.typeFilter || node.type === options.typeFilter);
       if (isItem && node.editable && node.matched) { this.matchedCount++; }
       node.retained = node.matched || childMatches;
+      node.highlighted = node.children.some(child => selected.has(child.id) || child.highlighted);
 
       return node.retained;
     };
@@ -136,20 +138,20 @@ export class HierarchyModel {
       if (expanded.has(node.id) || this.filtering) { node.children.forEach(child => flatten(child, depth + 1)); }
     };
 
-    filter(this.world);
-    if (!this.filtering || this.world.children.some(node => node.retained)) { flatten(this.world, 0); }
+    filter(this.level);
+    if (!this.filtering || this.level.children.some(node => node.retained)) { flatten(this.level, 0); }
   }
 
   descendants (node: HierarchyNode): HierarchyNode[] { return node.children.flatMap(child => [child, ...this.descendants(child)]); }
 
   elements (nodes: HierarchyNode[], recursive = false): VFXItem[] {
-    return [...new Set(nodes.flatMap(node => node.kind === 'world' ? this.items :
+    return [...new Set(nodes.flatMap(node => node.kind === 'level' ? this.items :
       node.kind === 'folder' || recursive ? [node, ...this.descendants(node)].flatMap(child => child.item && child.editable ? [child.item] : []) :
         node.item && node.editable ? [node.item] : []))];
   }
 
-  private add (data: Omit<HierarchyNode, 'children' | 'depth' | 'matched' | 'retained' | 'visible'>): HierarchyNode {
-    const node = { ...data, children: [], depth: 0, matched: true, retained: true, visible: true };
+  private add (data: Omit<HierarchyNode, 'children' | 'depth' | 'matched' | 'retained' | 'visible' | 'highlighted'>): HierarchyNode {
+    const node = { ...data, children: [], depth: 0, matched: true, retained: true, visible: true, highlighted: false };
 
     this.nodes.set(node.id, node);
 

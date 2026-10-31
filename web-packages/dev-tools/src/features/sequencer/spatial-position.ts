@@ -1,7 +1,7 @@
 import type { ValueGetter } from '@galacean/effects';
 import { BezierCurve, InterpolationMode, WeightedMode, createValueGetter, spec } from '@galacean/effects';
 import type { SequenceKey } from './curve-data';
-import { decodeCurve, decodeSpatialCurve, encodeCurve, insertBoundary, makeKey } from './curve-data';
+import { decodeCurve, decodeSpatialCurve, encodeCurve, insertBoundary, makeKey, updateAutoTangents } from './curve-data';
 
 /** Editor typing for curve expressions already supported by the runtime's value getters. */
 export interface PositionAnimationData extends Omit<spec.PositionOverLifetime, 'path'> {
@@ -239,6 +239,7 @@ export class PositionPathModel {
     }
     const index = this.keys.findIndex(key => key.timing.time > sourceTime);
     const timing = this.keys.map(key => key.timing);
+    const previous = this.keys.at(-1), interpolation = index === 0 ? this.keys[0].timing.interpolationMode : previous?.timing.interpolationMode;
     let position = [this.evaluate(time, 0), this.evaluate(time, 1), this.evaluate(time, 2)] as spec.vec3;
     let incoming = [...position] as spec.vec3, outgoing = [...position] as spec.vec3;
 
@@ -256,6 +257,11 @@ export class PositionPathModel {
 
     if (index === 0) { inserted.value = this.keys[0].timing.value - 1; }
     if (index === -1 && this.keys.length) { inserted.value = this.keys.at(-1)!.timing.value + 1; }
+    if (point && index <= 0) {
+      if (index === -1 && previous) { previous.timing.interpolationMode = interpolation!; }
+      inserted.interpolationMode = interpolation ?? InterpolationMode.Cubic; inserted.tangentMode = 'auto';
+      updateAutoTangents(timing);
+    }
     const key: SpatialKey = { id: inserted.id, timing: inserted, point: position, incoming, outgoing };
 
     this.keys.splice(index < 0 ? this.keys.length : index, 0, key);

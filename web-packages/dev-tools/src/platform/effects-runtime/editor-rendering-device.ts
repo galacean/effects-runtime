@@ -1,6 +1,5 @@
 import type { Engine, GPUFramebuffer } from '@galacean/effects';
 import { RenderPassAttachmentStorageType, Texture, TextureSourceType, TextureStoreAction, glContext } from '@galacean/effects';
-import type { GPUTextureWebGL } from '@galacean/effects-webgl';
 import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 /** Keeps the scene's logical surface independent of the shared presentation canvas. */
@@ -18,10 +17,10 @@ export class EditorRenderingDevice extends RenderingDeviceWebGL {
   override getWidth (): number { return this.engine.canvas.width; }
   override getHeight (): number { return this.engine.canvas.height; }
 
-  get sceneTexture (): WebGLTexture | null {
+  get sceneTexture (): Texture | undefined {
     const texture = this.sceneTarget?.getColorTextures()[0];
 
-    return texture && !texture.isDestroyed ? (texture.getGPUTexture() as GPUTextureWebGL).textureBuffer : null;
+    return texture && !texture.isDestroyed ? texture : undefined;
   }
 
   isSceneTexture (texture: Texture): boolean { return this.sceneTarget?.getColorTextures().includes(texture) ?? false; }

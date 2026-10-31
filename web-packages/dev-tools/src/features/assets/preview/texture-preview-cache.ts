@@ -1,12 +1,10 @@
-import type { Engine, TextureSourceOptions } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { Texture, TextureSourceType, glContext } from '@galacean/effects';
-import { RenderingDeviceWebGL, type GPUTextureWebGL } from '@galacean/effects-webgl';
+import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
-import { ImGuiBackend } from '../../../platform/imgui';
-import { ImGuiTextureBinding } from '../../../platform/imgui/texture-binding';
 
-export interface CachedImagePreview { texture: ImGuiTextureBinding, width: number, height: number, flipY: boolean, readonly byteSize?: number }
+export interface CachedImagePreview { texture: PreviewTextureSource, width: number, height: number, flipY: boolean, readonly byteSize?: number }
 export type PreviewTextureSource = Texture | (() => Texture | undefined);
 export interface RenderedPreview extends CachedImagePreview { render(time: number): void, dispose(): void, error?: string, readonly statistics?: string }
 export interface PreviewRequest { realtime?: boolean, priority?: number }
@@ -29,7 +27,7 @@ interface ImageEntry {
   key: string,
   version: number,
   lastUsed: number,
-  texture?: GPUTextureWebGL,
+  texture?: Texture,
   preview?: CachedImagePreview,
 }
 
@@ -37,7 +35,6 @@ interface ImageEntry {
 export class TexturePreviewCache {
   private images: ImageEntry[] = [];
   private rendered: RenderedEntry[] = [];
-  private references = new WeakMap<Texture, ImGuiTextureBinding>();
   private frame = 0;
   private readonly maxUnusedFrames = 300;
   private readonly maxBytes = 64 * 1024 * 1024;
@@ -66,7 +63,7 @@ export class TexturePreviewCache {
   renderPending (time: number): void {
     const engine = this.engine(), device = engine?.displayServer.renderingDevice as EditorRenderingDevice | undefined;
 
-    if (!engine || !device || device.contextWasLost || ImGuiBackend.gl?.isContextLost()) { return; }
+    if (!engine || !device || device.contextWasLost || (this.engine()?.displayServer.renderingDevice as RenderingDeviceWebGL | undefined)?.gl.isContextLost()) { return; }
     const start = performance.now();
     let realtimeCount = 0, renderedCount = 0;
     const pending = this.rendered.filter(entry => entry.lastUsed === this.frame && (entry.dirty || entry.realtime && !entry.preview.error))
@@ -86,38 +83,12 @@ export class TexturePreviewCache {
     }
   }
 
-  reference (source: PreviewTextureSource): ImGuiTextureBinding {
-    if (source instanceof Texture) {
-      const cached = this.references.get(source);
-
-      if (cached) { return cached; }
-    }
-    const binding = new ImGuiTextureBinding(() => {
-      const texture = source instanceof Texture ? source : source();
-
-      if (!texture || texture.isDestroyed) { return null; }
-      const device = texture.engine.displayServer.renderingDevice;
-
-      if (!(device instanceof RenderingDeviceWebGL) || device.gl !== ImGuiBackend.gl || device.gl.isContextLost()) { return null; }
-      texture.initialize();
-      const gpu = texture.getGPUTexture() as GPUTextureWebGL;
-
-      return gpu.target === device.gl.TEXTURE_2D ? gpu.textureBuffer : null;
-    }, () => {
-      const texture = source instanceof Texture ? source : source();
-
-      return !!texture?.source.premultiplyAlpha || texture?.source.sourceType === TextureSourceType.framebuffer;
-    });
-
-    if (source instanceof Texture) { this.references.set(source, binding); }
-
-    return binding;
-  }
+  reference (source: PreviewTextureSource): PreviewTextureSource { return source; }
 
   image (owner: object, key: string, version: number, load: () => Promise<Blob | undefined>, report: (error: unknown) => void): CachedImagePreview | undefined {
     const device = this.engine()?.displayServer.renderingDevice;
 
-    if (!device || device.contextWasLost || ImGuiBackend.gl?.isContextLost()) { return; }
+    if (!device || device.contextWasLost || (this.engine()?.displayServer.renderingDevice as RenderingDeviceWebGL | undefined)?.gl.isContextLost()) { return; }
     let entry = this.images.find(entry => entry.owner === owner && entry.key === key);
 
     if (entry && (entry.version !== version || entry.texture?.isDestroyed)) { this.remove(entry); entry = undefined; }
@@ -143,34 +114,24 @@ export class TexturePreviewCache {
       const image = new Image();
 
       image.src = url; await image.decode();
-      if (engine !== this.engine() || engine.disposed || !this.images.includes(entry) || ImGuiBackend.gl?.isContextLost()) { return; }
+      if (engine !== this.engine() || engine.disposed || !this.images.includes(entry) || (this.engine()?.displayServer.renderingDevice as RenderingDeviceWebGL | undefined)?.gl.isContextLost()) { return; }
       const device = engine.displayServer.renderingDevice;
 
       if (!(device instanceof RenderingDeviceWebGL)) { return; }
-      const texture = device.createTexture();
-      const source: TextureSourceOptions = {
+      const texture = Texture.create(engine, {
         name: 'AssetPreview', image, sourceType: TextureSourceType.image, flipY: false,
         format: glContext.RGBA, internalFormat: glContext.RGBA, type: glContext.UNSIGNED_BYTE,
         minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE,
-      };
+      });
 
-      entry.texture = texture;
-      entry.preview = {
-        texture: new ImGuiTextureBinding(() => {
-          if (texture.isDestroyed || !texture.device || device.contextWasLost || device.gl.isContextLost()) { return null; }
-          if (!texture.isInitialized) { texture.initialize(source); }
-
-          return texture.textureBuffer;
-        }),
-        width: image.naturalWidth, height: image.naturalHeight, flipY: false,
-      };
+      texture.unregisterObject(); entry.texture = texture;
+      entry.preview = { texture, width: image.naturalWidth, height: image.naturalHeight, flipY: false };
     } finally { URL.revokeObjectURL(url); }
   }
 
   clear (owner?: object): void {
     for (const entry of [...this.images]) { if (!owner || entry.owner === owner) { this.remove(entry); } }
     for (const entry of [...this.rendered]) { if (!owner || entry.owner === owner) { this.removeRendered(entry); } }
-    if (!owner) { this.references = new WeakMap(); }
   }
 
   prune (): void {

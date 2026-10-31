@@ -37,35 +37,7 @@ export class AnimationClipEditorNode extends DataSlotEditorNode {
 
     if (!context.checkNodeCompilationState(pDefinition)) {
 
-      //   if (pShouldPlayInReverseNode !== null) {
-      //     const compiledNodeIdx = pShouldPlayInReverseNode.Compile(context);
-
-      //     if (compiledNodeIdx !== InvalidIndex) {
-      //       pDefinition!.m_playInReverseValueNodeIdx = compiledNodeIdx;
-      //     } else {
-      //       return InvalidIndex;
-      //     }
-      //   }
-
-      //-------------------------------------------------------------------------
-
-      //   const pResetTimeNode = this.GetConnectedInputNode<FlowToolsNode>(1);
-
-      //   if (pResetTimeNode !== null) {
-      //     const compiledNodeIdx = pResetTimeNode.Compile(context);
-
-      //     if (compiledNodeIdx !== InvalidIndex) {
-      //       pDefinition.m_resetTimeValueNodeIdx = compiledNodeIdx;
-      //     } else {
-      //       return InvalidIndex;
-      //     }
-      //   }
-
-      //-------------------------------------------------------------------------
-
       pDefinition.dataSlotIndex = context.RegisterDataSlotNode(this.GetID());
-    //   pDefinition.m_sampleRootMotion = this.m_sampleRootMotion;
-    //   pDefinition.m_allowLooping = this.m_allowLooping;
     }
 
     return pDefinition.index;
@@ -75,7 +47,4 @@ export class AnimationClipEditorNode extends DataSlotEditorNode {
     return 'Animation';
   }
 
-//   protected GetSlotResourceTypeID (): ResourceTypeID {
-//     return AnimationClip.GetStaticResourceTypeID();
-//   }
 }

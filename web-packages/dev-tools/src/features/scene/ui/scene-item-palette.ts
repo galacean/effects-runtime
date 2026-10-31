@@ -1,5 +1,5 @@
 import { spec } from '@galacean/effects';
-import type { EditorIcon } from '../../../ui/icons/editor-icons';
+import type { EditorIcon } from '../../../ui/icons/control-icons';
 
 export interface SceneItemDescriptor {
   type: spec.ItemType,

@@ -1,5 +1,6 @@
-import { ImGui } from '../../platform/imgui';
-import { InteractionColors as I } from '../theme/editor-interaction';
+import { math } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import { editorColors as I, EDITOR_FONT, EDITOR_FONT_SIZE } from '../theme/control-theme';
 import type { CurveBounds, CurveKey, CurveModel, CurveRect } from './curve-model';
 import { CurveScreenSpace, curveTickStep } from './curve-screen-space';
 
@@ -13,11 +14,11 @@ export interface CurveEditorOptions {
   selectedTangents?: ReadonlySet<string>,
   mode?: 'curves' | 'keys',
   keyRadius?: number,
-  selectedColor?: ImGui.Vec4,
-  borderColor?: ImGui.Vec4,
-  textColor?: ImGui.Vec4,
-  gridColor?: ImGui.Vec4,
-  zeroColor?: ImGui.Vec4,
+  selectedColor?: math.Color,
+  borderColor?: math.Color,
+  textColor?: math.Color,
+  gridColor?: math.Color,
+  zeroColor?: math.Color,
   valueGrid?: boolean,
 }
 
@@ -27,13 +28,15 @@ export class CurveEditor {
   private models: readonly CurveModel[] = [];
   private space?: CurveScreenSpace;
 
+  constructor (private readonly control: Control) {}
+
   draw (options: CurveEditorOptions): void {
     const { rect, models, selected } = options;
-    const space = new CurveScreenSpace(rect, options.bounds), draw = ImGui.GetWindowDrawList();
+    const space = new CurveScreenSpace(rect, options.bounds), draw = this.control;
 
     this.space = space; this.models = models; this.keys.length = 0; this.tangents.length = 0;
     if (options.valueGrid) { this.drawValueGrid(options, space); }
-    draw.PushClipRect(new ImGui.Vec2(rect.x, rect.y), new ImGui.Vec2(rect.x + rect.width, rect.y + rect.height), true);
+    draw.engine.renderingServer.graphics.pushClipRect(rect.x, rect.y, rect.width, rect.height);
     for (const model of models) {
       if (options.mode !== 'keys') { this.drawLine(model, space); }
       for (const key of model.keys()) {
@@ -47,25 +50,25 @@ export class CurveEditor {
             if (!point) { continue; }
             const hx = space.timeX(point.time), hy = space.valueY(point.value), segment = space.clipSegment(x, y, hx, hy);
 
-            if (segment) { draw.AddLine(new ImGui.Vec2(segment[0], segment[1]), new ImGui.Vec2(segment[2], segment[3]), ImGui.GetColorU32(options.textColor ?? I.muted)); }
+            if (segment) { draw.drawLine(segment[0], segment[1], segment[2], segment[3], options.textColor ?? I.muted); }
             if (space.contains(hx, hy, 6)) {
-              draw.AddCircleFilled(new ImGui.Vec2(hx, hy), 3.5, ImGui.GetColorU32(options.selectedColor ?? I.primaryHover));
-              if (options.selectedTangents?.has(key.id + ':' + side)) { draw.AddCircle(new ImGui.Vec2(hx, hy), 5, ImGui.GetColorU32(I.foreground), 16, 1); }
+              draw.fillCircle(hx, hy, 3.5, options.selectedColor ?? I.primaryHover);
+              if (options.selectedTangents?.has(key.id + ':' + side)) { draw.drawCircle(hx, hy, 5, I.foreground); }
               this.tangents.push({ x: hx, y: hy, model, key, side });
             }
           }
         }
         if (space.contains(x, y, 6)) {
-          const hovered = ImGui.IsWindowHovered() && Math.hypot(ImGui.GetMousePos().x - x, ImGui.GetMousePos().y - y) <= 7;
+          const hovered = draw.hasPoint(draw.getLocalMousePosition()) && Math.hypot(draw.getLocalMousePosition().x - x, draw.getLocalMousePosition().y - y) <= 7;
           const radius = (options.keyRadius ?? 4) + (selected.has(key.id) || hovered ? 1 : 0);
           const color = selected.has(key.id) ? options.selectedColor ?? I.primaryHover : hovered ? I.foregroundHover : model.color;
 
-          CurveEditor.diamond(x, y, color, radius, options.borderColor ?? I.outline);
+          CurveEditor.diamond(draw, x, y, color, radius, options.borderColor ?? I.outline);
           this.keys.push({ x, y, model, key });
         }
       }
     }
-    draw.PopClipRect();
+    draw.engine.renderingServer.graphics.popClipRect();
   }
 
   hitCurve (x: number, y: number, tolerance = 7): CurveModel | undefined {
@@ -92,23 +95,24 @@ export class CurveEditor {
   }
 
   private drawValueGrid (options: CurveEditorOptions, space: CurveScreenSpace): void {
-    const draw = ImGui.GetWindowDrawList(), rect = space.rect;
+    const draw = this.control, rect = space.rect;
     const step = curveTickStep((space.bounds.valueMax - space.bounds.valueMin) / Math.max(2, rect.height / 65));
 
     for (let value = Math.ceil(space.bounds.valueMin / step) * step; value <= space.bounds.valueMax; value += step) {
       const y = space.valueY(value), label = Math.abs(value) < 1e-8 ? '0' : Number(value.toPrecision(4)).toString();
+      const metrics = draw.measureText(label, EDITOR_FONT_SIZE, EDITOR_FONT);
 
-      draw.AddLine(new ImGui.Vec2(rect.x, y), new ImGui.Vec2(rect.x + rect.width, y), ImGui.GetColorU32(Math.abs(value) < 1e-8 ? options.zeroColor ?? I.outline : options.gridColor ?? I.panel));
-      draw.AddText(new ImGui.Vec2(rect.x - ImGui.CalcTextSize(label).x - 7, y - ImGui.GetTextLineHeight() / 2), ImGui.GetColorU32(options.textColor ?? I.muted), label);
+      draw.drawLine(rect.x, y, rect.x + rect.width, y, Math.abs(value) < 1e-8 ? options.zeroColor ?? I.outline : options.gridColor ?? I.panel);
+      draw.drawText(rect.x - metrics.width - 7, y - metrics.lineHeight / 2, label, EDITOR_FONT_SIZE, options.textColor ?? I.muted, EDITOR_FONT);
     }
   }
 
   private drawLine (model: CurveModel, space: CurveScreenSpace): void {
-    const start = space.rect.x, end = start + space.rect.width, points: ImGui.Vec2[] = [];
+    const start = space.rect.x, end = start + space.rect.width, points: math.Vector2[] = [];
 
     if (![start, end].every(Number.isFinite) || end <= start) { return; }
-    const draw = ImGui.GetWindowDrawList(), tint = ImGui.GetColorU32(model.color);
-    const flush = () => { if (points.length > 1) { draw.AddPolyline(points, points.length, tint, 0, 1.6); } points.length = 0; };
+    const draw = this.control, tint = model.color;
+    const flush = () => { if (points.length > 1) { draw.drawPolyline(points.flatMap(point => [point.x, point.y]), tint, 1.6); } points.length = 0; };
     const append = (x: number, y: number) => {
       const last = points.at(-1), previous = points.at(-2);
 
@@ -118,12 +122,12 @@ export class CurveEditor {
         const length = Math.hypot(x - previous.x, y - previous.y);
 
         if (Math.abs(cross) <= 1e-4 * Math.max(1, length)) {
-          points[points.length - 1] = new ImGui.Vec2(x, y);
+          points[points.length - 1] = new math.Vector2(x, y);
 
           return;
         }
       }
-      points.push(new ImGui.Vec2(x, y));
+      points.push(new math.Vector2(x, y));
     };
     let lastX = start, lastY = space.valueY(model.evaluate(space.timeAt(start)));
 
@@ -142,11 +146,9 @@ export class CurveEditor {
     flush();
   }
 
-  static diamond (x: number, y: number, color: ImGui.Vec4, radius: number, border: ImGui.Vec4): void {
-    const draw = ImGui.GetWindowDrawList();
-    const points = [new ImGui.Vec2(x, y - radius), new ImGui.Vec2(x + radius, y), new ImGui.Vec2(x, y + radius), new ImGui.Vec2(x - radius, y)];
-
-    draw.AddQuadFilled(points[0], points[1], points[2], points[3], ImGui.GetColorU32(color));
-    draw.AddQuad(points[0], points[1], points[2], points[3], ImGui.GetColorU32(border), 0.8);
+  static diamond (control: Control, x: number, y: number, color: math.Color, radius: number, border: math.Color): void {
+    control.fillTriangle(x, y - radius, x + radius, y, x, y + radius, color);
+    control.fillTriangle(x, y - radius, x, y + radius, x - radius, y, color);
+    control.drawPolyline([x, y - radius, x + radius, y, x, y + radius, x - radius, y, x, y - radius], border, .8);
   }
 }

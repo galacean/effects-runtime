@@ -1,10 +1,7 @@
 import type { Material } from '@galacean/effects';
-import { SerializationHelper, Texture, spec } from '@galacean/effects';
-import { ImGui } from '../../../platform/imgui/index';
+import { SerializationHelper, Texture, spec, math } from '@galacean/effects';
 import { propertyLabel } from '../../../ui/property-editor/default-object-details';
-import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
-import { toolbarButton } from '../../../ui/widgets/toolbar-button';
-import { sceneWorkspace } from '../../scene/scene-workspace';
+import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
 import { assetLibrary } from '../asset-library';
 import { openContentAsset } from './asset-editor-registry';
 
@@ -45,92 +42,41 @@ export function materialSearchTerms (material: Material, skipColor = false): str
     .filter(property => !skipColor || property.name !== '_Color').map(property => property.label)];
 }
 
-export function drawMaterialProperties (material: Material, skipColor = false): void {
+export function buildMaterialProperties (group: PropertyGroup, material: Material, skipColor = false): void {
   const contentAsset = assetLibrary.entry(material.getInstanceId());
+  const options = { enabled: () => contentAsset?.kind !== 'material' };
+  const mutate = (action: (data: spec.MaterialData) => void): void => {
+    const data = material.toData();
 
-  if (contentAsset?.kind === 'material') {
-    Fields.Property('Source Asset', () => {
-      if (toolbarButton('##EditMaterialAsset', { icon: 'materialAsset', label: 'Edit Material', height: 24, hint: 'Edit and save the shared material resource' })) { openContentAsset(contentAsset.id); }
-    });
-  }
-  ImGui.BeginDisabled(contentAsset?.kind === 'material');
-  const data = material.toData();
+    action(data); SerializationHelper.deserialize(data, material);
+  };
+
+  if (contentAsset?.kind === 'material') { group.button('Source Asset', 'Edit Material', () => { openContentAsset(contentAsset.id); }, 'materialAsset'); }
   const renderTypes = [spec.RenderType.Opaque, spec.RenderType.Transparent];
   const renderFaces = [spec.RenderFace.Front, spec.RenderFace.Back, spec.RenderFace.Both];
-  let changed = false;
 
-  data.stringTags ??= {};
-  changed = Fields.ComboField('Surface Type', next => {
-    if (next !== undefined) { data.stringTags.RenderType = renderTypes[next]; }
-
-    return Math.max(0, renderTypes.indexOf((data.stringTags.RenderType ?? spec.RenderType.Transparent) as spec.RenderType));
-  }, ['Opaque', 'Transparent']) || changed;
-  changed = Fields.ComboField('Render Face', next => {
-    if (next !== undefined) { data.stringTags.RenderFace = renderFaces[next]; }
-
-    return Math.max(0, renderFaces.indexOf((data.stringTags.RenderFace ?? spec.RenderFace.Both) as spec.RenderFace));
-  }, ['Front', 'Back', 'Both']) || changed;
-  for (const property of materialProperties(material.shader?.shaderData.properties, data)) {
+  group.choice('Surface Type', { read: () => Math.max(0, renderTypes.indexOf((material.stringTags.RenderType ?? spec.RenderType.Transparent) as spec.RenderType)),
+    write: index => mutate(data => { data.stringTags ??= {}; data.stringTags.RenderType = renderTypes[index]; }) }, ['Opaque', 'Transparent'], options);
+  group.choice('Render Face', { read: () => Math.max(0, renderFaces.indexOf((material.stringTags.RenderFace ?? spec.RenderFace.Both) as spec.RenderFace)),
+    write: index => mutate(data => { data.stringTags ??= {}; data.stringTags.RenderFace = renderFaces[index]; }) }, ['Front', 'Back', 'Both'], options);
+  for (const property of materialProperties(material.shader?.shaderData.properties, material.toData())) {
     const { name, label, type } = property;
 
     if (skipColor && name === '_Color') { continue; }
-    ImGui.PushID(name);
     if (type === 'Float') {
-      let number = data.floats[name] ?? (Number(property.fallback) || 0);
-      const edited = property.toggle ? Fields.Property(label, () => ImGui.Checkbox('##Toggle', next => {
-        if (next !== undefined) { number = next ? 1 : 0; }
+      const read = () => material.getFloat(name) ?? (Number(property.fallback) || 0);
 
-        return number !== 0;
-      })) : property.range ? Fields.Property(label, width => {
-        ImGui.SetNextItemWidth(width);
-
-        return ImGui.SliderFloat('##Range', next => {
-          if (next !== undefined) { number = next; }
-
-          return number;
-        }, property.range![0], property.range![1], '%.3f');
-      }) : Fields.NumberField(label, next => {
-        if (next !== undefined) { number = next; }
-
-        return number;
-      });
-
-      if (edited) { data.floats[name] = number; changed = true; }
+      if (property.toggle) { group.boolean(label, { read: () => read() !== 0, write: value => mutate(data => { data.floats[name] = value ? 1 : 0; }) }, options); } else { group.number(label, { read, write: value => mutate(data => { data.floats[name] = value; }) }, { min: property.range?.[0], max: property.range?.[1] }, options); }
     } else if (type === 'Color') {
-      const color = data.colors[name] ?? { r: 1, g: 1, b: 1, a: 1 };
-
-      if (Fields.ColorField(label, color)) { data.colors[name] = color; changed = true; }
+      group.color(label, { read: () => material.getColor(name)?.clone() ?? new math.Color(1, 1, 1, 1),
+        write: color => mutate(data => { data.colors[name] = { r: color.r, g: color.g, b: color.b, a: color.a }; }) }, options);
     } else if (type === 'Vector') {
-      const vector = data.vector4s[name] ?? { x: 1, y: 1, z: 0, w: 0 };
-
-      if (Fields.Property(label, width => {
-        ImGui.SetNextItemWidth(width);
-
-        return ImGui.DragFloat4('##Vector', vector, 0.02);
-      })) { data.vector4s[name] = vector; changed = true; }
+      group.vector(label, { read: () => material.getVector4(name)?.toArray() ?? [1, 1, 0, 0],
+        write: values => mutate(data => { data.vector4s[name] = { x: values[0], y: values[1], z: values[2], w: values[3] }; }) }, 4, options);
     } else if (type === '2D') {
-      let assigned: Texture | null | undefined;
-      const reference = {
-        get texture () { return assigned ?? material.getTexture(name); },
-        set texture (texture: Texture | null) { assigned = texture; },
-      };
-
-      if (Fields.ObjectField(label, reference, 'texture', Texture.name, false, undefined, texture => {
-        if (!material.isRegistered) { return; }
-        sceneWorkspace.observe('Assign texture', () => {
-          const latest = material.toData();
-
-          latest.textures[name] = { ...latest.textures[name], texture: texture as unknown as spec.DataPath };
-          SerializationHelper.deserialize(latest, material);
-        }, [material]);
-      }) && reference.texture) {
-        data.textures[name] = { ...data.textures[name], texture: reference.texture as unknown as spec.DataPath }; changed = true;
-      }
+      group.reference(label, { read: () => material.getTexture(name), write: texture => {
+        if (texture instanceof Texture) { mutate(data => { data.textures[name] = { ...data.textures[name], texture: texture as unknown as spec.DataPath }; }); } else if (!texture) { mutate(data => { delete data.textures[name]; }); }
+      } }, 'Texture', !options.enabled());
     }
-    ImGui.PopID();
   }
-  if (changed) {
-    SerializationHelper.deserialize(data, material);
-  }
-  ImGui.EndDisabled();
 }

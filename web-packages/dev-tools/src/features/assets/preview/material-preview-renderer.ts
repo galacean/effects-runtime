@@ -1,10 +1,9 @@
 import type { Engine, GPUFramebuffer, spec, Geometry } from '@galacean/effects';
 import { Material, RenderPassAttachmentStorageType, Renderer, SerializationHelper, Shader, ShaderCompileResultStatus,
   Texture, TextureLoadAction, TextureSourceType, TextureStoreAction, glContext, math } from '@galacean/effects';
-import { GLShaderLibrary, type GPUTextureWebGL } from '@galacean/effects-webgl';
+import { GLShaderLibrary } from '@galacean/effects-webgl';
 import { createGeometry, GeometryType } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
-import { ImGuiTextureBinding } from '../../../platform/imgui/texture-binding';
 import type { RenderedPreview } from './texture-preview-cache';
 import { materialPreviewCamera, thumbnailMaterialView, type MaterialPreviewSettings, type PreviewPrimitive } from './material-preview-settings';
 
@@ -76,7 +75,7 @@ class MaterialPreviewShader extends Shader {
 
 /** Renders an isolated material preview using the editor's existing graphics device. */
 export class MaterialPreviewRenderer implements RenderedPreview {
-  readonly texture: ImGuiTextureBinding;
+  get texture (): Texture | (() => Texture | undefined) { return () => this.ready && !this.disposed ? this.color : undefined; }
   readonly flipY = true;
   error?: string;
   private readonly renderer: Renderer;
@@ -114,11 +113,6 @@ export class MaterialPreviewRenderer implements RenderedPreview {
       depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque },
       storeAction: { colorAction: TextureStoreAction.store },
     });
-    this.texture = new ImGuiTextureBinding(() => {
-      if (!this.ready || this.disposed || device.contextWasLost || this.color.isDestroyed) { return null; }
-
-      return (this.color.getGPUTexture() as GPUTextureWebGL).textureBuffer;
-    }, true);
     for (const name of ['effects_MatrixVP', 'effects_MatrixV', 'effects_MatrixInvV', '_MatrixP']) {
       this.renderer.setGlobalMatrix(name, math.Matrix4.IDENTITY);
     }

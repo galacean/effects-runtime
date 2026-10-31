@@ -1,82 +1,63 @@
-import { EffectsObject } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui/index';
-import { inspectedObjectHeaderIcon } from './inspected-object-icons';
-import { PropertyFields as Fields } from '../../ui/property-editor/property-fields';
+import { Button, VerticalAlignment } from '@galacean/effects-plugin-gui';
+import { append, row, label } from '../../ui/controls/layout';
 import { reflectProperties } from '../../ui/property-editor/property-handle';
+import type { PropertyGroup } from '../../ui/property-editor/property-sheet';
 import { PropertyTree } from '../../ui/property-editor/property-tree';
 
 const PAGE_SIZE = 100;
 
-/** Reflects runtime fields without applying the normal property editor's visibility rules. */
 export class DebugInspector {
   target: object;
   private readonly pages = new WeakMap<object, number>();
   private readonly tree = new PropertyTree({
     properties: object => reflectProperties(object, true),
-    inline: (value): value is object => this.isInlineObject(value),
+    inline: (value): value is object => !!value && typeof value === 'object' &&
+      (Array.isArray(value) || ArrayBuffer.isView(value) || value instanceof Map || value instanceof Set || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null),
     reference: (value): value is object => !!value && typeof value === 'object',
-    readOnlyReferences: true, fallbackText: true,
-    referenceIcon: value => value instanceof EffectsObject ? inspectedObjectHeaderIcon(value) : undefined,
-    collection: object => this.isCollection(object),
-    drawCollection: (object, ancestors) => this.drawCollection(object, ancestors),
+    readOnlyReferences: true, fallbackText: true, maxDepth: 4,
+    collection: (group, object, ancestors, depth) => this.collection(group, object, ancestors, depth),
   });
 
-  getSearchTerms (object = this.target, visited = new Set<object>(), depth = 0): string[] { return this.tree.searchTerms(object, visited, depth); }
+  getSearchTerms (): string[] { return this.tree.searchTerms(this.target); }
+  build (group: PropertyGroup, firstProperties: readonly PropertyKey[] = []): void { this.tree.build(group, this.target, new Set(), firstProperties); }
 
-  onInspectorGUI (firstProperties: readonly PropertyKey[] = []): void { this.tree.draw(this.target, new Set(), firstProperties); }
-
-  private isInlineObject (value: unknown): value is object {
-    return !!value && typeof value === 'object' &&
-      (this.isCollection(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
-  }
-
-  private isCollection (object: object): boolean {
-    return Array.isArray(object) || ArrayBuffer.isView(object) || object instanceof Map || object instanceof Set;
-  }
-
-  private drawCollection (object: object, ancestors: Set<object>): void {
+  private collection (group: PropertyGroup, object: object, ancestors: Set<object>, depth: number): boolean {
+    if (!Array.isArray(object) && !ArrayBuffer.isView(object) && !(object instanceof Map) && !(object instanceof Set)) { return false; }
     const view = object instanceof DataView ? new Uint8Array(object.buffer, object.byteOffset, object.byteLength) : object;
     const sequence = view as ArrayLike<unknown>;
     const length = view instanceof Map || view instanceof Set ? view.size : sequence.length;
     const page = Math.min(this.pages.get(object) ?? 0, Math.max(0, Math.ceil(length / PAGE_SIZE) - 1));
     const start = page * PAGE_SIZE, end = Math.min(length, start + PAGE_SIZE);
 
-    Fields.Text('Length', String(length));
+    group.readOnly('Length', () => String(length));
     if (length > PAGE_SIZE) {
-      Fields.Property('Elements', width => {
-        const origin = ImGui.GetCursorScreenPos();
+      const pager = row(group.engine), previous = append(pager, new Button(group.engine, '‹'));
+      const range = append(pager, label(group.engine, (start + 1) + '–' + end));
+      const next = append(pager, new Button(group.engine, '›'));
 
-        ImGui.BeginDisabled(page === 0);
-        if (ImGui.Button('<##Previous', new ImGui.Vec2(28, 0))) { this.pages.set(object, page - 1); }
-        ImGui.EndDisabled(); ImGui.SameLine(0, 4);
-        ImGui.Text((start + 1) + '–' + end);
-        ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + width - 28, origin.y));
-        ImGui.BeginDisabled(end === length);
-        if (ImGui.Button('>##Next', new ImGui.Vec2(28, 0))) { this.pages.set(object, page + 1); }
-        ImGui.EndDisabled();
-      });
+      range.verticalAlignment = VerticalAlignment.Center;
+      previous.disabled = page === 0; next.disabled = end === length;
+      const move = (delta: number): void => { this.pages.set(object, page + delta); group.clear(); this.collection(group, object, ancestors, depth); };
+
+      previous.on('pressed', () => move(-1)); next.on('pressed', () => move(1));
+      group.add('Elements', pager);
     }
     if (view instanceof Map || view instanceof Set) {
       let index = 0;
 
-      for (const entry of view.entries()) {
+      for (const [key] of view.entries()) {
         if (index >= end) { break; }
         if (index >= start) {
-          const key: unknown = entry[0];
-          const value: unknown = view instanceof Map ? {
-            get key () { return key; },
-            get value (): unknown { return view.get(key); },
-            set value (next: unknown) { view.set(key, next); },
-          } : entry[0];
+          const value: unknown = view instanceof Map ? { get key () { return key; }, get value (): unknown { return view.get(key); }, set value (next: unknown) { view.set(key, next); } } : key;
 
-          this.tree.drawProperty({ [index]: value }, { key: String(index), value, writable: false }, ancestors);
+          this.tree.buildProperty(group, { [index]: value }, { key: String(index), value, writable: false }, ancestors, depth);
         }
         index++;
       }
     } else {
-      for (let index = start; index < end; index++) {
-        this.tree.drawProperty(view, { key: String(index), value: sequence[index], writable: !Object.isFrozen(view) }, ancestors);
-      }
+      for (let index = start; index < end; index++) { this.tree.buildProperty(group, view, { key: String(index), value: sequence[index], writable: !Object.isFrozen(view) }, ancestors, depth); }
     }
+
+    return true;
   }
 }

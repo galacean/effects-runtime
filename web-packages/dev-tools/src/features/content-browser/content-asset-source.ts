@@ -1,15 +1,11 @@
 import { Sprite } from '@galacean/effects';
 import type { EffectsObject } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui';
 import type { AssetViewItem } from '../../ui/asset-view/asset-view';
-import { checkerboard } from '../../ui/asset-view/asset-view';
-import { drawEditorIcon } from '../../ui/icons/editor-icons';
-import { InteractionColors as I } from '../../ui/theme/editor-interaction';
 import type { AssetEntry } from '../assets/model/asset-types';
 import type { AssetThumbnailCache } from '../assets/preview/asset-thumbnail-cache';
 import { getSpriteThumbnail } from '../assets/preview/sprite-thumbnail';
 import { materialPreviews } from '../assets/preview/material-preview';
-import { drawTexturePreview, imageTexturePreview } from '../assets/preview/texture-preview';
+import { imageTexturePreview } from '../assets/preview/texture-preview';
 import { ASSET_PRESENTATION } from '../assets/ui/asset-presentation';
 
 export class ContentAssetSource {
@@ -19,23 +15,16 @@ export class ContentAssetSource {
     const presentation = ASSET_PRESENTATION[entry.kind];
 
     return { id: entry.id, name, type: presentation.label, icon: presentation.icon, accent: presentation.accent,
-      preview: entry.kind === 'texture' || entry.kind === 'sprite' || entry.kind === 'material' ? (rect, state) => {
+      tooltip: entry.name + '\n' + presentation.label + (entry.width ? '\nDimensions: ' + entry.width + ' × ' + entry.height : '') + (entry.sourceName ? '\nSource: ' + entry.sourceName : ''),
+      columns: [presentation.label, entry.width ? entry.width + ' × ' + entry.height : '—', entry.size ? (entry.size / 1024).toFixed(1) + ' KiB' : '—', new Date(entry.updatedAt).toLocaleDateString()],
+      preview: entry.kind === 'texture' || entry.kind === 'sprite' || entry.kind === 'material' ? hovered => {
         const sprite = entry.kind === 'sprite' ? this.resolve(entry.id) : undefined;
         const preview = sprite instanceof Sprite ? getSpriteThumbnail(sprite) : undefined;
-        const image = preview ? { texture: preview.tex, width: preview.width, height: preview.height } :
-          entry.kind === 'material' ? materialPreviews.asset(entry.id, 128, { realtime: state.hovered }) : entry.kind === 'texture' ? this.thumbnails.get(entry.id) : undefined;
 
-        if (image) {
-          const scale = Math.min(rect.width / image.width, rect.height / image.height), width = image.width * scale, height = image.height * scale;
-          const x = rect.x + (rect.width - width) / 2, y = rect.y + (rect.height - height) / 2;
+        if (preview) { return { preview, width: preview.width, height: preview.height }; }
+        const image = entry.kind === 'material' ? materialPreviews.asset(entry.id, 128, { realtime: hovered }) : entry.kind === 'texture' ? this.thumbnails.get(entry.id) : undefined;
 
-          checkerboard(x, y, width, height, 8);
-          drawTexturePreview(preview ?? imageTexturePreview(image), new ImGui.Vec2(x, y), new ImGui.Vec2(x + width, y + height));
-        } else {
-          const size = Math.min(rect.width, rect.height) * 0.4;
-
-          drawEditorIcon(presentation.menuIcon, rect.x + (rect.width - size) / 2, rect.y + (rect.height - size) / 2, size, I.muted);
-        }
+        return image ? { preview: imageTexturePreview(image), width: image.width, height: image.height } : undefined;
       } : undefined };
   }
 }

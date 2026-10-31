@@ -2,8 +2,7 @@ import type { TrimPath } from '@galacean/effects';
 import { ShapeComponent, TrimPathMode } from '@galacean/effects';
 import { detailsCustomization } from '../../../framework/registry/editor-registry';
 import { DefaultObjectDetails } from '../../../ui/property-editor/default-object-details';
-import { PropertyFields } from '../../../ui/property-editor/property-fields';
-import { PropertyGrid } from '../../../ui/property-editor/property-grid';
+import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
 
 @detailsCustomization(ShapeComponent)
 export class ShapeDetailsCustomization extends DefaultObjectDetails {
@@ -11,39 +10,28 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     return ['Fill Trim Path', 'Stroke Trim Path', 'Mode', 'Start', 'End', 'Offset', ...super.getSearchTerms()];
   }
 
-  override onInspectorGUI (): void {
+  override build (group: PropertyGroup): void {
     const component = this.target as ShapeComponent;
 
-    this.drawTrimPath('Fill Trim Path', component.fillTrimPath, component);
-    this.drawTrimPath('Stroke Trim Path', component.strokeTrimPath, component);
-    this.drawRenderingProperties();
+    this.buildTrimPath(group, 'Fill Trim Path', component.fillTrimPath, component);
+    this.buildTrimPath(group, 'Stroke Trim Path', component.strokeTrimPath, component);
+    this.buildRenderingProperties(group);
   }
 
-  private drawTrimPath (title: string, trimPath: TrimPath | null, component: ShapeComponent): void {
-    if (!PropertyGrid.matches(title, 'Mode', 'Start', 'End', 'Offset')) { return; }
-    if (PropertyFields.BeginFoldoutHeaderGroup(title)) {
-      if (!trimPath) {
-        PropertyFields.Text('Status', 'Not enabled');
-      } else {
-        const modes = [TrimPathMode.Synchronized, TrimPathMode.Sequential];
-        let changed = PropertyFields.ComboField('Mode', next => {
-          if (next !== undefined) { trimPath.mode = modes[next]; }
+  private buildTrimPath (parent: PropertyGroup, title: string, trimPath: TrimPath | null, component: ShapeComponent): void {
+    const group = parent.group(title, title);
 
-          return Math.max(0, modes.indexOf(trimPath.mode));
-        }, ['Synchronized', 'Sequential']);
+    if (!trimPath) {
+      group.readOnly('Status', () => 'Not enabled');
 
-        for (const [label, property, min, max] of [
-          ['Start', 'start', 0, 1], ['End', 'end', 0, 1], ['Offset', 'offset', -10, 10],
-        ] as const) {
-          changed = PropertyFields.NumberField(label, next => {
-            if (next !== undefined) { trimPath[property] = next; }
-
-            return trimPath[property];
-          }, 0.01, min, max) || changed;
-        }
-        if (changed) { component.onApplyAnimationProperties(); }
-      }
+      return;
     }
-    PropertyFields.EndFoldoutHeaderGroup();
+    const modes = [TrimPathMode.Synchronized, TrimPathMode.Sequential];
+
+    group.choice('Mode', { read: () => Math.max(0, modes.indexOf(trimPath.mode)),
+      write: index => { trimPath.mode = modes[index]; component.onApplyAnimationProperties(); } }, ['Synchronized', 'Sequential']);
+    for (const [label, property, min, max] of [['Start', 'start', 0, 1], ['End', 'end', 0, 1], ['Offset', 'offset', -10, 10]] as const) {
+      group.number(label, { read: () => trimPath[property], write: value => { trimPath[property] = value; component.onApplyAnimationProperties(); } }, { step: .01, min, max });
+    }
   }
 }

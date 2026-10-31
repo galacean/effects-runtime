@@ -5,6 +5,7 @@ import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { ObjectState } from '../serialization/scene-serializer';
 import { SceneSerializer } from '../serialization/scene-serializer';
 import { jsonData, sameData } from '../serialization/scene-values';
+import { getEditorRotation } from '../operations/editor-transform';
 import type { SceneEditorData, SequenceEditorData } from './scene-types';
 
 interface Snapshot { scene: spec.JSONScene, editor: SceneEditorData }
@@ -16,6 +17,11 @@ export interface EditorState<T = any> {
   equal?: (a: T, b: T) => boolean,
 }
 type EditorStates = Map<EditorState, any>;
+export interface TransformEdit { item: VFXItem, before: number[], after: number[] }
+
+function transformValues (item: VFXItem): number[] {
+  return [...item.transform.position.toArray(), ...getEditorRotation(item.transform).toArray(), ...item.transform.scale.toArray()];
+}
 interface Transaction {
   label: string,
   editorLabel?: string,
@@ -45,6 +51,7 @@ export class SceneDocument {
   onRestored: () => void = () => {};
   beforeSelectionChange: () => void = () => {};
   autoKeyTarget: (item: VFXItem) => boolean = () => false;
+  autoKeyTransforms?: (edits: TransformEdit[]) => boolean;
   private version = 0;
   private nextVersion = 1;
   private savedVersion?: number;
@@ -60,6 +67,23 @@ export class SceneDocument {
   private readonly selectionObjects = new Map<string, WeakRef<object>>();
   private sequenceStates = new Map<SequenceEditor, any>();
   private runtimeEdits = new Map<EffectsObject, { before: ObjectState, after: ObjectState }>();
+  private readonly changeListeners = new Set<() => void>();
+  private notificationQueued = false;
+
+  subscribe (listener: () => void): () => void {
+    this.changeListeners.add(listener);
+
+    return () => { this.changeListeners.delete(listener); };
+  }
+
+  private notifyChanged (): void {
+    if (this.notificationQueued) { return; }
+    this.notificationQueued = true;
+    queueMicrotask(() => {
+      this.notificationQueued = false;
+      if (!this.disposed) { this.changeListeners.forEach(listener => listener()); }
+    });
+  }
 
   constructor (readonly composition: Composition, source: spec.JSONScene, editor: SceneEditorData = { objects: {} }) {
     this.scene = jsonData(source); this.editor = jsonData(editor); this.name = composition.name;
@@ -144,6 +168,8 @@ export class SceneDocument {
 
   dispose (): void {
     this.disposed = true; this.transaction = undefined; this.scopes.clear();
+    this.autoKeyTransforms = undefined;
+    this.changeListeners.clear();
     this.history.clear('The document was closed.');
     this.editorStates.clear(); this.sequenceStates.clear(); this.runtimeEdits.clear(); this.selectionObjects.clear();
   }
@@ -177,6 +203,8 @@ export class SceneDocument {
       return false;
     }
     const before = this.serializer.capture(targets);
+    const transforms = new Map([...before.keys()].filter((object): object is VFXItem => object instanceof VFXItem).map(item => [item, transformValues(item)]));
+    const keyed: TransformEdit[] = [];
     const states = this.readEditorStates();
     const transaction = this.transaction;
 
@@ -192,10 +220,14 @@ export class SceneDocument {
 
       if (!old) { continue; }
       if (object instanceof VFXItem && this.autoKeyTarget(object)) {
+        const previous = transforms.get(object)!, current = transformValues(object);
+
+        if (current.some((value, index) => Math.abs(value - previous[index]) > 1e-6)) { keyed.push({ item: object, before: previous, after: current }); }
         for (const key of ['position', 'eulerHint', 'scale']) { state.data.transform[key] = old.data.transform[key]; }
       }
       changed = this.recordObject(label, old, state) || changed;
     }
+    if (keyed.length) { changed = this.autoKeyTransforms?.(keyed) || changed; }
     if (this.transaction && this.transaction !== transaction) { this.transaction.states = states; }
 
     return changed;
@@ -310,6 +342,7 @@ export class SceneDocument {
       undo: () => { this.restore(beforeSnapshot, mutations, false, beforeStates); this.version = beforeVersion; },
       redo: () => { this.restore(afterSnapshot, mutations, true, states); this.version = version; },
     });
+    this.notifyChanged();
   }
 
   undo (): void {
@@ -405,6 +438,7 @@ export class SceneDocument {
       }, 'history');
       this.serializer.stabilizeRenderOrder(this.scene);
       this.onRestored();
+      this.notifyChanged();
     } catch (error) {
       EditorSelection.batch(() => {
         for (const mutation of applied.reverse()) {

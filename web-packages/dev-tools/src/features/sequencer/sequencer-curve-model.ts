@@ -1,5 +1,5 @@
 import { BezierCurve, InterpolationMode } from '@galacean/effects';
-import type { ImGui } from '../../platform/imgui';
+import type { math } from '@galacean/effects';
 import type { CurveKey, CurveModel, CurvePoint } from '../../ui/curve-editor/curve-model';
 import { controlPoint } from './curve-data';
 import type { KeySelection, SequenceChannel, SequenceSection, SequencerDocument } from './sequencer-document';
@@ -8,7 +8,7 @@ export class SequencerCurveModel implements CurveModel {
   private revision = -1;
   private curve = new BezierCurve([]);
 
-  constructor (readonly document: SequencerDocument, readonly section: SequenceSection, readonly channel: SequenceChannel, readonly color: ImGui.Vec4) { }
+  constructor (readonly document: SequencerDocument, readonly section: SequenceSection, readonly channel: SequenceChannel, readonly color: math.Color) { }
 
   get id (): string { return this.channel.id; }
   get label (): string { return this.channel.group + '.' + this.channel.label; }

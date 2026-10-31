@@ -1,303 +1,209 @@
-import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
-import { ImGui } from '../../../platform/imgui/index';
-import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
-import { PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
-import { editorTileColor } from '../../../ui/theme/editor-interaction';
-import { beginEditorContextItem, editorMenuItem, endEditorPopup } from '../../../ui/widgets/editor-menu';
-import { searchBar } from '../../../ui/widgets/search-bar';
+import { math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import type { Control, Label, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
+import type { ContentInsets } from '@galacean/effects-plugin-gui';
+import { Button, ButtonDrawMode, HorizontalAlignment, PanelContainer, TextOverflow } from '@galacean/effects-plugin-gui';
+import { EditorDialog } from '../../../ui/controls/dialog';
+import { EditorSearchField } from '../../../ui/controls/search-field';
+import { EditorTextArea, EditorTextField } from '../../../ui/controls/text-field';
+import { append, column, expand, label, row } from '../../../ui/controls/layout';
+import { EditorMenu, EditorMenuButton } from '../../../ui/controls/menu';
+import { EditorCheckbox } from '../../../ui/controls/checkbox';
+import { EditorIconButton, paintIcon } from '../../../ui/icons/control-icons';
+import { setTooltip } from '../../../ui/controls/tooltip';
+import { PropertySheet } from '../../../ui/property-editor/property-sheet';
+import { editorBox, editorColors, EDITOR_FONT } from '../../../ui/theme/control-theme';
 import { assetLibrary } from '../../assets/asset-library';
-import { CONTENT_COLORS as C, contentIcon, contentText, contentWindowBackground, contentWrappedText } from '../../content-browser/content-style';
-import type { ProjectRecord } from '../project-types';
 import { projectWorkspace as projects } from '../project-workspace';
+import { ProjectTileView } from './project-tile-view';
 
 type BrowserMode = 'open' | 'recent' | 'new';
 
+class ProjectCategory extends Button {
+  constructor (engine: Engine, text: string, private readonly active: () => boolean) {
+    super(engine, text); this.textAlignment = HorizontalAlignment.Left;
+    this.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' }); this.setThemeFontSizeOverride('fontSize', 20);
+    for (const [state, border] of Object.entries({ normal: editorColors.clear, hover: editorColors.hover, pressed: editorColors.primary, hoverPressed: editorColors.primaryHover })) {
+      this.setThemeStyleBoxOverride(state, editorBox(editorColors.recessed, 0, 4, border));
+    }
+  }
+  override getMinimumSize (): math.Vector2 { return new math.Vector2(0, 104); }
+  protected override getContentInsets (): ContentInsets { return { left: 18, top: 68, right: 18, bottom: 8 }; }
+  protected override drawDecoration (_mode: ButtonDrawMode): void { paintIcon(this, 'project', this.width - 80, 12, 64, editorColors.muted); }
+  override getDrawMode (): ButtonDrawMode {
+    if (this.disabled || !this.enabledInHierarchy) { return ButtonDrawMode.Disabled; }
+    const hovered = this.isHovered() || this.isPressing();
+
+    return this.active() ? hovered ? ButtonDrawMode.HoverPressed : ButtonDrawMode.Pressed : hovered ? ButtonDrawMode.Hover : ButtonDrawMode.Normal;
+  }
+  override update (dt: number): void { this.setPressedNoSignal(this.active()); super.update(dt); }
+}
+
 export class ProjectBrowserDialog {
-  private opened = false;
-  private request = false;
+  private engine!: Engine;
+  private source!: Control;
+  private browser!: EditorDialog;
+  private settings!: EditorDialog;
+  private confirm!: EditorDialog;
+  private context!: EditorMenu;
   private mode: BrowserMode = 'open';
   private selected?: string;
-  private search: [string] = [''];
-  private name: [string] = [''];
-  private description: [string] = [''];
-  private focusName = false;
+  private query = '';
   private showDeleted = false;
-  private deleteId?: string;
-  private deleteRequested = false;
-  private childMenu = false;
-  private settingsOpen = false;
-  private settingsVisible = false;
-  private settingsRequested = false;
-  private settingsName: [string] = [''];
-  private settingsDescription: [string] = [''];
-  private startup?: string;
-  private readonly settingsGrid = new PropertyGridState();
+  private cards?: ProjectTileView;
+  private name?: LineEdit;
+  private description?: TextEdit;
+  private error?: Label;
+  private revision = -1;
+  private settingsError?: Label;
+  private selectionText?: Label;
+  private sort: 'recent' | 'name' = 'recent';
+  private validation = '';
+  get displaysErrors (): boolean { return !!this.browser?.visible || !!this.settings?.visible; }
 
-  show (mode: BrowserMode = 'open'): void {
-    this.mode = mode; this.opened = true; this.request = true; this.search[0] = ''; this.showDeleted = false;
-    projects.error = '';
-    this.selected = projects.current?.id; this.focusName = mode === 'new';
-    if (mode === 'new') { this.name[0] = ''; this.description[0] = ''; }
-    void projects.refresh();
+  initialize (engine: Engine, source: Control): void {
+    this.engine = engine; this.source = source; this.browser = new EditorDialog(engine); this.settings = new EditorDialog(engine); this.confirm = new EditorDialog(engine); this.context = new EditorMenu(engine);
   }
+  show (mode: BrowserMode = 'open'): void {
+    this.mode = mode; this.selected = projects.current?.id; this.query = ''; this.showDeleted = false; this.validation = ''; projects.error = '';
+    this.buildBrowser(); void projects.refresh();
+  }
+  private buildBrowser (): void {
+    this.cards = undefined; this.name = undefined; this.description = undefined;
+    this.browser.show(this.source, 'Project Browser', body => {
+      const sources = column(this.engine, [], 8), main = column(this.engine, [], 8);
 
+      for (const [mode, title] of [['open', 'My Projects'], ['recent', 'Recent Projects'], ['new', 'New Project']] as const) {
+        const button = append(sources, new ProjectCategory(this.engine, title, () => mode === this.mode));
+
+        button.on('pressed', () => { this.mode = mode; this.showDeleted = false; this.validation = ''; this.buildBrowser(); });
+      }
+      this.error = append(main, label(this.engine, projects.error, editorColors.error)); this.error.visible = !!projects.error;
+      if (this.mode === 'new') {
+        const heading = append(main, label(this.engine, 'Blank Project'));
+
+        heading.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' }); heading.setThemeFontSizeOverride('fontSize', 20);
+        append(main, label(this.engine, 'Start with an empty scene.'));
+        append(main, label(this.engine, 'Project Name')); this.name = append(main, new EditorTextField(this.engine)); this.name.on('textSubmitted', () => this.create()); this.name.on('textChanged', () => this.validation = '');
+        append(main, label(this.engine, 'Description')); this.description = append(main, new EditorTextArea(this.engine)); this.description.setCustomMinimumSize(0, 100);
+      } else {
+        const header = append(main, row(this.engine, [], 5));
+        const search = append(header, expand(new EditorSearchField(this.engine), true, false));
+        const sort = append(header, new EditorMenuButton(this.engine, ''));
+        const refresh = append(header, new EditorIconButton(this.engine, 'refresh'));
+
+        sort.iconName = 'sort'; sort.actions = () => [{ label: 'Most Recently Used', checked: this.sort === 'recent', action: () => { this.sort = 'recent'; this.refreshCards(); } },
+          { label: 'Alphabetical', checked: this.sort === 'name', action: () => { this.sort = 'name'; this.refreshCards(); } }];
+        refresh.on('pressed', () => { void projects.refresh(); }); setTooltip(sort, 'Sort projects'); setTooltip(refresh, 'Refresh project list');
+        search.placeholderText = 'Search projects'; search.text = this.query; search.on('textChanged', value => { this.query = value; this.refreshCards(); });
+        this.cards = append(main, expand(new ProjectTileView(this.engine, {
+          selected: id => id === this.selected, choose: id => this.selected = id, open: id => { this.selected = id; this.openSelected(); },
+          context: (id, position) => {
+            const project = projects.projects.find(project => project.id === id);
+
+            if (!project) { return; }
+            this.context.setActions([{ label: project.deletedAt ? 'Restore' : 'Delete', enabled: project.id !== projects.current?.id,
+              action: () => {
+                if (project.deletedAt) { void projects.trash(project.id, true); } else {
+                  this.confirm.show(this.browser, 'Delete Project', body => this.confirm.message(body, 'Move "' + project.name + '" to Trash?'), [
+                    { label: 'Delete', action: () => { this.confirm.close(); void projects.trash(project.id); } }, { label: 'Cancel', action: () => this.confirm.close() },
+                  ]);
+                }
+              } }]); this.context.show(this.cards!, position);
+          },
+          key: event => {
+            if (event.keycode === 'Enter') { this.openSelected(); event.accept(); } else if (event.keycode.startsWith('Arrow')) {
+              const entries = this.entries(), index = Math.max(0, entries.findIndex(project => project.id === this.selected));
+              const delta = event.keycode === 'ArrowLeft' ? -1 : event.keycode === 'ArrowRight' ? 1 : event.keycode === 'ArrowUp' ? -this.cards!.columns : this.cards!.columns;
+              const project = entries[Math.max(0, Math.min(entries.length - 1, index + delta))];
+
+              if (project) { this.selected = project.id; this.cards!.revealProject(project.id); } event.accept();
+            }
+          },
+        })));
+        this.refreshCards();
+        const deleted = append(main, new EditorCheckbox(this.engine, 'Show deleted projects'));
+
+        deleted.setPressedNoSignal(this.showDeleted); deleted.on('toggled', value => { this.showDeleted = value; this.refreshCards(); });
+      }
+      const content = append(body, row(this.engine, [], 16));
+      const sidebar = append(content, new PanelContainer(this.engine));
+
+      sidebar.setThemeStyleBoxOverride('panel', editorBox(editorColors.panel)); sidebar.setCustomMinimumSize(304, 0); append(sidebar, sources);
+      append(content, expand(main)); content.setCustomMinimumSize(0, Math.min(400, Math.max(240, (this.source.root?.height ?? window.innerHeight) - 240)));
+      this.selectionText = append(this.browser.beforeButtons, label(this.engine, '')); this.selectionText.textOverflow = TextOverflow.Ellipsis;
+    }, [
+      { label: 'Import…', action: () => { this.browser.close(); projects.chooseImport(); } },
+      { label: this.mode === 'new' ? 'Create Project' : 'Open', primary: true, enabled: () => !projects.busy && (this.mode === 'new' ? !!this.name?.text.trim() : !!this.selected && !this.showDeleted), action: () => this.mode === 'new' ? this.create() : this.openSelected() },
+      { label: 'Cancel', action: () => this.browser.close() },
+    ], Math.min(1120, (this.source.root?.width ?? window.innerWidth) - 24));
+    (this.name as LineEdit | undefined)?.grabFocus();
+  }
+  private entries () {
+    return (this.mode === 'recent' && !this.showDeleted ? projects.recent : projects.projects)
+      .filter(project => !!project.deletedAt === this.showDeleted && (project.name + ' ' + project.description).toLowerCase().includes(this.query.toLowerCase()))
+      .sort((a, b) => this.sort === 'name' ? a.name.localeCompare(b.name, undefined, { numeric: true }) : b.lastOpenedAt - a.lastOpenedAt);
+  }
+  private refreshCards (): void {
+    const entries = this.entries();
+
+    if (this.selected && !entries.some(entry => entry.id === this.selected)) { this.selected = undefined; }
+    this.cards?.setItems(entries);
+    this.revision = projects.revision;
+  }
+  private openSelected (): void {
+    if (!this.selected || this.showDeleted || projects.busy) { return; }
+    const id = this.selected;
+
+    this.browser.close(); void projects.open(id);
+  }
+  private create (): void {
+    const name = this.name?.text.trim() ?? '';
+
+    if (!name || projects.projects.some(project => !project.deletedAt && project.name.toLowerCase() === name.toLowerCase())) {
+      this.validation = 'Enter a unique project name.';
+
+      return;
+    }
+    this.browser.close(); void projects.create(name, this.description?.text ?? '');
+  }
   showSettings (): void {
     const current = projects.current;
 
     if (!current) { return; }
-    this.settingsName[0] = current.name; this.settingsDescription[0] = current.description;
-    this.startup = current.startupSceneId; this.settingsOpen = true; this.settingsRequested = true;
+    const draft = { name: current.name, description: current.description, startupSceneId: current.startupSceneId };
+
+    this.settings.show(this.source, 'Project Settings', body => {
+      const sheet = append(body, new PropertySheet(this.engine, { change: (_, __, action) => action(), finish: () => {} }));
+
+      sheet.setCustomMinimumSize(580, 300);
+      const general = sheet.section('general', 'General');
+
+      general.text('Project Name', { read: () => draft.name, write: value => draft.name = value });
+      general.text('Description', { read: () => draft.description, write: value => draft.description = value }, true);
+      const scenes = assetLibrary.entries.filter(entry => entry.kind === 'scene' && !entry.deletedAt);
+
+      general.choice('Startup Scene', { read: () => scenes.findIndex(scene => scene.id === draft.startupSceneId) + 1,
+        write: value => draft.startupSceneId = scenes[value - 1]?.id }, ['Last Opened Scene', ...scenes.map(scene => scene.name)]);
+      const storage = sheet.section('storage', 'Storage');
+
+      storage.readOnly('Project ID', () => current.id); storage.readOnly('Location', () => 'Browser local storage');
+      this.settingsError = append(body, label(this.engine, '', editorColors.error));
+    }, [
+      { label: 'Save', primary: true, enabled: () => !projects.busy && !!draft.name.trim(), action: () => { void projects.settings(draft).then(() => { if (!projects.error) { this.settings.close(); } }); } },
+      { label: 'Cancel', action: () => this.settings.close() },
+    ], 620);
   }
+  update (): void {
+    if (this.cards && this.revision !== projects.revision) { this.refreshCards(); }
+    if (this.error) { this.error.text = this.validation || projects.error; this.error.visible = !!this.error.text; }
+    if (this.settingsError) { this.settingsError.text = projects.error; this.settingsError.visible = !!projects.error; }
+    if (this.selectionText) {
+      const project = projects.projects.find(project => project.id === this.selected);
 
-  draw (): void {
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 12));
-    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(8, 5));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 8));
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 3);
-    ImGui.PushStyleColor(ImGui.Col.PopupBg, new ImGui.Vec4(0.141, 0.141, 0.141, 1));
-    ImGui.PushStyleColor(ImGui.Col.ChildBg, new ImGui.Vec4(0.102, 0.102, 0.102, 1));
-    ImGui.PushStyleColor(ImGui.Col.FrameBg, new ImGui.Vec4(0.059, 0.059, 0.059, 1));
-    ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Vec4(0.22, 0.22, 0.22, 1));
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Vec4(0.34, 0.34, 0.34, 1));
-    ImGui.PushStyleColor(ImGui.Col.Header, new ImGui.Vec4(0.22, 0.22, 0.22, 1));
-    ImGui.PushStyleColor(ImGui.Col.HeaderHovered, new ImGui.Vec4(0.34, 0.34, 0.34, 1));
-    ImGui.PushStyleColor(ImGui.Col.HeaderActive, new ImGui.Vec4(0, 0.44, 0.88, 1));
-    this.drawBrowser(); this.drawSettings(); this.drawError();
-    ImGui.PopStyleColor(8); ImGui.PopStyleVar(4);
-  }
-
-  private size (width: number, height: number): void {
-    const display = ImGui.GetIO().DisplaySize;
-
-    ImGui.SetNextWindowSize(new ImGui.Vec2(Math.min(width, display.x - 24), Math.min(height, display.y - 36)), ImGui.Cond.Always);
-    ImGui.SetNextWindowPos(new ImGui.Vec2(display.x / 2, display.y / 2), ImGui.Cond.Appearing, new ImGui.Vec2(0.5, 0.5));
-  }
-
-  private drawBrowser (): void {
-    if (this.request) { ImGui.OpenPopup('Project Browser'); this.request = false; }
-    if (!this.opened) { return; }
-    this.size(860, 550);
-    if (!ImGui.BeginPopupModal('Project Browser', value => {
-      if (value !== undefined) { this.opened = value; }
-
-      return this.opened;
-    }, ImGui.WindowFlags.NoResize | ImGui.WindowFlags.NoSavedSettings)) { return; }
-    contentWindowBackground();
-    ImGui.BeginDisabled(projects.busy);
-    this.childMenu = false;
-    const area = ImGui.GetContentRegionAvail(), sidebar = Math.min(166, area.x * 0.25);
-
-    ImGui.BeginChild('##ProjectNavigation', new ImGui.Vec2(sidebar, area.y - 46));
-    ImGui.TextDisabled('PROJECTS'); ImGui.Spacing();
-    for (const [mode, label] of [['open', 'My Projects'], ['recent', 'Recent Projects'], ['new', 'New Project']] as const) {
-      if (ImGui.Selectable(label, this.mode === mode, ImGui.SelectableFlags.None, new ImGui.Vec2(0, 32))) { this.mode = mode; this.focusName = mode === 'new'; this.showDeleted = false; }
-    }
-    ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-    ImGui.TextDisabled('CURRENT PROJECT'); ImGui.PushTextWrapPos(); ImGui.TextWrapped(projects.current?.name ?? ''); ImGui.PopTextWrapPos();
-    ImGui.EndChild(); ImGui.SameLine();
-    ImGui.BeginChild('##ProjectMain', new ImGui.Vec2(0, area.y - 46), ImGui.ChildFlags.AlwaysUseWindowPadding);
-    if (projects.error) { ImGui.TextWrapped(projects.error); }
-    if (this.mode === 'new') { this.drawNew(); } else { this.drawProjects(); }
-    ImGui.EndChild();
-    ImGui.Separator();
-    this.drawFooter();
-    ImGui.EndDisabled();
-    const deleting = !!this.deleteId;
-
-    this.drawDelete();
-    if (ImGui.IsKeyPressed(ImGui.Key.Escape, false) && !deleting && !this.childMenu) { this.opened = false; }
-    if (!this.opened) { ImGui.CloseCurrentPopup(); }
-    ImGui.EndPopup();
-  }
-
-  private drawNew (): void {
-    ImGui.Text('New Project'); ImGui.TextDisabled('Choose a starting point for your project.'); ImGui.Spacing();
-    const p = ImGui.GetCursorScreenPos(), draw = ImGui.GetWindowDrawList();
-
-    draw.AddRectFilled(p, new ImGui.Vec2(p.x + 150, p.y + 114), C.recessed, 4);
-    draw.AddRect(p, new ImGui.Vec2(p.x + 150, p.y + 114), C.selection, 4, 0, 2);
-    contentIcon('project', p.x + 49, p.y + 14, 52, C.text);
-    contentText('Blank', p.x + 54, p.y + 84, C.white);
-    ImGui.Dummy(new ImGui.Vec2(150, 114));
-    ImGui.TextDisabled('An empty Main scene and a separate asset library.'); ImGui.Spacing();
-    ImGui.Text('Project Name'); ImGui.SetNextItemWidth(-1);
-    if (this.focusName) { ImGui.SetKeyboardFocusHere(); this.focusName = false; }
-    ImGui.InputText('##NewProjectName', this.name, 256);
-    ImGui.Text('Description'); ImGui.SetNextItemWidth(-1);
-    ImGui.InputTextMultiline('##NewProjectDescription', this.description, 4097, new ImGui.Vec2(-1, 64));
-    ImGui.TextDisabled('Saved locally in this browser.');
-    if (this.duplicateName) { ImGui.TextColored(new ImGui.Vec4(0.9, 0.35, 0.3, 1), 'A project with this name already exists.'); }
-  }
-
-  private get duplicateName (): boolean {
-    return projects.projects.some(project => !project.deletedAt && project.name.toLowerCase() === this.name[0].trim().toLowerCase());
-  }
-
-  private drawProjects (): void {
-    searchBar('##ProjectSearch', this.search, { hint: 'Search projects' });
-    ImGui.Spacing();
-    const query = this.search[0].trim().toLowerCase();
-    const entries = (this.mode === 'recent' && !this.showDeleted ? projects.recent : projects.projects)
-      .filter(project => !!project.deletedAt === this.showDeleted && (project.name + ' ' + project.description).toLowerCase().includes(query))
-      .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
-    const height = ImGui.GetContentRegionAvail().y;
-
-    if (this.selected && !entries.some(project => project.id === this.selected)) { this.selected = undefined; }
-
-    ImGui.BeginChild('##ProjectCards', new ImGui.Vec2(0, height));
-    const width = 166, columns = Math.max(1, Math.floor((ImGui.GetContentRegionAvail().x + 10) / (width + 10)));
-
-    for (let index = 0; index < entries.length; index++) {
-      if (index % columns) { ImGui.SameLine(0, 10); }
-      this.drawCard(entries[index], width);
-    }
-    if (!entries.length) { ImGui.TextDisabled(this.showDeleted ? 'No deleted projects.' : 'No projects match your search.'); }
-    if (!ImGui.GetIO().WantTextInput && !this.showDeleted && entries.length && ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows)) {
-      const index = Math.max(0, entries.findIndex(project => project.id === this.selected));
-      const delta = ImGui.IsKeyPressed(ImGui.Key.RightArrow) ? 1 : ImGui.IsKeyPressed(ImGui.Key.LeftArrow) ? -1 : ImGui.IsKeyPressed(ImGui.Key.DownArrow) ? columns : ImGui.IsKeyPressed(ImGui.Key.UpArrow) ? -columns : 0;
-
-      if (delta) { this.selected = entries[Math.max(0, Math.min(entries.length - 1, index + delta))].id; }
-      if (ImGui.IsKeyPressed(ImGui.Key.Enter, false) && this.selected) { this.openSelected(); }
-    }
-    ImGui.EndChild();
-  }
-
-  private drawCard (project: ProjectRecord, width: number): void {
-    ImGui.PushID(project.id); ImGui.BeginGroup();
-    const p = ImGui.GetCursorScreenPos(), height = 164, selected = this.selected === project.id, draw = ImGui.GetWindowDrawList();
-
-    if (ImGui.InvisibleButton('##Project', new ImGui.Vec2(width, height))) { this.selected = project.id; }
-    const hovered = ImGui.IsItemHovered();
-    const background = ImGui.GetColorU32(editorTileColor(selected, hovered));
-
-    draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + height), background, 4);
-    draw.AddRectFilled(new ImGui.Vec2(p.x + 2, p.y + 2), new ImGui.Vec2(p.x + width - 2, p.y + 94), C.recessed, 3);
-    contentIcon('project', p.x + (width - 64) / 2, p.y + 12, 64, project.deletedAt ? C.faint : C.text);
-    if (selected || hovered) { draw.AddRect(p, new ImGui.Vec2(p.x + width, p.y + height), background, 4, 0, 2); }
-    contentWrappedText(project.name, p.x + 9, p.y + 101, width - 18, 2, selected ? C.white : C.text);
-    contentText(project.id === projects.current?.id ? 'Current Project' : new Date(project.lastOpenedAt).toLocaleDateString(), p.x + 9, p.y + 144, selected ? C.white : C.muted, width - 18, ImGui.GetFontSize() * 0.85);
-    if (hovered && ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left) && !project.deletedAt) { this.selected = project.id; this.openSelected(); }
-    if (hovered && ImGui.IsMouseClicked(ImGui.MouseButton.Right)) { this.selected = project.id; }
-    if (beginEditorContextItem('##ProjectContext')) {
-      this.childMenu = true;
-      if (project.deletedAt) {
-        if (editorMenuItem('Restore')) { void projects.trash(project.id, true); }
-      } else {
-        if (editorMenuItem('Open')) { this.selected = project.id; this.openSelected(); }
-        if (editorMenuItem('Delete Project...', '', false, project.id !== projects.current?.id)) { this.deleteId = project.id; this.deleteRequested = true; }
-      }
-      if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
-      endEditorPopup();
-    }
-    if (hovered && (project.description || ImGui.CalcTextSize(project.name).x > (width - 18) * 2)) {
-      editorTooltip(() => {
-        ImGui.Text(project.name);
-        if (project.description) { ImGui.PushTextWrapPos(320); ImGui.TextWrapped(project.description); ImGui.PopTextWrapPos(); }
-      }, { id: '##ProjectDescription', hovered });
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + height)); ImGui.Dummy(new ImGui.Vec2(width, 0));
-    ImGui.EndGroup(); ImGui.PopID();
-  }
-
-  private openSelected (): void {
-    if (!this.selected) { return; }
-    this.opened = false; void projects.open(this.selected);
-  }
-
-  private drawFooter (): void {
-    const width = ImGui.GetContentRegionAvail().x, p = ImGui.GetCursorScreenPos();
-    const selected = projects.projects.find(project => project.id === this.selected && !!project.deletedAt === this.showDeleted);
-
-    if (this.mode !== 'new') {
-      if (ImGui.Button('Import Project...', new ImGui.Vec2(132, 30))) { this.opened = false; projects.chooseImport(); }
-      ImGui.SameLine(); ImGui.Checkbox('Deleted Projects', value => {
-        if (value !== undefined) { this.showDeleted = value; }
-
-        return this.showDeleted;
-      });
-    }
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x + width - 206, p.y));
-    ImGui.BeginDisabled(this.mode === 'new' ? !this.name[0].trim() || this.name[0].trim().length > 80 || this.duplicateName : !selected);
-    ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Vec4(0, 0.44, 0.88, 1));
-    if (ImGui.Button(this.mode === 'new' ? 'Create' : this.showDeleted ? 'Restore' : 'Open', new ImGui.Vec2(104, 30))) {
-      if (this.mode === 'new') { this.opened = false; void projects.create(this.name[0], this.description[0]); } else if (this.showDeleted && this.selected) { void projects.trash(this.selected, true); } else { this.openSelected(); }
-    }
-    ImGui.PopStyleColor(); ImGui.EndDisabled(); ImGui.SameLine();
-    if (ImGui.Button('Cancel', new ImGui.Vec2(94, 30))) { this.opened = false; }
-  }
-
-  private drawDelete (): void {
-    if (this.deleteRequested) { ImGui.OpenPopup('Delete Project'); this.deleteRequested = false; }
-    if (this.deleteId) { this.size(460, 180); }
-    if (ImGui.BeginPopupModal('Delete Project', null, ImGui.WindowFlags.NoResize | ImGui.WindowFlags.NoSavedSettings)) {
-      ImGui.TextWrapped('Move "' + projects.projects.find(project => project.id === this.deleteId)?.name + '" to deleted projects?');
-      ImGui.TextDisabled('Its scenes and assets can be restored together.'); ImGui.Spacing();
-      if (ImGui.Button('Delete', new ImGui.Vec2(90, 0))) { if (this.deleteId) { void projects.trash(this.deleteId); } this.deleteId = undefined; ImGui.CloseCurrentPopup(); }
-      ImGui.SameLine();
-      if (ImGui.Button('Cancel', new ImGui.Vec2(90, 0)) || ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { this.deleteId = undefined; ImGui.CloseCurrentPopup(); }
-      ImGui.EndPopup();
+      this.selectionText.text = this.mode === 'new' ? 'Blank Project' : project?.name ?? 'Select a project';
     }
   }
-
-  private drawSettings (): void {
-    if (this.settingsRequested) { ImGui.OpenPopup('Project Settings'); this.settingsRequested = false; this.settingsVisible = true; }
-    if (!this.settingsVisible) { return; }
-    this.size(660, 470);
-    if (ImGui.BeginPopupModal('Project Settings', null, ImGui.WindowFlags.NoResize | ImGui.WindowFlags.NoSavedSettings)) {
-      if (!this.settingsOpen) {
-        ImGui.CloseCurrentPopup(); this.settingsVisible = false; ImGui.EndPopup();
-
-        return;
-      }
-      contentWindowBackground(); ImGui.BeginDisabled(projects.busy);
-      ImGui.Text(projects.current?.name ?? ''); ImGui.TextDisabled('Project identity and editor startup.'); ImGui.Spacing();
-      const height = ImGui.GetContentRegionAvail().y - 78;
-
-      ImGui.BeginChild('##ProjectSettingsFields', new ImGui.Vec2(0, height));
-      PropertyGrid.begin(this.settingsGrid, '');
-      PropertyGrid.category('General', 'General', ['Name', 'Description'], () => {
-        Fields.Property('Project Name', width => {
-          ImGui.SetNextItemWidth(width);
-
-          return ImGui.InputText('##Name', this.settingsName, 256);
-        });
-        Fields.Property('Description', width => ImGui.InputTextMultiline('##Description', this.settingsDescription, 4097, new ImGui.Vec2(width, 72)));
-      });
-      PropertyGrid.category('Startup', 'Startup', ['Editor Startup Scene'], () => {
-        const scenes = assetLibrary.entries.filter(entry => entry.kind === 'scene' && !entry.deletedAt);
-
-        Fields.ComboField('Editor Startup Scene', next => {
-          if (next !== undefined) { this.startup = scenes[next - 1]?.id; }
-
-          return scenes.findIndex(scene => scene.id === this.startup) + 1;
-        }, ['Last Opened Scene', ...scenes.map(scene => assetLibrary.pathText(scene.parentId) + '/' + scene.name)]);
-      });
-      PropertyGrid.end(); ImGui.EndChild();
-      if (projects.error) { ImGui.TextWrapped(projects.error); }
-      ImGui.TextDisabled('The startup scene opens when this project is opened.'); ImGui.Separator();
-      ImGui.BeginDisabled(!this.settingsName[0].trim());
-      ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Vec4(0, 0.44, 0.88, 1));
-      if (ImGui.Button('Save Settings', new ImGui.Vec2(128, 30))) {
-        void projects.settings({ name: this.settingsName[0], description: this.settingsDescription[0], startupSceneId: this.startup }).then(() => { if (!projects.error) { this.settingsOpen = false; } });
-      }
-      ImGui.PopStyleColor(); ImGui.EndDisabled(); ImGui.SameLine();
-      if (ImGui.Button('Cancel', new ImGui.Vec2(90, 30)) || ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { this.settingsOpen = false; }
-      ImGui.EndDisabled();
-      if (!this.settingsOpen) { ImGui.CloseCurrentPopup(); this.settingsVisible = false; }
-      ImGui.EndPopup();
-    }
-  }
-
-  private drawError (): void {
-    if (!projects.error || this.opened || this.settingsVisible) { return; }
-    ImGui.OpenPopup('Project Error');
-    this.size(500, 190);
-    if (ImGui.BeginPopupModal('Project Error', null, ImGui.WindowFlags.NoResize | ImGui.WindowFlags.NoSavedSettings)) {
-      ImGui.TextWrapped(projects.error); ImGui.Spacing();
-      if (ImGui.Button('OK', new ImGui.Vec2(90, 0)) || ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { projects.error = ''; ImGui.CloseCurrentPopup(); }
-      ImGui.EndPopup();
-    }
-  }
+  dispose (): void { this.browser?.dispose(); this.settings?.dispose(); this.confirm?.dispose(); this.context?.dispose(); }
 }
-
 export const projectBrowser = new ProjectBrowserDialog();

@@ -1,27 +1,30 @@
-import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
-import { toolbarButton } from '../../../ui/widgets/toolbar-button';
 import { EffectsObject, Material, Shader, Sprite, Texture, VFXItem } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import type { LineEdit, VBoxContainer, Button } from '@galacean/effects-plugin-gui';
+import { Control, HorizontalAlignment, MouseFilter } from '@galacean/effects-plugin-gui';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../../platform/imgui/index';
-import { drawAssetIcon } from '../../../ui/icons/asset-icons';
-import type { PropertyHeaderIcon } from '../../../ui/property-editor/property-grid';
-import { PROPERTY_COLORS as C } from '../../../ui/property-editor/property-grid';
-import { InteractionColors as I } from '../../../ui/theme/editor-interaction';
-import { drawEditorChevron } from '../../../ui/widgets/editor-arrow';
-import { beginEditorPopup, editorMenuItem, endEditorPopup } from '../../../ui/widgets/editor-menu';
-import { searchBar } from '../../../ui/widgets/search-bar';
+import { append, column, expand, row, screenPosition, place, disposeChildren } from '../../../ui/controls/layout';
+import { setTooltip } from '../../../ui/controls/tooltip';
+import { EditorMenuButton, MenuHeading, EditorMenuActionButton } from '../../../ui/controls/menu';
+import { EditorDropTarget } from '../../../ui/controls/drag-feedback';
+import { EditorPopupPanel } from '../../../ui/controls/popup-panel';
+import { EditorIconButton } from '../../../ui/icons/control-icons';
+import type { ObjectReferenceOptions } from '../../../ui/property-editor/object-reference-field';
+import type { ValueBinding } from '../../../ui/property-editor/property-sheet';
 import { sceneWorkspace } from '../../scene/scene-workspace';
 import { assetLibrary } from '../asset-library';
+import { AssetPreviewControl } from '../preview/asset-preview-control';
 import { openContentAsset, openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
-import { getSpriteThumbnail } from '../preview/sprite-thumbnail';
-import { materialPreviews } from '../preview/material-preview';
-import { drawTexturePreview, getOrCreateTexturePreview, imageTexturePreview } from '../preview/texture-preview';
 import type { ContentAssetDrag } from './asset-drag';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
+import { AssetPicker, assetReferenceClipboard } from './asset-picker';
+import type { AssetPickerCandidate } from './asset-picker';
 
-const searches = new Map<number, [string]>();
 const assetKinds = { Texture: 'texture', Material: 'material', Shader: 'shader', Sprite: 'sprite' } as const;
+
+interface AssetPayload { type: string, data: unknown }
 
 function openReference (reference: object): void {
   if (reference instanceof VFXItem) {
@@ -34,160 +37,180 @@ function openReference (reference: object): void {
   openRuntimeAsset(reference);
 }
 
-function actionButton (id: string, action: 'use' | 'browse', enabled: boolean, hint: string): boolean {
-  return toolbarButton(id, { icon: action === 'use' ? 'useSelected' : 'browseContent', width: 24, height: 22, enabled, hint });
-}
+/** A bound reference field owns its picker and assigns resources from Control signals and drops. */
+export class AssetReferenceControl extends EditorDropTarget {
+  private readonly caption: EditorMenuButton;
+  private readonly use: Button;
+  private readonly browse: Button;
+  private readonly picker: EditorPopupPanel;
+  private readonly search: LineEdit;
+  private readonly browser: AssetPicker;
+  private available: AssetPickerCandidate[] = [];
+  private readonly payloadType: string;
+  private readonly kind?: typeof assetKinds[keyof typeof assetKinds];
+  private readonly thumbnail?: AssetPreviewControl;
+  private readonly pickerActions: VBoxContainer;
+  private readonly browseHeading: MenuHeading;
+  private revision = -1;
 
-export function drawAssetReferenceField (object: object, property: string, width: number, expectedType?: string, readOnly = false, icon?: PropertyHeaderIcon, onAssetDrop?: (texture: Texture) => void): boolean {
-  const target = object as Record<string, any>, reference = target[property];
-  const payloadType = expectedType ?? reference?.constructor.name ?? 'EffectsObject';
-  const type = reference instanceof Texture || payloadType === Texture.name || payloadType === 'Texture' ? 'Texture' :
-    reference instanceof Sprite || payloadType === Sprite.name || payloadType === 'Sprite' ? 'Sprite' :
-      reference instanceof Material || payloadType === Material.name || payloadType === 'Material' ? 'Material' :
-        reference instanceof Shader || payloadType === Shader.name || payloadType === 'Shader' ? 'Shader' : payloadType;
-  const kind = assetKinds[type as keyof typeof assetKinds];
-  const assetReference = !!kind;
-  const engine = EditorRuntimeSession.player.engine;
-  const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
-  const caption = entry?.name || reference?.name || (reference ? type : 'None');
-  const referenceHint = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : '';
-  const selectedAsset = selectedContentAssets().find(id => assetLibrary.entry(id)?.kind === kind && !assetLibrary.entry(id)?.deletedAt);
-  const canBrowse = !!entry && !entry.deletedAt;
-  let changed = false;
+  constructor (engine: Engine, private readonly binding: ValueBinding<object | null>, private readonly options: ObjectReferenceOptions = {}) {
+    super(engine);
+    const reference = binding.read();
 
-  const assignAsset = (id: string) => {
-    if (!kind || assetLibrary.entry(id)?.kind !== kind || assetLibrary.entry(id)?.deletedAt) { return; }
+    this.payloadType = reference instanceof Texture ? 'Texture' : reference instanceof Material ? 'Material' : reference instanceof Sprite ? 'Sprite' : reference instanceof Shader ? 'Shader' : options.expectedType ?? reference?.constructor.name ?? 'EffectsObject';
+    this.kind = assetKinds[this.payloadType as keyof typeof assetKinds];
+    if (this.kind === 'texture' || this.kind === 'sprite' || this.kind === 'material') {
+      this.thumbnail = append(this, new AssetPreviewControl(engine, () => this.binding.read(), 54, undefined, this.kind)); this.thumbnail.mouseFilter = MouseFilter.Pass;
+      this.thumbnail.activated = () => {
+        const reference = this.binding.read();
+
+        if (reference) { openReference(reference); }
+      };
+    }
+    this.caption = append(this, expand(new EditorMenuButton(engine, ''), true, false)); this.caption.clipText = true;
+    this.caption.mouseFilter = MouseFilter.Pass; this.caption.themeTypeVariation = 'EditorComboButton'; this.caption.textAlignment = HorizontalAlignment.Left; this.caption.showArrow = true;
+    this.caption.openMenu = () => this.showPicker();
+    this.caption.actions = () => {
+      const reference = this.binding.read();
+      const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
+
+      return [
+        { label: 'Edit', icon: 'edit', enabled: !!reference, action: () => { if (reference) { openReference(reference); } } },
+        { label: 'Copy Reference', icon: 'copy', enabled: !!reference, action: () => {
+          const text = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : reference instanceof EffectsObject ? reference.getInstanceId() : this.caption.text;
+
+          assetReferenceClipboard.id = entry?.id; assetReferenceClipboard.asset = reference ?? undefined; assetReferenceClipboard.project = assetLibrary.projectId;
+          void navigator.clipboard.writeText(text).catch(error => assetLibrary.report(error));
+        } },
+        { label: 'Paste', icon: 'paste', enabled: !options.readOnly && this.canPaste(), action: () => {
+          if (!this.canPaste()) { return; }
+          if (assetReferenceClipboard.id) { this.assignAsset(assetReferenceClipboard.id); } else if (assetReferenceClipboard.asset) { this.assign(assetReferenceClipboard.asset); }
+        } },
+        ...(options.allowEmpty === false ? [] : [{ label: 'Clear', icon: 'delete' as const, enabled: !options.readOnly && !!reference, action: () => this.assign(null) }]),
+      ];
+    };
+    this.use = append(this, new EditorIconButton(engine, 'useSelected'));
+    this.use.on('pressed', () => {
+      const id = this.selectedAsset();
+
+      if (id) { this.assignAsset(id); }
+    });
+    this.browse = append(this, new EditorIconButton(engine, 'browseContent'));
+    this.browse.on('pressed', () => {
+      const reference = this.binding.read();
+
+      if (reference instanceof EffectsObject) { revealContentAsset(reference.getInstanceId()); }
+    });
+    this.use.mouseFilter = this.browse.mouseFilter = MouseFilter.Pass;
+    this.use.visible = this.browse.visible = !!this.kind;
+    this.picker = new EditorPopupPanel(engine); this.picker.themeTypeVariation = 'EditorMenu'; this.picker.setSize(300, 0);
+    const body = append(this.picker, column(engine));
+
+    this.pickerActions = append(body, column(engine));
+    this.browseHeading = append(body, new MenuHeading(engine, 'Browse'));
+    this.browser = append(body, new AssetPicker(engine, id => {
+      const candidate = this.available.find(candidate => candidate.id === id);
+
+      if (candidate?.asset) { this.assign(candidate.asset); } else { this.assignAsset(id); }
+      this.picker.hidePopup();
+    })); this.search = this.browser.search; this.search.placeholderText = 'Search ' + this.payloadType + ' assets';
+    this.picker.onPopup('popupOpened', () => this.caption.setPressedNoSignal(true)); this.picker.onPopup('popupClosed', () => this.caption.setPressedNoSignal(false));
+    setTooltip(this.use, 'Use selected asset from Content Browser'); setTooltip(this.browse, 'Browse to asset in Content Browser');
+  }
+  override getMinimumSize (): math.Vector2 { return new math.Vector2(80, this.thumbnail?.visible ? 54 : this.kind ? 49 : 24); }
+  protected override sortChildren (): void {
+    const left = this.thumbnail?.visible ? 60 : 0;
+
+    if (this.thumbnail?.visible) { place(this.thumbnail, 0, 0, 54, 54); }
+    place(this.caption, left, 0, this.width - left, 24); place(this.use, left, 27, 24, 22); place(this.browse, left + 26, 27, 24, 22);
+  }
+  private assign (value: object | null): void {
+    if (this.options.readOnly || this.isDisposed || value === null && this.options.allowEmpty === false) { return; }
+    const action = () => this.binding.write(value);
+
+    if (this.options.changed) { this.options.changed(action); } else { action(); }
+  }
+  private assignAsset (id: string): void {
+    if (this.options.readOnly || !this.kind || assetLibrary.entry(id)?.kind !== this.kind || assetLibrary.entry(id)?.deletedAt) { return; }
+    const engine = EditorRuntimeSession.player.engine;
     const cached = assetLibrary.asset(engine, id);
 
     if (cached?.isRegistered && !(cached instanceof Texture && cached.isDestroyed)) {
-      target[property] = cached; changed = true;
+      this.assign(cached);
 
       return;
     }
-    const selection = [...EditorSelection.getSelectedObjects()], document = sceneWorkspace.current, project = assetLibrary.projectId;
+    const selection = EditorSelection.getSelectedObjects(), document = sceneWorkspace.current, project = assetLibrary.projectId;
 
     void assetLibrary.loadAsset(engine, id).then(loaded => {
       const current = EditorSelection.getSelectedObjects();
 
-      if (document !== sceneWorkspace.current || project !== assetLibrary.projectId || selection.length !== current.length || selection.some((item, index) => item !== current[index])) { return; }
-      if (onAssetDrop && loaded instanceof Texture) { onAssetDrop(loaded); } else { sceneWorkspace.observe('Assign ' + kind, () => target[property] = loaded, [...selection, object]); }
+      if (this.isDisposed || document !== sceneWorkspace.current || project !== assetLibrary.projectId || selection.length !== current.length || selection.some((item, index) => item !== current[index])) { return; }
+      this.assign(loaded);
     }).catch(error => { if (project === assetLibrary.projectId) { assetLibrary.report(error); } });
-  };
-
-  ImGui.BeginGroup();
-  const origin = ImGui.GetCursorScreenPos();
-  const thumbnail = reference instanceof Texture || reference instanceof Sprite || reference instanceof Material;
-  const thumbnailWidth = thumbnail ? 60 : 0;
-
-  if (thumbnail) {
-    const size = 54, draw = ImGui.GetWindowDrawList();
-    const visible = ImGui.IsRectVisible(origin, new ImGui.Vec2(origin.x + size, origin.y + size));
-    const spritePreview = visible && reference instanceof Sprite ? getSpriteThumbnail(reference) : undefined;
-
-    ImGui.InvisibleButton('##Thumbnail', new ImGui.Vec2(size, size));
-    const hovered = ImGui.IsItemHovered();
-    const materialPreview = visible && reference instanceof Material ? materialPreviews.runtime(reference, 96, { realtime: hovered }) : undefined;
-    const preview = visible && reference instanceof Texture ? getOrCreateTexturePreview(reference, () => target[property]) :
-      materialPreview ? imageTexturePreview(materialPreview) : spritePreview;
-
-    if (hovered && ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) { openReference(reference); }
-    draw.AddRectFilled(origin, new ImGui.Vec2(origin.x + size, origin.y + size), ImGui.GetColorU32(C.input), 3);
-    draw.AddRect(origin, new ImGui.Vec2(origin.x + size, origin.y + size), ImGui.GetColorU32(hovered ? I.hover : I.outline), 3);
-    if (preview) {
-      const texture = reference instanceof Texture ? reference : reference instanceof Sprite ? reference.texture : undefined;
-      const imageWidth = Math.max(1, materialPreview?.width ?? spritePreview?.width ?? texture?.width ?? 1);
-      const imageHeight = Math.max(1, materialPreview?.height ?? spritePreview?.height ?? texture?.height ?? 1);
-      const scale = Math.min((size - 6) / imageWidth, (size - 6) / imageHeight), w = imageWidth * scale, h = imageHeight * scale;
-      const min = new ImGui.Vec2(origin.x + (size - w) / 2, origin.y + (size - h) / 2);
-
-      drawTexturePreview(preview, min, new ImGui.Vec2(min.x + w, min.y + h));
-    } else if (visible) { drawAssetIcon(kind ?? 'material', origin.x + 3, origin.y + 3, size - 6); }
-    if (referenceHint) { editorTooltip(referenceHint); }
-    ImGui.SameLine(0, 6);
   }
-  const p = ImGui.GetCursorScreenPos(), captionWidth = Math.max(30, width - thumbnailWidth);
+  private selectedAsset (): string | undefined { return selectedContentAssets().find(id => assetLibrary.entry(id)?.kind === this.kind && !assetLibrary.entry(id)?.deletedAt); }
+  private canPaste (): boolean {
+    if (assetReferenceClipboard.project !== assetLibrary.projectId) { return false; }
+    if (assetReferenceClipboard.id) { return !!this.kind && assetLibrary.entry(assetReferenceClipboard.id)?.kind === this.kind && !assetLibrary.entry(assetReferenceClipboard.id)?.deletedAt; }
+    const type = { Texture, Sprite, Material, Shader }[this.payloadType as 'Texture' | 'Sprite' | 'Material' | 'Shader'];
 
-  ImGui.PushStyleColor(ImGui.Col.Button, I.input); ImGui.PushStyleColor(ImGui.Col.ButtonHovered, I.input);
-  const clicked = ImGui.Button('##Reference', new ImGui.Vec2(captionWidth, ImGui.GetFrameHeight()));
-  const hovered = ImGui.IsItemHovered(), draw = ImGui.GetWindowDrawList();
-
-  draw.AddRect(p, new ImGui.Vec2(p.x + captionWidth, p.y + ImGui.GetFrameHeight()), ImGui.GetColorU32(hovered ? I.hover : I.outline), 3);
-  if (icon) { icon(p.x + 6, p.y + (ImGui.GetFrameHeight() - 16) / 2, 16); }
-  const left = p.x + (icon ? 28 : 7);
-
-  draw.PushClipRect(new ImGui.Vec2(left, p.y), new ImGui.Vec2(p.x + captionWidth - 20, p.y + ImGui.GetFrameHeight()), true);
-  draw.AddText(new ImGui.Vec2(left, p.y + (ImGui.GetFrameHeight() - ImGui.GetFontSize()) / 2), ImGui.GetColorU32(I.foreground), caption);
-  draw.PopClipRect(); drawEditorChevron(p.x + captionWidth - 18, p.y + (ImGui.GetFrameHeight() - 14) / 2, 14, hovered ? I.foregroundHover : I.foreground);
-  ImGui.PopStyleColor(2);
-  if (clicked) { ImGui.OpenPopup('##AssetPicker'); }
-  if (referenceHint) { editorTooltip(referenceHint); }
-  if (assetReference) {
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + ImGui.GetFrameHeight() + 3));
-    if (actionButton('##UseSelected', 'use', !readOnly && !!selectedAsset, 'Use selected asset from Content Browser') && selectedAsset) { assignAsset(selectedAsset); }
-    ImGui.SameLine(0, 2);
-    if (actionButton('##BrowseAsset', 'browse', canBrowse, canBrowse ? 'Browse to asset in Content Browser' : 'This reference is stored in the scene') && entry) { revealContentAsset(entry.id); }
+    return !!type && assetReferenceClipboard.asset instanceof type;
   }
+  private showPicker (): void {
+    disposeChildren(this.pickerActions);
+    append(this.pickerActions, new MenuHeading(this.engine, 'Current Asset'));
+    for (const action of this.caption.actions()) {
+      append(this.pickerActions, new EditorMenuActionButton(this.engine, { ...action, action: () => { this.picker.hidePopup(); action.action?.(); } }));
+    }
+    this.browseHeading.visible = this.browser.visible = !this.options.readOnly;
+    this.search.text = ''; this.filterCandidates(); this.picker.popup(screenPosition(this, 0, this.height), this.caption);
+    if (this.picker.y < screenPosition(this, 0, this.height).y) { this.picker.setPosition(this.picker.x, Math.max(0, screenPosition(this).y - this.picker.height)); }
+    if (!this.options.readOnly) { this.search.grabFocus(); }
+  }
+  private filterCandidates (): void {
+    const entries: AssetPickerCandidate[] = assetLibrary.entries.filter(entry => entry.kind === this.kind && !entry.deletedAt).map(entry => ({ id: entry.id, name: entry.name }));
+    const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material, Shader };
+    const type = constructors[this.payloadType];
 
-  if (ImGui.IsPopupOpen('##AssetPicker')) { ImGui.SetNextWindowSize(new ImGui.Vec2(Math.min(380, ImGui.GetIO().DisplaySize.x - 24), 0), ImGui.Cond.Appearing); }
-  if (beginEditorPopup('##AssetPicker')) {
-    if (editorMenuItem('Edit', '', false, !!reference)) { openReference(reference); }
-    if (editorMenuItem('Copy Reference', '', false, !!reference)) { ImGui.SetClipboardText(entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : reference instanceof EffectsObject ? reference.getInstanceId() : caption); }
-    if (canBrowse && editorMenuItem('Browse to Asset')) { revealContentAsset(entry.id); }
-    if (!readOnly) {
-      ImGui.Separator();
-      const id = ImGui.GetID('##AssetSearch');
+    if (type) {
+      for (const asset of Object.values(EditorRuntimeSession.player.engine.effectsObjectServer.objectInstance)) {
+        if (!(asset instanceof type) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && (asset.isDestroyed || EditorRuntimeSession.device.isSceneTexture(asset))) { continue; }
+        const name = (asset as { name?: string }).name || asset.constructor.name;
 
-      if (!searches.has(id) || ImGui.IsWindowAppearing()) { searches.set(id, ['']); }
-      const search = searches.get(id)!;
-
-      searchBar('##AssetSearch', search, { hint: 'Search ' + type + ' assets' });
-      ImGui.BeginChild('##ReferenceAssets', new ImGui.Vec2(0, 220));
-      const query = search[0].trim().toLowerCase();
-      let count = 0;
-
-      if (kind) {
-        for (const asset of assetLibrary.entries.filter(asset => asset.kind === kind && !asset.deletedAt && asset.name.toLowerCase().includes(query))) {
-          if (ImGui.Selectable(asset.name + '##' + asset.id, entry?.id === asset.id)) { assignAsset(asset.id); ImGui.CloseCurrentPopup(); }
-          count++;
-        }
+        entries.push({ id: asset.getInstanceId(), name, asset });
       }
-      const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material, Shader };
-      const constructor = constructors[type];
-
-      if (constructor) {
-        for (const asset of Object.values(engine.effectsObjectServer.objectInstance)) {
-          const assetName = (asset as { name?: string })?.name || asset?.constructor.name;
-
-          if (!(asset instanceof constructor) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && (asset.isDestroyed || EditorRuntimeSession.device.isSceneTexture(asset)) || !assetName.toLowerCase().includes(query)) { continue; }
-          if (ImGui.Selectable(assetName + '##' + asset.getInstanceId(), reference === asset)) { target[property] = asset; changed = true; ImGui.CloseCurrentPopup(); }
-          count++;
-        }
-      }
-      if (!count) { ImGui.TextDisabled('No compatible assets found.'); }
-      ImGui.EndChild();
     }
-    if (ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { ImGui.CloseCurrentPopup(); }
-    endEditorPopup();
+    this.available = entries;
+    const reference = this.binding.read();
+
+    this.browser.setCandidates(entries, this.kind, reference instanceof EffectsObject ? reference.getInstanceId() : '');
+    this.revision = assetLibrary.revision;
   }
-  ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + Math.max(thumbnail ? 54 : 0, ImGui.GetFrameHeight() + (assetReference ? 25 : 0))));
-  ImGui.Dummy(new ImGui.Vec2(width, 0)); ImGui.EndGroup();
-  if (!readOnly && ImGui.BeginDragDropTarget()) {
-    const payload = ImGui.AcceptDragDropPayload(type);
+  override update (delta: number): void {
+    const reference = this.binding.read();
+    const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
 
-    if (payload?.Data) { target[property] = payload.Data; changed = true; }
-    if (payloadType !== type) {
-      const legacy = ImGui.AcceptDragDropPayload(payloadType);
-
-      if (legacy?.Data) { target[property] = legacy.Data; changed = true; }
-    }
-    if (kind) {
-      const asset = ImGui.AcceptDragDropPayload<ContentAssetDrag>(CONTENT_ASSET_PAYLOAD);
-      const id = asset?.Data?.ids.length === 1 ? asset.Data.ids[0] : undefined;
-
-      if (id && assetLibrary.entry(id)?.kind === kind) { assignAsset(id); }
-    }
-    ImGui.EndDragDropTarget();
+    this.caption.text = entry?.name || (reference as { name?: string } | null)?.name || (reference ? this.payloadType : 'None');
+    this.use.disabled = !!this.options.readOnly || !this.selectedAsset(); this.browse.disabled = !entry || !!entry.deletedAt;
+    if (this.picker.visible && this.revision !== assetLibrary.revision) { this.filterCandidates(); }
+    super.update(delta);
   }
+  protected override canDropData (position: math.Vector2, data: unknown): boolean {
+    if (this.options.readOnly) { return false; }
+    const payload = data as AssetPayload;
 
-  return changed;
+    if (payload?.type === this.payloadType && payload.data) { return true; }
+    const assets = payload?.type === CONTENT_ASSET_PAYLOAD ? payload.data as ContentAssetDrag : undefined;
+
+    return !!this.kind && assets?.ids.length === 1 && assetLibrary.entry(assets.ids[0])?.kind === this.kind && !assetLibrary.entry(assets.ids[0])?.deletedAt;
+  }
+  protected override recognizesDrop (data: unknown): boolean { return !this.options.readOnly && super.recognizesDrop(data); }
+  protected override dropData (position: math.Vector2, data: unknown): void {
+    if (!this.canDropData(position, data)) { return; }
+    const payload = data as AssetPayload;
+
+    if (payload.type === CONTENT_ASSET_PAYLOAD) { this.assignAsset((payload.data as ContentAssetDrag).ids[0]); } else { this.assign(payload.data as object); }
+  }
+  override onDestroy (): void { this.picker.dispose(); }
 }

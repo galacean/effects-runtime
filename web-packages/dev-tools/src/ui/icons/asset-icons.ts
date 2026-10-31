@@ -1,24 +1,23 @@
-import { ImGui } from '../../platform/imgui/index';
-import { drawEditorIcon } from './editor-icons';
+import { math } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import { paintIcon } from './control-icons';
 
 export type AssetIcon = 'folder' | 'folderOpen' | 'scene' | 'project' | 'texture' | 'material' | 'shader' | 'sprite' | 'geometry' | 'animationClip';
 
 export const ASSET_ICON_COLORS = {
-  shader: ImGui.COL32(192, 192, 192, 255), geometry: ImGui.COL32(192, 192, 192, 255), animationClip: ImGui.COL32(192, 192, 192, 255),
-  folder: ImGui.COL32(182, 143, 85, 255), scene: ImGui.COL32(192, 192, 192, 255),
-  project: ImGui.COL32(192, 192, 192, 255), texture: ImGui.COL32(192, 192, 192, 255), material: ImGui.COL32(192, 192, 192, 255),
-  sprite: ImGui.COL32(192, 192, 192, 255),
+  shader: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255), geometry: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255), animationClip: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255),
+  folder: new math.Color(182 / 255, 143 / 255, 85 / 255, 255 / 255), scene: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255),
+  project: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255), texture: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255), material: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255),
+  sprite: new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255),
 };
 export const ASSET_TYPE_COLORS = {
-  shader: ImGui.COL32(140, 77, 204, 255), geometry: ImGui.COL32(51, 166, 179, 255), animationClip: ImGui.COL32(230, 128, 51, 255),
-  scene: ImGui.COL32(255, 156, 0, 255), texture: ImGui.COL32(192, 64, 64, 255), material: ImGui.COL32(64, 160, 78, 255),
-  sprite: ImGui.COL32(74, 169, 191, 255),
+  shader: new math.Color(140 / 255, 77 / 255, 204 / 255, 255 / 255), geometry: new math.Color(51 / 255, 166 / 255, 179 / 255, 255 / 255), animationClip: new math.Color(230 / 255, 128 / 255, 51 / 255, 255 / 255),
+  scene: new math.Color(255 / 255, 156 / 255, 0 / 255, 255 / 255), texture: new math.Color(192 / 255, 64 / 255, 64 / 255, 255 / 255), material: new math.Color(64 / 255, 192 / 255, 64 / 255, 255 / 255),
+  sprite: new math.Color(74 / 255, 169 / 255, 191 / 255, 255 / 255),
 };
 
-export function drawAssetIcon (icon: AssetIcon, x: number, y: number, size: number, color = ASSET_ICON_COLORS[icon === 'folderOpen' ? 'folder' : icon]): void {
-  const tint = new ImGui.Vec4((color & 255) / 255, ((color >>> 8) & 255) / 255, ((color >>> 16) & 255) / 255, (color >>> 24) / 255);
+export function drawAssetIcon (control: Control, icon: AssetIcon, x: number, y: number, size: number, color = ASSET_ICON_COLORS[icon === 'folderOpen' ? 'folder' : icon]): void {
+  const glyph = icon === 'shader' ? size >= 28 ? 'shaderAsset' : 'shader' : icon === 'geometry' ? 'mesh' : icon === 'animationClip' ? 'sequence' : icon === 'material' ? 'materialAsset' : size >= 28 && (icon === 'folder' || icon === 'folderOpen') ? 'folderLarge' : size >= 28 && icon === 'scene' ? 'sceneLarge' : icon;
 
-  const glyph = icon === 'shader' ? 'shader' : icon === 'geometry' ? 'mesh' : icon === 'animationClip' ? 'sequence' : icon === 'material' ? 'materialAsset' : size >= 28 && (icon === 'folder' || icon === 'folderOpen') ? 'folderLarge' : size >= 28 && icon === 'scene' ? 'sceneLarge' : icon;
-
-  drawEditorIcon(glyph, x, y, size, tint);
+  paintIcon(control, glyph, x, y, size, color);
 }

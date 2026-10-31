@@ -1,144 +1,102 @@
-import { ImGui } from '../../../platform/imgui';
-import { assetText } from '../../../ui/asset-view/asset-view';
-import { drawEditorIcon } from '../../../ui/icons/editor-icons';
-import { PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
-import { InteractionColors as C } from '../../../ui/theme/editor-interaction';
-import { beginEditorMenu, editorMenuItem, endEditorMenu, withEditorMenuStyle } from '../../../ui/widgets/editor-menu';
-import { searchBar } from '../../../ui/widgets/search-bar';
-import { splitter } from '../../../ui/widgets/splitter';
-import { toolbarButton, toolbarSeparator } from '../../../ui/widgets/toolbar-button';
-import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
+import { EditorSearchField } from '../../../ui/controls/search-field';
+import type { Engine } from '@galacean/effects';
+import type { Button, Control, LineEdit } from '@galacean/effects-plugin-gui';
+import { Label, VBoxContainer, TextOverflow, VerticalAlignment, Container, MouseFilter, FocusMode, VSeparator } from '@galacean/effects-plugin-gui';
+import { append, column, expand, margin, row, place } from '../../../ui/controls/layout';
+import { EditorMenuButton } from '../../../ui/controls/menu';
+import { EditorToolbar } from '../../../ui/controls/toolbar';
+import { EditorPanelTab } from '../../../ui/controls/panel-tab';
+import { EditorSplitContainer } from '../../../ui/controls/split-container';
+import { EditorIconButton } from '../../../ui/icons/control-icons';
+import { PropertySheet, type PropertyEditContext } from '../../../ui/property-editor/property-sheet';
+import { editorColors as C, editorBox, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { math } from '@galacean/effects';
 
-const footerHeight = 32;
-const footerGap = 2;
+class AssetPanelHeader extends Container {
+  readonly tab: EditorPanelTab;
+  constructor (engine: Engine, title: string, icon: 'camera' | 'details') {
+    super(engine); this.mouseFilter = MouseFilter.Ignore;
+    this.tab = append(this, new EditorPanelTab(engine, title, icon)); this.tab.focusMode = FocusMode.None; this.tab.mouseFilter = MouseFilter.Ignore;
+    const background = editorBox(C.panel, 0, 4);
 
-export class AssetEditorLayout {
-  inspectorWidth = 340;
-  readonly search: [string] = [''];
-  readonly grid = new PropertyGridState();
-
-  constructor () { this.grid.minimumValueWidth = 140; this.grid.columnRatio = 0.46; }
-
-  reset (): void { this.inspectorWidth = 340; this.search[0] = ''; }
+    background.setCornerRadii(4, 4, 0, 0); this.tab.setThemeStyleBoxOverride('normal', background);
+  }
+  override getMinimumSize (): math.Vector2 { return new math.Vector2(0, 27); }
+  override draw (): void { this.fillRect(0, 0, this.width, this.height, C.title); }
+  protected override sortChildren (): void { place(this.tab, 0, 0, Math.min(this.width, this.tab.measureText(this.tab.text, EDITOR_FONT_SIZE, EDITOR_FONT).width + 37), 25); }
 }
 
 export interface AssetEditorActions {
-  save?: () => void,
-  revert?: () => void,
-  browse?: () => void,
-  reimport?: () => void,
-  compile?: () => void,
-  close?: () => void,
-  dirty?: boolean,
-  busy?: boolean,
+  save?: () => void, revert?: () => void, browse?: () => void, reimport?: () => void, compile?: () => void,
+  close?: () => void, dirty?: boolean, busy?: boolean,
 }
 
-export function beginAssetEditorStyle (): void {
-  ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 0));
-  ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(4, 4));
-  ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(7, 4));
-  ImGui.PushStyleColor(ImGui.Col.WindowBg, C.panel);
-  ImGui.PushStyleColor(ImGui.Col.ChildBg, C.panel);
-}
+export class AssetEditorLayout extends VBoxContainer {
+  readonly inspector: PropertySheet;
+  readonly viewport: VBoxContainer;
+  readonly toolbar: Control;
+  readonly search: LineEdit;
+  readonly footer: Label;
+  private readonly split: EditorSplitContainer;
+  private readonly viewportHeader: AssetPanelHeader;
+  private inspectorWidth = 340;
+  private readonly actionButtons: { control: Button, key: 'save' | 'browse' | 'reimport' | 'compile' | 'revert' }[] = [];
 
-export function endAssetEditorStyle (): void { ImGui.PopStyleColor(2); ImGui.PopStyleVar(3); }
+  constructor (engine: Engine, private readonly actions: () => AssetEditorActions, edit: PropertyEditContext = { change: (_, __, action) => action(), finish: () => {} }) {
+    super(engine); this.setThemeConstantOverride('separation', 0);
+    const menus = append(this, row(engine)), file = append(menus, new EditorMenuButton(engine, 'File')), asset = append(menus, new EditorMenuButton(engine, 'Asset'));
+    const windowMenu = append(menus, new EditorMenuButton(engine, 'Window'));
 
-export function constrainAssetEditor (width = 1120, height = 720): void {
-  const display = ImGui.GetIO().DisplaySize;
+    file.menuBar = asset.menuBar = windowMenu.menuBar = true;
+    file.actions = () => {
+      const a = this.actions();
 
-  ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(Math.min(680, display.x - 24), Math.min(420, display.y - 24)), new ImGui.Vec2(display.x - 24, display.y - 24));
-  ImGui.SetNextWindowSize(new ImGui.Vec2(Math.min(width, display.x - 40), Math.min(height, display.y - 40)), ImGui.Cond.FirstUseEver);
-}
+      return [{ label: 'Save', heading: true }, { label: 'Save', shortcut: 'Ctrl+S', enabled: !!a.save && !!a.dirty && !a.busy, action: a.save },
+        { label: 'Revert', enabled: !!a.revert && !!a.dirty && !a.busy, action: a.revert }, { label: 'Close', enabled: !a.busy, action: a.close }];
+    };
+    asset.actions = () => {
+      const a = this.actions();
 
-export function assetEditorMenu (layout: AssetEditorLayout, actions: AssetEditorActions): void {
-  const origin = ImGui.GetCursorScreenPos(), position = ImGui.GetWindowPos(), size = ImGui.GetWindowSize(), draw = ImGui.GetWindowDrawList();
-  const min = new ImGui.Vec2(position.x, Math.min(origin.y, position.y + ImGui.GetFontSize())), max = new ImGui.Vec2(position.x + size.x, position.y + size.y);
+      return [{ label: 'Find in Content Browser', enabled: !!a.browse, action: a.browse }, { label: 'Reimport', enabled: !!a.reimport && !a.busy, action: a.reimport },
+        { label: 'Compile', enabled: !!a.compile && !a.busy, action: a.compile }];
+    };
+    windowMenu.actions = () => [{ label: 'Layout', heading: true }, { label: 'Reset Layout', action: () => { this.inspectorWidth = 340; this.resizeInspector(); this.search.text = ''; this.inspector.filter(''); } }];
+    this.toolbar = new EditorToolbar(engine, 32); this.toolbar.setThemeConstantOverride('separation', 6);
+    append(this, margin(engine, this.toolbar, 8, 5));
+    for (const [key, icon, title] of [['save', 'save', 'Save'], ['browse', 'browseContent', 'Browse'], ['reimport', 'import', 'Reimport'], ['compile', 'check', 'Compile'], ['revert', 'reset', 'Revert']] as const) {
+      const control = append(this.toolbar, new EditorIconButton(engine, icon, title));
 
-  draw.PushClipRect(min, max, false); draw.AddRectFilled(min, max, ImGui.GetColorU32(C.panel)); draw.PopClipRect();
-  withEditorMenuStyle(() => {
-    if (!ImGui.BeginMenuBar()) { return; }
-    if (beginEditorMenu('File', true, true)) {
-      if (editorMenuItem('Save', 'Ctrl+S', false, !!actions.save && !!actions.dirty && !actions.busy)) { actions.save?.(); }
-      if (actions.revert && editorMenuItem('Revert', '', false, !!actions.dirty && !actions.busy)) { actions.revert(); }
-      ImGui.Separator();
-      if (editorMenuItem('Close', '', false, !actions.busy)) { actions.close?.(); }
-      endEditorMenu();
+      control.iconSize = 20; control.setCustomMinimumSize(0, 32); control.on('pressed', () => this.actions()[key]?.()); this.actionButtons.push({ control, key });
     }
-    if (beginEditorMenu('Asset', true, true)) {
-      if (editorMenuItem('Find in Content Browser', '', false, !!actions.browse)) { actions.browse?.(); }
-      if (actions.reimport && editorMenuItem('Reimport', '', false, !actions.busy)) { actions.reimport(); }
-      if (actions.compile && editorMenuItem('Compile', '', false, !actions.busy)) { actions.compile(); }
-      endEditorMenu();
-    }
-    if (beginEditorMenu('Window', true, true)) {
-      if (editorMenuItem('Reset Layout')) { layout.reset(); }
-      endEditorMenu();
-    }
-    ImGui.EndMenuBar();
-  });
-}
+    const viewportPanel = column(engine);
 
-export function assetEditorToolbar (actions: AssetEditorActions, extra?: () => void): void {
-  const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x, draw = ImGui.GetWindowDrawList();
+    this.viewportHeader = append(viewportPanel, new AssetPanelHeader(engine, 'Viewport', 'camera'));
+    this.viewport = append(viewportPanel, expand(column(engine)));
+    const inspectorPanel = column(engine);
 
-  draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + 42), ImGui.GetColorU32(C.panel));
-  draw.AddLine(new ImGui.Vec2(p.x, p.y + 41), new ImGui.Vec2(p.x + width, p.y + 41), ImGui.GetColorU32(C.outline));
-  ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x + 8, p.y + 5));
-  if (toolbarButton('##SaveAsset', { icon: 'save', label: 'Save', height: 32, iconSize: 20, enabled: !!actions.save && !!actions.dirty && !actions.busy, hint: 'Save this asset (Ctrl+S)' })) { actions.save?.(); }
-  ImGui.SameLine(0, 6);
-  if (toolbarButton('##BrowseAsset', { icon: 'browseContent', label: 'Browse', height: 32, iconSize: 20, enabled: !!actions.browse, hint: 'Find this asset in Content Browser' })) { actions.browse?.(); }
-  if (actions.reimport || actions.compile || actions.revert) { toolbarSeparator(32, 8); }
-  if (actions.reimport && toolbarButton('##ReimportAsset', { icon: 'import', label: 'Reimport', height: 32, iconSize: 20, enabled: !actions.busy, hint: 'Replace the source image' })) { actions.reimport(); }
-  if (actions.compile && toolbarButton('##CompileAsset', { icon: 'check', label: 'Compile', height: 32, iconSize: 20, enabled: !actions.busy, hint: 'Compile the current shader source' })) { actions.compile(); }
-  if (actions.revert) {
-    if (actions.reimport || actions.compile) { ImGui.SameLine(0, 6); }
-    if (toolbarButton('##RevertAsset', { icon: 'reset', height: 32, iconSize: 18, enabled: !!actions.dirty && !actions.busy, hint: 'Discard unsaved changes' })) { actions.revert(); }
+    append(inspectorPanel, new AssetPanelHeader(engine, 'Inspector', 'details'));
+    this.search = new EditorSearchField(engine); this.search.placeholderText = 'Search...';
+    append(inspectorPanel, margin(engine, this.search, 8, 4));
+    this.inspector = append(inspectorPanel, expand(new PropertySheet(engine, edit))); this.inspector.columnRatio = .46;
+    this.search.on('textChanged', query => this.inspector.filter(query));
+    this.split = append(this, expand(new EditorSplitContainer(engine, viewportPanel, inspectorPanel, false, .7)));
+    this.split.on('sizeChanged', () => this.resizeInspector()); this.split.changed = ratio => { this.inspectorWidth = (this.split.width - 2) * (1 - ratio); };
+    this.footer = new Label(engine); this.footer.textOverflow = TextOverflow.Ellipsis; this.footer.verticalAlignment = VerticalAlignment.Center; this.footer.setCustomMinimumSize(0, 24);
+    append(this, margin(engine, this.footer, 8, 4));
   }
-  if (extra) { toolbarSeparator(32, 8); extra(); }
-  ImGui.SetCursorScreenPos(new ImGui.Vec2(p.x, p.y + 42)); ImGui.Dummy(new ImGui.Vec2(width, 0));
-}
+  set viewportTitle (value: string) { this.viewportHeader.tab.text = value; this.viewportHeader.queueSort(); }
+  private resizeInspector (): void {
+    const width = this.split.width, side = Math.max(Math.min(280, width * .4), Math.min(width - 220, this.inspectorWidth));
 
-export function assetEditorPanelHeader (label: string, icon: 'view' | 'settings' | 'shader' = 'view'): void {
-  const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x, draw = ImGui.GetWindowDrawList();
-  const tabWidth = Math.min(width, ImGui.CalcTextSize(label).x + 44);
+    this.split.ratio = 1 - side / Math.max(1, width - 2);
+  }
+  override update (dt: number): void {
+    const actions = this.actions();
 
-  draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + 29), ImGui.GetColorU32(C.recessed));
-  draw.AddRectFilled(new ImGui.Vec2(p.x + 3, p.y + 3), new ImGui.Vec2(p.x + tabWidth, p.y + 29), ImGui.GetColorU32(C.panel), 3);
-  drawEditorIcon(icon, p.x + 10, p.y + 8, 16, C.foreground);
-  assetText(label, p.x + 31, p.y + 5, ImGui.GetColorU32(C.foreground));
-  ImGui.Dummy(new ImGui.Vec2(width, 29));
-}
-
-export function assetEditorPanels (layout: AssetEditorLayout, viewport: () => void, inspector: () => void, title = 'Viewport'): void {
-  const origin = ImGui.GetCursorScreenPos(), available = ImGui.GetContentRegionAvail();
-  const height = Math.max(50, available.y - footerHeight - footerGap);
-  const minimum = Math.min(280, available.x * 0.4), maximum = Math.max(minimum, available.x - 220);
-  const side = Math.max(minimum, Math.min(maximum, layout.inspectorWidth));
-
-  ImGui.BeginChild('##AssetViewportPanel', new ImGui.Vec2(Math.max(120, available.x - side - 3), height), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse);
-  assetEditorPanelHeader(title, title === 'Source' ? 'shader' : 'view'); viewport(); ImGui.EndChild();
-  ImGui.SameLine(0, 0);
-  layout.inspectorWidth = splitter('##AssetInspectorSplitter', side, { length: height, min: minimum, max: maximum, invert: true, thickness: 3 });
-  ImGui.SameLine(0, 0);
-  ImGui.BeginChild('##AssetInspectorPanel', new ImGui.Vec2(0, height), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar);
-  assetEditorPanelHeader('Inspector', 'settings');
-  ImGui.SetCursorPosX(8); searchBar('##AssetInspectorSearch', layout.search, { hint: 'Search Inspector', width: Math.max(30, ImGui.GetContentRegionAvail().x - 8) });
-  ImGui.BeginChild('##AssetInspectorRows', new ImGui.Vec2(0, 0));
-  PropertyGrid.begin(layout.grid, layout.search[0]); inspector(); PropertyGrid.end();
-  ImGui.EndChild(); ImGui.EndChild();
-  ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + available.y - footerHeight));
-}
-
-export function assetEditorFooter (path: string, status = '', error = ''): void {
-  const p = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x, draw = ImGui.GetWindowDrawList();
-
-  draw.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + footerHeight), ImGui.GetColorU32(C.panel));
-  draw.AddLine(p, new ImGui.Vec2(p.x + width, p.y), ImGui.GetColorU32(C.outline));
-  const statusWidth = status ? Math.min(width * 0.45, ImGui.CalcTextSize(status).x + 16) : 0;
-  const textY = p.y + (footerHeight - ImGui.GetFontSize()) / 2;
-
-  assetText(error ? error.split('\n')[0] : path, p.x + 8, textY, ImGui.GetColorU32(error ? new ImGui.Vec4(1, 0.42, 0.35, 1) : C.muted), width - statusWidth - 16);
-  if (status) { assetText(status, p.x + width - statusWidth + 4, textY, ImGui.GetColorU32(C.muted), statusWidth - 8); }
-  ImGui.Dummy(new ImGui.Vec2(width, footerHeight));
-  if (error && ImGui.IsItemHovered()) { editorTooltip(error); }
+    for (const { control, key } of this.actionButtons) {
+      control.visible = key === 'save' || key === 'browse' || !!actions[key];
+      control.disabled = !actions[key] || !!actions.busy || (key === 'save' || key === 'revert') && !actions.dirty;
+    }
+    super.update(dt);
+  }
 }

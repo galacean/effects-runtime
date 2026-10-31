@@ -1,6 +1,6 @@
+import type { math } from '@galacean/effects';
 import type { spec } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
-import { Color } from 'maoan-imgui-js';
 import { GraphColors } from '../../../../ui/graph-editor/graph-colors';
 import type { AnimationGraphCompilationContext } from '../../compiler/graph-compilation-context';
 import { AnimationGraphNode, GraphType, GraphValueType } from './flow-editor-node';
@@ -22,8 +22,8 @@ export class ApplyAdditiveEditorNode extends AnimationGraphNode {
     return 'Animation';
   }
 
-  override GetTitleBarColor (): Color {
-    return new Color(GraphColors.CornflowerBlue);
+  override GetTitleBarColor (): math.Color {
+    return GraphColors.CornflowerBlue.clone();
   }
 
   override GetAllowedParentGraphTypes (): Map<GraphType, boolean> {

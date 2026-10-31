@@ -1,9 +1,8 @@
 import type { spec } from '@galacean/effects';
-import { ImGui } from '../../../../platform/imgui/index';
 import * as NodeGraph from '../../../../ui/graph-editor/index';
 import type { AnimationGraphCompilationContext } from '../../compiler/graph-compilation-context';
 import type { AnimationGraphContext } from '../animation-graph-context';
-import { AnimationGraphNode, DrawValueDisplayText, GraphType, GraphValueType, InvalidIndex } from './flow-editor-node';
+import { AnimationGraphNode, GraphType, GraphValueType, InvalidIndex } from './flow-editor-node';
 import { ResultEditorNode } from './result-editor-node';
 
 export abstract class ParameterBaseEditorNode extends AnimationGraphNode {
@@ -67,28 +66,6 @@ export class ControlParameterEditorNode extends ParameterBaseEditorNode {
 
         return pDefinition.index;
       }
-      //   case GraphValueType.ID: {
-      //     const pDefinition: GraphNodes.ControlParameterIDNode.Definition = null;
-
-      //     context.GetDefinition<GraphNodes.ControlParameterIDNode>(this, pDefinition);
-
-      //     return pDefinition.m_nodeIdx;
-      //   }
-      //   case GraphValueType.Vector: {
-      //     const pDefinition: GraphNodes.ControlParameterVectorNode.Definition = null;
-
-      //     context.GetDefinition<GraphNodes.ControlParameterVectorNode>(this, pDefinition);
-
-      //     return pDefinition.m_nodeIdx;
-      //   }
-      //   case GraphValueType.Target: {
-      //     const pDefinition: GraphNodes.ControlParameterTargetNode.Definition = null;
-
-      //     context.GetDefinition<GraphNodes.ControlParameterTargetNode>(this, pDefinition);
-
-      //     return pDefinition.m_nodeIdx;
-      //   }
-      // eslint-disable-next-line padding-line-between-statements
       default:
 
         return InvalidIndex;
@@ -113,11 +90,6 @@ export class ControlParameterEditorNode extends ParameterBaseEditorNode {
         );
 
         break;
-        //   case GraphValueType.ID:
-        //     pParameter = pRootGraph.CreateNode<IDControlParameterToolsNode>(
-        //       name,
-        //       groupName
-        //     );        //     break;
       case GraphValueType.Float:
         pParameter = pRootGraph.CreateNode<FloatControlParameterEditorNode>(
           FloatControlParameterEditorNode,
@@ -126,22 +98,7 @@ export class ControlParameterEditorNode extends ParameterBaseEditorNode {
         );
 
         break;
-        //   case GraphValueType.Vector:
-        //     pParameter = pRootGraph.CreateNode<VectorControlParameterToolsNode>(
-        //       name,
-        //       groupName
-        //     );
 
-        //     break;
-        //   case GraphValueType.Target:
-        //     pParameter = pRootGraph.CreateNode<TargetControlParameterToolsNode>(
-        //       name,
-        //       groupName
-        //     );
-
-        //     break;
-    //   default:
-    //     break;
     }
     if (!pParameter) {
       throw new Error(type + ' parameter node not found.');
@@ -212,19 +169,15 @@ export class ParameterReferenceEditorNode extends AnimationGraphNode {
         pReferenceNode = pGraph.CreateNode<BoolParameterReferenceEditorNode>(BoolParameterReferenceEditorNode, pParameter);
 
         break; case GraphValueType.ID:
-        // pReferenceNode = pGraph.CreateNode<IDParameterReferenceToolsNode>(pParameter);
 
         break; case GraphValueType.Float:
         pReferenceNode = pGraph.CreateNode<FloatParameterReferenceEditorNode>(BoolParameterReferenceEditorNode, pParameter);
 
         break; case GraphValueType.Vector:
-        // pReferenceNode = pGraph.CreateNode<VectorParameterReferenceToolsNode>(pParameter);
 
         break; case GraphValueType.Target:
-        // pReferenceNode = pGraph.CreateNode<TargetParameterReferenceToolsNode>(pParameter);
 
         break; case GraphValueType.BoneMask:
-        // pReferenceNode = pGraph.CreateNode<BoneMaskParameterReferenceToolsNode>(pParameter);
 
         break; default:
         break;
@@ -289,14 +242,6 @@ export class ParameterReferenceEditorNode extends AnimationGraphNode {
     return this.m_pParameter as ControlParameterEditorNode;
   }
 
-  //   IsReferencingVirtualParameter (): boolean {
-  //     return IsOfType<VirtualParameterToolsNode>(this.m_pParameter);
-  //   }
-
-  //   GetReferencedVirtualParameter (): VirtualParameterToolsNode {
-  //     return TryCast<VirtualParameterToolsNode>(this.m_pParameter);
-  //   }
-
   override GetTypeName (): string { return 'Parameter'; }
   override GetCategory (): string { return 'Parameter'; }
   override IsUserCreatable (): boolean { return true; }
@@ -342,43 +287,6 @@ export class ParameterReferenceEditorNode extends AnimationGraphNode {
 
     return null;
   }
-
-  override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.GraphEditorContext): void {
-    const pGraphNodeContext = pUserContext as AnimationGraphContext;
-
-    let runtimeNodeIdx = InvalidIndex;
-    const isPreviewing = pGraphNodeContext.HasDebugData();
-
-    if (isPreviewing) {
-      const pValueNodeSource = this.GetDisplayValueNode();
-
-      if (pValueNodeSource != null) {
-        runtimeNodeIdx = pGraphNodeContext.GetRuntimeGraphNodeIndex(pValueNodeSource.GetID());
-      }
-    }
-
-    this.BeginDrawInternalRegion(ctx);
-
-    if (isPreviewing && (runtimeNodeIdx != InvalidIndex) && pGraphNodeContext.IsNodeActive(runtimeNodeIdx)) {
-      const valueType = this.m_pParameter.GetOutputValueType();
-
-      DrawValueDisplayText(ctx, pGraphNodeContext, runtimeNodeIdx, valueType);
-    } else {
-      ImGui.NewLine();
-    }
-
-    this.EndDrawInternalRegion(ctx);
-  }
-
-  //   override GetNavigationTarget (): NodeGraph.BaseGraph | null {
-  //     const pVP = this.GetReferencedVirtualParameter();
-
-  //     if (pVP) {
-  //       return pVP.GetChildGraph();
-  //     }
-
-  //     return null;
-  //   }
 
   override PreCopy (): void {
     this.UpdateCachedParameterData();

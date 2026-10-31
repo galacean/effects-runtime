@@ -1,130 +1,58 @@
-import * as ImGui from 'maoan-imgui-js';
+import type { DockWorkspace } from '../../ui/controls/dock-workspace';
+import { DEFAULT_WINDOWS, defaultEditorLayout } from '../../app/layout/default-layout';
+import type { DockSnapshot } from './dock-model';
+import { validDockSnapshot } from './dock-model';
+import { legacyWindowId, readLegacyLayout } from './legacy-layout';
 
-interface LayoutData { version: 1, ini: string, windows: Record<string, boolean> }
-interface WindowState { read: () => boolean, restore: (opened: boolean) => void }
+interface LayoutData { version: 2, dock: DockSnapshot, windows: Record<string, boolean> }
+const STORAGE_KEY = 'effects-editor.layout.v2';
 
-const STORAGE_KEY = 'effects-editor.layout.v1';
-
-/** ImGui owns window placement; the application owns whether a window is submitted at all. */
 class EditorLayout {
-  onError: (error: unknown) => void = error => console.error('Failed to save editor layout:', error);
-  private data: LayoutData = { version: 1, ini: '', windows: {} };
-  private readonly windows = new Map<string, WindowState>();
-  private ready = false;
-  private requested = false;
-  private failed = false;
-  private defaultRequested = false;
-  private defaultWindows: Record<string, boolean> = {};
-  private createDefaultLayout: (width: number, height: number, menuHeight: number) => string = () => '';
+  onError: (error: unknown) => void = console.error;
+  private workspace?: DockWorkspace;
+  private pending?: number;
+  private restoreWindow?: (id: string, opened: boolean) => void;
 
-  configureDefault (windows: Readonly<Record<string, boolean>>, createLayout: (width: number, height: number, menuHeight: number) => string): void {
-    this.defaultWindows = { ...windows }; this.createDefaultLayout = createLayout;
-  }
-
-  loadIni (fallback: string): string {
-    let legacy = fallback;
+  load (): LayoutData {
+    const fallback: LayoutData = { version: 2, dock: defaultEditorLayout(), windows: { ...DEFAULT_WINDOWS } };
 
     try {
-      const legacyStored = window.localStorage.getItem('imgui.ini');
+      const data = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null');
+      const old = JSON.parse(window.localStorage.getItem('effects-editor.layout.v1') ?? 'null');
+      const flags = data?.windows ?? old?.windows;
 
-      legacy = legacyStored || fallback;
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      const data = stored ? JSON.parse(stored) : undefined;
-
-      if (data?.version === 1 && typeof data.ini === 'string' && data.windows && typeof data.windows === 'object') {
-        this.data = { version: 1, ini: data.ini, windows: Object.fromEntries(Object.entries(data.windows)
-          .filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) };
-      } else {
-        this.data.ini = legacy; this.defaultRequested = !legacyStored;
+      if (flags && typeof flags === 'object') {
+        for (const [id, opened] of Object.entries(flags)) { if (typeof opened === 'boolean') { fallback.windows[data?.windows ? id : legacyWindowId(id)] = opened; } }
       }
-    } catch (error) {
-      console.warn('Failed to read editor layout; using the default layout.', error);
-      this.data.ini = legacy;
-      this.defaultRequested = true;
-    }
+      if (data?.version === 2 && validDockSnapshot(data.dock)) { fallback.dock = data.dock; } else if (typeof old?.ini === 'string') { fallback.dock = readLegacyLayout(old.ini) ?? fallback.dock; }
+    } catch (error) { console.warn('Unable to read editor layout.', error); }
 
-    if (this.data.ini.includes('[Window][Project]') || 'Project' in this.data.windows) {
-      this.data.ini = this.data.ini.replace('[Window][Content Browser]', '[Window][Runtime Assets]').replace('[Window][Project]', '[Window][Content Browser]');
-      const windows = this.data.windows;
-
-      if (typeof windows['Content Browser'] === 'boolean') { windows['Runtime Assets'] = windows['Content Browser']; }
-      windows['Content Browser'] = windows.Project ?? true;
-      delete windows.Project;
-    }
-
-    if ('Outliner' in this.data.windows) { this.data.windows.Hierarchy = this.data.windows.Outliner; delete this.data.windows.Outliner; }
-    this.data.ini = this.data.ini.replaceAll('[Window][Outliner]', '[Window][Hierarchy]')
-      .replace(/\[Window\]\[Preview\][\s\S]*?(?=\[|$)/g, '');
-    delete this.data.windows.Preview;
-
-    this.data.windows = { ...this.defaultWindows, ...this.data.windows };
-
-    return this.data.ini;
+    return fallback;
   }
-
-  registerWindow (id: string, read: () => boolean, restore: (opened: boolean) => void): void {
-    this.windows.set(id, { read, restore });
-    const opened = this.data.windows[id];
-
-    if (typeof opened === 'boolean') { restore(opened); }
+  initialize (workspace: DockWorkspace, restoreWindow: (id: string, opened: boolean) => void): void {
+    this.workspace = workspace; this.restoreWindow = restoreWindow;
+    workspace.layoutChanged = () => this.requestSave();
+    window.addEventListener('pagehide', this.save);
   }
-
-  initialize (): void {
-    window.addEventListener('pagehide', this.saveOnExit);
-    window.addEventListener('beforeunload', this.saveOnExit);
-    document.addEventListener('visibilitychange', this.onVisibilityChange);
+  requestSave (): void {
+    window.clearTimeout(this.pending);
+    this.pending = window.setTimeout(this.save, 250);
   }
-
-  requestSave (): void { this.requested = true; this.failed = false; }
-
-  requestDefault (): void { this.defaultRequested = true; }
-
-  beforeFrame (): void {
-    if (!this.defaultRequested) { return; }
-    this.defaultRequested = false;
-    const io = ImGui.GetIO();
-    const fontSize = this.ready ? ImGui.GetFontSize() : 20;
-    const ini = this.createDefaultLayout(io.DisplaySize.x, io.DisplaySize.y, fontSize + ImGui.GetStyle().FramePadding.y * 2);
-
-    for (const [id, state] of this.windows) { state.restore(this.defaultWindows[id] ?? false); }
-    this.data = { version: 1, ini, windows: { ...this.defaultWindows } };
-    ImGui.LoadIniSettingsFromMemory(ini); this.requestSave();
+  requestDefault (): void {
+    if (!this.workspace) { return; }
+    this.workspace.model.snapshot = defaultEditorLayout();
+    for (const id of this.workspace.panels.keys()) { this.restoreWindow?.(id, DEFAULT_WINDOWS[id] ?? false); }
+    this.workspace.rebuild(); this.requestSave();
   }
+  private readonly save = (): void => {
+    if (!this.workspace) { return; }
+    window.clearTimeout(this.pending);
+    const data: LayoutData = { version: 2, dock: this.workspace.model.snapshot,
+      windows: Object.fromEntries([...this.workspace.panels].map(([id, panel]) => [id, panel.opened])) };
 
-  endFrame (): void {
-    this.ready = true;
-    if (this.failed) { return; }
-    const changed = Array.from(this.windows).some(([id, state]) => this.data.windows[id] !== state.read());
-
-    if (this.requested || changed || ImGui.GetIO().WantSaveIniSettings) { this.save(); }
-  }
-
-  shutdown (): void {
-    this.save();
-    window.removeEventListener('pagehide', this.saveOnExit);
-    window.removeEventListener('beforeunload', this.saveOnExit);
-    document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    this.ready = false;
-    this.windows.clear();
-  }
-
-  private readonly saveOnExit = (): void => { this.save(); };
-  private readonly onVisibilityChange = (): void => {
-    if (document.visibilityState === 'hidden') { this.save(); }
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (error) { this.onError(error); }
   };
-
-  private save (): void {
-    if (!this.ready) { return; }
-    try {
-      const windows = { ...this.data.windows, ...Object.fromEntries(Array.from(this.windows, ([id, state]) => [id, state.read()])) };
-      const data: LayoutData = { version: 1, ini: ImGui.SaveIniSettingsToMemory(), windows };
-
-      // Store open flags and native docking data as one snapshot.
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      this.data = data; this.requested = false; this.failed = false;
-      ImGui.GetIO().WantSaveIniSettings = false;
-    } catch (error) { this.failed = true; this.onError(error); }
-  }
+  shutdown (): void { this.save(); window.removeEventListener('pagehide', this.save); this.workspace = undefined; }
 }
 
 export const editorLayout = new EditorLayout();
