@@ -3,10 +3,8 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Engine } from '../engine';
-import { glContext } from '../gl';
-import { Geometry } from './geometry';
+import { GraphicsBatchBuffer } from './graphics-batch-buffer';
 import { VertexElementType } from './vertex-element-type';
-import { BufferUsage } from './gpu-buffer';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
@@ -75,9 +73,19 @@ type ClipRect = {
   height: number,
 };
 
+type GraphicsCommand = {
+  type: BatchType | 'clip',
+  texture: Texture | null,
+  offset: number,
+  count: number,
+  clip?: ClipRect,
+};
+
 export class Graphics {
-  private geometry: Geometry;
-  private ninePatchGeometry: Geometry;
+  private readonly batchBuffer: GraphicsBatchBuffer;
+  private readonly ninePatchBuffer: GraphicsBatchBuffer;
+  private readonly commands: GraphicsCommand[] = [];
+  private commandCount = 0;
   private coloredMaterial: Material;
   private texturedMaterial: Material;
   private textMaterial: Material;
@@ -131,83 +139,20 @@ export class Graphics {
   }
 
   constructor (private engine: Engine) {
-    this.geometry = Geometry.create(this.engine, {
-      attributes: {
-        [VertexElementType.Position]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array([
-            -0.5, 0.5,  //左上
-            -0.5, -0.5, //左下
-            0.5, 0.5, //右上
-            0.5, -0.5, //右下
-          ]),
-        },
-        [VertexElementType.Color]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array([
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-          ]),
-        },
-        [VertexElementType.TexCoord0]: {
-          size: 2,
-          offset: 0,
-          type: glContext.FLOAT,
-          data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
-        },
-      },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
-      mode: glContext.TRIANGLES,
-      drawCount: 6,
-      bufferUsage: glContext.DYNAMIC_DRAW,
-    });
-    this.ninePatchGeometry = Geometry.create(this.engine, {
-      attributes: {
-        [VertexElementType.Position]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(8),
-        },
-        [VertexElementType.Color]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [VertexElementType.TexCoord0]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(8),
-        },
-        [NINE_PATCH_DRAW_SOURCE_SIZE]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_SOURCE_RECT]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_MARGINS]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_OPTIONS]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-      },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
-      mode: glContext.TRIANGLES,
-      drawCount: 6,
-      bufferUsage: glContext.DYNAMIC_DRAW,
-    });
+    const attributes = [
+      { name: VertexElementType.Position, size: 2, source: this.vertices },
+      { name: VertexElementType.Color, size: 4, source: this.colors },
+      { name: VertexElementType.TexCoord0, size: 2, source: this.uvs },
+    ];
+
+    this.batchBuffer = new GraphicsBatchBuffer(engine, attributes, this.indices);
+    this.ninePatchBuffer = new GraphicsBatchBuffer(engine, [
+      ...attributes,
+      { name: NINE_PATCH_DRAW_SOURCE_SIZE, size: 4, source: this.ninePatchDrawSourceSizes },
+      { name: NINE_PATCH_SOURCE_RECT, size: 4, source: this.ninePatchSourceRects },
+      { name: NINE_PATCH_MARGINS, size: 4, source: this.ninePatchMargins },
+      { name: NINE_PATCH_OPTIONS, size: 4, source: this.ninePatchOptions },
+    ], this.indices);
 
     this.coloredMaterial = Material.create(this.engine, {
       shader: {
@@ -406,14 +351,8 @@ export class Graphics {
    * 清空缓冲区，准备新的绘制批次
    */
   begin (): void {
-    this.indices.length = 0;
-    this.vertices.length = 0;
-    this.colors.length = 0;
-    this.uvs.length = 0;
-    this.ninePatchDrawSourceSizes.length = 0;
-    this.ninePatchSourceRects.length = 0;
-    this.ninePatchMargins.length = 0;
-    this.ninePatchOptions.length = 0;
+    this.clearBatch();
+    this.batchBuffer.clear(); this.ninePatchBuffer.clear(); this.commandCount = 0;
 
     this.transformStack = [];
     this.currentTransform = Matrix3.fromIdentity();
@@ -510,16 +449,16 @@ export class Graphics {
     };
     const previous = parent;
 
-    this.clipStack.push(clip);
     if (!this.clipRectsEqual(previous, clip)) {
       this.flushBatch();
-      this.applyClipRect(clip);
+      this.nextCommand('clip').clip = clip;
     }
+    this.clipStack.push(clip);
   }
 
   /** Restores the parent rectangular clip. */
   popClipRect (): void {
-    const previous = this.clipStack.pop();
+    const previous = this.clipStack[this.clipStack.length - 1];
 
     if (!previous) {
       console.warn('Graphics: clip stack is empty.');
@@ -527,16 +466,13 @@ export class Graphics {
       return;
     }
 
-    const clip = this.clipStack[this.clipStack.length - 1];
+    const clip = this.clipStack[this.clipStack.length - 2];
 
     if (!this.clipRectsEqual(previous, clip)) {
       this.flushBatch();
-      if (clip) {
-        this.applyClipRect(clip);
-      } else {
-        this.engine.displayServer.renderingDevice.setScissorTest(false);
-      }
+      this.nextCommand('clip').clip = clip;
     }
+    this.clipStack.pop();
   }
 
   /**
@@ -544,6 +480,7 @@ export class Graphics {
    */
   end (): void {
     this.flushBatch();
+    this.submitBatches();
     this.clipStack = [];
     this.engine.displayServer.renderingDevice.setScissorTest(false);
   }
@@ -585,61 +522,64 @@ export class Graphics {
     return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
   }
 
-  /**
-   * 提交当前累积的顶点到 renderer，清空缓冲(批次内部 flush 不重置 batchType)
-   */
+  /** Records the current batch without changing its position in the draw order. */
   private flushBatch (): void {
     if (this.currentVertexCount === 0 || this.currentIndexCount === 0) {
       return;
     }
 
-    // 把所有 dirty 的字符 atlas 内容上传到 GPU，确保即将采样的 textured 批次拿到最新像素;
-    // 一帧多次 drawText 共写同一 atlas 只在 flush 边界 upload 一次，避免每次 drawText 都重传整张 canvas
+    const buffer = this.currentBatchType === 'ninePatch' ? this.ninePatchBuffer : this.batchBuffer;
+
+    // Submit before rebasing would overflow the shared 16-bit index range.
+    if (buffer.vertexCount + this.currentVertexCount > GraphicsBatchBuffer.maxVertices) {
+      this.submitBatches();
+    }
+    const command = this.nextCommand(this.currentBatchType);
+
+    command.texture = this.currentBatchTexture;
+    command.offset = buffer.indexCount * Uint16Array.BYTES_PER_ELEMENT;
+    command.count = this.currentIndexCount;
+    buffer.append(); this.clearBatch();
+  }
+
+  private nextCommand (type: GraphicsCommand['type']): GraphicsCommand {
+    const command = this.commands[this.commandCount] ??= { type, texture: null, offset: 0, count: 0 };
+
+    this.commandCount++;
+    command.type = type; command.texture = null; command.clip = undefined;
+
+    return command;
+  }
+
+  private submitBatches (): void {
+    if (this.commandCount === 0) { return; }
     this.textCache.uploadDirty();
+    this.batchBuffer.upload(); this.ninePatchBuffer.upload();
+    for (let index = 0; index < this.commandCount; index++) {
+      const command = this.commands[index];
 
-    const verticesArray = new Float32Array(this.vertices);
-    const colorsArray = new Float32Array(this.colors);
-    const uvsArray = new Float32Array(this.uvs);
-    const indicesArray = new Uint16Array(this.indices);
+      if (command.type === 'clip') {
+        if (command.clip) { this.applyClipRect(command.clip); } else {
+          this.engine.displayServer.renderingDevice.setScissorTest(false);
+        }
+      } else {
+        const geometry = command.type === 'ninePatch' ? this.ninePatchBuffer.geometry : this.batchBuffer.geometry;
+        const material = command.type === 'text' ? this.textMaterial
+          : command.type === 'ninePatch' ? this.ninePatchMaterial
+            : command.type === 'textured' ? this.texturedMaterial : this.coloredMaterial;
 
-    const geometry = this.currentBatchType === 'ninePatch' ? this.ninePatchGeometry : this.geometry;
-
-    this.updateAttributeData(geometry, VertexElementType.Position, verticesArray, 2);
-    this.updateAttributeData(geometry, VertexElementType.Color, colorsArray, 4);
-    this.updateAttributeData(geometry, VertexElementType.TexCoord0, uvsArray, 2);
-    if (this.currentBatchType === 'ninePatch') {
-      this.updateAttributeData(
-        geometry, NINE_PATCH_DRAW_SOURCE_SIZE, new Float32Array(this.ninePatchDrawSourceSizes), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_SOURCE_RECT, new Float32Array(this.ninePatchSourceRects), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_MARGINS, new Float32Array(this.ninePatchMargins), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_OPTIONS, new Float32Array(this.ninePatchOptions), 4,
-      );
+        if (command.type !== 'colored') {
+          material.setTexture('uMainTexture', command.texture ?? this.engine.assetServer.whiteTexture);
+        }
+        geometry.setDrawStart(command.offset); geometry.setDrawCount(command.count);
+        this.engine.renderer.drawGeometry(geometry, Matrix4.IDENTITY, material);
+      }
+      command.texture = null; command.clip = undefined;
     }
-    geometry.setIndexData(indicesArray);
-    geometry.setDrawCount(this.currentIndexCount);
+    this.commandCount = 0; this.batchBuffer.clear(); this.ninePatchBuffer.clear();
+  }
 
-    let material: Material;
-
-    if (this.currentBatchType === 'textured' || this.currentBatchType === 'text'
-      || this.currentBatchType === 'ninePatch') {
-      material = this.currentBatchType === 'text'
-        ? this.textMaterial
-        : this.currentBatchType === 'ninePatch' ? this.ninePatchMaterial : this.texturedMaterial;
-      const tex = this.currentBatchTexture ?? this.engine.assetServer.whiteTexture;
-
-      material.setTexture('uMainTexture', tex);
-    } else {
-      material = this.coloredMaterial;
-    }
-
-    this.engine.renderer.drawGeometry(geometry, Matrix4.IDENTITY, material);
-
+  private clearBatch (): void {
     this.indices.length = 0;
     this.vertices.length = 0;
     this.colors.length = 0;
@@ -650,15 +590,10 @@ export class Graphics {
     this.ninePatchOptions.length = 0;
   }
 
-  private updateAttributeData (geometry: Geometry, name: string, data: Float32Array, size: number): void {
-    const buffer = geometry.getAttributeBuffer(name);
-
-    if (!buffer || data.byteLength > buffer.capacity) {
-      geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
-
-      return;
+  private reserveVertices (count: number): void {
+    if (this.currentVertexCount + count > GraphicsBatchBuffer.maxVertices) {
+      this.flushBatch();
     }
-    geometry.setAttributeData(name, data);
   }
 
   /**
@@ -1048,14 +983,15 @@ export class Graphics {
     if (this.textCache.resolution !== this.engine.displayServer.pixelRatio) {
       // Submit pending text before the resolution change destroys its pages.
       this.flushBatch();
+      this.submitBatches();
     }
 
     return this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   dispose (): void {
-    this.geometry.dispose();
-    this.ninePatchGeometry.dispose();
+    this.batchBuffer.dispose();
+    this.ninePatchBuffer.dispose();
     this.coloredMaterial.dispose();
     this.texturedMaterial.dispose();
     this.textMaterial.dispose();
@@ -1065,11 +1001,13 @@ export class Graphics {
 
   private buildShape (shape: ShapePrimitive, color: Color): void {
     const buildPoints = this.buildPoints;
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
+    this.reserveVertices(buildPoints.length / 2 + 1);
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
+
     shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
     this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
@@ -1077,11 +1015,13 @@ export class Graphics {
 
   private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
     const buildPoints = this.buildPoints;
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
+    this.reserveVertices(buildPoints.length * 4 + 8);
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
+
     this.lineStyle.width = thickness;
     buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
 
@@ -1153,6 +1093,7 @@ export class Graphics {
     color: Color,
     region?: TextureRegion,
   ): void {
+    this.reserveVertices(4);
     const vertexOffset = this.vertices.length / 2;
 
     // 4 顶点（本地坐标，左上/右上/左下/右下），应用当前变换写入 vertices
