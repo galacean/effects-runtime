@@ -5,6 +5,7 @@ import { Button, Container, HorizontalAlignment, FocusMode } from '@galacean/eff
 import { editorColors } from '../theme/control-theme';
 import { append, place } from './layout';
 import { EditorTextField } from './text-field';
+import { EditorPointerLock } from './pointer-lock';
 
 function inputScale (event: { shiftPressed: boolean, ctrlPressed: boolean, metaPressed: boolean, altPressed: boolean }): number {
   if (event.shiftPressed) { return event.altPressed ? 100 : 10; }
@@ -19,6 +20,7 @@ class NumberDragButton extends Button {
   private previousX = 0;
   private startValue = 0;
   private moved = false;
+  private pointer?: EditorPointerLock;
 
   constructor (engine: Engine, private readonly field: NumberEdit) {
     super(engine);
@@ -36,9 +38,20 @@ class NumberDragButton extends Button {
     }
     super.onMouseDown(event);
     this.moved = false; this.dragging = true; this.previousX = this.startX = event.globalPosition.x; this.startValue = this.field.value;
+    this.pointer ??= new EditorPointerLock(this, motion => this.move(motion));
+    this.pointer.begin(event);
     this.field.beginEdit?.();
   }
   override onMouseMove (event: InputEventMouseMotion): void {
+    if (this.pointer?.locked) {
+      event.accept();
+
+      return;
+    }
+    this.move(event);
+    if (this.dragging && this.moved) { this.pointer?.request(event); }
+  }
+  private move (event: InputEventMouseMotion): void {
     super.onMouseMove(event);
     if (!this.dragging) { return; }
     const delta = event.globalPosition.x - this.startX;
@@ -52,6 +65,7 @@ class NumberDragButton extends Button {
     event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
+    this.pointer?.release(event);
     super.onMouseUp(event);
     if (event.buttonIndex !== MouseButton.Left || !this.dragging) { return; }
     this.dragging = false;
@@ -62,18 +76,32 @@ class NumberDragButton extends Button {
   }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'Escape' && this.dragging) {
-      this.dragging = false; this.field.changeValue(this.startValue); this.field.endEdit?.(true); event.accept();
+      this.root?.cancelPointerInput(); event.accept();
     } else if (event.keycode === 'Enter' || event.keycode === ' ') { this.field.startTextEdit(); event.accept(); } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.keycode)) {
       this.field.beginEdit?.();
       this.field.changeValue(this.field.value + (event.keycode === 'ArrowLeft' || event.keycode === 'ArrowDown' ? -1 : 1) * this.field.step);
       this.field.endEdit?.(); event.accept();
     } else { super.onKeyDown(event); }
   }
+  override onDestroy (): void {
+    this.pointer?.dispose();
+    if (this.dragging) { this.dragging = false; this.field.endEdit?.(); }
+    super.onDestroy();
+  }
 }
 
 class NumberLineEdit extends EditorTextField {
   constructor (engine: Engine, private readonly field: NumberEdit) { super(engine); }
-  override onLostFocus (): void { super.onLostFocus(); this.field.finishTextEdit(); }
+  override onLostFocus (): void {
+    const pointerInside = this.hasPoint(this.getLocalMousePosition());
+    const transferringFocus = !this.root?.guiGetFocusOwner() && pointerInside;
+
+    super.onLostFocus();
+    // Canvas focus can briefly blur the input before its mouse event is dispatched.
+    if (transferringFocus) {
+      queueMicrotask(() => { if (!this.isDisposed && !this.hasFocus()) { this.field.finishTextEdit(); } });
+    } else { this.field.finishTextEdit(); }
+  }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'Escape') { this.field.finishTextEdit(true); this.field.dragButton.grabFocus(); event.accept(); } else { super.onKeyDown(event); }
   }
@@ -123,6 +151,7 @@ export class NumberEdit extends Container {
     this.beforeEdit = this.value; this.editing = true; this.beginEdit?.();
     this.lineEdit.text = String(this.value); this.lineEdit.visible = true;
     this.dragButton.visible = false; this.lineEdit.grabFocus(); this.lineEdit.selectAll();
+    this.refreshCursor();
   }
   finishTextEdit (cancel = false): void {
     if (!this.editing) { return; }
@@ -130,7 +159,12 @@ export class NumberEdit extends Container {
     if (!cancel && this.lineEdit.text.trim()) { this.changeValue(Number(this.lineEdit.text)); }
     if (cancel) { this.changeValue(this.beforeEdit); }
     this.dragButton.visible = true; this.lineEdit.visible = false;
-    this.lineEdit.text = String(this.value); this.endEdit?.(cancel);
+    this.lineEdit.text = String(this.value); this.refreshCursor(); this.endEdit?.(cancel);
+  }
+  private refreshCursor (): void {
+    const root = this.root;
+
+    if (root) { root.warpControlMouse(root.getMousePosition()); }
   }
   override onMouseWheel (event: InputEventMouseButton): void {
     if ((this.dragButton as NumberDragButton).dragging || (!this.dragButton.hasFocus() && !this.lineEdit.hasFocus())) { return; }

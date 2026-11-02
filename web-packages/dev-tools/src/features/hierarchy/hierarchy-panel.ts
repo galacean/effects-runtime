@@ -16,6 +16,7 @@ import { projectWorkspace } from '../projects/project-workspace';
 import type { SceneDocument } from '../scene/document/scene-document';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import { createItemActions } from '../scene/ui/create-item-menu';
+import { sceneEditCommands } from '../scene/operations/scene-edit-commands';
 import { SceneViewportPanel } from '../scene/viewport/scene-viewport-panel';
 import { HierarchyActions } from './hierarchy-actions';
 import type { HierarchyNode, HierarchyOptions } from './hierarchy-model';
@@ -35,6 +36,7 @@ export class HierarchyPanel extends EditorWindow {
   private releaseState?: () => void;
   private unsubscribe?: () => void;
   private unsubscribeWorkspace?: () => void;
+  private releaseCommands?: () => void;
   private expanded = new Set(['level']);
   private selectedFolders = new Set<string>();
   private readonly selection = new ListSelection<string>();
@@ -91,6 +93,7 @@ export class HierarchyPanel extends EditorWindow {
       },
     })));
     this.status = label(engine, '', editorColors.foreground); this.status.verticalAlignment = VerticalAlignment.Center;
+    this.releaseCommands = sceneEditCommands.bind(this.tree);
     const status = append(content, new PanelContainer(engine));
 
     status.setThemeStyleBoxOverride('panel', editorBox(editorColors.header));
@@ -153,7 +156,7 @@ export class HierarchyPanel extends EditorWindow {
   override onUndoRedo (): void { this.bind(sceneWorkspace.current); this.revealSelection(); }
   override flushEdits (): void { this.finishVisibility(); }
   override dispose (): void {
-    this.unsubscribeWorkspace?.(); this.unsubscribe?.(); this.releaseState?.(); this.context?.dispose(); super.dispose();
+    this.unsubscribeWorkspace?.(); this.unsubscribe?.(); this.releaseState?.(); this.releaseCommands?.(); this.context?.dispose(); super.dispose();
   }
 
   private selectedKeys (): Set<string> {
@@ -261,6 +264,8 @@ export class HierarchyPanel extends EditorWindow {
   private keyboard (event: InputEventKey): void {
     if (!this.model || this.tree?.root?.guiGetFocusOwner() instanceof LineEdit) { return; }
     const modifier = event.ctrlPressed || event.metaPressed, code = event.physicalKeycode || event.keycode;
+
+    if (modifier && ['KeyC', 'KeyX', 'KeyV', 'KeyD'].includes(code) && sceneEditCommands.shortcut(event)) { return; }
     const rows = this.model.rows, selected = this.selectedRows();
     const index = Math.max(0, rows.findIndex(node => node.id === this.selection.focused));
     const node = rows[index];
@@ -289,6 +294,7 @@ export class HierarchyPanel extends EditorWindow {
       { label: 'Outliner', heading: true },
       { label: 'Create', children: createItemActions(node?.kind === 'folder' ? { folderId: node.folder!.id } : { parent: node?.item }) },
       { label: 'Rename', shortcut: 'F2', enabled: editable.length === 1, action: () => this.tree?.rename(editable[0].id) },
+      ...sceneEditCommands.actions().slice(0, 3).map(action => ({ ...action, enabled: action.enabled && (action.label === 'Paste' || editable.some(node => !!node.item)) })),
       { label: 'Duplicate', shortcut: 'Ctrl+D', enabled: editable.some(node => !!node.item), action: () => { actions.duplicate(model, editable); } },
       { label: 'Delete', shortcut: 'Delete', enabled: !!editable.length, action: () => actions.remove(model, editable) },
       { label: 'Frame Selection', shortcut: 'F', enabled: !!rows.length, action: () => this.focusScene() },

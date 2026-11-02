@@ -7,6 +7,7 @@ import { ContentAssetDialog } from '../../features/assets/ui/content-asset-dialo
 import { projectWorkspace as projects } from '../../features/projects/project-workspace';
 import { projectBrowser } from '../../features/projects/ui/project-browser-dialog';
 import { sceneWorkspace as workspace } from '../../features/scene/scene-workspace';
+import { sceneEditCommands } from '../../features/scene/operations/scene-edit-commands';
 import { editorCommands } from '../../framework/commands/editor-commands';
 import { EditorDialog } from '../../ui/controls/dialog';
 import type { MenuAction } from '../../ui/controls/menu';
@@ -40,7 +41,12 @@ export class EditorMenus {
         { label: 'Browse Recent Projects…', action: () => projectBrowser.show('recent') }] },
       commandMenuItem('project.import'), commandMenuItem('project.export')];
   }
-  editActions (): MenuAction[] { return [{ label: 'History', heading: true }, commandMenuItem('document.undo'), commandMenuItem('document.redo'), { label: 'Configuration', heading: true }, commandMenuItem('project.settings')]; }
+  editActions (): MenuAction[] {
+    return [{ label: 'History', heading: true }, commandMenuItem('document.undo'), commandMenuItem('document.redo'),
+      { label: 'Edit', heading: true }, ...sceneEditCommands.actions(),
+      { label: 'Select All', shortcut: 'Ctrl+A', enabled: sceneEditCommands.enabled, action: () => sceneEditCommands.selectAll() },
+      { label: 'Configuration', heading: true }, commandMenuItem('project.settings')];
+  }
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (!(event.ctrlKey || event.metaKey) || event.isComposing || event.repeat) { return; }
     let command = '';

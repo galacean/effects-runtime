@@ -12,6 +12,8 @@ import { setTooltip } from './tooltip';
 
 function clamp01 (value: number): number { return Math.max(0, Math.min(1, value)); }
 
+const activePickers = new WeakMap<Engine, EditorDialog>();
+
 function gradientTexture (engine: Engine, width: number, height: number, data: Uint8Array): Texture {
   const texture = Texture.create(engine, {
     name: 'Color picker gradient', sourceType: TextureSourceType.data, data: { width, height, data }, flipY: false, generateMipmap: false,
@@ -176,9 +178,11 @@ export class EditorColorButton extends Button {
   finished?: () => void;
   private readonly rgba = new math.Color(1, 1, 1, 1);
   private readonly popup: EditorDialog;
+  private releaseFocusListener?: () => void;
   constructor (engine: Engine) {
-    super(engine, ''); this.popup = new EditorDialog(engine);
+    super(engine, ''); this.popup = new EditorDialog(engine); this.popup.modal = false;
     this.on('pressed', () => {
+      activePickers.get(engine)?.close();
       const original = this.rgba.clone();
 
       this.popup.show(this, 'Color Picker', body => {
@@ -190,8 +194,22 @@ export class EditorColorButton extends Button {
         { label: 'Cancel', action: () => { this.rgba.copyFrom(original); this.changed?.(original.clone()); this.popup.close(); } },
       ], 500);
       placeCursorWindow(this.popup);
+      activePickers.set(engine, this.popup);
     });
-    this.popup.onPopup('popupClosed', () => this.finished?.()); setTooltip(this, 'Choose a color');
+    this.popup.onPopup('popupOpened', () => {
+      const root = this.popup.root;
+      const focused = (control: Control | null): void => {
+        for (let parent = control; parent; parent = parent.parent) { if (parent === this.popup) { return; } }
+        this.finished?.();
+      };
+
+      root?.on('guiFocusChanged', focused); this.releaseFocusListener = () => root?.off('guiFocusChanged', focused);
+    });
+    this.popup.onPopup('popupClosed', () => {
+      this.releaseFocusListener?.(); this.releaseFocusListener = undefined;
+      if (activePickers.get(engine) === this.popup) { activePickers.delete(engine); }
+      this.finished?.();
+    }); setTooltip(this, 'Choose a color');
   }
   get color (): math.Color { return this.rgba; }
   set color (value: math.Color) { if (!this.popup.visible) { this.rgba.copyFrom(value); } }

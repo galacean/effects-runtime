@@ -64,7 +64,7 @@ export function createEditorTheme (engine: Engine): Theme {
     box.setContentMargins(16, state === 'pressed' || state === 'hoverPressed' ? 4.5 : 3.5, 16, state === 'pressed' || state === 'hoverPressed' ? 2.5 : 3.5);
     theme.setStyleBox('Button', state, box);
   }
-  theme.setStyleBox('Button', 'focus', editorBox(c.clear, 0, 2, c.primary));
+  theme.setStyleBox('Button', 'focus', editorBox(c.clear, 0, 4, c.primary));
   for (const name of ['fontColor', 'fontFocusColor', 'fontHoverColor', 'fontPressedColor', 'fontHoverPressedColor']) {
     theme.setColor('Button', name, c.foregroundHover);
   }

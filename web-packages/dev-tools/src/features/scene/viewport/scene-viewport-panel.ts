@@ -1,5 +1,5 @@
 import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
-import { InputEventMouseMotion, MouseButton, MouseButtonMask, VFXItem, math } from '@galacean/effects';
+import { InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
 import { Control, FocusMode } from '@galacean/effects-plugin-gui';
 import { GizmoViewportUtils } from '@galacean/effects-plugin-editor-gizmo';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
@@ -7,10 +7,12 @@ import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { append, column, expand, screenPosition } from '../../../ui/controls/layout';
+import { EditorMenu } from '../../../ui/controls/menu';
 import { editorColors, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
 import { TexturePresentation, imageTexturePreview } from '../../assets/preview/texture-preview';
 import { sceneWorkspace } from '../scene-workspace';
-import { SceneItemOperations } from '../operations/scene-item-operations';
+import { sceneEditCommands } from '../operations/scene-edit-commands';
+import { createItemActions } from '../ui/create-item-menu';
 import { OrbitController } from './orbit-controller';
 import { SceneGizmo } from './scene-gizmo';
 import { SceneToolbar } from './scene-toolbar';
@@ -30,6 +32,7 @@ export class SceneViewportPanel extends EditorWindow {
   private pendingSelectionFit = false;
   private updatingInput = false;
   private stableViewportFrames = 0;
+  private context?: EditorMenu;
 
   get is2DMode (): boolean { return this._is2DMode; }
   set is2DMode (value: boolean) {
@@ -49,6 +52,7 @@ export class SceneViewportPanel extends EditorWindow {
 
     append(root, toolbar);
     this.viewport = append(root, expand(new SceneViewport(engine, this)));
+    this.context = new EditorMenu(engine);
 
     return root;
   }
@@ -124,7 +128,24 @@ export class SceneViewportPanel extends EditorWindow {
     event.accept();
   }
   key (event: InputEventKey): void { this.input?.key(event); }
+  showContext (event: InputEventMouseButton): void {
+    const viewport = this.viewport, composition = this.gizmo?.composition;
+
+    if (!viewport || !composition || !this.context) { return; }
+    const hits = composition.hitTest(event.position.x / viewport.width * 2 - 1, 1 - event.position.y / viewport.height * 2, true);
+    const item = hits.filter(hit => hit.item.definition.id).at(-1)?.item;
+
+    if (item && !EditorSelection.getSelectedObjects().includes(item)) { EditorSelection.select(item); }
+    this.context.setActions([
+      { label: 'Edit', heading: true }, ...sceneEditCommands.actions(),
+      { label: 'Scene', heading: true }, { label: 'Create', children: createItemActions() },
+      { label: 'Select All', shortcut: 'Ctrl+A', action: () => sceneEditCommands.selectAll() },
+      { label: 'Frame Selection', shortcut: 'F', enabled: this.is2DMode && !!this.gizmo?.selectedItems.length, action: () => this.frameSelection() },
+    ]);
+    this.context.show(viewport, event.globalPosition);
+  }
   leave (): void { this.input?.leave(); }
+  override dispose (): void { super.dispose(); this.context?.dispose(); this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined; }
   drawBackground (control: Control): void {
     control.fillRect(0, 0, control.width, control.height, new math.Color(22 / 255, 24 / 255, 27 / 255, 1));
     if (!this.gizmo) {
@@ -156,20 +177,9 @@ export class SceneViewportPanel extends EditorWindow {
   private handleShortcut (event: InputEventKey): void {
     const gizmo = this.gizmo;
 
-    if (!gizmo || event.echo || event.ctrlPressed || event.metaPressed || event.altPressed) { return; }
-    const code = event.physicalKeycode || event.keycode;
-
-    if (code === 'Delete' || code === 'Backspace') {
-      const document = sceneWorkspace.current;
-
-      if (!document || gizmo.handler.isMouseButtonPressed() || gizmo.handler.getActiveEditMode().id === 'text-edit') { return; }
-      const items = EditorSelection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem &&
-        object.composition === document.composition && !!object.definition.id && object !== document.composition.sceneRoot && object !== document.composition.root);
-
-      if (items.length) { new SceneItemOperations(document).remove(items); event.accept(); }
-
-      return;
-    }
+    if (!gizmo || event.echo || event.altPressed) { return; }
+    if (!gizmo.handler.isMouseButtonPressed() && gizmo.handler.getActiveEditMode().id !== 'text-edit' && sceneEditCommands.shortcut(event)) { return; }
+    if (event.ctrlPressed || event.metaPressed) { return; }
     if (!this.is2DMode) { return; }
     if (event.physicalKeycode === 'Escape') {
       if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
@@ -180,11 +190,13 @@ export class SceneViewportPanel extends EditorWindow {
 
 class SceneViewport extends Control {
   private readonly presentation: TexturePresentation;
+  private readonly releaseCommands: () => void;
   private pressedAt?: math.Vector2;
   private dragDistance = 0;
   constructor (engine: Engine, private readonly panel: SceneViewportPanel) {
     super(engine); this.focusMode = FocusMode.All;
     this.presentation = new TexturePresentation(engine);
+    this.releaseCommands = sceneEditCommands.bind(this);
   }
   override update (dt: number): void {
     this.panel.resizeViewport(this);
@@ -207,11 +219,12 @@ class SceneViewport extends Control {
   }
   override onMouseUp (event: InputEventMouseButton): void {
     this.panel.mouse(event, !!this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Left && !event.canceled);
+    if (this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Right && !event.canceled) { this.panel.showContext(event); }
     this.pressedAt = undefined;
   }
   override onMouseWheel (event: InputEventMouseButton): void { this.panel.mouse(event); }
   override onMouseLeave (): void { this.panel.leave(); }
   override onKeyDown (event: InputEventKey): void { this.panel.key(event); }
   override onKeyUp (event: InputEventKey): void { this.panel.key(event); }
-  override onDestroy (): void { this.presentation.dispose(); super.onDestroy(); }
+  override onDestroy (): void { this.releaseCommands(); this.presentation.dispose(); super.onDestroy(); }
 }

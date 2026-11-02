@@ -83,7 +83,7 @@ class HierarchyRow extends Control {
   }
   override onMouseLeave (): void { this.dropZone = undefined; }
   override onMouseDown (event: InputEventMouseButton): void {
-    this.grabFocus();
+    this.tree.grabFocus();
     if (event.buttonIndex === MouseButton.Right) {
       this.tree.actions.context(this.node, event.globalPosition); event.accept();
 
@@ -145,7 +145,7 @@ class HierarchyRow extends Control {
       if (this.renameField !== field) { return; }
       this.renameField = undefined; field.finish = undefined;
       if (!cancel && field.text.trim()) { this.tree.actions.rename(this.node, field.text.trim()); }
-      field.dispose(); if (!this.isDisposed && this.visibleInHierarchy) { this.grabFocus(); }
+      field.dispose(); if (!this.isDisposed && this.visibleInHierarchy) { this.tree.grabFocus(); }
     };
     field.on('textSubmitted', () => field.finish?.(false)); field.grabFocus(); field.selectAll();
   }
