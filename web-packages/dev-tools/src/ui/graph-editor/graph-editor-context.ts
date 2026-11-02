@@ -42,7 +42,6 @@ export class GraphEditorContext {
   private m_nodeDoubleClickedEvent: EventHandler<GraphNode>[] = [];
   private m_navigateToGraphEvent: EventHandler<GraphModel>[] = [];
   private m_graphDoubleClickedEvent: EventHandler<GraphModel>[] = [];
-  //   private m_requestOpenResourceEvent: EventHandler<ResourceID>[] = [];
   private m_customCommandRequestedEvent: EventHandler<CustomCommand>[] = [];
   private m_postPasteEvent: EventHandler<GraphNode[]>[] = [];
   private m_selectionChangedEvent: EventHandlerTwoArgs<GraphNodeSelection[], GraphNodeSelection[]>[] = [];
@@ -67,13 +66,8 @@ export class GraphEditorContext {
     this.m_extraTitleInfoColor = newColor;
   }
 
-  //   ResetExtraTitleInfoTextColor (): void {
-  //     this.m_extraTitleInfoColor = ImGuiX.Style.s_colorText;
-  //   }
-
   ResetExtraTitleInfo (): void {
     this.ClearExtraGraphTitleInfoText();
-    // this.ResetExtraTitleInfoTextColor();
   }
 
   NavigateTo (target: GraphNode | GraphModel): void {
@@ -91,13 +85,6 @@ export class GraphEditorContext {
       this.m_graphDoubleClickedEvent.forEach(handler => handler(target));
     }
   }
-
-  //   RequestOpenResource (resourceID: ResourceID): void {
-  //     if (!resourceID.IsValid()) {
-  //       throw new Error('Invalid ResourceID');
-  //     }
-  //     this.m_requestOpenResourceEvent.forEach(handler => handler(resourceID));
-  //   }
 
   NotifySelectionChanged (oldSelection: GraphNodeSelection[], newSelection: GraphNodeSelection[]): void {
     this.m_selectionChangedEvent.forEach(handler => handler(oldSelection, newSelection));
@@ -126,10 +113,6 @@ export class GraphEditorContext {
   OnGraphDoubleClicked (handler: EventHandler<GraphModel>): void {
     this.m_graphDoubleClickedEvent.push(handler);
   }
-
-  //   OnRequestOpenResource (handler: EventHandler<ResourceID>): void {
-  //     this.m_requestOpenResourceEvent.push(handler);
-  //   }
 
   OnCustomCommandRequested (handler: EventHandler<CustomCommand>): void {
     this.m_customCommandRequestedEvent.push(handler);

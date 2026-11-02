@@ -11,7 +11,7 @@ import { AssetObjectCache } from './runtime/asset-object-cache';
 import { workspaceRepository } from './storage/workspace-repository';
 
 const DEFAULTS: AssetBrowserPreferences = {
-  folder: ASSET_ROOT, view: 'tiles', thumbnailSize: 96, sourcesWidth: 216, sources: true,
+  folder: ASSET_ROOT, view: 'tiles', thumbnailSize: 96, realtimeThumbnails: true, sourcesWidth: 216, sources: true,
   showFolders: true, recursive: true, sort: 'name', descending: false, collections: [],
 };
 
@@ -55,9 +55,11 @@ export class AssetLibrary {
     const changes = new Map(entries.map(entry => [entry.id, entry]));
 
     this.entries = [...this.entries.filter(entry => !changes.has(entry.id)), ...entries]; this.revision++;
-    entries.filter(entry => entry.kind === 'texture').forEach(entry => this.textureCache.rename(entry));
     const project = this.projectId;
 
+    for (const entry of entries.filter(entry => entry.kind === 'texture')) {
+      void this.textureCache.refresh(entry).catch(error => { if (project === this.projectId) { this.report(error); } });
+    }
     for (const entry of entries.filter(entry => ['material', 'shader', 'sprite'].includes(entry.kind))) {
       void this.objectCache.refresh(entry).catch(error => { if (project === this.projectId) { this.report(error); } });
     }
@@ -208,6 +210,8 @@ export class AssetLibrary {
       data.objects.find(object => object.id === data.id)!.name = entry.name;
       const next = { ...entry, updatedAt: Math.max(Date.now(), entry.updatedAt + 1), size: new TextEncoder().encode(JSON.stringify(data)).length };
 
+      if (data.kind === 'material') { next.previewMesh = data.previewMesh; }
+
       await this.update([next], [data]); await this.objectCache.refresh(next, engine); this.notice = entry.name + ' saved';
 
       return true;
@@ -336,6 +340,8 @@ export class AssetLibrary {
   loadAsset (engine: Engine, id: string): Promise<EffectsObject> { return this.entry(id)?.kind === 'texture' ? this.loadTexture(engine, id) : this.objectCache.load(engine, id); }
 
   texture (engine: Engine, id: string): Texture | undefined { return this.textureCache.get(engine, id); }
+
+  registerEngine (engine: Engine): void { this.textureCache.registerEngine(engine); }
 
   loadTexture (engine: Engine, id: string): Promise<Texture> { return this.textureCache.load(engine, id); }
 

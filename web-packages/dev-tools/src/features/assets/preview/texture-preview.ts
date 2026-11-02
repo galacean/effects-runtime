@@ -1,143 +1,108 @@
-import { Texture } from '@galacean/effects';
-import type { GPUTextureWebGL } from '@galacean/effects-webgl';
-import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { ImGui, ImGuiBackend } from '../../../platform/imgui/index';
+import type { Engine, GPUFramebuffer } from '@galacean/effects';
+import { Material, Texture, TextureSourceType, math, glContext } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import type { PreviewTextureSource } from './texture-preview-cache';
 
-/**
- * 纹理预览：把 Galacean Texture 上传/拷贝为 imgui 可用的 WebGLTexture，并返回整图 UV（含 flipY 处理）。
- * 缓存于 texture.__imguiAssetThumb / __imguiAssetThumbFlipped，避免重复上传。
- * 从 content-browser 抽取为共享 util，供 sequencer sprite 缩略图等复用。
- */
-export type TexturePreview = { tex: WebGLTexture, uv0: ImGui.Vec2, uv1: ImGui.Vec2, corners?: [ImGui.Vec2, ImGui.Vec2, ImGui.Vec2, ImGui.Vec2] };
+export interface TextureDisplay { channels: [number, number, number, number], desaturate: boolean }
+export type TexturePreview = { tex: PreviewTextureSource, uv0: math.Vector2, uv1: math.Vector2, corners?: [math.Vector2, math.Vector2, math.Vector2, math.Vector2] };
 
-export function drawTexturePreview (preview: TexturePreview, min: ImGui.Vec2, max: ImGui.Vec2): void {
-  const draw = ImGui.GetWindowDrawList();
-
-  if (preview.corners) {
-    draw.AddImageQuad(preview.tex, min, new ImGui.Vec2(max.x, min.y), max, new ImGui.Vec2(min.x, max.y), ...preview.corners);
-  } else { draw.AddImage(preview.tex, min, max, preview.uv0, preview.uv1); }
+export function imageTexturePreview (image: { texture: PreviewTextureSource, flipY?: boolean }): TexturePreview {
+  return { tex: image.texture, uv0: new math.Vector2(0, image.flipY ? 1 : 0), uv1: new math.Vector2(1, image.flipY ? 0 : 1) };
 }
 
-export function texturePreviewImage (preview: TexturePreview, size: ImGui.Vec2): void {
-  const origin = ImGui.GetCursorScreenPos();
+export function initializePreviewTexture (texture: Texture): boolean {
+  if (!(texture instanceof Texture) || texture.isDestroyed) { return false; }
+  texture.initialize();
 
-  ImGui.Dummy(size); drawTexturePreview(preview, origin, new ImGui.Vec2(origin.x + size.x, origin.y + size.y));
+  return Number.isFinite(texture.width) && Number.isFinite(texture.height) && texture.width > 0 && texture.height > 0;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export function getOrCreateTexturePreview (obj: Texture): TexturePreview | null {
-  const imguiGl = ImGuiBackend.gl;
+export function getOrCreateTexturePreview (texture: Texture, source: PreviewTextureSource = texture): TexturePreview | null {
+  if (!initializePreviewTexture(texture)) { return null; }
 
-  if (!imguiGl || !(obj instanceof Texture)) { return null; }
+  return imageTexturePreview({ texture: source, flipY: texture.source.sourceType === TextureSourceType.framebuffer || !!texture.source.flipY });
+}
 
-  // 命中缓存（缓存了 ImGui context 的 WebGLTexture 和该纹理来源对应的翻转标记）
-  const cachedTex = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
+/** Prepares preview textures before UI submission. */
+export class TexturePresentation {
+  private static readonly pending = new Set<TexturePresentation>();
+  private result?: Texture;
+  private preview?: TexturePreview;
+  private display?: TextureDisplay;
+  private maxDimension = 2048;
+  private target?: GPUFramebuffer;
+  private material?: Material;
+  private converted = false;
 
-  if (cachedTex && (obj as any).__imguiAssetThumbSource === obj.source) {
-    const cachedFlipped = !!(obj as any).__imguiAssetThumbFlipped;
+  constructor (private readonly engine: Engine) { }
 
-    return {
-      tex: cachedTex,
-      uv0: cachedFlipped ? new ImGui.Vec2(0, 1) : new ImGui.Vec2(0, 0),
-      uv1: cachedFlipped ? new ImGui.Vec2(1, 0) : new ImGui.Vec2(1, 1),
-    };
-  }
-  if (cachedTex) { imguiGl.deleteTexture(cachedTex); delete (obj as any).__imguiAssetThumb; }
-
-  const tex = imguiGl.createTexture();
-
-  if (!tex) { return null; }
-  imguiGl.bindTexture(imguiGl.TEXTURE_2D, tex);
-
-  let uploaded = false;
-  // 标记结果纹理是否处于"引擎 flipY 后"的布局，据此决定 UV 是否翻转
-  let needsFlip = false;
-  const src = obj.source as any;
-  const srcImage = src?.image;
-  const srcData = src?.data;
-
-  // Path 1: 未初始化纹理的原始 HTMLImage / Canvas / ImageBitmap，直接上传（无需翻转 UV）
-  if (
-    srcImage && (
-      (typeof HTMLImageElement !== 'undefined' && srcImage instanceof HTMLImageElement) ||
-      (typeof HTMLCanvasElement !== 'undefined' && srcImage instanceof HTMLCanvasElement) ||
-      (typeof ImageBitmap !== 'undefined' && srcImage instanceof ImageBitmap)
-    )
-  ) {
-    imguiGl.texImage2D(imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, srcImage);
-    uploaded = true;
-  } else if (srcData && srcData.data && srcData.width > 0 && srcData.height > 0) {
-    // Path 2: 未初始化的 raw data 纹理（emptyTexture / whiteTexture 等内置 1x1 贴图）
-    const td = srcData.data;
-    const data = td instanceof Uint8ClampedArray
-      ? new Uint8Array(td.buffer, td.byteOffset, td.byteLength)
-      : td;
-
-    if (data instanceof Uint8Array) {
-      imguiGl.texImage2D(
-        imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, srcData.width, srcData.height, 0,
-        imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, data,
-      );
-      uploaded = true;
+  static renderPending (engine: Engine): void {
+    for (const presentation of this.pending) {
+      if (presentation.engine === engine) { this.pending.delete(presentation); presentation.prepare(); }
     }
   }
 
-  // Path 3: 已初始化且 source 已被 release，只能跨 context readPixels
-  if (
-    !uploaded && obj.engine.displayServer.renderingDevice instanceof RenderingDeviceWebGL &&
-    (obj.getGPUTexture() as GPUTextureWebGL).textureBuffer && obj.width > 0 && obj.height > 0
-  ) {
-    const engineGl = obj.engine.displayServer.renderingDevice.gl;
+  update (preview?: TexturePreview, display?: TextureDisplay, maxDimension = 2048): void {
+    this.preview = preview; this.display = display; this.maxDimension = maxDimension;
+    TexturePresentation.pending.add(this);
+  }
 
-    if ((obj.getGPUTexture() as GPUTextureWebGL).target === engineGl.TEXTURE_2D) {
-      const w = obj.width;
-      const h = obj.height;
-      const pixels = new Uint8Array(w * h * 4);
-      const prevFbo = engineGl.getParameter(engineGl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
-      const fbo = engineGl.createFramebuffer();
+  /** Convert after preview rendering has finished and before UI batches are built. */
+  private prepare (): void {
+    const { preview, display, maxDimension } = this;
 
-      if (fbo) {
-        engineGl.bindFramebuffer(engineGl.FRAMEBUFFER, fbo);
-        engineGl.framebufferTexture2D(
-          engineGl.FRAMEBUFFER, engineGl.COLOR_ATTACHMENT0,
-          engineGl.TEXTURE_2D, (obj.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0,
-        );
-        if (engineGl.checkFramebufferStatus(engineGl.FRAMEBUFFER) === engineGl.FRAMEBUFFER_COMPLETE) {
-          engineGl.readPixels(0, 0, w, h, engineGl.RGBA, engineGl.UNSIGNED_BYTE, pixels);
-          imguiGl.bindTexture(imguiGl.TEXTURE_2D, tex);
-          imguiGl.texImage2D(
-            imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, w, h, 0,
-            imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, pixels,
-          );
-          uploaded = true;
-          // 引擎上传时若 flipY=true，GPU 布局相对原图是翻转的，ImGui 默认 UV 会上下颠倒
-          needsFlip = !!src?.flipY;
-        }
-        engineGl.bindFramebuffer(engineGl.FRAMEBUFFER, prevFbo);
-        engineGl.deleteFramebuffer(fbo);
-      }
+    this.result = undefined; this.converted = false;
+    const source = preview && (typeof preview.tex === 'function' ? preview.tex() : preview.tex);
+
+    if (!source || source.isDestroyed || !preview) { return; }
+    const device = this.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+    const sourceDevice = source.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
+
+    if (device.contextWasLost || sourceDevice.contextWasLost || device.gl !== sourceDevice.gl) { return; }
+    if (!initializePreviewTexture(source)) { return; }
+    const premultiplied = source.source.premultiplyAlpha || source.source.sourceType === TextureSourceType.framebuffer;
+    const filtered = display && (display.desaturate || display.channels.some(channel => channel !== 1));
+
+    this.result = source;
+    if (!premultiplied && !filtered && !preview.corners) { return; }
+    const width = Math.max(1, Math.floor(Math.min(maxDimension, source.width))), height = Math.max(1, Math.floor(Math.min(maxDimension, source.height)));
+
+    if (!this.target) {
+      const color = Texture.create(this.engine, { name: 'EditorPreview', sourceType: TextureSourceType.framebuffer,
+        data: { width, height }, minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE });
+
+      color.unregisterObject();
+      this.target = device.createFramebuffer({ name: 'EditorPreview', attachments: [color], viewport: [0, 0, width, height], storeAction: {} });
+      this.target.initialize();
+      this.material = Material.create(this.engine, { shader: {
+        vertex: 'precision highp float; attribute vec2 aPos; varying vec2 uv; void main(){ uv=vec2(aPos.x*.5+.5,.5-aPos.y*.5); gl_Position=vec4(aPos,0.,1.); }',
+        fragment: 'precision highp float; varying vec2 uv; uniform sampler2D _MainTex; uniform vec4 topUV; uniform vec4 bottomUV; uniform vec4 channels; uniform float premultiplied; uniform float desaturate; void main(){ vec2 p=mix(mix(topUV.xy,topUV.zw,uv.x),mix(bottomUV.xy,bottomUV.zw,uv.x),uv.y); vec4 c=texture2D(_MainTex,p); if(premultiplied>0.5 && c.a>0.00001) c.rgb/=c.a; if(dot(channels.rgb,vec3(1.))<0.5) c=vec4(vec3(c.a*channels.a),1.); else { c.rgb*=channels.rgb; if(desaturate>0.5) c.rgb=vec3(dot(c.rgb,vec3(.299,.587,.114))); c.a=mix(1.,c.a,channels.a); } gl_FragColor=c; }',
+      } });
+      this.material.unregisterObject(); this.material.blending = this.material.depthTest = this.material.culling = false;
     }
+    const corners = preview.corners ?? [preview.uv0, new math.Vector2(preview.uv1.x, preview.uv0.y), preview.uv1, new math.Vector2(preview.uv0.x, preview.uv1.y)];
+    const material = this.material!;
+
+    material.setVector4('topUV', new math.Vector4(corners[0].x, corners[0].y, corners[1].x, corners[1].y));
+    material.setVector4('bottomUV', new math.Vector4(corners[3].x, corners[3].y, corners[2].x, corners[2].y));
+    material.setVector4('channels', new math.Vector4(...(display?.channels ?? [1, 1, 1, 1])));
+    material.setFloat('premultiplied', premultiplied ? 1 : 0); material.setFloat('desaturate', display?.desaturate ? 1 : 0);
+    device.gl.bindVertexArray(null); device.gl.activeTexture(device.gl.TEXTURE0); device.reset(); device.setScissorTest(false);
+    this.target.resize(0, 0, width, height);
+    this.engine.renderer.blit(source, this.target, material);
+    this.result = this.target.getColorTextures()[0]; this.converted = true;
   }
 
-  if (!uploaded) {
-    imguiGl.deleteTexture(tex);
+  draw (control: Control, x: number, y: number, width: number, height: number): void {
+    if (!this.result || this.result.isDestroyed || !this.preview) { return; }
+    const p = this.preview;
+    const region = this.converted ? { u0: 0, v0: 0, u1: 1, v1: 1 } : { u0: p.uv0.x, v0: p.uv1.y, u1: p.uv1.x, v1: p.uv0.y };
 
-    return null;
+    control.drawTexture(x, y, width, height, this.result, region);
   }
-
-  imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_MIN_FILTER, imguiGl.LINEAR);
-  imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_MAG_FILTER, imguiGl.LINEAR);
-  imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_WRAP_S, imguiGl.CLAMP_TO_EDGE);
-  imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_WRAP_T, imguiGl.CLAMP_TO_EDGE);
-
-  (obj as any).__imguiAssetThumb = tex;
-  (obj as any).__imguiAssetThumbSource = obj.source;
-  (obj as any).__imguiAssetThumbFlipped = needsFlip;
-
-  return {
-    tex,
-    uv0: needsFlip ? new ImGui.Vec2(0, 1) : new ImGui.Vec2(0, 0),
-    uv1: needsFlip ? new ImGui.Vec2(1, 0) : new ImGui.Vec2(1, 1),
-  };
+  dispose (): void {
+    TexturePresentation.pending.delete(this); this.result = undefined; this.preview = undefined;
+    this.target?.dispose(); this.material?.dispose();
+  }
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */

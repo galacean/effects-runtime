@@ -1,10 +1,8 @@
-import { TextComponent, TextComponentBase, spec } from '@galacean/effects';
+import { TextComponent, TextComponentBase, spec, math } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { detailsCustomization } from '../../../framework/registry/editor-registry';
-import { ImGui } from '../../../platform/imgui/index';
 import { DefaultObjectDetails } from '../../../ui/property-editor/default-object-details';
-import { PropertyFields } from '../../../ui/property-editor/property-fields';
-import { PropertyGrid } from '../../../ui/property-editor/property-grid';
+import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
 
 const FONT_FAMILIES = ['Inter', 'Arial', 'Helvetica', 'sans-serif', 'serif', 'monospace'];
 const FONT_WEIGHTS = [spec.TextWeight.normal, spec.TextWeight.bold, spec.TextWeight.lighter];
@@ -85,109 +83,48 @@ export class TextDetailsCustomization extends DefaultObjectDetails {
     return Object.entries(TEXT_PROPERTIES).flatMap(([name, properties]) => [name, ...properties]);
   }
 
-  override onInspectorGUI (): void {
+  override build (group: PropertyGroup): void {
     const component = this.target as TextComponent;
 
     if (!component?.textStyle || !component.textLayout) { return; }
     const style = component.textStyle, layout = component.textLayout;
     const dirty = () => { component.isDirty = true; };
+    const typography = group.group('Typography', 'Typography');
 
-    this.group('Typography', () => {
-      PropertyFields.Property('Text', width => ImGui.InputTextMultiline('##Text', next => {
-        if (next !== undefined && next !== component.text) { component.setText(next); }
+    typography.text('Text', { read: () => component.text ?? '', write: value => component.setText(value) }, true);
+    const families = FONT_FAMILIES.includes(style.fontFamily) ? FONT_FAMILIES : [style.fontFamily, ...FONT_FAMILIES];
 
-        return component.text ?? '';
-      }, undefined, new ImGui.Vec2(width, 84)));
-      const families = FONT_FAMILIES.includes(style.fontFamily) ? FONT_FAMILIES : [style.fontFamily, ...FONT_FAMILIES];
+    typography.choice('Font Family', { read: () => Math.max(0, families.indexOf(style.fontFamily)), write: index => component.setFontFamily(families[index]) }, families);
+    typography.choice('Font Weight', { read: () => Math.max(0, FONT_WEIGHTS.indexOf(style.textWeight)), write: index => component.setFontWeight(FONT_WEIGHTS[index]) }, ['Regular', 'Bold', 'Lighter']);
+    typography.choice('Font Style', { read: () => Math.max(0, FONT_STYLES.indexOf(style.fontStyle)), write: index => component.setFontStyle(FONT_STYLES[index]) }, ['Normal', 'Italic', 'Oblique']);
+    typography.number('Font Size', { read: () => style.fontSize, write: value => { style.fontSize = Math.max(1, Math.round(value)); dirty(); } }, { step: .5, min: 1, max: 1000, precision: 0 });
+    typography.color('Color', { read: () => new math.Color(...style.textColor), write: color => { style.textColor = [color.r, color.g, color.b, color.a]; dirty(); } });
+    const section = group.group('Layout', 'Layout');
+    const modes = [spec.TextSizeMode.fixed, spec.TextSizeMode.autoWidth, spec.TextSizeMode.autoHeight];
 
-      PropertyFields.ComboField('Font Family', next => {
-        if (next !== undefined && families[next] !== style.fontFamily) { component.setFontFamily(families[next]); }
+    section.choice('Auto Resize', { read: () => Math.max(0, modes.indexOf(layout.autoResize)), write: index => { layout.autoResize = modes[index]; dirty(); } }, ['Fixed', 'Auto Width', 'Auto Height']);
+    section.number(this.hasTextBounds(layout) ? 'Max Width' : 'Width', { read: () => this.getEditableWidth(layout), write: value => this.setEditableWidth(component, layout, value) }, { step: .1, min: .01, max: 10000, precision: 2 });
+    section.number(this.hasTextBounds(layout) ? 'Max Height' : 'Height', { read: () => this.getEditableHeight(layout), write: value => this.setEditableHeight(component, layout, value) }, { step: .1, min: .01, max: 10000, precision: 2 });
+    section.number('Line Height', { read: () => layout.lineHeight, write: value => { layout.lineHeight = value; dirty(); } }, { step: .5, min: 1, max: 1000, precision: 1 });
+    section.number('Letter Spacing', { read: () => style.fontSize ? layout.letterSpace / style.fontSize * 100 : 0,
+      write: value => { layout.letterSpace = value / 100 * style.fontSize; dirty(); } }, { step: .1, min: -100, max: 1000, precision: 1, suffix: '%' });
+    const horizontal = [spec.TextAlignment.left, spec.TextAlignment.middle, spec.TextAlignment.right];
+    const vertical = [spec.TextVerticalAlign.top, spec.TextVerticalAlign.middle, spec.TextVerticalAlign.bottom];
 
-        return Math.max(0, families.indexOf(style.fontFamily));
-      }, families);
-      PropertyFields.ComboField('Font Weight', next => {
-        if (next !== undefined) { component.setFontWeight(FONT_WEIGHTS[next]); }
+    section.choice('Horizontal Alignment', { read: () => Math.max(0, horizontal.indexOf(layout.textAlign)), write: index => component.setTextAlign(horizontal[index]) }, ['Left', 'Center', 'Right']);
+    section.choice('Vertical Alignment', { read: () => Math.max(0, vertical.indexOf(layout.textVerticalAlign)), write: index => component.setTextVerticalAlign(vertical[index]) }, ['Top', 'Center', 'Bottom']);
+    const outline = group.group('Outline', 'Outline', false);
 
-        return Math.max(0, FONT_WEIGHTS.indexOf(style.textWeight));
-      }, ['Regular', 'Bold', 'Lighter']);
-      PropertyFields.ComboField('Font Style', next => {
-        if (next !== undefined) { component.setFontStyle(FONT_STYLES[next]); }
+    outline.boolean('Enabled', { read: () => style.isOutlined, write: value => { style.isOutlined = value; dirty(); } });
+    outline.number('Width', { read: () => style.outlineWidth, write: value => { style.outlineWidth = value; dirty(); } }, {}, { enabled: () => style.isOutlined });
+    outline.color('Color', { read: () => new math.Color(...style.outlineColor), write: value => { style.outlineColor = [value.r, value.g, value.b, value.a]; dirty(); } }, { enabled: () => style.isOutlined });
+    const shadow = group.group('Shadow', 'Shadow', false);
 
-        return Math.max(0, FONT_STYLES.indexOf(style.fontStyle));
-      }, ['Normal', 'Italic', 'Oblique']);
-      PropertyFields.NumberField('Font Size', next => {
-        if (next !== undefined && style.fontSize !== Math.round(next)) { style.fontSize = Math.max(1, Math.round(next)); dirty(); }
-
-        return style.fontSize;
-      }, 0.5, 1, 1000, '%.0f');
-      if (PropertyFields.ColorField('Color', style.textColor)) { dirty(); }
-    });
-    this.group('Layout', () => {
-      const modes = [spec.TextSizeMode.fixed, spec.TextSizeMode.autoWidth, spec.TextSizeMode.autoHeight];
-
-      PropertyFields.ComboField('Auto Resize', next => {
-        if (next !== undefined && layout.autoResize !== modes[next]) { layout.autoResize = modes[next]; dirty(); }
-
-        return Math.max(0, modes.indexOf(layout.autoResize));
-      }, ['Fixed', 'Auto Width', 'Auto Height']);
-      PropertyFields.NumberField(this.hasTextBounds(layout) ? 'Max Width' : 'Width', next => {
-        if (next !== undefined) { this.setEditableWidth(component, layout, next); }
-
-        return this.getEditableWidth(layout);
-      }, 0.1, 0.01, 10000, '%.2f');
-      PropertyFields.NumberField(this.hasTextBounds(layout) ? 'Max Height' : 'Height', next => {
-        if (next !== undefined) { this.setEditableHeight(component, layout, next); }
-
-        return this.getEditableHeight(layout);
-      }, 0.1, 0.01, 10000, '%.2f');
-      PropertyFields.NumberField('Line Height', next => {
-        if (next !== undefined && layout.lineHeight !== next) { layout.lineHeight = next; dirty(); }
-
-        return layout.lineHeight;
-      }, 0.5, 1, 1000, '%.1f');
-      let spacing = style.fontSize ? layout.letterSpace / style.fontSize * 100 : 0;
-
-      if (PropertyFields.NumberField('Letter Spacing', next => {
-        if (next !== undefined) { spacing = next; }
-
-        return spacing;
-      }, 0.1, -100, 1000, '%.1f%%')) { layout.letterSpace = spacing / 100 * style.fontSize; dirty(); }
-      const horizontal = [spec.TextAlignment.left, spec.TextAlignment.middle, spec.TextAlignment.right];
-      const vertical = [spec.TextVerticalAlign.top, spec.TextVerticalAlign.middle, spec.TextVerticalAlign.bottom];
-
-      PropertyFields.ComboField('Horizontal Alignment', next => {
-        if (next !== undefined) { component.setTextAlign(horizontal[next]); }
-
-        return Math.max(0, horizontal.indexOf(layout.textAlign));
-      }, ['Left', 'Center', 'Right']);
-      PropertyFields.ComboField('Vertical Alignment', next => {
-        if (next !== undefined) { component.setTextVerticalAlign(vertical[next]); }
-
-        return Math.max(0, vertical.indexOf(layout.textVerticalAlign));
-      }, ['Top', 'Center', 'Bottom']);
-    });
-    this.group('Outline', () => {
-      if (PropertyFields.Checkbox('Enabled', style, 'isOutlined')) { dirty(); }
-      ImGui.BeginDisabled(!style.isOutlined);
-      if (PropertyFields.FloatField('Width', style, 'outlineWidth')) { dirty(); }
-      if (PropertyFields.ColorField('Color', style.outlineColor)) { dirty(); }
-      ImGui.EndDisabled();
-    }, false);
-    this.group('Shadow', () => {
-      if (PropertyFields.Checkbox('Enabled', style, 'hasShadow')) { dirty(); }
-      ImGui.BeginDisabled(!style.hasShadow);
-      if (PropertyFields.ColorField('Color', style.shadowColor)) { dirty(); }
-      if (PropertyFields.FloatField('Blur', style, 'shadowBlur')) { dirty(); }
-      if (PropertyFields.FloatField('Offset X', style, 'shadowOffsetX')) { dirty(); }
-      if (PropertyFields.FloatField('Offset Y', style, 'shadowOffsetY')) { dirty(); }
-      ImGui.EndDisabled();
-    }, false);
-    this.group('Rendering', () => this.drawRenderingProperties(), false);
-  }
-
-  private group (name: keyof typeof TEXT_PROPERTIES, draw: () => void, defaultOpen = true): void {
-    if (!PropertyGrid.matches(name, ...TEXT_PROPERTIES[name])) { return; }
-    if (PropertyFields.BeginFoldoutHeaderGroup(name, defaultOpen)) { draw(); }
-    PropertyFields.EndFoldoutHeaderGroup();
+    shadow.boolean('Enabled', { read: () => style.hasShadow, write: value => { style.hasShadow = value; dirty(); } });
+    shadow.color('Color', { read: () => new math.Color(...style.shadowColor), write: value => { style.shadowColor = [value.r, value.g, value.b, value.a]; dirty(); } }, { enabled: () => style.hasShadow });
+    for (const [title, key] of [['Blur', 'shadowBlur'], ['Offset X', 'shadowOffsetX'], ['Offset Y', 'shadowOffsetY']] as const) {
+      shadow.number(title, { read: () => style[key], write: value => { style[key] = value; dirty(); } }, {}, { enabled: () => style.hasShadow });
+    }
+    this.buildRenderingProperties(group.group('Rendering', 'Rendering', false));
   }
 }

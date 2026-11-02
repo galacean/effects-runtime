@@ -1,13 +1,9 @@
-import { ImGui } from '../../platform/imgui/index';
+import type { math } from '@galacean/effects';
 import { CommentGraphNode } from './comment-graph-node';
-import type { DrawContext } from './graph-draw-context';
+import type { GraphViewGeometry } from './graph-view-geometry';
 import type { GraphEditorContext } from './graph-editor-context';
 import { GraphModel, GraphNode, NodeVisualState } from './graph-model';
 import { GraphStyle } from './graph-style';
-import type { ImVec2 } from './im-rect';
-
-type Color = ImGui.Color;
-const Color = ImGui.Color;
 
 import type { UUID } from './graph-types';
 
@@ -15,7 +11,6 @@ export class StateMachineGraphNode extends GraphNode {
   override GetTypeName (): string {
     return 'StateMachineNode';
   }
-  DrawContextMenuOptions (ctx: DrawContext, pUserContext: GraphEditorContext, mouseCanvasPos: ImVec2): void {}
 }
 
 export class StateGraphNode extends StateMachineGraphNode {
@@ -44,7 +39,7 @@ export class TransitionGraphNode extends StateMachineGraphNode {
     return this.m_endStateID;
   }
 
-  GetConduitColor (ctx: DrawContext, pUserContext: GraphEditorContext, visualState: Map<NodeVisualState, boolean>): Color {
+  GetConduitColor (ctx: GraphViewGeometry, pUserContext: GraphEditorContext, visualState: Map<NodeVisualState, boolean>): math.Color {
     if (visualState.get(NodeVisualState.Active)) {
       return GraphStyle.s_connectionColorActive;
     } else if (visualState.get(NodeVisualState.Hovered)) {
@@ -55,8 +50,6 @@ export class TransitionGraphNode extends StateMachineGraphNode {
       return GraphStyle.s_connectionColor;
     }
   }
-
-  override DrawExtraControls (ctx: DrawContext, pUserContext: GraphEditorContext, startPoint?: ImVec2, endPoint?: ImVec2): void {}
 }
 
 export abstract class StateMachineGraphModel extends GraphModel {
@@ -143,12 +136,6 @@ export abstract class StateMachineGraphModel extends GraphModel {
     return originalID;
   }
 
-  // Source Code :
-  //   protected override CanCreateNode (pNodeTypeInfo: TypeInfo): boolean {
-  //     return pNodeTypeInfo.IsDerivedFrom(CommentNode.GetStaticTypeID()) ||
-  //                pNodeTypeInfo.IsDerivedFrom(StateMachineNode.GetStaticTypeID());
-  //   }
-
   override CanCreateNode<T extends GraphNode>(classConstructor: new (...args: any[]) => T): boolean {
     return this.isSubclassOf(classConstructor, CommentGraphNode) || this.isSubclassOf(classConstructor, StateMachineGraphNode);
   }
@@ -176,10 +163,6 @@ export abstract class StateMachineGraphModel extends GraphModel {
     }
 
     super.PostDestroyNode(nodeID);
-  }
-
-  DrawContextMenuOptions (ctx: DrawContext, pUserContext: GraphEditorContext, mouseCanvasPos: ImVec2, filterTokens: string[]): boolean {
-    return false;
   }
 
   HasContextMenuFilter (): boolean {

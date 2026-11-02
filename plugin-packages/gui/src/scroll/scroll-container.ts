@@ -402,16 +402,13 @@ export class ScrollContainer extends Container {
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.viewportWidth, this.viewportHeight);
     }
-    try {
-      for (const child of this.children) {
-        if (child !== this.horizontalBar && child !== this.verticalBar) {
-          child.drawInternal();
-        }
+    for (const child of this.children) {
+      if (child !== this.horizontalBar && child !== this.verticalBar) {
+        child.drawInternal();
       }
-    } finally {
-      if (this.clipContents) {
-        graphics.popClipRect();
-      }
+    }
+    if (this.clipContents) {
+      graphics.popClipRect();
     }
     this.verticalBar.drawInternal();
     this.horizontalBar.drawInternal();

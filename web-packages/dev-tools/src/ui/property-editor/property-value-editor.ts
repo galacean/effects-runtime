@@ -1,35 +1,37 @@
 import { math } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui';
-import { PropertyFields as Fields } from './property-fields';
+import type { Control } from '@galacean/effects-plugin-gui';
 import type { PropertyHandle } from './property-handle';
+import type { PropertyGroup, ValueBinding } from './property-sheet';
 
 export interface PropertyValueEditor {
   accepts(value: unknown): boolean,
-  draw(handle: PropertyHandle<any>): boolean,
+  create(handle: PropertyHandle<any>, group: PropertyGroup): Control,
 }
-
 const editors: PropertyValueEditor[] = [
-  { accepts: value => typeof value === 'number' && Number.isFinite(value), draw: handle => Fields.NumberField(handle.label, handle.access) },
-  { accepts: value => typeof value === 'string', draw: handle => Fields.Property(handle.label, width => {
-    ImGui.SetNextItemWidth(width);
+  { accepts: value => typeof value === 'number' && Number.isFinite(value), create: (handle, group) => group.number(handle.label, binding(handle)) },
+  { accepts: value => typeof value === 'string', create: (handle, group) => group.text(handle.label, binding(handle)) },
+  { accepts: value => typeof value === 'boolean', create: (handle, group) => group.boolean(handle.label, binding(handle)) },
+  { accepts: value => value instanceof math.Vector2 || value instanceof math.Vector3 || value instanceof math.Vector4, create: (handle, group) => {
+    const count = handle.value instanceof math.Vector4 ? 4 : handle.value instanceof math.Vector3 ? 3 : 2;
+    const keys = ['x', 'y', 'z', 'w'].slice(0, count);
 
-    return ImGui.InputText('##Value', handle.access);
+    return group.vector(handle.label, { read: () => keys.map(key => Reflect.get(handle.value, key) as number),
+      write: values => handle.mutate(() => keys.forEach((key, index) => Reflect.set(handle.value, key, values[index]))) }, count);
+  } },
+  { accepts: value => value instanceof math.Color, create: (handle, group) => group.color(handle.label, {
+    read: () => handle.value as math.Color, write: value => handle.mutate(() => (handle.value as math.Color).copyFrom(value)),
   }) },
-  { accepts: value => typeof value === 'boolean', draw: handle => Fields.Property(handle.label, () => ImGui.Checkbox('##Value', handle.access)) },
-  { accepts: value => value instanceof math.Vector3, draw: handle => handle.mutate(() => Fields.Vector3Field(handle.label, handle.value)) },
-  { accepts: value => value instanceof math.Vector2, draw: handle => handle.mutate(() => Fields.Vector2Field(handle.label, handle.value)) },
-  { accepts: value => value instanceof math.Color, draw: handle => handle.mutate(() => Fields.ColorField(handle.label, handle.value)) },
 ];
 
+function binding<T> (handle: PropertyHandle<T>): ValueBinding<T> { return { read: () => handle.value, write: value => handle.set(value) }; }
 export function registerPropertyValueEditor (editor: PropertyValueEditor): void { editors.unshift(editor); }
-
-export function drawPropertyValue (handle: PropertyHandle): boolean {
+export function createPropertyValue (handle: PropertyHandle, group: PropertyGroup): Control | undefined {
   const editor = editors.find(candidate => candidate.accepts(handle.value));
 
-  if (!editor) { return false; }
-  ImGui.BeginDisabled(!handle.writable);
-  editor.draw(handle);
-  ImGui.EndDisabled();
+  if (!editor) { return; }
+  const control = editor.create(handle, group);
 
-  return true;
+  control.enabled = handle.writable;
+
+  return control;
 }

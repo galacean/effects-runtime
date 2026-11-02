@@ -1,18 +1,12 @@
+import { math } from '@galacean/effects';
 import { generateGUID } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui/index';
 import type { DragAndDropState } from './graph-drag-state';
-import { DrawChannel, type DrawContext } from './graph-draw-context';
+import { type GraphViewGeometry } from './graph-view-geometry';
 import type { GraphEditorContext } from './graph-editor-context';
 import { add, subtract } from './graph-math';
 import { GraphStyle } from './graph-style';
 import type { UUID } from './graph-types';
-import { ImRect } from './im-rect';
-
-type ImVec2 = ImGui.ImVec2;
-const ImVec2 = ImGui.ImVec2;
-
-type Color = ImGui.Color;
-const Color = ImGui.Color;
+import { GraphRect } from './graph-rect';
 
 export enum NodeVisualState {
   Active = 0,
@@ -23,37 +17,29 @@ export enum NodeVisualState {
 export abstract class GraphNode {
   m_ID: UUID;
   m_name: string;
-  m_canvasPosition: ImVec2;
-  m_size: ImVec2;
-  m_titleRectSize: ImVec2;
+  m_canvasPosition: math.Vector2;
+  m_size: math.Vector2;
+  m_titleRectSize: math.Vector2;
   protected m_childGraph: GraphModel | null;
   protected m_secondaryGraph: GraphModel | null;
   m_pParentGraph: GraphModel | null;
-  private m_lastCalculatedSize: ImVec2;
+  private m_lastCalculatedSize: math.Vector2;
   private m_hasCalculatedSize: boolean;
   private m_hasCachedCalculatedSize: boolean;
-  private m_internalRegionStartY: number;
-  private m_internalRegionColor: Color;
-  private m_internalRegionMargins: [number, number];
-  private m_regionStarted: boolean;
   m_isHovered: boolean;
 
   constructor () {
     this.m_ID = generateGUID();
     this.m_name = '';
-    this.m_canvasPosition = new ImVec2(0, 0);
-    this.m_size = new ImVec2(0, 0);
-    this.m_titleRectSize = new ImVec2(0, 0);
+    this.m_canvasPosition = new math.Vector2(0, 0);
+    this.m_size = new math.Vector2(0, 0);
+    this.m_titleRectSize = new math.Vector2(0, 0);
     this.m_childGraph = null;
     this.m_secondaryGraph = null;
     this.m_pParentGraph = null;
-    this.m_lastCalculatedSize = new ImVec2(0, 0);
+    this.m_lastCalculatedSize = new math.Vector2(0, 0);
     this.m_hasCalculatedSize = false;
     this.m_hasCachedCalculatedSize = false;
-    this.m_internalRegionStartY = -1.0;
-    this.m_internalRegionColor = new Color();
-    this.m_internalRegionMargins = [0, 0];
-    this.m_regionStarted = false;
     this.m_isHovered = false;
   }
 
@@ -173,8 +159,8 @@ export abstract class GraphNode {
   PostPaste (): void {}
 
   ResetCalculatedNodeSizes (): void {
-    this.m_size = new ImVec2(0, 0);
-    this.m_titleRectSize = new ImVec2(0, 0);
+    this.m_size = new math.Vector2(0, 0);
+    this.m_titleRectSize = new math.Vector2(0, 0);
     this.m_hasCalculatedSize = false;
   }
 
@@ -182,7 +168,7 @@ export abstract class GraphNode {
     return this.m_hasCachedCalculatedSize;
   }
 
-  GetCachedSize (): ImVec2 {
+  GetCachedSize (): math.Vector2 {
     return this.m_hasCachedCalculatedSize ? this.m_lastCalculatedSize : this.m_size;
   }
 
@@ -190,25 +176,25 @@ export abstract class GraphNode {
     return this.GetCachedSize().x;
   }
 
-  SetCalculatedNodeSize (size: ImVec2, updateCachedSize: boolean = true): void {
-    this.m_size = new ImVec2(size.x, size.y);
+  SetCalculatedNodeSize (size: math.Vector2, updateCachedSize: boolean = true): void {
+    this.m_size = new math.Vector2(size.x, size.y);
     this.m_hasCalculatedSize = true;
 
     if (updateCachedSize || !this.m_hasCachedCalculatedSize) {
-      this.m_lastCalculatedSize = new ImVec2(size.x, size.y);
+      this.m_lastCalculatedSize = new math.Vector2(size.x, size.y);
       this.m_hasCachedCalculatedSize = true;
     }
   }
 
-  GetNodeMargin (): ImVec2 {
-    return new ImVec2(8, 4);
+  GetNodeMargin (): math.Vector2 {
+    return new math.Vector2(8, 4);
   }
 
-  GetPosition (): ImVec2 {
-    return new ImVec2(this.m_canvasPosition.x, this.m_canvasPosition.y);
+  GetPosition (): math.Vector2 {
+    return new math.Vector2(this.m_canvasPosition.x, this.m_canvasPosition.y);
   }
 
-  GetSize (): ImVec2 {
+  GetSize (): math.Vector2 {
     if (this.m_hasCalculatedSize) {
       return this.m_size;
     }
@@ -224,98 +210,22 @@ export abstract class GraphNode {
     return this.GetSize().y;
   }
 
-  GetRect (): ImRect {
+  GetRect (): GraphRect {
     const nodeMargin = this.GetNodeMargin();
     const rectMin = subtract(this.m_canvasPosition, nodeMargin);
     const rectMax = add(add(this.m_canvasPosition, nodeMargin), this.GetSize());
 
-    return new ImRect(rectMin, rectMax);
+    return new GraphRect(rectMin, rectMax);
   }
 
-  SetPosition (newPosition: ImVec2): void {
+  SetPosition (newPosition: math.Vector2): void {
     this.BeginModification();
     this.m_canvasPosition = newPosition;
     this.EndModification();
   }
 
-  GetTitleBarColor (): Color {
+  GetTitleBarColor (): math.Color {
     return GraphStyle.s_defaultTitleColor;
-  }
-
-  DrawInternalSeparatorColored (ctx: DrawContext, color: Color, preMarginY: number = -1, postMarginY: number = -1): void {
-    const style = ImGui.GetStyle();
-    const scaledPreMargin = ctx.CanvasToWindow(preMarginY < 0 ? 0 : preMarginY);
-    const scaledPostMargin = ctx.CanvasToWindow(postMarginY < 0 ? style.ItemSpacing.y : postMarginY);
-
-    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + scaledPreMargin);
-
-    const nodeWindowWidth = ctx.CanvasToWindow(this.GetWidth());
-
-    if (nodeWindowWidth !== 0) {
-      const cursorScreenPos = ctx.WindowToScreenPosition(ImGui.GetCursorPos());
-
-      ctx.m_pDrawList!.AddLine(cursorScreenPos, add(cursorScreenPos, new ImVec2(nodeWindowWidth, 0)), color.toImU32());
-    }
-
-    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + scaledPostMargin + 1);
-  }
-
-  DrawInternalSeparator (ctx: DrawContext, unscaledPreMarginY: number = -1, unscaledPostMarginY: number = -1): void {
-    this.DrawInternalSeparatorColored(ctx, GraphStyle.s_genericNodeSeparatorColor, unscaledPreMarginY, unscaledPostMarginY);
-  }
-
-  BeginDrawInternalRegionColored (ctx: DrawContext, color: Color, preMarginY: number = -1, postMarginY: number = -1): void {
-    if (this.m_regionStarted) {
-      throw new Error('Region already started');
-    }
-
-    const style = ImGui.GetStyle();
-    const scaledPreMargin = ctx.CanvasToWindow(preMarginY < 0 ? 0 : preMarginY);
-    const scaledPostMargin = ctx.CanvasToWindow(postMarginY < 0 ? 0 : postMarginY);
-
-    this.m_internalRegionStartY = ImGui.GetCursorPosY();
-    this.m_internalRegionColor = color;
-    this.m_internalRegionMargins = [scaledPreMargin, scaledPostMargin];
-    this.m_regionStarted = true;
-
-    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + style.FramePadding.y + scaledPreMargin);
-    ImGui.Indent();
-  }
-
-  BeginDrawInternalRegion (ctx: DrawContext, unscaledPreMarginY: number = -1, unscaledPostMarginY: number = -1): void {
-    this.BeginDrawInternalRegionColored(ctx, GraphStyle.s_genericNodeInternalRegionDefaultColor, unscaledPreMarginY, unscaledPostMarginY);
-  }
-
-  EndDrawInternalRegion (ctx: DrawContext): void {
-    if (!this.m_regionStarted) {
-      throw new Error('No region started');
-    }
-
-    const style = ImGui.GetStyle();
-
-    ImGui.SameLine();
-    ImGui.Dummy(new ImVec2(style.IndentSpacing, 0));
-    ImGui.Unindent();
-
-    const scaledRectRounding = ctx.CanvasToWindow(3.0);
-
-    const scaledFramePadding = style.FramePadding;
-    const nodeWindowWidth = ctx.CanvasToWindow(this.GetWidth());
-
-    const rectMin = ctx.WindowToScreenPosition(new ImVec2(ImGui.GetCursorPosX(), this.m_internalRegionStartY + this.m_internalRegionMargins[0]));
-    const rectMax = add(rectMin, new ImVec2(nodeWindowWidth, ImGui.GetCursorPosY() - this.m_internalRegionStartY + scaledFramePadding.y - this.m_internalRegionMargins[0]));
-
-    const previousChannel = ctx.currentChannel;
-
-    ctx.SetDrawChannel(DrawChannel.ContentBackground);
-    ctx.m_pDrawList!.AddRectFilled(rectMin, rectMax, this.m_internalRegionColor.toImU32(), scaledRectRounding);
-    ctx.SetDrawChannel(previousChannel);
-
-    ImGui.Dummy(new ImVec2(nodeWindowWidth, scaledFramePadding.y + this.m_internalRegionMargins[1]));
-
-    this.m_internalRegionStartY = -1.0;
-    this.m_internalRegionMargins = [0, 0];
-    this.m_regionStarted = false;
   }
 
   GetRootGraph (): GraphModel {
@@ -405,9 +315,7 @@ export abstract class GraphNode {
     return uniqueName;
   }
 
-  PreDrawUpdate (pUserContext: GraphEditorContext): void {}
-
-  DrawExtraControls (ctx: DrawContext, pUserContext: GraphEditorContext): void {}
+  updateDebugState (pUserContext: GraphEditorContext): void {}
 
   OnShowNode (): void {}
 
@@ -442,7 +350,7 @@ export class GraphModel {
   m_ID: UUID;
   protected m_subType: string;
   m_nodes: GraphNode[];
-  m_viewOffset: ImVec2;
+  m_viewOffset: math.Vector2;
   m_viewScaleFactor: number;
   m_pParentNode: GraphNode | null;
   private m_beginModificationCallCount: number;
@@ -451,7 +359,7 @@ export class GraphModel {
     this.m_ID = generateGUID();
     this.m_subType = '';
     this.m_nodes = [];
-    this.m_viewOffset = new ImVec2(0, 0);
+    this.m_viewOffset = new math.Vector2(0, 0);
     this.m_viewScaleFactor = 1.0;
     this.m_pParentNode = pParentNode || null;
     this.m_beginModificationCallCount = 0;
@@ -593,11 +501,8 @@ export class GraphModel {
     }
   }
 
-  //   abstract CanCreateNode (pNodeTypeInfo: TypeInfo): boolean;
-
   isSubclassOf (derivedCtor: Function, baseCtor: Function): boolean {
-    // eslint-disable-next-line no-prototype-builtins
-    return derivedCtor === baseCtor || baseCtor.prototype.isPrototypeOf(derivedCtor.prototype);
+    return derivedCtor === baseCtor || Object.prototype.isPrototypeOf.call(baseCtor.prototype, derivedCtor.prototype);
   }
 
   CanCreateNode<T extends GraphNode>(classConstructor: new (...args: any[]) => T): boolean {
@@ -608,7 +513,7 @@ export class GraphModel {
 
   CreateNode<T extends GraphNode>(constructor: new (...args: any) => T, ...params: any): T;
 
-  CreateNode<T extends GraphNode>(constructor: new (...args: any) => T, position: ImVec2, ...params: any): T;
+  CreateNode<T extends GraphNode>(constructor: new (...args: any) => T, position: math.Vector2, ...params: any): T;
 
   CreateNode<T extends GraphNode>(
     constructor: new (...args: any[]) => T,
@@ -618,8 +523,7 @@ export class GraphModel {
       throw new Error('Cannot create node of this type');
     }
 
-    // 检查第一个rest参数是否是 ImVec2
-    if (rest.length > 0 && rest[0] instanceof ImVec2) {
+    if (rest.length > 0 && rest[0] instanceof math.Vector2) {
       const position = rest[0];
       const params = rest.slice(1);
       const node = new constructor(...params);
@@ -629,10 +533,9 @@ export class GraphModel {
       return node;
     }
 
-    // 直接使用参数创建节点
     const node = new constructor(...rest);
 
-    this.CreateNodeInternal(node, ImVec2.ZERO);
+    this.CreateNodeInternal(node, new math.Vector2());
 
     return node;
   }
@@ -755,14 +658,11 @@ export class GraphModel {
     while (!isNameUnique) {
       isNameUnique = true;
 
-      // Check control parameters
       for (const nodeInstance of this.m_nodes) {
-        // Ignore specified node
         if (nodeInstance === m_pNodeToIgnore) {
           continue;
         }
 
-        // Only check other renameable nodes
         if (!nodeInstance.IsRenameable()) {
           continue;
         }
@@ -797,8 +697,6 @@ export class GraphModel {
 
   OnNodeModified (pModifiedNode: GraphNode): void {}
 
-  DrawExtraInformation (ctx: DrawContext, pUserContext: GraphEditorContext): void {}
-
   GetSupportedDragAndDropPayloadIDs (result: string[]): string[] {
     return result;
   }
@@ -817,7 +715,7 @@ export class GraphModel {
 
   protected PostDestroyNode (nodeID: UUID): void {}
 
-  private CreateNodeInternal (pCreatedNode: GraphNode, position: ImVec2): void {
+  private CreateNodeInternal (pCreatedNode: GraphNode, position: math.Vector2): void {
     pCreatedNode.m_ID = generateGUID();
     pCreatedNode.m_pParentGraph = this;
     pCreatedNode.SetPosition(position);
@@ -833,7 +731,6 @@ export class GraphModel {
     this.EndModification();
   }
 
-  // Helper function to check if character is digit
   private isDigit (char: string): boolean {
     return /^\d$/.test(char);
   }

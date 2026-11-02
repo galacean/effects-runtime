@@ -1,16 +1,14 @@
+import type { math } from '@galacean/effects';
 import type { TransitionNode } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
-import { Color } from 'maoan-imgui-js';
-import { ImGui } from '../../../../platform/imgui/index';
 import { GraphColors } from '../../../../ui/graph-editor/graph-colors';
 import * as NodeGraph from '../../../../ui/graph-editor/index';
-import { FlowGraphModel } from '../../../../ui/graph-editor/index';
+import { AnimationFlowGraph } from '../graphs/flow-graph';
 import type { AnimationGraphCompilationContext } from '../../compiler/graph-compilation-context';
 import type { AnimationGraphContext } from '../animation-graph-context';
 import { GraphType, GraphValueType } from './flow-editor-node';
 import { ResultEditorNode } from './result-editor-node';
 
-// 时间匹配模式枚举
 export enum TimeMatchMode {
   None,
   Synchronized,
@@ -23,8 +21,6 @@ export enum TimeMatchMode {
   MatchClosestSyncEventIDAndPercentage,
 }
 export class TransitionEditorNode extends ResultEditorNode {
-  //   m_blendWeightEasing: Math.Easing.Operation = Math.Easing.Operation.Linear;
-  //   m_rootMotionBlend: RootMotionBlendMode = RootMotionBlendMode.Blend;
   m_duration = 0.2;
   m_clampDurationToSource: boolean = false;
   m_canBeForced: boolean = false;
@@ -54,82 +50,8 @@ export class TransitionEditorNode extends ResultEditorNode {
     return new Map<GraphType, boolean>([[GraphType.TransitionConduit, true]]);
   }
 
-  override DrawInfoText (ctx: NodeGraph.DrawContext): void {
-    this.BeginDrawInternalRegion(ctx);
-
-    // switch (this.m_rootMotionBlend) {
-    //   case RootMotionBlendMode.Blend:
-    //     ImGui.Text('Blend Root Motion');
-
-    //     break;
-    //   case RootMotionBlendMode.Additive:
-    //     ImGui.Text('Blend Root Motion (Additive)');
-
-    //     break;
-    //   case RootMotionBlendMode.IgnoreSource:
-    //     ImGui.Text('Ignore Source Root Motion');
-
-    //     break;
-    //   case RootMotionBlendMode.IgnoreTarget:
-    //     ImGui.Text('Ignore Target Root Motion');
-
-    //     break;
-    // }
-
-    ImGui.Text(`Duration: ${this.m_duration}s`);
-
-    if (this.m_clampDurationToSource) {
-      ImGui.Text('Clamped To Source');
-    }
-
-    switch (this.m_timeMatchMode) {
-      case TimeMatchMode.None:
-        break;
-      case TimeMatchMode.Synchronized:
-        ImGui.Text('Synchronized');
-
-        break;
-      case TimeMatchMode.MatchSourceSyncEventIndex:
-        ImGui.Text('Match Sync Idx');
-
-        break;
-      case TimeMatchMode.MatchSourceSyncEventIndexAndPercentage:
-        ImGui.Text('Match Sync Idx and %%');
-
-        break;
-      case TimeMatchMode.MatchSyncEventID:
-        ImGui.Text('Match Sync ID');
-
-        break;
-      case TimeMatchMode.MatchSyncEventIDAndPercentage:
-        ImGui.Text('Match Sync ID and %%');
-
-        break;
-      case TimeMatchMode.MatchClosestSyncEventID:
-        ImGui.Text('Match Closest Sync ID');
-
-        break;
-      case TimeMatchMode.MatchClosestSyncEventIDAndPercentage:
-        ImGui.Text('Match Closest Sync ID and %%');
-
-        break;
-      case TimeMatchMode.MatchSourceSyncEventPercentage:
-        ImGui.Text('Match Sync %% Only');
-
-        break;
-    }
-
-    ImGui.Text(`Sync Offset: ${this.m_syncEventOffset}`);
-
-    if (this.m_canBeForced) {
-      ImGui.Text('Forced');
-    }
-
-    this.EndDrawInternalRegion(ctx);
-  }
-
-  override GetTitleBarColor (): Color {
-    return this.m_canBeForced ? new Color(GraphColors.Salmon) : super.GetTitleBarColor();
+  override GetTitleBarColor (): math.Color {
+    return this.m_canBeForced ? GraphColors.Salmon.clone() : super.GetTitleBarColor();
   }
 
   override Compile (context: AnimationGraphCompilationContext): number {
@@ -142,7 +64,7 @@ export class TransitionConduitEditorNode extends NodeGraph.TransitionGraphNode {
 
   constructor (pStartState: NodeGraph.StateGraphNode, pEndState: NodeGraph.StateGraphNode) {
     super(pStartState, pEndState);
-    this.CreateSecondaryGraph<FlowGraphModel>(FlowGraphModel, GraphType.TransitionConduit);
+    this.CreateSecondaryGraph(AnimationFlowGraph, GraphType.TransitionConduit);
   }
 
   override GetNavigationTarget (): NodeGraph.GraphModel | null {
@@ -158,10 +80,10 @@ export class TransitionConduitEditorNode extends NodeGraph.TransitionGraphNode {
   }
 
   override GetConduitColor (
-    ctx: NodeGraph.DrawContext,
+    ctx: NodeGraph.GraphViewGeometry,
     pUserContext: NodeGraph.GraphEditorContext,
     visualState: Map<NodeGraph.NodeVisualState, boolean>
-  ): Color {
+  ): math.Color {
     if (visualState.size === 0 && !this.HasTransitions()) {
       return NodeGraph.GraphStyle.s_connectionColorInvalid;
     }
@@ -175,7 +97,7 @@ export class TransitionConduitEditorNode extends NodeGraph.TransitionGraphNode {
     return super.GetConduitColor(ctx, pUserContext, visualState);
   }
 
-  override PreDrawUpdate (pUserContext: NodeGraph.GraphEditorContext): void {
+  override updateDebugState (pUserContext: NodeGraph.GraphEditorContext): void {
     this.isAnyChildActive = false;
     this.m_transitionProgress = 0.0;
 

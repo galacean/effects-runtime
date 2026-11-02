@@ -12,9 +12,19 @@ interface TextureSource {
 export class AssetTextureCache {
   private textures = new WeakMap<Engine, Map<string, Texture>>();
   private requests = new WeakMap<Engine, Map<string, Promise<Texture>>>();
-  private liveTextures = new Map<string, Set<WeakRef<Texture>>>();
+  private engines = new Set<WeakRef<Engine>>();
 
   constructor (private readonly source: TextureSource) {}
+
+  registerEngine (engine: Engine): void {
+    for (const reference of this.engines) {
+      const current = reference.deref();
+
+      if (current === engine) { return; }
+      if (!current || current.disposed) { this.engines.delete(reference); }
+    }
+    this.engines.add(new WeakRef(engine));
+  }
 
   invalidate (): void {
     this.textures = new WeakMap();
@@ -23,34 +33,43 @@ export class AssetTextureCache {
 
   reset (): void {
     this.invalidate();
-    this.liveTextures.clear();
   }
 
-  rename (entry: AssetEntry): void {
-    const references = this.liveTextures.get(entry.id);
+  async refresh (entry: AssetEntry): Promise<void> {
+    for (const reference of this.engines) {
+      const engine = reference.deref();
 
-    if (!references) { return; }
-    for (const reference of references) {
-      const texture = reference.deref();
+      if (!engine || engine.disposed) {
+        this.engines.delete(reference);
+        continue;
+      }
+      const texture = engine.effectsObjectServer.objectInstance[entry.id];
 
-      if (!texture || texture.isDestroyed) { references.delete(reference); } else {
-        texture.name = entry.name;
-        texture.definition.name = entry.name;
+      if (texture instanceof Texture && !texture.isDestroyed) {
+        this.textures.get(engine)?.delete(entry.id);
+        await this.load(engine, entry.id);
       }
     }
   }
 
   get (engine: Engine, id: string): Texture | undefined {
-    const texture = this.textures.get(engine)?.get(id), entry = this.source.entry(id);
+    this.registerEngine(engine);
+    const entry = this.source.entry(id), object = engine.effectsObjectServer.objectInstance[id];
+    const cached = this.textures.get(engine)?.get(id);
+    const texture = object instanceof Texture ? object : cached?.isRegistered ? cached : undefined;
 
-    if (texture && entry) { texture.name = entry.name; texture.definition.name = entry.name; }
+    if (texture && !texture.isDestroyed && entry?.kind === 'texture') {
+      texture.name = entry.name; texture.definition.name = entry.name;
 
-    return texture;
+      return texture;
+    }
   }
 
   async load (engine: Engine, id: string): Promise<Texture> {
     const projectId = this.source.projectId();
-    const cached = this.get(engine, id);
+    const cached = this.textures.get(engine)?.get(id);
+
+    this.registerEngine(engine);
 
     if (cached?.isRegistered && !cached.isDestroyed) { return cached; }
     let requests = this.requests.get(engine);
@@ -86,11 +105,6 @@ export class AssetTextureCache {
 
       if (!textures) { textures = new Map(); this.textures.set(engine, textures); }
       textures.set(id, texture);
-      let references = this.liveTextures.get(id);
-
-      if (!references) { references = new Set(); this.liveTextures.set(id, references); }
-      for (const reference of references) { if (!reference.deref() || reference.deref()!.isDestroyed) { references.delete(reference); } }
-      if (![...references].some(reference => reference.deref() === texture)) { references.add(new WeakRef(texture)); }
 
       return texture;
     })().finally(() => requests.delete(id));

@@ -3,15 +3,14 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Engine } from '../engine';
-import { glContext } from '../gl';
-import { Geometry } from './geometry';
+import { GraphicsBatchBuffer } from './graphics-batch-buffer';
+import { GraphicsTextLayoutCache } from './graphics-text-layout';
 import { VertexElementType } from './vertex-element-type';
-import { BufferUsage } from './gpu-buffer';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
-import type { FontStyle, FontWeight } from './text-cache';
+import type { FontStyle, FontWeight, GlyphAtlas } from './text-cache';
 import { TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
@@ -36,11 +35,29 @@ export type NinePatchDrawOptions = {
 };
 
 /** Logical text metrics produced by the glyph atlas used for rendering. */
-export type TextMeasurement = {
+export type TextLineLayout = {
+  characters: string[],
+  /** UTF-16 offsets relative to this line, including its end. */
+  boundaries: number[],
+  /** Grapheme origins in display pixels, followed by the untrimmed end position. */
+  positions: number[],
   width: number,
   lineHeight: number,
-  advances: number[],
 };
+
+export type TextMeasurement = {
+  /** Layout width, excluding trailing spaces and tabs when trimEnd is enabled. */
+  width: number,
+  lineHeight: number,
+  /** Per-grapheme advances in display pixels, including kerning from the preceding grapheme. */
+  advances: number[],
+  lines: TextLineLayout[],
+  /** Visible glyph bounds relative to the text's vertical layout origin. */
+  inkTop: number,
+  inkHeight: number,
+};
+
+type GlyphInkMetrics = { ascent: number, descent: number };
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 const NINE_PATCH_DRAW_SOURCE_SIZE = 'aDrawSourceSize';
@@ -57,9 +74,22 @@ type ClipRect = {
   height: number,
 };
 
+type GraphicsCommand = {
+  type: BatchType | 'clip',
+  texture: Texture | null,
+  offset: number,
+  count: number,
+  clip?: ClipRect,
+};
+
 export class Graphics {
-  private geometry: Geometry;
-  private ninePatchGeometry: Geometry;
+  /** Font atlases and creation defaults shared by this drawing context. */
+  readonly textCache: TextCache;
+
+  private readonly batchBuffer: GraphicsBatchBuffer;
+  private readonly ninePatchBuffer: GraphicsBatchBuffer;
+  private readonly commands: GraphicsCommand[] = [];
+  private commandCount = 0;
   private coloredMaterial: Material;
   private texturedMaterial: Material;
   private textMaterial: Material;
@@ -71,6 +101,8 @@ export class Graphics {
   private readonly rectangleShape = new Rectangle();
   private readonly circleShape = new Circle();
   private readonly buildPoints: number[] = [];
+  private readonly shapeVertices: number[] = [];
+  private readonly shapeIndices: number[] = [];
 
   private vertices: number[] = [];
   private colors: number[] = [];
@@ -80,6 +112,8 @@ export class Graphics {
   private ninePatchSourceRects: number[] = [];
   private ninePatchMargins: number[] = [];
   private ninePatchOptions: number[] = [];
+  private currentVertexCount = 0;
+  private currentIndexCount = 0;
 
   private lineStyle: StrokeAttributes = {
     width: 1,
@@ -93,102 +127,35 @@ export class Graphics {
   private currentBatchType: BatchType = 'colored';
   private currentBatchTexture: Texture | null = null;
 
-  /** 文本纹理 LRU 缓存,drawText 用 */
-  private textCache: TextCache;
+  private readonly textLayouts = new GraphicsTextLayoutCache();
+  private readonly textInkMetrics = new WeakMap<GlyphAtlas, Map<string, GlyphInkMetrics>>();
 
   // 变换栈和缓存(使用 Matrix3 进行 2D 变换)
-  private transformStack: Matrix3[] = [];
-  private currentTransform: Matrix3 = Matrix3.fromIdentity();
-  private clipStack: ClipRect[] = [];
+  private readonly transformStack: Matrix3[] = [new Matrix3()];
+  private transformDepth = 0;
+  private currentTransform = this.transformStack[0];
+  private readonly projectionMatrix = new Matrix4();
+  private readonly clipStack: ClipRect[] = [];
+  private readonly clipRects: ClipRect[] = [];
+  private clipRectCount = 0;
   private logicalWidth = 1;
   private logicalHeight = 1;
 
-  private get currentVertexCount () {
-    return this.vertices.length / 2;
-  }
-
-  private get currentIndexCount () {
-    return this.indices.length;
-  }
-
   constructor (private engine: Engine) {
-    this.geometry = Geometry.create(this.engine, {
-      attributes: {
-        [VertexElementType.Position]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array([
-            -0.5, 0.5,  //左上
-            -0.5, -0.5, //左下
-            0.5, 0.5, //右上
-            0.5, -0.5, //右下
-          ]),
-        },
-        [VertexElementType.Color]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array([
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-            1, 1, 1, 1,
-          ]),
-        },
-        [VertexElementType.TexCoord0]: {
-          size: 2,
-          offset: 0,
-          type: glContext.FLOAT,
-          data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
-        },
-      },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
-      mode: glContext.TRIANGLES,
-      drawCount: 6,
-      bufferUsage: glContext.DYNAMIC_DRAW,
-    });
-    this.ninePatchGeometry = Geometry.create(this.engine, {
-      attributes: {
-        [VertexElementType.Position]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(8),
-        },
-        [VertexElementType.Color]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [VertexElementType.TexCoord0]: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(8),
-        },
-        [NINE_PATCH_DRAW_SOURCE_SIZE]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_SOURCE_RECT]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_MARGINS]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-        [NINE_PATCH_OPTIONS]: {
-          type: glContext.FLOAT,
-          size: 4,
-          data: new Float32Array(16),
-        },
-      },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
-      mode: glContext.TRIANGLES,
-      drawCount: 6,
-      bufferUsage: glContext.DYNAMIC_DRAW,
-    });
+    const attributes = [
+      { name: VertexElementType.Position, size: 2, source: this.vertices },
+      { name: VertexElementType.Color, size: 4, source: this.colors },
+      { name: VertexElementType.TexCoord0, size: 2, source: this.uvs },
+    ];
+
+    this.batchBuffer = new GraphicsBatchBuffer(engine, attributes, this.indices);
+    this.ninePatchBuffer = new GraphicsBatchBuffer(engine, [
+      ...attributes,
+      { name: NINE_PATCH_DRAW_SOURCE_SIZE, size: 4, source: this.ninePatchDrawSourceSizes },
+      { name: NINE_PATCH_SOURCE_RECT, size: 4, source: this.ninePatchSourceRects },
+      { name: NINE_PATCH_MARGINS, size: 4, source: this.ninePatchMargins },
+      { name: NINE_PATCH_OPTIONS, size: 4, source: this.ninePatchOptions },
+    ], this.indices);
 
     this.coloredMaterial = Material.create(this.engine, {
       shader: {
@@ -387,18 +354,13 @@ export class Graphics {
    * 清空缓冲区，准备新的绘制批次
    */
   begin (): void {
-    this.indices.length = 0;
-    this.vertices.length = 0;
-    this.colors.length = 0;
-    this.uvs.length = 0;
-    this.ninePatchDrawSourceSizes.length = 0;
-    this.ninePatchSourceRects.length = 0;
-    this.ninePatchMargins.length = 0;
-    this.ninePatchOptions.length = 0;
+    this.clearBatch();
+    this.batchBuffer.clear(); this.ninePatchBuffer.clear(); this.commandCount = 0;
 
-    this.transformStack = [];
-    this.currentTransform = Matrix3.fromIdentity();
-    this.clipStack = [];
+    this.transformDepth = 0;
+    this.currentTransform = this.transformStack[0].identity();
+    this.clipStack.length = 0;
+    this.clipRectCount = 0;
 
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
@@ -413,7 +375,7 @@ export class Graphics {
     this.logicalHeight = height;
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
-    const projectionMatrix = new Matrix4(
+    const projectionMatrix = this.projectionMatrix.set(
       2 / width, 0, 0, 0,  // 第一列
       0, -2 / height, 0, 0,  // 第二列
       0, 0, -1, 0,  // 第三列
@@ -431,48 +393,40 @@ export class Graphics {
    * @param transform - 新的变换矩阵(会与当前变换相乘)
    */
   pushTransform (transform: Matrix3): void {
-    this.transformStack.push(this.currentTransform.clone());
-    this.currentTransform = this.currentTransform.multiply(transform);
+    const previous = this.currentTransform;
+
+    this.currentTransform = this.transformStack[++this.transformDepth] ??= new Matrix3();
+    this.currentTransform.multiplyMatrices(previous, transform);
   }
 
   /**
    * 恢复上一个变换
    */
   popTransform (): void {
-    const transform = this.transformStack.pop();
-
-    if (!transform) {
+    if (this.transformDepth === 0) {
       console.warn('Render2D: 变换栈为空,无法弹出');
 
       return;
     }
 
-    this.currentTransform = transform;
+    this.currentTransform = this.transformStack[--this.transformDepth];
   }
 
   /** Pushes a local rectangular child clip using a screen-space AABB scissor. */
   pushClipRect (x: number, y: number, width: number, height: number): void {
     const elements = this.currentTransform.elements;
-    const corners = [
-      [x, y],
-      [x + width, y],
-      [x, y + height],
-      [x + width, y + height],
-    ];
-    let left = Infinity;
-    let top = Infinity;
-    let right = -Infinity;
-    let bottom = -Infinity;
-
-    for (const corner of corners) {
-      const transformedX = elements[0] * corner[0] + elements[3] * corner[1] + elements[6];
-      const transformedY = elements[1] * corner[0] + elements[4] * corner[1] + elements[7];
-
-      left = Math.min(left, transformedX);
-      top = Math.min(top, transformedY);
-      right = Math.max(right, transformedX);
-      bottom = Math.max(bottom, transformedY);
-    }
+    const x0 = elements[0] * x + elements[3] * y + elements[6];
+    const y0 = elements[1] * x + elements[4] * y + elements[7];
+    const x1 = elements[0] * (x + width) + elements[3] * y + elements[6];
+    const y1 = elements[1] * (x + width) + elements[4] * y + elements[7];
+    const x2 = elements[0] * x + elements[3] * (y + height) + elements[6];
+    const y2 = elements[1] * x + elements[4] * (y + height) + elements[7];
+    const x3 = elements[0] * (x + width) + elements[3] * (y + height) + elements[6];
+    const y3 = elements[1] * (x + width) + elements[4] * (y + height) + elements[7];
+    let left = Math.min(x0, x1, x2, x3);
+    let top = Math.min(y0, y1, y2, y3);
+    let right = Math.max(x0, x1, x2, x3);
+    let bottom = Math.max(y0, y1, y2, y3);
 
     const parent = this.clipStack[this.clipStack.length - 1];
 
@@ -483,24 +437,22 @@ export class Graphics {
       bottom = Math.min(bottom, parent.y + parent.height);
     }
 
-    const clip = {
-      x: left,
-      y: top,
-      width: Math.max(0, right - left),
-      height: Math.max(0, bottom - top),
-    };
+    const clip = this.clipRects[this.clipRectCount++] ??= { x: 0, y: 0, width: 0, height: 0 };
+
+    clip.x = left; clip.y = top;
+    clip.width = Math.max(0, right - left); clip.height = Math.max(0, bottom - top);
     const previous = parent;
 
-    this.clipStack.push(clip);
     if (!this.clipRectsEqual(previous, clip)) {
       this.flushBatch();
-      this.applyClipRect(clip);
+      this.nextCommand('clip').clip = clip;
     }
+    this.clipStack.push(clip);
   }
 
   /** Restores the parent rectangular clip. */
   popClipRect (): void {
-    const previous = this.clipStack.pop();
+    const previous = this.clipStack[this.clipStack.length - 1];
 
     if (!previous) {
       console.warn('Graphics: clip stack is empty.');
@@ -508,16 +460,13 @@ export class Graphics {
       return;
     }
 
-    const clip = this.clipStack[this.clipStack.length - 1];
+    const clip = this.clipStack[this.clipStack.length - 2];
 
     if (!this.clipRectsEqual(previous, clip)) {
       this.flushBatch();
-      if (clip) {
-        this.applyClipRect(clip);
-      } else {
-        this.engine.displayServer.renderingDevice.setScissorTest(false);
-      }
+      this.nextCommand('clip').clip = clip;
     }
+    this.clipStack.pop();
   }
 
   /**
@@ -525,7 +474,8 @@ export class Graphics {
    */
   end (): void {
     this.flushBatch();
-    this.clipStack = [];
+    this.submitBatches();
+    this.clipStack.length = 0;
     this.engine.displayServer.renderingDevice.setScissorTest(false);
   }
 
@@ -566,80 +516,73 @@ export class Graphics {
     return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
   }
 
-  /**
-   * 提交当前累积的顶点到 renderer，清空缓冲(批次内部 flush 不重置 batchType)
-   */
+  /** Records the current batch without changing its position in the draw order. */
   private flushBatch (): void {
     if (this.currentVertexCount === 0 || this.currentIndexCount === 0) {
       return;
     }
 
-    // 把所有 dirty 的字符 atlas 内容上传到 GPU，确保即将采样的 textured 批次拿到最新像素;
-    // 一帧多次 drawText 共写同一 atlas 只在 flush 边界 upload 一次，避免每次 drawText 都重传整张 canvas
-    this.textCache.uploadDirty();
+    const buffer = this.currentBatchType === 'ninePatch' ? this.ninePatchBuffer : this.batchBuffer;
 
-    const verticesArray = new Float32Array(this.vertices);
-    const colorsArray = new Float32Array(this.colors);
-    const uvsArray = new Float32Array(this.uvs);
-    const indicesArray = new Uint16Array(this.indices);
-
-    const geometry = this.currentBatchType === 'ninePatch' ? this.ninePatchGeometry : this.geometry;
-
-    this.updateAttributeData(geometry, VertexElementType.Position, verticesArray, 2);
-    this.updateAttributeData(geometry, VertexElementType.Color, colorsArray, 4);
-    this.updateAttributeData(geometry, VertexElementType.TexCoord0, uvsArray, 2);
-    if (this.currentBatchType === 'ninePatch') {
-      this.updateAttributeData(
-        geometry, NINE_PATCH_DRAW_SOURCE_SIZE, new Float32Array(this.ninePatchDrawSourceSizes), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_SOURCE_RECT, new Float32Array(this.ninePatchSourceRects), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_MARGINS, new Float32Array(this.ninePatchMargins), 4,
-      );
-      this.updateAttributeData(
-        geometry, NINE_PATCH_OPTIONS, new Float32Array(this.ninePatchOptions), 4,
-      );
+    // Submit before rebasing would overflow the shared 16-bit index range.
+    if (buffer.vertexCount + this.currentVertexCount > GraphicsBatchBuffer.maxVertices) {
+      this.submitBatches();
     }
-    geometry.setIndexData(indicesArray);
-    geometry.setDrawCount(this.currentIndexCount);
+    const command = this.nextCommand(this.currentBatchType);
 
-    let material: Material;
-
-    if (this.currentBatchType === 'textured' || this.currentBatchType === 'text'
-      || this.currentBatchType === 'ninePatch') {
-      material = this.currentBatchType === 'text'
-        ? this.textMaterial
-        : this.currentBatchType === 'ninePatch' ? this.ninePatchMaterial : this.texturedMaterial;
-      const tex = this.currentBatchTexture ?? this.engine.assetServer.whiteTexture;
-
-      material.setTexture('uMainTexture', tex);
-    } else {
-      material = this.coloredMaterial;
-    }
-
-    this.engine.renderer.drawGeometry(geometry, Matrix4.IDENTITY, material);
-
-    this.indices.length = 0;
-    this.vertices.length = 0;
-    this.colors.length = 0;
-    this.uvs.length = 0;
-    this.ninePatchDrawSourceSizes.length = 0;
-    this.ninePatchSourceRects.length = 0;
-    this.ninePatchMargins.length = 0;
-    this.ninePatchOptions.length = 0;
+    command.texture = this.currentBatchTexture;
+    command.offset = buffer.indexCount * Uint16Array.BYTES_PER_ELEMENT;
+    command.count = this.currentIndexCount;
+    buffer.append(this.currentVertexCount, this.currentIndexCount); this.clearBatch();
   }
 
-  private updateAttributeData (geometry: Geometry, name: string, data: Float32Array, size: number): void {
-    const buffer = geometry.getAttributeBuffer(name);
+  private nextCommand (type: GraphicsCommand['type']): GraphicsCommand {
+    const command = this.commands[this.commandCount] ??= { type, texture: null, offset: 0, count: 0 };
 
-    if (!buffer || data.byteLength > buffer.capacity) {
-      geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
+    this.commandCount++;
+    command.type = type; command.texture = null; command.clip = undefined;
 
-      return;
+    return command;
+  }
+
+  private submitBatches (): void {
+    if (this.commandCount === 0) { return; }
+    this.textCache.uploadDirty();
+    this.batchBuffer.upload(); this.ninePatchBuffer.upload();
+    for (let index = 0; index < this.commandCount; index++) {
+      const command = this.commands[index];
+
+      if (command.type === 'clip') {
+        if (command.clip) { this.applyClipRect(command.clip); } else {
+          this.engine.displayServer.renderingDevice.setScissorTest(false);
+        }
+      } else {
+        const geometry = command.type === 'ninePatch' ? this.ninePatchBuffer.geometry : this.batchBuffer.geometry;
+        const material = command.type === 'text' ? this.textMaterial
+          : command.type === 'ninePatch' ? this.ninePatchMaterial
+            : command.type === 'textured' ? this.texturedMaterial : this.coloredMaterial;
+
+        if (command.type !== 'colored') {
+          material.setTexture('uMainTexture', command.texture ?? this.engine.assetServer.whiteTexture);
+        }
+        geometry.setDrawStart(command.offset); geometry.setDrawCount(command.count);
+        this.engine.renderer.drawGeometry(geometry, Matrix4.IDENTITY, material);
+      }
+      command.texture = null; command.clip = undefined;
     }
-    geometry.setAttributeData(name, data);
+    this.commandCount = 0; this.batchBuffer.clear(); this.ninePatchBuffer.clear();
+  }
+
+  private clearBatch (): void {
+    // Reset the used ranges without discarding the arrays' retained storage.
+    this.currentVertexCount = 0;
+    this.currentIndexCount = 0;
+  }
+
+  private reserveVertices (count: number): void {
+    if (this.currentVertexCount + count > GraphicsBatchBuffer.maxVertices) {
+      this.flushBatch();
+    }
   }
 
   /**
@@ -770,9 +713,20 @@ export class Graphics {
    * @param color - 填充颜色，默认白色，范围 0-1
    */
   fillTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE): void {
-    this.setTriangleShape(x1, y1, x2, y2, x3, y3);
     this.ensureBatch('colored');
-    this.buildShape(this.triangleShape, color);
+    this.reserveVertices(3);
+    const vertexOffset = this.currentVertexCount;
+    const vertexStart = vertexOffset * 2;
+    const indexOffset = this.currentIndexCount;
+
+    this.vertices[vertexStart] = x1; this.vertices[vertexStart + 1] = y1;
+    this.vertices[vertexStart + 2] = x2; this.vertices[vertexStart + 3] = y2;
+    this.vertices[vertexStart + 4] = x3; this.vertices[vertexStart + 5] = y3;
+    this.indices[indexOffset] = vertexOffset;
+    this.indices[indexOffset + 1] = vertexOffset + 1;
+    this.indices[indexOffset + 2] = vertexOffset + 2;
+    this.currentVertexCount += 3; this.currentIndexCount += 3;
+    this.applyTransformAndColor(vertexOffset, 3, color);
   }
 
   /**
@@ -822,7 +776,7 @@ export class Graphics {
     color: Color = Color.WHITE,
   ): void {
     this.ensureBatch('textured', texture);
-    this.pushQuad(x, y, width, height, color, region);
+    this.pushQuad(x, y, width, height, color, region.u0, region.v0, region.u1, region.v1);
   }
 
   /**
@@ -848,14 +802,28 @@ export class Graphics {
     const verticalMode = options.verticalMode ?? 0;
     const drawCenter = Number(options.drawCenter ?? true);
 
-    this.pushQuad(x, y, width, height, color, FULL_REGION);
+    this.pushQuad(x, y, width, height, color, 0, 0, 1, 1);
+    const vertexOffset = this.currentVertexCount - 4;
+
     for (let i = 0; i < 4; i++) {
-      this.ninePatchDrawSourceSizes.push(width, height, options.sourceWidth, options.sourceHeight);
-      this.ninePatchSourceRects.push(sourceU, sourceV, sourceUSize, sourceVSize);
-      this.ninePatchMargins.push(
-        options.marginLeft, options.marginTop, options.marginRight, options.marginBottom,
-      );
-      this.ninePatchOptions.push(horizontalMode, verticalMode, drawCenter, 0);
+      const offset = (vertexOffset + i) * 4;
+
+      this.ninePatchDrawSourceSizes[offset] = width;
+      this.ninePatchDrawSourceSizes[offset + 1] = height;
+      this.ninePatchDrawSourceSizes[offset + 2] = options.sourceWidth;
+      this.ninePatchDrawSourceSizes[offset + 3] = options.sourceHeight;
+      this.ninePatchSourceRects[offset] = sourceU;
+      this.ninePatchSourceRects[offset + 1] = sourceV;
+      this.ninePatchSourceRects[offset + 2] = sourceUSize;
+      this.ninePatchSourceRects[offset + 3] = sourceVSize;
+      this.ninePatchMargins[offset] = options.marginLeft;
+      this.ninePatchMargins[offset + 1] = options.marginTop;
+      this.ninePatchMargins[offset + 2] = options.marginRight;
+      this.ninePatchMargins[offset + 3] = options.marginBottom;
+      this.ninePatchOptions[offset] = horizontalMode;
+      this.ninePatchOptions[offset + 1] = verticalMode;
+      this.ninePatchOptions[offset + 2] = drawCenter;
+      this.ninePatchOptions[offset + 3] = 0;
     }
   }
 
@@ -866,7 +834,7 @@ export class Graphics {
    * `color` 与 atlas 字形 RGBA 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
-   * @param x - 文本左上角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
+   * @param x - 文本排版起点 X 坐标，字形 bearing 和透明 padding 由缓存计算
    * @param y - 文本 cell 顶部 Y 坐标
    * @param text - 要绘制的文本内容，空串直接 return
    * @param fontSize - 字号（逻辑像素）
@@ -887,97 +855,200 @@ export class Graphics {
     if (!text) {
       return;
     }
-    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const { layout } = this.textLayouts.get(atlas, text, fontSize);
+    let currentY = atlas.baseLineOffset;
+    let linePositionYShift = (atlas.lineHeight - atlas.fontMetrics.fontSize) / 2;
 
-    this.ensureBatch('text', atlas.texture);
+    if (linePositionYShift - atlas.baseLineOffset < 0) {
+      linePositionYShift = 0;
+    }
+    for (const line of layout.lines) {
+      for (let i = 0; i < line.charPositions.length; i++) {
+        const data = atlas.chars[line.chars[i]];
 
-    const lineHeight = atlas.lineHeight;
-    let cursorX = x;
-    const characters = Array.from(text);
+        if (data?.page === undefined || !data.frame) {
+          continue;
+        }
+        const page = atlas.pages[data.page];
+        const frame = data.frame;
 
-    // ensureChar 可能往 atlas canvas 写新字并打 dirty 标；实际 upload 推迟到
-    // flushBatch 统一处理，这样一帧多次 drawText 共写同一 atlas 只 upload 一次
-    for (let i = 0; i < characters.length; i++) {
-      const info = atlas.ensureChar(characters[i]);
-
-      if (!info) {
-        continue;
+        this.ensureBatch('text', page.texture);
+        this.pushQuad(
+          x + Math.round(line.charPositions[i] + data.xOffset) * layout.scale,
+          y + Math.round(currentY + data.yOffset + linePositionYShift) * layout.scale,
+          frame.width * layout.scale, frame.height * layout.scale,
+          color,
+          frame.x / page.width, 1 - (frame.y + frame.height) / page.height,
+          (frame.x + frame.width) / page.width, 1 - frame.y / page.height,
+        );
       }
-      // atlas 像素坐标 → UV（纹理 flipY 后，canvas 顶 → v=1，canvas 底 → v=0）
-      const atlasWidth = atlas.canvas.width;
-      const atlasHeight = atlas.canvas.height;
-      const u0 = info.px / atlasWidth;
-      const u1 = (info.px + info.pw) / atlasWidth;
-      const v0 = 1 - (info.py + info.ph) / atlasHeight;
-      const v1 = 1 - info.py / atlasHeight;
-
-      // quad 宽与采样区都含四周 padding（cell 留白透明）；但光标只按 advance 前进，
-      // quad 起点左偏 paddingLeft 使字形 ink 落在 cursorX — padding 区重叠无妨
-      this.pushQuad(
-        cursorX - info.paddingLeft, y,
-        info.pw / atlas.resolution, lineHeight,
-        color, { u0, v0, u1, v1 },
-      );
-      cursorX += info.advance;
+      currentY += atlas.lineHeight;
     }
   }
 
-  /** Measures text with the same glyph metrics used by {@link drawText}. */
+  /** Measures the same grapheme layout and font scale used for rendering. */
   measureText (
     text: string,
     fontSize: number,
     fontFamily: string = 'sans-serif',
     fontWeight: FontWeight = 'normal',
     fontStyle: FontStyle = 'normal',
+    trimEnd = true,
   ): TextMeasurement {
-    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
-    const characters = Array.from(text);
+    const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const cached = this.textLayouts.get(atlas, text, fontSize, trimEnd);
+    const layout = cached.layout;
     const advances: number[] = [];
-    let width = 0;
+    const lineBreaks: string[] = [];
+    let previous: string | undefined;
 
-    for (const character of characters) {
-      const advance = atlas.ensureChar(character)?.advance ?? 0;
+    for (const char of cached.characters ??= TextCache.graphemeSegmenter(text)) {
+      const data = atlas.chars[char];
 
-      advances.push(advance);
-      width += advance;
+      advances.push((data.xAdvance + (data.kerning[previous!] || 0)) * layout.scale);
+      if (char === '\r' || char === '\n') {lineBreaks.push(char);}
+      previous = char;
     }
 
-    return { width, lineHeight: atlas.lineHeight, advances };
+    const lineHeight = atlas.lineHeight * layout.scale;
+    const lines: TextLineLayout[] = [];
+    const lineShift = Math.max(0, (atlas.lineHeight - atlas.fontMetrics.fontSize) / 2);
+    let inkTop = Infinity;
+    let inkBottom = -Infinity;
+
+    // The final empty line is a layout sentinel, including for empty input.
+    for (let lineIndex = 0; lineIndex < layout.lines.length - 1; lineIndex++) {
+      const line = layout.lines[lineIndex];
+      const boundaries = [0];
+      const positions: number[] = [];
+      let offset = 0;
+      let cursor = 0;
+      let previousCharacter: string | undefined = lineBreaks[lineIndex - 1];
+
+      for (let i = 0; i < line.chars.length; i++) {
+        const character = line.chars[i];
+        const glyph = atlas.chars[character];
+        // Whitespace has no drawable origin in the bitmap layout, but still occupies editing space.
+        const position = /\s/.test(character)
+          ? cursor + (glyph.kerning[previousCharacter] || 0)
+          : line.charPositions[i];
+
+        positions.push((Math.round(position + glyph.xOffset) - glyph.xOffset) * layout.scale);
+        cursor = position + glyph.xAdvance;
+        offset += character.length;
+        boundaries.push(offset);
+        previousCharacter = character;
+
+        if (glyph.page !== undefined) {
+          const metrics = this.getGlyphInkMetrics(atlas, character);
+
+          if (metrics.ascent !== 0 || metrics.descent !== 0) {
+            const top = Math.round(atlas.baseLineOffset + lineIndex * atlas.lineHeight + glyph.yOffset + lineShift) - glyph.yOffset;
+            const baseline = top + atlas.fontMetrics.ascent;
+
+            inkTop = Math.min(inkTop, (baseline - metrics.ascent) * layout.scale);
+            inkBottom = Math.max(inkBottom, (baseline + metrics.descent) * layout.scale);
+          }
+        }
+      }
+      positions.push(cursor * layout.scale);
+      lines.push({
+        characters: line.chars.slice(), boundaries, positions,
+        width: line.width * layout.scale, lineHeight,
+      });
+    }
+
+    return {
+      width: layout.width * layout.scale,
+      lineHeight, advances, lines,
+      inkTop: inkTop === Infinity ? 0 : inkTop,
+      inkHeight: inkTop === Infinity ? 0 : inkBottom - inkTop,
+    };
+  }
+
+  private getGlyphInkMetrics (atlas: GlyphAtlas, character: string): GlyphInkMetrics {
+    let cache = this.textInkMetrics.get(atlas);
+
+    if (!cache) {
+      cache = new Map();
+      this.textInkMetrics.set(atlas, cache);
+    }
+    let metrics = cache.get(character);
+
+    if (!metrics) {
+      const context = atlas.pages[0].canvasAndContext.context;
+      const measured = context.measureText(character);
+      const scale = atlas.baseMeasurementFontSize / atlas.baseRenderedFontSize;
+
+      metrics = {
+        ascent: (measured.actualBoundingBoxAscent ?? 0) * scale,
+        descent: (measured.actualBoundingBoxDescent ?? 0) * scale,
+      };
+      cache.set(character, metrics);
+    }
+
+    return metrics;
+  }
+
+  private getTextAtlas (fontSize: number, fontFamily: string, fontWeight: FontWeight, fontStyle: FontStyle): GlyphAtlas {
+    if (this.textCache.resolution !== this.engine.displayServer.pixelRatio) {
+      // Submit pending text before the resolution change destroys its pages.
+      this.flushBatch();
+      this.submitBatches();
+    }
+
+    return this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   dispose (): void {
-    this.geometry.dispose();
-    this.ninePatchGeometry.dispose();
+    this.batchBuffer.dispose();
+    this.ninePatchBuffer.dispose();
     this.coloredMaterial.dispose();
     this.texturedMaterial.dispose();
     this.textMaterial.dispose();
     this.ninePatchMaterial.dispose();
+    this.textLayouts.clear();
     this.textCache.dispose();
   }
 
   private buildShape (shape: ShapePrimitive, color: Color): void {
     const buildPoints = this.buildPoints;
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
-    shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
-
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+    this.shapeVertices.length = 0; this.shapeIndices.length = 0;
+    shape.triangulate(buildPoints, this.shapeVertices, 0, this.shapeIndices, 0);
+    this.appendShape(color);
   }
 
   private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
     const buildPoints = this.buildPoints;
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
+    this.shapeVertices.length = 0; this.shapeIndices.length = 0;
     this.lineStyle.width = thickness;
-    buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
+    buildLine(buildPoints, this.lineStyle, false, closed, this.shapeVertices, 2, 0, this.shapeIndices, 0);
+    this.appendShape(color);
+  }
 
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  private appendShape (color: Color): void {
+    const count = this.shapeVertices.length / 2;
+
+    this.reserveVertices(count);
+    const vertexOffset = this.currentVertexCount;
+    const vertexStart = vertexOffset * 2;
+
+    for (let index = 0; index < this.shapeVertices.length; index++) {
+      this.vertices[vertexStart + index] = this.shapeVertices[index];
+    }
+    for (let index = 0; index < this.shapeIndices.length; index++) {
+      this.indices[this.currentIndexCount + index] = this.shapeIndices[index] + vertexOffset;
+    }
+    this.currentVertexCount += count; this.currentIndexCount += this.shapeIndices.length;
+
+    this.applyTransformAndColor(vertexOffset, count, color);
   }
 
   private getScreenScale (): number {
@@ -1034,8 +1105,8 @@ export class Graphics {
   /**
    * 推一个 quad（4 顶点 + 6 索引，2 个三角形）。
    *
-   * - colored 批次：`region` 省略 → UV 写 0（shader 不读）
-   * - textured 批次：传 `region` → UV 按 region 写
+   * - colored 批次：UV 写 0（shader 不读）
+   * - textured 批次：UV 按纹理子区域写
    *
    * 之所以用 2 三角形而不是中心 fan（像 Rectangle.triangulate），是因为 fan 的中心顶点连到 4 角的对角内边
    * 在像素级亚像素精度下会暴露 1-2 像素缝隙，叠层时底层颜色透出形成可见的对角痕迹
@@ -1043,47 +1114,40 @@ export class Graphics {
   private pushQuad (
     x: number, y: number, width: number, height: number,
     color: Color,
-    region?: TextureRegion,
+    u0 = 0, v0 = 0, u1 = 0, v1 = 0,
   ): void {
-    const vertexOffset = this.vertices.length / 2;
+    this.reserveVertices(4);
+    const vertexOffset = this.currentVertexCount;
 
     // 4 顶点（本地坐标，左上/右上/左下/右下），应用当前变换写入 vertices
-    const corners: [number, number][] = [
-      [x, y],
-      [x + width, y],
-      [x, y + height],
-      [x + width, y + height],
-    ];
-    const u0 = region ? region.u0 : 0;
-    const v0 = region ? region.v0 : 0;
-    const u1 = region ? region.u1 : 0;
-    const v1 = region ? region.v1 : 0;
-    const cornerUVs: [number, number][] = [
-      [u0, v1],
-      [u1, v1],
-      [u0, v0],
-      [u1, v0],
-    ];
+    const vertexStart = vertexOffset * 2;
+
+    this.applyTransform(x, y, this.vertices, vertexStart);
+    this.applyTransform(x + width, y, this.vertices, vertexStart + 2);
+    this.applyTransform(x, y + height, this.vertices, vertexStart + 4);
+    this.applyTransform(x + width, y + height, this.vertices, vertexStart + 6);
+    this.uvs[vertexStart] = u0; this.uvs[vertexStart + 1] = v1;
+    this.uvs[vertexStart + 2] = u1; this.uvs[vertexStart + 3] = v1;
+    this.uvs[vertexStart + 4] = u0; this.uvs[vertexStart + 5] = v0;
+    this.uvs[vertexStart + 6] = u1; this.uvs[vertexStart + 7] = v0;
 
     for (let i = 0; i < 4; i++) {
-      const vIndex = (vertexOffset + i) * 2;
       const cIndex = (vertexOffset + i) * 4;
-
-      this.applyTransform(corners[i][0], corners[i][1], this.vertices, vIndex);
 
       this.colors[cIndex] = color.r;
       this.colors[cIndex + 1] = color.g;
       this.colors[cIndex + 2] = color.b;
       this.colors[cIndex + 3] = color.a;
-
-      this.uvs[vIndex] = cornerUVs[i][0];
-      this.uvs[vIndex + 1] = cornerUVs[i][1];
     }
+    const indexOffset = this.currentIndexCount;
 
-    this.indices.push(
-      vertexOffset, vertexOffset + 1, vertexOffset + 2,
-      vertexOffset + 2, vertexOffset + 1, vertexOffset + 3,
-    );
+    this.indices[indexOffset] = vertexOffset;
+    this.indices[indexOffset + 1] = vertexOffset + 1;
+    this.indices[indexOffset + 2] = vertexOffset + 2;
+    this.indices[indexOffset + 3] = vertexOffset + 2;
+    this.indices[indexOffset + 4] = vertexOffset + 1;
+    this.indices[indexOffset + 5] = vertexOffset + 3;
+    this.currentVertexCount += 4; this.currentIndexCount += 6;
   }
 
   /**

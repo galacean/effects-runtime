@@ -1,5 +1,4 @@
 import type { spec } from '@galacean/effects';
-import { ImGui } from '../../../../platform/imgui/index';
 import type * as NodeGraph from '../../../../ui/graph-editor/index';
 import type { AnimationGraphCompilationContext } from '../../compiler/graph-compilation-context';
 import { AnimationGraphNode, GraphType, GraphValueType } from './flow-editor-node';
@@ -28,56 +27,7 @@ export class ConstBoolEditorNode extends AnimationGraphNode {
 
     return pDefinition.index;
   }
-
-  override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.GraphEditorContext): void {
-    this.BeginDrawInternalRegion(ctx);
-    ImGui.Text(this.m_value ? 'True' : 'False');
-    this.EndDrawInternalRegion(ctx);
-  }
 }
-
-// export class ConstIDToolsNode extends FlowToolsNode {
-//   private m_value: string;
-
-//   constructor () {
-//     super();
-//     this.CreateOutputPin('Value', GraphValueType.ID, true);
-//   }
-
-//   override GetTypeName (): string { return 'ID'; }
-//   override GetCategory (): string { return 'Values/ID'; }
-//   GetAllowedParentGraphTypes (): TBitFlags<GraphType> {
-//     return new TBitFlags<GraphType>(GraphType.BlendTree, GraphType.ValueTree, GraphType.TransitionConduit);
-//   }
-
-//   override Compile (context: GraphCompilationContext): number {
-//     const pDefinition = null;
-
-//     if (context.GetDefinition<ConstIDNode>(this, pDefinition) === NodeCompilationState.NeedCompilation) {
-//       pDefinition.m_value = this.m_value;
-//     }
-
-//     return pDefinition.m_nodeIdx;
-//   }
-
-//   override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.UserContext): void {
-//     this.BeginDrawInternalRegion(ctx);
-//     ImGui.Text(this.m_value.IsValid() ? this.m_value.c_str() : '');
-//     this.EndDrawInternalRegion(ctx);
-//   }
-
-//   override GetLogicAndEventIDs (outIDs: string[]): void {
-//     outIDs.push(this.m_value);
-//   }
-
-//   override RenameLogicAndEventIDs (oldID: string, newID: string): void {
-//     if (this.m_value === oldID) {
-//       const snm = new NodeGraph.ScopedNodeModification(this);
-
-//       this.m_value = newID;
-//     }
-//   }
-// }
 
 export class ConstFloatEditorNode extends AnimationGraphNode {
   private m_value: number = 0.0;
@@ -103,103 +53,4 @@ export class ConstFloatEditorNode extends AnimationGraphNode {
 
     return pDefinition.index;
   }
-
-  override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.GraphEditorContext): void {
-    this.BeginDrawInternalRegion(ctx);
-    ImGui.Text(this.m_value.toFixed(3));
-    this.EndDrawInternalRegion(ctx);
-  }
 }
-
-// export class ConstVectorToolsNode extends FlowToolsNode {
-//   private m_value: Float3 = Float3.Zero;
-
-//   constructor () {
-//     super();
-//     this.CreateOutputPin('Value', GraphValueType.Vector, true);
-//   }
-
-//   override GetTypeName (): string { return 'Vector'; }
-//   override GetCategory (): string { return 'Values/Vector'; }
-//   GetAllowedParentGraphTypes (): TBitFlags<GraphType> {
-//     return new TBitFlags<GraphType>(GraphType.BlendTree, GraphType.ValueTree, GraphType.TransitionConduit);
-//   }
-
-//   override Compile (context: GraphCompilationContext): number {
-//     const pDefinition = null;
-
-//     if (context.GetDefinition<ConstVectorNode>(this, pDefinition) === NodeCompilationState.NeedCompilation) {
-//       pDefinition.m_value = this.m_value;
-//     }
-
-//     return pDefinition.m_nodeIdx;
-//   }
-
-//   override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.UserContext): void {
-//     this.BeginDrawInternalRegion(ctx);
-//     this.DrawVectorInfoText(ctx, this.m_value);
-//     this.EndDrawInternalRegion(ctx);
-//   }
-// }
-
-// export class ConstTargetToolsNode extends FlowToolsNode {
-//   private m_value: Transform;
-
-//   constructor () {
-//     super();
-//     this.CreateOutputPin('Value', GraphValueType.Target, true);
-//   }
-
-//   override GetTypeName (): string { return 'Target'; }
-//   override GetCategory (): string { return 'Values/Target'; }
-//   GetAllowedParentGraphTypes (): TBitFlags<GraphType> {
-//     return new TBitFlags<GraphType>(GraphType.BlendTree, GraphType.ValueTree, GraphType.TransitionConduit);
-//   }
-
-//   override Compile (context: GraphCompilationContext): number {
-//     const pDefinition = null;
-
-//     if (context.GetDefinition<ConstTargetNode>(this, pDefinition) === NodeCompilationState.NeedCompilation) {
-//       pDefinition.m_value = new Target(this.m_value);
-//     }
-
-//     return pDefinition.m_nodeIdx;
-//   }
-
-//   override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.UserContext): void {
-//     this.BeginDrawInternalRegion(ctx);
-//     this.DrawTargetInfoText(ctx, new Target(this.m_value));
-//     this.EndDrawInternalRegion(ctx);
-//   }
-// }
-
-// export class ConstBoneTargetToolsNode extends FlowToolsNode {
-//   private m_boneName: string;
-
-//   constructor () {
-//     super();
-//     this.CreateOutputPin('Value', GraphValueType.Target, true);
-//   }
-
-//   override GetTypeName (): string { return 'Target'; }
-//   override GetCategory (): string { return 'Values/BoneTarget'; }
-//   GetAllowedParentGraphTypes (): TBitFlags<GraphType> {
-//     return new TBitFlags<GraphType>(GraphType.BlendTree, GraphType.ValueTree, GraphType.TransitionConduit);
-//   }
-
-//   override Compile (context: GraphCompilationContext): number {
-//     const pDefinition = null;
-
-//     if (context.GetDefinition<ConstTargetNode>(this, pDefinition) === NodeCompilationState.NeedCompilation) {
-//       pDefinition.m_value = new Target(this.m_boneName);
-//     }
-
-//     return pDefinition.m_nodeIdx;
-//   }
-
-//   override DrawExtraControls (ctx: NodeGraph.DrawContext, pUserContext: NodeGraph.UserContext): void {
-//     this.BeginDrawInternalRegion(ctx);
-//     this.DrawTargetInfoText(ctx, new Target(this.m_boneName));
-//     this.EndDrawInternalRegion(ctx);
-//   }
-// }

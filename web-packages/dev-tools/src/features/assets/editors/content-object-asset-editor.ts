@@ -1,67 +1,92 @@
-import { ShaderCompileResultStatus, spec } from '@galacean/effects';
+import { ShaderCompileResultStatus, spec, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
+import { EditorTextArea } from '../../../ui/controls/text-field';
+import { GLShaderLibrary } from '@galacean/effects-webgl';
+import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { ImGui } from '../../../platform/imgui/index';
-import { drawAssetIcon } from '../../../ui/icons/asset-icons';
-import { PropertyFields as Fields } from '../../../ui/property-editor/property-fields';
-import { PROPERTY_COLORS as C, PropertyGrid, PropertyGridState } from '../../../ui/property-editor/property-grid';
-import { toolbarButton } from '../../../ui/widgets/toolbar-button';
-import { checkerboard, contentWindowBackground } from '../../content-browser/content-style';
+import { append, disposeChildren, expand } from '../../../ui/controls/layout';
+import { EditorDialog } from '../../../ui/controls/dialog';
+import { EditorTabs } from '../../../ui/controls/tabs';
+import { EditorToggleButton } from '../../../ui/controls/toolbar';
 import { assetLibrary as library } from '../asset-library';
 import type { AssetObject, AssetObjectData } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
 import { validateObjectAsset } from '../model/object-asset-data';
-import type { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
+import { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
 import { spriteRegionPreview } from '../preview/sprite-thumbnail';
-import { drawTexturePreview } from '../preview/texture-preview';
+import { materialPreviews } from '../preview/material-preview';
+import { MaterialPreviewViewport } from '../preview/material-preview-widget';
+import { ImagePreviewViewport } from '../preview/image-preview-viewport';
+import { getOrCreateTexturePreview, imageTexturePreview } from '../preview/texture-preview';
+import { ContentAssetPicker } from '../ui/content-asset-picker';
 import { ASSET_PRESENTATION } from '../ui/asset-presentation';
-import { contentAssetPicker } from '../ui/content-asset-picker';
-import { setFocusedAssetSave } from './asset-editor-registry';
+import { revealContentAsset, setFocusedAssetSave } from './asset-editor-registry';
 import { materialProperties } from './material-details';
+import { AssetEditorLayout } from './asset-editor-layout';
 
-export class ContentObjectAssetEditor {
+export class ContentObjectAssetEditor extends EditorWindow {
+  protected override dockingRole = 'document' as const;
   private draft?: AssetObject;
   private baseline = '';
   private project = '';
-  private opened = false;
-  private focus = false;
   private loading = false;
   private saving?: Promise<void>;
   private generation = 0;
   private error = '';
   private status = '';
-  private pending?: string;
-  private pendingReady = false;
   private shaderProperties?: string;
-  private readonly grid = new PropertyGridState();
+  private layout!: AssetEditorLayout;
+  private materialViewport?: MaterialPreviewViewport;
+  private imageViewport?: ImagePreviewViewport;
+  private sourceTexture = false;
+  private unsaved!: EditorDialog;
+  private readonly thumbnails = new AssetThumbnailCache();
+  private readonly sourceToggle: EditorToggleButton[] = [];
+  private readonly releaseSaveHandler: () => void;
 
-  constructor (private readonly thumbnails: AssetThumbnailCache) { library.registerSaveHandler(() => this.save()); }
-
+  constructor (private readonly windowId: string, private readonly assetId: string, private readonly projectId: string) {
+    super(); this.title = 'Content Asset Editor'; this.initialSize.set(1120, 720);
+    this.releaseSaveHandler = library.registerSaveHandler(() => this.save());
+  }
+  override get layoutId (): string { return this.windowId; }
   get dirty (): boolean { return !!this.draft && JSON.stringify(this.draft) !== this.baseline; }
-  isDirty (id: string): boolean { return this.draft?.id === id && this.dirty; }
+  isDirty (id: string): boolean { return this.project === library.projectId && this.draft?.id === id && this.dirty; }
+  private get data (): AssetObjectData { return this.draft!.objects.find(object => object.id === this.draft!.id)!; }
 
-  open (id: string): void {
+  override close (): void {
     if (this.loading || this.saving) { return; }
-    if (this.draft?.id === id && this.opened) {
-      this.focus = true;
-
-      return;
-    }
-    if (this.dirty) {
-      this.pending = id;
-
-      return;
-    }
-    void this.load(id);
+    if (this.dirty) { this.confirmDiscard(() => this.forceClose()); } else { this.forceClose(); }
   }
-
-  close (): void {
-    this.generation++; this.opened = false; this.draft = undefined; this.pending = undefined; this.pendingReady = false;
-    this.project = ''; this.baseline = ''; this.shaderProperties = undefined; this.error = ''; this.status = ''; this.loading = false;
-    setFocusedAssetSave();
+  private forceClose (): void {
+    this.generation++; super.close(); this.draft = undefined; this.project = ''; this.baseline = '';
+    this.shaderProperties = undefined; this.error = ''; this.status = ''; this.loading = false; setFocusedAssetSave();
   }
+  protected override createContent (engine: Engine): Control {
+    this.layout = new AssetEditorLayout(engine, () => ({
+      save: () => { void this.saveFromToolbar(); }, dirty: this.dirty, busy: this.loading || !!this.saving,
+      revert: this.draft ? () => this.confirmDiscard(() => { void this.load(this.draft!.id); }) : undefined,
+      browse: this.draft ? () => revealContentAsset(this.draft!.id) : undefined,
+      compile: this.draft?.kind === 'shader' ? () => this.compile() : undefined, close: () => this.close(),
+    }));
+    this.unsaved = new EditorDialog(engine);
+    void this.load(this.assetId);
 
+    return this.layout;
+  }
+  override update (): void {
+    if (!this.layout) { return; }
+    if (this.projectId !== library.projectId || library.entry(this.assetId)?.deletedAt) { this.forceClose(); }
+    if (this.hasFocus()) { setFocusedAssetSave(this.saveFromToolbar); }
+    const entry = library.entry(this.assetId);
+
+    this.tabIcon = entry ? ASSET_PRESENTATION[entry.kind].menuIcon : undefined;
+    this.title = entry ? entry.name + (this.dirty ? '*' : '') + ' — ' + ASSET_PRESENTATION[entry.kind].label + ' Editor' : 'Content Asset Editor';
+    this.layout.footer.text = this.error || (entry ? library.pathText(entry.parentId) + '/' + entry.name + (this.dirty ? ' *' : '') + '   ·   ' + this.status : '');
+    if (this.draft && this.materialViewport) { this.draft.previewMesh = this.materialViewport.view.primitive === 'sphere' ? undefined : this.materialViewport.view.primitive; }
+  }
   private async load (id: string): Promise<void> {
-    const project = library.projectId, generation = ++this.generation;
+    const project = this.projectId, generation = ++this.generation;
 
     this.loading = true;
     try {
@@ -69,15 +94,13 @@ export class ContentObjectAssetEditor {
 
       if (generation !== this.generation || project !== library.projectId) { return; }
       if (!payload || !isObjectAsset(payload) || library.entry(id)?.deletedAt) { throw new Error('This asset is no longer available.'); }
-      validateObjectAsset(payload);
-      this.draft = structuredClone(payload); this.baseline = JSON.stringify(this.draft);
-      this.project = project; this.opened = true; this.focus = true; this.error = ''; this.status = '';
+      validateObjectAsset(payload); this.draft = structuredClone(payload);
+      if (this.draft.previewMesh === 'sphere') { delete this.draft.previewMesh; }
+      this.baseline = JSON.stringify(this.draft); this.project = project; this.error = ''; this.status = '';
       await this.loadShaderProperties();
+      if (generation === this.generation) { this.rebuild(); this.open(); }
     } catch (error) { this.showError(error); library.report(error); } finally { if (generation === this.generation) { this.loading = false; } }
   }
-
-  private get data (): AssetObjectData { return this.draft!.objects.find(object => object.id === this.draft!.id)!; }
-
   private async loadShaderProperties (): Promise<void> {
     this.shaderProperties = undefined;
     if (this.draft?.kind !== 'material') { return; }
@@ -98,17 +121,9 @@ export class ContentObjectAssetEditor {
       try {
         if (this.project !== library.projectId) { throw new Error('This asset belongs to a project that is no longer open.'); }
         validateObjectAsset(draft);
-        for (const shader of draft.objects.filter(object => object.dataType === spec.DataType.Shader)) {
-          const shaderLibrary = EditorRuntimeSession.player?.engine.displayServer.renderingDevice.getShaderLibrary();
-
-          if (!shaderLibrary) { throw new Error('The renderer is not ready to compile this shader.'); }
-          const variant = shaderLibrary.createShader({ vertex: shader.vertex, fragment: shader.fragment, name: library.entry(draft.id)?.name, shared: true });
-
-          if (!variant.initialized) { variant.initialize(); }
-          if (variant.compileResult?.status !== ShaderCompileResultStatus.success) { throw new Error(variant.compileResult?.error || 'The shader could not be compiled.'); }
-        }
+        this.compileShaders(draft);
         if (await library.saveObject(draft, EditorRuntimeSession.player?.engine) !== true) { throw new Error(library.error || 'The asset could not be saved.'); }
-        if (generation === this.generation) { this.baseline = JSON.stringify(this.draft); this.error = ''; this.status = 'Saved'; }
+        if (generation === this.generation) { this.baseline = JSON.stringify(draft); this.error = ''; this.status = 'Saved'; }
       } catch (error) { this.showError(error); throw error; }
     })().finally(() => this.saving = undefined);
 
@@ -118,216 +133,175 @@ export class ContentObjectAssetEditor {
   private showError (error: unknown): void { this.error = error instanceof Error ? error.message : String(error); this.status = ''; }
   private saveFromToolbar = async (): Promise<void> => { try { await this.save(); } catch { /* The editor keeps the draft and displays the error. */ } };
 
-  draw (): void {
-    setFocusedAssetSave();
-    if (this.project && this.project !== library.projectId) { this.close(); }
-    const draft = this.draft, entry = draft && library.entry(draft.id);
+  private compile (): void {
+    if (!this.draft) { return; }
+    try { this.compileShaders(this.draft); this.error = ''; this.status = 'Compile Succeeded'; } catch (error) { this.showError(error); }
+  }
 
-    if (entry?.deletedAt) { this.close(); }
-    if (!this.opened || !draft || !entry) { return; }
-    const presentation = ASSET_PRESENTATION[draft.kind];
-    const display = ImGui.GetIO().DisplaySize;
+  private compileShaders (draft: AssetObject): void {
+    const shaders = draft.objects.filter(object => object.dataType === spec.DataType.Shader);
+    const device = EditorRuntimeSession.player?.engine.displayServer.renderingDevice;
 
-    if (this.focus) { ImGui.SetNextWindowFocus(); this.focus = false; }
-    ImGui.SetNextWindowPos(new ImGui.Vec2(display.x / 2, display.y / 2), ImGui.Cond.Appearing, new ImGui.Vec2(0.5, 0.5));
-    ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(Math.min(440, display.x - 24), 300), new ImGui.Vec2(display.x - 24, display.y - 24));
-    ImGui.SetNextWindowSize(new ImGui.Vec2(800, 580), ImGui.Cond.FirstUseEver);
-    ImGui.PushStyleColor(ImGui.Col.WindowBg, C.background);
-    if (ImGui.Begin(entry.name + (this.dirty ? '*' : '') + ' — ' + presentation.label + ' Editor###ContentObjectAssetEditor', next => {
-      if (next === false && !this.loading && !this.saving) { if (this.dirty) { this.pending = 'close'; this.focus = true; } else { this.opened = false; } }
+    if (!device || device.contextWasLost) { throw new Error('The renderer is not ready to compile this shader.'); }
+    const shaderLibrary = new GLShaderLibrary(EditorRuntimeSession.device);
+    let error: string | undefined;
 
-      return this.opened;
-    }, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse | (this.dirty ? ImGui.WindowFlags.UnsavedDocument : 0))) {
-      contentWindowBackground();
-      if (this.pending || ImGui.IsWindowFocused(ImGui.FocusedFlags.RootAndChildWindows)) { setFocusedAssetSave(this.saveFromToolbar); }
-      ImGui.BeginDisabled(!!this.saving || this.loading);
-      ImGui.SetCursorPos(new ImGui.Vec2(8, ImGui.GetCursorPosY() + 4));
-      if (toolbarButton('##Save', { icon: 'save', label: 'Save', height: 28, enabled: this.dirty, hint: 'Save asset (Ctrl+S)' })) { void this.saveFromToolbar(); }
-      ImGui.SameLine(0, 6);
-      if (toolbarButton('##Revert', { icon: 'reset', label: 'Revert', height: 28, enabled: this.dirty, hint: 'Discard changes since the last save' })) { void this.load(draft.id); }
-      ImGui.SameLine(0, 12); ImGui.AlignTextToFramePadding(); ImGui.TextDisabled(this.saving ? 'Saving...' : this.dirty ? 'Unsaved changes' : this.status || presentation.label);
-      ImGui.Separator();
-      const footer = this.error ? 100 : 25;
+    for (const shader of shaders) {
+      const variant = shaderLibrary.createShader({ vertex: shader.vertex, fragment: shader.fragment, name: library.entry(draft.id)?.name, shared: true });
 
-      ImGui.BeginChild('##AssetProperties', new ImGui.Vec2(0, -footer));
-      if (draft.kind === 'shader') { this.drawShader(); } else {
-        if (draft.kind === 'sprite') { this.drawSpritePreview(); } else {
-          const p = ImGui.GetCursorScreenPos();
+      variant.unregisterObject(); shaderLibrary.compileShader(variant);
+      if (variant.compileResult?.status !== ShaderCompileResultStatus.success) {
+        error = variant.compileResult?.error || 'The shader could not be compiled.';
 
-          drawAssetIcon('material', p.x + 16, p.y + 10, 80); ImGui.Dummy(new ImGui.Vec2(110, 100));
-        }
-        PropertyGrid.begin(this.grid, '');
-        try {
-          if (draft.kind === 'material') { this.drawMaterial(); } else { this.drawSprite(); }
-        } finally { PropertyGrid.end(); }
+        break;
       }
-      ImGui.EndChild();
-      ImGui.EndDisabled();
-      if (this.error) {
-        ImGui.BeginChild('##AssetError', new ImGui.Vec2(0, 90));
-        ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().x); ImGui.TextColored(new ImGui.Vec4(1, 0.42, 0.35, 1), this.error); ImGui.PopTextWrapPos(); ImGui.EndChild();
-      } else { ImGui.TextDisabled(library.pathText(entry.parentId) + '/' + entry.name); }
     }
-    ImGui.End(); this.drawUnsavedDialog(); ImGui.PopStyleColor();
+    shaderLibrary.dispose();
+    if (error) { throw new Error(error); }
   }
 
-  private drawShader (): void {
-    const data = this.data;
+  private rebuild (): void {
+    if (!this.layout || !this.draft) { return; }
+    this.layout.viewportTitle = this.draft.kind === 'shader' ? 'Source' : 'Viewport';
+    this.layout.inspector.clear(); disposeChildren(this.layout.viewport); this.sourceToggle.splice(0).forEach(button => button.dispose());
+    this.materialViewport = undefined; this.imageViewport = undefined; this.layout.search.text = '';
+    const engine = this.layout.engine, data = this.data, draft = this.draft, sheet = this.layout.inspector;
 
-    ImGui.SetCursorPosX(8); ImGui.TextDisabled('GLSL source');
-    if (ImGui.BeginTabBar('##ShaderTabs')) {
-      for (const [key, label] of [['vertex', 'Vertex'], ['fragment', 'Fragment'], ['properties', 'Properties']] as const) {
-        if (ImGui.BeginTabItem(label)) {
-          ImGui.InputTextMultiline('##Source', next => {
-            if (next !== undefined) { data[key] = next; }
+    if (draft.kind === 'shader') {
+      const tabs = append(this.layout.viewport, expand(new EditorTabs(engine)));
+      const info = sheet.section('shader', 'Shader');
 
-            return data[key] ?? '';
-          }, 262145, new ImGui.Vec2(-1, Math.max(100, ImGui.GetContentRegionAvail().y - 4)), ImGui.InputTextFlags.AllowTabInput);
-          ImGui.EndTabItem();
-        }
+      info.readOnly('Name', () => library.entry(draft.id)?.name ?? 'Shader'); info.readOnly('Language', () => 'GLSL');
+      info.readOnly('Vertex Lines', () => String(data.vertex.split('\n').length)); info.readOnly('Fragment Lines', () => String(data.fragment.split('\n').length));
+      const properties = sheet.section('properties', 'Exposed Parameters');
+      const refreshProperties = (): void => {
+        properties.clear();
+        for (const property of materialProperties(data.properties, {})) { properties.readOnly(property.label, () => property.type); }
+        sheet.filter(sheet.query);
+      };
+
+      for (const [key, title] of [['vertex', 'Vertex'], ['fragment', 'Fragment'], ['properties', 'Properties']] as const) {
+        const source = new EditorTextArea(engine);
+
+        source.text = data[key] ?? '';
+        source.on('textChanged', value => { data[key] = value; if (key === 'properties') { refreshProperties(); } });
+        tabs.addTab(title, source, key === 'properties' ? 'details' : 'shader');
       }
-      ImGui.EndTabBar();
+      refreshProperties();
+      const compilation = sheet.section('compilation', 'Compilation');
+
+      compilation.readOnly('Status', () => this.error ? 'Failed' : this.dirty ? 'Modified' : this.status || 'Ready');
+      compilation.readOnly('Error', () => this.error.split('\n')[0]);
+    } else if (draft.kind === 'material') {
+      this.materialViewport = append(this.layout.viewport, expand(new MaterialPreviewViewport(engine)));
+      this.materialViewport.view.primitive = draft.previewMesh ?? 'sphere'; this.materialViewport.resetCamera();
+      this.materialViewport.source = request => materialPreviews.draft(draft, 512, request);
+      this.buildMaterial(); this.materialViewport.buildInspector(sheet.section('preview', 'Previewing'));
+    } else {
+      this.imageViewport = append(this.layout.viewport, expand(new ImagePreviewViewport(engine)));
+      this.imageViewport.source = () => this.spritePreview();
+      this.imageViewport.overlay = (canvas, rect) => {
+        if (!this.sourceTexture) { return; }
+        const [u, v, w, h] = data.rect, rw = data.rotation ? h : w, rh = data.rotation ? w : h;
+
+        canvas.drawRect(rect.x + u * rect.width, rect.y + (1 - v - rh) * rect.height, rw * rect.width, rh * rect.height, new math.Color(.97, .69, .18, 1), 2);
+      };
+      const toggle = append(this.layout.toolbar, new EditorToggleButton(engine, 'texture', () => this.sourceTexture, value => { this.sourceTexture = value; this.imageViewport?.reset(); }, 'Source Texture'));
+
+      this.sourceToggle.push(toggle);
+      this.buildSprite();
     }
   }
+  private buildMaterial (): void {
+    const sheet = this.layout.inspector, data = this.data, group = sheet.section('material', 'Material');
+    const owned = this.draft!.objects.find(object => object.dataType === spec.DataType.Shader);
 
-  private drawMaterial (): void {
-    const data = this.data;
+    group.add('Shader', new ContentAssetPicker(sheet.engine, 'shader', {
+      read: () => owned?.id === data.shader.id ? undefined : data.shader.id,
+      write: id => {
+        if (!id && !owned) { return; }
+        data.shader = { id: id ?? owned!.id };
+        void this.loadShaderProperties().then(() => this.rebuild()).catch(error => this.showError(error));
+      },
+    }, owned ? 'Default Sprite Shader' : 'Select Shader', !!owned));
+    const renderTypes = [spec.RenderType.Opaque, spec.RenderType.Transparent], faces = [spec.RenderFace.Front, spec.RenderFace.Back, spec.RenderFace.Both];
 
-    PropertyGrid.category('Material', 'Material', [], () => {
-      Fields.Property('Shader', width => {
-        const owned = this.draft!.objects.find(object => object.dataType === spec.DataType.Shader);
+    group.choice('Surface Type', { read: () => Math.max(0, renderTypes.indexOf(data.stringTags.RenderType)), write: value => data.stringTags.RenderType = renderTypes[value] }, ['Opaque', 'Transparent']);
+    group.choice('Render Face', { read: () => Math.max(0, faces.indexOf(data.stringTags.RenderFace)), write: value => data.stringTags.RenderFace = faces[value] }, ['Front', 'Back', 'Both']);
+    const parameters = sheet.section('parameters', 'Parameters');
 
-        return contentAssetPicker('shader', owned?.id === data.shader.id ? undefined : data.shader.id, width, id => {
-          if (id || owned) { data.shader = { id: id ?? owned!.id }; void this.loadShaderProperties().catch(error => this.showError(error)); }
-        }, owned ? 'Default Sprite Shader' : 'Select Shader', !!owned);
-      });
-      const renderTypes = [spec.RenderType.Opaque, spec.RenderType.Transparent], faces = [spec.RenderFace.Front, spec.RenderFace.Back, spec.RenderFace.Both];
+    for (const property of materialProperties(this.shaderProperties, { floats: data.floats, colors: data.colors, vector4s: data.vector4s, textures: data.textures })) {
+      const { name, label, type } = property;
 
-      Fields.ComboField('Surface Type', next => {
-        if (next !== undefined) { data.stringTags.RenderType = renderTypes[next]; }
+      if (type === 'Color') {
+        parameters.color(label, { read: () => {
+          const c = data.colors[name] ?? { r: 1, g: 1, b: 1, a: 1 };
 
-        return Math.max(0, renderTypes.indexOf(data.stringTags.RenderType));
-      }, ['Opaque', 'Transparent']);
-      Fields.ComboField('Render Face', next => {
-        if (next !== undefined) { data.stringTags.RenderFace = faces[next]; }
+          return new math.Color(c.r, c.g, c.b, c.a);
+        },
+        write: value => data.colors[name] = { r: value.r, g: value.g, b: value.b, a: value.a } });
+      } else if (type === '2D') {
+        parameters.add(label, new ContentAssetPicker(sheet.engine, 'texture', {
+          read: () => data.textures[name]?.texture?.id === spec.BuiltinObjectGUID.WhiteTexture ? undefined : data.textures[name]?.texture?.id,
+          write: id => data.textures[name] = { ...data.textures[name], texture: { id: id ?? spec.BuiltinObjectGUID.WhiteTexture } },
+        }, 'White'));
+      } else if (type === 'Float' || type === 'Int') {
+        const values = type === 'Int' ? data.ints : data.floats;
 
-        return Math.max(0, faces.indexOf(data.stringTags.RenderFace));
-      }, ['Front', 'Back', 'Both']);
-    });
-    PropertyGrid.category('Parameters', 'Parameters', [], () => {
-      for (const property of materialProperties(this.shaderProperties, { floats: data.floats, colors: data.colors, vector4s: data.vector4s, textures: data.textures })) {
-        const { name, label, type } = property;
+        parameters.number(label, { read: () => values[name] ?? (Number(property.fallback) || 0), write: value => values[name] = type === 'Int' ? Math.round(value) : value },
+          { step: type === 'Int' ? 1 : .01, min: property.range?.[0], max: property.range?.[1] });
+      } else if (type === 'Vector') {
+        parameters.vector(label, { read: () => {
+          const v = data.vector4s[name] ?? { x: 0, y: 0, z: 0, w: 0 };
 
-        ImGui.PushID(name);
-        if (type === 'Color') {
-          const color = data.colors[name] ?? { r: 1, g: 1, b: 1, a: 1 };
-
-          if (Fields.ColorField(label, color)) { data.colors[name] = color; }
-        } else if (type === '2D') {
-          const textureId = data.textures[name]?.texture?.id;
-
-          Fields.Property(label, width => contentAssetPicker('texture', textureId === spec.BuiltinObjectGUID.WhiteTexture ? undefined : textureId, width, id => {
-            data.textures[name] = { ...data.textures[name], texture: { id: id ?? spec.BuiltinObjectGUID.WhiteTexture } };
-          }, 'White'));
-        } else if (type === 'Float' || type === 'Int') {
-          const values = type === 'Int' ? data.ints : data.floats;
-
-          Fields.NumberField(label, next => {
-            if (next !== undefined) { values[name] = type === 'Int' ? Math.round(next) : next; }
-
-            return values[name] ?? (Number(property.fallback) || 0);
-          }, 0.01, property.range?.[0] ?? 0, property.range?.[1] ?? 0);
-        } else if (type === 'Vector') {
-          const vector = data.vector4s[name] ?? { x: 0, y: 0, z: 0, w: 0 };
-
-          if (Fields.Property(label, () => ImGui.DragFloat4('##Vector', vector, 0.01))) { data.vector4s[name] = vector; }
-        }
-        ImGui.PopID();
+          return [v.x, v.y, v.z, v.w];
+        },
+        write: ([x, y, z, w]) => data.vector4s[name] = { x, y, z, w } }, 4);
       }
-    });
-  }
-
-  private drawSprite (): void {
-    const data = this.data;
-
-    PropertyGrid.category('Sprite', 'Sprite', [], () => {
-      Fields.Property('Texture', width => contentAssetPicker('texture', data.texture?.id, width, id => { if (id) { data.texture = { id }; } else { delete data.texture; } }, 'White'));
-      for (const [index, label] of ['U', 'V', 'Width', 'Height'].entries()) {
-        Fields.NumberField(label, next => {
-          if (next !== undefined) {
-            const rect = data.rect;
-
-            rect[index] = Math.max(index > 1 ? 0.000001 : 0, Math.min(1, next));
-            const other = index < 2 ? (data.rotation ? 3 - index : index + 2) : (data.rotation ? 3 - index : index - 2);
-
-            rect[index] = Math.min(1 - rect[other], rect[index]);
-          }
-
-          return data.rect[index];
-        }, 0.001, 0, 1, '%.4f');
-      }
-      Fields.ComboField('Rotation', next => {
-        if (next !== undefined) {
-          data.rotation = next;
-          const width = next ? 3 : 2, height = next ? 2 : 3;
-
-          data.rect[width] = Math.min(1 - data.rect[0], data.rect[width]);
-          data.rect[height] = Math.min(1 - data.rect[1], data.rect[height]);
-        }
-
-        return data.rotation;
-      }, ['None', '90°']);
-    });
-  }
-
-  private drawSpritePreview (): void {
-    const data = this.data, origin = ImGui.GetCursorScreenPos(), width = ImGui.GetContentRegionAvail().x, height = 160;
-    const image = data.texture?.id ? this.thumbnails.get(data.texture.id, true) : undefined;
-    const draw = ImGui.GetWindowDrawList(), x = origin.x + (width - height) / 2, y = origin.y + 8;
-
-    checkerboard(x, y, height - 16, height - 16, 8);
-    if (image) {
-      const [, , w, h] = data.rect, rotated = data.rotation === 1;
-      const imageWidth = (rotated ? image.height : image.width) * w, imageHeight = (rotated ? image.width : image.height) * h;
-      const scale = Math.min((height - 16) / imageWidth, (height - 16) / imageHeight);
-      const size = new ImGui.Vec2(imageWidth * scale, imageHeight * scale);
-      const min = new ImGui.Vec2(x + (height - 16 - size.x) / 2, y + (height - 16 - size.y) / 2);
-
-      drawTexturePreview(spriteRegionPreview({ tex: image.texture, uv0: new ImGui.Vec2(0, 0), uv1: new ImGui.Vec2(1, 1) }, data.rect, data.rotation), min, new ImGui.Vec2(min.x + size.x, min.y + size.y));
-    } else { draw.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + height - 16, y + height - 16), ImGui.COL32_WHITE); }
-    ImGui.Dummy(new ImGui.Vec2(width, height));
-  }
-
-  private drawUnsavedDialog (): void {
-    if (this.pending && !ImGui.IsPopupOpen('Unsaved Asset Changes')) { ImGui.OpenPopup('Unsaved Asset Changes'); }
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 10));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(8, 8));
-    ImGui.SetNextWindowSize(new ImGui.Vec2(400, 0), ImGui.Cond.Always);
-    ImGui.SetNextWindowPos(new ImGui.Vec2(ImGui.GetIO().DisplaySize.x / 2, ImGui.GetIO().DisplaySize.y / 2), ImGui.Cond.Appearing, new ImGui.Vec2(0.5, 0.5));
-    if (!ImGui.BeginPopupModal('Unsaved Asset Changes', null, ImGui.WindowFlags.AlwaysAutoResize | ImGui.WindowFlags.NoSavedSettings)) {
-      ImGui.PopStyleVar(2);
-
-      return;
     }
-    ImGui.Text('Save changes to ' + (library.entry(this.draft!.id)?.name ?? 'this asset') + '?');
-    ImGui.BeginDisabled(!!this.saving);
-    if (ImGui.Button('Save', new ImGui.Vec2(100, 26))) {
-      void this.save().then(() => { this.pendingReady = true; }).catch(() => { this.pending = undefined; });
-    }
-    ImGui.SameLine();
-    if (ImGui.Button('Discard', new ImGui.Vec2(100, 26))) { this.pendingReady = true; }
-    ImGui.SameLine();
-    if (ImGui.Button('Cancel', new ImGui.Vec2(100, 26)) || ImGui.IsKeyPressed(ImGui.Key.Escape, false)) { this.pending = undefined; }
-    ImGui.EndDisabled();
-    if (!this.pending || this.pendingReady) { ImGui.CloseCurrentPopup(); }
-    ImGui.EndPopup(); ImGui.PopStyleVar(2);
-    if (this.pendingReady) { this.pendingReady = false; this.continuePending(); }
   }
+  private buildSprite (): void {
+    const group = this.layout.inspector.section('sprite', 'Sprite'), data = this.data;
 
-  private continuePending (): void {
-    const next = this.pending;
+    group.add('Texture', new ContentAssetPicker(group.engine, 'texture', { read: () => data.texture?.id,
+      write: id => { if (id) { data.texture = { id }; } else { delete data.texture; } } }, 'White'));
+    ['U', 'V', 'Width', 'Height'].forEach((title, index) => group.number(title, {
+      read: () => data.rect[index],
+      write: value => {
+        const other = index < 2 ? (data.rotation ? 3 - index : index + 2) : (data.rotation ? 3 - index : index - 2);
 
-    this.pending = undefined;
-    if (next === 'close') { this.opened = false; } else if (next) { void this.load(next); }
+        data.rect[index] = Math.min(1 - data.rect[other], Math.max(index > 1 ? .000001 : 0, Math.min(1, value)));
+      },
+    }, { step: .001, min: 0, max: 1, precision: 4 }));
+    group.choice('Rotation', {
+      read: () => data.rotation,
+      write: value => {
+        data.rotation = value; const width = value ? 3 : 2, height = value ? 2 : 3;
+
+        data.rect[width] = Math.min(1 - data.rect[0], data.rect[width]); data.rect[height] = Math.min(1 - data.rect[1], data.rect[height]);
+      },
+    }, ['None', '90°']);
   }
+  private spritePreview () {
+    const data = this.data, image = data.texture?.id ? this.thumbnails.get(data.texture.id, true) : undefined;
+    const base = image ? imageTexturePreview(image) : getOrCreateTexturePreview(EditorRuntimeSession.player.engine.assetServer.whiteTexture);
+
+    if (!base) { return; }
+    const width = image?.width ?? 1, height = image?.height ?? 1, rotated = data.rotation === 1;
+
+    return this.sourceTexture ? { preview: base, width, height } : { preview: spriteRegionPreview(base, data.rect, data.rotation),
+      width: (rotated ? height : width) * data.rect[2], height: (rotated ? width : height) * data.rect[3] };
+  }
+  private confirmDiscard (next: () => void): void {
+    if (!this.content) { return; }
+    this.unsaved.show(this.content, 'Unsaved Asset Changes', body => this.unsaved.message(body, 'Save changes to ' + (this.draft && library.entry(this.draft.id)?.name || 'this asset') + '?'), [
+      { label: 'Save', primary: true, action: async () => {
+        try { await this.save(); } catch { return; }
+        this.unsaved.close(); next();
+      } },
+      { label: 'Discard', action: () => { this.unsaved.close(); next(); } },
+      { label: 'Cancel', action: () => this.unsaved.close() },
+    ]);
+  }
+  override dispose (): void { this.generation++; this.releaseSaveHandler(); this.unsaved?.dispose(); this.thumbnails.clear(); super.dispose(); }
 }

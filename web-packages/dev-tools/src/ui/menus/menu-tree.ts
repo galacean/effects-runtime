@@ -1,4 +1,4 @@
-import { beginEditorMenu, editorMenuItem, endEditorMenu } from '../widgets/editor-menu';
+import type { MenuAction } from '../controls/menu';
 
 export class MenuNode {
   name: string = '';
@@ -10,14 +10,7 @@ export class MenuNode {
     this.priority = priority;
   }
 
-  draw (menuBar = false) {
-    if (beginEditorMenu(this.name, true, menuBar)) {
-      for (const child of this.children) {
-        child.draw();
-      }
-      endEditorMenu();
-    }
-  }
+  action (): MenuAction { return { label: this.name, children: this.children.map(child => child.action()) }; }
 
   findMenuNode (name: string) {
     for (const child of this.children) {
@@ -46,11 +39,7 @@ export class MenuItemNode extends MenuNode {
   onClick: () => void;
   shortcut = '';
 
-  override draw (): void {
-    if (editorMenuItem(this.name, this.shortcut)) {
-      this.onClick();
-    }
-  }
+  override action (): MenuAction { return { label: this.name, shortcut: this.shortcut, action: this.onClick }; }
 
   override sortChildren () {
     // leaf node, no children

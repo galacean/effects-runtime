@@ -1,5 +1,6 @@
 import { EffectsObject, MaskableGraphic, RendererComponent, SpriteComponent } from '@galacean/effects';
-import { PropertyFields } from './property-fields';
+import { propertyBinding, type PropertyGroup } from './property-sheet';
+import { createObjectReferenceControl } from './object-reference-field';
 import { reflectProperties } from './property-handle';
 import { PropertyTree } from './property-tree';
 
@@ -36,27 +37,25 @@ export class DefaultObjectDetails {
     return terms;
   }
 
-  onInspectorGUI (): void {
-    this.tree.draw(this.target);
-    this.drawRenderingProperties();
+  build (group: PropertyGroup): void {
+    this.tree.build(group, this.target);
+    this.buildRenderingProperties(group);
   }
 
-  protected drawRenderingProperties (): void {
+  protected buildRenderingProperties (group: PropertyGroup): void {
     const component = this.target;
 
     if (component instanceof MaskableGraphic) {
-      const color = (component.material.getColor('_Color') ?? component.color).clone();
-
-      if (PropertyFields.ColorField('Color', color)) { component.color = color; }
+      group.color('Color', { read: () => (component.material.getColor('_Color') ?? component.color).clone(), write: color => { component.color = color; } });
     }
-    if (component instanceof SpriteComponent) { PropertyFields.ObjectField('Sprite', component, 'sprite', 'Sprite'); }
-    if (component instanceof RendererComponent) {
-      PropertyFields.NumberField('Render Order', next => {
-        if (next !== undefined) { component.priority = Math.round(next); }
+    if (component instanceof SpriteComponent) {
+      const field = createObjectReferenceControl(group.engine, propertyBinding(component, 'sprite'), { expectedType: 'Sprite', allowEmpty: false,
+        changed: action => { group.sheet.edit.change('Sprite', group, action); group.sheet.edit.finish(group); } });
 
-        return component.priority;
-      }, 1, 0, 0, '%.0f');
+      group.add('Sprite', field);
+    }
+    if (component instanceof RendererComponent) {
+      group.number('Render Order', { read: () => component.priority, write: value => { component.priority = Math.round(value); } }, { step: 1, precision: 0 });
     }
   }
-
 }

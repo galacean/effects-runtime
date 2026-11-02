@@ -1,9 +1,5 @@
 import { AnimationClip, Component, Geometry, Material, RendererComponent, Shader, ShaderVariant, Sprite, Texture, VFXItem, getClass } from '@galacean/effects';
-import type { EditorIcon } from '../../ui/icons/editor-icons';
-import { drawEditorIcon } from '../../ui/icons/editor-icons';
-import type { PropertyHeaderIcon } from '../../ui/property-editor/property-grid';
-import { PROPERTY_COLORS } from '../../ui/property-editor/property-grid';
-import { SCENE_ITEM_DESCRIPTORS } from '../scene/ui/scene-item-palette';
+import type { EditorIcon } from '../../ui/icons/control-icons';
 
 const COMPONENT_ICONS: Readonly<Record<string, EditorIcon>> = {
   SpriteComponent: 'sprite', TextComponent: 'text', RichTextComponent: 'text',
@@ -45,7 +41,7 @@ function componentIcon (component: Component): EditorIcon {
 
 export function inspectedObjectIcon (object: object): EditorIcon {
   if (object instanceof Component) { return componentIcon(object); }
-  if (object instanceof VFXItem) { return SCENE_ITEM_DESCRIPTORS.find(entry => entry.type === object.type)?.icon ?? 'object'; }
+  if (object instanceof VFXItem) { return 'object'; }
   if (object instanceof Material) { return 'material'; }
   if (object instanceof Sprite) { return 'sprite'; }
   if (object instanceof Texture) { return 'texture'; }
@@ -54,10 +50,4 @@ export function inspectedObjectIcon (object: object): EditorIcon {
   if (object instanceof Shader || object instanceof ShaderVariant) { return 'shader'; }
 
   return 'object';
-}
-
-export function inspectedObjectHeaderIcon (object: object): PropertyHeaderIcon {
-  const icon = inspectedObjectIcon(object);
-
-  return (x, y, size) => drawEditorIcon(icon, x, y, size, PROPERTY_COLORS.text);
 }

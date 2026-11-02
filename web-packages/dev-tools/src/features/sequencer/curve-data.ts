@@ -5,6 +5,8 @@ export type TangentMode = 'auto' | 'user' | 'break';
 export interface SequenceKey extends Keyframe {
   id: string,
   tangentMode: TangentMode,
+  /** Shared spatial key behind an XYZ projection or its temporal easing view. */
+  pathKeyId?: string,
 }
 let keySerial = 0;
 
@@ -168,43 +170,54 @@ export function trimKeys (source: SequenceKey[], from: number, to: number): Sequ
   }));
 }
 
-/** Convert a spatial projection only when needed, keeping its authored knots and bounded sampling error. */
-export function decodeSpatialCurve (sample: (time: number) => number, knots: number[]): SequenceKey[] {
+/** Explicit separation only: fit cubic segments without differentiating a quantized sampler. */
+export function decodeSpatialCurve (sample: (time: number) => number, knots: number[], holds: ReadonlySet<number> = new Set()): SequenceKey[] {
   const times = Array.from(new Set([0, ...knots.filter(time => time > 0 && time < 1), 1])).sort((a, b) => a - b);
   const result: SequenceKey[] = [];
-  const derivative = (time: number, from: number, to: number) => {
-    const epsilon = Math.min(1e-4, (to - from) / 100);
-    const left = Math.max(from, time - epsilon), right = Math.min(to, time + epsilon);
-
-    return (sample(right) - sample(left)) / Math.max(1e-10, right - left);
-  };
   const subdivide = (from: number, to: number, depth: number) => {
     const left = makeKey(from, sample(from)), right = makeKey(to, sample(to));
+    const third = sample(from + (to - from) / 3), twoThirds = sample(from + (to - from) * 2 / 3);
+    const first = 27 * third - 8 * left.value - right.value;
+    const second = 27 * twoThirds - left.value - 8 * right.value;
+    const control1 = (2 * first - second) / 18, control2 = (2 * second - first) / 18;
 
     left.tangentMode = right.tangentMode = 'break';
-    left.outSlope = derivative(from, from, to);
-    right.inSlope = derivative(to, from, to);
+    left.outSlope = 3 * (control1 - left.value) / (to - from);
+    right.inSlope = 3 * (right.value - control2) / (to - from);
     const curve = new BezierCurve([]);
 
     curve.setKeyFrames([left, right]);
-    const tolerance = 1e-4 * Math.max(1, Math.abs(left.value), Math.abs(right.value));
-    const error = Math.max(...[0.25, 0.5, 0.75].map(ratio => {
+    const tolerance = 0.0025;
+    const ratios = [...Array.from({ length: 15 }, (_, index) => (index + 1) / 16), 0.113, 0.337, 0.613, 0.887];
+    const error = Math.max(...ratios.map(ratio => {
       const time = from + (to - from) * ratio;
 
       return Math.abs(curve.getValue(time) - sample(time));
     }));
 
-    if (error > tolerance && depth < 8 && result.length < 512) {
+    if (!Number.isFinite(error)) { throw new Error('The position path exceeds the finite-value precision limit.'); }
+    if (error > tolerance) {
+      if (depth >= 16 || result.length >= 2048 || to - from < 1e-7) {
+        throw new Error('The position path cannot be separated within the precision and keyframe limits.');
+      }
       const middle = (from + to) / 2;
 
       subdivide(from, middle, depth + 1); subdivide(middle, to, depth + 1);
     } else {
+      if (result.length >= 2048) { throw new Error('The separated position curve exceeds the keyframe limit.'); }
       if (result.length) { result[result.length - 1].outSlope = left.outSlope; } else { result.push(left); }
       result.push(right);
     }
   };
 
-  for (let index = 0; index + 1 < times.length; index++) { subdivide(times[index], times[index + 1], 0); }
+  for (let index = 0; index + 1 < times.length; index++) {
+    if (holds.has(times[index])) {
+      if (!result.length) { result.push(makeKey(times[index], sample(times[index]))); }
+      result[result.length - 1].interpolationMode = InterpolationMode.Constant;
+      result.push(makeKey(times[index + 1], sample(times[index + 1])));
+      if (result.length > 2048) { throw new Error('The separated position curve exceeds the keyframe limit.'); }
+    } else { subdivide(times[index], times[index + 1], 0); }
+  }
   if (result.every(key => Math.abs(key.value - result[0].value) < 1e-8)) { return [makeKey(0, result[0].value)]; }
 
   return result;

@@ -1,13 +1,17 @@
-import { editorTooltip } from '../../../ui/widgets/editor-tooltip';
+import type { Engine } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import { Container, VSeparator } from '@galacean/effects-plugin-gui';
 import { selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
-import { ImGui } from '../../../platform/imgui/index';
-import { EditorColors } from '../../../ui/theme/index';
-import { beginEditorMenu, beginEditorPopup, editorMenuItem, editorMenuSection, endEditorMenu, endEditorPopup } from '../../../ui/widgets/editor-menu';
-import { toolbarButton, toolbarSeparator } from '../../../ui/widgets/toolbar-button';
-import { drawCreateItemMenu } from '../ui/create-item-menu';
+import type { EditorIconButton } from '../../../ui/icons/control-icons';
+import { EditorToolbar, EditorViewportToggleButton } from '../../../ui/controls/toolbar';
+import { EditorMenuButton, type MenuAction } from '../../../ui/controls/menu';
+import { append, place } from '../../../ui/controls/layout';
+import { editorColors } from '../../../ui/theme/control-theme';
+import { setTooltip } from '../../../ui/controls/tooltip';
+import { createItemActions } from '../ui/create-item-menu';
 import type { SceneGizmo } from './scene-gizmo';
 
-interface SceneToolbarOptions {
+export interface SceneToolbarOptions {
   gizmo?: SceneGizmo,
   is2DMode: boolean,
   showGrid: boolean,
@@ -18,261 +22,139 @@ interface SceneToolbarOptions {
   resetView(): void,
 }
 
-interface ToolbarLayout {
-  transform: boolean,
-  hand: boolean,
-  snap: boolean,
-  distance: boolean,
-  zoom: boolean,
-  show: boolean,
-  cameraLabel?: string,
-}
+export class SceneToolbar extends EditorToolbar {
+  private readonly add: EditorMenuButton;
+  private readonly transform: EditorIconButton;
+  private readonly hand: EditorIconButton;
+  private readonly snap: EditorIconButton;
+  private readonly distance: EditorMenuButton;
+  private readonly camera: EditorMenuButton;
+  private readonly zoom: EditorMenuButton;
+  private readonly show: EditorMenuButton;
+  private readonly more: EditorMenuButton;
+  private readonly addSeparator: VSeparator;
+  private readonly snapSeparator: VSeparator;
 
-type Icon = 'transform' | 'hand' | 'snap' | 'camera' | 'show' | 'more' | 'plus';
+  constructor (engine: Engine, private readonly options: () => SceneToolbarOptions) {
+    super(engine);
+    this.add = this.menu('', () => createItemActions()); this.add.iconName = 'plus'; this.add.showArrow = true;
+    this.addSeparator = append(this, new VSeparator(engine)); this.addSeparator.setCustomMinimumSize(1, 20);
+    this.transform = append(this, new EditorViewportToggleButton(engine, 'transform', () => this.options().gizmo?.tool === 'transform', value => { if (value) { this.options().gizmo?.setTool('transform'); } }));
+    this.hand = append(this, new EditorViewportToggleButton(engine, 'hand', () => this.options().gizmo?.tool === 'hand', value => { if (value) { this.options().gizmo?.setTool('hand'); } }));
+    this.snap = append(this, new EditorViewportToggleButton(engine, 'magnet', () => !!this.options().gizmo?.snapping, value => {
+      const gizmo = this.options().gizmo;
 
-const ACTIVE_COLOR = new ImGui.Vec4(38 / 255, 187 / 255, 1, 1);
-
-/** 控件与菜单继承编辑器字号；空间不足时只收纳当前隐藏的入口。 */
-export class SceneToolbar {
-  private buttonHeight = 28;
-
-  draw (options: SceneToolbarOptions): void {
-    const origin = ImGui.GetCursorScreenPos();
-    const width = ImGui.GetContentRegionAvail().x;
-    const gizmo = options.gizmo;
-    const editing = !!gizmo && options.is2DMode;
-    const distance = gizmo?.handler.getConfigManager().get(selectionSnapConfig).distance ?? 5;
-    const distanceLabel = `${distance} px`;
-    const zoomLabel = `${Math.round((gizmo?.scale ?? 1) * 100)}%`;
-
-    this.buttonHeight = Math.ceil(ImGui.GetFontSize() + 8);
-    const height = this.buttonHeight + 6;
-    const distanceWidth = this.textButtonWidth(distanceLabel);
-    const zoomWidth = this.textButtonWidth(zoomLabel);
-    const menuWidth = this.buttonHeight + 14;
-    const layout: ToolbarLayout = {
-      transform: true,
-      hand: true,
-      snap: true,
-      distance: true,
-      zoom: true,
-      show: true,
-      cameraLabel: options.is2DMode ? '2D' : 'Perspective',
-    };
-    const cameraWidth = () => layout.cameraLabel ? this.textButtonWidth(layout.cameraLabel, true) : menuWidth;
-    const leftWidth = () => 32 + menuWidth + (layout.transform ? this.buttonHeight + 2 : 0)
-      + (layout.hand ? this.buttonHeight + 2 : 0) + (layout.snap ? this.buttonHeight + 12 : 0)
-      + (layout.distance ? distanceWidth + 2 : 0);
-    const rightWidth = () => cameraWidth() + (layout.zoom ? zoomWidth + 2 : 0) + (layout.show ? menuWidth + 2 : 0);
-    const fits = () => leftWidth() + rightWidth() + 16 <= width;
-
-    if (!fits()) { layout.hand = false; }
-    if (!fits()) { layout.zoom = false; }
-    if (!fits()) { layout.distance = false; }
-    if (!fits()) { layout.cameraLabel = options.is2DMode ? '2D' : '3D'; }
-    if (!fits()) { layout.show = false; }
-    if (!fits()) { layout.cameraLabel = undefined; }
-    if (!fits()) { layout.snap = false; }
-    if (!fits()) { layout.transform = false; }
-
-    const drawList = ImGui.GetWindowDrawList();
-
-    drawList.AddRectFilled(origin, new ImGui.Vec2(origin.x + width, origin.y + height), ImGui.GetColorU32(EditorColors.titleBarBg));
-    drawList.AddLine(new ImGui.Vec2(origin.x, origin.y + height - 1), new ImGui.Vec2(origin.x + width, origin.y + height - 1),
-      ImGui.GetColorU32(EditorColors.border));
-    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(6, 4));
-    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(2, 0));
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 3);
-    ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(12, 6));
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + 4, origin.y + 3));
-
-    this.menu('Add Item', 'plus', { width: menuWidth, arrow: true, hint: 'Add an item to the scene' }, () => drawCreateItemMenu());
-    this.separator();
-    ImGui.BeginDisabled(!editing);
-    if (layout.transform) {
-      if (this.button('Transform', 'transform', { active: gizmo?.tool === 'transform' })) { gizmo?.setTool('transform'); }
-      this.tooltip('Transform (V / W)\nMove the selection; drag handles to resize or rotate.');
-      ImGui.SameLine();
-    }
-    if (layout.hand) {
-      if (this.button('Pan', 'hand', { active: gizmo?.tool === 'hand' })) { gizmo?.setTool('hand'); }
-      this.tooltip('Pan (H)\nMiddle mouse or Space + drag.');
-      ImGui.SameLine();
-    }
-    ImGui.EndDisabled();
-    this.menu('More', 'more', { width: 20, hint: 'More tools and keyboard shortcuts' }, () => this.drawMoreMenu(options, layout));
-    if (layout.snap) {
-      this.separator();
-      ImGui.BeginDisabled(!editing);
-      if (this.button('Snapping', 'snap', { active: !!gizmo?.snapping })) {
-        gizmo!.snapping = !gizmo!.snapping;
-      }
-      this.tooltip('Snapping\nAlign to edges and centers. Click to enable or disable.');
-      if (layout.distance) {
-        ImGui.SameLine();
-        this.menu('SnapDistance', undefined, { label: distanceLabel, width: distanceWidth, arrow: true, hint: 'Snap distance' },
-          () => this.drawSnapDistanceMenu(gizmo));
-      }
-      ImGui.EndDisabled();
-    }
-
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(Math.max(origin.x + 4, origin.x + width - rightWidth() - 4), origin.y + 3));
-    this.menu('Camera', 'camera', {
-      label: layout.cameraLabel,
-      width: cameraWidth(),
-      filled: true,
-      arrow: true,
-      hint: 'Camera views and framing',
-    }, () => this.drawCameraMenu(options));
-    if (layout.zoom) {
-      ImGui.SameLine();
-      ImGui.BeginDisabled(!editing);
-      this.menu('Zoom', undefined, { label: zoomLabel, width: zoomWidth, arrow: true, hint: 'Viewport zoom' }, () => this.drawZoomMenu(gizmo));
-      ImGui.EndDisabled();
-    }
-    if (layout.show) {
-      ImGui.SameLine();
-      this.menu('Show', 'show', { width: menuWidth, filled: true, arrow: true, hint: 'Show flags' }, () => this.drawShowMenu(options));
-    }
-    ImGui.PopStyleVar(4);
-    ImGui.SetCursorScreenPos(origin);
-    ImGui.Dummy(new ImGui.Vec2(width, height));
-    ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + height));
+      if (gizmo) { gizmo.snapping = value; }
+    }));
+    this.snapSeparator = append(this, new VSeparator(engine)); this.snapSeparator.setCustomMinimumSize(1, 20);
+    this.distance = this.menu('5 px', () => this.snapActions()); this.distance.showArrow = true;
+    this.camera = this.menu('2D', () => this.cameraActions()); this.camera.iconName = 'camera'; this.camera.showArrow = true; this.camera.themeTypeVariation = 'EditorViewportMenu';
+    this.zoom = this.menu('100%', () => this.zoomActions()); this.zoom.showArrow = true;
+    this.show = this.menu('', () => this.showActions()); this.show.iconName = 'view'; this.show.showArrow = true; this.show.themeTypeVariation = 'EditorViewportMenu';
+    this.more = this.menu('', () => this.moreActions()); this.more.iconName = 'more';
+    setTooltip(this.add, 'Add an item to the scene'); setTooltip(this.transform, 'Transform (V / W)'); setTooltip(this.hand, 'Pan (H)');
+    setTooltip(this.snap, 'Snapping'); setTooltip(this.camera, 'Camera views and framing'); setTooltip(this.zoom, 'Viewport zoom'); setTooltip(this.show, 'Show flags');
   }
+  override getMinimumSize (): math.Vector2 { return new math.Vector2(100, 34); }
+  override update (dt: number): void {
+    const o = this.options(), gizmo = o.gizmo, disabled = !gizmo || !o.is2DMode;
 
-  private drawMoreMenu (options: SceneToolbarOptions, layout: ToolbarLayout): void {
-    const { gizmo, is2DMode } = options;
-    const editing = !!gizmo && is2DMode;
+    this.transform.disabled = this.hand.disabled = this.snap.disabled = this.distance.disabled = this.zoom.disabled = disabled;
+    this.camera.text = o.is2DMode ? '2D' : this.width > 600 ? 'Perspective' : '3D';
+    this.distance.text = (gizmo?.handler.getConfigManager().get(selectionSnapConfig).distance ?? 5) + ' px';
+    this.zoom.text = Math.round((gizmo?.scale ?? 1) * 100) + '%';
+    super.update(dt);
+  }
+  override draw (): void {
+    this.fillRect(0, 0, this.width, this.height, editorColors.toolbar);
+    this.drawLine(0, this.height - 1, this.width, this.height - 1, editorColors.recessed);
+  }
+  protected override sortChildren (): void {
+    const optional = [this.transform, this.snap, this.show, this.distance, this.zoom, this.hand];
+    const base = this.add.getCombinedMinimumSize().x + this.camera.getCombinedMinimumSize().x + 44;
+    let remaining = this.width - base;
 
-    this.menuSection('Editing');
-    if (!layout.transform && editorMenuItem('Transform', 'V / W', gizmo?.tool === 'transform', editing)) { gizmo?.setTool('transform'); }
-    if (!layout.hand && editorMenuItem('Pan', 'H', gizmo?.tool === 'hand', editing)) { gizmo?.setTool('hand'); }
-    if (editorMenuItem('Edit Text', 'Enter', false, editing && gizmo?.canEditText)) { gizmo?.editText(); }
-    if (!layout.snap || !layout.distance || !layout.zoom || !layout.show) {
-      this.menuSection('Viewport Options', true);
+    for (const control of optional) {
+      const width = control.getCombinedMinimumSize().x + 4;
+
+      control.visible = remaining >= width; if (control.visible) { remaining -= width; }
     }
-    if (!layout.snap) {
-      if (beginEditorMenu('Snapping', editing)) {
-        this.menuSection('Behavior');
-        if (editorMenuItem('Enabled', '', gizmo?.snapping)) { gizmo!.snapping = !gizmo!.snapping; }
-        this.drawSnapDistanceMenu(gizmo, true);
-        endEditorMenu();
-      }
-    } else if (!layout.distance) {
-      if (beginEditorMenu('Snap Distance', editing)) {
-        this.drawSnapDistanceMenu(gizmo);
-        endEditorMenu();
-      }
+    this.addSeparator.visible = true; this.snapSeparator.visible = this.snap.visible;
+    let x = 4;
+
+    for (const control of [this.add, this.addSeparator, this.transform, this.hand, this.more, this.snapSeparator, this.snap, this.distance]) {
+      if (!control.visible) { continue; }
+      if (control instanceof VSeparator) { place(control, x + 5, 7, 1, 20); x += 12; continue; }
+      const width = Math.max(24, control.getCombinedMinimumSize().x);
+
+      place(control, x, 3, width, 28); x += width + 2;
     }
-    if (!layout.zoom && beginEditorMenu('Zoom', editing)) {
-      this.drawZoomMenu(gizmo);
-      endEditorMenu();
-    }
-    if (!layout.show && beginEditorMenu('Show')) {
-      this.drawShowMenu(options);
-      endEditorMenu();
-    }
-    this.menuSection('Help', true);
-    if (beginEditorMenu('Keyboard Shortcuts')) {
-      if (is2DMode) {
-        this.menuSection('Tools');
-        ImGui.TextUnformatted('V / W  Transform\nH  Pan');
-        this.menuSection('Navigation', true);
-        ImGui.TextUnformatted('F  Frame selection\nHome  Frame all\nSpace + drag / Middle mouse  Pan\nWheel  Zoom');
-        this.menuSection('Selection and Text', true);
-        ImGui.TextUnformatted('Shift + click  Multi-select\nDrag empty space  Box select\nEnter / Double-click text  Edit\nEsc  Exit editing / Clear selection');
-      } else {
-        this.menuSection('Navigation');
-        ImGui.TextUnformatted('Left drag  Orbit\nMiddle drag  Pan\nWheel  Zoom');
-      }
-      endEditorMenu();
+    x = this.width - 4;
+    for (const control of [this.show, this.zoom, this.camera]) {
+      if (!control.visible) { continue; }
+      const width = control.getCombinedMinimumSize().x;
+
+      x -= width; place(control, x, 3, width, 28); x -= 2;
     }
   }
+  private menu (text: string, actions: () => MenuAction[]): EditorMenuButton {
+    const button = append(this, new EditorMenuButton(this.engine, text));
 
-  private drawCameraMenu (options: SceneToolbarOptions): void {
-    const { gizmo, is2DMode } = options;
+    button.actions = actions;
+    button.themeTypeVariation = 'EditorViewportMenu';
 
-    this.menuSection('View Mode');
-    if (editorMenuItem('2D Canvas', '', is2DMode)) { options.set2DMode(true); }
-    if (editorMenuItem('Perspective', '', !is2DMode)) { options.set2DMode(false); }
-    this.menuSection('Viewport Navigation', true);
-    if (editorMenuItem('Frame Selection', 'F', false, is2DMode && !!gizmo?.selectedItems.length)) { gizmo?.frameSelection(); }
-    if (editorMenuItem('Frame All', 'Home', false, is2DMode && !!gizmo)) { gizmo?.frameAll(); }
-    if (editorMenuItem('Reset View', '', false, !!gizmo)) { options.resetView(); }
+    return button;
   }
+  private snapActions (): MenuAction[] {
+    const configs = this.options().gizmo?.handler.getConfigManager();
 
-  private drawShowMenu (options: SceneToolbarOptions): void {
-    const { gizmo, is2DMode, showGrid } = options;
-
-    ImGui.BeginDisabled(!gizmo || !is2DMode);
-    this.menuSection('Viewport');
-    if (editorMenuItem('Grid', '', showGrid)) { options.setShowGrid(!showGrid); }
-    this.menuSection('Selection', true);
-    if (editorMenuItem('Selection Info', '', gizmo?.selectionInfo)) { gizmo!.selectionInfo = !gizmo!.selectionInfo; }
-    if (editorMenuItem('Hover Highlight', '', gizmo?.hoverHighlight)) { gizmo!.hoverHighlight = !gizmo!.hoverHighlight; }
-    ImGui.EndDisabled();
-    this.menuSection('Performance', true);
-    if (editorMenuItem('Show FPS', '', options.showFPS)) { options.setShowFPS(!options.showFPS); }
+    return [2, 5, 10, 20].map(distance => ({ label: distance + ' px', checked: configs?.get(selectionSnapConfig).distance === distance,
+      action: () => configs?.set(selectionSnapConfig, { distance }) }));
   }
+  private zoomActions (): MenuAction[] {
+    const gizmo = this.options().gizmo;
 
-  private drawSnapDistanceMenu (gizmo?: SceneGizmo, separated = false): void {
-    const configs = gizmo?.handler.getConfigManager();
-    const distance = configs?.get(selectionSnapConfig).distance;
-
-    this.menuSection('Snap Distance', separated);
-    for (const value of [2, 5, 10, 20]) {
-      if (editorMenuItem(`${value} px`, '', distance === value)) { configs?.set(selectionSnapConfig, { distance: value }); }
-    }
+    return [.25, .5, 1, 2, 4, 8, 16].map(scale => ({ label: scale * 100 + '%', checked: Math.abs((gizmo?.scale ?? 1) - scale) < .001, action: () => gizmo?.zoomTo(scale) }));
   }
+  private cameraActions (): MenuAction[] {
+    const o = this.options();
 
-  private drawZoomMenu (gizmo?: SceneGizmo): void {
-    this.menuSection('Viewport Zoom');
-    for (const scale of [0.25, 0.5, 1, 2, 4, 8, 16]) {
-      if (editorMenuItem(`${scale * 100}%`, '', Math.abs((gizmo?.scale ?? 1) - scale) < 0.001)) { gizmo?.zoomTo(scale); }
-    }
+    return [
+      { label: '2D Canvas', checked: o.is2DMode, action: () => o.set2DMode(true) },
+      { label: 'Perspective', checked: !o.is2DMode, action: () => o.set2DMode(false) },
+      { label: '', separator: true },
+      { label: 'Frame Selection', shortcut: 'F', enabled: o.is2DMode && !!o.gizmo?.selectedItems.length, action: () => o.gizmo?.frameSelection() },
+      { label: 'Frame All', shortcut: 'Home', enabled: o.is2DMode && !!o.gizmo, action: () => o.gizmo?.frameAll() },
+      { label: 'Reset View', action: o.resetView },
+    ];
   }
+  private showActions (): MenuAction[] {
+    const o = this.options(), g = o.gizmo;
 
-  private menuSection (label: string, separated = false): void {
-    editorMenuSection(label, separated);
+    return [
+      { label: 'Grid', checked: o.showGrid, enabled: !!g && o.is2DMode, action: () => o.setShowGrid(!o.showGrid) },
+      { label: 'Selection Info', checked: g?.selectionInfo, enabled: !!g, action: () => { if (g) { g.selectionInfo = !g.selectionInfo; } } },
+      { label: 'Hover Highlight', checked: g?.hoverHighlight, enabled: !!g, action: () => { if (g) { g.hoverHighlight = !g.hoverHighlight; } } },
+      { label: 'Show FPS', checked: o.showFPS, action: () => o.setShowFPS(!o.showFPS) },
+    ];
   }
+  private moreActions (): MenuAction[] {
+    const o = this.options(), g = o.gizmo, editing = !!g && o.is2DMode;
+    const actions: MenuAction[] = [];
 
-  private textButtonWidth (label: string, icon = false, arrow = true): number {
-    return Math.ceil(ImGui.CalcTextSize(label).x + (icon ? 28 : 8) + (arrow ? 18 : 10));
+    if (!this.transform.visible) { actions.push({ label: 'Transform', shortcut: 'V / W', enabled: editing, action: () => g?.setTool('transform') }); }
+    if (!this.hand.visible) { actions.push({ label: 'Pan', shortcut: 'H', enabled: editing, action: () => g?.setTool('hand') }); }
+    actions.push({ label: 'Edit Text', shortcut: 'Enter', enabled: editing && g?.canEditText, action: () => g?.editText() });
+    if (!this.snap.visible) { actions.push({ label: 'Snapping', checked: g?.snapping, enabled: editing, action: () => { if (g) { g.snapping = !g.snapping; } } }); }
+    if (!this.distance.visible) { actions.push({ label: 'Snap Distance', enabled: editing, children: this.snapActions() }); }
+    if (!this.zoom.visible) { actions.push({ label: 'Zoom', enabled: editing, children: this.zoomActions() }); }
+    if (!this.show.visible) { actions.push({ label: 'Show', children: this.showActions() }); }
+    actions.push({ label: 'Keyboard Shortcuts', children: [
+      { label: 'Transform', shortcut: 'V / W', enabled: false }, { label: 'Pan', shortcut: 'H / Space + drag', enabled: false },
+      { label: 'Frame Selection / All', shortcut: 'F / Home', enabled: false }, { label: 'Multi-select', shortcut: 'Shift + click', enabled: false },
+      { label: 'Edit Text', shortcut: 'Enter / Double-click', enabled: false }, { label: 'Exit Editing', shortcut: 'Esc', enabled: false },
+    ] });
+
+    return actions;
   }
-
-  private menu (id: string, icon: Icon | undefined, options: ButtonOptions, draw: () => void): void {
-    const clicked = this.button(id, icon, options);
-    const min = ImGui.GetItemRectMin();
-    const max = ImGui.GetItemRectMax();
-
-    if (clicked) { ImGui.OpenPopup(id); }
-    if (options.hint && !ImGui.IsPopupOpen(id)) { this.tooltip(options.hint); }
-    if (ImGui.IsPopupOpen(id)) {
-      ImGui.SetNextWindowPos(new ImGui.Vec2(min.x, max.y + 3));
-    }
-    if (beginEditorPopup(id)) {
-      draw();
-      endEditorPopup();
-    }
-  }
-
-  private button (id: string, icon?: Icon, options: ButtonOptions = {}): boolean {
-    return toolbarButton('##Scene' + id, { icon: icon === 'show' ? 'view' : icon === 'snap' ? 'magnet' : icon,
-      label: options.label, width: options.width ?? this.buttonHeight, height: this.buttonHeight, iconSize: 20,
-      iconLeft: options.label || options.arrow ? 4 : undefined, labelLeft: icon ? 28 : 8,
-      checked: options.active, checkedTint: ACTIVE_COLOR, dropdown: options.arrow, appearance: options.filled ? 'filled' : 'plain' });
-  }
-
-  private separator (): void { toolbarSeparator(this.buttonHeight); }
-
-  private tooltip (text: string): void { editorTooltip(text); }
-}
-
-interface ButtonOptions {
-  label?: string,
-  width?: number,
-  active?: boolean,
-  arrow?: boolean,
-  filled?: boolean,
-  hint?: string,
 }

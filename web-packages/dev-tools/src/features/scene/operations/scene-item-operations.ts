@@ -1,14 +1,22 @@
 import type { EffectsObject, TimelineAsset } from '@galacean/effects';
-import { CompositionComponent, VFXItem, generateGUID } from '@galacean/effects';
+import { CompositionComponent, VFXItem, generateGUID, math } from '@galacean/effects';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { SceneDocument } from '../document/scene-document';
 import type { SceneItemOptions } from '../factories/scene-item-factory';
 import { createSceneItemData } from '../factories/scene-item-factory';
 import { sceneWorkspace } from '../scene-workspace';
 import { jsonData } from '../serialization/scene-values';
+import type { Data } from '../serialization/scene-values';
 import { attachPreservingWorld, editSceneStructure, rootItems } from './scene-structure-edit';
 
 export interface SceneItemPlacement { parent?: VFXItem, folderId?: string }
+
+export interface SceneItemCopy {
+  format: 'effects-scene-items',
+  roots: { id: string, parentId?: string, folderId?: string, worldTransform: number[], parentWorldTransform?: number[] }[],
+  objects: Data[],
+  extras: [string, Data][],
+}
 
 export class SceneItemOperations {
   constructor (readonly document: SceneDocument) { }
@@ -94,12 +102,12 @@ export class SceneItemOperations {
     }, items);
   }
 
-  remove (selected: VFXItem[], beforeRemove?: () => void): void {
+  remove (selected: VFXItem[], beforeRemove?: () => void, label = 'Delete items'): void {
     const items = rootItems(selected);
     const deleting = new Set(items.flatMap(item => [item, ...item.getDescendants()]));
     const deletedObjects = new Set<EffectsObject>([...deleting].flatMap(item => [item, ...item.components]));
 
-    this.run('Delete items', () => {
+    this.run(label, () => {
       const data = this.document.editor.hierarchy;
 
       beforeRemove?.();
@@ -123,36 +131,59 @@ export class SceneItemOperations {
 
   duplicate (items: VFXItem[]): VFXItem[] {
     const selected = rootItems(items);
-    const clones: VFXItem[] = [];
 
-    if (!selected.length) { return clones; }
-    this.run('Duplicate items', () => {
-      const definitions = new Map<string, any>();
-      const extras = new Map<string, any>();
-      const shared = new Set(['Texture', 'Shader', 'Geometry']);
-      const collect = (data: any): void => {
-        if (!data || definitions.has(data.id) || shared.has(data.dataType)) { return; }
-        definitions.set(data.id, jsonData(data));
-        const visit = (value: any): void => {
-          if (!value || typeof value !== 'object') { return; }
-          if (Object.keys(value).length === 1 && typeof value.id === 'string') {
-            const object = this.document.serializer.object(value.id);
-            const source = object ? this.document.serializer.read(object).data : this.document.composition.engine.assetServer.findEffectsObjectData(value.id);
+    if (!selected.length) { return []; }
+    sceneWorkspace.flushEdits();
 
-            if (object) { extras.set(value.id, this.document.serializer.read(object).extras); }
-            if (source) { collect(source); }
-          } else { Object.values(value).forEach(visit); }
-        };
+    return this.paste(this.copy(selected), 'Duplicate items', true);
+  }
 
-        for (const [key, value] of Object.entries(data)) { if (!['parentId', 'item'].includes(key)) { visit(value); } }
+  copy (items: VFXItem[]): SceneItemCopy {
+    const selected = rootItems(items);
+    const definitions = new Map<string, any>();
+    const extras = new Map<string, any>();
+    const shared = new Set(['Texture', 'Shader', 'Geometry']);
+    const collect = (data: any): void => {
+      if (!data || definitions.has(data.id) || shared.has(data.dataType)) { return; }
+      definitions.set(data.id, jsonData(data));
+      const visit = (value: any): void => {
+        if (!value || typeof value !== 'object') { return; }
+        if (Object.keys(value).length === 1 && typeof value.id === 'string') {
+          const object = this.document.serializer.object(value.id);
+          const source = object ? this.document.serializer.read(object).data : this.document.composition.engine.assetServer.findEffectsObjectData(value.id);
+
+          if (object) { extras.set(value.id, this.document.serializer.read(object).extras); }
+          if (source) { collect(source); }
+        } else { Object.values(value).forEach(visit); }
       };
 
-      selected.forEach(item => {
-        const state = this.document.serializer.read(item);
+      for (const [key, value] of Object.entries(data)) { if (!['parentId', 'item'].includes(key)) { visit(value); } }
+    };
 
-        extras.set(state.data.id, state.extras); collect(state.data);
-      });
-      const ids = new Map([...definitions.keys()].map(id => [id, generateGUID()]));
+    selected.forEach(item => {
+      const state = this.document.serializer.read(item);
+
+      extras.set(state.data.id, state.extras); collect(state.data);
+    });
+
+    return {
+      format: 'effects-scene-items',
+      roots: selected.map(item => ({ id: this.document.serializer.id(item),
+        parentId: item.parent && item.parent !== this.document.composition.sceneRoot ? this.document.serializer.id(item.parent) : undefined,
+        folderId: this.document.editor.hierarchy?.itemFolders[this.document.serializer.id(item)],
+        worldTransform: Array.from(item.transform.getWorldMatrix().toArray()),
+        parentWorldTransform: Array.from((item.parent ?? this.document.composition.sceneRoot).transform.getWorldMatrix().toArray()) })),
+      objects: [...definitions.values()], extras: [...extras],
+    };
+  }
+
+  paste (data: SceneItemCopy, label = 'Paste items', duplicate = false): VFXItem[] {
+    const clones: VFXItem[] = [];
+
+    if (!data.roots.length) { return clones; }
+    this.run(label, () => {
+      const ids = new Map(data.objects.map(object => [object.id as string, generateGUID()]));
+      const roots = new Set(data.roots.map(root => root.id));
       const rewrite = (value: any): any => {
         if (Array.isArray(value)) { return value.map(rewrite); }
         if (!value || typeof value !== 'object') { return value; }
@@ -161,25 +192,36 @@ export class SceneItemOperations {
       };
       const engine = this.document.composition.engine;
 
-      for (const data of definitions.values()) {
-        const copy = rewrite(data);
+      for (const object of data.objects) {
+        const copy = rewrite(object);
 
-        if (copy.dataType === 'VFXItemData') { delete copy.refId; }
+        if (copy.dataType === 'VFXItemData') {
+          delete copy.refId;
+          if (roots.has(object.id)) { delete copy.parentId; }
+        }
         engine.assetServer.addEffectsObjectData(copy);
       }
-      for (const item of selected) {
-        const clone = engine.effectsObjectServer.findObject<VFXItem>({ id: ids.get(this.document.serializer.id(item))! });
-        const names = new Set(item.parent?.children.map(child => child.name));
-        let name = item.name + ' Copy', index = 2;
+      for (const root of data.roots) {
+        const clone = engine.effectsObjectServer.findObject<VFXItem>({ id: ids.get(root.id)! });
+        const originalParent = root.parentId ? this.document.serializer.object(root.parentId) : undefined;
+        const parent = originalParent instanceof VFXItem && originalParent.composition === this.document.composition &&
+          (originalParent === this.document.composition.sceneRoot || this.document.composition.items.includes(originalParent)) ? originalParent : this.document.composition.sceneRoot;
+        const names = new Set(parent.children.filter(item => item !== clone).map(child => child.name));
+        const baseName = clone.name + (duplicate ? ' Copy' : '');
+        let name = baseName, index = 2;
 
-        while (names.has(name)) { name = item.name + ' Copy ' + index++; }
-        clone.name = name; clone.transform.name = name; clone.setParent(item.parent ?? this.document.composition.sceneRoot);
+        while (names.has(name)) { name = baseName + ' ' + index++; }
+        clone.name = name; clone.transform.name = name; clone.setParent(parent);
+        const parentWorld = parent.transform.getWorldMatrix().clone();
+        const sameParentTransform = root.parentWorldTransform?.every((value, index) => value === parentWorld.elements[index]);
+
+        if (!sameParentTransform && Math.abs(parentWorld.determinant()) >= 1e-10) { clone.transform.cloneFromMatrix(parentWorld.invert().multiply(new math.Matrix4().setFromArray(root.worldTransform))); }
         clones.push(clone);
-        const folder = this.document.editor.hierarchy?.itemFolders[this.document.serializer.id(item)];
+        const folder = root.folderId && this.document.editor.hierarchy?.folders.some(folder => folder.id === root.folderId) ? root.folderId : undefined;
 
         if (folder) { this.document.editor.hierarchy!.itemFolders[this.document.serializer.id(clone)] = folder; }
       }
-      for (const [id, extra] of extras) {
+      for (const [id, extra] of data.extras) {
         const cloneId = ids.get(id), object = cloneId && engine.effectsObjectServer.objectInstance[cloneId];
 
         if (object) { this.document.serializer.applyExtras(object, rewrite(extra)); }

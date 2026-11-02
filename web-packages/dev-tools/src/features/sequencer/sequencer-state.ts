@@ -97,8 +97,10 @@ export class SequencerState {
       for (const group of groups) {
         const groupId = id + ':' + group;
         const groupChannels = channels.filter(entry => entry.channel.group === group);
+        const label = group !== 'Location' ? group : groupChannels.every(entry => entry.channel.pathView) ? 'Location (Path)' :
+          groupChannels.every(entry => !entry.channel.pathView) ? 'Location (Separated)' : group;
 
-        append({ id: groupId, label: group, kind: 'group', depth: depth + 1, track, expandable: true, channels: groupChannels });
+        append({ id: groupId, label, kind: 'group', depth: depth + 1, track, expandable: true, channels: groupChannels });
         if (!this.expanded.has(groupId) && !query) { continue; }
         for (const label of Array.from(new Set(groupChannels.map(entry => entry.channel.label)))) {
           append({ id: groupId + '.' + label, label, kind: 'channel', depth: depth + 2, track, expandable: false,
@@ -158,7 +160,8 @@ export class SequencerState {
   }
 
   curveChannels (document: SequencerDocument, includeEmpty = false): { section: SequenceSection, channel: SequenceChannel }[] {
-    let channels = document.allSections().flatMap(section => section.channels.filter(channel => channel.kind === 'number' && (includeEmpty || channel.keys.length))
+    let channels = document.allSections().flatMap(section => section.channels.filter(channel => channel.kind === 'number' &&
+      (includeEmpty || channel.keys.length || channel.pathView && section.position?.keys.length))
       .map(channel => ({ section, channel })));
     const liveTracks = new Set(document.tracks.map(track => track.getInstanceId()));
 
@@ -190,7 +193,16 @@ export class SequencerState {
     for (const { key } of selected) {
       if (Number.isFinite(key.value)) { min = Math.min(min, key.value); max = Math.max(max, key.value); }
     }
-    for (const { channel } of selected.length ? [] : this.curveChannels(document)) {
+    for (const { section, channel } of selected.length ? [] : this.curveChannels(document)) {
+      if (channel.pathView && section.position) {
+        for (let index = 0; index <= 128; index++) {
+          const value = section.position.evaluate(index / 128, channel.axis);
+
+          if (Number.isFinite(value)) { min = Math.min(min, value); max = Math.max(max, value); }
+        }
+
+        continue;
+      }
       channel.keys.forEach((key, index) => {
         for (const value of [key.value, controlPoint(channel.keys, index, 'in').value, controlPoint(channel.keys, index, 'out').value]) {
           if (Number.isFinite(value)) { min = Math.min(min, value); max = Math.max(max, value); }

@@ -379,9 +379,6 @@ importers:
       '@vvfx/resource-detection':
         specifier: ^0.10.0
         version: 0.10.0
-      maoan-imgui-js:
-        specifier: ^1.1.1
-        version: 1.1.2
     devDependencies:
       vite:
         specifier: '5'
@@ -3225,9 +3222,6 @@ packages:
   make-dir@2.1.0:
     resolution: {integrity: sha512-LS9X+dc8KLxXCb8dni79fLIIUA5VyZoyjSMCwTluaXA0o27cCK0bhXkpgw+sTXVpPy/lSO57ilRixqk0vDmtRA==}
     engines: {node: '>=6'}
-
-  maoan-imgui-js@1.1.2:
-    resolution: {integrity: sha512-+W5DXharn77t3jG5C/c9vJHX/RhATFhMxlKFGUT+j0HGtf9JGLrN5bCEy+wom7l2IPCSL96HgN640M84fqb2Rw==}
 
   map-obj@1.0.1:
     resolution: {integrity: sha512-7N/q3lyZ+LVCp7PzuxrJr4KMbBE2hW7BT7YNia330OFxIf4d3r5zVpicP2650l7CPN6RM9zOJRl3NGpqSiw3Eg==}
@@ -7183,10 +7177,6 @@ snapshots:
     dependencies:
       pify: 4.0.1
       semver: 5.7.2
-
-  maoan-imgui-js@1.1.2:
-    dependencies:
-      '@types/emscripten': 1.41.6
 
   map-obj@1.0.1: {}
 

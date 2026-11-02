@@ -13,8 +13,7 @@
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
     "@galacean/effects-plugin-ffd": "workspace:*",
-    "@vvfx/resource-detection": "^0.10.0",
-    "maoan-imgui-js": "^1.1.1"
+    "@vvfx/resource-detection": "^0.10.0"
   },
   "devDependencies": {
     "vite": "5"

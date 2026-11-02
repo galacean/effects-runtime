@@ -1,6 +1,6 @@
 import type { spec } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
-import { ImGui } from '../../../platform/imgui/index';
+import { math } from '@galacean/effects';
 import type * as NodeGraph from '../../../ui/graph-editor/index';
 import { AnimationFlowGraph } from '../model/graphs/flow-graph';
 import type { AnimationStateGraph } from '../model/graphs/state-machine-graph';
@@ -23,8 +23,6 @@ import { PoseResultEditorNode } from '../model/nodes/result-editor-node';
 import { StateEditorNode } from '../model/nodes/state-editor-node';
 import { StateMachineEditorNode } from '../model/nodes/state-machine-editor-node';
 import { TransitionConduitEditorNode, TransitionEditorNode } from '../model/nodes/transition-editor-node';
-
-const ImVec2 = ImGui.ImVec2;
 
 // Layout constants
 const H_GAP = 300; // horizontal spacing between node columns
@@ -68,11 +66,11 @@ export class AnimationGraphDecompiler {
     this.buildControlParameters(rootGraph);
 
     // 2. 创建 PoseResult 节点（纯视觉节点，不需要映射）
-    const resultNode = rootGraph.CreateNode(PoseResultEditorNode, new ImVec2(800, 200));
+    const resultNode = rootGraph.CreateNode(PoseResultEditorNode, new math.Vector2(800, 200));
 
     // 3. 从 rootNodeIndex 开始构建图
     if (this.rootNodeIndex !== InvalidIndex && this.rootNodeIndex < this.nodeDatas.length) {
-      const rootResult = this.buildNode(this.rootNodeIndex, rootGraph, new ImVec2(400, 100));
+      const rootResult = this.buildNode(this.rootNodeIndex, rootGraph, new math.Vector2(400, 100));
 
       if (rootResult) {
         rootGraph.TryMakeConnection(
@@ -132,7 +130,7 @@ export class AnimationGraphDecompiler {
       }
 
       if (paramNode) {
-        paramNode.SetPosition(new ImVec2(-400, yPos));
+        paramNode.SetPosition(new math.Vector2(-400, yPos));
         this.controlParameterNodes.set(i, paramNode);
         this.registerMapping(paramNode, i);
       }
@@ -143,7 +141,7 @@ export class AnimationGraphDecompiler {
    * 根据编译数据索引在目标图中创建对应的工具节点
    * basePos: 子树根节点（输出端）的位置，输入端在其左侧
    */
-  private buildNode (nodeIndex: number, targetGraph: AnimationFlowGraph, basePos = new ImVec2(0, 0)): LayoutResult | null {
+  private buildNode (nodeIndex: number, targetGraph: AnimationFlowGraph, basePos = new math.Vector2(0, 0)): LayoutResult | null {
     if (nodeIndex === InvalidIndex || nodeIndex >= this.nodeDatas.length) {
       return null;
     }
@@ -237,7 +235,7 @@ export class AnimationGraphDecompiler {
     targetGraph: AnimationFlowGraph,
     parentNode: AnimationGraphNode,
     pinIndex: number,
-    inputPos: ImGui.ImVec2,
+    inputPos: math.Vector2,
   ): LayoutResult | null {
     if (nodeIndex === undefined || nodeIndex === InvalidIndex) {
       return null;
@@ -257,7 +255,7 @@ export class AnimationGraphDecompiler {
     return result;
   }
 
-  private buildParameterReference (nodeIndex: number, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult | null {
+  private buildParameterReference (nodeIndex: number, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult | null {
     const paramNode = this.controlParameterNodes.get(nodeIndex);
 
     if (!paramNode) {
@@ -283,7 +281,7 @@ export class AnimationGraphDecompiler {
     return null;
   }
 
-  private buildStateMachine (nodeIndex: number, data: spec.StateMachineNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildStateMachine (nodeIndex: number, data: spec.StateMachineNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const smNode = targetGraph.CreateNode(StateMachineEditorNode);
 
     smNode.SetPosition(basePos);
@@ -317,7 +315,7 @@ export class AnimationGraphDecompiler {
       const x = 400 + Math.cos(angle) * radius;
       const y = 350 + Math.sin(angle) * radius;
 
-      const stateNode = smGraph.CreateNode(StateEditorNode, new ImVec2(x, y));
+      const stateNode = smGraph.CreateNode(StateEditorNode, new math.Vector2(x, y));
 
       // 注册 StateToolsNode → stateNodeIndex 映射
       this.registerMapping(stateNode, stateData.stateNodeIndex);
@@ -380,7 +378,7 @@ export class AnimationGraphDecompiler {
         for (let tIdx = 0; tIdx < transitions.length; tIdx++) {
           const transData = transitions[tIdx];
           const transNodeData = this.nodeDatas[transData.transitionNodeIndex] as spec.TransitionNodeData | undefined;
-          const transNode = conduitGraph.CreateNode(TransitionEditorNode, new ImVec2(300, transYCursor));
+          const transNode = conduitGraph.CreateNode(TransitionEditorNode, new math.Vector2(300, transYCursor));
 
           // 注册 TransitionToolsNode → transitionNodeIndex 映射
           this.registerMapping(transNode, transData.transitionNodeIndex);
@@ -395,7 +393,7 @@ export class AnimationGraphDecompiler {
           let condHeight = LEAF_H;
 
           if (transData.conditionNodeIndex !== undefined && transData.conditionNodeIndex !== InvalidIndex) {
-            const condResult = this.buildNode(transData.conditionNodeIndex, conduitGraph, new ImVec2(-50, transYCursor));
+            const condResult = this.buildNode(transData.conditionNodeIndex, conduitGraph, new math.Vector2(-50, transYCursor));
 
             if (condResult) {
               conduitGraph.TryMakeConnection(
@@ -429,9 +427,9 @@ export class AnimationGraphDecompiler {
 
     const resultNode = resultNodes[0];
 
-    resultNode.SetPosition(new ImVec2(600, 200));
+    resultNode.SetPosition(new math.Vector2(600, 200));
 
-    const blendTreeResult = this.buildNode(childNodeIndex, childGraph, new ImVec2(200, 50));
+    const blendTreeResult = this.buildNode(childNodeIndex, childGraph, new math.Vector2(200, 50));
 
     if (blendTreeResult) {
       childGraph.TryMakeConnection(
@@ -457,7 +455,7 @@ export class AnimationGraphDecompiler {
     return clipNode;
   }
 
-  private buildBlendNode (nodeIndex: number, blendData: spec.BlendNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildBlendNode (nodeIndex: number, blendData: spec.BlendNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const blendNode = targetGraph.CreateNode(BlendEditorNode);
 
     this.registerMapping(blendNode, nodeIndex);
@@ -467,31 +465,31 @@ export class AnimationGraphDecompiler {
     let hasChildren = false;
 
     // Source0
-    const r0 = this.buildAndConnect(blendData.sourceNodeIndex0, targetGraph, blendNode, 0, new ImVec2(inputX, cursorY));
+    const r0 = this.buildAndConnect(blendData.sourceNodeIndex0, targetGraph, blendNode, 0, new math.Vector2(inputX, cursorY));
 
     if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
     // Source1
-    const r1 = this.buildAndConnect(blendData.sourceNodeIndex1, targetGraph, blendNode, 1, new ImVec2(inputX, cursorY));
+    const r1 = this.buildAndConnect(blendData.sourceNodeIndex1, targetGraph, blendNode, 1, new math.Vector2(inputX, cursorY));
 
     if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
     // BlendWeight
-    const r2 = this.buildAndConnect(blendData.inputParameterValueNodeIndex, targetGraph, blendNode, 2, new ImVec2(inputX, cursorY));
+    const r2 = this.buildAndConnect(blendData.inputParameterValueNodeIndex, targetGraph, blendNode, 2, new math.Vector2(inputX, cursorY));
 
     if (r2) { cursorY += r2.height + V_GAP; hasChildren = true; }
 
     const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
     const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
 
-    blendNode.SetPosition(new ImVec2(basePos.x, centerY));
+    blendNode.SetPosition(new math.Vector2(basePos.x, centerY));
 
     return { node: blendNode, height: totalHeight };
   }
 
-  private buildLayerBlendNode (nodeIndex: number, data: spec.LayerBlendNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildLayerBlendNode (nodeIndex: number, data: spec.LayerBlendNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const numLayers = data.layerDatas?.length ?? 0;
-    const layerBlendNode = targetGraph.CreateNode(LayerBlendEditorNode, new ImVec2(0, 0), numLayers);
+    const layerBlendNode = targetGraph.CreateNode(LayerBlendEditorNode, new math.Vector2(0, 0), numLayers);
 
     this.registerMapping(layerBlendNode, nodeIndex);
 
@@ -501,7 +499,7 @@ export class AnimationGraphDecompiler {
     let hasChildren = false;
 
     // Base input (pin 0)
-    const baseResult = this.buildAndConnect(data.baseNodeIndex, targetGraph, layerBlendNode, 0, new ImVec2(inputX, cursorY));
+    const baseResult = this.buildAndConnect(data.baseNodeIndex, targetGraph, layerBlendNode, 0, new math.Vector2(inputX, cursorY));
 
     if (baseResult) { cursorY += baseResult.height + V_GAP; hasChildren = true; }
 
@@ -511,12 +509,12 @@ export class AnimationGraphDecompiler {
         const layerData = data.layerDatas[i];
 
         // Layer pose input (pin 1 + i*2)
-        const poseResult = this.buildAndConnect(layerData.inputNodeIndex, targetGraph, layerBlendNode, 1 + i * 2, new ImVec2(inputX, cursorY));
+        const poseResult = this.buildAndConnect(layerData.inputNodeIndex, targetGraph, layerBlendNode, 1 + i * 2, new math.Vector2(inputX, cursorY));
 
         if (poseResult) { cursorY += poseResult.height + V_GAP; hasChildren = true; }
 
         // Layer weight input (pin 2 + i*2) — offset further left
-        const weightResult = this.buildAndConnect(layerData.weightValueNodeIndex, targetGraph, layerBlendNode, 2 + i * 2, new ImVec2(weightX, cursorY));
+        const weightResult = this.buildAndConnect(layerData.weightValueNodeIndex, targetGraph, layerBlendNode, 2 + i * 2, new math.Vector2(weightX, cursorY));
 
         if (weightResult) { cursorY += weightResult.height + V_GAP; hasChildren = true; }
       }
@@ -525,7 +523,7 @@ export class AnimationGraphDecompiler {
     const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
     const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
 
-    layerBlendNode.SetPosition(new ImVec2(basePos.x, centerY));
+    layerBlendNode.SetPosition(new math.Vector2(basePos.x, centerY));
 
     return { node: layerBlendNode, height: totalHeight };
   }
@@ -555,7 +553,7 @@ export class AnimationGraphDecompiler {
     targetGraph: AnimationFlowGraph,
     rootNode: AnimationGraphNode,
     conditionIndices: number[] | undefined,
-    basePos: ImGui.ImVec2,
+    basePos: math.Vector2,
   ): LayoutResult {
     this.registerMapping(rootNode, nodeIndex);
 
@@ -568,7 +566,7 @@ export class AnimationGraphDecompiler {
         const condIdx = conditionIndices[i];
 
         if (condIdx !== undefined && condIdx !== InvalidIndex) {
-          const result = this.buildAndConnect(condIdx, targetGraph, rootNode, i, new ImVec2(inputX, cursorY));
+          const result = this.buildAndConnect(condIdx, targetGraph, rootNode, i, new math.Vector2(inputX, cursorY));
 
           if (result) { cursorY += result.height + V_GAP; hasChildren = true; }
         }
@@ -578,26 +576,26 @@ export class AnimationGraphDecompiler {
     const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
     const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
 
-    rootNode.SetPosition(new ImVec2(basePos.x, centerY));
+    rootNode.SetPosition(new math.Vector2(basePos.x, centerY));
 
     return { node: rootNode, height: totalHeight };
   }
 
-  private buildAndNode (nodeIndex: number, data: spec.AndNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildAndNode (nodeIndex: number, data: spec.AndNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const numInputs = data.conditionNodeIndices?.length ?? 0;
-    const andNode = targetGraph.CreateNode(AndEditorNode, new ImVec2(0, 0), numInputs);
+    const andNode = targetGraph.CreateNode(AndEditorNode, new math.Vector2(0, 0), numInputs);
 
     return this.buildMultiInputNode(nodeIndex, targetGraph, andNode, data.conditionNodeIndices, basePos);
   }
 
-  private buildOrNode (nodeIndex: number, data: spec.OrNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildOrNode (nodeIndex: number, data: spec.OrNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const numInputs = data.conditionNodeIndices?.length ?? 0;
-    const orNode = targetGraph.CreateNode(OrEditorNode, new ImVec2(0, 0), numInputs);
+    const orNode = targetGraph.CreateNode(OrEditorNode, new math.Vector2(0, 0), numInputs);
 
     return this.buildMultiInputNode(nodeIndex, targetGraph, orNode, data.conditionNodeIndices, basePos);
   }
 
-  private buildNotNode (nodeIndex: number, data: spec.NotNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildNotNode (nodeIndex: number, data: spec.NotNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const notNode = targetGraph.CreateNode(NotEditorNode);
 
     this.registerMapping(notNode, nodeIndex);
@@ -605,11 +603,11 @@ export class AnimationGraphDecompiler {
     const inputX = basePos.x - H_GAP;
     let totalHeight = LEAF_H;
 
-    const result = this.buildAndConnect(data.inputValueNodeIndex, targetGraph, notNode, 0, new ImVec2(inputX, basePos.y));
+    const result = this.buildAndConnect(data.inputValueNodeIndex, targetGraph, notNode, 0, new math.Vector2(inputX, basePos.y));
 
     if (result) { totalHeight = Math.max(LEAF_H, result.height); }
 
-    notNode.SetPosition(new ImVec2(basePos.x, basePos.y + totalHeight / 2 - LEAF_H / 2));
+    notNode.SetPosition(new math.Vector2(basePos.x, basePos.y + totalHeight / 2 - LEAF_H / 2));
 
     return { node: notNode, height: totalHeight };
   }
@@ -620,7 +618,7 @@ export class AnimationGraphDecompiler {
     rootNode: AnimationGraphNode,
     inputIdx: number | undefined,
     comparandIdx: number | undefined,
-    basePos: ImGui.ImVec2,
+    basePos: math.Vector2,
   ): LayoutResult {
     this.registerMapping(rootNode, nodeIndex);
 
@@ -628,23 +626,23 @@ export class AnimationGraphDecompiler {
     let cursorY = basePos.y;
     let hasChildren = false;
 
-    const r0 = this.buildAndConnect(inputIdx, targetGraph, rootNode, 0, new ImVec2(inputX, cursorY));
+    const r0 = this.buildAndConnect(inputIdx, targetGraph, rootNode, 0, new math.Vector2(inputX, cursorY));
 
     if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
-    const r1 = this.buildAndConnect(comparandIdx, targetGraph, rootNode, 1, new ImVec2(inputX, cursorY));
+    const r1 = this.buildAndConnect(comparandIdx, targetGraph, rootNode, 1, new math.Vector2(inputX, cursorY));
 
     if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
     const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
     const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
 
-    rootNode.SetPosition(new ImVec2(basePos.x, centerY));
+    rootNode.SetPosition(new math.Vector2(basePos.x, centerY));
 
     return { node: rootNode, height: totalHeight };
   }
 
-  private buildEqualNode (nodeIndex: number, data: spec.EqualNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildEqualNode (nodeIndex: number, data: spec.EqualNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const equalNode = targetGraph.CreateNode(EqualEditorNode);
 
     return this.buildBinaryNode(nodeIndex, targetGraph, equalNode, data.inputValueNodeIndex, data.comparandValueNodeIndex, basePos);
@@ -654,7 +652,7 @@ export class AnimationGraphDecompiler {
     nodeIndex: number,
     data: spec.FloatComparisonNodeData,
     targetGraph: AnimationFlowGraph,
-    basePos: ImGui.ImVec2,
+    basePos: math.Vector2,
     comparison: 'greater' | 'less'
   ): LayoutResult {
     const NodeClass = comparison === 'greater' ? GreaterEditorNode : LessEditorNode;
@@ -663,7 +661,7 @@ export class AnimationGraphDecompiler {
     return this.buildBinaryNode(nodeIndex, targetGraph, compNode, data.inputValueNodeIndex, data.comparandValueNodeIndex, basePos);
   }
 
-  private buildApplyAdditiveNode (nodeIndex: number, data: spec.ApplyAdditiveNodeData, targetGraph: AnimationFlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+  private buildApplyAdditiveNode (nodeIndex: number, data: spec.ApplyAdditiveNodeData, targetGraph: AnimationFlowGraph, basePos: math.Vector2): LayoutResult {
     const additiveNode = targetGraph.CreateNode(ApplyAdditiveEditorNode);
 
     this.registerMapping(additiveNode, nodeIndex);
@@ -673,24 +671,24 @@ export class AnimationGraphDecompiler {
     let hasChildren = false;
 
     // Base input (pin 0)
-    const r0 = this.buildAndConnect(data.baseNodeIndex, targetGraph, additiveNode, 0, new ImVec2(inputX, cursorY));
+    const r0 = this.buildAndConnect(data.baseNodeIndex, targetGraph, additiveNode, 0, new math.Vector2(inputX, cursorY));
 
     if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
     // Additive input (pin 1)
-    const r1 = this.buildAndConnect(data.additiveNodeIndex, targetGraph, additiveNode, 1, new ImVec2(inputX, cursorY));
+    const r1 = this.buildAndConnect(data.additiveNodeIndex, targetGraph, additiveNode, 1, new math.Vector2(inputX, cursorY));
 
     if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
     // Weight input (pin 2)
-    const r2 = this.buildAndConnect(data.inputParameterValueNodeIndex, targetGraph, additiveNode, 2, new ImVec2(inputX, cursorY));
+    const r2 = this.buildAndConnect(data.inputParameterValueNodeIndex, targetGraph, additiveNode, 2, new math.Vector2(inputX, cursorY));
 
     if (r2) { cursorY += r2.height + V_GAP; hasChildren = true; }
 
     const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
     const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
 
-    additiveNode.SetPosition(new ImVec2(basePos.x, centerY));
+    additiveNode.SetPosition(new math.Vector2(basePos.x, centerY));
 
     return { node: additiveNode, height: totalHeight };
   }

@@ -1,25 +1,16 @@
+import { math } from '@galacean/effects';
 import { generateGUID } from '@galacean/effects';
-import { ImGui } from '../../platform/imgui/index';
 import { CommentGraphNode } from './comment-graph-node';
-import type { DrawContext } from './graph-draw-context';
+import type { GraphViewGeometry } from './graph-view-geometry';
 import type { GraphEditorContext } from './graph-editor-context';
 import { GraphModel, GraphNode, ScopedGraphModification } from './graph-model';
 import type { UUID } from './graph-types';
-
-export type ImVec2 = ImGui.ImVec2;
-export const ImVec2 = ImGui.ImVec2;
-
-type Color = ImGui.Color;
-const Color = ImGui.Color;
 
 export enum PinDirection {
   Input,
   Output,
   None
 }
-
-// Pin
-//-------------------------------------------------------------------------
 
 export class Pin {
   m_ID: UUID = generateGUID();
@@ -28,9 +19,9 @@ export class Pin {
   m_isDynamic: boolean = false;
   m_allowMultipleOutConnections: boolean = false;
   m_userData: number = 0;
-  m_position: ImVec2 = new ImVec2(0, 0);
-  m_size: ImVec2 = new ImVec2(-1, -1);
-  private m_lastCalculatedSize: ImVec2 = new ImVec2(-1, -1);
+  m_position: math.Vector2 = new math.Vector2(0, 0);
+  m_size: math.Vector2 = new math.Vector2(-1, -1);
+  private m_lastCalculatedSize: math.Vector2 = new math.Vector2(-1, -1);
   private m_lastCanvasWidth: number = -1;
   private m_hasCalculatedSize: boolean = false;
   private m_hasCachedSize: boolean = false;
@@ -47,11 +38,11 @@ export class Pin {
     return this.m_hasCalculatedSize ? this.m_size.y : (this.m_hasCachedSize ? this.m_lastCalculatedSize.y : this.m_size.y);
   }
 
-  GetCachedWidth (ctx: DrawContext): number {
+  GetCachedWidth (ctx: GraphViewGeometry): number {
     return this.m_hasCachedSize ? ctx.CanvasToWindow(this.m_lastCanvasWidth) : this.m_size.x;
   }
 
-  GetWidthForLayout (ctx: DrawContext): number {
+  GetWidthForLayout (ctx: GraphViewGeometry): number {
     return this.m_hasCalculatedSize ? this.m_size.x : this.GetCachedWidth(ctx);
   }
 
@@ -59,26 +50,23 @@ export class Pin {
     return this.m_hasCachedSize;
   }
 
-  SetCalculatedSize (size: ImVec2, ctx: DrawContext, updateCachedSize: boolean = true): void {
-    this.m_size = new ImVec2(size.x, size.y);
+  SetCalculatedSize (size: math.Vector2, ctx: GraphViewGeometry, updateCachedSize: boolean = true): void {
+    this.m_size = new math.Vector2(size.x, size.y);
     this.m_hasCalculatedSize = true;
 
     if (updateCachedSize || !this.m_hasCachedSize) {
-      this.m_lastCalculatedSize = new ImVec2(size.x, size.y);
+      this.m_lastCalculatedSize = new math.Vector2(size.x, size.y);
       this.m_lastCanvasWidth = ctx.WindowToCanvas(size.x);
       this.m_hasCachedSize = true;
     }
   }
 
   ResetCalculatedSizes (): void {
-    this.m_position = ImVec2.ZERO;
-    this.m_size = new ImVec2(-1, -1);
+    this.m_position = new math.Vector2();
+    this.m_size = new math.Vector2(-1, -1);
     this.m_hasCalculatedSize = false;
   }
 }
-
-// FlowNode
-//-------------------------------------------------------------------------
 
 export class FlowGraphNode extends GraphNode {
   override GetTypeName (): string {
@@ -91,7 +79,6 @@ export class FlowGraphNode extends GraphNode {
   m_outputPins: Pin[] = [];
   m_pHoveredPin: Pin | null = null;
 
-  // Pin methods
   HasPin (pinID: UUID): boolean;
   HasPin (pin: Pin): boolean;
   HasPin (pinOrID: Pin | UUID): boolean {
@@ -115,7 +102,6 @@ export class FlowGraphNode extends GraphNode {
     return PinDirection.None;
   }
 
-  // Input pin methods
   SupportsUserEditableDynamicInputPins (): boolean {
     return false;
   }
@@ -154,7 +140,6 @@ export class FlowGraphNode extends GraphNode {
     return this.m_inputPins.findIndex(pin => pin.m_ID === pinID);
   }
 
-  // Output pin methods
   GetNumOutputPins (): number {
     return this.m_outputPins.length;
   }
@@ -190,9 +175,6 @@ export class FlowGraphNode extends GraphNode {
     return this.m_outputPins.findIndex(pin => pin.m_ID === pinID);
   }
 
-  // Connections
-  //-------------------------------------------------------------------------
-
   GetConnectedInputNode<T extends FlowGraphNode>(inputPinIdx: number): T | null {
     const pParentGraph = this.GetParentGraph() as FlowGraphModel;
     const node = pParentGraph.GetConnectedNodeForInputPin(this.m_inputPins[inputPinIdx].m_ID);
@@ -207,9 +189,8 @@ export class FlowGraphNode extends GraphNode {
     return inputPin?.m_type === outputPin?.m_type;
   }
 
-  // Visual methods
-  GetPinColor (pin: Pin): Color {
-    return new Color(FlowGraphNode.S_DefaultPinColor);
+  GetPinColor (pin: Pin): math.Color {
+    return new math.Color(88 / 255, 88 / 255, 88 / 255, 1);
   }
 
   override ResetCalculatedNodeSizes (): void {
@@ -238,12 +219,6 @@ export class FlowGraphNode extends GraphNode {
     }
     super.EndModification();
   }
-
-  DrawPinControls (ctx: DrawContext, userContext: GraphEditorContext, pin: Pin): boolean {
-    return false;
-  }
-
-  DrawContextMenuOptions (ctx: DrawContext, userContext: GraphEditorContext, mouseCanvasPos: ImVec2, hoveredPin: Pin | null): void {}
 
   CreateDynamicInputPin (): void;
   CreateDynamicInputPin (pinName: string, pinType: string): void;
@@ -351,9 +326,6 @@ export class FlowGraphNode extends GraphNode {
     }
   }
 }
-
-// FlowGraph
-//-------------------------------------------------------------------------
 
 export class Connection {
   m_ID: UUID = generateGUID();
@@ -556,10 +528,6 @@ export class FlowGraphModel extends GraphModel {
     return false;
   }
 
-  DrawContextMenuOptions (ctx: DrawContext, userContext: GraphEditorContext, mouseCanvasPos: ImVec2, filterTokens: string[], sourceNode: FlowGraphNode | null, sourcePin: Pin | null): boolean {
-    return false;
-  }
-
   HasContextMenuFilter (): boolean {
     return true;
   }
@@ -567,14 +535,12 @@ export class FlowGraphModel extends GraphModel {
   protected override PostDeserialize (): void {
     super.PostDeserialize();
 
-    // Refresh all dynamic pins
     for (const node of this.m_nodes) {
       if (node instanceof FlowGraphNode) {
         node.RefreshDynamicPins();
       }
     }
 
-    // Validate all connections
     this.m_connections = this.m_connections.filter(connection => {
       const fromNode = this.GetNode(connection.m_fromNodeID);
       const toNode = this.GetNode(connection.m_toNodeID);

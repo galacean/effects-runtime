@@ -1,6 +1,5 @@
 import type { Camera } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import { ImGui } from '../../../platform/imgui/index';
 const { Vector3, Matrix4, Quaternion } = math;
 
 type Vector3 = math.Vector3;
@@ -36,29 +35,6 @@ export class OrbitController {
     this.camera = camera;
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
-    if (ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
-      this.handleRotate();
-    }
-    if (ImGui.IsMouseDown(ImGui.MouseButton.Middle)) {
-      this.handlePan();
-    }
-    if (ImGui.GetIO().MouseWheel !== 0) {
-      this.handleZoom();
-    }
-
-    // 触发相机聚焦物体
-    // if (this.input.getKeyDown(KeyCode.F)) {
-    //   if (treeGui.activeItem) {
-    //     const offset = this.camera.position.clone().subtract(this.focusPosition).normalize();
-    //     const focusObjectScale = treeGui.activeItem.transform.scale;
-    //     const scaleFactor = 3 * Math.max(1, Math.abs(focusObjectScale.x), Math.abs(focusObjectScale.y), Math.abs(focusObjectScale.z));
-
-    //     this.focusPosition = treeGui.activeItem.transform.position.clone();
-    //     this.targetPosition = offset.scale(scaleFactor).add(this.focusPosition);
-    //     this.originPostion = this.camera.position.clone();
-    //   }
-    // }
-
     // 处理相机聚焦物体位移
     if (this.targetPosition) {
       const moveSpeed = 0.04;
@@ -74,15 +50,15 @@ export class OrbitController {
     }
   }
 
-  handlePan () {
+  handlePan (deltaX: number, deltaY: number) {
     const offset = this.camera.position.clone().subtract(this.focusPosition);
 
     const cameraHeight = this.camera.near * (Math.tan(this.camera.fov / 2 * Math.PI / 180)) * 2;
     const perPixelDistance = cameraHeight / this.canvasHeight;
     const moveSpeed = perPixelDistance * (offset.length() + this.camera.near) / this.camera.near;
 
-    const dx = - ImGui.GetIO().MouseDelta.x * moveSpeed;
-    const dy = + ImGui.GetIO().MouseDelta.y * moveSpeed;
+    const dx = - deltaX * moveSpeed;
+    const dy = + deltaY * moveSpeed;
 
     const cameraRight = Vector3.X.clone().applyMatrix(this.camera.getQuat().toMatrix4(new Matrix4()));
     const cameraUp = Vector3.Y.clone().applyMatrix(this.camera.getQuat().toMatrix4(new Matrix4()));
@@ -92,14 +68,14 @@ export class OrbitController {
     this.focusPosition.add(moveVector);
   }
 
-  handleRotate () {
+  handleRotate (deltaX: number, deltaY: number) {
     const rotation = this.camera.getQuat().toMatrix4(new Matrix4()).toArray();
 
     this.xAxis.set(rotation[0], rotation[1], rotation[2]);
 
     const rotateSpeed = 1;
-    const ndx = ImGui.GetIO().MouseDelta.x / 512;
-    const ndy = ImGui.GetIO().MouseDelta.y / 1024;
+    const ndx = deltaX / 512;
+    const ndy = deltaY / 1024;
     const dxAngle = ndx * Math.PI * rotateSpeed;
     const dyAngle = ndy * Math.PI * rotateSpeed;
     const newRotation = Quaternion.fromAxisAngle(Vector3.Y, -dxAngle);
@@ -118,9 +94,9 @@ export class OrbitController {
     this.camera.setQuat(new Quaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w));
   }
 
-  handleZoom () {
+  handleZoom (wheel: number) {
     const zoomSpeed = 0.05;
-    const dy = ImGui.GetIO().MouseWheel * zoomSpeed;
+    const dy = wheel * zoomSpeed;
     const offset = this.camera.position.clone().subtract(this.focusPosition);
 
     this.camera.position = this.focusPosition.clone().add(offset.scale(1 - dy));
