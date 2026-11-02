@@ -1,11 +1,9 @@
 import { math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { StyleBoxFlat, Theme } from '@galacean/effects-plugin-gui';
+import { EDITOR_FONT_SIZE, getEditorFont } from './editor-font';
 
-export const EDITOR_FONT = 'Alibaba PuHuiTi';
-export const EDITOR_FONT_SIZE = 40 / 3;
-export const EDITOR_COMPACT_FONT_SIZE = 12;
-export const EDITOR_SMALL_FONT_SIZE = 32 / 3;
-export const EDITOR_TINY_FONT_SIZE = 28 / 3;
+export * from './editor-font';
 export const editorMetrics = { menuHeight: 25, tabHeight: 25, windowTitleHeight: 28, splitter: 2, toolbarHeight: 34, fieldHeight: 22, propertyRowHeight: 27, categoryHeight: 27, nestedCategoryHeight: 27 };
 
 export function color (hex: string, alpha = 1): math.Color {
@@ -46,11 +44,11 @@ export function editorDetailBackground (depth: number, hovered = false): math.Co
 }
 
 /** Editor appearance is inherited by the persistent Control tree. */
-export function createEditorTheme (): Theme {
+export function createEditorTheme (engine: Engine): Theme {
   const theme = new Theme();
   const c = editorColors;
 
-  theme.setFont('Control', 'font', { family: EDITOR_FONT, weight: 'normal', style: 'normal' });
+  theme.setFont('Control', 'font', { family: getEditorFont(engine), weight: 'normal', style: 'normal' });
   theme.setFontSize('Control', 'fontSize', EDITOR_FONT_SIZE);
   theme.setColor('Label', 'fontColor', c.foreground);
   theme.setStyleBox('PanelContainer', 'panel', editorBox(c.panel));
@@ -78,7 +76,7 @@ export function createEditorTheme (): Theme {
     box.setContentMargins(14, state === 'pressed' || state === 'hoverPressed' ? 4 : 3, 14, state === 'pressed' || state === 'hoverPressed' ? 2 : 3);
     theme.setStyleBox('EditorPrimaryButton', state, box);
   }
-  theme.setFont('EditorPrimaryButton', 'font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' });
+  theme.setFont('EditorPrimaryButton', 'font', { family: getEditorFont(engine, EDITOR_FONT_SIZE, 'bold'), weight: 'bold', style: 'normal' });
   theme.setTypeVariation('EditorDialog', 'PopupPanel');
   theme.setStyleBox('EditorDialog', 'panel', editorBox(c.recessed, 1, 2, c.outline));
   theme.setColor('Checkbox', 'markColor', c.primary);
@@ -227,7 +225,7 @@ export function createEditorTheme (): Theme {
   theme.setStyleBox('EditorCategory', 'pressed', editorBox(c.header, 6));
   theme.setStyleBox('EditorCategory', 'focus', editorBox(c.clear));
   theme.setColor('EditorCategory', 'fontColor', c.foregroundHeader);
-  theme.setFont('EditorCategory', 'font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' });
+  theme.setFont('EditorCategory', 'font', { family: getEditorFont(engine, EDITOR_FONT_SIZE, 'bold'), weight: 'bold', style: 'normal' });
 
   return theme;
 }

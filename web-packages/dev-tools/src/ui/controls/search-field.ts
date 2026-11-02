@@ -2,7 +2,7 @@ import { math, InputEventKey } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { LineEdit } from '@galacean/effects-plugin-gui';
 import { EditorIconButton, paintIcon } from '../icons/control-icons';
-import { EDITOR_FONT_SIZE } from '../theme/control-theme';
+import { EDITOR_FONT_SIZE, setEditorFont } from '../theme/control-theme';
 import { append, place } from './layout';
 import { EditorTextField } from './text-field';
 
@@ -11,7 +11,7 @@ export class EditorSearchField extends EditorTextField {
 
   constructor (engine: Engine, placeholder = 'Search…') {
     super(engine); this.themeTypeVariation = 'EditorSearchField'; this.placeholderText = placeholder;
-    this.setThemeFontSizeOverride('fontSize', EDITOR_FONT_SIZE);
+    setEditorFont(this, EDITOR_FONT_SIZE);
     this.clear = append(this, new EditorIconButton(engine, 'searchClear')); this.clear.iconSize = 14;
     this.clear.on('pressed', () => {
       const key = new InputEventKey();

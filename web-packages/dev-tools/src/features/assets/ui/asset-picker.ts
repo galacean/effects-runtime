@@ -5,7 +5,7 @@ import { AssetView } from '../../../ui/asset-view/asset-view';
 import type { AssetViewItem } from '../../../ui/asset-view/asset-view';
 import { append, expand, label, margin } from '../../../ui/controls/layout';
 import { EditorSearchField } from '../../../ui/controls/search-field';
-import { editorColors, EDITOR_SMALL_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { editorColors, EDITOR_SMALL_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { ContentAssetSource } from '../../content-browser/content-asset-source';
 import { assetLibrary } from '../asset-library';
@@ -38,7 +38,7 @@ export class AssetPicker extends VBoxContainer {
       key: event => { if (this.navigate(event.keycode)) { event.accept(); } },
     })));
     this.view.selectionScope = this; this.view.configure('list', 32); this.view.emptyText = 'No matching assets'; this.view.setCustomMinimumSize(300, 248);
-    this.count = label(engine, '', editorColors.muted); this.count.setThemeFontSizeOverride('fontSize', EDITOR_SMALL_FONT_SIZE); this.count.setCustomMinimumSize(0, 20);
+    this.count = label(engine, '', editorColors.muted); setEditorFont(this.count, EDITOR_SMALL_FONT_SIZE); this.count.setCustomMinimumSize(0, 20);
     this.count.verticalAlignment = VerticalAlignment.Center; append(this, margin(engine, this.count, 4, 0));
     window.addEventListener('keydown', this.nativeKeyDown, true);
   }

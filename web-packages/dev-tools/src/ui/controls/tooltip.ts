@@ -1,7 +1,8 @@
 import { math } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { Control, MouseFilter } from '@galacean/effects-plugin-gui';
-import { editorBox, editorColors as C, EDITOR_FONT } from '../theme/control-theme';
+import { editorBox, editorColors as C, getEditorFont } from '../theme/control-theme';
+import { placeCursorPopup } from './cursor-popup';
 
 const tips = new WeakMap<Control, string | (() => string)>();
 
@@ -41,13 +42,13 @@ export class EditorTooltips extends Control {
 
     this.message = this.elapsed > .55 && !root.guiIsDragging() ? typeof text === 'function' ? text() : text ?? '' : '';
     if (!this.message) { return; }
-    const lines = this.message.split('\n'), width = Math.max(...lines.map(line => this.measureText(line, 12, EDITOR_FONT).width)) + 16, height = lines.length * 20 + 10;
+    const lines = this.message.split('\n'), width = Math.max(...lines.map(line => this.measureText(line, 12, getEditorFont(this.engine, 12)).width)) + 16, height = lines.length * 20 + 10;
 
-    this.setPosition(Math.max(0, Math.min(root.width - width, mouse.x + 12)), Math.max(0, Math.min(root.height - height, mouse.y + 20))); this.setSize(width, height);
+    placeCursorPopup(this, width, height, 12, 20);
   }
   override draw (): void {
     if (!this.message) { return; }
     this.drawStyleBox(editorBox(C.header, 0, 3, C.outline), 0, 0, this.width, this.height);
-    this.message.split('\n').forEach((line, index) => this.drawText(8, 5 + index * 20, line, 12, C.foreground, EDITOR_FONT));
+    this.message.split('\n').forEach((line, index) => this.drawText(8, 5 + index * 20, line, 12, C.foreground, getEditorFont(this.engine, 12)));
   }
 }

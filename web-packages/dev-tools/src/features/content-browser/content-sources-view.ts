@@ -10,7 +10,7 @@ import { VirtualList } from '../../ui/controls/virtual-list';
 import { append, expand, margin, place, screenPosition } from '../../ui/controls/layout';
 import { EditorIconButton, paintIcon, type EditorIcon } from '../../ui/icons/control-icons';
 import { ASSET_ICON_COLORS } from '../../ui/icons/asset-icons';
-import { editorBox, editorColors, EDITOR_FONT_SIZE } from '../../ui/theme/control-theme';
+import { editorBox, editorColors, EDITOR_FONT_SIZE, setEditorFont } from '../../ui/theme/control-theme';
 import { ASSET_ROOT } from '../assets/model/asset-types';
 import { CONTENT_ASSET_PAYLOAD } from '../assets/ui/asset-drag';
 import type { ContentBrowserPanel } from './content-browser-panel';
@@ -90,7 +90,7 @@ export class ContentSourcesView extends VBoxContainer {
       const searchButton = append(heading, new EditorIconButton(engine, 'search'));
       const add = id === 'collections' ? append(heading, new EditorIconButton(engine, 'addCollection')) : undefined;
 
-      heading.rowHeight = 24; heading.trailingWidth = add ? 46 : 24; heading.setThemeFontSizeOverride('fontSize', EDITOR_FONT_SIZE);
+      heading.rowHeight = 24; heading.trailingWidth = add ? 46 : 24; setEditorFont(heading, EDITOR_FONT_SIZE);
       for (const state of ['normal', 'hover', 'pressed', 'hoverPressed']) { heading.setThemeStyleBoxOverride(state, editorBox(state === 'normal' ? editorColors.panel : editorColors.header)); }
       searchContainer.visible = false;
       search.on('textChanged', query => filter(id, query));

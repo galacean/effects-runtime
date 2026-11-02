@@ -10,7 +10,7 @@ import { setTooltip } from '../../ui/controls/tooltip';
 import { CurveEditor } from '../../ui/curve-editor/curve-editor';
 import { CurveDragGesture, CurveSelection, moveCurveKeys } from '../../ui/curve-editor/curve-interaction';
 import { CurveScreenSpace, zoomCurveBounds } from '../../ui/curve-editor/curve-screen-space';
-import { editorBox, editorColors, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE } from '../../ui/theme/control-theme';
+import { editorBox, editorColors, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, getEditorFont } from '../../ui/theme/control-theme';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import type { SequenceKey } from './curve-data';
 import { controlPoint, updateAutoTangents } from './curve-data';
@@ -296,7 +296,7 @@ export class SequencerCanvas extends Container {
       if (x < this.plot.x || x > this.plot.x + this.plot.width) { continue; }
       this.line(x, this.rect.y + 23, x, this.plot.y, C.muted);
       const label = s.formatTime(time);
-      const labelEnd = x + 4 + this.measureText(label, EDITOR_SMALL_FONT_SIZE, EDITOR_FONT).width;
+      const labelEnd = x + 4 + this.measureText(label, EDITOR_SMALL_FONT_SIZE, getEditorFont(this.engine, EDITOR_SMALL_FONT_SIZE)).width;
 
       if (labelEnd <= this.plot.x + this.plot.width && (x + 4 > playheadRight || labelEnd < playheadLeft)) {
         this.text(x + 4, this.rect.y + 3, label, C.text, EDITOR_SMALL_FONT_SIZE);
@@ -1000,7 +1000,7 @@ export class SequencerCanvas extends Container {
 
     box.setBorderWidths(width, width, width, width); this.drawStyleBox(box, rect.x, rect.y, rect.width, rect.height);
   }
-  private text (x: number, y: number, value: string, color: math.Color, fontSize = EDITOR_FONT_SIZE): void { this.drawText(x, y, value, fontSize, color, EDITOR_FONT); }
+  private text (x: number, y: number, value: string, color: math.Color, fontSize = EDITOR_FONT_SIZE): void { this.drawText(x, y, value, fontSize, color, getEditorFont(this.engine, fontSize)); }
   private line (x1: number, y1: number, x2: number, y2: number, color: math.Color, width = 1): void { this.drawLine(x1, y1, x2, y2, color, width); }
   private diamond (x: number, y: number, color: math.Color, radius: number): void { CurveEditor.diamond(this, x, y, color, radius, C.line); }
   private drawNumericKey (x: number, y: number, key: SequenceKey, selected: boolean): void {
@@ -1083,9 +1083,10 @@ class SequenceRowControl extends Container {
     const x = indent + 20 + (hasIcon ? 20 : 0);
     const width = this.number.visible ? this.number.x - x - 4 : this.width - x - 96;
     const value = this.engine.renderingServer.graphics;
+    const font = getEditorFont(this.engine, fontSize, 'normal', fontStyle);
 
     value.pushClipRect(x, 0, Math.max(1, width), this.height);
-    this.drawText(x, (this.height - this.measureText(row.label, fontSize, EDITOR_FONT, 'normal', fontStyle).lineHeight) / 2, row.label, fontSize, tint, EDITOR_FONT, 'normal', fontStyle); value.popClipRect();
+    this.drawText(x, (this.height - this.measureText(row.label, fontSize, font, 'normal', fontStyle).lineHeight) / 2, row.label, fontSize, tint, font, 'normal', fontStyle); value.popClipRect();
     this.drawLine(0, this.height - 1, this.width, this.height - 1, C.line);
   }
   override onMouseDown (event: InputEventMouseButton): void { this.grabFocus(); this.canvas.pointerEvent(event, 'down'); }

@@ -5,7 +5,7 @@ import { append, expand, row } from '../../../ui/controls/layout';
 import { EditorMenuButton } from '../../../ui/controls/menu';
 import { EditorIconButton } from '../../../ui/icons/control-icons';
 import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
-import { editorColors as C, EDITOR_FONT } from '../../../ui/theme/control-theme';
+import { editorColors as C, getEditorFont } from '../../../ui/theme/control-theme';
 import type { MaterialPreviewRequest } from './material-preview';
 import type { MaterialPreviewSettings } from './material-preview-settings';
 import { defaultMaterialPreview, frameMaterialPreview, materialPreviewCamera, previewFieldOfView } from './material-preview-settings';
@@ -97,7 +97,7 @@ class MaterialCanvas extends Control {
     this.presentation.draw(this, 0, 0, this.width, this.height);
     const message = v.error || this.image?.error || (!this.image ? 'Loading preview...' : v.showStats ? this.image.statistics : '');
 
-    if (message) { this.drawText(12, 12, message.split('\n')[0], 14, C.foreground, EDITOR_FONT); }
+    if (message) { this.drawText(12, 12, message.split('\n')[0], 14, C.foreground, getEditorFont(this.engine, 14)); }
     graphics.popClipRect();
   }
   override onMouseDown (event: InputEventMouseButton): void { this.grabFocus(); event.accept(); }

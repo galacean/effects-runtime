@@ -12,7 +12,7 @@ import { EditorCheckbox } from '../../../ui/controls/checkbox';
 import { EditorIconButton, paintIcon } from '../../../ui/icons/control-icons';
 import { setTooltip } from '../../../ui/controls/tooltip';
 import { PropertySheet } from '../../../ui/property-editor/property-sheet';
-import { editorBox, editorColors, EDITOR_FONT } from '../../../ui/theme/control-theme';
+import { editorBox, editorColors, setEditorFont } from '../../../ui/theme/control-theme';
 import { assetLibrary } from '../../assets/asset-library';
 import { projectWorkspace as projects } from '../project-workspace';
 import { ProjectTileView } from './project-tile-view';
@@ -22,7 +22,7 @@ type BrowserMode = 'open' | 'recent' | 'new';
 class ProjectCategory extends Button {
   constructor (engine: Engine, text: string, private readonly active: () => boolean) {
     super(engine, text); this.textAlignment = HorizontalAlignment.Left;
-    this.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' }); this.setThemeFontSizeOverride('fontSize', 20);
+    setEditorFont(this, 20, 'bold');
     for (const [state, border] of Object.entries({ normal: editorColors.clear, hover: editorColors.hover, pressed: editorColors.primary, hoverPressed: editorColors.primaryHover })) {
       this.setThemeStyleBoxOverride(state, editorBox(editorColors.recessed, 0, 4, border));
     }
@@ -82,7 +82,7 @@ export class ProjectBrowserDialog {
       if (this.mode === 'new') {
         const heading = append(main, label(this.engine, 'Blank Project'));
 
-        heading.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' }); heading.setThemeFontSizeOverride('fontSize', 20);
+        setEditorFont(heading, 20, 'bold');
         append(main, label(this.engine, 'Start with an empty scene.'));
         append(main, label(this.engine, 'Project Name')); this.name = append(main, new EditorTextField(this.engine)); this.name.on('textSubmitted', () => this.create()); this.name.on('textChanged', () => this.validation = '');
         append(main, label(this.engine, 'Description')); this.description = append(main, new EditorTextArea(this.engine)); this.description.setCustomMinimumSize(0, 100);

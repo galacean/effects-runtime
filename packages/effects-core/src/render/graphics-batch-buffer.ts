@@ -31,11 +31,10 @@ export class GraphicsBatchBuffer {
     });
   }
 
-  append (): void {
+  append (vertices: number, sourceIndexCount: number): void {
     const vertexOffset = this.vertexCount;
-    const vertices = this.attributes[0].source.length / this.attributes[0].size;
     const vertexCount = vertexOffset + vertices;
-    const indexCount = this.indexCount + this.sourceIndices.length;
+    const indexCount = this.indexCount + sourceIndexCount;
 
     if (vertexCount > this.vertexCapacity) {
       this.vertexCapacity = growCapacity(this.vertexCapacity, vertexCount);
@@ -51,9 +50,14 @@ export class GraphicsBatchBuffer {
       indices.set(this.indices); this.indices = indices;
     }
     for (const attribute of this.attributes) {
-      attribute.data.set(attribute.source, vertexOffset * attribute.size);
+      const offset = vertexOffset * attribute.size;
+      const length = vertices * attribute.size;
+
+      for (let index = 0; index < length; index++) {
+        attribute.data[offset + index] = attribute.source[index];
+      }
     }
-    for (let index = 0; index < this.sourceIndices.length; index++) {
+    for (let index = 0; index < sourceIndexCount; index++) {
       this.indices[this.indexCount + index] = vertexOffset + this.sourceIndices[index];
     }
     this.vertexCount = vertexCount; this.indexCount = indexCount;

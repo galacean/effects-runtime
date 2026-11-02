@@ -2,7 +2,7 @@ import { math } from '@galacean/effects';
 import type { Engine, InputEventKey } from '@galacean/effects';
 import type { ContentInsets } from '@galacean/effects-plugin-gui';
 import { Button, ButtonActionMode, ButtonDrawMode, Control, HBoxContainer, VBoxContainer, HorizontalAlignment } from '@galacean/effects-plugin-gui';
-import { EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE, editorColors } from '../theme/control-theme';
+import { EDITOR_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE, editorColors, setEditorFont, getEditorFont } from '../theme/control-theme';
 import { append, disposeChildren, screenPosition } from './layout';
 import { EditorPopupPanel } from './popup-panel';
 import { paintIcon, type EditorIcon } from '../icons/control-icons';
@@ -27,7 +27,7 @@ export class EditorMenuActionButton extends Button {
     this.themeTypeVariation = appearance.selectionList ? 'EditorChoiceRow' : 'EditorMenuButton';
     this.textAlignment = HorizontalAlignment.Left;
     this.clipText = true;
-    this.setThemeFontSizeOverride('fontSize', appearance.rowFontSize);
+    setEditorFont(this, appearance.rowFontSize);
     this.disabled = entry.enabled === false;
     this.on('pressed', () => this.activateEntry());
   }
@@ -37,12 +37,12 @@ export class EditorMenuActionButton extends Button {
   }
   protected override getContentInsets (): ContentInsets {
     if (this.appearance.selectionList) { return { left: 8, top: 3, right: 8, bottom: 3 }; }
-    const shortcut = this.entry.shortcut ? this.measureText(this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, EDITOR_FONT).width + 41 : 0;
+    const shortcut = this.entry.shortcut ? this.measureText(this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, getEditorFont(this.engine, EDITOR_SMALL_FONT_SIZE)).width + 41 : 0;
 
     return { left: 14 + (this.appearance.iconColumn ? 24 : 0) + (this.appearance.checkColumn ? 24 : 0), top: 3, right: this.entry.shortcut ? 12 + shortcut : 26, bottom: 3 };
   }
   override getMinimumSize (): math.Vector2 {
-    const text = this.measureText(this.entry.label, this.appearance.rowFontSize, EDITOR_FONT), insets = this.getContentInsets();
+    const text = this.measureText(this.entry.label, this.appearance.rowFontSize, getEditorFont(this.engine, this.appearance.rowFontSize)), insets = this.getContentInsets();
 
     return new math.Vector2(Math.max(this.appearance.selectionList ? 100 : 180, text.width + insets.left + insets.right), Math.max(14, text.lineHeight) + 6);
   }
@@ -53,9 +53,9 @@ export class EditorMenuActionButton extends Button {
     if (this.entry.icon) { paintIcon(this, this.entry.icon, 15 + (this.appearance.checkColumn ? 24 : 0), (this.height - 14) / 2, 14, c); }
     if (this.entry.children) { paintIcon(this, 'caretRight', this.width - 20, (this.height - 14) / 2, 14, c); }
     if (this.entry.shortcut) {
-      const metrics = this.measureText(this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, EDITOR_FONT);
+      const metrics = this.measureText(this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, getEditorFont(this.engine, EDITOR_SMALL_FONT_SIZE));
 
-      this.drawText(this.width - 12 - metrics.width, (this.height - metrics.lineHeight) / 2, this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, c, EDITOR_FONT);
+      this.drawText(this.width - 12 - metrics.width, (this.height - metrics.lineHeight) / 2, this.entry.shortcut, EDITOR_SMALL_FONT_SIZE, c, getEditorFont(this.engine, EDITOR_SMALL_FONT_SIZE));
     }
   }
 }
@@ -68,9 +68,15 @@ class MenuRow extends EditorMenuActionButton {
   }
   override onMouseEnter (): void {
     super.onMouseEnter();
+    if (!this.disabled) { this.grabFocus(true); }
     this.menu.requestSubmenu(!this.disabled && this.entry.children ? this : undefined);
   }
   override onMouseLeave (): void { super.onMouseLeave(); this.menu.cancelPendingSubmenu(); }
+  override getDrawMode (): ButtonDrawMode {
+    const mode = super.getDrawMode();
+
+    return mode === ButtonDrawMode.Normal && this.menu.shouldHighlightSubmenu(this) ? ButtonDrawMode.Hover : mode;
+  }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'ArrowRight' && this.entry.children) { this.menu.openSubmenu(this, true); event.accept(); } else { super.onKeyDown(event); }
   }
@@ -83,7 +89,7 @@ class MenuSeparator extends Control {
 
 export class MenuHeading extends Control {
   constructor (engine: Engine, private readonly title: string) { super(engine); }
-  private get textLayout () { return this.measureText(this.title.toLocaleUpperCase(), EDITOR_TINY_FONT_SIZE, EDITOR_FONT, 'bold'); }
+  private get textLayout () { return this.measureText(this.title.toLocaleUpperCase(), EDITOR_TINY_FONT_SIZE, getEditorFont(this.engine, EDITOR_TINY_FONT_SIZE, 'bold'), 'bold'); }
   override getMinimumSize (): math.Vector2 {
     const layout = this.textLayout, count = layout.lines[0].characters.length;
 
@@ -92,8 +98,9 @@ export class MenuHeading extends Control {
   override draw (): void {
     const layout = this.textLayout, line = layout.lines[0], spacing = EDITOR_TINY_FONT_SIZE * .25;
     const tint = new math.Color(1, 1, 1, .25), y = (this.height - layout.lineHeight) / 2;
+    const font = getEditorFont(this.engine, EDITOR_TINY_FONT_SIZE, 'bold');
 
-    line.characters.forEach((character, index) => this.drawText(12 + line.positions[index] + index * spacing, y, character, EDITOR_TINY_FONT_SIZE, tint, EDITOR_FONT, 'bold'));
+    line.characters.forEach((character, index) => this.drawText(12 + line.positions[index] + index * spacing, y, character, EDITOR_TINY_FONT_SIZE, tint, font, 'bold'));
     const start = 12 + layout.width + Math.max(0, line.characters.length - 1) * spacing + 14;
 
     if (this.width > start + 12) { this.fillRect(start, Math.floor(this.height / 2), this.width - start - 12, 1, tint); }
@@ -120,6 +127,8 @@ export class EditorMenu extends EditorPopupPanel {
     this.content.setThemeConstantOverride('separation', 0);
     this.onPopup('popupClosed', () => this.closeSubmenu());
   }
+  override get parentPopup (): EditorMenu | undefined { return this.parentMenu; }
+  override dismissFromOutside (): void { this.closeBranch(); }
   setActions (actions: MenuAction[]): void {
     this.closeSubmenu(); disposeChildren(this.content); this.rows = [];
     this.themeTypeVariation = this.selectionList ? 'EditorChoiceMenu' : 'EditorMenu';
@@ -183,8 +192,15 @@ export class EditorMenu extends EditorPopupPanel {
     }, delay);
   }
   closeSubmenu (): void {
-    this.cancelPendingSubmenu(); this.submenuSource?.setPressedNoSignal(false);
+    const focused = this.submenu && this.rows.find(row => row.hasFocus());
+    const hideFocus = !focused?.hasFocus(true);
+
+    this.cancelPendingSubmenu();
     this.submenu?.hidePopup(); this.submenu?.dispose(); this.submenu = undefined; this.submenuSource = undefined;
+    if (focused && this.visible) { focused.grabFocus(hideFocus); }
+  }
+  shouldHighlightSubmenu (source: MenuRow): boolean {
+    return this.submenuSource === source && !!this.submenu?.visible && !this.hasPoint(this.getLocalMousePosition());
   }
   openSubmenu (source: MenuRow, keyboard = false): void {
     this.cancelPendingSubmenu();
@@ -194,7 +210,7 @@ export class EditorMenu extends EditorPopupPanel {
 
       return;
     }
-    this.closeSubmenu(); this.submenuSource = source; source.setPressedNoSignal(true);
+    this.closeSubmenu(); this.submenuSource = source;
     const entries = source.entry.children;
 
     if (!entries) { return; }

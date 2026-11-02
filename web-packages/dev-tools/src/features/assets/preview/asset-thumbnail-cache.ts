@@ -2,6 +2,7 @@ import { assetLibrary } from '../asset-library';
 import { TextureSourceType } from '@galacean/effects';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { texturePreviewCache, type CachedImagePreview } from './texture-preview-cache';
+import { initializePreviewTexture } from './texture-preview';
 
 /** Supplies project-scoped, versioned image requests to the shared preview cache. */
 export class AssetThumbnailCache {
@@ -11,7 +12,7 @@ export class AssetThumbnailCache {
     if (!entry || entry.deletedAt || entry.kind !== 'texture') { return; }
     const texture = assetLibrary.texture(EditorRuntimeSession.player.engine, id);
 
-    if (texture?.isRegistered && !texture.isDestroyed) {
+    if (texture?.isRegistered && initializePreviewTexture(texture)) {
       return {
         texture: texturePreviewCache.reference(() => assetLibrary.texture(EditorRuntimeSession.player.engine, id)),
         width: texture.width, height: texture.height, flipY: texture.source.sourceType === TextureSourceType.framebuffer || !!texture.source.flipY,

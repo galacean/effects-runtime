@@ -1,5 +1,5 @@
-import type { Engine, GPUFramebuffer, spec, Geometry } from '@galacean/effects';
-import { Material, RenderPassAttachmentStorageType, Renderer, SerializationHelper, Shader, ShaderCompileResultStatus,
+import type { Engine, GPUFramebuffer, spec, Geometry, Renderer } from '@galacean/effects';
+import { Material, RenderPassAttachmentStorageType, RenderingData, SerializationHelper, Shader, ShaderCompileResultStatus,
   Texture, TextureLoadAction, TextureSourceType, TextureStoreAction, glContext, math } from '@galacean/effects';
 import { GLShaderLibrary } from '@galacean/effects-webgl';
 import { createGeometry, GeometryType } from '@galacean/effects-plugin-editor-gizmo';
@@ -79,6 +79,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   readonly flipY = true;
   error?: string;
   private readonly renderer: Renderer;
+  private readonly renderingData = new RenderingData();
   private geometry?: Geometry;
   private primitive?: PreviewPrimitive;
   private readonly target: GPUFramebuffer;
@@ -102,7 +103,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   constructor (private readonly engine: Engine, readonly width: number, readonly height: number, private readonly source: () => MaterialPreviewInput) {
     const device = engine.displayServer.renderingDevice;
 
-    this.renderer = Renderer.create(engine);
+    this.renderer = engine.renderer;
     this.color = Texture.create(engine, {
       name: 'MaterialPreviewColor', sourceType: TextureSourceType.framebuffer, data: { width, height },
       minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE,
@@ -113,16 +114,19 @@ export class MaterialPreviewRenderer implements RenderedPreview {
       depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque },
       storeAction: { colorAction: TextureStoreAction.store },
     });
-    for (const name of ['effects_MatrixVP', 'effects_MatrixV', 'effects_MatrixInvV', '_MatrixP']) {
-      this.renderer.setGlobalMatrix(name, math.Matrix4.IDENTITY);
-    }
-    this.renderer.setGlobalVector3('effects_WorldSpaceCameraPos', new math.Vector3(0, 0, 1));
   }
 
   render (time: number): void {
     const device = this.engine.displayServer.renderingDevice as EditorRenderingDevice;
 
     if (this.disposed || device.contextWasLost || device.gl.isContextLost()) { return; }
+    const previousData = this.renderer.renderingData;
+
+    this.renderer.renderingData = this.renderingData;
+    try { this.renderPreview(time, device); } finally { this.renderer.renderingData = previousData; }
+  }
+
+  private renderPreview (time: number, device: EditorRenderingDevice): void {
     device.prepareFrame();
     const input = this.source(), view = input.view ?? thumbnailMaterialView;
     const material = this.sync(input, view);
@@ -232,6 +236,6 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   dispose (): void {
     if (this.disposed) { return; }
     this.disposed = true; this.ready = false;
-    this.disposeMaterial(); this.geometry?.dispose(); this.target.dispose(); this.renderer.dispose();
+    this.disposeMaterial(); this.geometry?.dispose(); this.target.dispose();
   }
 }

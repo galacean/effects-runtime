@@ -4,7 +4,7 @@ import { Engine, VFXItem, InputEventKey, getPixelRatio, math } from '@galacean/e
 import type { Control } from '@galacean/effects-plugin-gui';
 import { GUIServer, UICanvas, FocusMode, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
-import { createEditorTheme, EDITOR_FONT } from '../ui/theme/control-theme';
+import { createEditorTheme, EDITOR_FONT, refreshEditorFonts } from '../ui/theme/control-theme';
 
 export class EditorSurface {
   engine: Engine;
@@ -21,13 +21,15 @@ export class EditorSurface {
     canvas.addEventListener('wheel', this.preventWheelDefault, { passive: false });
     canvas.addEventListener('pointerdown', this.pointerDown, true);
     this.engine = Engine.create(canvas, { name: 'EditorUI', env: 'editor', interactive: true, manualRender: true, ownsCanvas: false, doNotHandleContextLost: false });
+    this.engine.renderingServer.graphics.textCache.defaultOptions.padding = 16;
+    this.engine.renderingServer.graphics.roundTextPixels = true;
     const item = new VFXItem(this.engine);
     const ui = item.addComponent(UICanvas);
 
     ui.onEnable(); this.root = ui.rootControl;
     const windowRoot = this.engine.getServer(GUIServer).windowRoot;
 
-    windowRoot.theme = createEditorTheme();
+    windowRoot.theme = createEditorTheme(this.engine);
     const tooltips = new EditorTooltips(this.engine, this.root);
 
     tooltips.parent = windowRoot;
@@ -61,6 +63,7 @@ export class EditorSurface {
   private readonly resize = (): void => {
     this.engine.displayServer.pixelRatio = getPixelRatio();
     this.engine.displayServer.resize();
+    refreshEditorFonts(this.engine);
     const bounds = this.canvas.getBoundingClientRect();
 
     this.engine.getServer(GUIServer).windowRoot.resize(bounds.width, bounds.height);

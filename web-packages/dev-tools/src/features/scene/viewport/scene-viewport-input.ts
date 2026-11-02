@@ -8,7 +8,11 @@ export class SceneViewportInput {
   private position = new math.Vector2(-1, -1);
   private readonly keys = new Map<string, InputEventKey>();
 
-  constructor (private readonly engine: Engine, private readonly onShortcut: (event: InputEventKey) => void) {
+  constructor (
+    private readonly engine: Engine,
+    private readonly onShortcut: (event: InputEventKey) => void,
+    private readonly onCursorChanged: (cursor: string) => void,
+  ) {
     window.addEventListener('keydown', this.textEscape);
     window.addEventListener('blur', this.reset);
   }
@@ -19,7 +23,6 @@ export class SceneViewportInput {
     forwarded.globalPosition.copyFrom(forwarded.position);
     this.position.copyFrom(event.position); this.buttons = event.buttonMask;
     this.emit(forwarded); event.accept();
-    editorSurface.canvas.style.cursor = this.engine.canvas.style.cursor;
   }
   key (event: InputEventKey): void {
     const forwarded = Object.assign(new InputEventKey(), event);
@@ -34,7 +37,7 @@ export class SceneViewportInput {
     const event = new InputEventMouseMotion();
 
     event.position.set(-1, -1); event.globalPosition.set(-1, -1); this.emit(event);
-    editorSurface.canvas.style.cursor = '';
+    this.onCursorChanged('default');
   }
   finish (): void { this.resetInput(false); }
   readonly reset = (): void => { this.resetInput(true); };
@@ -61,5 +64,8 @@ export class SceneViewportInput {
   dispose (): void {
     this.reset(); window.removeEventListener('keydown', this.textEscape); window.removeEventListener('blur', this.reset);
   }
-  private emit (event: InputEvent): void { this.engine.inputServer.emit('input', event); }
+  private emit (event: InputEvent): void {
+    this.engine.inputServer.emit('input', event);
+    this.onCursorChanged(this.engine.canvas.style.cursor || 'default');
+  }
 }

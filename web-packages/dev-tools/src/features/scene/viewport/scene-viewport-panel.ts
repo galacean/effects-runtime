@@ -60,7 +60,9 @@ export class SceneViewportPanel extends EditorWindow {
       this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined;
       if (composition) {
         this.gizmo = new SceneGizmo(composition); this.gizmo.set2DMode(this.is2DMode);
-        this.input = new SceneViewportInput(composition.engine, event => this.handleShortcut(event));
+        this.input = new SceneViewportInput(composition.engine, event => this.handleShortcut(event), cursor => {
+          if (this.viewport) { this.viewport.defaultCursorShape = cursor; }
+        });
         this.cameraController = new OrbitController(); this.pendingFit = true;
       }
     }

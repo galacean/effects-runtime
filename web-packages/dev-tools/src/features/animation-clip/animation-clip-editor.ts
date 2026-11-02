@@ -13,7 +13,7 @@ import { VirtualList } from '../../ui/controls/virtual-list';
 import { NumberEdit } from '../../ui/controls/number-edit';
 import { EditorToolbar } from '../../ui/controls/toolbar';
 import { EditorIconButton, paintIcon } from '../../ui/icons/control-icons';
-import { editorColors as C, editorBox, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../ui/theme/control-theme';
+import { editorColors as C, editorBox, EDITOR_FONT, EDITOR_FONT_SIZE, getEditorFont } from '../../ui/theme/control-theme';
 import { COLORS, LAYOUT } from './animation-clip-style';
 import type { ClipCurveChannel } from './clip-curve-model';
 import { ClipCurveModel } from './clip-curve-model';
@@ -432,7 +432,7 @@ class ClipRuler extends ClipTimelineInput {
     for (let time = Math.ceil(this.state.start / step) * step; time <= this.state.end; time += step) {
       const x = this.state.timeX(time, this.width);
 
-      this.drawLine(x, 20, x, 32, C.muted); this.drawText(x + 3, 2, time >= 1 ? time.toFixed(2) + 's' : Math.round(time * 1000) + 'ms', 12, C.muted, EDITOR_FONT);
+      this.drawLine(x, 20, x, 32, C.muted); this.drawText(x + 3, 2, time >= 1 ? time.toFixed(2) + 's' : Math.round(time * 1000) + 'ms', 12, C.muted, getEditorFont(this.engine, 12));
     }
     const x = this.state.timeX(this.state.current, this.width);
 
@@ -493,7 +493,7 @@ class ClipTimelineRow extends ClipTimelineInput {
     if (this.data.channel) {
       const sample = this.data.channel.sample(s.current), value = sample.toFixed(Math.abs(sample) < 100 ? 4 : 2);
 
-      this.drawText(s.labelWidth - 68, (this.height - this.measureText(value, 12, EDITOR_FONT).lineHeight) / 2, value, 12, this.data.color, EDITOR_FONT);
+      this.drawText(s.labelWidth - 68, (this.height - this.measureText(value, 12, getEditorFont(this.engine, 12)).lineHeight) / 2, value, 12, this.data.color, getEditorFont(this.engine, 12));
     }
   }
 }

@@ -5,8 +5,9 @@ import type { AssetViewItem } from '../asset-view/asset-view';
 import { drawAssetIcon } from '../icons/asset-icons';
 import { paintIcon } from '../icons/control-icons';
 import type { EditorIcon } from '../icons/control-icons';
-import { editorBox, editorColors as C, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_SMALL_FONT_SIZE } from '../theme/control-theme';
+import { editorBox, editorColors as C, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, getEditorFont } from '../theme/control-theme';
 import { TexturePresentation } from '../../features/assets/preview/texture-preview';
+import { placeCursorPopup } from './cursor-popup';
 
 interface DragPresentation { label: string, icon?: EditorIcon, count?: number, asset?: AssetViewItem }
 const presentations = new WeakMap<object, DragPresentation>();
@@ -33,10 +34,10 @@ export class EditorDragFeedback extends Control {
 
     this.image.update(preview?.preview, undefined, 128); this.hasImage = !!preview; this.aspect = preview ? preview.width / Math.max(1, preview.height) : 1;
     if (root && this.descriptor) {
-      const mouse = root.getMousePosition(), width = Math.min(320, this.measureText(this.descriptor.label, EDITOR_FONT_SIZE, EDITOR_FONT).width + (this.descriptor.asset ? 88 : 42));
+      const width = Math.min(320, this.measureText(this.descriptor.label, EDITOR_FONT_SIZE, EDITOR_FONT).width + (this.descriptor.asset ? 88 : 42));
       const height = this.descriptor.asset ? 76 : (this.descriptor.count ?? 1) > 1 ? 48 : 32;
 
-      this.setRect({ position: new math.Vector2(Math.max(0, Math.min(root.width - width, mouse.x + 12)), Math.max(0, Math.min(root.height - height, mouse.y + 16))), size: new math.Vector2(width, height) });
+      placeCursorPopup(this, width, height, 12, 16);
     }
     super.update(delta);
   }
@@ -60,7 +61,7 @@ export class EditorDragFeedback extends Control {
 
     this.engine.renderingServer.graphics.pushClipRect(x, 0, this.width - x - 8, this.height);
     this.drawText(x, asset ? 14 : (descriptor.count ?? 1) > 1 ? 6 : (this.height - this.measureText(text, EDITOR_FONT_SIZE, EDITOR_FONT).lineHeight) / 2, text, EDITOR_FONT_SIZE, C.foreground, EDITOR_FONT);
-    if (asset || (descriptor.count ?? 1) > 1) { this.drawText(x, asset ? 40 : 27, (descriptor.count ?? 1) + ((descriptor.count ?? 1) > 1 ? ' items' : ' item'), EDITOR_SMALL_FONT_SIZE, C.muted, EDITOR_FONT); }
+    if (asset || (descriptor.count ?? 1) > 1) { this.drawText(x, asset ? 40 : 27, (descriptor.count ?? 1) + ((descriptor.count ?? 1) > 1 ? ' items' : ' item'), EDITOR_SMALL_FONT_SIZE, C.muted, getEditorFont(this.engine, EDITOR_SMALL_FONT_SIZE)); }
     this.engine.renderingServer.graphics.popClipRect();
   }
   override onDestroy (): void { this.image.dispose(); super.onDestroy(); }

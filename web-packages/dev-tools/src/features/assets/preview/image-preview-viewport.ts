@@ -4,7 +4,7 @@ import { Button, ButtonDrawMode, Control, FocusMode, VBoxContainer } from '@gala
 import { append, expand, row } from '../../../ui/controls/layout';
 import { EditorMenuButton } from '../../../ui/controls/menu';
 import { checkerboard } from '../../../ui/asset-view/asset-view';
-import { editorBox, editorColors as C, EDITOR_FONT } from '../../../ui/theme/control-theme';
+import { editorBox, editorColors as C, setEditorFont, getEditorFont } from '../../../ui/theme/control-theme';
 import { setTooltip } from '../../../ui/controls/tooltip';
 import { TexturePresentation, type TextureDisplay, type TexturePreview } from './texture-preview';
 
@@ -22,7 +22,7 @@ class TextureChannelButton extends Button {
     for (const box of [off, hover, checked, checkedHover]) { box.setContentMargins(8, 4, 8, 4); }
     this.setThemeStyleBoxOverride('normal', off); this.setThemeStyleBoxOverride('hover', hover);
     this.setThemeStyleBoxOverride('pressed', checked); this.setThemeStyleBoxOverride('hoverPressed', checkedHover);
-    this.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' }); this.setThemeFontSizeOverride('fontSize', 16);
+    setEditorFont(this, 16, 'bold');
     this.setThemeStyleBoxOverride('focus', editorBox(C.clear, 0, 3, C.primary));
     this.on('toggled', pressed => { this.display.channels[channel] = pressed ? 1 : 0; this.refreshColors(); });
     setTooltip(this, ['Red Channel', 'Green Channel', 'Blue Channel', 'Alpha Channel'][channel]);
@@ -112,7 +112,7 @@ class ImageCanvas extends Control {
       this.presentation.draw(this, x, y, width, height);
       if (v.border) { this.drawRect(x, y, width, height, C.foreground); }
       v.overlay?.(this, { x, y, width, height });
-    } else { this.drawText(16, 16, 'Loading image...', 14, C.muted, EDITOR_FONT); }
+    } else { this.drawText(16, 16, 'Loading image...', 14, C.muted, getEditorFont(this.engine, 14)); }
     graphics.popClipRect();
   }
   override onMouseDown (event: InputEventMouseButton): void {

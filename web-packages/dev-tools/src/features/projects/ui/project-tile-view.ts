@@ -5,7 +5,7 @@ import { append, place } from '../../../ui/controls/layout';
 import { setTooltip } from '../../../ui/controls/tooltip';
 import { VirtualList } from '../../../ui/controls/virtual-list';
 import { paintIcon } from '../../../ui/icons/control-icons';
-import { color, editorBox, editorColors as C, EDITOR_COMPACT_FONT_SIZE, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { color, editorBox, editorColors as C, EDITOR_COMPACT_FONT_SIZE, EDITOR_FONT, EDITOR_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
 import type { ProjectRecord } from '../project-types';
 
 interface ProjectTileActions {
@@ -23,7 +23,7 @@ class ProjectTile extends Container {
     super(engine); this.focusMode = FocusMode.All; this.clipContents = true;
     this.name = append(this, new Label(engine)); this.name.autowrapMode = AutowrapMode.WordSmart; this.name.textOverflow = TextOverflow.Ellipsis;
     this.date = append(this, new Label(engine)); this.date.textOverflow = TextOverflow.Ellipsis;
-    for (const caption of [this.name, this.date]) { caption.setThemeFontSizeOverride('fontSize', EDITOR_COMPACT_FONT_SIZE); }
+    for (const caption of [this.name, this.date]) { setEditorFont(caption, EDITOR_COMPACT_FONT_SIZE); }
   }
   bind (project: ProjectRecord): void {
     this.project = project; this.name.text = project.name; this.date.text = new Date(project.lastOpenedAt).toLocaleDateString();

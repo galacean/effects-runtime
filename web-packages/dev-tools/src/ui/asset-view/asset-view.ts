@@ -8,7 +8,7 @@ import { VirtualList } from '../controls/virtual-list';
 import { withDragPresentation } from '../controls/drag-feedback';
 import { EditorInlineRename } from '../controls/inline-rename';
 import { drawAssetIcon, type AssetIcon } from '../icons/asset-icons';
-import { editorBox, editorColors as C, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE } from '../theme/control-theme';
+import { editorBox, editorColors as C, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE, setEditorFont, getEditorFont } from '../theme/control-theme';
 import { TexturePresentation, type TexturePreview } from '../../features/assets/preview/texture-preview';
 import type { SelectionModifiers } from '../list-view/list-selection';
 
@@ -103,10 +103,10 @@ export class AssetCell extends Container {
   }
   bind (item: AssetViewItem): void {
     this.assetItem = item; setTooltip(this, item.tooltip ?? item.name + '\n' + item.type); this.caption.setName(item.name, this.view.mode === 'tiles' ? this.view.nameLines : 1); this.typeLabel.text = item.type;
-    if (this.caption.getThemeFontSize('fontSize') !== this.view.nameFontSize) { this.caption.setThemeFontSizeOverride('fontSize', this.view.nameFontSize); }
+    if (this.caption.getThemeFontSize('fontSize') !== this.view.nameFontSize) { setEditorFont(this.caption, this.view.nameFontSize); }
     const typeSize = this.view.mode === 'tiles' ? EDITOR_TINY_FONT_SIZE : EDITOR_FONT_SIZE;
 
-    if (this.typeLabel.getThemeFontSize('fontSize') !== typeSize) { this.typeLabel.setThemeFontSizeOverride('fontSize', typeSize); }
+    if (this.typeLabel.getThemeFontSize('fontSize') !== typeSize) { setEditorFont(this.typeLabel, typeSize); }
     this.caption.horizontalAlignment = this.view.mode === 'tiles' && item.icon === 'folder' ? HorizontalAlignment.Center : HorizontalAlignment.Left;
     this.caption.verticalAlignment = this.view.mode === 'tiles' || this.view.mode === 'list' && item.icon !== 'folder' ? VerticalAlignment.Top : VerticalAlignment.Center;
     while (this.detailLabels.length < (item.columns?.length ?? 0)) { this.detailLabels.push(append(this, new Label(this.engine))); }
@@ -117,7 +117,7 @@ export class AssetCell extends Container {
     if (this.renameEdit) { return; }
     const edit = this.renameEdit = append(this, new EditorInlineRename(this.engine));
 
-    edit.setThemeFontSizeOverride('fontSize', this.view.nameFontSize);
+    setEditorFont(edit, this.view.nameFontSize);
     edit.text = this.assetItem.name; edit.finish = cancel => this.finishRename(cancel);
     edit.on('textSubmitted', () => edit.finish?.(false));
     this.queueSort(); edit.grabFocus(); edit.selectAll();
@@ -280,7 +280,7 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
   get textLineHeight (): number {
     const font = this.getThemeFont('font');
 
-    return this.measureText('M', this.nameFontSize, font.family, font.weight, font.style).lineHeight;
+    return this.measureText('M', this.nameFontSize, getEditorFont(this.engine, this.nameFontSize, font.weight, font.style), font.weight, font.style).lineHeight;
   }
   setItems (items: AssetViewItem[]): void { this.items = items; this.reflow(true); }
   configure (mode: typeof this.mode, size: number): void { this.mode = mode; this.tileSize = size; this.reflow(); }

@@ -19,7 +19,7 @@ import type { GraphModel, GraphNode } from '../../ui/graph-editor/graph-model';
 import * as NodeGraph from '../../ui/graph-editor/index';
 import { CommentGraphNode } from '../../ui/graph-editor/comment-graph-node';
 import { PropertySheet, propertyBinding } from '../../ui/property-editor/property-sheet';
-import { editorColors as C } from '../../ui/theme/control-theme';
+import { editorColors as C, setEditorFont } from '../../ui/theme/control-theme';
 import { AnimationGraphCompilationContext } from './compiler/graph-compilation-context';
 import { AnimationGraphDecompiler } from './compiler/graph-decompiler';
 import { AnimationGraphContext } from './model/animation-graph-context';
@@ -207,7 +207,7 @@ export class AnimationGraphEditor extends EditorWindow {
   private nodeContent (engine: Engine, node: GraphNode): GraphNodeContent {
     const body = column(engine, [], 4); const info = append(body, label(engine, '')); const playback = append(body, new NodePlayback(engine)); const debug = append(body, label(engine, ''));
 
-    playback.visible = false; debug.setThemeColorOverride('fontColor', C.muted); debug.setThemeFontSizeOverride('fontSize', 12);
+    playback.visible = false; debug.setThemeColorOverride('fontColor', C.muted); setEditorFont(debug, 12);
     const refresh = (): void => {
       const context = this.userContext, index = context.GetRuntimeGraphNodeIndex(node.GetID()), valid = context.HasDebugData() && index !== InvalidIndex && context.IsNodeActive(index);
       const valueType = node instanceof AnimationGraphNode ? node.GetOutputValueType() : GraphValueType.Pose;

@@ -32,6 +32,19 @@ export type GlyphAtlasOptions = {
   mipmap?: boolean,
 };
 
+export type TextCacheOptions = {
+  padding?: number,
+};
+
+export type BitmapFontInstallOptions = {
+  name: string,
+  style: BitmapFontStyle,
+  chars?: string | (string | string[])[],
+  resolution?: number,
+  padding?: number,
+  skipKerning?: boolean,
+};
+
 export type FontMetrics = { ascent: number, descent: number, fontSize: number };
 
 const fontMetricsCache: Record<string, FontMetrics> = Object.create(null);
@@ -418,7 +431,7 @@ export class GlyphAtlas extends EventEmitter<{ destroy: [font: GlyphAtlas] }> {
   }
 }
 
-/** Shared dynamic fonts, independent of the requested display size. */
+/** Shared automatic and named bitmap fonts. */
 export class TextCache {
   static graphemeSegmenter: (text: string) => string[] = (() => {
     // eslint-disable-next-line compat/compat
@@ -441,7 +454,10 @@ export class TextCache {
     return (text: string) => Array.from(text);
   })();
 
+  /** Options applied when a font atlas is first created. */
+  defaultOptions: TextCacheOptions = { padding: 4 };
   private readonly atlases = new Map<string, GlyphAtlas>();
+  private readonly installedFonts = new Map<string, GlyphAtlas>();
   private _resolution: number;
 
   constructor (private engine: Engine) {
@@ -450,6 +466,31 @@ export class TextCache {
 
   get resolution (): number { return this._resolution; }
 
+  /** Registers a named font rendered at its specified size and resolution. */
+  install (options: BitmapFontInstallOptions): GlyphAtlas {
+    const { name } = options;
+
+    if (!name) { throw new Error('A bitmap font name is required.'); }
+    const characters = resolveCharacters(options.chars ?? [['a', 'z'], ['A', 'Z'], ['0', '9'], ' ']);
+    const font = new GlyphAtlas(this.engine, {
+      style: options.style,
+      resolution: options.resolution ?? 1,
+      padding: options.padding ?? this.defaultOptions.padding,
+      skipKerning: options.skipKerning ?? false,
+      overrideSize: false,
+    });
+
+    font.ensureCharacters(characters);
+    this.uninstall(name);
+    this.installedFonts.set(name, font);
+    font.once('destroy', () => this.installedFonts.delete(name));
+
+    return font;
+  }
+
+  /** Releases a named font and its texture pages. */
+  uninstall (name: string): void { this.installedFonts.get(name)?.dispose(); }
+
   getAtlas (fontSize: number, fontFamily: string, fontWeight: FontWeight, fontStyle: FontStyle): GlyphAtlas {
     const resolution = this.engine.displayServer.pixelRatio;
 
@@ -457,13 +498,16 @@ export class TextCache {
       this.clear();
       this._resolution = resolution;
     }
+    const installed = this.installedFonts.get(fontFamily);
+
+    if (installed) { return installed; }
     const key = fontFamily + '-' + fontStyle + '-normal-' + fontWeight;
     let font = this.atlases.get(key);
 
     if (!font) {
       font = new GlyphAtlas(this.engine, {
         style: { fontFamily, fontSize, fontWeight, fontStyle },
-        resolution, overrideSize: true, skipKerning: false, padding: 4,
+        resolution, overrideSize: true, skipKerning: false, ...this.defaultOptions,
       });
       font.once('destroy', () => this.atlases.delete(key));
       this.atlases.set(key, font);
@@ -476,9 +520,16 @@ export class TextCache {
     for (const atlas of this.atlases.values()) {
       atlas.uploadIfDirty();
     }
+    for (const font of this.installedFonts.values()) {
+      font.uploadIfDirty();
+    }
   }
 
-  dispose (): void { this.clear(); }
+  dispose (): void {
+    this.clear();
+    for (const font of this.installedFonts.values()) { font.dispose(); }
+    this.installedFonts.clear();
+  }
 
   private clear (): void {
     for (const atlas of this.atlases.values()) {
@@ -486,6 +537,23 @@ export class TextCache {
     }
     this.atlases.clear();
   }
+}
+
+function resolveCharacters (chars: string | (string | string[])[]): string {
+  if (typeof chars === 'string') { return chars; }
+  let result = '';
+
+  for (const item of chars) {
+    if (typeof item === 'string') { result += item; continue; }
+    if (item.length !== 2 || !item[0].length || !item[1].length) { throw new Error('Invalid bitmap font character range.'); }
+    const start = item[0].charCodeAt(0), end = item[1].charCodeAt(0);
+
+    if (end < start) { throw new Error('Invalid bitmap font character range.'); }
+    for (let code = start; code <= end; code++) { result += String.fromCharCode(code); }
+  }
+  if (!result) { throw new Error('Empty bitmap font character set.'); }
+
+  return result;
 }
 
 function fontString (style: BitmapFontStyle, fontSize: number): string {

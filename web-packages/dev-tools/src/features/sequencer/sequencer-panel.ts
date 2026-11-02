@@ -21,7 +21,7 @@ import { EditorIconButton, EditorIconControl } from '../../ui/icons/control-icon
 import type { EditorIcon } from '../../ui/icons/control-icons';
 import { commandMenuItem } from '../../ui/menus/command-menu-item';
 import { PropertySheet } from '../../ui/property-editor/property-sheet';
-import { EDITOR_FONT } from '../../ui/theme/control-theme';
+import { EDITOR_FONT_SIZE, setEditorFont } from '../../ui/theme/control-theme';
 import type { TransformEdit } from '../scene/document/scene-document';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import { updateAutoTangents } from './curve-data';
@@ -127,7 +127,7 @@ export class SequencerPanel extends EditorWindow {
     append(toolbar, expand(margin(engine, sequence, 8, 0), true, false));
     append(sequence, new EditorIconControl(engine, 'folder'));
     this.caption = expand(sequence.label(''), true, false); this.caption.textOverflow = TextOverflow.Ellipsis;
-    this.caption.setThemeFontOverride('font', { family: EDITOR_FONT, weight: 'bold', style: 'normal' });
+    setEditorFont(this.caption, EDITOR_FONT_SIZE, 'bold');
     this.keyTools = append(body, margin(engine, this.createKeyTools(engine), 6, 6)); this.keyTools.visible = false;
     this.canvas = append(body, expand(new SequencerCanvas(engine, this.state, track => this.selectBoundItems(track))));
     this.canvas.contextRequested = (context, position) => { this.context = context; this.contextMenu.setActions(this.contextActions()); this.contextMenu.show(this.canvas, position); };

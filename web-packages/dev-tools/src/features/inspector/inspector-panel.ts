@@ -121,7 +121,11 @@ export class InspectorPanel extends EditorWindow {
 
     const structure = next instanceof VFXItem ? next.components.map(component => component.getInstanceId() + (component instanceof RendererComponent ? ':' + component.materials.map(material => material?.getInstanceId() + '/' + material?.shader?.getInstanceId()).join(',') : '')).join('|') : '';
 
-    if (this.activeObject !== next || this.activeStructure !== structure) { this.flushEdits(); this.activeObject = next; this.activeStructure = structure; this.rebuild(); }
+    if (this.activeObject !== next || this.activeStructure !== structure) {
+      const selectionChanged = this.activeObject !== next;
+
+      this.flushEdits(); this.activeObject = next; this.activeStructure = structure; this.rebuild(selectionChanged);
+    }
     this.lock!.iconName = this.lockedObject ? 'lock' : 'unlock';
     if (this.name && !this.name.hasFocus()) { this.name.text = this.objectName(next); }
   }
@@ -139,11 +143,13 @@ export class InspectorPanel extends EditorWindow {
   override onUndoRedo (): void { if (this.sheet) { this.bindDocument(sceneWorkspace.current); this.rebuild(); } }
   override dispose (): void { this.unsubscribeWorkspace?.(); this.unsubscribeDocument?.(); super.dispose(); }
 
-  private rebuild (): void {
+  private rebuild (resetScroll = false): void {
     const sheet = this.sheet, object = this.activeObject;
 
     if (!sheet) { return; }
-    sheet.clear(); this.empty!.visible = !object; this.header!.visible = this.toolbar!.visible = sheet.visible = !!object;
+    sheet.clear();
+    if (resetScroll) { sheet.vScroll = 0; }
+    this.empty!.visible = !object; this.header!.visible = this.toolbar!.visible = sheet.visible = !!object;
     if (!object) { return; }
     this.name!.text = this.objectName(object); this.name!.editable = typeof (object as { name?: string }).name === 'string';
     this.icon!.iconName = inspectedObjectIcon(object);
@@ -188,7 +194,7 @@ export class InspectorPanel extends EditorWindow {
 
       identifiers.readOnly('ID', () => object.getInstanceId()); identifiers.readOnly('Type', () => object instanceof Composition ? 'Scene' : object.constructor.name);
     }
-    sheet.filter(this.search!.text); sheet.vScroll = 0;
+    sheet.filter(this.search!.text);
   }
   private buildDebug (object: object, id: string, title: string): void {
     this.debugInspector.target = object;

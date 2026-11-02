@@ -12,7 +12,7 @@ import { EditorMenu } from '../controls/menu';
 import type { MenuAction } from '../controls/menu';
 import { VirtualList } from '../controls/virtual-list';
 import { PropertySheet } from '../property-editor/property-sheet';
-import { editorBox, editorColors as C, EDITOR_FONT } from '../theme/control-theme';
+import { editorBox, editorColors as C, getEditorFont } from '../theme/control-theme';
 import { CommentGraphNode } from './comment-graph-node';
 import type { Pin } from './flow-graph-model';
 import { FlowGraphModel, FlowGraphNode } from './flow-graph-model';
@@ -83,9 +83,9 @@ class GraphPinControl extends Control {
     const color = node.GetPinColor(pin);
 
     if (connected) { this.fillCircle(x, this.height / 2, 5, color); } else { this.drawCircle(x, this.height / 2, 5, color, 1.5); }
-    const metrics = this.measureText(pin.m_name, 12, EDITOR_FONT);
+    const metrics = this.measureText(pin.m_name, 12, getEditorFont(this.engine, 12));
 
-    this.drawText(this.input ? 19 : this.width - 19 - metrics.width, (this.height - metrics.lineHeight) / 2, pin.m_name, 12, C.foreground, EDITOR_FONT);
+    this.drawText(this.input ? 19 : this.width - 19 - metrics.width, (this.height - metrics.lineHeight) / 2, pin.m_name, 12, C.foreground, getEditorFont(this.engine, 12));
   }
   override onMouseDown (event: InputEventMouseButton): void {
     if (event.buttonIndex === MouseButton.Left) { this.graphView.startConnection(this.endpoint, event); } else if (event.buttonIndex === MouseButton.Right) { this.graphView.showContext(event.globalPosition, this.endpoint.node, this.endpoint.pin); }

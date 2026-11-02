@@ -11,7 +11,7 @@ import { AssetView } from '../../../ui/asset-view/asset-view';
 import { append, column, expand, margin, place } from '../../../ui/controls/layout';
 import { EditorSelectableRow } from '../../../ui/controls/selectable-row';
 import { drawAssetIcon, type AssetIcon } from '../../../ui/icons/asset-icons';
-import { editorColors, EDITOR_COMPACT_FONT_SIZE } from '../../../ui/theme/control-theme';
+import { editorColors, EDITOR_COMPACT_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
 import { EditorSplitContainer } from '../../../ui/controls/split-container';
 import { EditorToolbar } from '../../../ui/controls/toolbar';
 import { ListSelection } from '../../../ui/list-view/list-selection';
@@ -23,7 +23,7 @@ class AssetCategoryRow extends EditorSelectableRow {
   constructor (engine: Engine, private readonly assetIcon: AssetIcon, title: string) {
     super(engine, 'folder', title); this.setCustomMinimumSize(0, 22);
     this.count = append(this, new Label(engine)); this.count.horizontalAlignment = HorizontalAlignment.Right; this.count.verticalAlignment = VerticalAlignment.Center;
-    this.count.setThemeFontSizeOverride('fontSize', EDITOR_COMPACT_FONT_SIZE); this.count.setThemeColorOverride('fontColor', editorColors.muted);
+    setEditorFont(this.count, EDITOR_COMPACT_FONT_SIZE); this.count.setThemeColorOverride('fontColor', editorColors.muted);
     this.on('sizeChanged', () => place(this.count, this.width - 38, 0, 32, this.height));
   }
   protected override getContentInsets (): ContentInsets { return { left: 25, right: 42, top: 0, bottom: 0 }; }

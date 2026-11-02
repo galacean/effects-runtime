@@ -2,8 +2,10 @@ import * as spec from '@galacean/effects-specification';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Engine } from '../engine';
 import { GraphicsBatchBuffer } from './graphics-batch-buffer';
+import { GraphicsTextLayoutCache } from './graphics-text-layout';
 import { VertexElementType } from './vertex-element-type';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
@@ -82,6 +84,11 @@ type GraphicsCommand = {
 };
 
 export class Graphics {
+  /** Font atlases and creation defaults shared by this drawing context. */
+  readonly textCache: TextCache;
+  /** Snap text vertices to physical pixels after projection. */
+  roundTextPixels = false;
+
   private readonly batchBuffer: GraphicsBatchBuffer;
   private readonly ninePatchBuffer: GraphicsBatchBuffer;
   private readonly commands: GraphicsCommand[] = [];
@@ -97,6 +104,8 @@ export class Graphics {
   private readonly rectangleShape = new Rectangle();
   private readonly circleShape = new Circle();
   private readonly buildPoints: number[] = [];
+  private readonly shapeVertices: number[] = [];
+  private readonly shapeIndices: number[] = [];
 
   private vertices: number[] = [];
   private colors: number[] = [];
@@ -106,6 +115,8 @@ export class Graphics {
   private ninePatchSourceRects: number[] = [];
   private ninePatchMargins: number[] = [];
   private ninePatchOptions: number[] = [];
+  private currentVertexCount = 0;
+  private currentIndexCount = 0;
 
   private lineStyle: StrokeAttributes = {
     width: 1,
@@ -119,24 +130,20 @@ export class Graphics {
   private currentBatchType: BatchType = 'colored';
   private currentBatchTexture: Texture | null = null;
 
-  /** 文本纹理 LRU 缓存,drawText 用 */
-  private textCache: TextCache;
-  private textInkMetrics = new WeakMap<GlyphAtlas, Map<string, GlyphInkMetrics>>();
+  private readonly textLayouts = new GraphicsTextLayoutCache();
+  private readonly textInkMetrics = new WeakMap<GlyphAtlas, Map<string, GlyphInkMetrics>>();
 
   // 变换栈和缓存(使用 Matrix3 进行 2D 变换)
-  private transformStack: Matrix3[] = [];
-  private currentTransform: Matrix3 = Matrix3.fromIdentity();
-  private clipStack: ClipRect[] = [];
+  private readonly transformStack: Matrix3[] = [new Matrix3()];
+  private transformDepth = 0;
+  private currentTransform = this.transformStack[0];
+  private readonly projectionMatrix = new Matrix4();
+  private readonly textTargetSize = new Vector2();
+  private readonly clipStack: ClipRect[] = [];
+  private readonly clipRects: ClipRect[] = [];
+  private clipRectCount = 0;
   private logicalWidth = 1;
   private logicalHeight = 1;
-
-  private get currentVertexCount () {
-    return this.vertices.length / 2;
-  }
-
-  private get currentIndexCount () {
-    return this.indices.length;
-  }
 
   constructor (private engine: Engine) {
     const attributes = [
@@ -323,10 +330,16 @@ export class Graphics {
         varying vec2 vUV;
 
         uniform mat4 effects_MatrixVP;
+        uniform vec2 uTextTargetSize;
+        uniform float uRoundTextPixels;
         void main() {
           vColor = aColor;
           vUV = aUV;
           gl_Position = effects_MatrixVP * vec4(aPos, 0.0, 1.0);
+          if (uRoundTextPixels > 0.5) {
+            vec2 pixelPosition = (gl_Position.xy * 0.5 + 0.5) * uTextTargetSize;
+            gl_Position.xy = floor(pixelPosition + 0.5) / uTextTargetSize * 2.0 - 1.0;
+          }
         }`,
         fragment: `precision highp float;
         varying vec4 vColor;
@@ -354,9 +367,10 @@ export class Graphics {
     this.clearBatch();
     this.batchBuffer.clear(); this.ninePatchBuffer.clear(); this.commandCount = 0;
 
-    this.transformStack = [];
-    this.currentTransform = Matrix3.fromIdentity();
-    this.clipStack = [];
+    this.transformDepth = 0;
+    this.currentTransform = this.transformStack[0].identity();
+    this.clipStack.length = 0;
+    this.clipRectCount = 0;
 
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
@@ -371,7 +385,7 @@ export class Graphics {
     this.logicalHeight = height;
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
-    const projectionMatrix = new Matrix4(
+    const projectionMatrix = this.projectionMatrix.set(
       2 / width, 0, 0, 0,  // 第一列
       0, -2 / height, 0, 0,  // 第二列
       0, 0, -1, 0,  // 第三列
@@ -381,6 +395,8 @@ export class Graphics {
     this.coloredMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.texturedMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.textMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
+    this.textMaterial.setVector2('uTextTargetSize', this.textTargetSize.set(this.engine.canvas.width, this.engine.canvas.height));
+    this.textMaterial.setFloat('uRoundTextPixels', this.roundTextPixels ? 1 : 0);
     this.ninePatchMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
   }
 
@@ -389,48 +405,40 @@ export class Graphics {
    * @param transform - 新的变换矩阵(会与当前变换相乘)
    */
   pushTransform (transform: Matrix3): void {
-    this.transformStack.push(this.currentTransform.clone());
-    this.currentTransform = this.currentTransform.multiply(transform);
+    const previous = this.currentTransform;
+
+    this.currentTransform = this.transformStack[++this.transformDepth] ??= new Matrix3();
+    this.currentTransform.multiplyMatrices(previous, transform);
   }
 
   /**
    * 恢复上一个变换
    */
   popTransform (): void {
-    const transform = this.transformStack.pop();
-
-    if (!transform) {
+    if (this.transformDepth === 0) {
       console.warn('Render2D: 变换栈为空,无法弹出');
 
       return;
     }
 
-    this.currentTransform = transform;
+    this.currentTransform = this.transformStack[--this.transformDepth];
   }
 
   /** Pushes a local rectangular child clip using a screen-space AABB scissor. */
   pushClipRect (x: number, y: number, width: number, height: number): void {
     const elements = this.currentTransform.elements;
-    const corners = [
-      [x, y],
-      [x + width, y],
-      [x, y + height],
-      [x + width, y + height],
-    ];
-    let left = Infinity;
-    let top = Infinity;
-    let right = -Infinity;
-    let bottom = -Infinity;
-
-    for (const corner of corners) {
-      const transformedX = elements[0] * corner[0] + elements[3] * corner[1] + elements[6];
-      const transformedY = elements[1] * corner[0] + elements[4] * corner[1] + elements[7];
-
-      left = Math.min(left, transformedX);
-      top = Math.min(top, transformedY);
-      right = Math.max(right, transformedX);
-      bottom = Math.max(bottom, transformedY);
-    }
+    const x0 = elements[0] * x + elements[3] * y + elements[6];
+    const y0 = elements[1] * x + elements[4] * y + elements[7];
+    const x1 = elements[0] * (x + width) + elements[3] * y + elements[6];
+    const y1 = elements[1] * (x + width) + elements[4] * y + elements[7];
+    const x2 = elements[0] * x + elements[3] * (y + height) + elements[6];
+    const y2 = elements[1] * x + elements[4] * (y + height) + elements[7];
+    const x3 = elements[0] * (x + width) + elements[3] * (y + height) + elements[6];
+    const y3 = elements[1] * (x + width) + elements[4] * (y + height) + elements[7];
+    let left = Math.min(x0, x1, x2, x3);
+    let top = Math.min(y0, y1, y2, y3);
+    let right = Math.max(x0, x1, x2, x3);
+    let bottom = Math.max(y0, y1, y2, y3);
 
     const parent = this.clipStack[this.clipStack.length - 1];
 
@@ -441,12 +449,10 @@ export class Graphics {
       bottom = Math.min(bottom, parent.y + parent.height);
     }
 
-    const clip = {
-      x: left,
-      y: top,
-      width: Math.max(0, right - left),
-      height: Math.max(0, bottom - top),
-    };
+    const clip = this.clipRects[this.clipRectCount++] ??= { x: 0, y: 0, width: 0, height: 0 };
+
+    clip.x = left; clip.y = top;
+    clip.width = Math.max(0, right - left); clip.height = Math.max(0, bottom - top);
     const previous = parent;
 
     if (!this.clipRectsEqual(previous, clip)) {
@@ -481,7 +487,7 @@ export class Graphics {
   end (): void {
     this.flushBatch();
     this.submitBatches();
-    this.clipStack = [];
+    this.clipStack.length = 0;
     this.engine.displayServer.renderingDevice.setScissorTest(false);
   }
 
@@ -539,7 +545,7 @@ export class Graphics {
     command.texture = this.currentBatchTexture;
     command.offset = buffer.indexCount * Uint16Array.BYTES_PER_ELEMENT;
     command.count = this.currentIndexCount;
-    buffer.append(); this.clearBatch();
+    buffer.append(this.currentVertexCount, this.currentIndexCount); this.clearBatch();
   }
 
   private nextCommand (type: GraphicsCommand['type']): GraphicsCommand {
@@ -580,14 +586,9 @@ export class Graphics {
   }
 
   private clearBatch (): void {
-    this.indices.length = 0;
-    this.vertices.length = 0;
-    this.colors.length = 0;
-    this.uvs.length = 0;
-    this.ninePatchDrawSourceSizes.length = 0;
-    this.ninePatchSourceRects.length = 0;
-    this.ninePatchMargins.length = 0;
-    this.ninePatchOptions.length = 0;
+    // Reset the used ranges without discarding the arrays' retained storage.
+    this.currentVertexCount = 0;
+    this.currentIndexCount = 0;
   }
 
   private reserveVertices (count: number): void {
@@ -724,9 +725,20 @@ export class Graphics {
    * @param color - 填充颜色，默认白色，范围 0-1
    */
   fillTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE): void {
-    this.setTriangleShape(x1, y1, x2, y2, x3, y3);
     this.ensureBatch('colored');
-    this.buildShape(this.triangleShape, color);
+    this.reserveVertices(3);
+    const vertexOffset = this.currentVertexCount;
+    const vertexStart = vertexOffset * 2;
+    const indexOffset = this.currentIndexCount;
+
+    this.vertices[vertexStart] = x1; this.vertices[vertexStart + 1] = y1;
+    this.vertices[vertexStart + 2] = x2; this.vertices[vertexStart + 3] = y2;
+    this.vertices[vertexStart + 4] = x3; this.vertices[vertexStart + 5] = y3;
+    this.indices[indexOffset] = vertexOffset;
+    this.indices[indexOffset + 1] = vertexOffset + 1;
+    this.indices[indexOffset + 2] = vertexOffset + 2;
+    this.currentVertexCount += 3; this.currentIndexCount += 3;
+    this.applyTransformAndColor(vertexOffset, 3, color);
   }
 
   /**
@@ -776,7 +788,7 @@ export class Graphics {
     color: Color = Color.WHITE,
   ): void {
     this.ensureBatch('textured', texture);
-    this.pushQuad(x, y, width, height, color, region);
+    this.pushQuad(x, y, width, height, color, region.u0, region.v0, region.u1, region.v1);
   }
 
   /**
@@ -802,14 +814,28 @@ export class Graphics {
     const verticalMode = options.verticalMode ?? 0;
     const drawCenter = Number(options.drawCenter ?? true);
 
-    this.pushQuad(x, y, width, height, color, FULL_REGION);
+    this.pushQuad(x, y, width, height, color, 0, 0, 1, 1);
+    const vertexOffset = this.currentVertexCount - 4;
+
     for (let i = 0; i < 4; i++) {
-      this.ninePatchDrawSourceSizes.push(width, height, options.sourceWidth, options.sourceHeight);
-      this.ninePatchSourceRects.push(sourceU, sourceV, sourceUSize, sourceVSize);
-      this.ninePatchMargins.push(
-        options.marginLeft, options.marginTop, options.marginRight, options.marginBottom,
-      );
-      this.ninePatchOptions.push(horizontalMode, verticalMode, drawCenter, 0);
+      const offset = (vertexOffset + i) * 4;
+
+      this.ninePatchDrawSourceSizes[offset] = width;
+      this.ninePatchDrawSourceSizes[offset + 1] = height;
+      this.ninePatchDrawSourceSizes[offset + 2] = options.sourceWidth;
+      this.ninePatchDrawSourceSizes[offset + 3] = options.sourceHeight;
+      this.ninePatchSourceRects[offset] = sourceU;
+      this.ninePatchSourceRects[offset + 1] = sourceV;
+      this.ninePatchSourceRects[offset + 2] = sourceUSize;
+      this.ninePatchSourceRects[offset + 3] = sourceVSize;
+      this.ninePatchMargins[offset] = options.marginLeft;
+      this.ninePatchMargins[offset + 1] = options.marginTop;
+      this.ninePatchMargins[offset + 2] = options.marginRight;
+      this.ninePatchMargins[offset + 3] = options.marginBottom;
+      this.ninePatchOptions[offset] = horizontalMode;
+      this.ninePatchOptions[offset + 1] = verticalMode;
+      this.ninePatchOptions[offset + 2] = drawCenter;
+      this.ninePatchOptions[offset + 3] = 0;
     }
   }
 
@@ -842,7 +868,7 @@ export class Graphics {
       return;
     }
     const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
-    const layout = atlas.getLayout(text, fontSize);
+    const { layout } = this.textLayouts.get(atlas, text, fontSize);
     let currentY = atlas.baseLineOffset;
     let linePositionYShift = (atlas.lineHeight - atlas.fontMetrics.fontSize) / 2;
 
@@ -864,12 +890,9 @@ export class Graphics {
           x + Math.round(line.charPositions[i] + data.xOffset) * layout.scale,
           y + Math.round(currentY + data.yOffset + linePositionYShift) * layout.scale,
           frame.width * layout.scale, frame.height * layout.scale,
-          color, {
-            u0: frame.x / page.width,
-            u1: (frame.x + frame.width) / page.width,
-            v0: 1 - (frame.y + frame.height) / page.height,
-            v1: 1 - frame.y / page.height,
-          },
+          color,
+          frame.x / page.width, 1 - (frame.y + frame.height) / page.height,
+          (frame.x + frame.width) / page.width, 1 - frame.y / page.height,
         );
       }
       currentY += atlas.lineHeight;
@@ -886,12 +909,13 @@ export class Graphics {
     trimEnd = true,
   ): TextMeasurement {
     const atlas = this.getTextAtlas(fontSize, fontFamily, fontWeight, fontStyle);
-    const layout = atlas.getLayout(text, fontSize, trimEnd);
+    const cached = this.textLayouts.get(atlas, text, fontSize, trimEnd);
+    const layout = cached.layout;
     const advances: number[] = [];
     const lineBreaks: string[] = [];
     let previous: string | undefined;
 
-    for (const char of TextCache.graphemeSegmenter(text)) {
+    for (const char of cached.characters ??= TextCache.graphemeSegmenter(text)) {
       const data = atlas.chars[char];
 
       advances.push((data.xAdvance + (data.kerning[previous!] || 0)) * layout.scale);
@@ -942,7 +966,7 @@ export class Graphics {
       }
       positions.push(cursor * layout.scale);
       lines.push({
-        characters: line.chars, boundaries, positions,
+        characters: line.chars.slice(), boundaries, positions,
         width: line.width * layout.scale, lineHeight,
       });
     }
@@ -996,6 +1020,7 @@ export class Graphics {
     this.texturedMaterial.dispose();
     this.textMaterial.dispose();
     this.ninePatchMaterial.dispose();
+    this.textLayouts.clear();
     this.textCache.dispose();
   }
 
@@ -1004,13 +1029,9 @@ export class Graphics {
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
-    this.reserveVertices(buildPoints.length / 2 + 1);
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
-
-    shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
-
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+    this.shapeVertices.length = 0; this.shapeIndices.length = 0;
+    shape.triangulate(buildPoints, this.shapeVertices, 0, this.shapeIndices, 0);
+    this.appendShape(color);
   }
 
   private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
@@ -1018,14 +1039,28 @@ export class Graphics {
 
     buildPoints.length = 0;
     shape.build(buildPoints, this.getScreenScale());
-    this.reserveVertices(buildPoints.length * 4 + 8);
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
-
+    this.shapeVertices.length = 0; this.shapeIndices.length = 0;
     this.lineStyle.width = thickness;
-    buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
+    buildLine(buildPoints, this.lineStyle, false, closed, this.shapeVertices, 2, 0, this.shapeIndices, 0);
+    this.appendShape(color);
+  }
 
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  private appendShape (color: Color): void {
+    const count = this.shapeVertices.length / 2;
+
+    this.reserveVertices(count);
+    const vertexOffset = this.currentVertexCount;
+    const vertexStart = vertexOffset * 2;
+
+    for (let index = 0; index < this.shapeVertices.length; index++) {
+      this.vertices[vertexStart + index] = this.shapeVertices[index];
+    }
+    for (let index = 0; index < this.shapeIndices.length; index++) {
+      this.indices[this.currentIndexCount + index] = this.shapeIndices[index] + vertexOffset;
+    }
+    this.currentVertexCount += count; this.currentIndexCount += this.shapeIndices.length;
+
+    this.applyTransformAndColor(vertexOffset, count, color);
   }
 
   private getScreenScale (): number {
@@ -1082,8 +1117,8 @@ export class Graphics {
   /**
    * 推一个 quad（4 顶点 + 6 索引，2 个三角形）。
    *
-   * - colored 批次：`region` 省略 → UV 写 0（shader 不读）
-   * - textured 批次：传 `region` → UV 按 region 写
+   * - colored 批次：UV 写 0（shader 不读）
+   * - textured 批次：UV 按纹理子区域写
    *
    * 之所以用 2 三角形而不是中心 fan（像 Rectangle.triangulate），是因为 fan 的中心顶点连到 4 角的对角内边
    * 在像素级亚像素精度下会暴露 1-2 像素缝隙，叠层时底层颜色透出形成可见的对角痕迹
@@ -1091,48 +1126,40 @@ export class Graphics {
   private pushQuad (
     x: number, y: number, width: number, height: number,
     color: Color,
-    region?: TextureRegion,
+    u0 = 0, v0 = 0, u1 = 0, v1 = 0,
   ): void {
     this.reserveVertices(4);
-    const vertexOffset = this.vertices.length / 2;
+    const vertexOffset = this.currentVertexCount;
 
     // 4 顶点（本地坐标，左上/右上/左下/右下），应用当前变换写入 vertices
-    const corners: [number, number][] = [
-      [x, y],
-      [x + width, y],
-      [x, y + height],
-      [x + width, y + height],
-    ];
-    const u0 = region ? region.u0 : 0;
-    const v0 = region ? region.v0 : 0;
-    const u1 = region ? region.u1 : 0;
-    const v1 = region ? region.v1 : 0;
-    const cornerUVs: [number, number][] = [
-      [u0, v1],
-      [u1, v1],
-      [u0, v0],
-      [u1, v0],
-    ];
+    const vertexStart = vertexOffset * 2;
+
+    this.applyTransform(x, y, this.vertices, vertexStart);
+    this.applyTransform(x + width, y, this.vertices, vertexStart + 2);
+    this.applyTransform(x, y + height, this.vertices, vertexStart + 4);
+    this.applyTransform(x + width, y + height, this.vertices, vertexStart + 6);
+    this.uvs[vertexStart] = u0; this.uvs[vertexStart + 1] = v1;
+    this.uvs[vertexStart + 2] = u1; this.uvs[vertexStart + 3] = v1;
+    this.uvs[vertexStart + 4] = u0; this.uvs[vertexStart + 5] = v0;
+    this.uvs[vertexStart + 6] = u1; this.uvs[vertexStart + 7] = v0;
 
     for (let i = 0; i < 4; i++) {
-      const vIndex = (vertexOffset + i) * 2;
       const cIndex = (vertexOffset + i) * 4;
-
-      this.applyTransform(corners[i][0], corners[i][1], this.vertices, vIndex);
 
       this.colors[cIndex] = color.r;
       this.colors[cIndex + 1] = color.g;
       this.colors[cIndex + 2] = color.b;
       this.colors[cIndex + 3] = color.a;
-
-      this.uvs[vIndex] = cornerUVs[i][0];
-      this.uvs[vIndex + 1] = cornerUVs[i][1];
     }
+    const indexOffset = this.currentIndexCount;
 
-    this.indices.push(
-      vertexOffset, vertexOffset + 1, vertexOffset + 2,
-      vertexOffset + 2, vertexOffset + 1, vertexOffset + 3,
-    );
+    this.indices[indexOffset] = vertexOffset;
+    this.indices[indexOffset + 1] = vertexOffset + 1;
+    this.indices[indexOffset + 2] = vertexOffset + 2;
+    this.indices[indexOffset + 3] = vertexOffset + 2;
+    this.indices[indexOffset + 4] = vertexOffset + 1;
+    this.indices[indexOffset + 5] = vertexOffset + 3;
+    this.currentVertexCount += 4; this.currentIndexCount += 6;
   }
 
   /**

@@ -11,8 +11,15 @@ export function imageTexturePreview (image: { texture: PreviewTextureSource, fli
   return { tex: image.texture, uv0: new math.Vector2(0, image.flipY ? 1 : 0), uv1: new math.Vector2(1, image.flipY ? 0 : 1) };
 }
 
+export function initializePreviewTexture (texture: Texture): boolean {
+  if (!(texture instanceof Texture) || texture.isDestroyed) { return false; }
+  texture.initialize();
+
+  return Number.isFinite(texture.width) && Number.isFinite(texture.height) && texture.width > 0 && texture.height > 0;
+}
+
 export function getOrCreateTexturePreview (texture: Texture, source: PreviewTextureSource = texture): TexturePreview | null {
-  if (!(texture instanceof Texture) || texture.isDestroyed) { return null; }
+  if (!initializePreviewTexture(texture)) { return null; }
 
   return imageTexturePreview({ texture: source, flipY: texture.source.sourceType === TextureSourceType.framebuffer || !!texture.source.flipY });
 }
@@ -35,7 +42,8 @@ export class TexturePresentation {
     const device = this.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
     const sourceDevice = source.engine.displayServer.renderingDevice as RenderingDeviceWebGL;
 
-    if (device.contextWasLost || device.gl !== sourceDevice.gl) { return; }
+    if (device.contextWasLost || sourceDevice.contextWasLost || device.gl !== sourceDevice.gl) { return; }
+    if (!initializePreviewTexture(source)) { return; }
     const premultiplied = source.source.premultiplyAlpha || source.source.sourceType === TextureSourceType.framebuffer;
     const filtered = display && (display.desaturate || display.channels.some(channel => channel !== 1));
 
