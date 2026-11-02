@@ -1,11 +1,11 @@
 import type { Engine, InputEventKey } from '@galacean/effects';
-import { VBoxContainer, VerticalAlignment } from '@galacean/effects-plugin-gui';
+import { PanelContainer, VBoxContainer, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import type { Label } from '@galacean/effects-plugin-gui';
 import { AssetView } from '../../../ui/asset-view/asset-view';
 import type { AssetViewItem } from '../../../ui/asset-view/asset-view';
 import { append, expand, label, margin } from '../../../ui/controls/layout';
 import { EditorSearchField } from '../../../ui/controls/search-field';
-import { editorColors, EDITOR_SMALL_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
+import { editorBox, editorColors, EDITOR_SMALL_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { ContentAssetSource } from '../../content-browser/content-asset-source';
 import { assetLibrary } from '../asset-library';
@@ -31,7 +31,10 @@ export class AssetPicker extends VBoxContainer {
     super(engine); this.setThemeConstantOverride('separation', 0);
     this.search = new EditorSearchField(engine); append(this, margin(engine, this.search, 8, 4));
     this.search.on('textChanged', () => this.filter());
-    this.view = append(this, expand(new AssetView(engine, {
+    const panel = append(this, expand(new PanelContainer(engine)));
+
+    panel.setThemeStyleBoxOverride('panel', editorBox(editorColors.recessed));
+    this.view = append(panel, expand(new AssetView(engine, {
       selected: id => id === this.selected,
       choose: id => { this.selected = id; this.accept(id); }, open: id => this.accept(id),
       context: () => {}, rename: () => {}, drag: () => undefined, canDrop: () => false, drop: () => {},

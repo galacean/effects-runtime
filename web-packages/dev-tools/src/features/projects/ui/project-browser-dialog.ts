@@ -2,7 +2,7 @@ import { math } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import type { Control, Label, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
 import type { ContentInsets } from '@galacean/effects-plugin-gui';
-import { Button, ButtonDrawMode, HorizontalAlignment, PanelContainer, TextOverflow } from '@galacean/effects-plugin-gui';
+import { Button, ButtonDrawMode, HorizontalAlignment, PanelContainer, SizeFlags, TextOverflow } from '@galacean/effects-plugin-gui';
 import { EditorDialog } from '../../../ui/controls/dialog';
 import { EditorSearchField } from '../../../ui/controls/search-field';
 import { EditorTextArea, EditorTextField } from '../../../ui/controls/text-field';
@@ -21,7 +21,7 @@ type BrowserMode = 'open' | 'recent' | 'new';
 
 class ProjectCategory extends Button {
   constructor (engine: Engine, text: string, private readonly active: () => boolean) {
-    super(engine, text); this.textAlignment = HorizontalAlignment.Left;
+    super(engine, text.toLocaleUpperCase()); this.textAlignment = HorizontalAlignment.Left;
     setEditorFont(this, 20, 'bold');
     for (const [state, border] of Object.entries({ normal: editorColors.clear, hover: editorColors.hover, pressed: editorColors.primary, hoverPressed: editorColors.primaryHover })) {
       this.setThemeStyleBoxOverride(state, editorBox(editorColors.recessed, 0, 4, border));
@@ -63,6 +63,7 @@ export class ProjectBrowserDialog {
 
   initialize (engine: Engine, source: Control): void {
     this.engine = engine; this.source = source; this.browser = new EditorDialog(engine); this.settings = new EditorDialog(engine); this.confirm = new EditorDialog(engine); this.context = new EditorMenu(engine);
+    this.browser.bodyMargin.setThemeConstantOverride('marginTop', 8);
   }
   show (mode: BrowserMode = 'open'): void {
     this.mode = mode; this.selected = projects.current?.id; this.query = ''; this.showDeleted = false; this.validation = ''; projects.error = '';
@@ -92,10 +93,11 @@ export class ProjectBrowserDialog {
         const sort = append(header, new EditorMenuButton(this.engine, ''));
         const refresh = append(header, new EditorIconButton(this.engine, 'refresh'));
 
+        for (const button of [sort, refresh]) { button.themeTypeVariation = 'EditorSimpleButton'; button.verticalSizeFlags = SizeFlags.ShrinkCenter; }
         sort.iconName = 'sort'; sort.actions = () => [{ label: 'Most Recently Used', checked: this.sort === 'recent', action: () => { this.sort = 'recent'; this.refreshCards(); } },
           { label: 'Alphabetical', checked: this.sort === 'name', action: () => { this.sort = 'name'; this.refreshCards(); } }];
         refresh.on('pressed', () => { void projects.refresh(); }); setTooltip(sort, 'Sort projects'); setTooltip(refresh, 'Refresh project list');
-        search.placeholderText = 'Search projects'; search.text = this.query; search.on('textChanged', value => { this.query = value; this.refreshCards(); });
+        search.placeholderText = 'Filter Projects…'; search.text = this.query; search.on('textChanged', value => { this.query = value; this.refreshCards(); });
         this.cards = append(main, expand(new ProjectTileView(this.engine, {
           selected: id => id === this.selected, choose: id => this.selected = id, open: id => { this.selected = id; this.openSelected(); },
           context: (id, position) => {

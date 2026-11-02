@@ -1,9 +1,9 @@
 import { EditorSearchField } from '../../../ui/controls/search-field';
 import type { Engine } from '@galacean/effects';
 import type { Button, Control, LineEdit } from '@galacean/effects-plugin-gui';
-import { Label, VBoxContainer, TextOverflow, VerticalAlignment, Container, MouseFilter, FocusMode, VSeparator } from '@galacean/effects-plugin-gui';
-import { append, column, expand, margin, row, place } from '../../../ui/controls/layout';
-import { EditorMenuButton } from '../../../ui/controls/menu';
+import { Label, VBoxContainer, TextOverflow, VerticalAlignment, Container, MouseFilter, FocusMode } from '@galacean/effects-plugin-gui';
+import { append, column, expand, margin, place } from '../../../ui/controls/layout';
+import { EditorMenuBar, EditorMenuButton } from '../../../ui/controls/menu';
 import { EditorToolbar } from '../../../ui/controls/toolbar';
 import { EditorPanelTab } from '../../../ui/controls/panel-tab';
 import { EditorSplitContainer } from '../../../ui/controls/split-container';
@@ -44,21 +44,21 @@ export class AssetEditorLayout extends VBoxContainer {
 
   constructor (engine: Engine, private readonly actions: () => AssetEditorActions, edit: PropertyEditContext = { change: (_, __, action) => action(), finish: () => {} }) {
     super(engine); this.setThemeConstantOverride('separation', 0);
-    const menus = append(this, row(engine)), file = append(menus, new EditorMenuButton(engine, 'File')), asset = append(menus, new EditorMenuButton(engine, 'Asset'));
+    const menus = append(this, new EditorMenuBar(engine)), file = append(menus, new EditorMenuButton(engine, 'File')), asset = append(menus, new EditorMenuButton(engine, 'Asset'));
     const windowMenu = append(menus, new EditorMenuButton(engine, 'Window'));
 
     file.menuBar = asset.menuBar = windowMenu.menuBar = true;
     file.actions = () => {
       const a = this.actions();
 
-      return [{ label: 'Save', heading: true }, { label: 'Save', shortcut: 'Ctrl+S', enabled: !!a.save && !!a.dirty && !a.busy, action: a.save },
-        { label: 'Revert', enabled: !!a.revert && !!a.dirty && !a.busy, action: a.revert }, { label: 'Close', enabled: !a.busy, action: a.close }];
+      return [{ label: 'Save', heading: true }, { label: 'Save', icon: 'save', shortcut: 'Ctrl+S', enabled: !!a.save && !!a.dirty && !a.busy, action: a.save },
+        { label: 'Revert', icon: 'reset', enabled: !!a.revert && !!a.dirty && !a.busy, action: a.revert }, { label: 'Close', enabled: !a.busy, action: a.close }];
     };
     asset.actions = () => {
       const a = this.actions();
 
-      return [{ label: 'Find in Content Browser', enabled: !!a.browse, action: a.browse }, { label: 'Reimport', enabled: !!a.reimport && !a.busy, action: a.reimport },
-        { label: 'Compile', enabled: !!a.compile && !a.busy, action: a.compile }];
+      return [{ label: 'Find in Content Browser', icon: 'browseContent', enabled: !!a.browse, action: a.browse }, { label: 'Reimport', icon: 'import', enabled: !!a.reimport && !a.busy, action: a.reimport },
+        { label: 'Compile', icon: 'check', enabled: !!a.compile && !a.busy, action: a.compile }];
     };
     windowMenu.actions = () => [{ label: 'Layout', heading: true }, { label: 'Reset Layout', action: () => { this.inspectorWidth = 340; this.resizeInspector(); this.search.text = ''; this.inspector.filter(''); } }];
     this.toolbar = new EditorToolbar(engine, 32); this.toolbar.setThemeConstantOverride('separation', 6);
@@ -84,7 +84,7 @@ export class AssetEditorLayout extends VBoxContainer {
     this.footer = new Label(engine); this.footer.textOverflow = TextOverflow.Ellipsis; this.footer.verticalAlignment = VerticalAlignment.Center; this.footer.setCustomMinimumSize(0, 24);
     append(this, margin(engine, this.footer, 8, 4));
   }
-  set viewportTitle (value: string) { this.viewportHeader.tab.text = value; this.viewportHeader.queueSort(); }
+  set viewportTitle (value: string) { this.viewportHeader.tab.text = value; this.viewportHeader.tab.iconName = value === 'Source' ? 'shader' : 'camera'; this.viewportHeader.queueSort(); }
   private resizeInspector (): void {
     const width = this.split.width, side = Math.max(Math.min(280, width * .4), Math.min(width - 220, this.inspectorWidth));
 

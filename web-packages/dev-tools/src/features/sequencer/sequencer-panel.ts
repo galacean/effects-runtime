@@ -15,6 +15,7 @@ import type { MenuAction } from '../../ui/controls/menu';
 import { EditorDialog } from '../../ui/controls/dialog';
 import { NumberEdit } from '../../ui/controls/number-edit';
 import { EditorToolbar, EditorToggleButton } from '../../ui/controls/toolbar';
+import { EditorTransportControl } from '../../ui/controls/transport-control';
 import { EditorTextField } from '../../ui/controls/text-field';
 import { EditorPositiveActionButton } from '../../ui/controls/positive-action-button';
 import { EditorIconButton, EditorIconControl } from '../../ui/icons/control-icons';
@@ -58,7 +59,6 @@ export class SequencerPanel extends EditorWindow {
   private interpolationButtons: EditorToggleButton[] = [];
   private flatten: EditorIconButton;
   private playhead: NumberEdit;
-  private playButton: EditorIconButton;
   private caption: Label;
   private fps: EditorMenuButton;
   private contextMenu: EditorMenu;
@@ -144,21 +144,23 @@ export class SequencerPanel extends EditorWindow {
 
     append(body, margin(engine, footer, 6, 3));
 
-    this.icon(footer, 'first', 'Jump to Start', () => this.document?.setTime(this.state.playbackStart));
-    this.icon(footer, 'previous', 'Previous Key (,)', () => { if (this.document) { this.stepKey(this.document, -1); } });
-    this.icon(footer, 'back', 'Previous Frame', () => this.document?.setTime(Math.max(this.state.playbackStart, this.document.currentTime - 1 / this.state.frameRate)));
-    this.playButton = this.icon(footer, 'play', 'Play / Pause (Space)', () => { if (this.document) { this.togglePlay(this.document); } });
-    this.icon(footer, 'forward', 'Next Frame', () => this.document?.setTime(Math.min(this.state.playbackEnd, this.document.currentTime + 1 / this.state.frameRate)));
-    this.icon(footer, 'next', 'Next Key (.)', () => { if (this.document) { this.stepKey(this.document, 1); } });
-    this.icon(footer, 'last', 'Jump to End', () => this.document?.setTime(this.state.playbackEnd));
-    this.toggle(footer, 'loop', 'Loop Playback', () => this.state.loop, () => { this.state.loop = !this.state.loop; });
+    append(footer, new EditorTransportControl(engine, {
+      playing: () => !!this.document && !this.document.composition.getPaused(),
+      start: () => this.document?.setTime(this.state.playbackStart),
+      previousKey: () => { if (this.document) { this.stepKey(this.document, -1); } },
+      previousFrame: () => this.document?.setTime(Math.max(this.state.playbackStart, this.document.currentTime - 1 / this.state.frameRate)),
+      play: () => { if (this.document) { this.togglePlay(this.document); } },
+      nextFrame: () => this.document?.setTime(Math.min(this.state.playbackEnd, this.document.currentTime + 1 / this.state.frameRate)),
+      nextKey: () => { if (this.document) { this.stepKey(this.document, 1); } },
+      end: () => this.document?.setTime(this.state.playbackEnd),
+      looping: () => this.state.loop, toggleLoop: () => { this.state.loop = !this.state.loop; },
+    }));
     footer.separator();
     footer.label('Time');
     this.playhead = append(footer, new NumberEdit(engine)); this.playhead.setCustomMinimumSize(90, 24);
     this.playhead.changed = value => this.document?.setTime(Math.max(0, value / this.factor));
     append(footer, expand(new Control(engine), true, false));
     append(footer, this.interpolationTools);
-    for (const control of footer.children) { if (control instanceof EditorIconButton) { control.setCustomMinimumSize(22, 24); control.iconSize = 16; } }
     for (const control of this.interpolationTools.children) { if (control instanceof EditorIconButton) { control.setCustomMinimumSize(24, 24); control.iconSize = 16; } }
 
     return body;
@@ -270,7 +272,7 @@ export class SequencerPanel extends EditorWindow {
     this.keyValue.enabled = numeric && !!first && first.channel.kind === 'number' && first.channel.pathView !== 'timing';
     if (!this.keyValue.isEditing) { this.keyValue.value = first?.key.value ?? 0; }
     this.interpolationButtons.forEach(button => button.disabled = !numeric); this.flatten.disabled = !numeric;
-    this.playButton.iconName = document.composition.getPaused() ? 'play' : 'pause'; this.caption.text = document.composition.name || 'Sequence';
+    this.caption.text = document.composition.name || 'Sequence';
     this.fps.text = this.state.frameRate + ' fps';
     this.playhead.precision = this.state.displayFrames ? 0 : 3; this.playhead.step = this.factor / this.state.frameRate;
     if (!this.playhead.isEditing) { this.playhead.value = document.currentTime * this.factor; }

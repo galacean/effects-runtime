@@ -1,16 +1,8 @@
 import { EffectsObject, Material, Shader, Sprite, Texture, VFXItem } from '@galacean/effects';
-import { math } from '@galacean/effects';
+import type { math } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
-import type { LineEdit, VBoxContainer, Button } from '@galacean/effects-plugin-gui';
-import { Control, HorizontalAlignment, MouseFilter } from '@galacean/effects-plugin-gui';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
-import { append, column, expand, row, screenPosition, place, disposeChildren } from '../../../ui/controls/layout';
-import { setTooltip } from '../../../ui/controls/tooltip';
-import { EditorMenuButton, MenuHeading, EditorMenuActionButton } from '../../../ui/controls/menu';
-import { EditorDropTarget } from '../../../ui/controls/drag-feedback';
-import { EditorPopupPanel } from '../../../ui/controls/popup-panel';
-import { EditorIconButton } from '../../../ui/icons/control-icons';
 import type { ObjectReferenceOptions } from '../../../ui/property-editor/object-reference-field';
 import type { ValueBinding } from '../../../ui/property-editor/property-sheet';
 import { sceneWorkspace } from '../../scene/scene-workspace';
@@ -19,7 +11,9 @@ import { AssetPreviewControl } from '../preview/asset-preview-control';
 import { openContentAsset, openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import type { ContentAssetDrag } from './asset-drag';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
-import { AssetPicker, assetReferenceClipboard } from './asset-picker';
+import { assetReferenceClipboard } from './asset-picker';
+import { AssetReferenceFieldBase } from './asset-reference-field-base';
+import { ASSET_PRESENTATION } from './asset-presentation';
 import type { AssetPickerCandidate } from './asset-picker';
 
 const assetKinds = { Texture: 'texture', Material: 'material', Shader: 'shader', Sprite: 'sprite' } as const;
@@ -38,19 +32,10 @@ function openReference (reference: object): void {
 }
 
 /** A bound reference field owns its picker and assigns resources from Control signals and drops. */
-export class AssetReferenceControl extends EditorDropTarget {
-  private readonly caption: EditorMenuButton;
-  private readonly use: Button;
-  private readonly browse: Button;
-  private readonly picker: EditorPopupPanel;
-  private readonly search: LineEdit;
-  private readonly browser: AssetPicker;
+export class AssetReferenceControl extends AssetReferenceFieldBase {
   private available: AssetPickerCandidate[] = [];
   private readonly payloadType: string;
   private readonly kind?: typeof assetKinds[keyof typeof assetKinds];
-  private readonly thumbnail?: AssetPreviewControl;
-  private readonly pickerActions: VBoxContainer;
-  private readonly browseHeading: MenuHeading;
   private revision = -1;
 
   constructor (engine: Engine, private readonly binding: ValueBinding<object | null>, private readonly options: ObjectReferenceOptions = {}) {
@@ -59,17 +44,16 @@ export class AssetReferenceControl extends EditorDropTarget {
 
     this.payloadType = reference instanceof Texture ? 'Texture' : reference instanceof Material ? 'Material' : reference instanceof Sprite ? 'Sprite' : reference instanceof Shader ? 'Shader' : options.expectedType ?? reference?.constructor.name ?? 'EffectsObject';
     this.kind = assetKinds[this.payloadType as keyof typeof assetKinds];
+    this.caption.iconName = this.kind === 'shader' ? ASSET_PRESENTATION.shader.menuIcon : undefined;
     if (this.kind === 'texture' || this.kind === 'sprite' || this.kind === 'material') {
-      this.thumbnail = append(this, new AssetPreviewControl(engine, () => this.binding.read(), 54, undefined, this.kind)); this.thumbnail.mouseFilter = MouseFilter.Pass;
-      this.thumbnail.activated = () => {
+      const thumbnail = new AssetPreviewControl(engine, () => this.binding.read(), 54, undefined, this.kind);
+
+      this.setPreview(thumbnail); thumbnail.activated = () => {
         const reference = this.binding.read();
 
         if (reference) { openReference(reference); }
       };
     }
-    this.caption = append(this, expand(new EditorMenuButton(engine, ''), true, false)); this.caption.clipText = true;
-    this.caption.mouseFilter = MouseFilter.Pass; this.caption.themeTypeVariation = 'EditorComboButton'; this.caption.textAlignment = HorizontalAlignment.Left; this.caption.showArrow = true;
-    this.caption.openMenu = () => this.showPicker();
     this.caption.actions = () => {
       const reference = this.binding.read();
       const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
@@ -89,40 +73,24 @@ export class AssetReferenceControl extends EditorDropTarget {
         ...(options.allowEmpty === false ? [] : [{ label: 'Clear', icon: 'delete' as const, enabled: !options.readOnly && !!reference, action: () => this.assign(null) }]),
       ];
     };
-    this.use = append(this, new EditorIconButton(engine, 'useSelected'));
-    this.use.on('pressed', () => {
-      const id = this.selectedAsset();
-
-      if (id) { this.assignAsset(id); }
-    });
-    this.browse = append(this, new EditorIconButton(engine, 'browseContent'));
-    this.browse.on('pressed', () => {
-      const reference = this.binding.read();
-
-      if (reference instanceof EffectsObject) { revealContentAsset(reference.getInstanceId()); }
-    });
-    this.use.mouseFilter = this.browse.mouseFilter = MouseFilter.Pass;
-    this.use.visible = this.browse.visible = !!this.kind;
-    this.picker = new EditorPopupPanel(engine); this.picker.themeTypeVariation = 'EditorMenu'; this.picker.setSize(300, 0);
-    const body = append(this.picker, column(engine));
-
-    this.pickerActions = append(body, column(engine));
-    this.browseHeading = append(body, new MenuHeading(engine, 'Browse'));
-    this.browser = append(body, new AssetPicker(engine, id => {
-      const candidate = this.available.find(candidate => candidate.id === id);
-
-      if (candidate?.asset) { this.assign(candidate.asset); } else { this.assignAsset(id); }
-      this.picker.hidePopup();
-    })); this.search = this.browser.search; this.search.placeholderText = 'Search ' + this.payloadType + ' assets';
-    this.picker.onPopup('popupOpened', () => this.caption.setPressedNoSignal(true)); this.picker.onPopup('popupClosed', () => this.caption.setPressedNoSignal(false));
-    setTooltip(this.use, 'Use selected asset from Content Browser'); setTooltip(this.browse, 'Browse to asset in Content Browser');
+    this.useSelected.visible = this.browse.visible = !!this.kind;
+    this.browser.search.placeholderText = 'Search ' + this.payloadType + ' assets';
   }
-  override getMinimumSize (): math.Vector2 { return new math.Vector2(80, this.thumbnail?.visible ? 54 : this.kind ? 49 : 24); }
-  protected override sortChildren (): void {
-    const left = this.thumbnail?.visible ? 60 : 0;
+  protected override get canBrowse (): boolean { return !this.options.readOnly; }
+  protected override chooseAsset (id: string): void {
+    const candidate = this.available.find(candidate => candidate.id === id);
 
-    if (this.thumbnail?.visible) { place(this.thumbnail, 0, 0, 54, 54); }
-    place(this.caption, left, 0, this.width - left, 24); place(this.use, left, 27, 24, 22); place(this.browse, left + 26, 27, 24, 22);
+    if (candidate?.asset) { this.assign(candidate.asset); } else { this.assignAsset(id); }
+  }
+  protected override useCurrentSelection (): void {
+    const id = this.selectedAsset();
+
+    if (id) { this.assignAsset(id); }
+  }
+  protected override browseCurrent (): void {
+    const reference = this.binding.read();
+
+    if (reference instanceof EffectsObject) { revealContentAsset(reference.getInstanceId()); }
   }
   private assign (value: object | null): void {
     if (this.options.readOnly || this.isDisposed || value === null && this.options.allowEmpty === false) { return; }
@@ -157,18 +125,7 @@ export class AssetReferenceControl extends EditorDropTarget {
 
     return !!type && assetReferenceClipboard.asset instanceof type;
   }
-  private showPicker (): void {
-    disposeChildren(this.pickerActions);
-    append(this.pickerActions, new MenuHeading(this.engine, 'Current Asset'));
-    for (const action of this.caption.actions()) {
-      append(this.pickerActions, new EditorMenuActionButton(this.engine, { ...action, action: () => { this.picker.hidePopup(); action.action?.(); } }));
-    }
-    this.browseHeading.visible = this.browser.visible = !this.options.readOnly;
-    this.search.text = ''; this.filterCandidates(); this.picker.popup(screenPosition(this, 0, this.height), this.caption);
-    if (this.picker.y < screenPosition(this, 0, this.height).y) { this.picker.setPosition(this.picker.x, Math.max(0, screenPosition(this).y - this.picker.height)); }
-    if (!this.options.readOnly) { this.search.grabFocus(); }
-  }
-  private filterCandidates (): void {
+  protected override refreshCandidates (): void {
     const entries: AssetPickerCandidate[] = assetLibrary.entries.filter(entry => entry.kind === this.kind && !entry.deletedAt).map(entry => ({ id: entry.id, name: entry.name }));
     const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material, Shader };
     const type = constructors[this.payloadType];
@@ -192,8 +149,8 @@ export class AssetReferenceControl extends EditorDropTarget {
     const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
 
     this.caption.text = entry?.name || (reference as { name?: string } | null)?.name || (reference ? this.payloadType : 'None');
-    this.use.disabled = !!this.options.readOnly || !this.selectedAsset(); this.browse.disabled = !entry || !!entry.deletedAt;
-    if (this.picker.visible && this.revision !== assetLibrary.revision) { this.filterCandidates(); }
+    this.useSelected.disabled = !!this.options.readOnly || !this.selectedAsset(); this.browse.disabled = !entry || !!entry.deletedAt;
+    if (this.picker.visible && this.revision !== assetLibrary.revision) { this.refreshCandidates(); }
     super.update(delta);
   }
   protected override canDropData (position: math.Vector2, data: unknown): boolean {
@@ -212,5 +169,4 @@ export class AssetReferenceControl extends EditorDropTarget {
 
     if (payload.type === CONTENT_ASSET_PAYLOAD) { this.assignAsset((payload.data as ContentAssetDrag).ids[0]); } else { this.assign(payload.data as object); }
   }
-  override onDestroy (): void { this.picker.dispose(); }
 }

@@ -8,15 +8,16 @@ import { MaterialPreviewRenderer, type MaterialPreviewInput } from './material-p
 import { texturePreviewCache, type PreviewRequest, type RenderedPreview } from './texture-preview-cache';
 import { frameMaterialPreview, thumbnailMaterialView, type MaterialPreviewSettings } from './material-preview-settings';
 
-export interface MaterialPreviewRequest extends PreviewRequest { view?: MaterialPreviewSettings }
+export interface MaterialPreviewRequest extends PreviewRequest { view?: MaterialPreviewSettings, width?: number, height?: number }
 
 interface PreviewState { key: string, input: MaterialPreviewInput }
+interface PreviewStates { thumbnails: Map<number, PreviewState>, viewports: WeakMap<MaterialPreviewSettings, PreviewState> }
 interface DraftState { key: string, shader?: spec.ShaderData, textures?: Record<string, Texture>, error?: string }
 
 class MaterialPreviews {
   private project = '';
   private document = sceneWorkspace.current;
-  private states = new WeakMap<object, Map<number, PreviewState>>();
+  private states = new WeakMap<object, PreviewStates>();
   private drafts = new WeakMap<AssetObject, DraftState>();
   private requests = new WeakMap<AssetEntry, { loading: boolean, error?: string }>();
   private objectKeys = new WeakMap<object, number>();
@@ -102,12 +103,20 @@ class MaterialPreviews {
   private data (draft: AssetObject): spec.MaterialData { return draft.objects.find(object => object.id === draft.id)! as unknown as spec.MaterialData; }
 
   private request (owner: object, input: MaterialPreviewInput, size: number, request: MaterialPreviewRequest): RenderedPreview {
+    const engine = EditorRuntimeSession.player.engine;
+    const maxSize = engine.displayServer.renderingDevice.gpuCapability.detail.maxTextureSize;
+    const requestedWidth = request.width ?? size, requestedHeight = request.height ?? size;
+    const scale = Math.min(1, maxSize / Math.max(requestedWidth, requestedHeight));
+    const width = Math.max(1, Math.round(requestedWidth * scale)), height = Math.max(1, Math.round(requestedHeight * scale));
     let states = this.states.get(owner);
 
-    if (!states) { states = new Map(); this.states.set(owner, states); }
-    let state = states.get(size);
+    if (!states) { states = { thumbnails: new Map(), viewports: new WeakMap() }; this.states.set(owner, states); }
+    let state = request.view ? states.viewports.get(request.view) : states.thumbnails.get(size);
 
-    if (!state) { state = { key: String(++this.nextKey), input }; states.set(size, state); }
+    if (!state) {
+      state = { key: String(++this.nextKey), input };
+      if (request.view) { states.viewports.set(request.view, state); } else { states.thumbnails.set(size, state); }
+    }
     const mesh = input.material ? assetLibrary.entry(input.material.getInstanceId())?.previewMesh : undefined;
 
     const view = request.view ?? { ...thumbnailMaterialView, primitive: mesh ?? 'sphere' };
@@ -117,8 +126,12 @@ class MaterialPreviews {
     const source = state;
     const options = (request.priority ?? 0) > 0 || assetLibrary.preferences.realtimeThumbnails ? request : { ...request, realtime: false };
 
-    return texturePreviewCache.render(this, source.key, input.version + JSON.stringify(state.input.view),
-      () => new MaterialPreviewRenderer(EditorRuntimeSession.player.engine, size, size, () => source.input), options);
+    const preview = texturePreviewCache.render(this, source.key, input.version + JSON.stringify([state.input.view, width, height]),
+      () => new MaterialPreviewRenderer(engine, width, height, () => source.input), options);
+
+    if (preview instanceof MaterialPreviewRenderer) { preview.resize(width, height); }
+
+    return preview;
   }
 
   private objectKey (object: object): number {

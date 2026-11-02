@@ -245,6 +245,7 @@ export class HierarchyTree extends Container {
     super(engine); this.focusMode = FocusMode.All;
     this.header = append(this, new HierarchyHeader(engine, this));
     this.list = append(this, new VirtualList(engine, 20, node => node.id, () => new HierarchyRow(engine, this)));
+    this.list.mouseFilter = MouseFilter.Pass;
   }
   get gutter (): number { return this.options.showVisibility ? 24 : 0; }
   get labelLeft (): number { return this.options.showType && this.typeFirst ? this.gutter + (this.list.content.width - this.gutter) * (1 - this.columnRatio) : this.gutter; }

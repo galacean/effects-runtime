@@ -132,6 +132,19 @@ export function createEditorTheme (engine: Engine): Theme {
   }
   theme.setStyleBox('EditorToolbarButton', 'disabled', editorBox(c.clear, 4, 2));
   theme.setStyleBox('EditorToolbarButton', 'focus', editorBox(c.clear));
+  theme.setTypeVariation('EditorTransportButton', 'Button');
+  for (const [state, background] of Object.entries({ normal: c.clear, hover: c.hover, pressed: c.header, disabled: c.clear })) {
+    theme.setStyleBox('EditorTransportButton', state, editorBox(background, 2, 4, state === 'hover' || state === 'pressed' ? c.input : c.clear));
+  }
+  theme.setStyleBox('EditorTransportButton', 'focus', editorBox(c.clear));
+  theme.setTypeVariation('EditorSimpleButton', 'EditorToolbarButton');
+  for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+    const pressed = state === 'pressed' || state === 'hoverPressed';
+    const box = editorBox(state === 'normal' || state === 'disabled' ? c.clear : c.dropdown, 0, 4);
+
+    box.setContentMargins(3, pressed ? 2 : 1, 3, pressed ? 0 : 1);
+    theme.setStyleBox('EditorSimpleButton', state, box);
+  }
   theme.setTypeVariation('EditorToggleButton', 'EditorToolbarButton');
   theme.setStyleBox('EditorToggleButton', 'normal', editorBox(c.clear, 4, 4));
   theme.setStyleBox('EditorToggleButton', 'pressed', editorBox(c.primary, 4, 4));
@@ -215,6 +228,12 @@ export function createEditorTheme (engine: Engine): Theme {
   }
   theme.setTypeVariation('EditorDockTab', 'EditorToolbarButton');
   for (const state of ['normal', 'hover', 'pressed', 'hoverPressed']) { theme.setStyleBox('EditorDockTab', state, editorBox(c.clear, 4)); }
+  theme.setTypeVariation('EditorStaticTab', 'EditorDockTab');
+  for (const [state, background] of Object.entries({ normal: c.clear, hover: c.dropdown, pressed: c.panel, hoverPressed: c.panel })) {
+    const box = editorBox(background, 4);
+
+    box.setCornerRadii(4, 4, 0, 0); theme.setStyleBox('EditorStaticTab', state, box);
+  }
   theme.setTypeVariation('EditorDockClose', 'EditorToolbarButton');
   for (const state of ['normal', 'hover', 'pressed', 'hoverPressed']) { theme.setStyleBox('EditorDockClose', state, editorBox(c.clear)); }
   theme.setTypeVariation('EditorWindowClose', 'EditorDockClose');

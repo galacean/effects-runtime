@@ -1,6 +1,7 @@
 import { math, MouseButton } from '@galacean/effects';
 import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
-import { Button, Container, FocusMode } from '@galacean/effects-plugin-gui';
+import { Button, Container, FocusMode, MouseFilter } from '@galacean/effects-plugin-gui';
+import type { EditorIcon } from '../icons/control-icons';
 import { append, place } from './layout';
 import { EditorMenuButton } from './menu';
 import type { MenuAction } from './menu';
@@ -26,10 +27,10 @@ export class EditorBreadcrumbBar extends Container {
   private signature = '';
   private hiddenCount = 0;
 
-  constructor (engine: Engine) {
+  constructor (engine: Engine, private readonly rootIcon: EditorIcon | null = 'folder') {
     super(engine); this.focusMode = FocusMode.All; this.clipContents = true;
-    this.rootButton = append(this, new EditorMenuButton(engine, '', () => this.rootActions())); this.rootButton.iconName = 'folder';
-    this.overflow = append(this, new EditorMenuButton(engine, '', () => this.entries.slice(0, this.hiddenCount).map(entry => ({ label: entry.label, icon: 'folder', action: entry.select }))));
+    this.rootButton = append(this, new EditorMenuButton(engine, '', () => this.rootActions())); this.rootButton.iconName = rootIcon ?? undefined;
+    this.overflow = append(this, new EditorMenuButton(engine, '', () => this.entries.slice(0, this.hiddenCount).map(entry => ({ label: entry.label, icon: this.rootIcon ?? undefined, action: entry.select }))));
     this.overflow.iconName = 'more'; this.overflow.visible = false;
     this.edit = append(this, new EditorTextField(engine)); this.edit.visible = false;
     this.edit.on('textSubmitted', text => { this.finishEdit(); this.grabFocus(); this.navigatePath?.(text.trim()); });
@@ -47,6 +48,7 @@ export class EditorBreadcrumbBar extends Container {
 
         button.themeTypeVariation = 'EditorToolbarButton'; button.clipText = true; button.on('pressed', entry.select);
         delimiter.iconName = 'chevronRight'; delimiter.iconSize = 12;
+        if (!entry.children) { delimiter.mouseFilter = MouseFilter.Ignore; delimiter.focusMode = FocusMode.None; }
 
         return { entry, button, delimiter };
       });
@@ -55,7 +57,7 @@ export class EditorBreadcrumbBar extends Container {
   }
   override getMinimumSize (): math.Vector2 { return new math.Vector2(72, 24); }
   protected override sortChildren (): void {
-    this.rootButton.visible = !this.editing; this.edit.visible = this.editing;
+    this.rootButton.visible = !!this.rootIcon && !this.editing; this.edit.visible = this.editing;
     place(this.edit, 0, 0, this.width, this.height);
     if (this.editing) {
       this.overflow.visible = false; this.parts.forEach(part => { part.button.visible = part.delimiter.visible = false; });
@@ -65,10 +67,12 @@ export class EditorBreadcrumbBar extends Container {
     const widths = this.parts.map((part, index) => this.partWidth(part) + (index < this.parts.length - 1 || part.entry.children?.().length ? 16 : 0));
     let total = widths.reduce((sum, width) => sum + width, 0), first = 0;
 
-    while (first < this.parts.length - 1 && total > this.width - 70) { total -= widths[first++]; }
+    const rootWidth = this.rootIcon ? 24 : 0;
+
+    while (first < this.parts.length - 1 && total > this.width - rootWidth - 46) { total -= widths[first++]; }
     this.hiddenCount = first; this.overflow.visible = first > 0;
-    place(this.rootButton, 0, 0, 24, this.height); place(this.overflow, 24, 0, 24, this.height);
-    let x = first ? 48 : 24;
+    place(this.rootButton, 0, 0, rootWidth, this.height); place(this.overflow, rootWidth, 0, 24, this.height);
+    let x = rootWidth + (first ? 24 : 0);
 
     this.parts.forEach((part, index) => {
       part.button.visible = index >= first;

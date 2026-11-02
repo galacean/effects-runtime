@@ -1,10 +1,11 @@
 import { math, MouseButton, MouseButtonMask } from '@galacean/effects';
 import type { Engine, InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
 import { Button, ButtonDrawMode, Control, FocusMode, VBoxContainer } from '@galacean/effects-plugin-gui';
-import { append, expand, row } from '../../../ui/controls/layout';
+import { append, expand } from '../../../ui/controls/layout';
 import { EditorMenuButton } from '../../../ui/controls/menu';
-import { checkerboard } from '../../../ui/asset-view/asset-view';
-import { editorBox, editorColors as C, setEditorFont, getEditorFont } from '../../../ui/theme/control-theme';
+import { EditorToolbar } from '../../../ui/controls/toolbar';
+import { checkerboard } from '../../../ui/controls/checkerboard';
+import { editorBox, editorColors as C, EDITOR_FONT_SIZE, setEditorFont, getEditorFont } from '../../../ui/theme/control-theme';
 import { setTooltip } from '../../../ui/controls/tooltip';
 import { TexturePresentation, type TextureDisplay, type TexturePreview } from './texture-preview';
 
@@ -55,7 +56,7 @@ export class ImagePreviewViewport extends VBoxContainer {
 
   constructor (engine: Engine) {
     super(engine); this.setThemeConstantOverride('separation', 0);
-    const toolbar = append(this, row(engine));
+    const toolbar = append(this, new EditorToolbar(engine, 28));
 
     for (let channel = 0; channel < 4; channel++) {
       append(toolbar, new TextureChannelButton(engine, channel, this.display));
@@ -112,7 +113,7 @@ class ImageCanvas extends Control {
       this.presentation.draw(this, x, y, width, height);
       if (v.border) { this.drawRect(x, y, width, height, C.foreground); }
       v.overlay?.(this, { x, y, width, height });
-    } else { this.drawText(16, 16, 'Loading image...', 14, C.muted, getEditorFont(this.engine, 14)); }
+    } else { this.drawText(16, 16, 'Loading image...', EDITOR_FONT_SIZE, C.muted, getEditorFont(this.engine)); }
     graphics.popClipRect();
   }
   override onMouseDown (event: InputEventMouseButton): void {

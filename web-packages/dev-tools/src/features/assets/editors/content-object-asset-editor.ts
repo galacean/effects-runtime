@@ -8,7 +8,7 @@ import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-r
 import { append, disposeChildren, expand } from '../../../ui/controls/layout';
 import { EditorDialog } from '../../../ui/controls/dialog';
 import { EditorTabs } from '../../../ui/controls/tabs';
-import { EditorIconButton } from '../../../ui/icons/control-icons';
+import { EditorToggleButton } from '../../../ui/controls/toolbar';
 import { assetLibrary as library } from '../asset-library';
 import type { AssetObject, AssetObjectData } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
@@ -42,7 +42,7 @@ export class ContentObjectAssetEditor extends EditorWindow {
   private sourceTexture = false;
   private unsaved!: EditorDialog;
   private readonly thumbnails = new AssetThumbnailCache();
-  private readonly sourceToggle: EditorIconButton[] = [];
+  private readonly sourceToggle: EditorToggleButton[] = [];
   private readonly releaseSaveHandler: () => void;
 
   constructor (private readonly windowId: string, private readonly assetId: string, private readonly projectId: string) {
@@ -185,7 +185,7 @@ export class ContentObjectAssetEditor extends EditorWindow {
 
         source.text = data[key] ?? '';
         source.on('textChanged', value => { data[key] = value; if (key === 'properties') { refreshProperties(); } });
-        tabs.addTab(title, source);
+        tabs.addTab(title, source, key === 'properties' ? 'details' : 'shader');
       }
       refreshProperties();
       const compilation = sheet.section('compilation', 'Compilation');
@@ -206,9 +206,9 @@ export class ContentObjectAssetEditor extends EditorWindow {
 
         canvas.drawRect(rect.x + u * rect.width, rect.y + (1 - v - rh) * rect.height, rw * rect.width, rh * rect.height, new math.Color(.97, .69, .18, 1), 2);
       };
-      const toggle = append(this.layout.toolbar, new EditorIconButton(engine, 'texture', 'Source Texture'));
+      const toggle = append(this.layout.toolbar, new EditorToggleButton(engine, 'texture', () => this.sourceTexture, value => { this.sourceTexture = value; this.imageViewport?.reset(); }, 'Source Texture'));
 
-      toggle.toggleMode = true; toggle.setPressedNoSignal(this.sourceTexture); toggle.on('toggled', value => { this.sourceTexture = value; this.imageViewport?.reset(); }); this.sourceToggle.push(toggle);
+      this.sourceToggle.push(toggle);
       this.buildSprite();
     }
   }

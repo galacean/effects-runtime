@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Engine } from '../engine';
 import { GraphicsBatchBuffer } from './graphics-batch-buffer';
 import { GraphicsTextLayoutCache } from './graphics-text-layout';
@@ -86,8 +85,6 @@ type GraphicsCommand = {
 export class Graphics {
   /** Font atlases and creation defaults shared by this drawing context. */
   readonly textCache: TextCache;
-  /** Snap text vertices to physical pixels after projection. */
-  roundTextPixels = false;
 
   private readonly batchBuffer: GraphicsBatchBuffer;
   private readonly ninePatchBuffer: GraphicsBatchBuffer;
@@ -138,7 +135,6 @@ export class Graphics {
   private transformDepth = 0;
   private currentTransform = this.transformStack[0];
   private readonly projectionMatrix = new Matrix4();
-  private readonly textTargetSize = new Vector2();
   private readonly clipStack: ClipRect[] = [];
   private readonly clipRects: ClipRect[] = [];
   private clipRectCount = 0;
@@ -330,16 +326,10 @@ export class Graphics {
         varying vec2 vUV;
 
         uniform mat4 effects_MatrixVP;
-        uniform vec2 uTextTargetSize;
-        uniform float uRoundTextPixels;
         void main() {
           vColor = aColor;
           vUV = aUV;
           gl_Position = effects_MatrixVP * vec4(aPos, 0.0, 1.0);
-          if (uRoundTextPixels > 0.5) {
-            vec2 pixelPosition = (gl_Position.xy * 0.5 + 0.5) * uTextTargetSize;
-            gl_Position.xy = floor(pixelPosition + 0.5) / uTextTargetSize * 2.0 - 1.0;
-          }
         }`,
         fragment: `precision highp float;
         varying vec4 vColor;
@@ -395,8 +385,6 @@ export class Graphics {
     this.coloredMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.texturedMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.textMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
-    this.textMaterial.setVector2('uTextTargetSize', this.textTargetSize.set(this.engine.canvas.width, this.engine.canvas.height));
-    this.textMaterial.setFloat('uRoundTextPixels', this.roundTextPixels ? 1 : 0);
     this.ninePatchMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
   }
 

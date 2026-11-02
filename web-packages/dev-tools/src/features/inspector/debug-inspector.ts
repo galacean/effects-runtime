@@ -1,5 +1,7 @@
-import { Button, VerticalAlignment } from '@galacean/effects-plugin-gui';
+import { VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { append, row, label } from '../../ui/controls/layout';
+import { EditorIconButton } from '../../ui/icons/control-icons';
+import { setTooltip } from '../../ui/controls/tooltip';
 import { reflectProperties } from '../../ui/property-editor/property-handle';
 import type { PropertyGroup } from '../../ui/property-editor/property-sheet';
 import { PropertyTree } from '../../ui/property-editor/property-tree';
@@ -31,10 +33,12 @@ export class DebugInspector {
 
     group.readOnly('Length', () => String(length));
     if (length > PAGE_SIZE) {
-      const pager = row(group.engine), previous = append(pager, new Button(group.engine, '‹'));
+      const pager = row(group.engine), previous = append(pager, new EditorIconButton(group.engine, 'chevronLeft'));
       const range = append(pager, label(group.engine, (start + 1) + '–' + end));
-      const next = append(pager, new Button(group.engine, '›'));
+      const next = append(pager, new EditorIconButton(group.engine, 'chevronRight'));
 
+      for (const button of [previous, next]) { button.themeTypeVariation = 'EditorSimpleButton'; }
+      setTooltip(previous, 'Previous page'); setTooltip(next, 'Next page');
       range.verticalAlignment = VerticalAlignment.Center;
       previous.disabled = page === 0; next.disabled = end === length;
       const move = (delta: number): void => { this.pages.set(object, page + delta); group.clear(); this.collection(group, object, ancestors, depth); };

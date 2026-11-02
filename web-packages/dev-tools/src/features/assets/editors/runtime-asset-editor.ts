@@ -88,7 +88,7 @@ export class RuntimeAssetEditor extends EditorWindow {
       for (const [key, title] of [['vertex', 'Vertex'], ['fragment', 'Fragment']] as const) {
         const text = new EditorTextArea(engine);
 
-        text.text = asset.shaderData[key]; text.editable = false; tabs.addTab(title, text);
+        text.text = asset.shaderData[key]; text.editable = false; tabs.addTab(title, text, 'shader');
       }
     } else { append(this.layout.viewport, label(engine, asset.constructor.name)); }
     const info = this.layout.inspector.section('asset', 'Asset');

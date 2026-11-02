@@ -1,15 +1,16 @@
 import type { Engine, spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem, math } from '@galacean/effects';
-import type { HBoxContainer, Label } from '@galacean/effects-plugin-gui';
-import { Button, Control, LineEdit, TextOverflow } from '@galacean/effects-plugin-gui';
+import type { Label } from '@galacean/effects-plugin-gui';
+import { Control, TextOverflow } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
 import { EditorWindow } from '../../framework/windows/editor-window';
-import { append, column, expand, label, margin, row, disposeChildren } from '../../ui/controls/layout';
+import { append, column, expand, label, margin } from '../../ui/controls/layout';
 import { EditorSplitContainer } from '../../ui/controls/split-container';
 import { EditorMenuButton } from '../../ui/controls/menu';
 import { EditorToolbar } from '../../ui/controls/toolbar';
-import { EditorIconControl } from '../../ui/icons/control-icons';
+import { EditorIconButton } from '../../ui/icons/control-icons';
+import { EditorBreadcrumbBar } from '../../ui/controls/breadcrumb-bar';
 import type { MenuAction } from '../../ui/controls/menu';
 import { EditorDialog } from '../../ui/controls/dialog';
 import type { GraphNodeSelection } from '../../ui/graph-editor/graph-editor-context';
@@ -55,7 +56,7 @@ export class AnimationGraphEditor extends EditorWindow {
   private primaryGraphView: GraphEditorView;
   private parametersPanel: AnimationGraphParametersPanel;
   private details: PropertySheet;
-  private breadcrumbs: HBoxContainer;
+  private breadcrumbs: EditorBreadcrumbBar;
   private selectedNodes: GraphNodeSelection[] = [];
   private selectedSignature = '';
   private viewed?: GraphModel;
@@ -63,17 +64,18 @@ export class AnimationGraphEditor extends EditorWindow {
   private zoom: Label;
   private caption: Label;
 
-  @menuItem('Window/AnimationGraph')
+  @menuItem('Window/Animation Graph')
   static showWindow (): void { EditorWindow.getWindow(AnimationGraphEditor).open(); }
-  constructor () { super(); this.title = 'AnimationGraph'; this.initialSize.set(1200, 720); this.open(); }
+  constructor () { super(); this.title = 'Animation Graph###AnimationGraph'; this.initialSize.set(1200, 720); this.open(); }
   protected override createContent (engine: Engine): Control {
     const body = column(engine), toolbar = new EditorToolbar(engine, 28);
 
     append(body, margin(engine, toolbar, 6, 4));
     const view = append(toolbar, new EditorMenuButton(engine, 'View'));
 
+    view.iconName = 'view'; view.showArrow = true;
     view.actions = () => [{ label: 'Parameters Panel', checked: this.parametersPanel.visible, action: () => { this.parametersPanel.visible = !this.parametersPanel.visible; } }, { label: 'Details Panel', checked: this.details.visible, action: () => { this.details.visible = !this.details.visible; } }];
-    const compile = append(toolbar, new Button(engine, 'Compile'));
+    const compile = append(toolbar, new EditorIconButton(engine, 'check', 'Compile'));
 
     compile.on('pressed', () => {
       if (!this.currentVFXItem) { return; }
@@ -82,7 +84,7 @@ export class AnimationGraphEditor extends EditorWindow {
     this.caption = expand(toolbar.label('Select an object with an Animator'), true, false); this.caption.textOverflow = TextOverflow.Ellipsis;
     const center = column(engine);
 
-    this.breadcrumbs = append(center, row(engine));
+    this.breadcrumbs = append(center, new EditorBreadcrumbBar(engine, null));
     this.primaryGraphView = append(center, expand(new GraphEditorView(engine, this.userContext)));
     this.primaryGraphView.createNodeContent = node => this.nodeContent(engine, node);
     this.primaryGraphView.nodeTypes = graph => this.nodeTypes(graph);
@@ -98,10 +100,10 @@ export class AnimationGraphEditor extends EditorWindow {
       return actions;
     };
     const footer = append(center, new EditorToolbar(engine, 24));
-    const fit = append(footer, new Button(engine, 'Fit'));
+    const fit = append(footer, new EditorIconButton(engine, 'fit', 'Fit'));
 
     fit.on('pressed', () => this.primaryGraphView.FitToView());
-    const reset = append(footer, new Button(engine, '1:1'));
+    const reset = append(footer, new EditorIconButton(engine, 'reset', '1:1'));
 
     reset.on('pressed', () => this.primaryGraphView.ResetView()); this.zoom = footer.label('100%');
     this.parametersPanel = new AnimationGraphParametersPanel(engine);
@@ -149,15 +151,11 @@ export class AnimationGraphEditor extends EditorWindow {
   NavigateToGraph (graph: GraphModel): void { this.primaryGraphView.SetGraphToView(graph); this.refreshBreadcrumbs(); }
   NavigateToNode (node: GraphNode, focus: boolean): void { this.NavigateToGraph(node.GetParentGraph()!); this.primaryGraphView.SelectNode(node); if (focus) { this.primaryGraphView.CenterView(node); } }
   private refreshBreadcrumbs (): void {
-    disposeChildren(this.breadcrumbs); const graphs: GraphModel[] = []; let graph = this.primaryGraphView.GetViewedGraph();
+    const graphs: GraphModel[] = []; let graph = this.primaryGraphView.GetViewedGraph();
 
     this.viewed = graph ?? undefined;
     while (graph) { graphs.unshift(graph); graph = graph.GetParentNode()?.GetParentGraph() ?? null; }
-    graphs.forEach((graph, index) => {
-      if (index) { append(this.breadcrumbs, new EditorIconControl(this.breadcrumbs.engine, 'chevronRight', 12)); } const button = append(this.breadcrumbs, new Button(this.breadcrumbs.engine, index ? graph.GetName() : 'Root'));
-
-      button.themeTypeVariation = 'EditorToolbarButton'; button.on('pressed', () => this.NavigateToGraph(graph));
-    });
+    this.breadcrumbs.setPath(graphs.map((graph, index) => ({ id: graph.GetID(), label: index ? graph.GetName() : 'Root', select: () => this.NavigateToGraph(graph) })));
   }
   private refreshDetails (): void {
     const node = this.selectedNodes.at(-1)?.m_pNode, signature = node?.GetID() ?? '';

@@ -1,11 +1,12 @@
 import { math, MouseButton, MouseButtonMask } from '@galacean/effects';
 import type { Engine, InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
 import { Control, FocusMode, VBoxContainer } from '@galacean/effects-plugin-gui';
-import { append, expand, row } from '../../../ui/controls/layout';
+import { append, expand } from '../../../ui/controls/layout';
 import { EditorMenuButton } from '../../../ui/controls/menu';
-import { EditorIconButton } from '../../../ui/icons/control-icons';
+import { EditorToolbar, EditorToggleButton } from '../../../ui/controls/toolbar';
+import { setTooltip } from '../../../ui/controls/tooltip';
 import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
-import { editorColors as C, getEditorFont } from '../../../ui/theme/control-theme';
+import { editorColors as C, EDITOR_FONT_SIZE, getEditorFont } from '../../../ui/theme/control-theme';
 import type { MaterialPreviewRequest } from './material-preview';
 import type { MaterialPreviewSettings } from './material-preview-settings';
 import { defaultMaterialPreview, frameMaterialPreview, materialPreviewCamera, previewFieldOfView } from './material-preview-settings';
@@ -21,11 +22,10 @@ export class MaterialPreviewViewport extends VBoxContainer {
   error = '';
   private readonly camera: EditorMenuButton;
   private readonly shading: EditorMenuButton;
-  private readonly models: { primitive: MaterialPreviewSettings['primitive'], button: EditorIconButton }[] = [];
 
   constructor (engine: Engine) {
     super(engine); this.setThemeConstantOverride('separation', 0);
-    const toolbar = append(this, row(engine));
+    const toolbar = append(this, new EditorToolbar(engine, 28));
     const options = append(toolbar, new EditorMenuButton(engine, ''));
 
     options.iconName = 'more';
@@ -41,14 +41,13 @@ export class MaterialPreviewViewport extends VBoxContainer {
     this.shading = append(toolbar, new EditorMenuButton(engine, 'Lit')); this.shading.showArrow = true; this.shading.themeTypeVariation = 'EditorViewportMenu';
     this.shading.actions = () => [true, false].map(lit => ({ label: lit ? 'Lit' : 'Unlit', checked: this.view.lit === lit, action: () => this.view.lit = lit }));
     append(this, expand(new MaterialCanvas(engine, this)));
-    const models = append(this, row(engine));
+    const models = append(this, new EditorToolbar(engine, 24));
 
     append(models, expand(new Control(engine), true, false));
     for (const [primitive, icon] of [['cylinder', 'previewCylinder'], ['sphere', 'previewSphere'], ['plane', 'previewPlane'], ['cube', 'cube']] as const) {
-      const button = append(models, new EditorIconButton(engine, icon));
+      const button = append(models, new EditorToggleButton(engine, icon, () => this.view.primitive === primitive, () => { this.view.primitive = primitive; this.resetCamera(); }));
 
-      button.themeTypeVariation = 'EditorToggleButton'; this.models.push({ primitive, button });
-      button.on('pressed', () => { this.view.primitive = primitive; this.resetCamera(); });
+      setTooltip(button, 'Preview ' + primitive);
     }
   }
   resetCamera (): void {
@@ -67,7 +66,7 @@ export class MaterialPreviewViewport extends VBoxContainer {
   }
   override update (dt: number): void {
     this.camera.text = this.view.orthographic ? 'Orthographic' : 'Perspective'; this.shading.text = this.view.lit ? 'Lit' : 'Unlit';
-    this.models.forEach(({ primitive, button }) => button.setPressedNoSignal(primitive === this.view.primitive)); super.update(dt);
+    super.update(dt);
   }
 }
 
@@ -83,8 +82,11 @@ class MaterialCanvas extends Control {
       const v = this.viewport;
 
       v.view.aspect = this.width / Math.max(1, this.height); if (v.framed) { frameMaterialPreview(v.view); }
-      this.image = v.source({ realtime: v.realtime, priority: 1, view: v.view });
-      this.presentation.update(this.image ? imageTexturePreview(this.image) : undefined);
+      const width = Math.max(1, Math.round(this.width * this.engine.displayServer.pixelRatio));
+      const height = Math.max(1, Math.round(this.height * this.engine.displayServer.pixelRatio));
+
+      this.image = v.source({ realtime: v.realtime, priority: 1, view: v.view, width, height });
+      this.presentation.update(this.image ? imageTexturePreview(this.image) : undefined, undefined, Math.max(width, height));
     }
     super.update(dt);
   }
@@ -97,7 +99,7 @@ class MaterialCanvas extends Control {
     this.presentation.draw(this, 0, 0, this.width, this.height);
     const message = v.error || this.image?.error || (!this.image ? 'Loading preview...' : v.showStats ? this.image.statistics : '');
 
-    if (message) { this.drawText(12, 12, message.split('\n')[0], 14, C.foreground, getEditorFont(this.engine, 14)); }
+    if (message) { this.drawText(12, 12, message.split('\n')[0], EDITOR_FONT_SIZE, C.foreground, getEditorFont(this.engine)); }
     graphics.popClipRect();
   }
   override onMouseDown (event: InputEventMouseButton): void { this.grabFocus(); event.accept(); }

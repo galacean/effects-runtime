@@ -1,11 +1,12 @@
-import type { Engine, InputEventKey } from '@galacean/effects';
-import { VBoxContainer } from '@galacean/effects-plugin-gui';
+import type { Engine, InputEventKey, math } from '@galacean/effects';
+import { PanelContainer, VBoxContainer } from '@galacean/effects-plugin-gui';
 import { append, expand, margin } from '../../../ui/controls/layout';
 import { EditorSearchField } from '../../../ui/controls/search-field';
 import { VirtualList } from '../../../ui/controls/virtual-list';
 import { ContentSourceRow, navigateContentSources, type SourceItem } from '../../content-browser/content-sources-view';
 import { assetLibrary } from '../asset-library';
 import { ASSET_ROOT } from '../model/asset-types';
+import { editorBox, editorColors } from '../../../ui/theme/control-theme';
 
 export class ContentPathPicker extends VBoxContainer {
   private readonly search: EditorSearchField;
@@ -15,11 +16,14 @@ export class ContentPathPicker extends VBoxContainer {
   private selected = ASSET_ROOT;
   private revision = -1;
 
-  constructor (engine: Engine, private readonly choose: (folder: string) => void) {
-    super(engine); this.setThemeConstantOverride('separation', 2);
+  constructor (engine: Engine, private readonly choose: (folder: string) => void, private readonly context?: (folder: string, position: math.Vector2) => void) {
+    super(engine); this.setThemeConstantOverride('separation', 0);
     this.search = new EditorSearchField(engine, 'Search folders');
-    this.search.on('textChanged', () => this.refresh()); append(this, margin(engine, this.search, 6, 4));
-    this.list = append(this, expand(new VirtualList(engine, 20, row => row.id, () => new ContentSourceRow(engine, { sourceKey: (row, event) => this.key(row, event) }))));
+    this.search.on('textChanged', () => this.refresh()); append(this, margin(engine, this.search, 8));
+    const panel = append(this, expand(new PanelContainer(engine)));
+
+    panel.setThemeStyleBoxOverride('panel', editorBox(editorColors.recessed));
+    this.list = append(panel, new VirtualList(engine, 20, row => row.id, () => new ContentSourceRow(engine, { sourceKey: (row, event) => this.key(row, event) })));
     this.list.emptyText = 'No matching folders';
   }
   select (folder: string): void {
@@ -35,6 +39,7 @@ export class ContentPathPicker extends VBoxContainer {
       rows.push({ id, name, icon: 'folder', folder: id, depth, selected: id === this.selected, expanded: this.expanded.has(id) || !!query,
         toggle: children.length ? () => { if (this.expanded.has(id)) { this.expanded.delete(id); } else { this.expanded.add(id); } this.refresh(); } : undefined,
         action: () => { this.selected = id; this.refresh(); this.choose(id); },
+        context: this.context ? position => this.context!(id, position) : undefined,
       });
       if (this.expanded.has(id) || query) { children.forEach(entry => visit(entry.id, entry.name, depth + 1)); }
     };

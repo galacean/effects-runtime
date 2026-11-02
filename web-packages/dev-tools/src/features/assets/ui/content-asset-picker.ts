@@ -1,96 +1,53 @@
-import { EffectsObject, math } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
-import { HorizontalAlignment, MouseFilter } from '@galacean/effects-plugin-gui';
-import { append, column, expand, place, screenPosition } from '../../../ui/controls/layout';
-import { EditorDropTarget } from '../../../ui/controls/drag-feedback';
-import { EditorPopupPanel } from '../../../ui/controls/popup-panel';
-import { EditorIconButton } from '../../../ui/icons/control-icons';
-import { EditorMenuButton, MenuHeading, EditorMenuActionButton } from '../../../ui/controls/menu';
-import { setTooltip } from '../../../ui/controls/tooltip';
+import { EffectsObject } from '@galacean/effects';
+import type { Engine, math } from '@galacean/effects';
 import type { ValueBinding } from '../../../ui/property-editor/property-sheet';
 import { assetLibrary } from '../asset-library';
 import { openContentAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import type { AssetKind } from '../model/asset-types';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
 import { ASSET_PRESENTATION } from './asset-presentation';
-import { AssetPicker, assetReferenceClipboard } from './asset-picker';
+import { assetReferenceClipboard } from './asset-picker';
+import { AssetReferenceFieldBase } from './asset-reference-field-base';
 import { AssetPreviewControl } from '../preview/asset-preview-control';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 
 /** A resource reference in an asset draft; selecting it does not instantiate a scene object. */
-export class ContentAssetPicker extends EditorDropTarget {
-  private readonly caption: EditorMenuButton;
-  private readonly picker: EditorPopupPanel;
-  private readonly browser: AssetPicker;
-  private readonly thumbnail?: AssetPreviewControl;
-  private readonly actionButtons: { button: EditorMenuActionButton, enabled: () => boolean }[] = [];
-  private readonly useSelected: EditorIconButton;
-  private readonly browse: EditorIconButton;
+export class ContentAssetPicker extends AssetReferenceFieldBase {
   private revision = -1;
 
   constructor (engine: Engine, readonly kind: Exclude<AssetKind, 'folder' | 'scene'>, private readonly binding: ValueBinding<string | undefined>,
     readonly emptyLabel = 'None', readonly allowEmpty = true) {
     super(engine);
-    this.caption = append(this, expand(new EditorMenuButton(engine, ''), true, false));
-    this.caption.iconName = kind === 'shader' ? ASSET_PRESENTATION[kind].menuIcon : undefined; this.caption.showArrow = true; this.caption.clipText = true;
-    this.caption.mouseFilter = MouseFilter.Pass; this.caption.themeTypeVariation = 'EditorComboButton'; this.caption.textAlignment = HorizontalAlignment.Left;
+    this.caption.iconName = kind === 'shader' ? ASSET_PRESENTATION[kind].menuIcon : undefined;
     if (kind !== 'shader') {
-      this.thumbnail = append(this, new AssetPreviewControl(engine, () => assetLibrary.asset(EditorRuntimeSession.player.engine, this.binding.read() ?? ''), 54, () => this.binding.read(), ASSET_PRESENTATION[kind].icon));
-      this.thumbnail.mouseFilter = this.caption.mouseFilter;
-      this.thumbnail.activated = () => this.openCurrent();
+      const thumbnail = new AssetPreviewControl(engine, () => assetLibrary.asset(EditorRuntimeSession.player.engine, this.binding.read() ?? ''), 54, () => this.binding.read(), ASSET_PRESENTATION[kind].icon);
+
+      this.setPreview(thumbnail); thumbnail.activated = () => this.openCurrent();
     }
-    this.picker = new EditorPopupPanel(engine); this.picker.themeTypeVariation = 'EditorMenu';
-    const body = append(this.picker, column(engine));
+    this.caption.actions = () => [
+      { label: 'Edit', icon: 'edit', enabled: !!this.binding.read(), action: () => this.openCurrent() },
+      { label: 'Copy Reference', icon: 'copy', enabled: !!this.binding.read(), action: () => {
+        const id = this.binding.read(), entry = id && assetLibrary.entry(id);
 
-    append(body, new MenuHeading(engine, 'Current Asset'));
-    const action = (icon: 'edit' | 'copy' | 'paste' | 'delete', title: string, enabled: () => boolean, run: () => void): void => {
-      const button = append(body, new EditorMenuActionButton(engine, { label: title, icon, action: () => { this.picker.hidePopup(); run(); } }));
-
-      this.actionButtons.push({ button, enabled });
-    };
-
-    action('edit', 'Edit', () => !!this.binding.read(), () => this.openCurrent());
-    action('copy', 'Copy Reference', () => !!this.binding.read(), () => {
-      const id = this.binding.read(), entry = id && assetLibrary.entry(id);
-
-      assetReferenceClipboard.id = id; assetReferenceClipboard.asset = undefined; assetReferenceClipboard.project = assetLibrary.projectId;
-      if (entry) { void navigator.clipboard.writeText(assetLibrary.pathText(entry.parentId) + '/' + entry.name).catch(error => assetLibrary.report(error)); }
-    });
-    action('paste', 'Paste', () => assetReferenceClipboard.project === assetLibrary.projectId && this.compatible(assetReferenceClipboard.id ?? ''), () => { if (assetReferenceClipboard.project === assetLibrary.projectId && assetReferenceClipboard.id && this.compatible(assetReferenceClipboard.id)) { this.binding.write(assetReferenceClipboard.id); } });
-    if (allowEmpty) { action('delete', 'Clear', () => !!this.binding.read(), () => this.binding.write(undefined)); }
-    append(body, new MenuHeading(engine, 'Browse'));
-    this.browser = append(body, new AssetPicker(engine, id => { this.binding.write(id); this.picker.hidePopup(); }));
+        assetReferenceClipboard.id = id; assetReferenceClipboard.asset = undefined; assetReferenceClipboard.project = assetLibrary.projectId;
+        if (entry) { void navigator.clipboard.writeText(assetLibrary.pathText(entry.parentId) + '/' + entry.name).catch(error => assetLibrary.report(error)); }
+      } },
+      { label: 'Paste', icon: 'paste', enabled: this.canPaste(), action: () => { if (this.canPaste()) { this.binding.write(assetReferenceClipboard.id); } } },
+      ...(allowEmpty ? [{ label: 'Clear', icon: 'delete' as const, enabled: !!this.binding.read(), action: () => this.binding.write(undefined) }] : []),
+    ];
     this.browser.search.placeholderText = 'Search ' + ASSET_PRESENTATION[kind].label + ' assets';
-    this.caption.openMenu = () => {
-      this.browser.search.text = ''; this.refresh();
-      this.actionButtons.forEach(({ button, enabled }) => button.disabled = !enabled());
-      const position = screenPosition(this, 0, this.height);
-
-      this.picker.popup(position, this.caption);
-      if (this.picker.y < position.y) { this.picker.setPosition(this.picker.x, Math.max(0, screenPosition(this).y - this.picker.height)); }
-      this.browser.search.grabFocus();
-    };
-    this.picker.onPopup('popupOpened', () => this.caption.setPressedNoSignal(true)); this.picker.onPopup('popupClosed', () => this.caption.setPressedNoSignal(false));
-    this.useSelected = append(this, new EditorIconButton(engine, 'useSelected')); this.useSelected.mouseFilter = MouseFilter.Pass;
-    this.useSelected.on('pressed', () => {
-      const id = selectedContentAssets().find(id => this.compatible(id));
-
-      if (id) { this.binding.write(id); }
-    });
-    this.browse = append(this, new EditorIconButton(engine, 'browseContent')); this.browse.mouseFilter = MouseFilter.Pass;
-    this.browse.on('pressed', () => {
-      const id = this.binding.read();
-
-      if (id) { revealContentAsset(id); }
-    });
-    setTooltip(this.useSelected, 'Use selected asset from Content Browser'); setTooltip(this.browse, 'Browse to asset in Content Browser');
   }
-  override getMinimumSize (): math.Vector2 { return new math.Vector2(80, this.thumbnail ? 54 : 49); }
-  protected override sortChildren (): void {
-    const left = this.thumbnail ? 60 : 0;
+  private canPaste (): boolean { return assetReferenceClipboard.project === assetLibrary.projectId && this.compatible(assetReferenceClipboard.id ?? ''); }
+  protected override chooseAsset (id: string): void { this.binding.write(id); }
+  protected override useCurrentSelection (): void {
+    const id = selectedContentAssets().find(id => this.compatible(id));
 
-    if (this.thumbnail) { place(this.thumbnail, 0, 0, 54, 54); }
-    place(this.caption, left, 0, this.width - left, 24); place(this.useSelected, left, 27, 24, 22); place(this.browse, left + 26, 27, 24, 22);
+    if (id) { this.binding.write(id); }
+  }
+  protected override browseCurrent (): void {
+    const id = this.binding.read();
+
+    if (id) { revealContentAsset(id); }
   }
   private openCurrent (): void {
     const id = this.binding.read();
@@ -102,7 +59,7 @@ export class ContentAssetPicker extends EditorDropTarget {
 
     return entry?.kind === this.kind && !entry.deletedAt;
   }
-  private refresh (): void {
+  protected override refreshCandidates (): void {
     this.browser.setCandidates(assetLibrary.entries.filter(entry => this.compatible(entry.id)), this.kind, this.binding.read()); this.revision = assetLibrary.revision;
   }
   override update (dt: number): void {
@@ -110,7 +67,7 @@ export class ContentAssetPicker extends EditorDropTarget {
 
     this.caption.text = entry?.name ?? (id ? 'Missing ' + ASSET_PRESENTATION[this.kind].label : this.emptyLabel);
     this.useSelected.disabled = !selectedContentAssets().some(id => this.compatible(id)); this.browse.disabled = !entry || !!entry.deletedAt;
-    if (this.picker.visible && this.revision !== assetLibrary.revision) { this.refresh(); }
+    if (this.picker.visible && this.revision !== assetLibrary.revision) { this.refreshCandidates(); }
     super.update(dt);
   }
   private dropped (data: unknown): string | undefined {
@@ -126,5 +83,4 @@ export class ContentAssetPicker extends EditorDropTarget {
 
     if (id) { this.binding.write(id); }
   }
-  override onDestroy (): void { this.picker.dispose(); super.onDestroy(); }
 }

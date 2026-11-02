@@ -12,6 +12,7 @@ import { append, column, expand, label, margin, place } from '../../ui/controls/
 import { VirtualList } from '../../ui/controls/virtual-list';
 import { NumberEdit } from '../../ui/controls/number-edit';
 import { EditorToolbar } from '../../ui/controls/toolbar';
+import { EditorTransportControl } from '../../ui/controls/transport-control';
 import { EditorIconButton, paintIcon } from '../../ui/icons/control-icons';
 import { editorColors as C, editorBox, EDITOR_FONT, EDITOR_FONT_SIZE, getEditorFont } from '../../ui/theme/control-theme';
 import { COLORS, LAYOUT } from './animation-clip-style';
@@ -508,7 +509,6 @@ export class AnimationClipEditor extends EditorWindow {
   private time: NumberEdit;
   private duration!: Label;
   private caption: Label;
-  private play: EditorIconButton;
   private playing = false;
   private editorBody?: Control;
   private empty?: Label;
@@ -525,22 +525,21 @@ export class AnimationClipEditor extends EditorWindow {
 
     body.visible = false;
 
-    const first = append(toolbar, new EditorIconButton(engine, 'first'));
-
-    setTooltip(first, 'Go to Start'); first.on('pressed', () => { this.playing = false; this.state.current = 0; });
-    this.play = append(toolbar, new EditorIconButton(engine, 'play')); setTooltip(this.play, 'Play / Pause'); this.play.on('pressed', () => { this.playing = !this.playing; });
-    const stop = append(toolbar, new EditorIconButton(engine, 'stop'));
-
-    setTooltip(stop, 'Stop'); stop.on('pressed', () => { this.playing = false; this.state.current = 0; });
+    append(toolbar, new EditorTransportControl(engine, {
+      playing: () => this.playing,
+      start: () => { this.playing = false; this.state.current = 0; },
+      play: () => { this.playing = !this.playing; },
+      stop: () => { this.playing = false; this.state.current = 0; },
+    }));
     this.time = append(toolbar, new NumberEdit(engine)); this.time.minimum = 0; this.time.step = .01; this.time.suffix = ' s'; this.time.setCustomMinimumSize(95, 24); this.time.changed = value => { this.state.current = Math.min(value, this.state.duration); };
     this.duration = toolbar.label('');
-    const fit = append(toolbar, new Button(engine, 'Fit'));
+    const fit = append(toolbar, new EditorIconButton(engine, 'fit', 'Fit'));
 
     fit.on('pressed', () => this.fit());
-    const expandAll = append(toolbar, new Button(engine, 'Expand All'));
+    const expandAll = append(toolbar, new EditorIconButton(engine, 'caretDown', 'Expand All'));
 
     expandAll.on('pressed', () => { this.expandAll(); this.refreshRows(); });
-    const collapse = append(toolbar, new Button(engine, 'Collapse All'));
+    const collapse = append(toolbar, new EditorIconButton(engine, 'caretRight', 'Collapse All'));
 
     collapse.on('pressed', () => { this.state.expanded.clear(); this.refreshRows(); });
     this.caption = expand(toolbar.label('Select an Animation Clip'), true, false); this.caption.textOverflow = TextOverflow.Ellipsis;
@@ -561,7 +560,7 @@ export class AnimationClipEditor extends EditorWindow {
   override onUndoRedo (): void { if (this.clip) { this.tracks = this.builder.build(this.clip); this.refreshRows(); } }
   override update (dt: number): void {
     if (this.playing && this.clip) { this.state.current = (this.state.current + dt) % this.state.duration; }
-    this.play.iconName = this.playing ? 'pause' : 'play'; if (!this.time.isEditing) { this.time.value = this.state.current; }
+    if (!this.time.isEditing) { this.time.value = this.state.current; }
   }
   private fit (): void { this.state.start = 0; this.state.end = this.state.duration * 1.1; }
   private expandAll (): void { for (const element of this.tracks) { this.state.expanded.add(element.path); for (const component of element.components) { this.state.expanded.add(element.path + '/' + component.label); } } }

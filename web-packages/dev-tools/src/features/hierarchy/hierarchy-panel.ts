@@ -15,8 +15,7 @@ import { editorColors, editorBox } from '../../ui/theme/control-theme';
 import { projectWorkspace } from '../projects/project-workspace';
 import type { SceneDocument } from '../scene/document/scene-document';
 import { sceneWorkspace } from '../scene/scene-workspace';
-import { SceneItemOperations } from '../scene/operations/scene-item-operations';
-import { SCENE_ITEM_DESCRIPTORS } from '../scene/ui/scene-item-palette';
+import { createItemActions } from '../scene/ui/create-item-menu';
 import { SceneViewportPanel } from '../scene/viewport/scene-viewport-panel';
 import { HierarchyActions } from './hierarchy-actions';
 import type { HierarchyNode, HierarchyOptions } from './hierarchy-model';
@@ -267,7 +266,7 @@ export class HierarchyPanel extends EditorWindow {
     const node = rows[index];
     let handled = true, next = -1;
 
-    if (modifier && code === 'KeyA') { this.select(rows.filter(row => row.kind !== 'level').map(row => row.id)); } else if (modifier && code === 'KeyF') { this.search?.grabFocus(); } else if (modifier && code === 'KeyD') { this.actions?.duplicate(this.model, selected); } else if (code === 'F2' && selected.length === 1 && selected[0].editable) { this.tree?.rename(selected[0].id); } else if (!modifier && code === 'KeyF') { this.focusScene(); } else if (code === 'Delete') { this.actions?.remove(this.model, selected.filter(node => node.editable)); } else if (code === 'Escape') { this.select([]); } else if (code === 'ArrowDown') { next = Math.min(rows.length - 1, index + 1); } else if (code === 'ArrowUp') { next = Math.max(0, index - 1); } else if (code === 'Home') { next = 0; } else if (code === 'End') { next = rows.length - 1; } else if (code === 'ArrowLeft' && node) {
+    if (modifier && code === 'KeyA') { this.select(rows.filter(row => row.kind !== 'level').map(row => row.id)); } else if (modifier && code === 'KeyF') { this.search?.grabFocus(); } else if (modifier && code === 'KeyD') { this.actions?.duplicate(this.model, selected); } else if (code === 'F2' && selected.length === 1 && selected[0].editable) { this.tree?.rename(selected[0].id); } else if (!modifier && code === 'KeyF') { this.focusScene(); } else if (code === 'Delete' || code === 'Backspace') { this.actions?.remove(this.model, selected.filter(node => node.editable)); } else if (code === 'Escape') { this.select([]); } else if (code === 'ArrowDown') { next = Math.min(rows.length - 1, index + 1); } else if (code === 'ArrowUp') { next = Math.max(0, index - 1); } else if (code === 'Home') { next = 0; } else if (code === 'End') { next = rows.length - 1; } else if (code === 'ArrowLeft' && node) {
       if (this.expanded.has(node.id) && node.children.length) { this.toggle(node, event.shiftPressed); } else if (node.parent) { this.select([node.parent.id]); this.tree?.reveal(node.parent.id); }
     } else if (code === 'ArrowRight' && node?.children.length) {
       if (!this.expanded.has(node.id)) { this.toggle(node, event.shiftPressed); } else { this.select([node.children[0].id]); this.tree?.reveal(node.children[0].id); }
@@ -288,7 +287,7 @@ export class HierarchyPanel extends EditorWindow {
 
     this.context.setActions([
       { label: 'Outliner', heading: true },
-      { label: 'Create', children: [...new Set(SCENE_ITEM_DESCRIPTORS.map(item => item.group))].map(group => ({ label: group, children: SCENE_ITEM_DESCRIPTORS.filter(item => item.group === group && item.creatable !== false).map(item => ({ label: item.label, action: () => { new SceneItemOperations(document).create(item, node?.kind === 'folder' ? { folderId: node.folder!.id } : { parent: node?.item }); } })) })) },
+      { label: 'Create', children: createItemActions(node?.kind === 'folder' ? { folderId: node.folder!.id } : { parent: node?.item }) },
       { label: 'Rename', shortcut: 'F2', enabled: editable.length === 1, action: () => this.tree?.rename(editable[0].id) },
       { label: 'Duplicate', shortcut: 'Ctrl+D', enabled: editable.some(node => !!node.item), action: () => { actions.duplicate(model, editable); } },
       { label: 'Delete', shortcut: 'Delete', enabled: !!editable.length, action: () => actions.remove(model, editable) },

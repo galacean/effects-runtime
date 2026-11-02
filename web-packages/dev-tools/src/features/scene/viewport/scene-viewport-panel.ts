@@ -1,5 +1,5 @@
 import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
-import { InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
+import { InputEventMouseMotion, MouseButton, MouseButtonMask, VFXItem, math } from '@galacean/effects';
 import { Control, FocusMode } from '@galacean/effects-plugin-gui';
 import { GizmoViewportUtils } from '@galacean/effects-plugin-editor-gizmo';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
@@ -10,6 +10,7 @@ import { append, column, expand, screenPosition } from '../../../ui/controls/lay
 import { editorColors, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
 import { TexturePresentation, imageTexturePreview } from '../../assets/preview/texture-preview';
 import { sceneWorkspace } from '../scene-workspace';
+import { SceneItemOperations } from '../operations/scene-item-operations';
 import { OrbitController } from './orbit-controller';
 import { SceneGizmo } from './scene-gizmo';
 import { SceneToolbar } from './scene-toolbar';
@@ -87,8 +88,10 @@ export class SceneViewportPanel extends EditorWindow {
     const origin = screenPosition(viewport), width = Math.floor(viewport.width), height = Math.floor(viewport.height);
 
     container.style.left = Math.floor(origin.x) + 'px'; container.style.top = Math.floor(origin.y) + 'px';
-    const resized = container.style.width !== width + 'px' || container.style.height !== height + 'px';
+    const pixelRatio = viewport.engine.displayServer.pixelRatio;
+    const resized = container.style.width !== width + 'px' || container.style.height !== height + 'px' || player.engine.displayServer.pixelRatio !== pixelRatio;
 
+    player.engine.displayServer.pixelRatio = pixelRatio;
     if (resized) { container.style.width = width + 'px'; container.style.height = height + 'px'; player.resize(); }
     this.stableViewportFrames = resized ? 0 : this.stableViewportFrames + 1;
     if (this.gizmo && this.is2DMode && this.stableViewportFrames >= 2) {
@@ -153,7 +156,21 @@ export class SceneViewportPanel extends EditorWindow {
   private handleShortcut (event: InputEventKey): void {
     const gizmo = this.gizmo;
 
-    if (!gizmo || !this.is2DMode || event.echo || event.ctrlPressed || event.metaPressed || event.altPressed) { return; }
+    if (!gizmo || event.echo || event.ctrlPressed || event.metaPressed || event.altPressed) { return; }
+    const code = event.physicalKeycode || event.keycode;
+
+    if (code === 'Delete' || code === 'Backspace') {
+      const document = sceneWorkspace.current;
+
+      if (!document || gizmo.handler.isMouseButtonPressed() || gizmo.handler.getActiveEditMode().id === 'text-edit') { return; }
+      const items = EditorSelection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem &&
+        object.composition === document.composition && !!object.definition.id && object !== document.composition.sceneRoot && object !== document.composition.root);
+
+      if (items.length) { new SceneItemOperations(document).remove(items); event.accept(); }
+
+      return;
+    }
+    if (!this.is2DMode) { return; }
     if (event.physicalKeycode === 'Escape') {
       if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
     } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }

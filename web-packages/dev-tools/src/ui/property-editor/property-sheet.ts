@@ -1,7 +1,7 @@
 import { math, MouseButton } from '@galacean/effects';
 import type { Engine, InputEventMouseButton, InputEventMouseMotion, InputEventKey } from '@galacean/effects';
 import type { Control, Label, Checkbox, VBoxContainer } from '@galacean/effects-plugin-gui';
-import { Button, ColorPicker, Container, SizeFlags, TextOverflow, Theme, VerticalAlignment } from '@galacean/effects-plugin-gui';
+import { Button, Container, SizeFlags, TextOverflow, Theme, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { append, column, disposeChildren, expand, label, place, row } from '../controls/layout';
 import { EditorVerticalScrollContainer } from '../controls/scroll-container';
 import { NumberEdit } from '../controls/number-edit';
@@ -10,10 +10,10 @@ import { EditorCollapsiblePanel } from '../controls/section-header';
 import { EditorComboBox } from '../controls/combo-box';
 import { EditorTextArea, EditorTextField } from '../controls/text-field';
 import { EditorCheckbox } from '../controls/checkbox';
-import { EditorPopupPanel } from '../controls/popup-panel';
+import { EditorColorButton } from '../controls/color-picker';
 import { EditorIconButton } from '../icons/control-icons';
 import type { EditorIcon } from '../icons/control-icons';
-import { editorDetailBackground, editorColors as C, editorMetrics, EDITOR_SMALL_FONT_SIZE } from '../theme/control-theme';
+import { editorDetailBackground, editorColors as C, editorMetrics, EDITOR_SMALL_FONT_SIZE, getEditorFont, setEditorFont } from '../theme/control-theme';
 import { setTooltip } from '../controls/tooltip';
 import { createObjectReferenceControl } from './object-reference-field';
 
@@ -108,48 +108,6 @@ class PropertyRow extends Container {
   override onMouseUp (event: InputEventMouseButton): void { this.resizing = false; event.accept(); }
 }
 
-class PropertyColorButton extends Button {
-  readonly popup: EditorPopupPanel;
-  private readonly picker: ColorPicker;
-  private readonly channels: NumberEdit[] = [];
-  private rgba = new math.Color(1, 1, 1, 1);
-  changed?: (color: math.Color) => void;
-  finished?: () => void;
-  constructor (engine: Engine) {
-    super(engine, '');
-    this.popup = new EditorPopupPanel(engine); this.popup.setCustomMinimumSize(250, 0);
-    const body = append(this.popup, column(engine, [], 4));
-
-    this.picker = append(body, new ColorPicker(engine));
-    this.picker.on('colorChanged', color => { this.rgba = color.clone(); this.syncChannels(); this.changed?.(this.rgba.clone()); });
-    const values = append(body, row(engine));
-
-    for (let i = 0; i < 4; i++) {
-      const field = append(values, expand(new NumberEdit(engine), true, false));
-
-      field.minimum = 0; field.maximum = i === 3 ? 1 : Infinity; field.step = .005; field.axis = i;
-      field.changed = value => {
-        const data = [this.rgba.r, this.rgba.g, this.rgba.b, this.rgba.a];
-
-        data[i] = value; this.rgba.set(data[0], data[1], data[2], data[3]); this.picker.color = this.rgba; this.changed?.(this.rgba.clone());
-      };
-      this.channels.push(field);
-    }
-    this.on('pressed', () => {
-      this.picker.color = this.rgba; this.syncChannels();
-      const m = this.getGlobalTransform2D().elements;
-
-      this.popup.popup(new math.Vector2(m[6], m[7] + this.height), this);
-    });
-    this.popup.onPopup('popupClosed', () => this.finished?.());
-  }
-  get color (): math.Color { return this.rgba; }
-  set color (value: math.Color) { if (!this.popup.visible) { this.rgba = value.clone(); } }
-  private syncChannels (): void { [this.rgba.r, this.rgba.g, this.rgba.b, this.rgba.a].forEach((value, i) => this.channels[i].value = value); }
-  protected override drawDecoration (): void { this.fillRect(3, 3, this.width - 6, this.height - 6, this.rgba); }
-  override onDestroy (): void { this.popup.dispose(); super.onDestroy(); }
-}
-
 /** Each section and field is constructed once. Binding refreshes only update existing values. */
 export class PropertyGroup extends EditorCollapsiblePanel {
   private readonly fields: PropertyRow[] = [];
@@ -159,6 +117,7 @@ export class PropertyGroup extends EditorCollapsiblePanel {
 
   constructor (readonly sheet: PropertySheet, readonly id: string, readonly title: string, readonly depth = 0, defaultOpen = true, icon?: EditorIcon) {
     super(sheet.engine, title, sheet.expansion.get(id) ?? defaultOpen, depth, icon);
+    if (depth) { setEditorFont(this.heading, EDITOR_SMALL_FONT_SIZE, 'normal'); }
     this.opened = sheet.expansion.get(id) ?? defaultOpen;
     this.heading.on('pressed', () => { this.opened = !this.opened; sheet.expansion.set(id, this.opened); this.applyFilter(sheet.query); });
   }
@@ -246,7 +205,7 @@ export class PropertyGroup extends EditorCollapsiblePanel {
     return this.add(title, group, options);
   }
   color (title: string, binding: ValueBinding<math.Color>, options: PropertyOptions = {}): Control {
-    const field = new PropertyColorButton(this.engine);
+    const field = new EditorColorButton(this.engine);
 
     field.color = binding.read(); field.changed = color => this.change(title, field, () => binding.write(color));
     field.finished = () => this.sheet.edit.finish(field); this.bindings.push(() => field.color = binding.read());
@@ -308,6 +267,8 @@ export class PropertySheet extends EditorVerticalScrollContainer {
   constructor (engine: Engine, readonly edit: PropertyEditContext) {
     super(engine);
     this.theme = new Theme(); this.theme.setFontSize('Control', 'fontSize', EDITOR_SMALL_FONT_SIZE);
+    this.theme.setFont('Control', 'font', { family: getEditorFont(engine, EDITOR_SMALL_FONT_SIZE), weight: 'normal', style: 'normal' });
+    this.theme.setFont('EditorCategory', 'font', { family: getEditorFont(engine, EDITOR_SMALL_FONT_SIZE, 'bold'), weight: 'bold', style: 'normal' });
     this.body = append(this, column(engine)); this.body.horizontalSizeFlags = SizeFlags.ExpandFill;
   }
   clear (): void { disposeChildren(this.body); this.groups.length = 0; }

@@ -31,7 +31,7 @@ export class EditorRuntimeSession {
 
     this.lastTime = time;
     if (this.device.contextWasLost || this.device.gl.isContextLost()) { return; }
-    this.device.prepareFrame(); this.player.tick(delta);
+    this.device.prepareFrame(); this.player.tick(delta); this.device.resolveFramebuffer();
   }
 
   static resetClock (): void { this.lastTime = 0; }

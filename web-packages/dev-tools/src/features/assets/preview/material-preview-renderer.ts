@@ -4,6 +4,7 @@ import { Material, RenderPassAttachmentStorageType, RenderingData, Serialization
 import { GLShaderLibrary } from '@galacean/effects-webgl';
 import { createGeometry, GeometryType } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
+import { EditorRenderTarget } from '../../../platform/effects-runtime/editor-render-target';
 import type { RenderedPreview } from './texture-preview-cache';
 import { materialPreviewCamera, thumbnailMaterialView, type MaterialPreviewSettings, type PreviewPrimitive } from './material-preview-settings';
 
@@ -92,7 +93,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   private ready = false;
   private disposed = false;
 
-  get byteSize (): number { return this.width * this.height * 8; }
+  get byteSize (): number { return this.target instanceof EditorRenderTarget ? this.target.byteSize : this.width * this.height * 8; }
 
   get statistics (): string {
     const vertices = this.geometry?.getAttributeData('a_Position')?.length ?? 0;
@@ -100,7 +101,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     return Math.floor((this.geometry?.getDrawCount() ?? 0) / 3) + ' triangles  |  ' + Math.floor(vertices / 3) + ' vertices';
   }
 
-  constructor (private readonly engine: Engine, readonly width: number, readonly height: number, private readonly source: () => MaterialPreviewInput) {
+  constructor (private readonly engine: Engine, public width: number, public height: number, private readonly source: () => MaterialPreviewInput) {
     const device = engine.displayServer.renderingDevice;
 
     this.renderer = engine.renderer;
@@ -114,6 +115,10 @@ export class MaterialPreviewRenderer implements RenderedPreview {
       depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque },
       storeAction: { colorAction: TextureStoreAction.store },
     });
+  }
+
+  resize (width: number, height: number): void {
+    this.width = width; this.height = height;
   }
 
   render (time: number): void {
@@ -151,6 +156,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     material.setVector4('_Time', new math.Vector4(time / 20, time, time * 2, time * 3));
     material.setFloat('uTime', time);
     this.target.initialize();
+    this.target.resize(0, 0, this.width, this.height);
     this.renderer.setFramebuffer(this.target);
     this.renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0],
       depthAction: TextureLoadAction.clear, clearDepth: 1, stencilAction: TextureLoadAction.clear, clearStencil: 0 });
@@ -163,6 +169,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     }
     this.renderer.drawGeometry(this.geometry!, model, material);
     if (doubleSided) { material.culling = false; }
+    device.resolveFramebuffer();
     this.ready = true;
   }
 

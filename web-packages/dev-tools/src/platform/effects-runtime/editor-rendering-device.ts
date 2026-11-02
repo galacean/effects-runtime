@@ -1,10 +1,12 @@
-import type { Engine, GPUFramebuffer } from '@galacean/effects';
+import type { Engine, FramebufferProps, GPUFramebuffer } from '@galacean/effects';
 import { RenderPassAttachmentStorageType, Texture, TextureSourceType, TextureStoreAction, glContext } from '@galacean/effects';
 import { RenderingDeviceWebGL } from '@galacean/effects-webgl';
+import { EditorRenderTarget } from './editor-render-target';
 
 /** Keeps the scene's logical surface independent of the shared presentation canvas. */
 export class EditorRenderingDevice extends RenderingDeviceWebGL {
   private sceneTarget?: GPUFramebuffer;
+  private multisampleTarget?: EditorRenderTarget;
 
   static forSurface (engine: Engine, surface: HTMLCanvasElement): EditorRenderingDevice {
     const sceneCanvas = engine.canvas;
@@ -16,6 +18,34 @@ export class EditorRenderingDevice extends RenderingDeviceWebGL {
 
   override getWidth (): number { return this.engine.canvas.width; }
   override getHeight (): number { return this.engine.canvas.height; }
+
+  override createFramebuffer (props: FramebufferProps) {
+    const color = props.attachments[0]?.source, gl = this.gl;
+    const type = color?.type ?? gl.UNSIGNED_BYTE, format = color?.internalFormat ?? gl.RGBA;
+
+    if (props.attachments.length === 1 && (color.format ?? gl.RGBA) === gl.RGBA &&
+      (format === gl.RGBA || format === gl.RGBA8 || format === gl.RGBA16F) && (type === gl.UNSIGNED_BYTE || type === gl.HALF_FLOAT) &&
+      props.depthStencilAttachment?.storageType === RenderPassAttachmentStorageType.depth_stencil_opaque && !props.depthStencilAttachment.storage) {
+      return new EditorRenderTarget(this, props);
+    }
+
+    return super.createFramebuffer(props);
+  }
+
+  override bindFramebuffer (target: GLenum, framebuffer: WebGLFramebuffer | null): void {
+    if (this.multisampleTarget && this.multisampleTarget.drawFramebuffer !== framebuffer && (target === this.gl.FRAMEBUFFER || target === this.gl.DRAW_FRAMEBUFFER)) {
+      this.resolveFramebuffer();
+    }
+    super.bindFramebuffer(target, framebuffer);
+  }
+
+  setMultisampleTarget (target: EditorRenderTarget): void { this.multisampleTarget = target; }
+
+  resolveFramebuffer (): void {
+    const target = this.multisampleTarget;
+
+    this.multisampleTarget = undefined; target?.resolve();
+  }
 
   get sceneTexture (): Texture | undefined {
     const texture = this.sceneTarget?.getColorTextures()[0];

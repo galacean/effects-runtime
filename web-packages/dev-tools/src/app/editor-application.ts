@@ -16,6 +16,7 @@ import { setGetWindowProvider, type EditorWindow } from '../framework/windows/ed
 import { DockWorkspace } from '../ui/controls/dock-workspace';
 import { append, column, expand, label } from '../ui/controls/layout';
 import { EditorMenuBar, EditorMenuButton } from '../ui/controls/menu';
+import type { MenuAction } from '../ui/controls/menu';
 import { editorBox, editorColors, editorMetrics } from '../ui/theme/control-theme';
 import { MenuItemNode, MenuNode } from '../ui/menus/menu-tree';
 import { EditorMenus } from './menus/editor-menus';
@@ -69,7 +70,8 @@ export class EditorApplication {
       button.actions = () => {
         const action = node.action();
 
-        const actions = Array.isArray(action.children) ? action.children : [action];
+        const children = Array.isArray(action.children) ? action.children : [action];
+        const actions = node.name === 'Window' ? this.panelMenuActions(children) : children;
 
         return node.name === 'Window' ? actions.flatMap(entry => entry.label === 'Layout' && Array.isArray(entry.children) ? [{ label: 'Layout', heading: true }, ...entry.children] : [entry]) : actions;
       };
@@ -131,6 +133,15 @@ export class EditorApplication {
     this.menus.update(); sceneWorkspace.current?.commit(); texturePreviewCache.prune();
 
     return dt;
+  }
+  private panelMenuActions (entries: MenuAction[]): MenuAction[] {
+    return entries.map(entry => {
+      const panel = this.windows.find(window => window.title.split('###')[0] === entry.label);
+
+      if (panel) { return { ...entry, icon: panel.tabIcon, checked: panel.isOpened() }; }
+
+      return Array.isArray(entry.children) ? { ...entry, children: this.panelMenuActions(entry.children) } : entry;
+    });
   }
   private sortMenuTree () {
     this.menuNodes.sort((a, b) => a.priority - b.priority);

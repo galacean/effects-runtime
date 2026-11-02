@@ -101,7 +101,7 @@ class DockGroupControl extends Container {
     super(engine); this.mouseFilter = MouseFilter.Pass; this.clipContents = true;
     this.documentTabs = panels.every(panel => panel.dockingRole === 'document');
     this.tabBar = append(this, new Container(engine)); this.tabBar.clipContents = true; this.tabBar.mouseFilter = MouseFilter.Pass;
-    this.tabMenu = append(this, new EditorMenuButton(engine, '', () => panels.map(panel => ({ label: panel.title, checked: panel.id === model.active, action: () => workspace.activatePanel(panel.id) }))));
+    this.tabMenu = append(this, new EditorMenuButton(engine, '', () => panels.map(panel => ({ label: panel.title, icon: panel.icon, checked: panel.id === model.active, action: () => workspace.activatePanel(panel.id) }))));
     this.tabMenu.iconName = 'caretDown'; this.tabMenu.iconSize = 12;
     setTooltip(this.tabMenu, 'Available Tabs');
     for (const panel of panels) {
@@ -372,7 +372,8 @@ export class DockWorkspace extends Container {
     const close = (values: string[]): void => { values.forEach(id => this.panels.get(id)?.close()); };
 
     this.tabContext.setActions([
-      { label: 'Hide Tab', enabled: ids.length === 1, action: () => this.setTabsHidden(id, true) },
+      { label: 'Options', heading: true },
+      { label: 'Hide Tabs', enabled: ids.length === 1, action: () => this.setTabsHidden(id, true) },
       { label: '', separator: true },
       { label: 'Close', shortcut: 'Ctrl+W', action: () => close([id]) },
       { label: 'Close Tabs to the Left', enabled: index > 0, action: () => close(ids.slice(0, index)) },

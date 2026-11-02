@@ -52,7 +52,7 @@ export class CompositionBrowserPanel extends EditorWindow {
     divider.setCustomMinimumSize(0, 1);
     const listPanel = append(root, expand(new PanelContainer(engine)));
 
-    listPanel.setThemeStyleBoxOverride('panel', editorBox(editorColors.recessed, 2, 0, editorColors.outline));
+    listPanel.setThemeStyleBoxOverride('panel', editorBox(editorColors.recessed));
     this.list = append(listPanel, expand(new VirtualList(engine, 22, entry => entry.url, () => new CompositionRow(engine))));
     this.list.emptyText = 'No matching compositions';
     this.list.setRows(compositionCatalog);

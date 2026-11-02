@@ -24,18 +24,35 @@ export function getOrCreateTexturePreview (texture: Texture, source: PreviewText
   return imageTexturePreview({ texture: source, flipY: texture.source.sourceType === TextureSourceType.framebuffer || !!texture.source.flipY });
 }
 
-/** Resolves scene resources during update; drawing only submits a normal Texture to Control. */
+/** Prepares preview textures before UI submission. */
 export class TexturePresentation {
+  private static readonly pending = new Set<TexturePresentation>();
   private result?: Texture;
   private preview?: TexturePreview;
+  private display?: TextureDisplay;
+  private maxDimension = 2048;
   private target?: GPUFramebuffer;
   private material?: Material;
   private converted = false;
 
   constructor (private readonly engine: Engine) { }
 
+  static renderPending (engine: Engine): void {
+    for (const presentation of this.pending) {
+      if (presentation.engine === engine) { this.pending.delete(presentation); presentation.prepare(); }
+    }
+  }
+
   update (preview?: TexturePreview, display?: TextureDisplay, maxDimension = 2048): void {
-    this.preview = preview; this.result = undefined; this.converted = false;
+    this.preview = preview; this.display = display; this.maxDimension = maxDimension;
+    TexturePresentation.pending.add(this);
+  }
+
+  /** Convert after preview rendering has finished and before UI batches are built. */
+  private prepare (): void {
+    const { preview, display, maxDimension } = this;
+
+    this.result = undefined; this.converted = false;
     const source = preview && (typeof preview.tex === 'function' ? preview.tex() : preview.tex);
 
     if (!source || source.isDestroyed || !preview) { return; }
@@ -84,5 +101,8 @@ export class TexturePresentation {
 
     control.drawTexture(x, y, width, height, this.result, region);
   }
-  dispose (): void { this.target?.dispose(); this.material?.dispose(); }
+  dispose (): void {
+    TexturePresentation.pending.delete(this); this.result = undefined; this.preview = undefined;
+    this.target?.dispose(); this.material?.dispose();
+  }
 }

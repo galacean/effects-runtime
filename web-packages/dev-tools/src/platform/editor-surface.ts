@@ -5,6 +5,8 @@ import type { Control } from '@galacean/effects-plugin-gui';
 import { GUIServer, UICanvas, FocusMode, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { createEditorTheme, EDITOR_FONT, refreshEditorFonts } from '../ui/theme/control-theme';
+import { TexturePresentation } from '../features/assets/preview/texture-preview';
+import { clearControlIcons, prepareControlIcons } from '../ui/icons/control-icons';
 
 export class EditorSurface {
   engine: Engine;
@@ -22,7 +24,6 @@ export class EditorSurface {
     canvas.addEventListener('pointerdown', this.pointerDown, true);
     this.engine = Engine.create(canvas, { name: 'EditorUI', env: 'editor', interactive: true, manualRender: true, ownsCanvas: false, doNotHandleContextLost: false });
     this.engine.renderingServer.graphics.textCache.defaultOptions.padding = 16;
-    this.engine.renderingServer.graphics.roundTextPixels = true;
     const item = new VFXItem(this.engine);
     const ui = item.addComponent(UICanvas);
 
@@ -121,6 +122,8 @@ export class EditorSurface {
   render (): void {
     const device = this.device, gl = device.gl;
 
+    TexturePresentation.renderPending(this.engine);
+    prepareControlIcons(this.engine);
     gl.bindVertexArray(null); gl.activeTexture(gl.TEXTURE0); device.reset(); device.bindSystemFramebuffer();
     device.setViewport(0, 0, this.canvas.width, this.canvas.height);
     gl.disable(gl.SCISSOR_TEST); gl.colorMask(true, true, true, true);
@@ -129,6 +132,7 @@ export class EditorSurface {
   }
 
   dispose (): void {
+    clearControlIcons(this.engine);
     this.observer?.disconnect(); this.canvas.removeEventListener('contextmenu', this.preventContextMenu);
     this.canvas.removeEventListener('wheel', this.preventWheelDefault);
     this.canvas.removeEventListener('pointerdown', this.pointerDown, true);

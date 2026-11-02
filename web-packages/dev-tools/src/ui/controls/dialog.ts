@@ -1,6 +1,6 @@
 import { math } from '@galacean/effects';
 import type { Engine, InputEventKey } from '@galacean/effects';
-import type { Control, VBoxContainer } from '@galacean/effects-plugin-gui';
+import type { Control, MarginContainer, VBoxContainer } from '@galacean/effects-plugin-gui';
 import { Button, Label, AutowrapMode, PanelContainer, SizeFlags } from '@galacean/effects-plugin-gui';
 import { append, column, disposeChildren, expand, margin, row } from './layout';
 import { EditorPopupPanel } from './popup-panel';
@@ -12,6 +12,7 @@ export interface DialogAction { label: string, action(): void, enabled?: boolean
 
 export class EditorDialog extends EditorPopupPanel {
   readonly body: VBoxContainer;
+  readonly bodyMargin: MarginContainer;
   readonly beforeButtons: VBoxContainer;
   private readonly titleBar: EditorWindowTitleBar;
   private readonly buttons: VBoxContainer;
@@ -29,7 +30,7 @@ export class EditorDialog extends EditorPopupPanel {
     panel.setThemeStyleBoxOverride('panel', editorBox(editorColors.panel));
     const content = append(panel, column(engine));
 
-    this.body = column(engine, [], 8); append(content, margin(engine, this.body, 16, 12));
+    this.body = column(engine, [], 8); this.bodyMargin = append(content, margin(engine, this.body, 16, 12));
     const footer = row(engine, [], 8), footerMargin = append(content, margin(engine, footer, 16, 0));
 
     footerMargin.setThemeConstantOverride('marginTop', 4); footerMargin.setThemeConstantOverride('marginBottom', 16);
@@ -48,7 +49,7 @@ export class EditorDialog extends EditorPopupPanel {
     for (const action of actions) {
       const button = append(bar, action.primary ? new EditorPrimaryButton(this.engine, action.label) : new Button(this.engine, action.label));
 
-      button.setCustomMinimumSize(80, 0); button.on('pressed', action.action); this.actions.push({ action, button });
+      button.on('pressed', action.action); this.actions.push({ action, button });
     }
     this.refreshActions();
     this.setSize(width, 0); this.setCustomMinimumSize(width, 0);

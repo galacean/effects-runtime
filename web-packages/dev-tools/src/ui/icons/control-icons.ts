@@ -1,33 +1,46 @@
-import { Texture, math } from '@galacean/effects';
-import type { Engine, TextureRegion } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { Button, ButtonDrawMode, Control, HorizontalAlignment, MouseFilter } from '@galacean/effects-plugin-gui';
 import type { ContentInsets } from '@galacean/effects-plugin-gui';
-import { EDITOR_ICON_PATHS } from './editor-icon-paths';
+import { EditorIconCache } from './editor-icon-cache';
+import type { EditorIcon } from './editor-icon-cache';
 import { editorColors } from '../theme/control-theme';
 
-export type EditorIcon = keyof typeof EDITOR_ICON_PATHS;
-const names = Object.keys(EDITOR_ICON_PATHS) as EditorIcon[];
-const columns = 8, cell = 24, size = 20, gutter = 2;
-const rows = Math.ceil(names.length / columns);
-let atlas: Texture | undefined;
+export type { EditorIcon } from './editor-icon-cache';
+const caches = new Map<Engine, EditorIconCache>();
 
-export async function loadControlIcons (engine: Engine): Promise<void> {
-  const source = names.map((key, index) => `<g transform="translate(${index % columns * cell + gutter},${Math.floor(index / columns) * cell + gutter})">${EDITOR_ICON_PATHS[key]}</g>`).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${columns * cell * 8}" height="${rows * cell * 8}" viewBox="0 0 ${columns * cell} ${rows * cell}" fill="none">${source}</svg>`;
-  const texture = await Texture.fromImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), engine, { flipY: false, name: 'Editor icons' });
+export function loadControlIcons (engine: Engine): Promise<void> {
+  clearControlIcons(engine); caches.set(engine, new EditorIconCache(engine));
 
-  atlas?.dispose(); atlas = texture;
+  return Promise.resolve();
 }
 
-export function clearControlIcons (): void { atlas?.dispose(); atlas = undefined; }
+export function clearControlIcons (engine?: Engine): void {
+  if (engine) { caches.get(engine)?.dispose(); caches.delete(engine); } else { caches.forEach(cache => cache.dispose()); caches.clear(); }
+}
+
+export function prepareControlIcons (engine: Engine): void { caches.get(engine)?.upload(); }
 
 export function paintIcon (control: Control, icon: EditorIcon, x: number, y: number, dimension = 16, tint = editorColors.foreground): void {
-  if (!atlas || atlas.isDestroyed) { return; }
-  const index = names.indexOf(icon);
-  const u = index % columns * cell + gutter, v = Math.floor(index / columns) * cell + gutter;
-  const region: TextureRegion = { u0: u / (columns * cell), v0: (v + size) / (rows * cell), u1: (u + size) / (columns * cell), v1: v / (rows * cell) };
+  const cache = caches.get(control.engine);
 
-  control.drawTexture(Math.round(x), Math.round(y), dimension, dimension, atlas, region, tint);
+  if (!cache || dimension <= 0 || !Number.isFinite(dimension)) { return; }
+  let a = 1, b = 0, c = 0, d = 1;
+
+  for (let ancestor: Control | null = control; ancestor; ancestor = ancestor.parent) {
+    const m = ancestor.getTransform2D().elements;
+    const nextA = m[0] * a + m[3] * b, nextB = m[1] * a + m[4] * b;
+    const nextC = m[0] * c + m[3] * d;
+
+    d = m[1] * c + m[4] * d; a = nextA; b = nextB; c = nextC;
+  }
+  const ratio = control.engine.displayServer.pixelRatio;
+  const width = Math.round(dimension * Math.hypot(a, b) * ratio), height = Math.round(dimension * Math.hypot(c, d) * ratio);
+
+  if (width < 1 || height < 1) { return; }
+  const image = cache.get(icon, width, height);
+
+  if (image.texture && image.region) { control.drawTexture(Math.round(x), Math.round(y), dimension, dimension, image.texture, image.region, tint); }
 }
 
 export class EditorIconControl extends Control {
@@ -51,9 +64,9 @@ export class EditorIconButton extends Button {
     return { ...insets, left: insets.left + (this.text ? this.iconSize + 4 : this.iconSize) };
   }
   override getMinimumSize (): math.Vector2 {
-    const size = super.getMinimumSize();
+    const size = super.getMinimumSize(), insets = this.getNormalContentInsets();
 
-    return new math.Vector2(Math.max(this.iconSize + 8, size.x), Math.max(this.iconSize + 8, size.y));
+    return new math.Vector2(Math.max(this.iconSize + insets.left + insets.right, size.x), Math.max(this.iconSize + insets.top + insets.bottom, size.y));
   }
   protected override drawDecoration (mode: ButtonDrawMode): void {
     const hover = mode === ButtonDrawMode.Hover || mode === ButtonDrawMode.HoverPressed || mode === ButtonDrawMode.Pressed;
