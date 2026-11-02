@@ -12,8 +12,8 @@
     "lint": "eslint --ext .ts .",
     "lint:fix": "eslint --fix --ext .ts .",
     "test": "pnpm --filter @galacean/effects-test test",
-    "version": "node ./scripts/update-version",
-    "changelog": "git fetch origin && node ./scripts/print-changelog",
+    "version": "update-version",
+    "changelog": "git fetch origin && print-changelog",
     "check:ts": "tsc -b ./tsconfig.check.json",
     "clean:nm": "rimraf \"{packages,web-packages,plugin-packages}/**/node_modules\" && rimraf \"node_modules\"",
     "clean:dist": "rimraf \"{packages,web-packages,plugin-packages}/**/dist\"",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@commitlint/cli": "^18.6.1",
     "@commitlint/config-conventional": "^18.4.3",
+    "@galacean/release-tools": "^0.0.3",
     "@manypkg/get-packages": "^2.2.0",
     "@rollup/plugin-commonjs": "^21.1.0",
     "@rollup/plugin-inject": "^5.0.5",

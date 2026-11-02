@@ -14,6 +14,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^18.4.3
         version: 18.6.3
+      '@galacean/release-tools':
+        specifier: link:../tooling/packages/release-tools
+        version: link:../tooling/packages/release-tools
       '@manypkg/get-packages':
         specifier: ^2.2.0
         version: 2.2.2
