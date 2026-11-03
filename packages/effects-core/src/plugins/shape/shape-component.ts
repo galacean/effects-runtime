@@ -20,6 +20,7 @@ import vert from './shaders/shape.vert.glsl';
 import frag from './shaders/shape.frag.glsl';
 import { TrimPath } from './trim-path';
 import { GraphicsPath } from './graphics-path';
+import { appendBezierPaths, buildPathContours, buildPathGeometry } from './path-geometry';
 import type { ShapePath } from './shape-path';
 import type { BoundingBoxInfo } from '../interact/mesh-collider';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
@@ -399,28 +400,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private buildGeometryFromPath (fillShapePath: ShapePath, strokeShapePath: ShapePath, screenScale: number) {
-    const vertices: number[] = [];
-    const indices: number[] = [];
-
-    // Triangulate shapePrimitives, build fill and stroke shape geometry
-    if (this.fills.length > 0) {
-      for (const shapePrimitive of fillShapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
-        const indexOffset = indices.length;
-        const vertOffset = vertices.length / 2;
-
-        shape.build(points, screenScale);
-        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-      }
-    }
+    const { vertices, indices } = this.fills.length > 0
+      ? buildPathGeometry(fillShapePath, screenScale, 'separate')
+      : { vertices: [], indices: [] };
 
     const fillIndexCount = indices.length;
 
     if (this.strokes.length > 0) {
-      for (const shapePrimitive of strokeShapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
+      for (const { shape, points } of buildPathContours(strokeShapePath, screenScale)) {
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
         const lineStyle = this.strokeAttributes;
@@ -437,7 +424,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           close = shape.closePath;
         }
 
-        shape.build(points, screenScale);
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
@@ -576,39 +562,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
         const customShapeAtribute = this.shapeAttributes as CustomShapeAttribute;
-        const points = customShapeAtribute.points;
-        const easingIns = customShapeAtribute.easingIns;
-        const easingOuts = customShapeAtribute.easingOuts;
 
-        for (const shape of customShapeAtribute.shapes) {
-          const indices = shape.indexes;
-          const startPoint = points[indices[0].point];
-
-          this.graphicsPath.moveTo(startPoint.x, startPoint.y);
-
-          for (let i = 1; i < indices.length; i++) {
-            const pointIndex = indices[i];
-            const lastPointIndex = indices[i - 1];
-            const point = points[pointIndex.point];
-            const lastPoint = points[lastPointIndex.point];
-            const control1 = easingOuts[lastPointIndex.easingOut];
-            const control2 = easingIns[pointIndex.easingIn];
-
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
-          }
-
-          if (shape.close) {
-            const pointIndex = indices[0];
-            const lastPointIndex = indices[indices.length - 1];
-            const point = points[pointIndex.point];
-            const lastPoint = points[lastPointIndex.point];
-            const control1 = easingOuts[lastPointIndex.easingOut];
-            const control2 = easingIns[pointIndex.easingIn];
-
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
-            this.graphicsPath.closePath();
-          }
-        }
+        appendBezierPaths(this.graphicsPath, customShapeAtribute, ppu);
 
         break;
       }
