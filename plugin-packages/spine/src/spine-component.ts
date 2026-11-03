@@ -161,9 +161,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
-    if (data.mask) {
-      this.maskManager.setMaskOptions(this.engine, data.mask);
-    }
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -227,14 +224,8 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
 
+    this.updateMaterialSize();
     this.maskManager.drawStencilMask(renderer, this);
-
-    for (let i = 0; i < this.content.meshGroups.length; i++) {
-      const material = this.content.meshGroups[i].mesh.material;
-
-      material.setVector2('_Size', new Vector2(this.startSize * this.scaleFactor, this.startSize * this.scaleFactor));
-    }
-
     this.content.render(renderer);
   }
 
@@ -246,6 +237,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
 
+    this.updateMaterialSize();
     const worldMatrix = this.content.transform.getWorldMatrix();
 
     this.content.meshGroups.forEach(spineMesh => {
@@ -255,6 +247,14 @@ export class SpineComponent extends RendererComponent implements Maskable {
 
       this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, worldMatrix, mesh.material, maskRef);
     });
+  }
+
+  private updateMaterialSize (): void {
+    const size = this.startSize * this.scaleFactor;
+
+    for (const spineMesh of this.content?.meshGroups ?? []) {
+      spineMesh.mesh.material.setVector2('_Size', new Vector2(size, size));
+    }
   }
 
   override onDestroy () {

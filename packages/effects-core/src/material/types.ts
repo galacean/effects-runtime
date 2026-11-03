@@ -93,11 +93,11 @@ export interface Maskable {
 }
 
 /**
- * 蒙版引用信息，支持正面和反面蒙版
+ * 轨道遮罩引用信息，支持正向和反向裁剪
  */
 export interface MaskReference {
   /**
-   * 蒙版对象
+   * 轨道遮罩来源
    */
   maskable: Maskable,
   /**
@@ -105,6 +105,8 @@ export interface MaskReference {
    */
   inverted: boolean,
 }
+
+export type TrackMatteReference = MaskReference;
 
 /**
  * @deprecated 2.10 起蒙版模式不再通过单一枚举表达，runtime 内部已不再使用此枚举。

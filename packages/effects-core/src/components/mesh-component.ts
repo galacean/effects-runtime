@@ -6,8 +6,7 @@ import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from
 import { VertexElementType, type Geometry, type Renderer } from '../render';
 import { RendererComponent } from './renderer-component';
 
-interface MeshComponentData extends spec.ComponentData {
-  mask?: spec.MaskOptions,
+interface MeshComponentData extends Omit<spec.MaskableGraphicData, 'renderer'> {
   geometry?: spec.DataPath,
 }
 
@@ -92,12 +91,6 @@ export class MeshComponent extends RendererComponent implements Maskable {
 
     if (data.geometry !== undefined) {
       this.geometry = this.findObject<Geometry>(data.geometry);
-    }
-
-    const maskOptions = data.mask;
-
-    if (maskOptions) {
-      this.maskManager.setMaskOptions(this.engine, maskOptions);
     }
   }
 }

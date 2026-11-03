@@ -10,35 +10,31 @@ import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { RendererComponent } from '../components';
 
-// spec 更新后直接使用 spec.MaskReferenceData
-type MaskOptionReference = {
-  mask?: spec.DataPath,
-  inverted?: boolean,
-};
-
-// spec 更新后直接使用 spec.MaskOptions
+// The existing API accepts unresolved references without a mask path.
 type MaskOptions = {
   isMask?: boolean,
   alphaMaskEnabled?: boolean,
-  references?: MaskOptionReference[],
+  references?: { mask?: spec.DataPath, inverted?: boolean }[],
 };
 
 // 8 位 stencil buffer 上限为 255；为反向蒙版的 INCR 预留 1 的递增余量，
 // 否则当正向蒙版填满到 255 时，反向 INCR 会饱和、无法排除任何像素。
-const MAX_MASK_REFERENCE_COUNT = 254;
+const MAX_TRACK_MATTE_REFERENCE_COUNT = 254;
 
 /**
  * @internal
  */
 export class MaskProcessor {
+  /** Discards source pixels below the alpha threshold, producing hard-edge coverage. */
   alphaMaskEnabled = false;
 
-  isMask = false;
+  isTrackMatte = false;
+  sourceVisible = false;
 
   /**
-   * 多个蒙版引用列表，支持正面和反面蒙版
+   * 多个轨道遮罩引用列表，支持正面和反面蒙版
    */
-  private maskReferences: MaskReference[] = [];
+  private trackMatteReferences: MaskReference[] = [];
 
   /**
    * 期望的 stencil 值（等于正向蒙版的数量）
@@ -54,23 +50,16 @@ export class MaskProcessor {
   private prevStencilRef: [number, number] = [0, 0];
   private prevStencilMask: [number, number] = [0, 0];
 
-  /**
-   * @deprecated 使用 maskReferences 替代
-   */
+  /** @deprecated Use getMaskReferences(). */
   get maskable (): Maskable | null {
-    return this.maskReferences.length > 0 ? this.maskReferences[0].maskable : null;
+    return this.trackMatteReferences.length > 0 ? this.trackMatteReferences[0].maskable : null;
   }
 
-  /**
-   * @deprecated 使用 maskReferences 替代
-   */
+  /** @deprecated Use clearMaskReferences() and addMaskReference(). */
   set maskable (value: Maskable | null) {
-    this.maskReferences = [];
+    this.trackMatteReferences = [];
     if (value) {
-      this.maskReferences.push({
-        maskable: value,
-        inverted: false,
-      });
+      this.trackMatteReferences.push({ maskable: value, inverted: false });
     }
   }
 
@@ -78,33 +67,57 @@ export class MaskProcessor {
     this.stencilClearAction = { stencilAction: TextureLoadAction.clear };
   }
 
+  fromData (engine: Engine, data: { trackMatte?: spec.TrackMatteOptions, mask?: spec.MaskOptions }): void {
+    if (data.trackMatte !== undefined) {
+      this.applyTrackMatteOptions(engine, data.trackMatte);
+    } else if (data.mask !== undefined) {
+      this.setMaskOptions(engine, data.mask);
+    }
+  }
+
+  /** @internal */
+  get isTrackMatteOnly (): boolean { return this.isTrackMatte && !this.sourceVisible; }
+
+  /** Accepts the existing mask options format and preserves source color. */
+  setMaskOptions (engine: Engine, data: MaskOptions): void {
+    const references: spec.TrackMatteReferenceData[] = [];
+
+    for (const reference of data.references ?? []) {
+      if (reference.mask) {
+        references.push({ source: reference.mask, inverted: reference.inverted });
+      }
+    }
+    this.applyTrackMatteOptions(engine, {
+      isTrackMatte: data.isMask,
+      sourceVisible: true,
+      alphaMaskEnabled: data.alphaMaskEnabled,
+      references,
+    });
+  }
+
   /**
-   * 设置蒙版选项。
+   * 设置轨道遮罩选项。
    *
-   * @param data.references - 蒙版引用列表。
+   * @param data.references - 轨道遮罩引用列表。
    *   传入空数组等价于无蒙版。
    *   超过 254 个引用时，多余部分将被忽略并打印警告。
    */
-  setMaskOptions (engine: Engine, data: MaskOptions): void {
-    const { isMask = false, references = [], alphaMaskEnabled = false } = data;
+  private applyTrackMatteOptions (engine: Engine, data: spec.TrackMatteOptions): void {
+    const { isTrackMatte = false, sourceVisible = false, references = [], alphaMaskEnabled = false } = data;
 
     this.alphaMaskEnabled = alphaMaskEnabled;
-    this.isMask = isMask;
-    this.maskReferences = [];
+    this.isTrackMatte = isTrackMatte;
+    this.sourceVisible = sourceVisible;
+    this.trackMatteReferences = [];
 
-    if (isMask || references.length === 0) {
+    if (isTrackMatte || references.length === 0) {
       return;
     }
 
     const seen = new Map<Maskable, boolean>();
 
     for (const ref of references) {
-      const maskPath = ref.mask;
-
-      if (!maskPath) {
-        continue;
-      }
-
+      const maskPath = ref.source;
       const maskable = engine.effectsObjectServer.findObject<Maskable>(maskPath);
 
       if (!maskable) {
@@ -122,59 +135,59 @@ export class MaskProcessor {
         continue;
       }
 
-      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
-        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+      if (this.trackMatteReferences.length >= MAX_TRACK_MATTE_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_TRACK_MATTE_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
 
         break;
       }
 
       seen.set(maskable, inverted);
-      this.maskReferences.push({ maskable, inverted });
+      this.trackMatteReferences.push({ maskable, inverted });
     }
   }
 
   /**
-   * 添加蒙版引用
-   * @param maskable - 蒙版对象
+   * 添加轨道遮罩引用
+   * @param maskable - 轨道遮罩来源
    * @param inverted - 是否反向蒙版
    */
   addMaskReference (maskable: Maskable, inverted = false): void {
-    const exists = this.maskReferences.some(ref => ref.maskable === maskable);
+    const exists = this.trackMatteReferences.some(ref => ref.maskable === maskable);
 
     if (!exists) {
-      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
-        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+      if (this.trackMatteReferences.length >= MAX_TRACK_MATTE_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_TRACK_MATTE_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
 
         return;
       }
-      this.maskReferences.push({ maskable, inverted });
+      this.trackMatteReferences.push({ maskable, inverted });
     }
   }
 
   /**
-   * 移除蒙版引用
-   * @param maskable - 要移除的蒙版对象
+   * 移除轨道遮罩引用
+   * @param maskable - 要移除的轨道遮罩来源
    */
   removeMaskReference (maskable: Maskable): void {
-    const index = this.maskReferences.findIndex(ref => ref.maskable === maskable);
+    const index = this.trackMatteReferences.findIndex(ref => ref.maskable === maskable);
 
     if (index !== -1) {
-      this.maskReferences.splice(index, 1);
+      this.trackMatteReferences.splice(index, 1);
     }
   }
 
   /**
-   * 清空所有蒙版引用
+   * 清空所有轨道遮罩引用
    */
   clearMaskReferences (): void {
-    this.maskReferences = [];
+    this.trackMatteReferences = [];
   }
 
   /**
-   * 获取当前蒙版引用列表的浅拷贝。
+   * 获取当前轨道遮罩引用列表的浅拷贝。
    */
   getMaskReferences (): ReadonlyArray<MaskReference> {
-    return this.maskReferences.slice();
+    return this.trackMatteReferences.slice();
   }
 
   /**
@@ -192,23 +205,23 @@ export class MaskProcessor {
     const addedFrameClipMasks: Maskable[] = [];
 
     for (const frameClipMask of frameClipMasks) {
-      const referenceCount = this.maskReferences.length;
+      const referenceCount = this.trackMatteReferences.length;
 
       this.addMaskReference(frameClipMask, false);
 
-      if (this.maskReferences.length > referenceCount) {
+      if (this.trackMatteReferences.length > referenceCount) {
         addedFrameClipMasks.push(frameClipMask);
       }
     }
 
-    if (this.maskReferences.length > 0) {
+    if (this.trackMatteReferences.length > 0) {
       renderer.clear(this.stencilClearAction);
 
       // 分离正向和反向蒙版
       const forwardMasks: MaskReference[] = [];
       const reverseMasks: MaskReference[] = [];
 
-      for (const ref of this.maskReferences) {
+      for (const ref of this.trackMatteReferences) {
         if (ref.inverted) {
           reverseMasks.push(ref);
         } else {
@@ -308,7 +321,7 @@ export class MaskProcessor {
    * @param material - 要设置的材质
    */
   private setupMaskedMaterial (material: Material): void {
-    if (this.maskReferences.length > 0) {
+    if (this.trackMatteReferences.length > 0) {
       material.stencilTest = true;
       material.stencilRef = [this.expectedStencilValue, this.expectedStencilValue];
       material.stencilMask = [0xFF, 0xFF];

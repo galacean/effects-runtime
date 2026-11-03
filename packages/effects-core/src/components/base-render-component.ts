@@ -26,12 +26,6 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
   mask: number,
 }
 
-// TODO: Add to spec
-interface MaskableGraphicData extends spec.ComponentData {
-  renderer: spec.RendererOptions,
-  mask?: spec.MaskOptions,
-}
-
 /**
  * @since 2.7.0
  */
@@ -313,23 +307,17 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  override fromData (data: MaskableGraphicData): void {
+  override fromData (data: spec.MaskableGraphicData): void {
     super.fromData(data);
 
     const renderer = data.renderer ?? {};
-
-    const maskOptions = data.mask;
-
-    if (maskOptions) {
-      this.maskManager.setMaskOptions(this.engine, maskOptions);
-    }
 
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isTrackMatte,
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: 1,
     };

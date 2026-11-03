@@ -702,10 +702,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     super.fromData(data);
     this.shapeDirty = true;
 
-    if (data.mask) {
-      this.maskManager.setMaskOptions(this.engine, data.mask);
-    }
-
     const renderer = data.renderer ?? {};
 
     this.rendererOptions = {
@@ -713,7 +709,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isTrackMatte,
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: 1,
     };

@@ -8,6 +8,8 @@ import type { Renderer } from '../render/renderer';
 interface RendererComponentData extends spec.ComponentData {
   materials?: spec.DataPath[],
   _priority?: number,
+  trackMatte?: spec.TrackMatteOptions,
+  mask?: spec.MaskOptions,
 }
 
 /**
@@ -57,6 +59,7 @@ export class RendererComponent extends Component {
 
   override fromData (data: RendererComponentData): void {
     super.fromData(data);
+    this.maskManager.fromData(this.engine, data);
     if (data.materials !== undefined) {
       this.materials = data.materials.map(material => this.findObject<Material>(material));
     }

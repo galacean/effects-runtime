@@ -659,8 +659,10 @@ function getMaskDemoComponents (composition: Composition): MaskDemoComponents {
     throw new Error('Missing demo components.');
   }
 
-  rectangle.maskManager.isMask = true;
-  ellipse.maskManager.isMask = true;
+  rectangle.maskManager.isTrackMatte = true;
+  rectangle.maskManager.sourceVisible = true;
+  ellipse.maskManager.isTrackMatte = true;
+  ellipse.maskManager.sourceVisible = true;
 
   return {
     rectangle,

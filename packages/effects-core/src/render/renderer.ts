@@ -307,7 +307,10 @@ export class Renderer {
 
   renderMeshes (meshes: RendererComponent[]) {
     for (const mesh of meshes) {
-      mesh.render(this);
+      // Matte-only sources still update and draw through drawStencilMask, but do not contribute color.
+      if (!mesh.maskManager.isTrackMatteOnly) {
+        mesh.render(this);
+      }
     }
   }
 

@@ -929,9 +929,7 @@ export class ParticleSystem extends Component implements Maskable {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
-    if (props.mask) {
-      this.maskManager.setMaskOptions(this.engine, props.mask);
-    }
+    this.maskManager.fromData(this.engine, props);
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
