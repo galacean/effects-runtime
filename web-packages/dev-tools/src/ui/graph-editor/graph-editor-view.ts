@@ -9,6 +9,8 @@ import { EditorSearchField } from '../controls/search-field';
 import { EditorTextField } from '../controls/text-field';
 import { EditorSelectableRow } from '../controls/selectable-row';
 import { EditorMenu } from '../controls/menu';
+import { EditorPointerInteraction } from '../controls/pointer-interaction';
+import { applyMarqueeSelection, marqueeSelectionMode, type MarqueeSelectionMode } from '../list-view/marquee-selection';
 import type { MenuAction } from '../controls/menu';
 import { VirtualList } from '../controls/virtual-list';
 import { PropertySheet } from '../property-editor/property-sheet';
@@ -38,6 +40,8 @@ interface GraphDrag {
   positions?: Map<GraphNode, math.Vector2>, selection?: GraphNode[], pin?: PinEndpoint,
   state?: StateGraphNode, comment?: CommentGraphNode, size?: math.Vector2,
   resizeEdges?: { left: boolean, right: boolean, top: boolean, bottom: boolean },
+  selectionMode?: MarqueeSelectionMode,
+  context?: { node?: GraphNode, pin?: Pin },
 }
 let copiedNodes: GraphNode[] = [];
 let copiedConnections: FlowGraphModel['m_connections'] = [];
@@ -88,7 +92,7 @@ class GraphPinControl extends Control {
     this.drawText(this.input ? 19 : this.width - 19 - metrics.width, (this.height - metrics.lineHeight) / 2, pin.m_name, 12, C.foreground, getEditorFont(this.engine, 12));
   }
   override onMouseDown (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left) { this.graphView.startConnection(this.endpoint, event); } else if (event.buttonIndex === MouseButton.Right) { this.graphView.showContext(event.globalPosition, this.endpoint.node, this.endpoint.pin); }
+    if (event.buttonIndex === MouseButton.Left) { this.graphView.startConnection(this.endpoint, event); } else if (event.buttonIndex === MouseButton.Right) { this.graphView.startContextPan(event, this.endpoint.node, this.endpoint.pin); }
     event.accept();
   }
   override onMouseMove (event: InputEventMouseMotion): void { this.graphView.pointerMove(event); }
@@ -162,7 +166,7 @@ class GraphNodeControl extends Container {
   }
   override onMouseDown (event: InputEventMouseButton): void {
     if (event.buttonIndex === MouseButton.Right) {
-      this.graphView.showContext(event.globalPosition, this.node); event.accept();
+      this.graphView.startContextPan(event, this.node); event.accept();
 
       return;
     }
@@ -187,6 +191,7 @@ class GraphNodeControl extends Container {
 }
 
 export class GraphEditorView extends Container {
+  private readonly pointerInteraction = new EditorPointerInteraction(this, () => this.finishDrag(true));
   readonly context: GraphEditorContext;
   createNodeContent?: (node: GraphNode) => GraphNodeContent;
   nodeTypes?: (graph: GraphModel) => GraphNodeType[];
@@ -332,7 +337,7 @@ export class GraphEditorView extends Container {
   }
   protected override drawChildren (): void {
     super.drawChildren();
-    if (this.drag?.kind === 'marquee') {
+    if (this.drag?.kind === 'marquee' && this.pointerInteraction.moved) {
       const a = this.drag.origin, b = this.drag.mouse;
 
       this.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y), new math.Color(0, .44, .88, .15)); this.drawRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y), C.primary);
@@ -370,8 +375,12 @@ export class GraphEditorView extends Container {
     if (!this.graph) { return; } this.pointer.copyFrom(event.position); this.grabFocus();
     const transition = this.transitionAt(event.position);
 
-    if (event.buttonIndex === MouseButton.Right) { this.showContext(event.globalPosition, transition); } else if (event.buttonIndex === MouseButton.Middle) { this.startPan(event); } else if (event.buttonIndex === MouseButton.Left) {
-      if (transition) { this.SelectNode(transition); if (event.doubleClick && transition.GetNavigationTarget()) { this.context.NavigateTo(transition.GetNavigationTarget()!); } } else { if (!event.ctrlPressed && !event.metaPressed && !event.shiftPressed) { this.ClearSelection(); } this.drag = this.newDrag('marquee', event); this.drag.selection = [...this.selected]; }
+    if (event.buttonIndex === MouseButton.Right) { this.startContextPan(event, transition); } else if (event.buttonIndex === MouseButton.Middle) { this.startPan(event); } else if (event.buttonIndex === MouseButton.Left) {
+      if (transition) { this.SelectNode(transition); if (event.doubleClick && transition.GetNavigationTarget()) { this.context.NavigateTo(transition.GetNavigationTarget()!); } } else {
+        const selection = [...this.selected], mode = marqueeSelectionMode(event);
+
+        this.drag = this.newDrag('marquee', event); this.drag.selection = selection; this.drag.selectionMode = mode;
+      }
     }
     event.accept();
   }
@@ -379,10 +388,15 @@ export class GraphEditorView extends Container {
     const point = this.makePositionLocal(event.globalPosition);
 
     this.grabFocus();
+    this.pointerInteraction.begin(event);
 
     return { kind, origin: point, mouse: point.clone(), offset: this.graph!.m_viewOffset.clone() };
   }
-  startPan (event: InputEventMouseButton): void { if (this.graph) { this.drag = this.newDrag('pan', event); } }
+  startPan (event: InputEventMouseButton): void { if (this.graph) { this.finishDrag(); this.drag = this.newDrag('pan', event); } }
+  startContextPan (event: InputEventMouseButton, node?: GraphNode, pin?: Pin): void {
+    this.startPan(event);
+    if (this.drag) { this.drag.context = { node, pin }; }
+  }
   startNodeDrag (node: GraphNode, event: InputEventMouseButton): void {
     if (event.ctrlPressed || event.metaPressed) { this.SelectNodes(this.IsNodeSelected(node) ? this.selected.filter(item => item !== node) : [...this.selected, node]); } else if (!this.IsNodeSelected(node)) { this.SelectNodes(event.shiftPressed ? [...this.selected, node] : [node]); }
     if (this.readOnly || !this.IsNodeSelected(node)) { return; }
@@ -414,10 +428,10 @@ export class GraphEditorView extends Container {
     this.pointer.copyFrom(point);
     const drag = this.drag, graph = this.graph;
 
-    if (!drag || !graph) { return; }
+    if (!drag || !graph || !this.pointerInteraction.move(event)) { return; }
     drag.mouse = point; const delta = new math.Vector2((point.x - drag.origin.x) / graph.m_viewScaleFactor, (point.y - drag.origin.y) / graph.m_viewScaleFactor);
 
-    if (drag.kind === 'pan') { graph.m_viewOffset.set(drag.offset.x - delta.x, drag.offset.y - delta.y); }
+    if (drag.kind === 'pan' && this.pointerInteraction.moved) { graph.m_viewOffset.set(drag.offset.x - delta.x, drag.offset.y - delta.y); }
     if (drag.kind === 'nodes') { drag.positions?.forEach((start, node) => node.m_canvasPosition.set(start.x + delta.x, start.y + delta.y)); }
     if (drag.kind === 'resize') {
       const edges = drag.resizeEdges!, size = drag.size!, node = drag.comment!, origin = drag.positions!.get(node)!;
@@ -426,10 +440,10 @@ export class GraphEditorView extends Container {
 
       node.m_commentBoxSize.set(width, height); node.m_canvasPosition.set(origin.x + (edges.left ? size.x - width : 0), origin.y + (edges.top ? size.y - height : 0));
     }
-    if (drag.kind === 'marquee') {
+    if (drag.kind === 'marquee' && this.pointerInteraction.moved) {
       const a = this.canvasPosition(drag.origin), b = this.canvasPosition(point), rect = new GraphRect(new math.Vector2(Math.min(a.x, b.x), Math.min(a.y, b.y)), new math.Vector2(Math.max(a.x, b.x), Math.max(a.y, b.y)));
 
-      this.SelectNodes([...drag.selection!, ...graph.m_nodes.filter(node => !(node instanceof TransitionGraphNode) && rect.Overlaps(node.GetRect()))]);
+      this.SelectNodes(applyMarqueeSelection(drag.selection!, graph.m_nodes.filter(node => !(node instanceof TransitionGraphNode) && rect.Overlaps(node.GetRect())), drag.selectionMode!));
     }
     this.queueSort(); event.accept();
   }
@@ -437,9 +451,15 @@ export class GraphEditorView extends Container {
   pointerUp (event: InputEventMouseButton): void {
     const drag = this.drag;
 
-    if (!drag) { return; }
+    if (!drag || !this.pointerInteraction.end(event)) { return; }
     const point = this.canvasPosition(this.makePositionLocal(event.globalPosition));
 
+    if (drag.kind === 'pan' && drag.context && !this.pointerInteraction.moved) {
+      this.finishDrag(); this.showContext(event.globalPosition, drag.context.node, drag.context.pin); event.accept();
+
+      return;
+    }
+    if (drag.kind === 'marquee' && !this.pointerInteraction.moved && drag.selectionMode === 'replace') { this.ClearSelection(); }
     if (!event.canceled && drag.kind === 'connection' && drag.pin) {
       const flow = this.GetFlowGraph(), source = drag.pin;
       let target: PinEndpoint | undefined, distance = 18 / this.graph!.m_viewScaleFactor;
@@ -474,9 +494,10 @@ export class GraphEditorView extends Container {
     const drag = this.drag;
 
     if (!drag) { return; }
+    this.pointerInteraction.end(); this.drag = undefined;
     if (cancel) { drag.positions?.forEach((position, node) => node.m_canvasPosition.copyFrom(position)); if (drag.comment && drag.size) { drag.comment.m_commentBoxSize.copyFrom(drag.size); } }
+    if (cancel && drag.selection) { this.SelectNodes(drag.selection); }
     if (drag.kind === 'nodes' || drag.kind === 'resize') { this.graph?.EndModification(); }
-    this.drag = undefined;
   }
   override onMouseWheel (event: InputEventMouseButton): void {
     const graph = this.graph;
@@ -489,7 +510,7 @@ export class GraphEditorView extends Container {
   override onKeyDown (event: InputEventKey): void {
     const command = event.ctrlPressed || event.metaPressed, key = event.keycode.toLowerCase();
 
-    if (command && key === 'c') { this.CopySelectedNodes(); } else if (command && key === 'x') { this.CopySelectedNodes(); this.DestroySelectedNodes(); } else if (command && key === 'v') { this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'escape') { this.finishDrag(true); } else if (key === 'delete' || key === 'backspace') { this.DestroySelectedNodes(); } else if (key === 'f' || key === 'home') { this.FitToView(); } else if (key === 'f2' && this.selected[0]?.IsRenameable()) { this.rename(this.selected[0]); } else if (command && key === 'a') { this.SelectNodes(this.graph?.m_nodes ?? []); } else if (command && key === 'd') { this.CopySelectedNodes(); this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'c' && !command) { this.CreateCommentAroundSelectedNodes(); } else if (event.altPressed && key === 'arrowup') {
+    if (command && key === 'c') { this.CopySelectedNodes(); } else if (command && key === 'x') { this.CopySelectedNodes(); this.DestroySelectedNodes(); } else if (command && key === 'v') { this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'escape') { this.finishDrag(true); this.root?.cancelPointerInput(); } else if (key === 'delete' || key === 'backspace') { this.DestroySelectedNodes(); } else if (key === 'f' || key === 'home') { this.FitToView(); } else if (key === 'f2' && this.selected[0]?.IsRenameable()) { this.rename(this.selected[0]); } else if (command && key === 'a') { this.SelectNodes(this.graph?.m_nodes ?? []); } else if (command && key === 'd') { this.CopySelectedNodes(); this.PasteNodes(this.canvasPosition(this.pointer)); } else if (key === 'c' && !command) { this.CreateCommentAroundSelectedNodes(); } else if (event.altPressed && key === 'arrowup') {
       const parent = this.graph?.GetNavigationTarget();
 
       if (parent) { this.context.NavigateTo(parent); }
@@ -627,5 +648,5 @@ export class GraphEditorView extends Container {
 
     this.dialog.show(this, 'Rename Node', body => { field = append(body, new EditorTextField(this.engine)); field.text = node.GetName(); field.on('textSubmitted', accept); }, [{ label: 'Rename', primary: true, enabled: () => !!field?.text.trim(), action: accept }, { label: 'Cancel', action: () => this.dialog.close() }]); field!.grabFocus(); field!.selectAll();
   }
-  override dispose (): void { this.finishDrag(); for (const name of ['copy', 'cut', 'paste'] as const) { window.document.removeEventListener(name, this.clipboardEvent); } this.menu.dispose(); this.dialog.dispose(); super.dispose(); }
+  override dispose (): void { this.pointerInteraction.cancel(); this.finishDrag(); for (const name of ['copy', 'cut', 'paste'] as const) { window.document.removeEventListener(name, this.clipboardEvent); } this.menu.dispose(); this.dialog.dispose(); super.dispose(); }
 }

@@ -8,6 +8,7 @@ import { EditorWindow } from '../../../framework/windows/editor-window';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { append, column, expand, screenPosition } from '../../../ui/controls/layout';
 import { EditorMenu } from '../../../ui/controls/menu';
+import { EditorPointerInteraction } from '../../../ui/controls/pointer-interaction';
 import { editorColors, EDITOR_FONT, EDITOR_FONT_SIZE } from '../../../ui/theme/control-theme';
 import { TexturePresentation, imageTexturePreview } from '../../assets/preview/texture-preview';
 import { sceneWorkspace } from '../scene-workspace';
@@ -62,6 +63,7 @@ export class SceneViewportPanel extends EditorWindow {
     const composition = EditorRuntimeSession.player.getCompositions()[0];
 
     if (composition !== this.gizmo?.composition) {
+      this.viewport?.cancelPointerInteraction();
       this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined;
       if (composition) {
         this.gizmo = new SceneGizmo(composition); this.gizmo.set2DMode(this.is2DMode);
@@ -74,6 +76,7 @@ export class SceneViewportPanel extends EditorWindow {
     this.gizmo?.setVisible(!!this.viewport?.visibleInHierarchy);
   }
   protected override onDisable (): void {
+    this.viewport?.cancelPointerInteraction();
     this.flushEdits(); this.input?.reset(); this.gizmo?.setVisible(false);
     EditorRuntimeSession.player?.container?.style.setProperty('--scene-text-edit-visibility', 'hidden');
   }
@@ -116,6 +119,7 @@ export class SceneViewportPanel extends EditorWindow {
       if (changed || editing) { sceneWorkspace.current?.setScopeActive(this, true); }
       if (!this.gizmo.handler.isMouseButtonPressed() && !editing) { sceneWorkspace.current?.setScopeActive(this, false); }
     } else if (event instanceof InputEventMouseMotion) {
+      if (!this.viewport?.pointerActive) { return; }
       if (event.buttonMask & MouseButtonMask.Left) { this.cameraController.handleRotate(event.relative.x, event.relative.y); }
       if (event.buttonMask & MouseButtonMask.Middle) { this.cameraController.handlePan(event.relative.x, event.relative.y); }
     } else if (event.buttonIndex === MouseButton.WheelUp || event.buttonIndex === MouseButton.WheelDown) {
@@ -128,6 +132,7 @@ export class SceneViewportPanel extends EditorWindow {
     event.accept();
   }
   key (event: InputEventKey): void { this.input?.key(event); }
+  cancelPointerInteraction (): void { this.input?.reset(); sceneWorkspace.current?.setScopeActive(this, false); }
   showContext (event: InputEventMouseButton): void {
     const viewport = this.viewport, composition = this.gizmo?.composition;
 
@@ -189,10 +194,13 @@ export class SceneViewportPanel extends EditorWindow {
 }
 
 class SceneViewport extends Control {
+  private readonly pointerInteraction = new EditorPointerInteraction(this, () => { this.pressedAt = undefined; this.dragDistance = 0; this.panel.cancelPointerInteraction(); });
   private readonly presentation: TexturePresentation;
   private readonly releaseCommands: () => void;
   private pressedAt?: math.Vector2;
   private dragDistance = 0;
+  get pointerActive (): boolean { return this.pointerInteraction.active; }
+  cancelPointerInteraction (): void { this.pointerInteraction.cancel(); }
   constructor (engine: Engine, private readonly panel: SceneViewportPanel) {
     super(engine); this.focusMode = FocusMode.All;
     this.presentation = new TexturePresentation(engine);
@@ -211,20 +219,32 @@ class SceneViewport extends Control {
     graphics.popClipRect();
   }
   override onMouseDown (event: InputEventMouseButton): void {
-    this.grabFocus(); this.pressedAt = event.position.clone(); this.dragDistance = 0; this.panel.mouse(event);
+    this.grabFocus(); this.pointerInteraction.begin(event); this.pressedAt = event.position.clone(); this.dragDistance = 0; this.panel.mouse(event);
   }
   override onMouseMove (event: InputEventMouseMotion): void {
+    if (this.pointerInteraction.active && !this.pointerInteraction.move(event)) {
+      event.accept();
+
+      return;
+    }
     if (this.pressedAt) { this.dragDistance = Math.max(this.dragDistance, event.position.clone().subtract(this.pressedAt).length()); }
     this.panel.mouse(event);
   }
   override onMouseUp (event: InputEventMouseButton): void {
+    if (!this.pointerInteraction.end(event)) {
+      event.accept();
+
+      return;
+    }
     this.panel.mouse(event, !!this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Left && !event.canceled);
     if (this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Right && !event.canceled) { this.panel.showContext(event); }
     this.pressedAt = undefined;
   }
   override onMouseWheel (event: InputEventMouseButton): void { this.panel.mouse(event); }
   override onMouseLeave (): void { this.panel.leave(); }
-  override onKeyDown (event: InputEventKey): void { this.panel.key(event); }
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode === 'Escape' && this.pointerInteraction.active) { this.pointerInteraction.cancel(); this.root?.cancelPointerInput(); event.accept(); } else { this.panel.key(event); }
+  }
   override onKeyUp (event: InputEventKey): void { this.panel.key(event); }
-  override onDestroy (): void { this.releaseCommands(); this.presentation.dispose(); super.onDestroy(); }
+  override onDestroy (): void { this.pointerInteraction.cancel(); this.releaseCommands(); this.presentation.dispose(); super.onDestroy(); }
 }

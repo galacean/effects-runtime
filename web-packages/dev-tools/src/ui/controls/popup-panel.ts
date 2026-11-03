@@ -2,6 +2,7 @@ import { MouseButton } from '@galacean/effects';
 import type { Engine, InputEventMouseButton, math } from '@galacean/effects';
 import { CanvasRootControl, Control, GUIServer, MouseFilter, PopupPanel } from '@galacean/effects-plugin-gui';
 import { screenPosition } from './layout';
+import { cancelEditorPointerInteraction } from './pointer-interaction';
 
 class PopupBackdrop extends Control {
   constructor (engine: Engine, private readonly popup: EditorPopupPanel) {
@@ -45,6 +46,7 @@ export class EditorPopupPanel extends PopupPanel {
       const restore = source ?? root?.guiGetFocusOwner() ?? null;
 
       // A modal popup takes pointer ownership from the control that opened it.
+      if (root) { cancelEditorPointerInteraction(root); }
       root?.cancelPointerInput();
       super.popup(position, restore);
 

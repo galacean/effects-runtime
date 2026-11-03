@@ -286,11 +286,16 @@ export class InputServer extends EngineServer implements Disposable {
     // Keep the canonical mask in sync even when mouseState already ended on a
     // previous button release. The target and Window listeners may see the
     // same mouseup, but clearing a bit twice is intentionally idempotent.
+    const wasPressed = (this.mouseButtonMask & getMouseButtonBit(getMouseButton(event.button))) !== 0;
+
     this.setMouseButtonPressed(event.button, false);
+    if (!wasPressed) { return; }
     const position = this.getCanvasPosition(event.clientX, event.clientY);
     const existingState = this.mouseState;
 
     if (!existingState?.pressed) {
+      this.consumeNativeEvent(event, this.pushNativeMouseButton(event, position, false));
+
       return;
     }
     const state = existingState;

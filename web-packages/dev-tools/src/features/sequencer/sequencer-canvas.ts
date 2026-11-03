@@ -5,6 +5,8 @@ import type { CursorStyle } from '@galacean/effects-plugin-gui';
 import { Button, Container, Control, FocusMode, MouseFilter, VScrollBar } from '@galacean/effects-plugin-gui';
 import { append, place, screenPosition } from '../../ui/controls/layout';
 import { NumberEdit } from '../../ui/controls/number-edit';
+import { EditorPointerInteraction } from '../../ui/controls/pointer-interaction';
+import { applyMarqueeSelection, marqueeSelectionMode, type MarqueeSelectionMode } from '../../ui/list-view/marquee-selection';
 import { EditorIconButton, paintIcon } from '../../ui/icons/control-icons';
 import { setTooltip } from '../../ui/controls/tooltip';
 import { createObjectReferenceControl } from '../../ui/property-editor/object-reference-field';
@@ -30,6 +32,7 @@ interface SectionHit extends Rect { section: SequenceSection }
 interface TangentHit { x: number, y: number, item: KeySelection, side: 'in' | 'out' }
 interface SectionSeed { section: SequenceSection, start: number, duration: number, keys: SequenceKey[][], position?: PositionPathSnapshot }
 interface Drag {
+  document: SequencerDocument,
   gesture: CurveDragGesture,
   kind: 'keys' | 'section' | 'tangent' | 'marquee' | 'scrub' | 'pan' | 'zoom' | 'splitter' | 'scroll' | 'overview' | 'range-start' | 'range-end' | 'track',
   x: number, y: number, time: number, value: number,
@@ -39,6 +42,8 @@ interface Drag {
   tangents?: TangentHit[],
   view?: number[],
   initialSelection?: Set<string>,
+  initialSections?: Set<string>,
+  selectionMode?: MarqueeSelectionMode,
   track?: TrackAsset,
   resume?: boolean,
   button?: MouseButton,
@@ -59,6 +64,7 @@ export interface SequencerContext {
 }
 
 export class SequencerCanvas extends Container {
+  private readonly pointerInteraction = new EditorPointerInteraction(this, () => { if (this.drag) { this.cancel(this.drag.document); } });
   context?: SequencerContext;
   drag?: Drag;
   private rect: Rect = { x: 0, y: 0, width: 1, height: 1 };
@@ -224,13 +230,14 @@ export class SequencerCanvas extends Container {
   override onMouseDown (event: InputEventMouseButton): void {
     this.grabFocus();
     if (this.document && event.buttonIndex === MouseButton.Left && Math.abs(event.position.x - this.state.outlinerWidth + 4) < 5) {
+      this.pointerInteraction.begin(event);
       this.pointer.copyFrom(event.position); this.start('splitter', this.document).value = this.state.outlinerWidth;
     } else { this.pointerEvent(event, 'down'); }
     event.accept();
   }
   override onMouseMove (event: InputEventMouseMotion): void { this.pointerEvent(event, 'move'); }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.canceled && this.document) { this.cancel(this.document); } else { this.pointerEvent(event, 'up'); }
+    this.pointerEvent(event, 'up');
     event.accept();
   }
   override onMouseWheel (event: InputEventMouseButton): void { this.pointerEvent(event, 'wheel'); event.accept(); }
@@ -240,6 +247,17 @@ export class SequencerCanvas extends Container {
     const document = this.document;
 
     if (!document || !this.plot) { return; }
+    if (phase === 'down' && event instanceof MouseEventButton) { this.pointerInteraction.begin(event); }
+    if (phase === 'move' && this.drag && !this.pointerInteraction.move(event as InputEventMouseMotion)) {
+      event.accept();
+
+      return;
+    }
+    if (phase === 'up' && event instanceof MouseEventButton && !this.pointerInteraction.end(event)) {
+      event.accept();
+
+      return;
+    }
     this.pointer.copyFrom(this.makePositionLocal(event.globalPosition));
     this.hover = this.pointer.x >= this.plot.x && this.pointer.y < this.height - 18;
     this.outlinerHover = this.pointer.x < this.plot.x && this.pointer.y >= this.plot.y;
@@ -249,6 +267,7 @@ export class SequencerCanvas extends Container {
 
     if (phase === 'down') { sceneWorkspace.flushEdits(); }
     if (sceneWorkspace.current) { sceneWorkspace.current.observeEditor('Select timeline elements', action); } else { action(); }
+    if (phase === 'down' && !this.drag) { this.pointerInteraction.end(); }
     if (this.context) {
       const context = this.context;
 
@@ -267,15 +286,28 @@ export class SequencerCanvas extends Container {
   private valueAt (y: number): number { return this.curveSpace.valueAt(y); }
 
   cancel (document: SequencerDocument): void {
+    const drag = this.drag;
+    const owner = drag?.document ?? document;
+
+    this.drag = undefined; this.pointerInteraction.end(); this.context = undefined; this.scrubKey = false;
     this.selectedTangents = [];
-    if (this.drag) { document.cancel(); this.drag = undefined; }
+    if (drag) {
+      owner.cancel();
+      if (drag.kind === 'marquee') {
+        owner.selectedKeys.clear(); drag.initialSelection?.forEach(id => owner.selectedKeys.add(id));
+        owner.selectedSections.clear(); drag.initialSections?.forEach(id => owner.selectedSections.add(id));
+      }
+      if (drag.kind === 'scrub' && drag.resume) { void owner.composition.resume(); }
+    }
     this.root?.updateMouseCursorState();
   }
 
   resetInteraction (): void {
+    this.pointerInteraction.end();
     this.drag = undefined;
     this.selectedTangents = []; this.context = undefined; this.curveModels.clear();
   }
+  override onDestroy (): void { this.pointerInteraction.cancel(); this.resetInteraction(); super.onDestroy(); }
 
   private drawRuler (document: SequencerDocument): void {
     const s = this.state;
@@ -560,7 +592,7 @@ export class SequencerCanvas extends Container {
 
   private start (kind: Drag['kind'], document: SequencerDocument): Drag {
     const mouse = this.pointer;
-    const drag: Drag = { kind, gesture: new CurveDragGesture(mouse.x, mouse.y), x: mouse.x, y: mouse.y, time: this.timeAt(mouse.x), value: this.valueAt(mouse.y),
+    const drag: Drag = { document, kind, gesture: new CurveDragGesture(mouse.x, mouse.y), button: this.pointerInteraction.buttonIndex, x: mouse.x, y: mouse.y, time: this.timeAt(mouse.x), value: this.valueAt(mouse.y),
       valueScale: (this.state.curveMax - this.state.curveMin) / this.plot.height };
 
     this.drag = drag;
@@ -806,8 +838,8 @@ export class SequencerCanvas extends Container {
       } else {
         const drag = this.start('marquee', document);
 
-        drag.initialSelection = modified || event.shiftPressed || event.altPressed ? new Set(document.selectedKeys) : new Set();
-        if (!modified && !event.shiftPressed && !event.altPressed) { document.selectedKeys.clear(); document.selectedSections.clear(); }
+        drag.initialSelection = new Set(document.selectedKeys); drag.initialSections = new Set(document.selectedSections);
+        drag.selectionMode = this.state.curveMode ? marqueeSelectionMode(event) : event.shiftPressed ? 'add' : !modified && event.altPressed ? 'remove' : 'replace';
         if (this.state.curveMode && graph) {
           const entry = this.curveAt(document, mouse.x, mouse.y);
 
@@ -831,8 +863,9 @@ export class SequencerCanvas extends Container {
       if (drag.kind === 'pan' && !drag.moved && drag.context) {
         this.selectContext(document, drag.context); this.context = drag.context;
       }
-      if (drag.kind === 'marquee' && !drag.moved && drag.context?.keys) {
-        CurveSelection.click(document.selectedKeys, drag.context.keys.map(item => item.key.id), event.ctrlPressed || event.metaPressed, event.altPressed, drag.initialSelection);
+      if (drag.kind === 'marquee' && !drag.moved) {
+        if (drag.selectionMode === 'replace') { document.selectedKeys.clear(); document.selectedSections.clear(); }
+        if (drag.context?.keys) { CurveSelection.click(document.selectedKeys, drag.context.keys.map(item => item.key.id), event.ctrlPressed || event.metaPressed, event.altPressed, drag.initialSelection); }
       }
       if (drag.kind === 'track' && drag.moved && drag.track) {
         const row = this.rowAt(mouse.y);
@@ -964,24 +997,17 @@ export class SequencerCanvas extends Container {
       }
       if (sections.size) { sections.forEach(section => document.write(section)); document.changed(); }
     } else if (drag.kind === 'marquee' && drag.moved) {
-      document.selectedKeys.clear(); drag.initialSelection?.forEach(id => document.selectedKeys.add(id));
       const minX = Math.min(drag.x, mouse.x), maxX = Math.max(drag.x, mouse.x);
       const minY = Math.min(drag.y, mouse.y), maxY = Math.max(drag.y, mouse.y);
+      const keys = this.keyHits.filter(hit => hit.x >= minX && hit.x <= maxX && hit.y >= minY && hit.y <= maxY).flatMap(hit => hit.keys.map(item => item.key.id));
 
-      for (const hit of this.keyHits) {
-        if (hit.x >= minX && hit.x <= maxX && hit.y >= minY && hit.y <= maxY) {
-          hit.keys.forEach(item => {
-            if (this.state.curveMode && (event.altPressed || (event.ctrlPressed || event.metaPressed) && drag.initialSelection?.has(item.key.id))) {
-              document.selectedKeys.delete(item.key.id);
-            } else { document.selectedKeys.add(item.key.id); }
-          });
-        }
-      }
-      if (!this.state.curveMode && !event.shiftPressed && !event.ctrlPressed && !event.metaPressed) {
+      document.selectedKeys.clear();
+      applyMarqueeSelection(drag.initialSelection ?? [], keys, drag.selectionMode!).forEach(id => document.selectedKeys.add(id));
+      if (!this.state.curveMode) {
+        const sections = this.sectionHits.filter(hit => hit.x < maxX && hit.x + hit.width > minX && hit.y < maxY && hit.y + hit.height > minY).map(hit => hit.section.clip.getInstanceId());
+
         document.selectedSections.clear();
-        for (const hit of this.sectionHits) {
-          if (hit.x < maxX && hit.x + hit.width > minX && hit.y < maxY && hit.y + hit.height > minY) { document.selectedSections.add(hit.section.clip.getInstanceId()); }
-        }
+        applyMarqueeSelection(drag.initialSections ?? [], sections, drag.selectionMode!).forEach(id => document.selectedSections.add(id));
       }
     }
   }
@@ -1123,7 +1149,7 @@ class SequenceRowControl extends Container {
   override onMouseDown (event: InputEventMouseButton): void { this.grabFocus(); this.canvas.pointerEvent(event, 'down'); }
   override onMouseMove (event: InputEventMouseMotion): void { this.canvas.pointerEvent(event, 'move'); }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.canceled) { this.canvas.cancel(this.document); } else { this.canvas.pointerEvent(event, 'up'); }
+    this.canvas.pointerEvent(event, 'up');
     event.accept();
   }
   override onMouseWheel (event: InputEventMouseButton): void { this.canvas.pointerEvent(event, 'wheel'); }

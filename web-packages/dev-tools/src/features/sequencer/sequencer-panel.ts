@@ -511,7 +511,7 @@ export class SequencerPanel extends EditorWindow {
     if (sceneWorkspace.current) { sceneWorkspace.current.autoKeyTarget = () => false; sceneWorkspace.current.autoKeyTransforms = undefined; }
 
     for (const [component, document] of this.documents) {
-      if (document.composition !== composition) { document.dispose(); this.documents.delete(component); }
+      if (document.composition !== composition) { if (this.canvas.drag?.document === document) { this.canvas.cancel(document); } document.dispose(); this.documents.delete(component); }
     }
 
     if (!composition) {
@@ -531,6 +531,7 @@ export class SequencerPanel extends EditorWindow {
       return;
     }
     if (this.document?.component !== component || this.document.timeline !== timeline) {
+      if (this.document) { this.canvas.cancel(this.document); }
       this.document?.commit();
 
       const cached = this.documents.get(component);
@@ -713,7 +714,10 @@ export class SequencerPanel extends EditorWindow {
     if (command && pressed('c')) { document.copySelection(); } else if (command && pressed('x')) { document.copySelection(); document.deleteSelection(); } else if (command && pressed('v')) { document.paste(); } else if (command && (pressed('z') || pressed('y'))) {
       if (pressed('y') || event.shiftPressed) { document.redo(); } else { document.undo(); }
     } else if (pressed('Escape')) {
-      this.canvas.cancel(document); document.clearSelection();
+      const dragging = !!this.canvas.drag;
+
+      this.canvas.cancel(document); this.canvas.root?.cancelPointerInput();
+      if (!dragging) { document.clearSelection(); }
       if (!this.state.curveMode) { this.state.activeChannel = ''; this.state.captureCurveSelection(document); }
     } else if (command && pressed('d')) {
       if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
