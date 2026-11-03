@@ -10,6 +10,7 @@ const HIDDEN_PROPERTIES = new Set([
   'boundingBoxInfo', 'geometry', 'defaultGeometry', 'canvas', 'context', 'isDirty', 'maxLineWidth',
   'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'disposed', 'visible', 'renderer',
   'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty', 'isEndCalled',
+  'globalVolume', 'postProcessingEnabled',
 ]);
 
 export function propertyLabel (name: string): string {

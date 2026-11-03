@@ -41,7 +41,12 @@ export class EditorPopupPanel extends PopupPanel {
   get parentPopup (): EditorPopupPanel | undefined { return undefined; }
   override popup (position: math.Vector2, source: Control | null = null): void {
     if (this.modal) {
-      super.popup(position, source);
+      const root = source?.root ?? this.root;
+      const restore = source ?? root?.guiGetFocusOwner() ?? null;
+
+      // A modal popup takes pointer ownership from the control that opened it.
+      root?.cancelPointerInput();
+      super.popup(position, restore);
 
       return;
     }

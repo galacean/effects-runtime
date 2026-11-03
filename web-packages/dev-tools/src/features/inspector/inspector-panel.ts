@@ -231,6 +231,14 @@ export class InspectorPanel extends EditorWindow {
       { reset: () => transform.setSize(1, 1), resetVisible: () => transform.size.toArray().some(value => Math.abs(value - 1) > 1e-6) });
   }
   private buildAsset (object: object): void {
+    const document = sceneWorkspace.current;
+
+    if (object instanceof Composition && document?.composition === object) {
+      this.sheet!.section('Rendering', 'Rendering', true, 'scene').boolean('Post Processing', {
+        read: () => !!document.scene.renderSettings?.postProcessingEnabled,
+        write: enabled => document.setPostProcessingEnabled(enabled),
+      });
+    }
     if (object instanceof Material) { buildMaterialProperties(this.sheet!.section('Material', 'Material', true, 'material'), object); } else if (object instanceof Texture || object instanceof Sprite) {
       const group = this.sheet!.section('Image', object instanceof Sprite ? 'Sprite' : 'Texture', true, inspectedObjectIcon(object));
 

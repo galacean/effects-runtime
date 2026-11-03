@@ -7,11 +7,14 @@ import { append, place, screenPosition } from '../../ui/controls/layout';
 import { NumberEdit } from '../../ui/controls/number-edit';
 import { EditorIconButton, paintIcon } from '../../ui/icons/control-icons';
 import { setTooltip } from '../../ui/controls/tooltip';
+import { createObjectReferenceControl } from '../../ui/property-editor/object-reference-field';
+import { propertyTrackKind } from './sequencer-properties';
 import { CurveEditor } from '../../ui/curve-editor/curve-editor';
 import { CurveDragGesture, CurveSelection, moveCurveKeys } from '../../ui/curve-editor/curve-interaction';
 import { CurveScreenSpace, zoomCurveBounds } from '../../ui/curve-editor/curve-screen-space';
 import { editorBox, editorColors, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, getEditorFont } from '../../ui/theme/control-theme';
 import { sceneWorkspace } from '../scene/scene-workspace';
+import { inspectedObjectIcon } from '../inspector/inspected-object-icons';
 import type { SequenceKey } from './curve-data';
 import { controlPoint, updateAutoTangents } from './curve-data';
 import { SequencerCurveModel } from './sequencer-curve-model';
@@ -1016,12 +1019,14 @@ class SequenceRowControl extends Container {
   private document!: SequencerDocument;
   private readonly number: NumberEdit;
   private readonly buttons: EditorIconButton[] = [];
+  private reference?: Control;
+  private referenceType?: string;
   constructor (engine: Engine, private readonly canvas: SequencerCanvas) {
     super(engine); this.focusMode = FocusMode.All;
     this.number = append(this, new NumberEdit(engine)); this.number.precision = 2;
     this.number.beginEdit = () => { this.document.setTime(this.document.currentTime); this.document.begin('Edit channel value'); };
     this.number.changed = value => {
-      const entry = this.rowData.channels[0];
+      const entry = this.activeEntry();
 
       if (!entry) { return; }
       const selected = new Set(this.document.selectedKeys);
@@ -1047,21 +1052,44 @@ class SequenceRowControl extends Container {
   }
   bind (row: SequenceRow, document: SequencerDocument): void {
     this.rowData = row; this.document = document; this.buttons[1].iconName = row.kind === 'object' ? 'plus' : 'addKey'; this.number.visible = row.kind === 'channel' && row.channels[0]?.channel.kind === 'number' && this.width >= 270;
+    const channel = row.channels[0]?.channel;
+    const reference = row.kind === 'channel' && channel?.kind === 'reference' && this.width >= 270;
+
+    if (reference && (!this.reference || this.referenceType !== channel.referenceType)) {
+      this.reference?.dispose(); this.referenceType = channel.referenceType;
+      this.reference = append(this, createObjectReferenceControl(this.engine, {
+        read: () => this.document.referenceValue(this.activeEntry()!.section),
+        write: value => {
+          const entry = this.activeEntry()!;
+
+          this.document.setReference(entry.section, entry.channel, value as import('@galacean/effects').EffectsObject | null);
+        },
+      }, { expectedType: channel.referenceType, allowEmpty: !channel.referenceType, compact: true }));
+    }
+    if (this.reference) { this.reference.visible = reference; }
+    this.number.minimum = channel?.minimum ?? -Infinity; this.number.maximum = channel?.maximum ?? Infinity;
+    this.number.precision = channel?.integer ? 0 : 3; this.number.step = channel?.integer ? 1 : .01;
     this.buttons[3].iconName = document.isMuted(row.track) ? 'hidden' : 'view';
     this.buttons.forEach((button, index) => { button.visible = index === 3 ? row.kind === 'object' || row.kind === 'track' : !!row.channels.length || index === 1 && row.kind === 'object'; });
     this.queueSort();
   }
+  private activeEntry (): SequenceRow['channels'][number] | undefined {
+    return this.rowData?.channels.find(entry => this.document.currentTime >= entry.section.clip.start &&
+      this.document.currentTime <= entry.section.clip.start + entry.section.clip.duration) ?? this.rowData?.channels[0];
+  }
   get isEditingValue (): boolean { return this.number.isEditing; }
   protected override sortChildren (): void {
     place(this.number, this.width - 160, 1, 64, this.height - 2);
+    if (this.reference) { place(this.reference, this.width - 216, 0, 120, this.height); }
     this.buttons.forEach((button, index) => place(button, this.width - 88 + index * 22, 1, 22, this.height - 2));
   }
   override update (dt: number): void {
-    const entry = this.rowData?.channels[0];
+    const entry = this.activeEntry();
 
     if (entry) {
       if (!this.number.isEditing) { this.number.value = this.document.channelValue(entry.section, entry.channel); }
       this.number.enabled = !this.document.isLocked(this.rowData.track) && entry.channel.pathView !== 'timing' && this.document.currentTime >= entry.section.clip.start && this.document.currentTime <= entry.section.clip.start + entry.section.clip.duration;
+      if (this.reference) { this.reference.enabled = this.number.enabled; }
       this.buttons[1].disabled = this.document.isLocked(this.rowData.track);
     }
     super.update(dt);
@@ -1073,7 +1101,10 @@ class SequenceRowControl extends Container {
     this.fillRect(0, 0, this.width, this.height, this.canvas.rowBackground(row));
     const indent = 4 + row.depth * 10;
     const hasIcon = row.kind === 'object' || row.kind === 'track';
-    const icon = row.kind === 'object' ? 'object' : row.track.constructor.name === 'TransformTrack' ? 'transform' : row.track.constructor.name === 'ActivationTrack' ? 'view' : 'opacity';
+    const kind = propertyTrackKind(row.track);
+    const icon = row.kind === 'object' ? inspectedObjectIcon(this.document.component.getBinding(row.track) ?? {}) : row.track.constructor.name === 'TransformTrack' ? 'transform' : row.track.constructor.name === 'ActivationTrack' ? 'view' :
+      row.track.constructor.name === 'MaterialTrack' ? 'materialAsset' : row.track.constructor.name === 'SubCompositionTrack' ? 'scene' :
+        kind === 'reference' ? row.channels[0]?.channel.referenceType === 'Texture' ? 'texture' : 'sprite' : kind ? 'key' : 'opacity';
     const tint = selected ? C.selectedText : C.text;
     const animated = (row.kind === 'group' || row.kind === 'channel') && row.channels.some(entry => entry.channel.keys.length > 0);
     const fontSize = animated ? EDITOR_FONT_SIZE : EDITOR_COMPACT_FONT_SIZE, fontStyle = animated ? 'italic' : 'normal';
@@ -1081,7 +1112,7 @@ class SequenceRowControl extends Container {
     if (row.expandable) { paintIcon(this, this.canvas.state.expanded.has(row.id) ? 'caretDown' : 'caretRight', indent, (this.height - 16) / 2, 16, tint); }
     if (hasIcon) { paintIcon(this, icon, indent + 18, (this.height - 16) / 2, 16, row.kind === 'object' ? C.object : tint); }
     const x = indent + 20 + (hasIcon ? 20 : 0);
-    const width = this.number.visible ? this.number.x - x - 4 : this.width - x - 96;
+    const width = this.reference?.visible ? this.reference.x - x - 4 : this.number.visible ? this.number.x - x - 4 : this.width - x - 96;
     const value = this.engine.renderingServer.graphics;
     const font = getEditorFont(this.engine, fontSize, 'normal', fontStyle);
 

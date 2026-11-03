@@ -1,5 +1,5 @@
 import type { EffectsObject } from '@galacean/effects';
-import { Component, VFXItem } from '@galacean/effects';
+import { Component, PostProcessVolume, VFXItem } from '@galacean/effects';
 import type { SceneDocument } from '../document/scene-document';
 import { sceneWorkspace } from '../scene-workspace';
 import type { ObjectState } from '../serialization/scene-serializer';
@@ -63,6 +63,8 @@ export function editSceneStructure (document: SceneDocument, label: string, acti
       valid: () => [...before.placements.keys(), ...after?.placements.keys() ?? []].every(item => item.isRegistered), bytes: before.placements.size * 256 });
     try {
       action(); document.serializer.stabilizeRenderOrder(document.scene); after = capture(document);
+      if ([...after.states.keys()].some(object => object instanceof PostProcessVolume && !before.states.has(object))) { document.setPostProcessingEnabled(true); }
+      document.refreshRenderSettings();
       const removed = new Set([...before.states].filter(([object]) => !after!.states.has(object) && (object instanceof VFXItem || object instanceof Component)).map(([, state]) => state.data.id));
 
       for (const [object, state] of after.states) {

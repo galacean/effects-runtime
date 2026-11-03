@@ -6,6 +6,7 @@ export interface ObjectReferenceOptions {
   expectedType?: string,
   readOnly?: boolean,
   allowEmpty?: boolean,
+  compact?: boolean,
   changed?: (action: () => void) => void,
 }
 export type ObjectReferenceFactory = (engine: Engine, binding: ValueBinding<object | null>, options: ObjectReferenceOptions) => Control;

@@ -4,6 +4,7 @@ import type { ValueBinding } from '../../../ui/property-editor/property-sheet';
 import { assetLibrary } from '../asset-library';
 import { openContentAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import type { AssetKind } from '../model/asset-types';
+import { isContentResource, isPersistentResource } from '../model/resource-identity';
 import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
 import { ASSET_PRESENTATION } from './asset-presentation';
 import { assetReferenceClipboard } from './asset-picker';
@@ -38,7 +39,7 @@ export class ContentAssetPicker extends AssetReferenceFieldBase {
     this.browser.search.placeholderText = 'Search ' + ASSET_PRESENTATION[kind].label + ' assets';
   }
   private canPaste (): boolean { return assetReferenceClipboard.project === assetLibrary.projectId && this.compatible(assetReferenceClipboard.id ?? ''); }
-  protected override chooseAsset (id: string): void { this.binding.write(id); }
+  protected override chooseAsset (id: string): void { if (this.compatible(id)) { this.binding.write(id); } }
   protected override useCurrentSelection (): void {
     const id = selectedContentAssets().find(id => this.compatible(id));
 
@@ -55,9 +56,7 @@ export class ContentAssetPicker extends AssetReferenceFieldBase {
     if (id) { if (this.kind === 'texture') { openTextureAsset(id); } else { openContentAsset(id); } }
   }
   private compatible (id: string): boolean {
-    const entry = assetLibrary.entry(id);
-
-    return entry?.kind === this.kind && !entry.deletedAt;
+    return isContentResource(id, this.kind);
   }
   protected override refreshCandidates (): void {
     this.browser.setCandidates(assetLibrary.entries.filter(entry => this.compatible(entry.id)), this.kind, this.binding.read()); this.revision = assetLibrary.revision;
@@ -72,6 +71,8 @@ export class ContentAssetPicker extends AssetReferenceFieldBase {
   }
   private dropped (data: unknown): string | undefined {
     const payload = data as { type?: string, data?: { ids?: string[] } | EffectsObject };
+
+    if (payload.data instanceof EffectsObject && !isPersistentResource(payload.data, EditorRuntimeSession.player.engine, this.kind)) { return; }
     const id = payload.type === CONTENT_ASSET_PAYLOAD && payload.data && !(payload.data instanceof EffectsObject)
       ? payload.data.ids?.length === 1 ? payload.data.ids[0] : undefined : payload.data instanceof EffectsObject ? payload.data.getInstanceId() : undefined;
 
