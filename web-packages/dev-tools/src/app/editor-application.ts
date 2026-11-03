@@ -136,7 +136,7 @@ export class EditorApplication {
   }
   private panelMenuActions (entries: MenuAction[]): MenuAction[] {
     return entries.map(entry => {
-      const panel = this.windows.find(window => window.title.split('###')[0] === entry.label);
+      const panel = this.windows.find(window => window.layoutId === entry.label || window.title.split('###')[0] === entry.label);
 
       if (panel) { return { ...entry, icon: panel.tabIcon, checked: panel.isOpened() }; }
 
