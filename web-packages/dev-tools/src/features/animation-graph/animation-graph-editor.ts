@@ -1,5 +1,5 @@
 import type { Engine, spec } from '@galacean/effects';
-import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem, math } from '@galacean/effects';
+import { AnimationGraphAsset, Animator, Composition, GraphInstance, InvalidIndex, SerializationHelper, VFXItem, math } from '@galacean/effects';
 import type { Label } from '@galacean/effects-plugin-gui';
 import { Control, TextOverflow } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
@@ -125,14 +125,17 @@ export class AnimationGraphEditor extends EditorWindow {
   }
   override onSelectionChange (): void {
     if (!this.primaryGraphView) { return; }
-    const item = EditorSelection.getSelectedObjects()[0];
+    const selected = EditorSelection.getSelectedObjects()[0];
+    const item = selected instanceof Composition ? selected.sceneRoot : selected;
 
-    if (!(item instanceof VFXItem) || item === this.currentVFXItem) { return; }
+    if (!(item instanceof VFXItem)) { return; }
     const animator = item.getComponent(Animator);
 
     if (!animator?.graphInstance) { return; }
+    this.caption.text = selected instanceof Composition ? selected.name : item.name;
+    if (item === this.currentVFXItem && animator.graphInstance === this.graph) { return; }
     this.currentVFXItem = item; this.graph = animator.graphInstance; this.parametersPanel.setGraphInstance(this.graph);
-    this.buildGraphFromAnimator(animator); this.caption.text = item.name; this.refreshBreadcrumbs();
+    this.buildGraphFromAnimator(animator); this.refreshBreadcrumbs();
   }
   override onUndoRedo (): void {
     if (this.currentVFXItem) {

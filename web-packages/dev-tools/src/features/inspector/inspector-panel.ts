@@ -118,8 +118,9 @@ export class InspectorPanel extends EditorWindow {
   }
   private refreshSelection (): void {
     const next = this.lockedObject ?? EditorSelection.getSelectedObjects()[0];
+    const item = next instanceof Composition ? next.sceneRoot : next;
 
-    const structure = next instanceof VFXItem ? next.components.map(component => component.getInstanceId() + (component instanceof RendererComponent ? ':' + component.materials.map(material => material?.getInstanceId() + '/' + material?.shader?.getInstanceId()).join(',') : '')).join('|') : '';
+    const structure = item instanceof VFXItem ? item.components.map(component => component.getInstanceId() + (component instanceof RendererComponent ? ':' + component.materials.map(material => material?.getInstanceId() + '/' + material?.shader?.getInstanceId()).join(',') : '')).join('|') : '';
 
     if (this.activeObject !== next || this.activeStructure !== structure) {
       const selectionChanged = this.activeObject !== next;
@@ -154,15 +155,19 @@ export class InspectorPanel extends EditorWindow {
     this.name!.text = this.objectName(object); this.name!.editable = typeof (object as { name?: string }).name === 'string';
     this.icon!.iconName = inspectedObjectIcon(object);
     this.search!.placeholderText = this.debugMode ? 'Search Debug Properties' : 'Search...';
-    if (object instanceof VFXItem) {
-      if (this.debugMode) { this.buildDebug(object, 'Debug:Object', 'VFXItem'); } else { this.buildItemFields(object); }
-      this.buildTransform(sheet.section('Transform', 'Transform', true, 'transform'), object);
+    const item = object instanceof Composition ? object.sceneRoot : object;
+
+    if (item instanceof VFXItem) {
+      if (object instanceof Composition) {
+        if (this.debugMode) { this.buildDebug(object, 'Debug:Properties', object.constructor.name); } else { this.buildAsset(object); }
+      } else if (this.debugMode) { this.buildDebug(item, 'Debug:Object', 'VFXItem'); } else { this.buildItemFields(item); }
+      this.buildTransform(sheet.section('Transform', 'Transform', true, 'transform'), item);
       if (!this.debugMode) {
-        const control = object.getComponent(UIControl)?.control;
+        const control = item.getComponent(UIControl)?.control;
 
         if (control) { buildControlLayout(sheet.section('Layout', 'Layout', true, 'sceneComponent'), control); }
       }
-      for (const component of object.components) {
+      for (const component of item.components) {
         const type = typeof component.definition.dataType === 'string' ? component.definition.dataType : component.constructor.name;
 
         if (this.debugMode) { this.buildDebug(component, 'Debug:' + component.getInstanceId(), type); continue; }
@@ -172,7 +177,7 @@ export class InspectorPanel extends EditorWindow {
         group.boolean('Enabled', propertyBinding(component, 'enabled')); editor.target = component; editor.build(group);
       }
       if (!this.debugMode) {
-        const renderers = object.components.filter((component): component is RendererComponent => component instanceof RendererComponent);
+        const renderers = item.components.filter((component): component is RendererComponent => component instanceof RendererComponent);
         const withMaterials = renderers.filter(renderer => renderer.materials.length);
 
         if (withMaterials.length) {
