@@ -2,7 +2,7 @@ import {
   CacheDataManager, Composition, CompositionComponent, Engine, FloatPropertyMixerPlayable, FloatPropertyPlayableAsset,
   Geometry, RendererComponent, MaskComponent, Material, Player, ShapeComponent, SerializationHelper, TextureLoadAction,
   ParticleSystem, ParticleSystemRenderer,
-  TimelineClip, TrackAsset, VFXItem, glContext, math, spec,
+  TrackAsset, VFXItem, glContext, math, spec,
 } from '@galacean/effects';
 import type { PropertyClipPlayable } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -376,18 +376,16 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       target.materials = [material];
       mask = item.getComponent(MaskComponent) ?? item.addComponent(MaskComponent);
       mask.setMasks([entry('a', rectangle(-1, -1, 0, 1)), { ...entry('b', rectangle(-1, -1, 1, 1)), enabled: false }]);
-      const asset = new FloatPropertyPlayableAsset(engine);
+      const clip = new FloatPropertyPlayableAsset(engine);
       const track = new TrackAsset(engine);
       const mixer = new FloatPropertyMixerPlayable();
-      const clip = new TimelineClip();
       const cache = new CacheDataManager({ trackData: new Map(), clipData: new Map(), sharedData: new Map() });
 
-      resources.push(asset, track);
+      resources.push(clip, track);
       cache.setTrackKey(0);
-      asset.fromData({ id: 'mask-curve', dataType: spec.DataType.FloatPropertyPlayableAsset,
+      clip.fromData({ id: 'mask-curve', dataType: spec.DataType.FloatPropertyPlayableAsset,
         curveData: [spec.ValueType.BEZIER_CURVE, [[spec.BezierKeyframeType.LINE, [0, 0]], [spec.BezierKeyframeType.LINE, [1, 1]]]],
       });
-      clip.asset = asset;
       clip.start = 0;
       clip.duration = 2;
       track.createTrackMixer = () => mixer;

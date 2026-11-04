@@ -120,9 +120,15 @@ void main() { gl_FragColor = uColor; }`,
 
         material.stencilMask = [2, 2];
         material.stencilWriteMask = [4, 4];
+        material.depthTest = true;
+        material.depthMask = true;
         try {
           if (fails) {
-            renderer.drawGeometry = () => { throw new Error('Drawing failed'); };
+            renderer.drawGeometry = () => {
+              expect(material.depthMask).equals(false);
+              expect(material.depthTest).equals(true);
+              throw new Error('Drawing failed');
+            };
             expect(() => processor.drawGeometryMask(renderer, geometry, math.Matrix4.IDENTITY, material, 0)).throws('Drawing failed');
           } else {
             processor.drawGeometryMask(renderer, geometry, math.Matrix4.IDENTITY, material, 0);
@@ -135,6 +141,8 @@ void main() { gl_FragColor = uColor; }`,
         expect(material.stencilTest).equals(false);
         expect(material.stencilMask).deep.equals([2, 2]);
         expect(material.stencilWriteMask).deep.equals([4, 4]);
+        expect(material.depthMask).equals(true);
+        expect(material.depthTest).equals(true);
         material.stencilTest = true;
         material.stencilMask = [0xff, 0xff];
         material.stencilRef = [1, 1];

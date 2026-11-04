@@ -8,7 +8,7 @@ import type { Material } from './material';
 import { glContext } from '../gl';
 import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { RendererComponent } from '../components';
+import { RendererComponent } from '../components/renderer-component';
 import type { MaskComponent } from '../components/mask-component';
 import type { VFXItem } from '../vfx-item';
 import type { CompositionComponent } from '../components/composition-component';
@@ -210,14 +210,25 @@ export class MaskProcessor {
       }
     }
 
-    const sources = this.trackMatteReferences.map(reference => ({
-      reference,
-      paths: this.getPathMasks(reference.maskable.item),
-    }));
-    const hasSourcePaths = sources.some(source => source.paths.length > 0);
+    const sources = this.trackMatteReferences.map(reference => {
+      const source = reference.maskable;
+      // Particle systems and structural sources delegate drawing to a renderer on the same item.
+      const sourceRenderer = source instanceof RendererComponent ? source : source.item.getComponent(RendererComponent);
+      const frames = sourceRenderer?.frameClipMasks ?? [];
+      const paths = new Set(this.getPathMasks(source.item));
 
-    if (hasSourcePaths) {
-      this.drawTrackMattesWithPaths(renderer, sources);
+      for (const frame of frames) {
+        for (const path of this.getPathMasks(frame.item)) {
+          paths.add(path);
+        }
+      }
+
+      return { reference, paths: Array.from(paths), frames };
+    });
+    const hasSourceClipping = sources.some(source => source.paths.length > 0 || source.frames.length > 0);
+
+    if (hasSourceClipping) {
+      this.drawTrackMattesWithClipping(renderer, sources);
     } else if (this.trackMatteReferences.length > 0) {
       this.drawTrackMatteCounter(renderer);
     }
@@ -225,14 +236,14 @@ export class MaskProcessor {
     const pathMasks = this.getPathMasks(maskedComponent.item);
 
     if (pathMasks.length > 0) {
-      if (!hasSourcePaths && this.trackMatteReferences.length > 0) {
+      if (!hasSourceClipping && this.trackMatteReferences.length > 0) {
         // Convert the legacy counter to binary coverage without losing the count == 0 case.
         renderer.drawFullscreenStencil(MaskStencil.All, this.expectedStencilValue, glContext.EQUAL, glContext.ZERO, glContext.INCR);
         renderer.drawFullscreenStencil(MaskStencil.All, 0, glContext.EQUAL, glContext.INCR, glContext.ZERO);
         renderer.drawFullscreenStencil(
           MaskStencil.Path, MaskStencil.Target | MaskStencil.Path, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target,
         );
-      } else if (!hasSourcePaths) {
+      } else if (!hasSourceClipping) {
         renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
       }
       for (const pathMask of pathMasks) {
@@ -245,7 +256,7 @@ export class MaskProcessor {
     }
 
     for (const material of maskedComponent.materials) {
-      if (hasSourcePaths || pathMasks.length > 0) {
+      if (hasSourceClipping || pathMasks.length > 0) {
         material.stencilTest = true;
         material.stencilMask = [MaskStencil.Target, MaskStencil.Target];
         material.stencilRef = [MaskStencil.Target, MaskStencil.Target];
@@ -263,16 +274,22 @@ export class MaskProcessor {
     }
   }
 
-  private drawTrackMattesWithPaths (renderer: Renderer, sources: { reference: MaskReference, paths: MaskComponent[] }[]): void {
+  private drawTrackMattesWithClipping (renderer: Renderer, sources: { reference: MaskReference, paths: MaskComponent[], frames: Maskable[] }[]): void {
     const pathBits = MaskStencil.Path | MaskStencil.Scratch;
     const sourceIntersection = MaskStencil.Source | MaskStencil.Path;
     const targetIntersection = MaskStencil.Target | MaskStencil.Path;
 
     renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
-    for (const { reference, paths } of sources) {
+    for (const { reference, paths, frames } of sources) {
       renderer.drawFullscreenStencil(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE);
       for (const path of paths) {
         path.drawStencilStack(renderer, path.item === reference.maskable.item ? reference.maskable.getPathMaskWorldMatrix?.(renderer) : undefined);
+        renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
+      }
+      // Apply Frame coverage to the source before inversion, preserving the accumulated target.
+      for (const frame of frames) {
+        renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO);
+        frame.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
         renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
       renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO);
@@ -332,6 +349,7 @@ export class MaskProcessor {
    */
   drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
     const prevColorMask = material.colorMask;
+    const prevDepthMask = material.depthMask;
     const prevStencilTest = material.stencilTest;
     const prevStencilWriteMask = material.stencilWriteMask;
 
@@ -344,10 +362,12 @@ export class MaskProcessor {
 
     try {
       this.setupMaskMaterial(material, maskRef);
+      material.depthMask = false;
       material.stencilWriteMask = undefined;
       renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
     } finally {
       material.colorMask = prevColorMask;
+      material.depthMask = prevDepthMask;
       material.stencilTest = prevStencilTest;
       material.stencilFunc = this.prevStencilFunc;
       material.stencilOpFail = this.prevStencilOpFail;
