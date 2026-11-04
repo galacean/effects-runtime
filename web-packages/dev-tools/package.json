@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite --force"
+    "dev": "vite --force",
+    "build:extension": "node scripts/build-extension.mjs"
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",

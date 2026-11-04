@@ -12,6 +12,8 @@ import { drawAssetIcon, type AssetIcon } from '../icons/asset-icons';
 import { editorBox, editorColors as C, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE, setEditorFont, getEditorFont } from '../theme/control-theme';
 import { TexturePresentation, type TexturePreview } from '../../features/assets/preview/texture-preview';
 import type { SelectionModifiers } from '../list-view/list-selection';
+import { applyMarqueeSelection, marqueeSelectionMode, type MarqueeSelectionMode } from '../list-view/marquee-selection';
+import { EditorPointerInteraction } from '../controls/pointer-interaction';
 
 export interface AssetViewRect { x: number, y: number, width: number, height: number }
 export interface AssetViewItem {
@@ -254,7 +256,13 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
   override emptyText = 'No assets found';
   importHighlight?: AssetViewRect;
   selectionScope?: Control;
-  private marqueeDrag?: { start: math.Vector2, end: math.Vector2, initial: string[] };
+  private marqueeDrag?: { start: math.Vector2, end: math.Vector2, initial: string[], mode: MarqueeSelectionMode };
+  private readonly pointerInteraction = new EditorPointerInteraction(this, () => {
+    const drag = this.marqueeDrag;
+
+    this.marqueeDrag = undefined;
+    if (drag) { this.actions.marquee?.(drag.initial, false); }
+  });
   columnLayout = [{ index: -1, fraction: .375 }, { index: 0, fraction: .125 }, { index: 1, fraction: .15 }, { index: 2, fraction: .125 }, { index: 3, fraction: .225 }];
   constructor (engine: Engine, readonly actions: AssetViewActions) {
     super(engine, 168, items => items.map(item => item.id).join(','), () => new AssetRow(engine, this));
@@ -332,13 +340,16 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
       return bottom > top ? [{ id: cell.assetId, rect: { x: position.x, y: top, width: cell.width, height: bottom - top } }] : [];
     }));
   }
-  override onKeyDown (event: InputEventKey): void { this.actions.key(event); }
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode === 'Escape' && this.pointerInteraction.active) { this.pointerInteraction.cancel(); this.root?.cancelPointerInput(); event.accept(); } else { this.actions.key(event); }
+  }
   override onMouseDown (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Right) { this.actions.context(undefined, event.globalPosition); event.accept(); } else if (event.buttonIndex === MouseButton.Left && this.actions.marquee) {
+    if (event.buttonIndex === MouseButton.Right) { this.pointerInteraction.cancel(); this.actions.context(undefined, event.globalPosition); event.accept(); } else if (event.buttonIndex === MouseButton.Left && this.actions.marquee) {
       this.grabFocus(); const point = new math.Vector2(event.position.x, event.position.y + this.vScroll);
-      const initial = event.ctrlPressed || event.metaPressed || event.shiftPressed ? this.items.filter(item => this.actions.selected(item.id)).map(item => item.id) : [];
+      const initial = this.items.filter(item => this.actions.selected(item.id)).map(item => item.id), mode = marqueeSelectionMode(event);
 
-      this.marqueeDrag = { start: point, end: point.clone(), initial }; this.actions.marquee(initial, false); event.accept();
+      this.pointerInteraction.begin(event);
+      this.marqueeDrag = { start: point, end: point.clone(), initial, mode }; event.accept();
     } else { this.grabFocus(); super.onMouseDown(event); }
   }
   columnBounds (index: number, width = this.content.width): { x: number, width: number } {
@@ -359,6 +370,7 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
 
       return;
     }
+    if (!this.pointerInteraction.move(event) || !this.pointerInteraction.moved) { return; }
     const drag = this.marqueeDrag;
 
     drag.end.set(event.position.x, event.position.y + this.vScroll);
@@ -369,11 +381,20 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
       return x < right && x + width > left && y < bottom && y + this.rowHeight - 8 > top;
     }).map(item => item.id);
 
-    this.actions.marquee?.([...new Set([...drag.initial, ...ids])], false); event.accept();
+    this.actions.marquee?.(applyMarqueeSelection(drag.initial, ids, drag.mode), false); event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (this.marqueeDrag) { if (event.canceled) { this.actions.marquee?.(this.marqueeDrag.initial, false); } this.marqueeDrag = undefined; event.accept(); } else { super.onMouseUp(event); }
+    const drag = this.marqueeDrag;
+
+    if (drag) {
+      if (this.pointerInteraction.end(event)) {
+        this.marqueeDrag = undefined;
+        if (!this.pointerInteraction.moved && drag.mode === 'replace') { this.actions.marquee?.([], false); }
+      }
+      event.accept();
+    } else { super.onMouseUp(event); }
   }
+  override onDestroy (): void { this.pointerInteraction.cancel(); super.onDestroy(); }
   protected override drawChildren (): void {
     super.drawChildren();
     if (this.importHighlight) {
@@ -383,7 +404,7 @@ export class AssetView extends VirtualList<AssetViewItem[]> {
     }
     const drag = this.marqueeDrag;
 
-    if (drag) {
+    if (drag && this.pointerInteraction.moved) {
       const x = Math.min(drag.start.x, drag.end.x), y = Math.min(drag.start.y, drag.end.y) - this.vScroll, w = Math.abs(drag.start.x - drag.end.x), h = Math.abs(drag.start.y - drag.end.y);
 
       this.fillRect(x, y, w, h, new math.Color(0, .44, .88, .15)); this.drawRect(x, y, w, h, C.primary);

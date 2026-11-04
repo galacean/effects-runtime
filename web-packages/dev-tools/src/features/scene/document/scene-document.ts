@@ -1,5 +1,5 @@
 import type { Composition } from '@galacean/effects';
-import { EffectsObject, VFXItem, spec } from '@galacean/effects';
+import { EffectsObject, PostProcessVolume, VFXItem, spec } from '@galacean/effects';
 import { EditorHistory, historyBytes } from '../../../framework/history/editor-history';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { ObjectState } from '../serialization/scene-serializer';
@@ -52,6 +52,7 @@ export class SceneDocument {
   beforeSelectionChange: () => void = () => {};
   autoKeyTarget: (item: VFXItem) => boolean = () => false;
   autoKeyTransforms?: (edits: TransformEdit[]) => boolean;
+  autoKeyProperties?: (before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>) => (() => boolean) | undefined;
   private version = 0;
   private nextVersion = 1;
   private savedVersion?: number;
@@ -69,6 +70,7 @@ export class SceneDocument {
   private runtimeEdits = new Map<EffectsObject, { before: ObjectState, after: ObjectState }>();
   private readonly changeListeners = new Set<() => void>();
   private notificationQueued = false;
+  private postProcessVolumes: PostProcessVolume[] = [];
 
   subscribe (listener: () => void): () => void {
     this.changeListeners.add(listener);
@@ -93,6 +95,12 @@ export class SceneDocument {
     this.serializer.stabilizeRenderOrder(this.scene);
     this.serializer.restoreEditor(this.editor);
     this.serializer.stabilizeRenderOrder(this.scene);
+    this.refreshRenderSettings();
+    if (this.scene.renderSettings?.postProcessingEnabled === undefined && this.postProcessVolumes.length) {
+      this.scene.renderSettings = { supportsHDR: false, ...this.scene.renderSettings, postProcessingEnabled: true };
+      this.syncPostProcessing();
+    }
+    composition.engine.on('update', this.syncPostProcessing);
     this.registerEditorState({
       read: () => EditorSelection.getSelectedObjects().map(object => this.selectionKey(object)),
       restore: (keys: string[]) => EditorSelection.setObjects(keys.map(key => this.selectionObject(key)).filter((object): object is object => !!object), 'history'),
@@ -168,13 +176,62 @@ export class SceneDocument {
 
   dispose (): void {
     this.disposed = true; this.transaction = undefined; this.scopes.clear();
-    this.autoKeyTransforms = undefined;
+    this.composition.engine.off('update', this.syncPostProcessing); this.postProcessVolumes = [];
+    this.autoKeyTransforms = undefined; this.autoKeyProperties = undefined;
     this.changeListeners.clear();
     this.history.clear('The document was closed.');
     this.editorStates.clear(); this.sequenceStates.clear(); this.runtimeEdits.clear(); this.selectionObjects.clear();
   }
 
   snapshot (): Snapshot { return { scene: jsonData(this.scene), editor: jsonData(this.editor) }; }
+
+  setPostProcessingEnabled (enabled: boolean): void {
+    if (!!this.scene.renderSettings?.postProcessingEnabled === enabled) { return; }
+    this.begin('Set post processing');
+    this.scene.renderSettings = { supportsHDR: false, ...this.scene.renderSettings, postProcessingEnabled: enabled };
+    this.syncPostProcessing();
+  }
+
+  refreshRenderSettings (): void {
+    this.postProcessVolumes = [this.composition.sceneRoot, ...this.composition.items].flatMap(item => item.getComponents(PostProcessVolume));
+    for (const volume of this.postProcessVolumes) {
+      const id = this.serializer.id(volume);
+      const data = this.scene.components.find(component => component.id === id) as spec.PostProcessVolumeData | undefined;
+      const fields = this.editor.objects[id]?.fields;
+
+      if (!data || !fields) { continue; }
+      for (const key of ['bloom', 'vignette', 'tonemapping', 'colorAdjustments'] as const) {
+        if (fields[key]) { Object.assign(data, { [key]: { ...data[key], ...jsonData(fields[key]) } }); }
+      }
+    }
+    this.syncPostProcessing();
+  }
+
+  private isActiveVolume (volume: PostProcessVolume): boolean {
+    return volume.isRegistered && volume.isActiveAndEnabled && volume.item.composition === this.composition;
+  }
+
+  private readonly syncPostProcessing = (): void => {
+    const composition = this.composition;
+
+    composition.postProcessingEnabled = !!this.scene.renderSettings?.postProcessingEnabled;
+    if (!composition.postProcessingEnabled) {
+      composition.globalVolume = undefined;
+
+      return;
+    }
+    if (composition.globalVolume && this.isActiveVolume(composition.globalVolume)) { return; }
+    composition.globalVolume = undefined;
+    for (let index = this.postProcessVolumes.length - 1; index >= 0; index--) {
+      const volume = this.postProcessVolumes[index];
+
+      if (this.isActiveVolume(volume)) {
+        composition.globalVolume = volume;
+
+        break;
+      }
+    }
+  };
 
   markSaved (revision?: number): void {
     if (revision === undefined) { this.commit(true); }
@@ -215,7 +272,10 @@ export class SceneDocument {
       this.cancel();
       throw error;
     }
-    for (const [object, state] of this.serializer.capture(targets)) {
+    const after = this.serializer.capture(targets);
+    const keyProperties = this.autoKeyProperties?.(before, after);
+
+    for (const [object, state] of after) {
       const old = before.get(object);
 
       if (!old) { continue; }
@@ -228,6 +288,7 @@ export class SceneDocument {
       changed = this.recordObject(label, old, state) || changed;
     }
     if (keyed.length) { changed = this.autoKeyTransforms?.(keyed) || changed; }
+    if (keyProperties) { changed = keyProperties() || changed; }
     if (this.transaction && this.transaction !== transaction) { this.transaction.states = states; }
 
     return changed;
@@ -304,7 +365,10 @@ export class SceneDocument {
     const newIds = new Set(data.miscs.map((entry: any) => entry.id));
 
     this.scene.miscs = this.scene.miscs.filter(entry => !oldIds.has(entry.id) || newIds.has(entry.id));
-    for (const asset of data.miscs) { this.serializer.put(this.scene, asset); }
+    for (const asset of data.miscs) {
+      this.serializer.put(this.scene, asset);
+      if (asset.dataType === 'ObjectReferencePropertyPlayableAsset') { this.serializer.includeDependencies(this.scene, asset.curveData); }
+    }
     component.timelineAsset = data.timelineAsset; component.sceneBindings = data.sceneBindings;
     this.editor.sequences ??= {};
     const authored = document.exportEditorData();
@@ -432,6 +496,7 @@ export class SceneDocument {
           if (redo) { mutation.redo(); } else { mutation.undo(); }
         }
         this.serializer.restoreEditor(this.editor);
+        this.refreshRenderSettings();
         for (const [state, initial] of this.editorStates) {
           if (!state.valid || state.valid()) { state.restore(states.has(state) ? states.get(state) : initial); }
         }
@@ -445,6 +510,7 @@ export class SceneDocument {
           try { if (redo) { mutation.undo(); } else { mutation.redo(); } } catch (restoreError) { console.error('Failed to restore an edited object.', restoreError); }
         }
         if (current) { this.scene = current.scene; this.editor = current.editor; }
+        this.refreshRenderSettings();
         for (const [state, value] of previousStates) { if (!state.valid || state.valid()) { state.restore(value); } }
       }, 'history');
       throw error;

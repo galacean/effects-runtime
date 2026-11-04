@@ -51,6 +51,8 @@ export class SequencerCurveModel implements CurveModel {
 
     if (!key || this.readOnly) { return; }
     key.time = (position.time - this.section.clip.start) / this.section.clip.duration;
-    if (this.channel.pathView !== 'timing') { key.value = position.value; }
+    if (this.channel.pathView !== 'timing') {
+      key.value = Math.max(this.channel.minimum ?? -Infinity, Math.min(this.channel.maximum ?? Infinity, this.channel.integer ? Math.round(position.value) : position.value));
+    }
   }
 }

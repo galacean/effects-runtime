@@ -2,6 +2,7 @@ import type { Engine, GPUFramebuffer, spec, Geometry, Renderer } from '@galacean
 import { Material, RenderPassAttachmentStorageType, RenderingData, SerializationHelper, Shader, ShaderCompileResultStatus,
   Texture, TextureLoadAction, TextureSourceType, TextureStoreAction, glContext, math } from '@galacean/effects';
 import { GLShaderLibrary } from '@galacean/effects-webgl';
+import type { GPUProgramWebGL } from '@galacean/effects-webgl';
 import { createGeometry, GeometryType } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
 import { EditorRenderTarget } from '../../../platform/effects-runtime/editor-render-target';
@@ -15,6 +16,22 @@ export interface MaterialPreviewInput {
   material?: Material,
   view?: MaterialPreviewSettings,
 }
+
+const builtinUniformTypes = new Map([
+  ['_Time', 'vec4'], ['uTime', 'float'], ['_Size', 'vec2'], ['_Scale', 'vec3'],
+  ['_Color', 'vec4'], ['_TexParams', 'vec4'], ['_TexOffset', 'vec4'], ['_MainTex', 'sampler2D'],
+  ['effects_MatrixVP', 'mat4'], ['effects_MatrixV', 'mat4'], ['effects_MatrixInvV', 'mat4'],
+  ['effects_ObjectToWorld', 'mat4'], ['_MatrixP', 'mat4'], ['effects_WorldSpaceCameraPos', 'vec3'],
+  ['_AssetPreviewWorld', 'mat4'], ['_AssetPreviewView', 'vec3'], ['_AssetPreviewLight', 'vec3'],
+]);
+
+const uniformTypeNames = new Map<number, string>([
+  [glContext.FLOAT, 'float'], [glContext.FLOAT_VEC2, 'vec2'], [glContext.FLOAT_VEC3, 'vec3'], [glContext.FLOAT_VEC4, 'vec4'],
+  [glContext.INT, 'int'], [glContext.INT_VEC2, 'ivec2'], [glContext.INT_VEC3, 'ivec3'], [glContext.INT_VEC4, 'ivec4'],
+  [glContext.BOOL, 'bool'], [glContext.BOOL_VEC2, 'bvec2'], [glContext.BOOL_VEC3, 'bvec3'], [glContext.BOOL_VEC4, 'bvec4'],
+  [glContext.FLOAT_MAT2, 'mat2'], [glContext.FLOAT_MAT3, 'mat3'], [glContext.FLOAT_MAT4, 'mat4'],
+  [glContext.SAMPLER_2D, 'sampler2D'], [glContext.SAMPLER_CUBE, 'samplerCube'],
+]);
 
 function previewShader (shader: spec.ShaderData, lit: boolean): spec.ShaderData {
   if (!lit || !shader.fragment.includes('gl_FragColor')) { return shader; }
@@ -90,6 +107,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   private library?: GLShaderLibrary;
   private shaderVersion = '';
   private version = '';
+  private validatedProgram?: WebGLProgram | null;
   private ready = false;
   private disposed = false;
 
@@ -127,6 +145,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     if (this.disposed || device.contextWasLost || device.gl.isContextLost()) { return; }
     const previousData = this.renderer.renderingData;
 
+    this.ready = false;
     this.renderer.renderingData = this.renderingData;
     try { this.renderPreview(time, device); } finally { this.renderer.renderingData = previousData; }
   }
@@ -149,10 +168,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     material.setVector3('_AssetPreviewView', new math.Vector3(world[8], world[9], world[10]));
     material.setVector3('_AssetPreviewLight', new math.Vector3(Math.sin(view.lightYaw) * Math.cos(view.lightPitch), Math.sin(view.lightPitch), Math.cos(view.lightYaw) * Math.cos(view.lightPitch)));
 
-    material.createShaderVariant();
-    if (material.shaderVariant.compileResult?.status !== ShaderCompileResultStatus.success) {
-      throw new Error(material.shaderVariant.compileResult?.error || 'The material shader could not be compiled.');
-    }
+    this.validateShader(material);
     material.setVector4('_Time', new math.Vector4(time / 20, time, time * 2, time * 3));
     material.setFloat('uTime', time);
     this.target.initialize();
@@ -205,11 +221,11 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     }
     for (const name of Object.keys(material.enabledMacros)) { material.disableMacro(name); }
     for (const [name, value] of Object.entries(input.material?.enabledMacros ?? Object.fromEntries((input.data.macros ?? []).map(name => [name, true])))) { material.enableMacro(name, value); }
+    this.validateShader(material);
     material.setVector2('_Size', new math.Vector2(1, 1));
     material.setVector3('_Scale', new math.Vector3(1, 1, 1));
     if (!material.getColor('_Color')) { material.setColor('_Color', new math.Color(1, 1, 1, 1)); }
-    if (!material.getVector4('_TexParams')) { material.setVector4('_TexParams', new math.Vector4(1, 1, 1, 0)); }
-    const params = material.getVector4('_TexParams')!;
+    const params = material.getVector4('_TexParams') ?? new math.Vector4(1, 1, 1, 0);
 
     material.setVector4('_TexParams', new math.Vector4(params.x, params.y, 1, params.w));
     if (!material.getVector4('_TexOffset')) { material.setVector4('_TexOffset', new math.Vector4(0, 0, 1, 1)); }
@@ -219,6 +235,36 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     this.version = input.version;
 
     return material;
+  }
+
+  private validateShader (material: Material): void {
+    material.createShaderVariant();
+    if (material.shaderVariant.compileResult?.status !== ShaderCompileResultStatus.success) {
+      throw new Error(material.shaderVariant.compileResult?.error || 'The material shader could not be compiled.');
+    }
+    const program = (material.shaderVariant.program as GPUProgramWebGL).program;
+
+    if (program === this.validatedProgram) { return; }
+    const gl = (this.engine.displayServer.renderingDevice as EditorRenderingDevice).gl;
+    const count = gl.getProgramParameter(program!, gl.ACTIVE_UNIFORMS) as number;
+
+    for (let index = 0; index < count; index++) {
+      const uniform = gl.getActiveUniform(program!, index);
+
+      if (!uniform) { continue; }
+      const name = uniform.name.replace(/\[0\]$/, '');
+      const expected = builtinUniformTypes.get(name);
+      const type = uniformTypeNames.get(uniform.type) ?? '0x' + uniform.type.toString(16);
+
+      if (expected && (type !== expected || uniform.name !== name || uniform.size !== 1)) {
+        const actual = type + (uniform.name !== name || uniform.size !== 1 ? '[' + uniform.size + ']' : '');
+        const shader = this.shader!.shaderData;
+
+        throw new Error('Material "' + (material.name || material.getInstanceId()) + '", shader "' + (shader.name || shader.id)
+          + '": built-in uniform "' + name + '" must be ' + expected + ', but the shader declares ' + actual + '.');
+      }
+    }
+    this.validatedProgram = program;
   }
 
   private prepareGeometry (primitive: PreviewPrimitive): void {
@@ -238,6 +284,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   private disposeMaterial (): void {
     this.material?.dispose(); this.shader?.dispose(); this.library?.dispose();
     this.material = undefined; this.shader = undefined; this.library = undefined;
+    this.validatedProgram = undefined;
   }
 
   dispose (): void {

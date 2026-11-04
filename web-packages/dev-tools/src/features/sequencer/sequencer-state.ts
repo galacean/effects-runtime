@@ -1,6 +1,7 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ObjectBindingTrack, TransformTrack } from '@galacean/effects';
+import { ObjectBindingTrack } from '@galacean/effects';
 import { controlPoint } from './curve-data';
+import { propertyTrackKind } from './sequencer-properties';
 import type { SequenceChannel, SequenceSection, SequencerDocument } from './sequencer-document';
 import { SEQUENCE_LAYOUT as L } from './sequencer-style';
 
@@ -94,6 +95,15 @@ export class SequencerState {
       append({ id, label: document.trackLabel(track), kind: track instanceof ObjectBindingTrack ? 'object' : 'track',
         depth, track, expandable: children.length + groups.length > 0, channels });
       if (!this.expanded.has(id) && !query) { return; }
+      if (propertyTrackKind(track)) {
+        for (const label of Array.from(new Set(channels.map(entry => entry.channel.label)))) {
+          append({ id: id + ':' + channels[0].channel.group + '.' + label, label, kind: 'channel', depth: depth + 1, track, expandable: false,
+            channels: channels.filter(entry => entry.channel.label === label) });
+        }
+        children.forEach(child => visit(child, depth + 1));
+
+        return;
+      }
       for (const group of groups) {
         const groupId = id + ':' + group;
         const groupChannels = channels.filter(entry => entry.channel.group === group);
@@ -224,7 +234,9 @@ export class SequencerState {
     }
     for (const track of document.tracks) {
       this.expanded.add(track.getInstanceId());
-      if (track instanceof TransformTrack) { ['Location', 'Rotation', 'Scale'].forEach(group => this.expanded.add(track.getInstanceId() + ':' + group)); }
+      for (const clip of track.getClips()) {
+        document.sections.get(clip)?.channels.forEach(channel => this.expanded.add(track.getInstanceId() + ':' + channel.group));
+      }
     }
   }
 

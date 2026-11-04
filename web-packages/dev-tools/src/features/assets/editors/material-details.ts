@@ -3,6 +3,7 @@ import { SerializationHelper, Texture, spec, math } from '@galacean/effects';
 import { propertyLabel } from '../../../ui/property-editor/default-object-details';
 import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
 import { assetLibrary } from '../asset-library';
+import { isPersistentResource } from '../model/resource-identity';
 import { openContentAsset } from './asset-editor-registry';
 
 export interface MaterialProperty {
@@ -11,10 +12,11 @@ export interface MaterialProperty {
   type: string,
   fallback?: string,
   toggle?: boolean,
+  hdr?: boolean,
   range?: [number, number],
 }
 
-export function materialProperties (source: string | undefined, data: { floats?: object, colors?: object, vector4s?: object, textures?: object }): MaterialProperty[] {
+export function materialProperties (source: string | undefined, data: { floats?: object, ints?: object, colors?: object, vector4s?: object, textures?: object }): MaterialProperty[] {
   if (source) {
     return source.split('\n').flatMap(line => {
       const match = line.match(/\s*(\s*\[[^\]]+\]\s*)*([^\s([\]]+)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/);
@@ -25,12 +27,13 @@ export function materialProperties (source: string | undefined, data: { floats?:
       const label = match[2] === '_MainTex' && match[3].startsWith('_') ? 'Texture' : propertyLabel(match[3]);
 
       return [{ name: match[2], label, type: range ? 'Float' : match[4], fallback: match[5],
-        toggle: line.includes('[Toggle]'), range: range ? [Number(range[1]), Number(range[2])] as [number, number] : undefined }];
+        toggle: line.includes('[Toggle]'), hdr: line.includes('[HDR]'), range: range ? [Number(range[1]), Number(range[2])] as [number, number] : undefined }];
     });
   }
 
   return [
     ...Object.keys(data.floats ?? {}).map(name => ({ name, type: 'Float' })),
+    ...Object.keys(data.ints ?? {}).map(name => ({ name, type: 'Int' })),
     ...Object.keys(data.colors ?? {}).map(name => ({ name, type: 'Color' })),
     ...Object.keys(data.vector4s ?? {}).map(name => ({ name, type: 'Vector' })),
     ...Object.keys(data.textures ?? {}).map(name => ({ name, type: '2D' })),
@@ -38,11 +41,14 @@ export function materialProperties (source: string | undefined, data: { floats?:
 }
 
 export function materialSearchTerms (material: Material, skipColor = false): string[] {
+  if (!isPersistentResource(material, material.engine)) { return ['Default']; }
+
   return ['Surface Type', 'Render Face', material.name ?? '', ...materialProperties(material.shader?.shaderData.properties, material.toData())
     .filter(property => !skipColor || property.name !== '_Color').map(property => property.label)];
 }
 
 export function buildMaterialProperties (group: PropertyGroup, material: Material, skipColor = false): void {
+  if (!isPersistentResource(material, material.engine)) { return; }
   const contentAsset = assetLibrary.entry(material.getInstanceId());
   const options = { enabled: () => contentAsset?.kind !== 'material' };
   const mutate = (action: (data: spec.MaterialData) => void): void => {
@@ -67,6 +73,8 @@ export function buildMaterialProperties (group: PropertyGroup, material: Materia
       const read = () => material.getFloat(name) ?? (Number(property.fallback) || 0);
 
       if (property.toggle) { group.boolean(label, { read: () => read() !== 0, write: value => mutate(data => { data.floats[name] = value ? 1 : 0; }) }, options); } else { group.number(label, { read, write: value => mutate(data => { data.floats[name] = value; }) }, { min: property.range?.[0], max: property.range?.[1] }, options); }
+    } else if (type === 'Int') {
+      group.number(label, { read: () => material.getInt(name) ?? (Number(property.fallback) || 0), write: value => mutate(data => { data.ints[name] = Math.round(value); }) }, { precision: 0, step: 1 }, options);
     } else if (type === 'Color') {
       group.color(label, { read: () => material.getColor(name)?.clone() ?? new math.Color(1, 1, 1, 1),
         write: color => mutate(data => { data.colors[name] = { r: color.r, g: color.g, b: color.b, a: color.a }; }) }, options);

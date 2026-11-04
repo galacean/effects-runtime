@@ -6,7 +6,6 @@ import type { AssetViewItem } from '../../../ui/asset-view/asset-view';
 import { append, expand, label, margin } from '../../../ui/controls/layout';
 import { EditorSearchField } from '../../../ui/controls/search-field';
 import { editorBox, editorColors, EDITOR_SMALL_FONT_SIZE, setEditorFont } from '../../../ui/theme/control-theme';
-import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import { ContentAssetSource } from '../../content-browser/content-asset-source';
 import { assetLibrary } from '../asset-library';
 import { AssetThumbnailCache } from '../preview/asset-thumbnail-cache';
@@ -25,7 +24,7 @@ export class AssetPicker extends VBoxContainer {
   private selected = '';
   private readonly count: Label;
   private readonly thumbnails = new AssetThumbnailCache();
-  private readonly source = new ContentAssetSource(this.thumbnails, id => assetLibrary.asset(EditorRuntimeSession.player.engine, id));
+  private readonly source = new ContentAssetSource(this.thumbnails);
 
   constructor (engine: Engine, private readonly accept: (id: string) => void) {
     super(engine); this.setThemeConstantOverride('separation', 0);

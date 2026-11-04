@@ -6,7 +6,6 @@ import type { Control, Label, LineEdit } from '@galacean/effects-plugin-gui';
 import { PanelContainer, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorWindow } from '../../framework/windows/editor-window';
-import { EditorRuntimeSession } from '../../platform/effects-runtime/editor-runtime-session';
 import { AssetView } from '../../ui/asset-view/asset-view';
 import { append, column, expand, label, margin, row, screenPosition } from '../../ui/controls/layout';
 import { EditorMenu, EditorMenuButton, type MenuAction } from '../../ui/controls/menu';
@@ -35,7 +34,7 @@ import { EditorBreadcrumbBar } from '../../ui/controls/breadcrumb-bar';
 @editorPanel()
 export class ContentBrowserPanel extends EditorWindow {
   private readonly thumbnails = new AssetThumbnailCache();
-  private readonly assetSource = new ContentAssetSource(this.thumbnails, id => library.asset(EditorRuntimeSession.player.engine, id));
+  private readonly assetSource = new ContentAssetSource(this.thumbnails);
   private readonly selection = new ListSelection<string>();
   private readonly importer = new ContentImportController((files, folder, replacement) => {
     void library.importImages(files, folder, replacement).then(ids => { this.thumbnails.clear(); if (ids?.length) { this.selected = new Set(ids); this.selection.anchor = ids[0]; } this.refresh(); });
@@ -56,7 +55,6 @@ export class ContentBrowserPanel extends EditorWindow {
   private expanded = new Set([ASSET_ROOT, 'favorites', 'collections', 'project']);
   private clipboard?: { ids: string[], cut: boolean };
   private preferencesTimer?: number;
-  private loadingAssets = new Set<string>();
   private sourceList!: ContentSourcesView;
   private assetView!: AssetView;
   private searchEdit!: LineEdit;
@@ -203,7 +201,7 @@ export class ContentBrowserPanel extends EditorWindow {
     this.history = [this.folder]; this.historyIndex = 0; this.selected.clear(); this.selection.anchor = undefined;
     this.search = this.assetType = this.extension = ''; this.sourceQueries = { favorites: '', project: '', collections: '' }; this.showTrash = false; this.clipboard = undefined;
     this.expanded = new Set([ASSET_ROOT, 'project', 'favorites', 'collections', ...library.path(this.folder).map(entry => entry.id)]);
-    this.thumbnails.clear(); this.loadingAssets.clear();
+    this.thumbnails.clear();
     if (this.searchEdit) { this.searchEdit.text = ''; }
     this.sourceList?.resetFilters();
   }
@@ -323,13 +321,8 @@ export class ContentBrowserPanel extends EditorWindow {
 
     this.assetView.configure(library.preferences.view, library.preferences.thumbnailSize);
     this.headers.visible = library.preferences.view === 'columns';
-    this.assetView.setItems(entries.map(entry => {
-      if ((entry.kind === 'sprite' || entry.kind === 'material') && !library.asset(EditorRuntimeSession.player.engine, entry.id) && !this.loadingAssets.has(entry.id)) {
-        this.loadingAssets.add(entry.id); void library.loadAsset(EditorRuntimeSession.player.engine, entry.id).catch(error => library.report(error)).then(() => this.loadingAssets.delete(entry.id));
-      }
-
-      return this.assetSource.describe(entry, entry.name + ((entry.kind === 'scene' && sceneWorkspace.current?.storageId === entry.id && sceneWorkspace.current.dirty || isContentAssetDirty(entry.id)) ? '*' : ''));
-    }));
+    this.assetView.setItems(entries.map(entry => this.assetSource.describe(entry,
+      entry.name + ((entry.kind === 'scene' && sceneWorkspace.current?.storageId === entry.id && sceneWorkspace.current.dirty || isContentAssetDirty(entry.id)) ? '*' : ''))));
   }
   private visibleEntries (): AssetEntry[] {
     const query = this.search.trim().toLowerCase(), collection = library.preferences.collections.find(entry => entry.id === this.collection);
