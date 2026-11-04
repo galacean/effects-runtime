@@ -554,13 +554,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5]) / w;
     const maxNdcScale = Math.max(sx, sy);
 
-    // NDC -> 像素: canvasSize / 2
-    const canvasRect = this.engine.canvas.getBoundingClientRect();
-    const ndcToPixels = Math.max(canvasRect.width, canvasRect.height) / 2;
+    // 使用实际渲染像素尺寸；离屏 canvas 没有 DOM 布局尺寸。
+    // drawing buffer 已包含 pixelRatio，不能重复乘以 DPR。
+    const device = this.engine.displayServer.renderingDevice;
+    const ndcToPixels = Math.max(device.getWidth(), device.getHeight()) / 2;
 
     // pixelsPerUnit: 1个局部空间单位在屏幕上对应多少像素
     // 椭圆/圆/矩形中使用 n = ceil(√(ppu × (rx+ry))) 确保圆弧误差 ≈ 1.2px
-    const pixelsPerUnit = maxNdcScale * ndcToPixels * this.engine.displayServer.pixelRatio;
+    const pixelsPerUnit = maxNdcScale * ndcToPixels;
 
     const minPpu = 1;
     const maxPpu = 2000;

@@ -23,6 +23,11 @@ export class InspectorPanel {
   private readonly fillSection = element('fill-properties');
   private readonly fill = element<HTMLInputElement>('fill');
   private readonly fillValue = element('fill-value');
+  private readonly mediaSection = element('media-properties');
+  private readonly mediaPlay = element<HTMLButtonElement>('media-play');
+  private readonly mediaSeek = element<HTMLInputElement>('media-seek');
+  private readonly mediaTime = element('media-time');
+  private readonly mediaStatus = element('media-status');
   private signature = '';
   private refreshFrame?: number;
 
@@ -30,6 +35,18 @@ export class InspectorPanel {
     this.bindPositionFields();
     this.bindSizeFields();
     this.bindTextFields();
+    this.events.on(this.mediaPlay, 'click', () => {
+      this.editor.editSelected('切换媒体播放', item => {
+        const media = this.scene.getMediaState(item);
+
+        if (media) {
+          this.scene.setMediaPlaying(item, !media.playing);
+        }
+      });
+    });
+    this.events.on(this.mediaSeek, 'input', () => {
+      this.editor.editSelected('调整媒体进度', item => this.scene.seekMedia(item, this.mediaSeek.valueAsNumber));
+    });
     this.events.on(this.fill, 'input', () => {
       const hex = this.fill.value;
       const channel = (index: number) => parseInt(hex.slice(index, index + 2), 16) / 255;
@@ -49,10 +66,13 @@ export class InspectorPanel {
     const item = this.editor.selectedItem;
     const text = item?.getComponent(TextComponent);
     const color = this.getFillColor(item);
+    const data = item ? this.scene.getItem(item) : undefined;
+    const media = item ? this.scene.getMediaState(item) : undefined;
     const signature = JSON.stringify([
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
       item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
+      data?.status, media,
     ]);
 
     if (!force && signature === this.signature) {
@@ -79,6 +99,16 @@ export class InspectorPanel {
       this.fill.value = color;
       this.fillValue.textContent = color.slice(1).toUpperCase();
     }
+    this.mediaSection.hidden = data?.kind !== 'Video' && data?.kind !== 'Effects';
+    this.mediaPlay.disabled = !media;
+    this.mediaPlay.textContent = media?.playing ? '暂停' : '播放';
+    this.mediaSeek.disabled = !media || media.duration <= 0;
+    this.mediaSeek.max = String(media?.duration ?? 0);
+    if (document.activeElement !== this.mediaSeek) {
+      this.mediaSeek.value = String(media?.time ?? 0);
+    }
+    this.mediaTime.textContent = `${(media?.time ?? 0).toFixed(2)} / ${(media?.duration ?? 0).toFixed(2)} s`;
+    this.mediaStatus.textContent = data?.status === 'loading' ? '素材加载中…' : data?.status === 'error' ? '素材加载失败' : media?.playing ? '播放中' : '已暂停';
   }
 
   dispose (): void {
@@ -128,6 +158,7 @@ export class InspectorPanel {
               axis === 'x' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.x), 0.01) : item.transform.size.x,
               axis === 'y' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.y), 0.01) : item.transform.size.y,
             );
+            this.scene.fitEffects(item);
           }
         });
       });

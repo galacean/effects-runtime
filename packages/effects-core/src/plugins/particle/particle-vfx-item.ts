@@ -1,25 +1,19 @@
 import { VFXItem } from '../../vfx-item';
 import type { FrameContext } from '../timeline/playable';
-import { ClipPlayable, PlayableAsset } from '../timeline/playable';
+import { ClipPlayable } from '../timeline/playable';
+import { TimelineClip } from '../timeline/timeline-clip';
 import { ParticleSystem } from './particle-system';
 
 /**
  * @since 2.0.0
  */
 export class ParticleBehaviourPlayable extends ClipPlayable {
-  private particleSystem: ParticleSystem | null = null;
-
   getParticleSystem (boundObject: object | undefined): ParticleSystem | null {
     if (!(boundObject instanceof VFXItem)) {
       return null;
     }
-    if (this.particleSystem) {
-      return this.particleSystem;
-    }
 
-    this.particleSystem = boundObject.getComponent(ParticleSystem);
-
-    return this.particleSystem;
+    return boundObject.getComponent(ParticleSystem);
   }
 
   override evaluate (boundObject: object | undefined, context: FrameContext): void {
@@ -43,7 +37,7 @@ export class ParticleBehaviourPlayable extends ClipPlayable {
   }
 }
 
-export class ParticleBehaviourPlayableAsset extends PlayableAsset {
+export class ParticleBehaviourPlayableAsset extends TimelineClip {
   override createPlayable (): ClipPlayable {
     return new ParticleBehaviourPlayable();
   }

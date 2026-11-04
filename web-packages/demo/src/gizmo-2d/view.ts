@@ -31,8 +31,17 @@ export class DemoView {
     });
     this.events.on(element('menu-frame'), 'click', () => editor.setTool('frame'));
     this.events.on(element('menu-text'), 'click', () => editor.setTool('text'));
+    for (const [suffix, kind] of [['video', 'Video'], ['effects', 'Effects']] as const) {
+      for (const prefix of ['menu', 'create']) {
+        this.events.on(element(`${prefix}-${suffix}`), 'click', () => {
+          this.setCreateMenuOpen(false);
+          void editor.addMedia(kind);
+        });
+      }
+    }
     this.events.on(element('zoom-out'), 'click', () => editor.zoom(1 / 1.2));
     this.events.on(element('zoom-in'), 'click', () => editor.zoom(1.2));
+    this.events.on(element('fit-view'), 'click', () => editor.fitToView());
     this.events.on(this.createToggle, 'click', () => this.setCreateMenuOpen(this.createMenu.hidden));
     this.events.on(document, 'pointerdown', event => {
       if (event.target instanceof Node && !this.createMenu.contains(event.target) && !this.createToggle.contains(event.target)) {
@@ -146,11 +155,13 @@ export class DemoView {
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     const label = document.createElement('span');
 
-    use.setAttribute('href', `#icon-${data.kind === 'Frame' ? 'frame' : data.kind === 'Text' ? 'text' : 'rectangle'}`);
+    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', Sprite: 'rectangle', Video: 'video', Effects: 'effects' };
+
+    use.setAttribute('href', `#icon-${icons[data.kind]}`);
     icon.setAttribute('aria-hidden', 'true');
     icon.appendChild(use);
     label.className = 'layer-name';
-    label.textContent = data.name;
+    label.textContent = data.name + (data.status === 'loading' ? ' · 加载中' : data.status === 'error' ? ' · 加载失败' : '');
     button.type = 'button';
     button.dataset.itemId = data.item.getInstanceId();
     button.style.paddingLeft = `${12 + depth * 18}px`;

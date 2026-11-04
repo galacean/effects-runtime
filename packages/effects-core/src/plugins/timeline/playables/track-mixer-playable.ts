@@ -2,6 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import type { ClipPlayable, FrameContext } from '../playable';
 import { Playable } from '../playable';
 import type { TrackAsset } from '../track';
+import type { CacheDataManager } from '../cache-data-manager';
 
 export interface ClipEvaluationData {
   playableIndex: number,
@@ -27,7 +28,6 @@ export class TrackMixerPlayable extends Playable {
   protected allowEmptySegments = false;
 
   private readonly segments: EvaluationSegment[] = [];
-  private readonly clipContext: FrameContext = { time: 0, deltaTime: 0 };
 
   getSegments (): readonly EvaluationSegment[] {
     return this.segments;
@@ -76,18 +76,9 @@ export class TrackMixerPlayable extends Playable {
     }
   }
 
-  /** Evaluate the segment selected by the timeline's compiled evaluation field. */
-  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
-    this.defaultEvaluate(segmentId, boundObject, context);
-  }
-
-  /** Sample each active clip. Custom track evaluation may reuse this pass. */
-  protected defaultEvaluate (segmentId: number, boundObject: object | undefined, context: FrameContext): void {
-    for (const clip of this.getSegment(segmentId).clips) {
-      const clipPlayable = this.clipPlayables[clip.playableIndex];
-
-      clipPlayable.evaluate(boundObject, this.getClipContext(clip, context));
-    }
+  /** Mix the selected segment's clip samples and write the result to the bound object. */
+  evaluate (segmentId: number, boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
+    // Override
   }
 
   setClipWeight (playable: ClipPlayable, weight: number): void;
@@ -118,21 +109,5 @@ export class TrackMixerPlayable extends Playable {
     }
 
     return false;
-  }
-
-  protected getClipContext (clip: ClipEvaluationData, context: FrameContext): FrameContext {
-    let time = context.time - clip.start;
-
-    if (time > clip.duration) {
-      if (clip.endBehavior === spec.EndBehavior.restart) {
-        time %= clip.duration;
-      } else if (clip.endBehavior === spec.EndBehavior.freeze) {
-        time = clip.duration;
-      }
-    }
-    this.clipContext.time = time;
-    this.clipContext.deltaTime = context.deltaTime;
-
-    return this.clipContext;
   }
 }

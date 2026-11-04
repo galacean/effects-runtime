@@ -14,6 +14,7 @@ import type {
 import { Control } from '../core/control';
 import type { ControlEvent } from '../core/control';
 import { CursorShape, FocusMode, MouseFilter } from '../core/enums';
+import { getTextBoundaries, snapTextIndex } from '../core/text-layout';
 
 type EditSnapshot = {
   text: string,
@@ -79,7 +80,7 @@ export abstract class TextInput extends Control {
   set maxLength (value: number) {
     this._maxLength = Math.max(0, Math.floor(value));
     if (this._maxLength > 0 && this._text.length > this._maxLength) {
-      this.setText(this._text.slice(0, this._maxLength), false);
+      this.setText(this._text, false);
     }
     if (this.textarea) {
       if (this._maxLength > 0) {this.textarea.maxLength = this._maxLength;} else {this.textarea.removeAttribute('maxlength');}
@@ -123,8 +124,8 @@ export abstract class TextInput extends Control {
   }
 
   setSelection (start: number, end = start): void {
-    this.selectionStart = Math.max(0, Math.min(this._text.length, Math.floor(start)));
-    this.selectionEnd = Math.max(0, Math.min(this._text.length, Math.floor(end)));
+    this.selectionStart = snapTextIndex(this._text, start);
+    this.selectionEnd = snapTextIndex(this._text, end);
     this.selectionAnchor = this.selectionStart;
     this.syncTextareaSelection();
   }
@@ -225,9 +226,11 @@ export abstract class TextInput extends Control {
     }
     if (event.keycode === 'ArrowLeft' || event.keycode === 'ArrowRight') {
       const direction = event.keycode === 'ArrowLeft' ? -1 : 1;
-      const next = direction < 0
-        ? getPreviousCharacterIndex(this._text, this.selectionEnd)
-        : getNextCharacterIndex(this._text, this.selectionEnd);
+      const next = this.hasSelection && !event.shiftPressed
+        ? (direction < 0 ? Math.min(this.selectionStart, this.selectionEnd) : Math.max(this.selectionStart, this.selectionEnd))
+        : direction < 0
+          ? getPreviousCharacterIndex(this._text, this.selectionEnd)
+          : getNextCharacterIndex(this._text, this.selectionEnd);
 
       this.moveCaret(next, event.shiftPressed);
       event.accept();
@@ -290,7 +293,7 @@ export abstract class TextInput extends Control {
   }
 
   protected moveCaret (index: number, extendSelection: boolean): void {
-    const next = Math.max(0, Math.min(this._text.length, Math.floor(index)));
+    const next = snapTextIndex(this._text, index);
 
     if (extendSelection) {
       this.selectionStart = this.selectionAnchor;
@@ -341,14 +344,16 @@ export abstract class TextInput extends Control {
   protected onTextValueChanged (): void {}
 
   private setText (value: string, signal: boolean): void {
-    const limited = this._maxLength > 0 ? value.slice(0, this._maxLength) : value;
+    const normalized = this.multiline ? value.replace(/\r\n?/g, '\n') : value.replace(/[\r\n]/g, '');
+    const limited = this._maxLength > 0 ? normalized.slice(0, snapTextIndex(normalized, this._maxLength)) : normalized;
 
+    if (this.textarea && this.textarea.value !== limited) {this.textarea.value = limited;}
     if (this._text === limited) {return;}
     this._text = limited;
-    this.selectionStart = Math.min(this.selectionStart, limited.length);
-    this.selectionEnd = Math.min(this.selectionEnd, limited.length);
+    this.selectionStart = snapTextIndex(limited, this.selectionStart);
+    this.selectionEnd = snapTextIndex(limited, this.selectionEnd);
+    this.selectionAnchor = snapTextIndex(limited, this.selectionAnchor);
     this.onTextValueChanged();
-    if (this.textarea && this.textarea.value !== limited) {this.textarea.value = limited;}
     this.updateMinimumSize();
     this.updateDesiredSize();
     if (signal) {this.textEventEmitter.emit('textChanged', limited);}
@@ -359,9 +364,9 @@ export abstract class TextInput extends Control {
     const [start, end] = this.getSelectionRange();
 
     this.pushUndo();
-    const allowed = this._maxLength > 0
-      ? value.slice(0, Math.max(0, this._maxLength - (this._text.length - (end - start))))
-      : value;
+    const normalized = this.multiline ? value.replace(/\r\n?/g, '\n') : value.replace(/[\r\n]/g, '');
+    const limit = Math.max(0, this._maxLength - (this._text.length - (end - start)));
+    const allowed = this._maxLength > 0 ? normalized.slice(0, snapTextIndex(normalized, limit)) : normalized;
     const next = `${this._text.slice(0, start)}${allowed}${this._text.slice(end)}`;
     const caret = start + allowed.length;
 
@@ -386,7 +391,7 @@ export abstract class TextInput extends Control {
   }
 
   private getLineStart (index: number): number {
-    return this.multiline ? this._text.lastIndexOf('\n', Math.max(0, index - 1)) + 1 : 0;
+    return this.multiline && index > 0 ? this._text.lastIndexOf('\n', index - 1) + 1 : 0;
   }
 
   private getLineEnd (index: number): number {
@@ -455,7 +460,7 @@ export abstract class TextInput extends Control {
     if (this._text.length === 0) {return [0, 0];}
     const position = Math.max(0, Math.min(this._text.length - 1, index));
 
-    for (const match of this._text.matchAll(/[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]+/gu)) {
+    for (const match of this._text.matchAll(/[\p{L}\p{M}\p{N}_]+|\s+|[^\p{L}\p{M}\p{N}_\s]+/gu)) {
       const start = match.index;
       const end = start + match[0].length;
 
@@ -540,26 +545,36 @@ export abstract class TextInput extends Control {
 
   private readonly onTextareaInput = (): void => {
     if (!this.textarea) {return;}
+    const start = this.textarea.selectionStart;
+    const end = this.textarea.selectionEnd;
+    const backward = this.textarea.selectionDirection === 'backward';
+
     this.setText(this.textarea.value, true);
-    this.selectionStart = this.textarea.selectionStart;
-    this.selectionEnd = this.textarea.selectionEnd;
+    if (this.composing) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    } else {
+      this.setSelection(backward ? end : start, backward ? start : end);
+    }
     if (!this.composing) {this.redoStack.length = 0;}
   };
 
   private readonly onTextareaSelect = (): void => {
     if (!this.textarea) {return;}
-    if (this.textarea.selectionDirection === 'backward') {
-      this.selectionStart = this.textarea.selectionEnd;
-      this.selectionEnd = this.textarea.selectionStart;
-    } else {
-      this.selectionStart = this.textarea.selectionStart;
-      this.selectionEnd = this.textarea.selectionEnd;
-    }
-    this.selectionAnchor = this.selectionStart;
+    if (this.composing) {return;}
+    const backward = this.textarea.selectionDirection === 'backward';
+
+    this.setSelection(
+      backward ? this.textarea.selectionEnd : this.textarea.selectionStart,
+      backward ? this.textarea.selectionStart : this.textarea.selectionEnd,
+    );
   };
 
   private readonly onCompositionStart = (): void => { this.composing = true; };
-  private readonly onCompositionEnd = (): void => { this.composing = false; };
+  private readonly onCompositionEnd = (): void => {
+    this.composing = false;
+    this.onTextareaSelect();
+  };
 
   private readonly onTextareaKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Enter' && !this.multiline && !event.isComposing) {
@@ -574,28 +589,20 @@ export abstract class TextInput extends Control {
 }
 
 function getPreviousCharacterIndex (value: string, index: number): number {
-  const previous = Math.max(0, index - 1);
+  let previous = 0;
 
-  if (previous > 0 && isLowSurrogate(value.charCodeAt(previous)) && isHighSurrogate(value.charCodeAt(previous - 1))) {
-    return previous - 1;
+  for (const boundary of getTextBoundaries(value)) {
+    if (boundary >= index) {break;}
+    previous = boundary;
   }
 
   return previous;
 }
 
 function getNextCharacterIndex (value: string, index: number): number {
-  if (index >= value.length) {return value.length;}
+  for (const boundary of getTextBoundaries(value)) {
+    if (boundary > index) {return boundary;}
+  }
 
-  return Math.min(
-    value.length,
-    index + (isHighSurrogate(value.charCodeAt(index)) && isLowSurrogate(value.charCodeAt(index + 1)) ? 2 : 1),
-  );
-}
-
-function isHighSurrogate (value: number): boolean {
-  return value >= 0xd800 && value <= 0xdbff;
-}
-
-function isLowSurrogate (value: number): boolean {
-  return value >= 0xdc00 && value <= 0xdfff;
+  return value.length;
 }

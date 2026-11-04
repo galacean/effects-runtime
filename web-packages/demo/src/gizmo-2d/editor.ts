@@ -8,13 +8,14 @@ import {
   MoveGizmoTool,
   TextEditMode,
   createInteractionPlane,
+  getItemViewBox,
   ndcSizeToViewSize,
   viewPositionToWorld,
 } from '@galacean/effects-plugin-editor-gizmo';
 import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo,
   GestureHandler } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
-import type { DemoItem, DemoScene, Point2D } from './scene';
+import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 
 export type DemoTool = 'move' | 'hand' | 'frame' | 'text';
 
@@ -34,6 +35,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   private readonly unsubscribes: (() => void)[] = [];
   private activeTool: DemoTool = 'move';
   private draftText?: DemoItem;
+  private disposed = false;
+  private autoFitViewport = true;
+  private fittingViewport = false;
 
   constructor (
     private readonly player: Player,
@@ -47,6 +51,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       handler.on('keyDown', event => this.handleKeyDown(event)),
       handler.on('textinput', event => this.emit('action', `textinput · ${event.itemId}`)),
       handler.getViewportNavigation().on('change', event => {
+        if (!this.fittingViewport) {
+          this.autoFitViewport = false;
+        }
         this.emit('viewportchange', event.scale);
         this.emit('action', event.source);
       }),
@@ -117,6 +124,22 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
   }
 
+  /** 在当前视口中央插入媒体素材。 */
+  async addMedia (kind: MediaKind): Promise<void> {
+    this.setTool('move');
+    const position = this.pixelToWorld([this.viewport.clientWidth / 2, this.viewport.clientHeight / 2]);
+    const point: Point2D = [position.x, position.y];
+    const data = kind === 'Video'
+      ? await this.scene.createVideo(point, [3.2, 1.8])
+      : await this.scene.createEffects(point, [3.2, 1.8]);
+
+    if (this.disposed) {
+      return;
+    }
+    this.select(data.item);
+    this.emit('action', data.status === 'error' ? `${data.name} 加载失败` : `创建 ${data.name}`);
+  }
+
   zoom (factor: number): void {
     this.handler.getViewportNavigation().zoomByFactor(
       factor,
@@ -125,7 +148,45 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     );
   }
 
+  /** 将全部图层放入视口，为浮动工具栏预留底部空间。 */
+  fitToView (): void {
+    const size = GizmoViewportUtils.getContainerSize(this.viewport);
+    const boxes = this.scene.getItems()
+      .map(data => getItemViewBox(data.item, size))
+      .filter(box => !box.isEmpty());
+
+    if (!boxes.length || size.x <= 96 || size.y <= 160) {
+      return;
+    }
+    const minX = Math.min(...boxes.map(box => box.min.x));
+    const minY = Math.min(...boxes.map(box => box.min.y));
+    const maxX = Math.max(...boxes.map(box => box.max.x));
+    const maxY = Math.max(...boxes.map(box => box.max.y));
+    const center = new math.Vector2((minX + maxX) / 2, (minY + maxY) / 2);
+    const target = new math.Vector2(size.x / 2, (size.y - 80) / 2);
+    const factor = Math.min((size.x - 96) / Math.max(maxX - minX, 1), (size.y - 160) / Math.max(maxY - minY, 1));
+    const navigation = this.handler.getViewportNavigation();
+
+    this.autoFitViewport = true;
+    this.fittingViewport = true;
+    try {
+      navigation.zoomByFactor(factor, center, 'wheel-zoom');
+      navigation.panByViewDelta(target.clone().subtract(center), target, 'hand-pan');
+    } finally {
+      this.fittingViewport = false;
+    }
+    this.emit('action', '适应画布');
+  }
+
+  /** 自动适应模式随窗口调整，手动缩放和平移后保留用户视图。 */
+  resizeViewport (): void {
+    if (this.autoFitViewport) {
+      this.fitToView();
+    }
+  }
+
   dispose (): void {
+    this.disposed = true;
     this.domEvents.dispose();
     this.unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
     this.discardDraft();

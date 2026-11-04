@@ -213,53 +213,39 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(getItemInfoName(item(spec.ItemType.sprite, '自定义生成器'))).to.equal('自定义生成器');
   });
 
-  it('信息标签按 drawText 的完整 cell 高度转换坐标，使文字与图标保持原有对齐', () => {
-    chai.spy.on(CanvasRenderingContext2D.prototype, 'measureText', function (this: CanvasRenderingContext2D, text: string) {
-      const fontSize = Number(/([\d.]+)px/.exec(this.font)?.[1] ?? 14);
+  it('信息标签使用渲染器的行高定位，不再重复添加图集 padding', () => {
+    const { gizmo } = createGizmo(TransformType.NULL);
+    const item = { type: spec.ItemType.sprite, name: '图片' } as VFXItem;
+    const texture = { isDestroyed: false } as Texture;
 
-      return {
-        width: Array.from(text).length * fontSize / 2,
-        actualBoundingBoxAscent: fontSize * 0.8,
-        actualBoundingBoxDescent: fontSize * 0.2,
-      };
-    });
+    spyOnGetter(gizmo, 'selectedItems', () => ([item]));
+    spyOnGetter(gizmo, 'viewScale', () => (1));
+    gizmo.wireframe.box.setFromCenterAndSize(new Vector2(100, 120), new Vector2(200, 40));
 
-    try {
-      const { gizmo } = createGizmo(TransformType.NULL);
-      const item = { type: spec.ItemType.sprite, name: '图片' } as VFXItem;
-      const texture = { isDestroyed: false } as Texture;
+    const internals = gizmo as unknown as {
+      getIconTexture: () => Texture | undefined,
+      renderItemInfo: (control: Control, sizeTextColor: number, nameTextColor: number) => void,
+    };
 
-      spyOnGetter(gizmo, 'selectedItems', () => ([item]));
-      spyOnGetter(gizmo, 'viewScale', () => (1));
-      gizmo.wireframe.box.setFromCenterAndSize(new Vector2(100, 120), new Vector2(200, 40));
+    chai.spy.on(internals, 'getIconTexture', () => (texture));
 
-      const internals = gizmo as unknown as {
-        getIconTexture: () => Texture | undefined,
-        renderItemInfo: (control: Control, sizeTextColor: number, nameTextColor: number) => void,
-      };
+    const drawTexture = chai.spy();
+    const drawText = chai.spy();
+    const control = {
+      drawTexture,
+      drawText,
+      measureText: (text: string, fontSize: number) => ({ width: Array.from(text).length * fontSize / 2, lineHeight: fontSize }),
+      engine: {
+        displayServer: { pixelRatio: 2 },
+        renderingServer: { graphics: { pushTransform: chai.spy(), popTransform: chai.spy() } },
+      },
+    } as unknown as Control;
 
-      chai.spy.on(internals, 'getIconTexture', () => (texture));
+    internals.renderItemInfo(control, 0x666666, 0x666666);
 
-      const drawTexture = chai.spy();
-      const drawText = chai.spy();
-      const control = {
-        drawTexture,
-        drawText,
-        engine: {
-          displayServer: { pixelRatio: 2 },
-          renderingServer: { graphics: { pushTransform: chai.spy(), popTransform: chai.spy() } },
-        },
-      } as unknown as Control;
-
-      internals.renderItemInfo(control, 0x666666, 0x666666);
-
-      expect(drawTexture).to.have.been.called.with.exactly(0, 0, 15, 15, texture);
-      expect(drawText).to.have.been.called.exactly(2);
-      // fontSize=14、上下 padding 各 4px，cell 高 22px；旧版底边 y=1 转为新版顶部 y=-23。
-      expect(getSpyCalls(drawText).map(call => call[1])).to.deep.equal([-23, -23]);
-    } finally {
-      chai.spy.restore();
-    }
+    expect(drawTexture).to.have.been.called.with.exactly(0, 0, 15, 15, texture);
+    expect(drawText).to.have.been.called.exactly(2);
+    expect(getSpyCalls(drawText).map(call => call[1])).to.deep.equal([-15, -15]);
   });
 
   function setWireframeBox (gizmo: ResizeSelectionGizmo, box: Box2, corners: Vector2[] = getBoxCorners(box)): void {

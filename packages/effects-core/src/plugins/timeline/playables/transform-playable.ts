@@ -4,7 +4,9 @@ import { effectsClass } from '../../../decorators';
 import type { ValueGetter } from '../../../math';
 import { createValueGetter } from '../../../math';
 import type { FrameContext } from '../playable';
-import { ClipPlayable, PlayableAsset } from '../playable';
+import { ClipPlayable } from '../playable';
+import { TimelineClip } from '../timeline-clip';
+import type { TimelineClipData } from '../timeline-clip';
 
 function createOptionalCurve (data: spec.FixedNumberExpression | undefined): ValueGetter<number> | undefined {
   return data === undefined ? undefined : createValueGetter(data);
@@ -38,7 +40,7 @@ export interface TransformAnimationCurves {
 export class TransformPlayable extends ClipPlayable {
   curves: TransformAnimationCurves;
 
-  /** Current sample, reused across evaluations and consumed synchronously by the mixer. */
+  /** Current sample, reused across evaluations and consumed by the mixer. */
   readonly contribution: TransformContribution = {
     values: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     validChannels: [false, false, false, false, false, false, false, false, false],
@@ -99,7 +101,7 @@ export class TransformPlayable extends ClipPlayable {
 }
 
 @effectsClass(spec.DataType.TransformPlayableAsset)
-export class TransformPlayableAsset extends PlayableAsset {
+export class TransformPlayableAsset extends TimelineClip {
   transformAnimationData: TransformPlayableAssetData;
   curves: TransformAnimationCurves;
 
@@ -147,7 +149,7 @@ export class TransformPlayableAsset extends PlayableAsset {
   }
 }
 
-export interface TransformPlayableAssetData extends spec.EffectsObjectData {
+export interface TransformPlayableAssetData extends TimelineClipData {
   /**
    * 元素大小变化属性
    */

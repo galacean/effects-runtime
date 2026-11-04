@@ -89,7 +89,7 @@ export function createGeometry (engine: Engine, type: GeometryType, size: Record
 
       break;
     case GeometryType.Cylinder:
-      geometryData = new CylinderGeometryData(size.radius, size.radius, size.height);
+      geometryData = new CylinderGeometryData(size.radius, size.radius, size.height, size.radialSegments, size.heightSegments);
 
       break;
     case GeometryType.Cone:
