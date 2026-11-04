@@ -16,6 +16,18 @@ export interface ObjectState {
   extras: Data,
 }
 
+interface ObjectProperty { target: EffectsObject, path: string, materialIndex?: number }
+
+function propertyField (data: Data, path: string): { parent: Data, key: string } | undefined {
+  const keys = path.split('.'), key = keys.pop()!;
+
+  for (const part of keys) {
+    if (!data || typeof data !== 'object') { return; }
+    data = data[part];
+  }
+  if (data && typeof data === 'object' && key in data) { return { parent: data, key }; }
+}
+
 export function isTextComponent (object: EffectsObject): object is Component & TextComponentBase {
   return object instanceof Component && 'textStyle' in object && 'textLayout' in object && typeof (object as any).setText === 'function';
 }
@@ -339,6 +351,45 @@ export class SceneSerializer {
     if (targets) { targets.forEach(visit); } else { this.sceneObjects().filter(object => object instanceof VFXItem || object instanceof Component).forEach(visit); }
 
     return new Map([...objects].filter(object => object !== this.composition.sceneRoot).map(object => [object, this.read(object)]));
+  }
+
+  readProperty (states: ReadonlyMap<EffectsObject, ObjectState>, property: ObjectProperty): unknown {
+    for (const { data, path } of this.propertySources(states, property)) {
+      const field = propertyField(data, path);
+
+      if (field) { return field.parent[field.key]; }
+    }
+  }
+
+  /** Animated values belong to the timeline, leaving the authored property unchanged. */
+  preserveProperty (before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>, property: ObjectProperty): void {
+    const previous = this.propertySources(before, property), current = this.propertySources(after, property);
+
+    current.forEach(({ data, path }, index) => {
+      const old = previous[index] && propertyField(previous[index].data, previous[index].path), next = propertyField(data, path);
+
+      if (old && next) { next.parent[next.key] = jsonData(old.parent[old.key]); }
+    });
+  }
+
+  private propertySources (states: ReadonlyMap<EffectsObject, ObjectState>, property: ObjectProperty): { data: Data, path: string }[] {
+    const { target, path, materialIndex } = property;
+    const sources: { data: Data, path: string }[] = [];
+    const component = states.get(target);
+
+    if (component && target instanceof MaskableGraphic && materialIndex === 0 && path === 'colors._Color') {
+      sources.push({ data: component.extras, path: 'graphicColor' });
+      if (target instanceof SpriteComponent) { sources.push({ data: component.data, path: 'options.startColor' }); }
+    }
+    const object = materialIndex === undefined ? target : target instanceof RendererComponent ? target.materials[materialIndex] : undefined;
+    const state = object && states.get(object);
+
+    if (state) {
+      sources.push({ data: state.extras, path: 'fields.' + path }, { data: state.data, path });
+      if (object instanceof Material) { sources.push({ data: state.extras, path: 'material.' + path }); }
+    }
+
+    return sources;
   }
 
   put (scene: spec.JSONScene, data: Data, object?: EffectsObject): void {

@@ -52,6 +52,7 @@ export class SceneDocument {
   beforeSelectionChange: () => void = () => {};
   autoKeyTarget: (item: VFXItem) => boolean = () => false;
   autoKeyTransforms?: (edits: TransformEdit[]) => boolean;
+  autoKeyProperties?: (before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>) => (() => boolean) | undefined;
   private version = 0;
   private nextVersion = 1;
   private savedVersion?: number;
@@ -176,7 +177,7 @@ export class SceneDocument {
   dispose (): void {
     this.disposed = true; this.transaction = undefined; this.scopes.clear();
     this.composition.engine.off('update', this.syncPostProcessing); this.postProcessVolumes = [];
-    this.autoKeyTransforms = undefined;
+    this.autoKeyTransforms = undefined; this.autoKeyProperties = undefined;
     this.changeListeners.clear();
     this.history.clear('The document was closed.');
     this.editorStates.clear(); this.sequenceStates.clear(); this.runtimeEdits.clear(); this.selectionObjects.clear();
@@ -271,7 +272,10 @@ export class SceneDocument {
       this.cancel();
       throw error;
     }
-    for (const [object, state] of this.serializer.capture(targets)) {
+    const after = this.serializer.capture(targets);
+    const keyProperties = this.autoKeyProperties?.(before, after);
+
+    for (const [object, state] of after) {
       const old = before.get(object);
 
       if (!old) { continue; }
@@ -284,6 +288,7 @@ export class SceneDocument {
       changed = this.recordObject(label, old, state) || changed;
     }
     if (keyed.length) { changed = this.autoKeyTransforms?.(keyed) || changed; }
+    if (keyProperties) { changed = keyProperties() || changed; }
     if (this.transaction && this.transaction !== transaction) { this.transaction.states = states; }
 
     return changed;

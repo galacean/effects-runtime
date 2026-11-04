@@ -1050,7 +1050,7 @@ class SequenceRowControl extends Container {
   constructor (engine: Engine, private readonly canvas: SequencerCanvas) {
     super(engine); this.focusMode = FocusMode.All;
     this.number = append(this, new NumberEdit(engine)); this.number.precision = 2;
-    this.number.beginEdit = () => { this.document.setTime(this.document.currentTime); this.document.begin('Edit channel value'); };
+    this.number.beginEdit = () => { this.document.composition.pause(); this.document.begin('Edit channel value'); };
     this.number.changed = value => {
       const entry = this.activeEntry();
 

@@ -102,9 +102,7 @@ export function sequenceProperties (item: VFXItem): SequenceProperty[] {
 
   for (const component of item.components) {
     if (component instanceof MaskableGraphic) {
-      for (const [index, axis] of ['r', 'g', 'b'].entries()) {
-        add(component, 'colors._Color.' + axis, ['Red', 'Green', 'Blue'][index], ['Color'], 'float', { materialIndex: 0, minimum: 0, maximum: 1 });
-      }
+      add(component, 'colors._Color', 'Color', [], 'color', { materialIndex: 0, minimum: 0, maximum: 1 });
     }
     if (component instanceof SpriteComponent) { add(component, 'sprite', 'Sprite', ['Sprite'], 'reference', { referenceType: 'Sprite' }); }
     if (component instanceof ShapeComponent) {

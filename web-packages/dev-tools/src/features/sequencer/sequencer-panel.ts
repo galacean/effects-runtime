@@ -1,6 +1,6 @@
 import { EditorSearchField } from '../../ui/controls/search-field';
 import { setTooltip } from '../../ui/controls/tooltip';
-import type { Engine, TrackAsset, InputEventKey } from '@galacean/effects';
+import type { EffectsObject, Engine, TrackAsset, InputEventKey } from '@galacean/effects';
 import { CompositionComponent, InterpolationMode, MaskableGraphic, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
 import type { HBoxContainer, Label, LineEdit } from '@galacean/effects-plugin-gui';
 import { Control, SizeFlags, TextOverflow, VerticalAlignment } from '@galacean/effects-plugin-gui';
@@ -25,6 +25,7 @@ import { PropertySheet } from '../../ui/property-editor/property-sheet';
 import { createObjectReferenceControl } from '../../ui/property-editor/object-reference-field';
 import { EDITOR_FONT_SIZE, setEditorFont } from '../../ui/theme/control-theme';
 import type { TransformEdit } from '../scene/document/scene-document';
+import type { ObjectState } from '../scene/serialization/scene-serializer';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import { updateAutoTangents } from './curve-data';
 import type { SequencerContext } from './sequencer-canvas';
@@ -34,7 +35,7 @@ import { SequencerDocument } from './sequencer-document';
 import { SequencerState } from './sequencer-state';
 import { findSequenceTimeline } from './sequencer-preview';
 import type { SequenceProperty } from './sequencer-properties';
-import { sequenceProperties } from './sequencer-properties';
+import { propertyClipKind, resolvePropertyTarget, sequenceProperties, vectorValues } from './sequencer-properties';
 type Interpolation = 'Auto' | 'User' | 'Break' | 'Linear' | 'Constant';
 const interpolationModes: Interpolation[] = ['Auto', 'User', 'Break', 'Linear', 'Constant'];
 const interpolationIcons: Record<Interpolation, EditorIcon> = { Auto: 'tangentAuto', User: 'tangentUser', Break: 'tangentBreak', Linear: 'linear', Constant: 'constant' };
@@ -508,7 +509,9 @@ export class SequencerPanel extends EditorWindow {
     this.canvas.document = undefined;
     const composition = EditorRuntimeSession.player.getCompositions()[0];
 
-    if (sceneWorkspace.current) { sceneWorkspace.current.autoKeyTarget = () => false; sceneWorkspace.current.autoKeyTransforms = undefined; }
+    if (sceneWorkspace.current) {
+      sceneWorkspace.current.autoKeyTarget = () => false; sceneWorkspace.current.autoKeyTransforms = undefined; sceneWorkspace.current.autoKeyProperties = undefined;
+    }
 
     for (const [component, document] of this.documents) {
       if (document.composition !== composition) { if (this.canvas.drag?.document === document) { this.canvas.cancel(document); } document.dispose(); this.documents.delete(component); }
@@ -551,6 +554,7 @@ export class SequencerPanel extends EditorWindow {
         section.clip instanceof TransformPlayableAsset && document.boundItem(section.track) === item && !document.isLocked(section.track) && !document.isMuted(section.track) &&
         document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration);
       sceneWorkspace.current.autoKeyTransforms = edits => this.recordAutoKey(document, edits);
+      sceneWorkspace.current.autoKeyProperties = (before, after) => this.preparePropertyKeys(document, before, after);
     }
 
     document.sync();
@@ -757,6 +761,44 @@ export class SequencerPanel extends EditorWindow {
 
       if (index >= 0) { this.setInterpolation(document, ['Auto', 'User', 'Break', 'Linear', 'Constant'][index] as Interpolation); } else { event.clearAccepted(); }
     }
+  }
+
+  private preparePropertyKeys (document: SequencerDocument, before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>): (() => boolean) | undefined {
+    if (!this.autoKey || !document.composition.getPaused()) { return; }
+    const serializer = sceneWorkspace.current?.serializer;
+
+    if (!serializer) { return; }
+    const edits = document.allSections().flatMap(section => {
+      const kind = propertyClipKind(section.clip);
+
+      if (!kind || kind === 'reference' || document.isLocked(section.track) || document.isMuted(section.track) ||
+        document.currentTime < section.clip.start || document.currentTime > section.clip.start + section.clip.duration || section.clip.duration <= 0) { return []; }
+      const target = document.boundObject(section.track);
+      const property = document.properties(section.track).find(property => property.path === section.track.definition.path && resolvePropertyTarget(property.target, property.materialIndex) === target);
+
+      if (!property) { return []; }
+      const old = serializer.readProperty(before, property), value = serializer.readProperty(after, property);
+
+      if (old === undefined || value === undefined) { return []; }
+      const previous = kind === 'float' ? [Number(old)] : vectorValues(old, kind);
+      const current = kind === 'float' ? [Number(value)] : vectorValues(value, kind);
+      const channels = section.channels.filter(channel => Number.isFinite(current[channel.axis]) && Math.abs(current[channel.axis] - previous[channel.axis]) > 1e-6);
+
+      return channels.length ? [{ section, property, channels, values: current }] : [];
+    });
+
+    if (!edits.length) { return; }
+    edits.forEach(edit => serializer.preserveProperty(before, after, edit.property));
+
+    return () => {
+      document.begin('Auto key properties'); this.autoRecording = true;
+      edits.forEach(({ section, channels, values }) => {
+        channels.forEach(channel => document.insertKey(section, channel, document.currentTime, values[channel.axis]));
+      });
+      document.changed();
+
+      return true;
+    };
   }
 
   private recordAutoKey (document: SequencerDocument, edits: TransformEdit[]): boolean {
