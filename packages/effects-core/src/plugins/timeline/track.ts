@@ -1,39 +1,14 @@
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
-import type { Playable, PlayableAsset } from './playable';
-import { PlayState, PlayableOutput } from './playable';
+import type { TimelineClip } from './timeline-clip';
 import type { Constructor } from '../../utils';
+import type { ClipEvaluationData } from './playables';
 import { TrackMixerPlayable } from './playables';
 
-/**
- * @since 2.0.0
- */
-export class TimelineClip {
-  id: string;
-  name: string;
-  start = 0;
-  duration = 0;
-  asset: PlayableAsset;
-  endBehavior: spec.EndBehavior;
-
-  constructor () {
-  }
-
-  toLocalTime (time: number) {
-    let localTime = time - this.start;
-    const duration = this.duration;
-
-    if (localTime - duration > 0) {
-      if (this.endBehavior === spec.EndBehavior.restart) {
-        localTime = localTime % duration;
-      } else if (this.endBehavior === spec.EndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-      }
-    }
-
-    return localTime;
-  }
+/** TODO: update to spec. */
+export interface TrackAssetData extends Omit<spec.TrackAssetData, 'clips'> {
+  clips: spec.DataPath[],
 }
 
 /**
@@ -44,16 +19,14 @@ export class TrackAsset extends Asset {
   name: string;
   parent: TrackAsset;
 
-  private clipSeed = 0;
-
   private clips: TimelineClip[] = [];
 
   protected children: TrackAsset[] = [];
 
   /**
-   * 重写该方法以获取自定义对象绑定
+   * 根据父轨道的绑定对象解析当前轨道的目标对象
    */
-  updateAnimatedObject (boundObject: object): object {
+  resolveBoundObject (boundObject: object): object | undefined {
     return boundObject;
   }
 
@@ -64,44 +37,30 @@ export class TrackAsset extends Asset {
     return new TrackMixerPlayable();
   }
 
-  createOutput (): PlayableOutput {
-    const output = new PlayableOutput();
-
-    return output;
+  createPlayableGraph () {
+    return this.createMixerPlayableGraph();
   }
 
-  createPlayableGraph (runtimeClips: RuntimeClip[]) {
-    const mixerPlayable = this.createMixerPlayableGraph(runtimeClips);
-
-    return mixerPlayable;
+  createMixerPlayableGraph () {
+    return this.compileClips(this.clips);
   }
 
-  createMixerPlayableGraph (runtimeClips: RuntimeClip[]) {
-    const clips: TimelineClip[] = [];
-
-    for (const clip of this.clips) {
-      clips.push(clip);
-    }
-    const mixerPlayable = this.compileClips(clips, runtimeClips);
-
-    return mixerPlayable;
-  }
-
-  compileClips (timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
+  compileClips (timelineClips: TimelineClip[]) {
     const mixer = this.createTrackMixer();
+    const evaluationClips: ClipEvaluationData[] = [];
 
-    for (const timelineClip of timelineClips) {
-      const clipPlayable = this.createClipPlayable(timelineClip);
+    mixer.sourceTrack = this;
+    mixer.objectBindingId = this.getInstanceId();
+    for (const clip of timelineClips) {
+      const playable = clip.createPlayable();
+      const playableIndex = mixer.clipPlayables.length;
 
-      clipPlayable.setDuration(timelineClip.duration);
-
-      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer);
-
-      runtimeClips.push(clip);
-
-      mixer.clipPlayables.push(clipPlayable);
-      mixer.setClipWeight(clipPlayable, 0.0);
+      playable.duration = clip.duration;
+      mixer.clipPlayables.push(playable);
+      mixer.clipWeights.push(0);
+      evaluationClips.push({ playableIndex, start: clip.start, duration: clip.duration, endBehavior: clip.endBehavior });
     }
+    mixer.compileSegments(evaluationClips);
 
     return mixer;
   }
@@ -115,14 +74,13 @@ export class TrackAsset extends Asset {
     child.parent = this;
   }
 
-  createClip<T extends PlayableAsset> (
+  createClip<T extends TimelineClip> (
     classConstructor: Constructor<T>,
     name?: string,
-  ): TimelineClip {
-    const newClip = new TimelineClip();
+  ): T {
+    const newClip = new classConstructor(this.engine);
 
-    newClip.asset = new classConstructor(this.engine);
-    newClip.name = name ? name : 'TimelineClip' + newClip.id;
+    newClip.name = name ?? 'TimelineClip' + newClip.getInstanceId();
     this.addClip(newClip);
 
     return newClip;
@@ -133,80 +91,23 @@ export class TrackAsset extends Asset {
   }
 
   addClip (clip: TimelineClip): void {
-    clip.id = (this.clipSeed++).toString();
     this.clips.push(clip);
   }
 
-  private createClipPlayable (clip: TimelineClip) {
-    return clip.asset.createPlayable();
-  }
-
-  override fromData (data: spec.TrackAssetData): void {
+  override fromData (data: TrackAssetData): void {
     super.fromData(data);
 
+    if (data.name !== undefined) {
+      this.name = data.name;
+    }
     if (data.clips !== undefined) {
-      this.clips = data.clips.map(clipData => {
-        const clip = new TimelineClip();
-
-        if (clipData.start !== undefined) { clip.start = clipData.start; }
-        if (clipData.duration !== undefined) { clip.duration = clipData.duration; }
-        if (clipData.endBehavior !== undefined) { clip.endBehavior = clipData.endBehavior; }
-        clip.asset = this.findObject<PlayableAsset>(clipData.asset);
-
-        return clip;
-      });
+      this.clips = data.clips.map(clip => this.findObject<TimelineClip>(clip));
     }
     if (data.children !== undefined) {
       this.children = data.children.map(child => this.findObject<TrackAsset>(child));
     }
     for (const child of this.children) {
       child.parent = this;
-    }
-  }
-}
-
-export class RuntimeClip {
-  clip: TimelineClip;
-  playable: Playable;
-  parentMixer: TrackMixerPlayable;
-
-  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable) {
-    this.clip = clip;
-    this.playable = clipPlayable;
-    this.parentMixer = parentMixer;
-  }
-
-  evaluateAt (localTime: number) {
-    const clip = this.clip;
-
-    let weight = 1.0;
-    let ended = false;
-    let started = false;
-
-    if (localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy) {
-      weight = 0.0;
-      ended = true;
-    } else if (localTime - this.clip.start >= 0) {
-      weight = 1.0;
-      started = true;
-    } else if (localTime < clip.start) {
-      weight = 0.0;
-    }
-
-    if (started && this.playable.getPlayState() !== PlayState.Playing) {
-      this.playable.play();
-    }
-    this.parentMixer.setClipWeight(this.playable, weight);
-
-    const clipTime = clip.toLocalTime(localTime);
-
-    this.playable.setTime(clipTime);
-
-    // 判断动画是否结束
-    if (ended) {
-      if (this.playable.getPlayState() === PlayState.Playing) {
-        this.playable.pause();
-      }
     }
   }
 }

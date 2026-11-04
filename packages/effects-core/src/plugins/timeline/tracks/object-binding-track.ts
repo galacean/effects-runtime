@@ -1,12 +1,10 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
-import { VFXItem } from '../../../vfx-item';
-import { ParticleSystem } from '../../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
-import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
-import { EffectComponent } from '../../../components';
+import { ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { TrackAsset } from '../track';
-import type { TimelineAsset } from '../timeline-asset';
+import type { TimelineClip } from '../timeline-clip';
+import type { Constructor } from '../../../utils';
 import { ActivationTrack } from './activation-track';
 import { ParticleTrack } from './particle-track';
 
@@ -16,58 +14,43 @@ import { ParticleTrack } from './particle-track';
 @effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
-  create (timelineAsset: TimelineAsset, sceneBindingMap: Record<string, VFXItem>): void {
-    const boundItem = sceneBindingMap[this.getInstanceId()];
+  /** Compile a fixed compatibility graph; missing target components resolve to no object. @internal */
+  createCompatibilityTracks (): TrackAsset[] {
+    const activationClips = this.getChildTracks().find(track => track instanceof ActivationTrack)?.getClips() ?? [];
+    const tracks: TrackAsset[] = [];
 
-    if (!(boundItem instanceof VFXItem)) {
+    if (activationClips.length === 0) {
+      return tracks;
+    }
+    this.addCompatibilityTrack(tracks, ParticleTrack, ParticleBehaviourPlayableAsset, activationClips);
+    this.addCompatibilityTrack(tracks, SpriteComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
+    this.addCompatibilityTrack(tracks, EffectComponentTimeTrack, ComponentTimePlayableAsset, activationClips);
+
+    return tracks;
+  }
+
+  private addCompatibilityTrack (
+    tracks: TrackAsset[],
+    trackClass: Constructor<TrackAsset>,
+    clipClass: Constructor<TimelineClip>,
+    activationClips: TimelineClip[],
+  ): void {
+    if (this.getChildTracks().some(child => child instanceof trackClass)) {
       return;
     }
+    const track = new trackClass(this.engine);
 
-    for (const childTrack of this.getChildTracks()) {
-      if (childTrack instanceof ActivationTrack) {
+    track.unregisterObject();
+    track.name = trackClass.name;
+    track.parent = this;
+    for (const source of activationClips) {
+      const clip = track.createClip(clipClass);
 
-        // 添加粒子动画 clip // TODO 待移除
-        if (boundItem.getComponent(ParticleSystem)) {
-          const particleTrack = timelineAsset.createTrack(ParticleTrack, this, 'ParticleTrack');
-
-          for (const activationClip of childTrack.getClips()) {
-            const particleClip = particleTrack.createClip(ParticleBehaviourPlayableAsset);
-
-            particleClip.start = activationClip.start;
-            particleClip.duration = activationClip.duration;
-            particleClip.endBehavior = activationClip.endBehavior;
-          }
-
-        }
-
-        // 添加图层帧动画动画时间 clip // TODO 待移除
-        if (boundItem.getComponent(SpriteComponent)) {
-          const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'SpriteComponentTimeTrack');
-
-          for (const activationClip of childTrack.getClips()) {
-            const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
-
-            clip.start = activationClip.start;
-            clip.duration = activationClip.duration;
-            clip.endBehavior = activationClip.endBehavior;
-          }
-        }
-
-        // 添加图层帧动画动画时间 clip // TODO 待移除
-        if (boundItem.getComponent(EffectComponent)) {
-          const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'EffectComponentTimeTrack');
-
-          for (const activationClip of childTrack.getClips()) {
-            const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
-
-            clip.start = activationClip.start;
-            clip.duration = activationClip.duration;
-            clip.endBehavior = activationClip.endBehavior;
-          }
-        }
-
-        break;
-      }
+      clip.unregisterObject();
+      clip.start = source.start;
+      clip.duration = source.duration;
+      clip.endBehavior = source.endBehavior;
     }
+    tracks.push(track);
   }
 }

@@ -9,7 +9,7 @@ export type AssetEvent = {
 };
 
 export class Asset extends EffectsObject {
-  private readonly eventEmitter = new EventEmitter<AssetEvent>();
+  protected readonly eventEmitter = new EventEmitter<AssetEvent>();
 
   /** Updates the asset data and runtime fields, then emits changed. */
   setData<T extends spec.EffectsObjectData> (data: T): void {

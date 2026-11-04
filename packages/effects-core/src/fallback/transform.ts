@@ -154,7 +154,8 @@ function bakePositionPath (movement: spec.PositionOverLifetime, position: Vector
   };
   const angle = (axis: typeof axes[number], life: number): number => orbital.asRotation
     ? orbital[axis].getValue(life) : orbital[axis].getIntegrateValue(0, life * duration, duration);
-  const hasOrbit = orbital.enabled && position.toArray().some((value, axis) => value !== orbital.center[axis]);
+  const hasOrbit = orbital.enabled &&
+    (position.x !== orbital.center[0] || position.y !== orbital.center[1] || position.z !== orbital.center[2]);
   const times = Array.from(knots).sort((a, b) => a - b);
   const keyTimes = [0];
   const points: spec.vec3[] = [sample(0).toArray()];
@@ -173,7 +174,15 @@ function bakePositionPath (movement: spec.PositionOverLifetime, position: Vector
         point.z - (first.z + (last.z - first.z) * ratio),
       ));
       // Unwrapped angles prevent a whole number of orbits from aliasing to a stationary path.
-      turns ||= hasOrbit && axes.some(axis => Math.abs(angle(axis, life) - angle(axis, start)) > 45);
+      if (hasOrbit && !turns) {
+        for (const axis of axes) {
+          if (Math.abs(angle(axis, life) - angle(axis, start)) > 45) {
+            turns = true;
+
+            break;
+          }
+        }
+      }
     }
     if ((error > 0.001 || turns) && end - start > 1e-7) {
       if (depth >= 24 || points.length >= 32768) {
@@ -221,10 +230,10 @@ function convertAnimation (
   if (size) {
     result.sizeOverLifetime = {
       separateAxes: true,
-      x: mapTransformCurve((size.separateAxes ? size.x : size.size) || 1, scale.x),
-      y: mapTransformCurve((size.separateAxes ? size.y : size.size) || 1, scale.y),
+      x: mapTransformCurve((size.separateAxes ? size.x : size.size) ?? 1, scale.x),
+      y: mapTransformCurve((size.separateAxes ? size.y : size.size) ?? 1, scale.y),
       // Animated Z historically uses the item's initial X scale.
-      z: mapTransformCurve((size.separateAxes ? size.z : size.size) || 1, scale.x),
+      z: mapTransformCurve((size.separateAxes ? size.z : size.size) ?? 1, scale.x),
     };
   }
   if (rotation) {

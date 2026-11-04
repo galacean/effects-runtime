@@ -1,85 +1,36 @@
-import { Asset } from '../../asset';
+import type { CacheDataManager } from './cache-data-manager';
 
 /**
- * 动画图可播放节点对象
+ * Shared evaluation lifecycle for clips and track mixers.
  * @since 2.0.0
  */
-export class Playable {
-  private duration = 0;
-  private playState: PlayState = PlayState.Playing;
-
-  /**
-   * 当前本地播放的时间
-   */
-  protected time: number = 0;
-
-  play () {
-    this.playState = PlayState.Playing;
+export abstract class Playable {
+  /** Called when this track or clip enters evaluation. */
+  onBeginEvaluation (cache: CacheDataManager): void {
+    // Override
   }
 
-  pause () {
-    this.playState = PlayState.Paused;
-  }
-
-  setTime (time: number) {
-    this.time = time;
-  }
-
-  getTime () {
-    return this.time;
-  }
-
-  setDuration (duration: number) {
-    this.duration = duration;
-  }
-
-  getDuration () {
-    return this.duration;
-  }
-
-  getPlayState () {
-    return this.playState;
-  }
-
-  processFrame (context: FrameContext) {
-
+  /** Called when this track or clip leaves evaluation. */
+  onEndEvaluation (cache: CacheDataManager): void {
+    // Override
   }
 }
 
-/**
- * 动画图输出节点对象，将动画数据采样到绑定的元素属性上
- * @since 2.0.0
- */
-export class PlayableOutput {
-  /**
-   * 绑定到的动画 item
-   */
-  userData: object;
-  context: FrameContext;
+/** Clip playable. Evaluation time is mapped by TimelineInstance. */
+export class ClipPlayable extends Playable {
+  /** Compiled clip duration used by normalized curves. */
+  duration = 0;
 
-  constructor () {
-    this.context = {
-      deltaTime: 0,
-      output: this,
-    };
+  /** Sample this clip using the time mapped by TimelineInstance. */
+  evaluate (boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
+    // Override
   }
-
-  setUserData (value: object) {
-    this.userData = value;
-  }
-
-  getUserData () {
-    return this.userData;
-  }
-}
-
-export abstract class PlayableAsset extends Asset {
-  abstract createPlayable (): Playable;
 }
 
 export interface FrameContext {
+  /** Current evaluation time, mapped into clip space when evaluating a playable. */
+  time: number,
   deltaTime: number,
-  output: PlayableOutput,
 }
 
 export enum PlayState {
