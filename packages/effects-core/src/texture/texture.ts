@@ -129,8 +129,14 @@ export abstract class Texture extends EffectsObject {
     return this.height || 0;
   }
 
-  uploadCurrentVideoFrame () {
+  /**
+   * 视频画面有更新时上传纹理。
+   * @param force - 强制上传已就绪的视频画面，用于 seek 等需要立即刷新的场景。
+   * @returns 是否成功上传当前视频画面。
+   */
+  uploadCurrentVideoFrame (force = false): boolean | Promise<boolean> {
     // OVERRIDE
+    return false;
   }
 
   /**

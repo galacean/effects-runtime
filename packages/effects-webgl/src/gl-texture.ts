@@ -10,6 +10,7 @@ import {
 } from '@galacean/effects-core';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLEngine } from './gl-engine';
+import { VideoFrameTracker } from './video-frame-tracker';
 
 const FORMAT_HALF_FLOAT: Record<string, number> = {
   [glContext.RGBA]: 34842, //RGBA16F
@@ -33,6 +34,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   target: GLenum;
 
   private initialized = false;
+  private videoFrameTracker?: VideoFrameTracker;
 
   constructor (engine: Engine, source?: TextureSourceOptions) {
     super(engine);
@@ -294,6 +296,9 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.width = width;
     this.height = height;
     this.setTextureFilters(gl, target, source);
+    if (sourceType === TextureSourceType.video && video) {
+      this.getVideoFrameTracker(video).markUploaded();
+    }
   }
 
   setTextureFilters (
@@ -329,6 +334,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   }
 
   override fromData (data: spec.EffectsObjectData): void {
+    this.disposeVideoFrameTracker();
     super.fromData(data);
     const source = data as unknown as TextureSourceOptions;
     const options = this.assembleOptions(source);
@@ -451,22 +457,41 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.offloaded = true;
   }
 
-  override async uploadCurrentVideoFrame () {
-    if (
-      this.source.sourceType === TextureSourceType.video &&
-      this.source.video &&
-      this.initialized
-    ) {
+  override async uploadCurrentVideoFrame (force = false): Promise<boolean> {
+    if (this.source.sourceType !== TextureSourceType.video || !this.source.video || !this.initialized || !this.textureBuffer) {
+      return false;
+    }
+    const video = this.source.video;
+    const tracker = this.getVideoFrameTracker(video);
 
-      this.update({ video: this.source.video });
-
-      return true;
+    if (video.readyState < 2 || video.seeking) {
+      return false;
+    }
+    if (!force && this.width === video.videoWidth && this.height === video.videoHeight && !tracker.shouldUpload()) {
+      return false;
     }
 
-    return false;
+    this.update({ video });
+
+    return true;
+  }
+
+  private getVideoFrameTracker (video: HTMLVideoElement): VideoFrameTracker {
+    if (this.videoFrameTracker?.video !== video) {
+      this.disposeVideoFrameTracker();
+      this.videoFrameTracker = new VideoFrameTracker(video);
+    }
+
+    return this.videoFrameTracker;
+  }
+
+  private disposeVideoFrameTracker (): void {
+    this.videoFrameTracker?.dispose();
+    this.videoFrameTracker = undefined;
   }
 
   updateSource (opts: TextureSourceOptions): void {
+    this.disposeVideoFrameTracker();
     // @ts-expect-error
     this.source = this.assembleOptions({ ...this.source, ...opts });
     this.sourceType = this.source.sourceType;
@@ -496,6 +521,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   }
 
   override dispose (): void {
+    this.disposeVideoFrameTracker();
     /**
      * 原先Player是允许多次调用dispose，并且不会报错
      * dispose之后assignRenderer会报错

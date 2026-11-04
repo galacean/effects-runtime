@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频新帧回调兼容性测试</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f6fa; color: #172b45; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 900px; margin: auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 8px; font-size: 25px; line-height: 1.35; }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    p { margin: 8px 0; }
+    .muted, .hint { color: #5c6e84; font-size: 13px; }
+    .card { margin-top: 16px; padding: 18px; background: #fff; border: 1px solid #dce4ee; border-radius: 12px; }
+    .status { margin-top: 16px; padding: 14px 16px; border-radius: 10px; background: #e9eff8; overflow-wrap: break-word; }
+    .status[data-tone="success"] { color: #096343; background: #e1f5eb; }
+    .status[data-tone="warning"] { color: #855000; background: #fff0d0; }
+    .status[data-tone="error"] { color: #a02633; background: #ffe7e9; }
+    .api { display: flex; flex-wrap: wrap; margin: 8px -8px 0; }
+    .api span { margin: 4px 8px; font-size: 13px; overflow-wrap: anywhere; }
+    .stats { display: flex; flex-wrap: wrap; margin: 8px -5px -5px; }
+    .stat { flex: 1 1 135px; margin: 5px; padding: 12px; border-radius: 8px; background: #f3f6fa; }
+    .stat strong { display: block; font-size: 27px; font-variant-numeric: tabular-nums; }
+    .stat span { color: #5c6e84; font-size: 12px; }
+    label { display: block; margin-bottom: 6px; font-size: 13px; }
+    input[type="url"], select, textarea { width: 100%; padding: 10px; border: 1px solid #bac9dc; border-radius: 7px; background: #fff; color: #172b45; font: inherit; font-size: 16px; }
+    button { min-height: 42px; margin: 4px 6px 4px 0; padding: 8px 13px; border: 1px solid #bac9dc; border-radius: 7px; background: #fff; color: #172b45; font: inherit; cursor: pointer; }
+    button.primary { border-color: #1767d2; background: #1767d2; color: #fff; }
+    button:disabled { opacity: .45; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #94bfff; outline-offset: 2px; }
+    .controls { margin-top: 10px; }
+    .options { display: flex; flex-wrap: wrap; margin: 8px -8px; }
+    .option { flex: 1 1 210px; margin: 6px 8px; }
+    .checks label { display: inline-block; margin: 6px 16px 0 0; font-size: 14px; }
+    #video-host { overflow: hidden; min-height: 100px; margin-top: 12px; border-radius: 8px; background: #102033; }
+    video { display: block; width: 100%; max-height: 350px; background: #102033; }
+    #video-placeholder { display: none; padding: 24px 16px; color: #d5e2f2; }
+    dl { margin: 0; }
+    dt { margin-top: 10px; color: #5c6e84; font-size: 12px; }
+    dd { margin: 2px 0 0; overflow-wrap: break-word; word-break: break-word; }
+    pre { max-height: 280px; overflow: auto; margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f3f6fa; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; font: 12px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    summary { cursor: pointer; font-weight: 600; }
+    #report { min-height: 220px; margin-top: 10px; font: 12px/1.6 monospace; }
+    #report-message { min-height: 20px; }
+    @media (max-width: 480px) { main { padding: 18px 12px 32px; } .card { padding: 14px; } h1 { font-size: 22px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>视频新帧回调兼容性测试</h1>
+  <p class="muted">在目标 App / WebView 中打开，点击“播放”，观察是否实际收到 requestVideoFrameCallback 回调。</p>
+  <div class="api">
+    <span>requestVideoFrameCallback：<strong id="request-support">检测中</strong></span>
+    <span>cancelVideoFrameCallback：<strong id="cancel-support">检测中</strong></span>
+  </div>
+  <div id="status" class="status" role="status" aria-live="polite">正在初始化测试…</div>
+  <noscript><div class="status" data-tone="error">JavaScript 未启用，无法运行测试。</div></noscript>
+
+  <section class="card">
+    <h2>视频与操作</h2>
+    <label for="video-url">视频地址</label>
+    <input id="video-url" type="url" inputmode="url" spellcheck="false" value="https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*8szWQ770r7kAAAAAgEAAAAgAesF2AQ">
+    <div class="controls">
+      <button id="load" type="button">载入视频</button>
+      <button id="play" class="primary" type="button">播放</button>
+      <button id="pause" type="button">暂停</button>
+      <button id="seek-back" type="button">后退 5 秒</button>
+      <button id="seek-forward" type="button">前进 5 秒</button>
+      <button id="restart" type="button">回到开头</button>
+    </div>
+    <div class="options">
+      <div class="option">
+        <label for="video-mode">视频位置</label>
+        <select id="video-mode">
+          <option value="visible">显示视频</option>
+          <option value="hidden">display: none（仍在 DOM 中）</option>
+          <option value="detached">不挂载到 DOM（模拟引擎）</option>
+        </select>
+      </div>
+      <div class="option">
+        <label for="playback-rate">播放速度</label>
+        <select id="playback-rate">
+          <option value="0.5">0.5 倍速</option>
+          <option value="1" selected>1 倍速</option>
+          <option value="1.5">1.5 倍速</option>
+          <option value="2">2 倍速</option>
+        </select>
+      </div>
+    </div>
+    <div class="checks">
+      <label><input id="muted" type="checkbox" checked> 静音</label>
+      <label><input id="loop" type="checkbox" checked> 循环播放</label>
+    </div>
+    <div id="video-host">
+      <video id="video" controls playsinline webkit-playsinline muted loop preload="auto"></video>
+      <p id="video-placeholder"></p>
+    </div>
+    <p class="hint">切换视频位置会重置统计；如播放暂停，请再次点击“播放”。不可见模式使用上方按钮控制。</p>
+  </section>
+
+  <section class="card">
+    <h2>实测结果</h2>
+    <div class="stats">
+      <div class="stat"><strong id="callback-fps">—</strong><span>视频回调 / 秒</span></div>
+      <div class="stat"><strong id="raf-fps">—</strong><span>页面 rAF / 秒（参考）</span></div>
+      <div class="stat"><strong id="callback-count">0</strong><span>累计原生视频回调</span></div>
+      <div class="stat"><strong id="current-time">0.00</strong><span>视频播放时间 / 秒</span></div>
+    </div>
+    <div class="controls">
+      <button id="toggle-monitor" type="button">停止监听</button>
+      <button id="reset" type="button">重置统计</button>
+      <button id="copy-report" type="button">生成 / 复制报告</button>
+    </div>
+    <p class="hint">此页直接测试原生 API，不用定时器模拟视频回调。频率受播放速度、页面可见性和系统节流影响；暂停时回调降至 0 属于正常现象。</p>
+    <dl>
+      <dt>视频状态</dt><dd id="media-state">等待载入</dd>
+      <dt>最近一次回调</dt><dd id="last-callback">尚未收到</dd>
+    </dl>
+    <details style="margin-top: 12px;" open>
+      <summary>最近一帧的 metadata</summary>
+      <pre id="metadata">尚未收到原生视频帧回调</pre>
+    </details>
+    <div id="report-wrap" style="display: none;">
+      <label for="report" style="margin-top: 12px;">测试报告（可长按选择并复制）</label>
+      <textarea id="report" readonly spellcheck="false"></textarea>
+    </div>
+    <p id="report-message" class="hint" role="status"></p>
+  </section>
+
+  <section class="card">
+    <h2>环境信息</h2>
+    <dl>
+      <dt>页面状态</dt><dd id="page-state">—</dd>
+      <dt>User-Agent</dt><dd id="user-agent">—</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>事件日志</h2>
+    <p class="hint">记录加载、播放、暂停、seek、回调与错误，最多保留 80 条。</p>
+    <pre id="event-log" role="log">初始化中…</pre>
+  </section>
+</main>
+
+<script>
+  // 保持 ES5 语法，让不支持新帧 API 的旧 WebView 也能正常显示检测结果。
+  (function () {
+    'use strict';
+
+    function element(id) { return document.getElementById(id); }
+    function now() { return window.performance && window.performance.now ? window.performance.now() : Date.now(); }
+    function format(value, digits) { return typeof value === 'number' && isFinite(value) ? value.toFixed(digits) : '—'; }
+    function errorText(error) { return error ? (error.name || 'Error') + ': ' + (error.message || String(error)) : '未知错误'; }
+
+    var video = element('video');
+    var supportsRequest = typeof video.requestVideoFrameCallback === 'function';
+    var supportsCancel = typeof video.cancelVideoFrameCallback === 'function';
+    var monitoring = false;
+    var callbackId = null;
+    var generation = 0;
+    var callbackError = '';
+    var playbackError = '';
+    var callbackCount = 0;
+    var rafCount = 0;
+    var callbackFps = null;
+    var rafFps = null;
+    var lastMetadata = null;
+    var lastCallbackAt = null;
+    var startedAt = new Date().toISOString();
+    var windowStartedAt = now();
+    var windowCallbackCount = 0;
+    var windowRafCount = 0;
+    var lastObservedTime = 0;
+    var advancingMs = 0;
+    var events = [];
+    var readyStates = ['HAVE_NOTHING', 'HAVE_METADATA', 'HAVE_CURRENT_DATA', 'HAVE_FUTURE_DATA', 'HAVE_ENOUGH_DATA'];
+    var mediaErrors = { 1: 'MEDIA_ERR_ABORTED', 2: 'MEDIA_ERR_NETWORK', 3: 'MEDIA_ERR_DECODE', 4: 'MEDIA_ERR_SRC_NOT_SUPPORTED' };
+
+    function log(message) {
+      events.push(new Date().toISOString() + '  ' + message);
+      if (events.length > 80) { events.shift(); }
+      element('event-log').textContent = events.join('\n');
+      element('event-log').scrollTop = element('event-log').scrollHeight;
+    }
+
+    function setStatus(message, tone) {
+      var status = element('status');
+      status.textContent = message;
+      status.setAttribute('data-tone', tone || 'info');
+    }
+
+    function renderStatus() {
+      if (!supportsRequest) {
+        setStatus('当前环境未提供 requestVideoFrameCallback；视频播放与 API 支持是两项独立检测。', 'error');
+      } else if (video.error) {
+        setStatus('API 存在，但视频加载 / 解码失败。请查看日志；这不能说明回调 API 不兼容。', 'error');
+      } else if (callbackError) {
+        setStatus('API 存在，但注册回调时出错：' + callbackError, 'error');
+      } else if (!monitoring) {
+        setStatus('监听已停止。视频可继续播放，回调计数应保持不变。');
+      } else if (document.hidden) {
+        setStatus('页面在后台，浏览器可能暂停或节流回调。请回到前台继续测试。', 'warning');
+      } else if (playbackError) {
+        setStatus('API 存在，但播放未成功：' + playbackError, 'warning');
+      } else if (video.seeking) {
+        setStatus('正在 seek，等待目标画面与视频回调…');
+      } else if (video.paused || video.ended) {
+        setStatus(callbackCount ? '已收到原生回调；当前视频已暂停 / 结束。可继续测试播放或 seek。' : 'API 存在，等待实测。请点击“播放”。', callbackCount ? 'success' : 'info');
+      } else if (video.readyState < 2) {
+        setStatus('视频正在加载 / 缓冲，尚不能判断回调是否正常。');
+      } else if (advancingMs >= 3000 && (lastCallbackAt === null || now() - lastCallbackAt > 3000)) {
+        setStatus('视频时间持续推进，但最近 3 秒未收到原生回调。请记录当前视频位置和 App 环境。', 'warning');
+      } else if (callbackCount > 0) {
+        setStatus('已收到原生视频帧回调，当前模式实测通过。', 'success');
+      } else {
+        setStatus('API 存在，视频正在播放，等待首个原生回调…');
+      }
+    }
+
+    function render() {
+      element('callback-count').textContent = callbackCount;
+      element('callback-fps').textContent = supportsRequest ? format(callbackFps, 1) : '不支持';
+      element('raf-fps').textContent = typeof window.requestAnimationFrame === 'function' ? format(rafFps, 1) : '不支持';
+      element('current-time').textContent = format(video.currentTime, 2);
+      element('last-callback').textContent = lastCallbackAt === null ? '尚未收到' : format((now() - lastCallbackAt) / 1000, 1) + ' 秒前';
+      element('media-state').textContent = 'paused=' + video.paused + ' · seeking=' + video.seeking + ' · ended=' + video.ended +
+        ' · ' + readyStates[video.readyState] + ' · ' + video.videoWidth + '×' + video.videoHeight + ' · duration=' + format(video.duration, 2) +
+        's · rate=' + video.playbackRate + ' · muted=' + video.muted;
+      element('metadata').textContent = lastMetadata ? JSON.stringify(lastMetadata, null, 2) : '尚未收到原生视频帧回调';
+      element('page-state').textContent = (document.visibilityState || 'unknown') + ' · ' +
+        (window.isSecureContext ? '安全上下文' : '非安全上下文') + ' · 视频位置：' + element('video-mode').options[element('video-mode').selectedIndex].text;
+      renderStatus();
+    }
+
+    function resetStatistics() {
+      callbackCount = 0;
+      rafCount = 0;
+      callbackFps = null;
+      rafFps = null;
+      lastMetadata = null;
+      lastCallbackAt = null;
+      windowStartedAt = now();
+      windowCallbackCount = 0;
+      windowRafCount = 0;
+      lastObservedTime = video.currentTime;
+      advancingMs = 0;
+      startedAt = new Date().toISOString();
+      render();
+    }
+
+    function stopMonitoring() {
+      monitoring = false;
+      generation++;
+      if (callbackId !== null && supportsCancel) {
+        try { video.cancelVideoFrameCallback(callbackId); }
+        catch (error) { log('取消回调失败：' + errorText(error)); }
+      }
+      // 即使取消 API 不可用，generation 也能阻止旧回调继续注册或计入统计。
+      callbackId = null;
+      element('toggle-monitor').textContent = '开始监听';
+    }
+
+    function startMonitoring() {
+      if (!supportsRequest || monitoring) { return; }
+      monitoring = true;
+      callbackError = '';
+      var activeGeneration = ++generation;
+
+      function requestNext() {
+        try { callbackId = video.requestVideoFrameCallback(onFrame); }
+        catch (error) {
+          callbackError = errorText(error);
+          monitoring = false;
+          callbackId = null;
+          element('toggle-monitor').textContent = '开始监听';
+          log('注册视频回调失败：' + callbackError);
+          renderStatus();
+        }
+      }
+
+      function onFrame(timestamp, metadata) {
+        if (!monitoring || activeGeneration !== generation) { return; }
+        callbackId = null;
+        callbackCount++;
+        lastCallbackAt = now();
+        lastMetadata = {
+          callbackTime: timestamp,
+          mediaTime: metadata.mediaTime,
+          presentedFrames: metadata.presentedFrames,
+          presentationTime: metadata.presentationTime,
+          expectedDisplayTime: metadata.expectedDisplayTime,
+          processingDuration: metadata.processingDuration,
+          width: metadata.width,
+          height: metadata.height
+        };
+        if (callbackCount === 1) {
+          log('收到首个原生视频回调，mediaTime=' + metadata.mediaTime + '，presentedFrames=' + metadata.presentedFrames);
+          render();
+        }
+        // 这是一次性回调，每收到一帧后重新注册。高频回调不逐帧写 DOM / 日志。
+        requestNext();
+      }
+
+      element('toggle-monitor').textContent = '停止监听';
+      requestNext();
+    }
+
+    function loadVideo() {
+      var url = element('video-url').value.replace(/^\s+|\s+$/g, '');
+      if (!url) { log('请填写视频地址。'); return; }
+      stopMonitoring();
+      video.pause();
+      playbackError = '';
+      callbackError = '';
+      video.src = url;
+      video.muted = element('muted').checked;
+      video.loop = element('loop').checked;
+      // 只测原生视频回调，不设置 crossOrigin，避免把跨域纹理上传限制混入此项检测。
+      video.load();
+      resetStatistics();
+      startMonitoring();
+      log('载入视频：' + url);
+      render();
+    }
+
+    function playVideo() {
+      playbackError = '';
+      try {
+        var result = video.play();
+        if (result && typeof result.catch === 'function') {
+          result.catch(function (error) {
+            playbackError = errorText(error);
+            log('play() 失败：' + playbackError);
+            render();
+          });
+        }
+      } catch (error) {
+        playbackError = errorText(error);
+        log('play() 失败：' + playbackError);
+      }
+      render();
+    }
+
+    function seekTo(time) {
+      if (video.readyState < 1 || !isFinite(video.duration)) {
+        log('尚未获得可 seek 的视频时长，请先等待视频载入。');
+        return;
+      }
+      advancingMs = 0;
+      try { video.currentTime = Math.max(0, Math.min(time, Math.max(0, video.duration - 0.01))); }
+      catch (error) { log('seek 失败：' + errorText(error)); }
+    }
+
+    function changeMode() {
+      var wasMonitoring = monitoring;
+      stopMonitoring();
+      var mode = element('video-mode').value;
+      var host = element('video-host');
+      var placeholder = element('video-placeholder');
+      if (mode === 'detached') {
+        if (video.parentNode) { video.parentNode.removeChild(video); }
+      } else {
+        if (video.parentNode !== host) { host.insertBefore(video, placeholder); }
+        video.style.display = mode === 'hidden' ? 'none' : 'block';
+      }
+      placeholder.style.display = mode === 'visible' ? 'none' : 'block';
+      placeholder.textContent = mode === 'detached' ? '视频未挂载到 DOM。使用上方按钮播放并观察回调。' : '视频已通过 display: none 隐藏。使用上方按钮播放并观察回调。';
+      resetStatistics();
+      if (wasMonitoring) { startMonitoring(); }
+      log('切换视频位置：' + mode);
+    }
+
+    function createReport() {
+      var quality = null;
+      if (typeof video.getVideoPlaybackQuality === 'function') {
+        try {
+          var measured = video.getVideoPlaybackQuality();
+          quality = { totalVideoFrames: measured.totalVideoFrames, droppedVideoFrames: measured.droppedVideoFrames };
+        } catch (error) { log('读取播放质量失败：' + errorText(error)); }
+      }
+      return JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        statisticsStartedAt: startedAt,
+        page: window.location.href,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        visibilityState: document.visibilityState,
+        secureContext: Boolean(window.isSecureContext),
+        support: { requestVideoFrameCallback: supportsRequest, cancelVideoFrameCallback: supportsCancel },
+        result: element('status').textContent,
+        monitoring: monitoring,
+        callbackError: callbackError,
+        playbackError: playbackError,
+        video: {
+          url: video.currentSrc || video.src,
+          mode: element('video-mode').value,
+          connected: document.documentElement.contains(video),
+          currentTime: video.currentTime,
+          duration: isFinite(video.duration) ? video.duration : null,
+          readyState: video.readyState,
+          paused: video.paused,
+          seeking: video.seeking,
+          ended: video.ended,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          playbackRate: video.playbackRate,
+          muted: video.muted,
+          loop: video.loop,
+          error: video.error ? { code: video.error.code, message: video.error.message || mediaErrors[video.error.code] } : null
+        },
+        measurements: { callbacks: callbackCount, callbackFps: callbackFps, rafFps: rafFps, metadata: lastMetadata, playbackQuality: quality },
+        events: events.slice()
+      }, null, 2);
+    }
+
+    function copyReport() {
+      render();
+      var text = createReport();
+      var report = element('report');
+      element('report-wrap').style.display = 'block';
+      report.value = text;
+
+      function fallbackCopy() {
+        var copied = false;
+        report.focus();
+        report.select();
+        report.setSelectionRange(0, report.value.length);
+        try { copied = document.execCommand('copy'); } catch (error) { /* 保留文本供手动复制。 */ }
+        element('report-message').textContent = copied ? '报告已复制。' : '报告已生成，请长按报告文本进行复制。';
+      }
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(function () {
+          element('report-message').textContent = '报告已复制。';
+        }, fallbackCopy);
+      } else { fallbackCopy(); }
+    }
+
+    element('request-support').textContent = supportsRequest ? '支持' : '不支持';
+    element('cancel-support').textContent = supportsCancel ? '支持' : '不支持';
+    element('user-agent').textContent = navigator.userAgent;
+    element('toggle-monitor').disabled = !supportsRequest;
+    element('load').onclick = loadVideo;
+    element('play').onclick = playVideo;
+    element('pause').onclick = function () { video.pause(); render(); };
+    element('seek-back').onclick = function () { seekTo(video.currentTime - 5); };
+    element('seek-forward').onclick = function () { seekTo(video.currentTime + 5); };
+    element('restart').onclick = function () { seekTo(0); };
+    element('reset').onclick = function () { resetStatistics(); log('统计已重置。'); };
+    element('copy-report').onclick = copyReport;
+    element('toggle-monitor').onclick = function () {
+      if (monitoring) { stopMonitoring(); log('停止监听；此后回调计数应保持不变。'); }
+      else { advancingMs = 0; startMonitoring(); log('开始监听视频帧。'); }
+      render();
+    };
+    element('video-mode').onchange = changeMode;
+    element('playback-rate').onchange = function () {
+      try { video.playbackRate = Number(this.value); }
+      catch (error) { log('修改倍速失败：' + errorText(error)); }
+      this.value = String(video.playbackRate);
+      resetStatistics();
+      log('播放速度：' + video.playbackRate);
+    };
+    element('muted').onchange = function () { video.muted = this.checked; };
+    element('loop').onchange = function () { video.loop = this.checked; };
+
+    ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'play', 'playing', 'pause', 'waiting', 'stalled', 'seeking', 'seeked', 'ended', 'ratechange', 'volumechange', 'error'].forEach(function (name) {
+      video.addEventListener(name, function () {
+        if (name === 'play' || name === 'playing') { playbackError = ''; }
+        // 循环播放也会触发 seeking / seeked，不清除连续播放的观察时间。
+        if (name === 'play' || name === 'pause') { advancingMs = 0; }
+        if (name === 'loadedmetadata') {
+          try { video.playbackRate = Number(element('playback-rate').value); }
+          catch (error) { log('设置初始倍速失败：' + errorText(error)); }
+        }
+        log(name + ' · time=' + format(video.currentTime, 3) + ' · readyState=' + video.readyState +
+          (video.error ? ' · ' + mediaErrors[video.error.code] + ' · ' + (video.error.message || '') : ''));
+        render();
+      });
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      // 不把后台停顿计入前台频率或无回调诊断。
+      windowStartedAt = now();
+      windowCallbackCount = callbackCount;
+      windowRafCount = rafCount;
+      callbackFps = null;
+      rafFps = null;
+      advancingMs = 0;
+      lastObservedTime = video.currentTime;
+      log('页面可见性：' + document.visibilityState);
+      render();
+    });
+
+    window.addEventListener('pagehide', function () { stopMonitoring(); });
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) { resetStatistics(); startMonitoring(); log('从页面缓存恢复。'); }
+    });
+
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(function countRaf() {
+        rafCount++;
+        window.requestAnimationFrame(countRaf);
+      });
+    }
+
+    window.setInterval(function () {
+      var time = now();
+      var elapsed = time - windowStartedAt;
+      if (elapsed <= 0) { return; }
+      callbackFps = (callbackCount - windowCallbackCount) * 1000 / elapsed;
+      rafFps = (rafCount - windowRafCount) * 1000 / elapsed;
+      if (!document.hidden && !video.paused && !video.seeking && video.readyState >= 2 && video.currentTime !== lastObservedTime) {
+        advancingMs += elapsed;
+      } else { advancingMs = 0; }
+      lastObservedTime = video.currentTime;
+      windowStartedAt = time;
+      windowCallbackCount = callbackCount;
+      windowRafCount = rafCount;
+      render();
+    }, 1000);
+
+    log('能力检测：request=' + supportsRequest + '，cancel=' + supportsCancel);
+    loadVideo();
+  }());
+</script>
+</body>
+</html>

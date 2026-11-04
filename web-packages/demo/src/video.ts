@@ -1,6 +1,7 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+import { attachVideoReplayCapture } from './common/video-replay-capture';
 const short_video_jsons = [
   // 合成重播
   'https://mdn.alipayobjects.com/mars/afts/file/A*8t8vRKsoon0AAAAAQDAAAAgAelB4AQ', //合成重播 视频冻结
@@ -525,9 +526,19 @@ const stuckVideoJson2 = {
   ],
 };
 
-let currentIndex = 0;
+const replayCaptureIndex = 1;
+let currentIndex = replayCaptureIndex;
 let player: Player;
+let disposeReplayCapture: (() => void) | undefined;
 const container = document.getElementById('J-container');
+const replayCapturePanel = document.getElementById('replay-capture-panel')!;
+
+function disposePlayer () {
+  disposeReplayCapture?.();
+  disposeReplayCapture = undefined;
+  replayCapturePanel.hidden = true;
+  player?.dispose();
+}
 
 // 显示当前视频信息
 function updateInfo () {
@@ -545,15 +556,21 @@ async function switchVideo (index: number) {
 
   updateInfo();
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     interactive: true,
+    renderOptions: { willCaptureImage: currentIndex === replayCaptureIndex },
     onError: (err, ...args) => {
       console.error(err.message);
     },
   });
-  await player.loadScene(video.url, { autoplay: true });
+  const currentPlayer = player;
+  const composition = await currentPlayer.loadScene(video.url, { autoplay: true });
+
+  if (player === currentPlayer && currentIndex === replayCaptureIndex) {
+    disposeReplayCapture = attachVideoReplayCapture(currentPlayer, composition, replayCapturePanel);
+  }
 }
 
 // 播放视频卡顿案例
@@ -564,7 +581,7 @@ async function playStuckVideo () {
     info.textContent = '视频卡顿案例';
   }
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -590,7 +607,7 @@ async function playStuckVideo2 () {
     info.textContent = '视频卡顿案例2';
   }
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -609,7 +626,7 @@ async function playStuckVideo2 () {
 // 创建控制面板
 const controlPanel = document.createElement('div');
 
-controlPanel.style.cssText = 'position:fixed;top:10px;left:10px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;z-index:9999;';
+controlPanel.style.cssText = 'display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;';
 
 // 第一行：导航按钮
 const navRow = document.createElement('div');
@@ -771,23 +788,6 @@ controlPanel.appendChild(navRow);
 controlPanel.appendChild(stuckRow);
 controlPanel.appendChild(videoControlRow);
 controlPanel.appendChild(speedRow);
-document.body.appendChild(controlPanel);
+document.getElementById('video-controls')!.appendChild(controlPanel);
 
-(async () => {
-  player = new Player({
-    container,
-    interactive: true,
-    onError: (err, ...args) => {
-      console.error(err.message);
-    },
-  });
-
-  updateInfo();
-  const sc = await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
-  const videoItem = sc.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  setTimeout(() => {
-    player.gotoAndStop(3.5);
-  }, 2000);
-})();
+void switchVideo(currentIndex);

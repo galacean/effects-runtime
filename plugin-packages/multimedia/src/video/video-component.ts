@@ -48,6 +48,14 @@ export class VideoComponent extends MaskableGraphic {
   private manualLoop = false;
 
   /**
+   * 视频完整覆盖合成周期时，让浏览器原生循环跨过合成重播边界。
+   */
+  private nativeCompositionLoop = false;
+  private replayFramePrepared = false;
+  private preparingReplayFrame = false;
+  private replayMuted?: boolean;
+
+  /**
    * 是否由用户手动暂停视频
    */
   private manualPause = false;
@@ -72,6 +80,9 @@ export class VideoComponent extends MaskableGraphic {
    * seek 期间禁止上传帧，避免 destroy 后 seek 回 0 期间渲染旧帧
    */
   private videoSeeking = false;
+
+  private seekVersion = 0;
+  private removeSeekListener?: () => void;
 
   /**
    * 待执行的 seek 目标时间，延迟到 onUpdate 中处理以避免竞态。
@@ -101,6 +112,9 @@ export class VideoComponent extends MaskableGraphic {
   private eventDisposers: (() => void)[] = [];
 
   private static readonly threshold = 0.01;
+  // 只允许媒体结束点略晚于合成末尾，不用作首帧位置或相位校准的容差。
+  private static readonly replayEndTolerance = 0.1;
+  private static readonly firstFrameWindow = 1 / 24;
 
   constructor (engine: Engine) {
     super(engine);
@@ -123,6 +137,12 @@ export class VideoComponent extends MaskableGraphic {
     } else {
       texture = input;
     }
+
+    this.cancelVideoSeek();
+    this.replayFramePrepared = false;
+    this.videoSeeking = false;
+    this.isGotoAndStopSeeking = false;
+    this.pendingSeekTime = null;
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
@@ -203,6 +223,12 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
+    this.updatePlaybackRate();
+    this.ensureLoopFlag();
+    if (this.replayFramePrepared && !this.video.paused && this.video.currentTime > VideoComponent.firstFrameWindow) {
+      this.replayFramePrepared = false;
+    }
+
     // 处理延迟 seek（避免与 forwardTime 同步调用产生竞态）
     if (this.processPendingSeek()) {
       return;
@@ -222,8 +248,6 @@ export class VideoComponent extends MaskableGraphic {
       this.startVideo();
     }
 
-    this.updatePlaybackRate();
-    this.ensureLoopFlag();
     this.handleDestroyBehavior();
 
     // 上传当前视频帧
@@ -233,6 +257,7 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    this.cancelVideoSeek();
     this.eventDisposers.forEach(dispose => dispose());
     this.eventDisposers = [];
     super.onDestroy();
@@ -249,13 +274,20 @@ export class VideoComponent extends MaskableGraphic {
     super.onDisable();
     this.isVideoActive = false;
     this.playTriggered = false;
-    this.pauseVideoElement();
+    const composition = this.item.composition;
+    const endTime = (this.item.definition.delay ?? 0) + this.item.duration;
+    const reachedEnd = composition && composition.time + VideoComponent.firstFrameWindow >= endTime;
+
+    if (!reachedEnd || !this.prepareReplayFrame()) {
+      this.pauseVideoElement();
+    }
   }
 
   override onEnable (): void {
     super.onEnable();
     this.isVideoActive = true;
     this.playTriggered = false;
+    this.ensureLoopFlag();
     this.syncVideoToItemTime();
   }
 
@@ -325,9 +357,21 @@ export class VideoComponent extends MaskableGraphic {
     const rootEndBehavior = this.item.composition?.sceneRoot.endBehavior;
 
     if (rootEndBehavior === spec.EndBehavior.restart) {
-      // 合成 restart：所有视频都需要 seek 回 0，和合成时间对齐
+      if (this.canPreserveNativeLoop() || this.canReusePreparedFrame()) {
+        this.playTriggered = !this.video!.paused;
+        this.videoDestroyed = false;
+
+        return;
+      }
+      if (this.canWaitForNativeHead() && this.prepareReplayFrame()) {
+        this.playTriggered = false;
+
+        return;
+      }
+      // 周期不匹配或已经偏离时间轴时，仍然 seek 回 0。
       if (!this.videoSeeking) {
         this.pendingSeekTime = 0;
+        this.material.setTexture('_MainTex', this.engine.transparentTexture);
       }
       this.playTriggered = false;
       this.videoDestroyed = false;
@@ -352,7 +396,7 @@ export class VideoComponent extends MaskableGraphic {
     const videoEndBehavior = this.item.endBehavior;
 
     // restart 行为的视频永远不会"结束"（由浏览器原生 loop 处理）
-    if (videoEndBehavior === spec.EndBehavior.restart) {
+    if (videoEndBehavior === spec.EndBehavior.restart || (this.nativeCompositionLoop && this.video!.loop)) {
       return false;
     }
 
@@ -425,6 +469,8 @@ export class VideoComponent extends MaskableGraphic {
     const videoTime = this.item.time;
 
     if (this.lastVideoTime > 0 && videoTime < this.lastVideoTime) {
+      const preserveNativeLoop = this.canPreserveNativeLoop();
+
       this.playTriggered = false;
       this.videoDestroyed = false;
       this.manualPause = false;
@@ -433,8 +479,9 @@ export class VideoComponent extends MaskableGraphic {
       const rootEndBehavior = this.item.composition?.sceneRoot.endBehavior;
       const videoEndBehavior = this.item.endBehavior;
 
-      // 视频 restart 时，浏览器 loop 处理；合成 restart 时，前面函数已经 seek 回 0
-      if (rootEndBehavior !== spec.EndBehavior.restart && videoEndBehavior !== spec.EndBehavior.restart) {
+      if (preserveNativeLoop) {
+        this.playTriggered = !this.video!.paused;
+      } else if (rootEndBehavior !== spec.EndBehavior.restart && videoEndBehavior !== spec.EndBehavior.restart) {
         this.pendingSeekTime = 0;
       }
     }
@@ -453,25 +500,216 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * 确保 restart 行为的视频设置了 loop 标志
+   * 视频自身循环，以及完整覆盖合成周期的视频，都可使用原生 loop。
    * 手动模式下不自动设置，保持用户设置的值
    */
   private ensureLoopFlag (): void {
+    if (!this.video) {
+      return;
+    }
+    this.nativeCompositionLoop = this.canUseNativeCompositionLoop() && (!this.manualLoop || this.video.loop);
+    if (this.preparingReplayFrame) {
+      this.video.loop = true;
+
+      return;
+    }
     if (this.manualLoop) {
       return;
     }
+    const loop = this.item.endBehavior === spec.EndBehavior.restart || this.nativeCompositionLoop;
 
-    if (this.item.endBehavior === spec.EndBehavior.restart && !this.video!.loop) {
-      this.video!.loop = true;
+    if (this.video.loop !== loop) {
+      this.video.loop = loop;
     }
   }
 
+  private canUseNativeCompositionLoop (): boolean {
+    const composition = this.item.composition;
+    const video = this.video;
+
+    if (!composition || !video || composition.sceneRoot.endBehavior !== spec.EndBehavior.restart ||
+      composition.startTime !== 0 || this.item.parent !== composition.sceneRoot || (this.item.definition.delay ?? 0) !== 0) {
+      return false;
+    }
+    const duration = composition.sceneRoot.duration;
+    const speed = this.engine.speed * composition.speed;
+    const relativePlaybackRate = video.playbackRate / speed;
+
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(video.duration) || video.duration <= 0 ||
+      !Number.isFinite(speed) || speed <= 0 || !Number.isFinite(relativePlaybackRate) || relativePlaybackRate <= 0) {
+      return false;
+    }
+
+    const mediaDuration = video.duration / relativePlaybackRate;
+
+    const independentlyLooping = this.item.endBehavior === spec.EndBehavior.restart || (this.manualLoop && video.loop);
+
+    return this.item.duration + VideoComponent.threshold >= duration &&
+      (independentlyLooping || mediaDuration + VideoComponent.threshold >= duration) &&
+      mediaDuration <= duration + VideoComponent.replayEndTolerance;
+  }
+
+  private canPreserveNativeLoop (): boolean {
+    const video = this.video;
+    const composition = this.item.composition;
+
+    if (!this.nativeCompositionLoop || !video?.loop || !composition || this.manualPause ||
+      this.videoSeeking || this.pendingSeekTime !== null) {
+      return false;
+    }
+
+    // 原生循环使用视频自己的时钟，不因与合成的相位差再追加 seek。
+    return true;
+  }
+
+  private canReusePreparedFrame (): boolean {
+    const video = this.video;
+    const composition = this.item.composition;
+
+    if (!this.replayFramePrepared || !video || !composition || this.videoSeeking || video.seeking ||
+      video.readyState < 2 || this.pendingSeekTime !== null || this.item.parent !== composition.sceneRoot) {
+      return false;
+    }
+    const speed = this.engine.speed * composition.speed;
+    const relativePlaybackRate = video.playbackRate / speed;
+    const localTime = Math.max(0, composition.time - (this.item.definition.delay ?? 0));
+
+    return Number.isFinite(relativePlaybackRate) && relativePlaybackRate > 0 &&
+      localTime <= VideoComponent.firstFrameWindow * Math.max(1, speed) &&
+      video.currentTime <= VideoComponent.firstFrameWindow;
+  }
+
+  private canWaitForNativeHead (): boolean {
+    const video = this.video;
+    const composition = this.item.composition;
+
+    if (!video || !composition) {
+      return false;
+    }
+    const rate = video.playbackRate / (this.engine.speed * composition.speed);
+
+    return Number.isFinite(rate) && rate > 0 && (video.currentTime <= VideoComponent.firstFrameWindow ||
+      (video.duration - video.currentTime) / rate <= VideoComponent.replayEndTolerance);
+  }
+
   /**
-   * 处理 destroy 结束行为：视频播放到末尾后，seek 回 0 并清空纹理
-   * 确保合成 restart 时视频已在第 0 帧，不会闪最后一帧
+   * 利用不可见阶段等待浏览器原生回绕，收到开头画面后暂停，不写 currentTime。
+   */
+  private prepareReplayFrame (): boolean {
+    const video = this.video;
+    const composition = this.item.composition;
+
+    if (!video || !composition || this.item.endBehavior !== spec.EndBehavior.destroy ||
+      composition.sceneRoot.endBehavior !== spec.EndBehavior.restart || composition.startTime !== 0 ||
+      this.item.parent !== composition.sceneRoot || this.pendingSeekTime !== null || this.manualPause || (this.manualLoop && !video.loop)) {
+      return false;
+    }
+    if (this.preparingReplayFrame || this.replayFramePrepared) {
+      return true;
+    }
+    if (this.videoSeeking || this.nativeCompositionLoop) {
+      return false;
+    }
+    const speed = this.engine.speed * composition.speed;
+    const relativePlaybackRate = video.playbackRate / speed;
+    const endTime = (this.item.definition.delay ?? 0) + video.duration / relativePlaybackRate;
+
+    if (!Number.isFinite(relativePlaybackRate) || relativePlaybackRate <= 0 || !Number.isFinite(endTime) ||
+      endTime > composition.sceneRoot.duration + VideoComponent.replayEndTolerance) {
+      return false;
+    }
+    this.cancelVideoSeek();
+    const version = this.seekVersion;
+    const texture = this.renderer.texture;
+    const previousLoop = video.loop;
+    let callbackId: number | null = null;
+    let disposed = false;
+    let uploading = false;
+    const isCurrent = () => !disposed && version === this.seekVersion && this.video === video && this.renderer.texture === texture;
+
+    this.preparingReplayFrame = true;
+    this.videoSeeking = true;
+    this.videoDestroyed = true;
+    this.material.setTexture('_MainTex', this.engine.transparentTexture);
+    video.loop = true;
+    this.replayMuted = video.muted;
+    video.muted = true;
+
+    const prepare = async (mediaTime: number) => {
+      if (!isCurrent() || uploading || mediaTime > VideoComponent.firstFrameWindow || video.seeking || video.readyState < 2) {
+        return;
+      }
+      uploading = true;
+      video.pause();
+      try {
+        texture.initialize();
+        const uploaded = await Promise.resolve(texture.uploadCurrentVideoFrame(true));
+
+        if (!uploaded || !isCurrent() || video.seeking || video.readyState < 2) {
+          return;
+        }
+        this.removeSeekListener?.();
+        this.removeSeekListener = undefined;
+        this.videoSeeking = false;
+        this.videoDestroyed = !this.isVideoActive;
+        this.replayFramePrepared = true;
+        this.playTriggered = false;
+        this.material.setTexture('_MainTex', texture);
+      } catch (error) {
+        if (isCurrent()) {
+          this.engine.renderErrors.add(error instanceof Error ? error : new Error(String(error)));
+        }
+      } finally {
+        uploading = false;
+      }
+    };
+    const checkFrame = () => { void prepare(video.currentTime); };
+    const requestFrame = () => {
+      if (!isCurrent() || uploading || callbackId !== null || typeof video.requestVideoFrameCallback !== 'function') {
+        return;
+      }
+      try {
+        callbackId = video.requestVideoFrameCallback((_, metadata) => {
+          callbackId = null;
+          void prepare(metadata.mediaTime);
+          requestFrame();
+        });
+      } catch {
+        // 旧容器仍可通过原生媒体事件和引擎 update 检测回绕。
+      }
+    };
+
+    video.addEventListener('seeked', checkFrame);
+    video.addEventListener('timeupdate', checkFrame);
+    const removeUpdateListener = this.engine.on('update', checkFrame);
+
+    this.removeSeekListener = () => {
+      disposed = true;
+      video.removeEventListener('seeked', checkFrame);
+      video.removeEventListener('timeupdate', checkFrame);
+      removeUpdateListener();
+      if (callbackId !== null && typeof video.cancelVideoFrameCallback === 'function') {
+        try { video.cancelVideoFrameCallback(callbackId); } catch { /* 版本检查仍可过滤过期回调。 */ }
+      }
+      this.preparingReplayFrame = false;
+      video.loop = this.manualLoop ? video.loop : previousLoop;
+      video.muted = this.replayMuted ?? video.muted;
+      this.replayMuted = undefined;
+    };
+    requestFrame();
+    checkFrame();
+    if (!uploading && video.paused) {
+      this.safePlay();
+    }
+
+    return true;
+  }
+
+  /**
+   * 处理 destroy 结束行为：优先等待原生回绕准备首帧，无法自然衔接时再 seek。
    */
   private handleDestroyBehavior (): void {
-    if (this.videoDestroyed || this.videoSeeking) {
+    if (this.videoDestroyed || this.videoSeeking || (this.nativeCompositionLoop && this.video!.loop)) {
       return;
     }
 
@@ -480,6 +718,9 @@ export class VideoComponent extends MaskableGraphic {
     if (isVideoEnded && this.item.endBehavior === spec.EndBehavior.destroy) {
       this.videoDestroyed = true;
       this.playTriggered = false;
+      if (this.prepareReplayFrame()) {
+        return;
+      }
       this.performSeek(0, true);
     }
   }
@@ -552,65 +793,99 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * seek 期间设置 videoSeeking=true，阻止 uploadCurrentVideoFrame 上传旧帧
+   * 作废上一次 seek 的监听和异步上传结果。
+   */
+  private cancelVideoSeek (): void {
+    this.seekVersion++;
+    this.removeSeekListener?.();
+    this.removeSeekListener = undefined;
+  }
+
+  /**
+   * seek 期间隐藏旧 GPU 纹理，目标画面成功上传后再恢复显示。
    * @param time 目标时间
-   * @param clearTexture 是否在 seek 期间清空纹理
+   * @param clearTexture 是否即使时刻不变也清空纹理并执行 seek
    * @param isGotoAndStop 是否为 gotoAndStop 场景
    */
   private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
+    const video = this.video!;
+    const texture = this.renderer.texture;
+
     time = this.getClampedSeekTime(time);
-    const wasPlaying = !this.video!.paused;
-    const isNoopSeek = () => !clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.threshold;
-    const finishNoopSeek = () => {
-      this.videoSeeking = false;
+    const wasPlaying = !video.paused;
+    const isNoopSeek = !clearTexture && !this.videoSeeking && !video.seeking &&
+      Math.abs(video.currentTime - time) <= VideoComponent.threshold;
+
+    if (isNoopSeek) {
       this.isGotoAndStopSeeking = false;
       if (isGotoAndStop) {
-        this.video!.pause();
+        video.pause();
       } else if (wasPlaying && !this.manualPause) {
         this.safePlay();
       }
-    };
+
+      return;
+    }
+
+    this.cancelVideoSeek();
+    this.replayFramePrepared = false;
+    const version = this.seekVersion;
+    const isCurrentSeek = () => version === this.seekVersion && this.video === video && this.renderer.texture === texture;
+
+    this.videoSeeking = true;
+    this.isGotoAndStopSeeking = isGotoAndStop;
+    // 仅跳过上传仍会绘制旧纹理；必须在 currentTime 变化前就停止采样它。
+    this.material.setTexture('_MainTex', this.engine.transparentTexture);
 
     const doSeek = () => {
-      if (isNoopSeek()) {
-        finishNoopSeek();
-
+      if (!isCurrentSeek()) {
         return;
       }
 
-      this.videoSeeking = true;
-      if (clearTexture) {
-        this.material.setTexture('_MainTex', this.engine.transparentTexture);
-      }
-      this.video!.addEventListener('seeked', () => {
-        this.videoSeeking = false;
-        this.isGotoAndStopSeeking = false;
-        if (clearTexture) {
-          this.material.setTexture('_MainTex', this.renderer.texture);
+      const onSeeked = async () => {
+        if (!isCurrentSeek() || video.seeking || video.readyState < 2) {
+          return;
         }
-        if (this.video) {
-          this.renderer.texture.uploadCurrentVideoFrame();
-          // gotoAndStop 场景：seek 完成后暂停
+        this.removeSeekListener?.();
+        this.removeSeekListener = undefined;
+        try {
+          texture.initialize();
+          const uploaded = await Promise.resolve(texture.uploadCurrentVideoFrame(true));
+
+          if (!uploaded || !isCurrentSeek() || video.seeking || video.readyState < 2) {
+            return;
+          }
+          this.material.setTexture('_MainTex', texture);
+          this.videoSeeking = false;
+          this.isGotoAndStopSeeking = false;
+          if (time <= VideoComponent.threshold && (this.videoDestroyed || !this.isVideoActive)) {
+            this.replayFramePrepared = true;
+            video.pause();
+          }
           if (isGotoAndStop) {
-            this.video.pause();
-          } else if (wasPlaying && !this.manualPause) {
-            // 如果视频之前在播放（包括 goto 前在播放），seek 完成后恢复播放
+            video.pause();
+          } else if (wasPlaying && this.canPlayCurrentItem()) {
             this.safePlay();
           }
+        } catch (error) {
+          if (isCurrentSeek()) {
+            this.engine.renderErrors.add(error instanceof Error ? error : new Error(String(error)));
+          }
         }
-      }, { once: true });
-      this.video!.currentTime = time;
+      };
+
+      video.addEventListener('seeked', onSeeked);
+      this.removeSeekListener = () => video.removeEventListener('seeked', onSeeked);
+      video.currentTime = time;
     };
 
     if (isGotoAndStop) {
       if (wasPlaying) {
         // 视频正在播放，直接 seek
         doSeek();
-      } else if (isNoopSeek()) {
-        finishNoopSeek();
       } else {
         // 视频暂停，先 play() 再 seek
-        this.video!.play().then(() => {
+        video.play().then(() => {
           doSeek();
         }).catch(() => {
           // play 失败时也尝试 seek
@@ -619,7 +894,7 @@ export class VideoComponent extends MaskableGraphic {
       }
     } else {
       if (wasPlaying) {
-        this.video!.pause();
+        video.pause();
       }
       doSeek();
     }
@@ -696,7 +971,10 @@ export class VideoComponent extends MaskableGraphic {
    * 组件重新启用时将视频时间对齐到 item 本地时间，但不直接触发播放。
    */
   private syncVideoToItemTime (): void {
-    if (!this.video) {
+    if (!this.video || this.preparingReplayFrame || this.canPreserveNativeLoop() || this.canReusePreparedFrame()) {
+      return;
+    }
+    if (this.lastVideoTime > 0 && this.canWaitForNativeHead() && this.prepareReplayFrame()) {
       return;
     }
 
@@ -764,9 +1042,15 @@ export class VideoComponent extends MaskableGraphic {
    * @param loop 是否循环播放
    */
   setLoop (loop: boolean) {
+    if (!loop && this.preparingReplayFrame) {
+      this.cancelVideoSeek();
+      this.videoSeeking = false;
+      this.pauseVideoElement();
+    }
     this.manualLoop = true;
     if (this.video) {
       this.video.loop = loop;
+      this.ensureLoopFlag();
     }
   }
 
@@ -775,10 +1059,7 @@ export class VideoComponent extends MaskableGraphic {
    */
   resetLoop () {
     this.manualLoop = false;
-    // 将 video.loop 同步回合成应有的值，避免残留用户手动设置的状态
-    if (this.video) {
-      this.video.loop = this.item.endBehavior === spec.EndBehavior.restart;
-    }
+    this.ensureLoopFlag();
   }
 
   /**
@@ -786,6 +1067,11 @@ export class VideoComponent extends MaskableGraphic {
    * @param muted 是否静音
    */
   setMuted (muted: boolean) {
+    if (this.preparingReplayFrame) {
+      this.replayMuted = muted;
+
+      return;
+    }
     if (this.video && this.video.muted !== muted) {
       this.video.muted = muted;
     }
