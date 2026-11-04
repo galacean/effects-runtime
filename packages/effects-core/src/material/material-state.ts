@@ -21,6 +21,7 @@ export class MaterialState {
   // stencil相关
   stencilTest: boolean;
   stencilMask: [front: number, back: number];
+  stencilWriteMask?: [front: number, back: number];
   stencilRef: [front: number, back: number];
   stencilFunc: [front: number, back: number];
   stencilOpFail: [front: number, back: number];
@@ -166,6 +167,10 @@ export class MaterialState {
     this.stencilMask[1] = value[1];
   }
 
+  setStencilWriteMask (value: [number, number] | undefined): void {
+    this.stencilWriteMask = value ? [value[0], value[1]] : undefined;
+  }
+
   setStencilRef (value: [front: number, back: number]) {
     if (this.stencilRef[0] === value[0] && this.stencilRef[1] === value[1]) {
       return;
@@ -247,6 +252,7 @@ export class MaterialState {
     this.colorMask = [true, true, true, true];
     this.stencilTest = false;
     this.stencilMask = [0xFF, 0xFF];
+    this.stencilWriteMask = undefined;
     this.stencilRef = [0, 0];
     this.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
     this.stencilOpFail = [glContext.KEEP, glContext.KEEP];
@@ -268,8 +274,10 @@ export class MaterialState {
     device.setPolygonOffsetFill(this.polygonOffsetFill);
 
     if (this.stencilTest) {
-      device.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
-      device.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
+      const writeMask = this.stencilWriteMask ?? this.stencilMask;
+
+      device.stencilMaskSeparate(glContext.BACK, writeMask[1]);
+      device.stencilMaskSeparate(glContext.FRONT, writeMask[0]);
       device.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
       device.stencilFuncSeparate(glContext.FRONT, this.stencilFunc[1], this.stencilRef[1], this.stencilMask[1]);
       device.stencilOpSeparate(glContext.BACK, this.stencilOpFail[0], this.stencilOpZFail[0], this.stencilOpZPass[0]);

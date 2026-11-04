@@ -21,3 +21,4 @@ import './gl-state.spec';
 import './gl-texture.spec';
 import './gl-vertex-array-object.spec';
 import './renderer.spec';
+import './stencil.spec';

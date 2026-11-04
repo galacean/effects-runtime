@@ -264,6 +264,7 @@ export class MaskProcessor {
   drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
     const prevColorMask = material.colorMask;
     const prevStencilTest = material.stencilTest;
+    const prevStencilWriteMask = material.stencilWriteMask;
 
     this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
     this.copyStencilArrayValue(this.prevStencilOpFail, material.stencilOpFail);
@@ -272,17 +273,21 @@ export class MaskProcessor {
     this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
     this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
 
-    this.setupMaskMaterial(material, maskRef);
-    renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
-
-    material.colorMask = prevColorMask;
-    material.stencilTest = prevStencilTest;
-    material.stencilFunc = this.prevStencilFunc;
-    material.stencilOpFail = this.prevStencilOpFail;
-    material.stencilOpZFail = this.prevStencilOpZFail;
-    material.stencilOpZPass = this.prevStencilOpZPass;
-    material.stencilRef = this.prevStencilRef;
-    material.stencilMask = this.prevStencilMask;
+    try {
+      this.setupMaskMaterial(material, maskRef);
+      material.stencilWriteMask = undefined;
+      renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
+    } finally {
+      material.colorMask = prevColorMask;
+      material.stencilTest = prevStencilTest;
+      material.stencilFunc = this.prevStencilFunc;
+      material.stencilOpFail = this.prevStencilOpFail;
+      material.stencilOpZFail = this.prevStencilOpZFail;
+      material.stencilOpZPass = this.prevStencilOpZPass;
+      material.stencilRef = this.prevStencilRef;
+      material.stencilMask = this.prevStencilMask;
+      material.stencilWriteMask = prevStencilWriteMask;
+    }
   }
 
   /**

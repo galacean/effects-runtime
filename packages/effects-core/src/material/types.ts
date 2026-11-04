@@ -25,6 +25,7 @@ export interface MaterialBlendingStates {
 export interface MaterialStencilStates {
   stencilTest?: boolean,
   stencilMask?: [front: GLenum, back: GLenum],
+  stencilWriteMask?: [front: GLenum, back: GLenum],
   stencilRef?: [front: GLenum, back: GLenum],
   stencilFunc?: [front: GLenum, back: GLenum],
   stencilOpFail?: [front: GLenum, back: GLenum],

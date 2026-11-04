@@ -266,6 +266,14 @@ export class Material extends Asset implements Disposable {
     value && this.materialState.setStencilMask(value);
   }
 
+  /** Omission retains the shared stencil read/write mask used by existing materials. */
+  get stencilWriteMask () {
+    return this.materialState.stencilWriteMask;
+  }
+  set stencilWriteMask (value: UndefinedAble<[number, number]>) {
+    this.materialState.setStencilWriteMask(value);
+  }
+
   get stencilRef () {
     return this.materialState.stencilRef;
   }

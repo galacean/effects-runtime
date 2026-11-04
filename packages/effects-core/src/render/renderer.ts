@@ -67,6 +67,7 @@ export class Renderer {
 
   private blitGeometry: Geometry | null = null;
   private blitMaterial: Material | null = null;
+  private stencilMaterial: Material | null = null;
 
   constructor (public engine: Engine) {
     this.drawObjectPass = new DrawObjectPass(this);
@@ -373,6 +374,36 @@ export class Renderer {
     this.engine.renderingServer.renderTargetPool.release(rt);
   }
 
+  /** Updates stencil in the current viewport without changing color or depth. @internal */
+  drawFullscreenStencil (
+    readMask: number, reference: number, comparison: number, pass: number,
+    fail: number = glContext.KEEP, writeMask = readMask,
+  ): void {
+    if (!this.stencilMaterial) {
+      this.stencilMaterial = Material.create(this.engine, {
+        shader: {
+          vertex: BLIT_VERTEX_SHADER,
+          fragment: 'precision mediump float; void main() { gl_FragColor = vec4(0.0); }',
+        },
+      });
+      this.stencilMaterial.blending = false;
+      this.stencilMaterial.depthTest = false;
+      this.stencilMaterial.depthMask = false;
+      this.stencilMaterial.colorMask = false;
+      this.stencilMaterial.culling = false;
+      this.stencilMaterial.stencilTest = true;
+    }
+    const material = this.stencilMaterial;
+
+    material.stencilMask = [readMask, readMask];
+    material.stencilWriteMask = [writeMask, writeMask];
+    material.stencilRef = [reference, reference];
+    material.stencilFunc = [comparison, comparison];
+    material.stencilOpZPass = [pass, pass];
+    material.stencilOpFail = [fail, fail];
+    this.drawGeometry(this.getFullscreenGeometry(), math.Matrix4.IDENTITY, material);
+  }
+
   /**
    * 将源纹理复制到目标 GPUFramebuffer，可使用自定义材质进行处理
    * @param source - 源纹理
@@ -380,20 +411,7 @@ export class Renderer {
    * @param material - 可选的自定义材质，不传则使用默认复制材质
    */
   blit (source: Texture, destination: GPUFramebuffer | null, material?: Material): void {
-    // 懒加载创建 blit geometry
-    if (!this.blitGeometry) {
-      this.blitGeometry = Geometry.create(this.engine, {
-        mode: glContext.TRIANGLE_STRIP,
-        attributes: {
-          [VertexElementType.Position]: {
-            type: glContext.FLOAT,
-            size: 2,
-            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
-          },
-        },
-        drawCount: 4,
-      });
-    }
+    const geometry = this.getFullscreenGeometry();
 
     // 懒加载创建默认 blit material
     if (!this.blitMaterial) {
@@ -428,7 +446,7 @@ export class Renderer {
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
 
-    this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
+    this.drawGeometry(geometry, math.Matrix4.IDENTITY, blitMat);
 
     // 恢复之前的 framebuffer
     this.setFramebuffer(prevFramebuffer);
@@ -452,8 +470,29 @@ export class Renderer {
     this.blitGeometry = null;
     this.blitMaterial?.dispose();
     this.blitMaterial = null;
+    this.stencilMaterial?.dispose();
+    this.stencilMaterial = null;
 
     this.disposed = true;
+  }
+
+  private getFullscreenGeometry (): Geometry {
+    // 懒加载创建 blit geometry
+    if (!this.blitGeometry) {
+      this.blitGeometry = Geometry.create(this.engine, {
+        mode: glContext.TRIANGLE_STRIP,
+        attributes: {
+          [VertexElementType.Position]: {
+            type: glContext.FLOAT,
+            size: 2,
+            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
+          },
+        },
+        drawCount: 4,
+      });
+    }
+
+    return this.blitGeometry;
   }
 
   private checkGlobalUniform (name: string) {
