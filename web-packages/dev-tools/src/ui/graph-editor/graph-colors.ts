@@ -1,0 +1,160 @@
+import { math } from '@galacean/effects';
+export class GraphColors {
+  static readonly Transparent = new math.Color(0 / 255, 0 / 255, 0 / 255, 0 / 255);
+  static readonly AliceBlue = new math.Color(240 / 255, 248 / 255, 255 / 255, 255 / 255);
+  static readonly AntiqueWhite = new math.Color(250 / 255, 235 / 255, 215 / 255, 255 / 255);
+  static readonly Aqua = new math.Color(0 / 255, 255 / 255, 255 / 255, 255 / 255);
+  static readonly Aquamarine = new math.Color(127 / 255, 255 / 255, 212 / 255, 255 / 255);
+  static readonly Azure = new math.Color(240 / 255, 255 / 255, 255 / 255, 255 / 255);
+  static readonly Beige = new math.Color(245 / 255, 245 / 255, 220 / 255, 255 / 255);
+  static readonly Bisque = new math.Color(255 / 255, 228 / 255, 196 / 255, 255 / 255);
+  static readonly Black = new math.Color(0 / 255, 0 / 255, 0 / 255, 255 / 255);
+  static readonly BlanchedAlmond = new math.Color(255 / 255, 235 / 255, 205 / 255, 255 / 255);
+  static readonly Blue = new math.Color(0 / 255, 0 / 255, 255 / 255, 255 / 255);
+  static readonly BlueViolet = new math.Color(138 / 255, 43 / 255, 226 / 255, 255 / 255);
+  static readonly Brown = new math.Color(165 / 255, 42 / 255, 42 / 255, 255 / 255);
+  static readonly BurlyWood = new math.Color(222 / 255, 184 / 255, 135 / 255, 255 / 255);
+  static readonly CadetBlue = new math.Color(95 / 255, 158 / 255, 160 / 255, 255 / 255);
+  static readonly Chartreuse = new math.Color(127 / 255, 255 / 255, 0 / 255, 255 / 255);
+  static readonly Chocolate = new math.Color(210 / 255, 105 / 255, 30 / 255, 255 / 255);
+  static readonly Coral = new math.Color(255 / 255, 127 / 255, 80 / 255, 255 / 255);
+  static readonly CornflowerBlue = new math.Color(100 / 255, 149 / 255, 237 / 255, 255 / 255);
+  static readonly Cornsilk = new math.Color(255 / 255, 248 / 255, 220 / 255, 255 / 255);
+  static readonly Crimson = new math.Color(220 / 255, 20 / 255, 60 / 255, 255 / 255);
+  static readonly Cyan = new math.Color(0 / 255, 255 / 255, 255 / 255, 255 / 255);
+  static readonly DarkBlue = new math.Color(0 / 255, 0 / 255, 139 / 255, 255 / 255);
+  static readonly DarkCyan = new math.Color(0 / 255, 139 / 255, 139 / 255, 255 / 255);
+  static readonly DarkGoldenRod = new math.Color(184 / 255, 134 / 255, 11 / 255, 255 / 255);
+  static readonly DarkGray = new math.Color(169 / 255, 169 / 255, 169 / 255, 255 / 255);
+  static readonly DarkGreen = new math.Color(0 / 255, 100 / 255, 0 / 255, 255 / 255);
+  static readonly DarkKhaki = new math.Color(189 / 255, 183 / 255, 107 / 255, 255 / 255);
+  static readonly DarkMagenta = new math.Color(139 / 255, 0 / 255, 139 / 255, 255 / 255);
+  static readonly DarkOliveGreen = new math.Color(85 / 255, 107 / 255, 47 / 255, 255 / 255);
+  static readonly DarkOrange = new math.Color(255 / 255, 140 / 255, 0 / 255, 255 / 255);
+  static readonly DarkOrchid = new math.Color(153 / 255, 50 / 255, 204 / 255, 255 / 255);
+  static readonly DarkRed = new math.Color(139 / 255, 0 / 255, 0 / 255, 255 / 255);
+  static readonly DarkSalmon = new math.Color(233 / 255, 150 / 255, 122 / 255, 255 / 255);
+  static readonly DarkSeaGreen = new math.Color(143 / 255, 188 / 255, 143 / 255, 255 / 255);
+  static readonly DarkSlateBlue = new math.Color(72 / 255, 61 / 255, 139 / 255, 255 / 255);
+  static readonly DarkSlateGray = new math.Color(47 / 255, 79 / 255, 79 / 255, 255 / 255);
+  static readonly DarkTurquoise = new math.Color(0 / 255, 206 / 255, 209 / 255, 255 / 255);
+  static readonly DarkViolet = new math.Color(148 / 255, 0 / 255, 211 / 255, 255 / 255);
+  static readonly DeepPink = new math.Color(255 / 255, 20 / 255, 147 / 255, 255 / 255);
+  static readonly DeepSkyBlue = new math.Color(0 / 255, 191 / 255, 255 / 255, 255 / 255);
+  static readonly DimGray = new math.Color(105 / 255, 105 / 255, 105 / 255, 255 / 255);
+  static readonly DodgerBlue = new math.Color(30 / 255, 144 / 255, 255 / 255, 255 / 255);
+  static readonly FireBrick = new math.Color(178 / 255, 34 / 255, 34 / 255, 255 / 255);
+  static readonly FloralWhite = new math.Color(255 / 255, 250 / 255, 240 / 255, 255 / 255);
+  static readonly ForestGreen = new math.Color(34 / 255, 139 / 255, 34 / 255, 255 / 255);
+  static readonly Fuchsia = new math.Color(255 / 255, 0 / 255, 255 / 255, 255 / 255);
+  static readonly Gainsboro = new math.Color(220 / 255, 220 / 255, 220 / 255, 255 / 255);
+  static readonly GhostWhite = new math.Color(248 / 255, 248 / 255, 255 / 255, 255 / 255);
+  static readonly Gold = new math.Color(255 / 255, 215 / 255, 0 / 255, 255 / 255);
+  static readonly GoldenRod = new math.Color(218 / 255, 165 / 255, 32 / 255, 255 / 255);
+  static readonly Gray = new math.Color(128 / 255, 128 / 255, 128 / 255, 255 / 255);
+  static readonly Green = new math.Color(0 / 255, 128 / 255, 0 / 255, 255 / 255);
+  static readonly GreenYellow = new math.Color(173 / 255, 255 / 255, 47 / 255, 255 / 255);
+  static readonly HoneyDew = new math.Color(240 / 255, 255 / 255, 240 / 255, 255 / 255);
+  static readonly HotPink = new math.Color(255 / 255, 105 / 255, 180 / 255, 255 / 255);
+  static readonly IndianRed = new math.Color(205 / 255, 92 / 255, 92 / 255, 255 / 255);
+  static readonly Indigo = new math.Color(75 / 255, 0 / 255, 130 / 255, 255 / 255);
+  static readonly Ivory = new math.Color(255 / 255, 255 / 255, 240 / 255, 255 / 255);
+  static readonly Khaki = new math.Color(240 / 255, 230 / 255, 140 / 255, 255 / 255);
+  static readonly Lavender = new math.Color(230 / 255, 230 / 255, 250 / 255, 255 / 255);
+  static readonly LavenderBlush = new math.Color(255 / 255, 240 / 255, 245 / 255, 255 / 255);
+  static readonly LawnGreen = new math.Color(124 / 255, 252 / 255, 0 / 255, 255 / 255);
+  static readonly LemonChiffon = new math.Color(255 / 255, 250 / 255, 205 / 255, 255 / 255);
+  static readonly LightBlue = new math.Color(173 / 255, 216 / 255, 230 / 255, 255 / 255);
+  static readonly LightCoral = new math.Color(240 / 255, 128 / 255, 128 / 255, 255 / 255);
+  static readonly LightCyan = new math.Color(224 / 255, 255 / 255, 255 / 255, 255 / 255);
+  static readonly LightGoldenRodYellow = new math.Color(250 / 255, 250 / 255, 210 / 255, 255 / 255);
+  static readonly LightGray = new math.Color(211 / 255, 211 / 255, 211 / 255, 255 / 255);
+  static readonly LightGreen = new math.Color(144 / 255, 238 / 255, 144 / 255, 255 / 255);
+  static readonly LightPink = new math.Color(255 / 255, 182 / 255, 193 / 255, 255 / 255);
+  static readonly LightSalmon = new math.Color(255 / 255, 160 / 255, 122 / 255, 255 / 255);
+  static readonly LightSeaGreen = new math.Color(32 / 255, 178 / 255, 170 / 255, 255 / 255);
+  static readonly LightSkyBlue = new math.Color(135 / 255, 206 / 255, 250 / 255, 255 / 255);
+  static readonly LightSlateGray = new math.Color(119 / 255, 136 / 255, 153 / 255, 255 / 255);
+  static readonly LightSteelBlue = new math.Color(176 / 255, 196 / 255, 222 / 255, 255 / 255);
+  static readonly LightYellow = new math.Color(255 / 255, 255 / 255, 224 / 255, 255 / 255);
+  static readonly Lime = new math.Color(0 / 255, 255 / 255, 0 / 255, 255 / 255);
+  static readonly LimeGreen = new math.Color(50 / 255, 205 / 255, 50 / 255, 255 / 255);
+  static readonly Linen = new math.Color(250 / 255, 240 / 255, 230 / 255, 255 / 255);
+  static readonly Magenta = new math.Color(255 / 255, 0 / 255, 255 / 255, 255 / 255);
+  static readonly Maroon = new math.Color(128 / 255, 0 / 255, 0 / 255, 255 / 255);
+  static readonly MediumAquaMarine = new math.Color(102 / 255, 205 / 255, 170 / 255, 255 / 255);
+  static readonly MediumBlue = new math.Color(0 / 255, 0 / 255, 205 / 255, 255 / 255);
+  static readonly MediumOrchid = new math.Color(186 / 255, 85 / 255, 211 / 255, 255 / 255);
+  static readonly MediumPurple = new math.Color(147 / 255, 112 / 255, 219 / 255, 255 / 255);
+  static readonly MediumSeaGreen = new math.Color(60 / 255, 179 / 255, 113 / 255, 255 / 255);
+  static readonly MediumSlateBlue = new math.Color(123 / 255, 104 / 255, 238 / 255, 255 / 255);
+  static readonly MediumSpringGreen = new math.Color(0 / 255, 250 / 255, 154 / 255, 255 / 255);
+  static readonly MediumTurquoise = new math.Color(72 / 255, 209 / 255, 204 / 255, 255 / 255);
+  static readonly MediumVioletRed = new math.Color(199 / 255, 21 / 255, 133 / 255, 255 / 255);
+  static readonly MidnightBlue = new math.Color(25 / 255, 25 / 255, 112 / 255, 255 / 255);
+  static readonly MintCream = new math.Color(245 / 255, 255 / 255, 250 / 255, 255 / 255);
+  static readonly MistyRose = new math.Color(255 / 255, 228 / 255, 225 / 255, 255 / 255);
+  static readonly Moccasin = new math.Color(255 / 255, 228 / 255, 181 / 255, 255 / 255);
+  static readonly NavajoWhite = new math.Color(255 / 255, 222 / 255, 173 / 255, 255 / 255);
+  static readonly Navy = new math.Color(0 / 255, 0 / 255, 128 / 255, 255 / 255);
+  static readonly OldLace = new math.Color(253 / 255, 245 / 255, 230 / 255, 255 / 255);
+  static readonly Olive = new math.Color(128 / 255, 128 / 255, 0 / 255, 255 / 255);
+  static readonly OliveDrab = new math.Color(107 / 255, 142 / 255, 35 / 255, 255 / 255);
+  static readonly Orange = new math.Color(255 / 255, 165 / 255, 0 / 255, 255 / 255);
+  static readonly OrangeRed = new math.Color(255 / 255, 69 / 255, 0 / 255, 255 / 255);
+  static readonly Orchid = new math.Color(218 / 255, 112 / 255, 214 / 255, 255 / 255);
+  static readonly PaleGoldenRod = new math.Color(238 / 255, 232 / 255, 170 / 255, 255 / 255);
+  static readonly PaleGreen = new math.Color(152 / 255, 251 / 255, 152 / 255, 255 / 255);
+  static readonly PaleTurquoise = new math.Color(175 / 255, 238 / 255, 238 / 255, 255 / 255);
+  static readonly PaleVioletRed = new math.Color(219 / 255, 112 / 255, 147 / 255, 255 / 255);
+  static readonly PapayaWhip = new math.Color(255 / 255, 239 / 255, 213 / 255, 255 / 255);
+  static readonly PeachPuff = new math.Color(255 / 255, 218 / 255, 185 / 255, 255 / 255);
+  static readonly Peru = new math.Color(205 / 255, 133 / 255, 63 / 255, 255 / 255);
+  static readonly Pink = new math.Color(255 / 255, 192 / 255, 203 / 255, 255 / 255);
+  static readonly Plum = new math.Color(221 / 255, 160 / 255, 221 / 255, 255 / 255);
+  static readonly PowderBlue = new math.Color(176 / 255, 224 / 255, 230 / 255, 255 / 255);
+  static readonly Purple = new math.Color(128 / 255, 0 / 255, 128 / 255, 255 / 255);
+  static readonly Red = new math.Color(255 / 255, 0 / 255, 0 / 255, 255 / 255);
+  static readonly MediumRed = new math.Color(201 / 255, 0 / 255, 0 / 255, 255 / 255);
+  static readonly RosyBrown = new math.Color(188 / 255, 143 / 255, 143 / 255, 255 / 255);
+  static readonly RoyalBlue = new math.Color(65 / 255, 105 / 255, 225 / 255, 255 / 255);
+  static readonly SaddleBrown = new math.Color(139 / 255, 69 / 255, 19 / 255, 255 / 255);
+  static readonly Salmon = new math.Color(250 / 255, 128 / 255, 114 / 255, 255 / 255);
+  static readonly SandyBrown = new math.Color(244 / 255, 164 / 255, 96 / 255, 255 / 255);
+  static readonly SeaGreen = new math.Color(46 / 255, 139 / 255, 87 / 255, 255 / 255);
+  static readonly SeaShell = new math.Color(255 / 255, 245 / 255, 238 / 255, 255 / 255);
+  static readonly Sienna = new math.Color(160 / 255, 82 / 255, 45 / 255, 255 / 255);
+  static readonly Silver = new math.Color(192 / 255, 192 / 255, 192 / 255, 255 / 255);
+  static readonly SkyBlue = new math.Color(135 / 255, 206 / 255, 235 / 255, 255 / 255);
+  static readonly SlateBlue = new math.Color(106 / 255, 90 / 255, 205 / 255, 255 / 255);
+  static readonly SlateGray = new math.Color(112 / 255, 128 / 255, 144 / 255, 255 / 255);
+  static readonly Snow = new math.Color(255 / 255, 250 / 255, 250 / 255, 255 / 255);
+  static readonly SpringGreen = new math.Color(0 / 255, 255 / 255, 127 / 255, 255 / 255);
+  static readonly SteelBlue = new math.Color(70 / 255, 130 / 255, 180 / 255, 255 / 255);
+  static readonly Tan = new math.Color(210 / 255, 180 / 255, 140 / 255, 255 / 255);
+  static readonly Teal = new math.Color(0 / 255, 128 / 255, 128 / 255, 255 / 255);
+  static readonly Thistle = new math.Color(216 / 255, 191 / 255, 216 / 255, 255 / 255);
+  static readonly Tomato = new math.Color(255 / 255, 99 / 255, 71 / 255, 255 / 255);
+  static readonly Turquoise = new math.Color(64 / 255, 224 / 255, 208 / 255, 255 / 255);
+  static readonly Violet = new math.Color(238 / 255, 130 / 255, 238 / 255, 255 / 255);
+  static readonly Wheat = new math.Color(245 / 255, 222 / 255, 179 / 255, 255 / 255);
+  static readonly White = new math.Color(255 / 255, 255 / 255, 255 / 255, 255 / 255);
+  static readonly WhiteSmoke = new math.Color(245 / 255, 245 / 255, 245 / 255, 255 / 255);
+  static readonly Yellow = new math.Color(255 / 255, 255 / 255, 0 / 255, 255 / 255);
+  static readonly YellowGreen = new math.Color(154 / 255, 205 / 255, 50 / 255, 255 / 255);
+
+  private constructor () {}
+
+  static toRGBA (color: number): [number, number, number, number] {
+    return [
+      (color >> 16) & 0xFF,
+      (color >> 8) & 0xFF,
+      color & 0xFF,
+      (color >> 24) & 0xFF,
+    ];
+  }
+
+  static fromRGBA (r: number, g: number, b: number, a: number = 255): number {
+    return ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+  }
+}

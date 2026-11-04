@@ -5,6 +5,7 @@ import {
 } from '@galacean/effects';
 import type { Engine, InputEventKey, InputEventMouseButton, spec } from '@galacean/effects';
 import { TextInput } from './text-input';
+import { getTextIndexAtPosition, getTextPosition } from '../core/text-layout';
 
 @effectsClass('TextEdit')
 export class TextEdit extends TextInput {
@@ -34,7 +35,7 @@ export class TextEdit extends TextInput {
     let lineHeight = this.measureText('M', fontSize, font.family, font.weight, font.style).lineHeight;
 
     for (const line of lines) {
-      const measurement = this.measureText(line, fontSize, font.family, font.weight, font.style);
+      const measurement = this.measureText(line, fontSize, font.family, font.weight, font.style, false);
 
       width = Math.max(width, measurement.width);
       lineHeight = Math.max(lineHeight, measurement.lineHeight);
@@ -66,6 +67,7 @@ export class TextEdit extends TextInput {
     );
     for (let lineIndex = this.scrollLine; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
+      const layout = this.getLineLayout(line);
       const y = margins.top + (lineIndex - this.scrollLine) * lineHeight;
 
       if (y >= this.height - margins.bottom) {break;}
@@ -74,17 +76,20 @@ export class TextEdit extends TextInput {
         const lineEnd = lineStart + line.length;
         const selectedStart = Math.max(lineStart, selectionStart);
         const selectedEnd = Math.min(lineEnd, selectionEnd);
+        const selectedNewline = lineIndex < lines.length - 1 && selectionStart <= lineEnd && selectionEnd > lineEnd;
 
-        if (selectedStart < selectedEnd) {
-          const prefix = this.measureLine(line.slice(0, selectedStart - lineStart));
-          const selected = this.measureLine(line.slice(selectedStart - lineStart, selectedEnd - lineStart));
+        if (selectedStart < selectedEnd || selectedNewline) {
+          const prefix = getTextPosition(layout, selectedStart - lineStart);
+          const end = selectedNewline
+            ? layout.width + this.getLineLayout(' ').width
+            : getTextPosition(layout, selectedEnd - lineStart);
 
-          this.drawSelection(margins.left + prefix, y, selected, lineHeight);
+          this.drawSelection(margins.left + prefix, y, end - prefix, lineHeight);
         }
       }
       this.drawText(margins.left, y, line, fontSize, this.getTextColor(), font.family, font.weight, font.style);
       if (this.text && this.caretColumn >= textIndex && this.caretColumn <= textIndex + line.length) {
-        this.drawCaret(margins.left + this.measureLine(line.slice(0, this.caretColumn - textIndex)), y, lineHeight);
+        this.drawCaret(margins.left + getTextPosition(layout, this.caretColumn - textIndex), y, lineHeight);
       }
       textIndex += line.length + 1;
     }
@@ -125,24 +130,16 @@ export class TextEdit extends TextInput {
     const lines = this.text.split('\n');
     const lineIndex = Math.max(0, Math.min(lines.length - 1, Math.floor((position.y - margins.top) / lineHeight) + this.scrollLine));
     const line = lines[lineIndex];
-    let index = lines.slice(0, lineIndex).reduce((total, value) => total + value.length + 1, 0);
+    const index = lines.slice(0, lineIndex).reduce((total, value) => total + value.length + 1, 0);
     const x = position.x - margins.left;
 
-    for (let column = 1; column <= line.length; column++) {
-      const previous = this.measureLine(line.slice(0, column - 1));
-      const next = this.measureLine(line.slice(0, column));
-
-      if (x < (previous + next) * 0.5) {return index + column - 1;}
-    }
-    index += line.length;
-
-    return index;
+    return index + getTextIndexAtPosition(this.getLineLayout(line), x);
   }
 
-  private measureLine (value: string): number {
+  private getLineLayout (value: string) {
     const font = this.getTextFont();
 
-    return this.measureText(value, this.getTextFontSize(), font.family, font.weight, font.style).width;
+    return this.measureText(value, this.getTextFontSize(), font.family, font.weight, font.style, false).lines[0];
   }
 
   private getVerticalCaretIndex (direction: number): number {
@@ -157,13 +154,13 @@ export class TextEdit extends TextInput {
       if (caret <= lineEnd) {break;}
       lineStart = lineEnd + 1;
     }
-    const column = caret - lineStart;
+    const x = getTextPosition(this.getLineLayout(lines[lineIndex]), caret - lineStart);
     const targetLine = Math.max(0, Math.min(lines.length - 1, lineIndex + direction));
     let targetStart = 0;
 
     for (let index = 0; index < targetLine; index++) {targetStart += lines[index].length + 1;}
 
-    return targetStart + Math.min(column, lines[targetLine].length);
+    return targetStart + getTextIndexAtPosition(this.getLineLayout(lines[targetLine]), x);
   }
 
   private ensureCaretLineVisible (): void {

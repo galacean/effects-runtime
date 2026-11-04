@@ -1,7 +1,7 @@
 import type { Engine, ValueGetter } from '@galacean/effects';
 import {
   ColorPropertyMixerPlayable, ColorPropertyPlayableAsset, FloatPropertyPlayableAsset,
-  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec, TimelineClip, TrackAsset,
+  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec, TrackAsset,
   CacheDataManager,
   Vector2PropertyMixerPlayable, Vector2PropertyPlayableAsset,
   Vector3PropertyMixerPlayable, Vector3ropertyPlayableAsset,
@@ -114,9 +114,9 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       const track = new TrackAsset(engine);
       const mixer = new testCase.Mixer();
       const clips = [-0.25, -0.75].map(start => {
-        const clip = new TimelineClip();
+        const clip = new testCase.Asset(engine);
 
-        clip.asset = asset;
+        clip.curve = asset.curve;
         clip.start = start;
         clip.duration = 1;
         clip.endBehavior = spec.EndBehavior.destroy;

@@ -39,8 +39,6 @@ import {
   INFO_TEXT_FONT_SIZE,
   INFO_TEXT_FONT_FAMILY,
   toColor,
-  measureControlTextCellHeight,
-  measureTextWidth,
   truncateText,
   drawCorners,
   drawWithBoxTransform,
@@ -1333,24 +1331,25 @@ export class ResizeSelectionGizmo extends Gizmo {
     const viewBoxWidth = leftCorner.distance(rightCorner);
 
     // 步骤 3：根据顶边可用宽度裁剪名称与尺寸文本。
+    const measure = (text: string) => control.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY);
     let sizeStr = size.map(s => roundNumber(s, 0)).join(' * ');
-    const sizeTextWidth = measureTextWidth(sizeStr);
+    const sizeTextWidth = measure(sizeStr).width;
 
     if (viewBoxWidth < sizeTextWidth * 2) {
       sizeStr = '';
     }
 
     let nameStr = ` ${name}`;
-    const nameTextWidth = measureTextWidth(nameStr);
+    const nameTextWidth = measure(nameStr).width;
 
     if ((20 + nameTextWidth + sizeTextWidth) > viewBoxWidth) {
       if (viewBoxWidth < sizeTextWidth * 2) {
         sizeStr = '';
-        nameStr = truncateText(nameStr, viewBoxWidth - 20);
+        nameStr = truncateText(nameStr, viewBoxWidth - 20, measure);
       } else {
         const availableNameWidth = viewBoxWidth - 20 - sizeTextWidth - 5;
 
-        nameStr = truncateText(nameStr, availableNameWidth);
+        nameStr = truncateText(nameStr, availableNameWidth, measure);
       }
     }
 
@@ -1360,13 +1359,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const ex = new Vector2(cos, sin);
     const ey = new Vector2(-sin, cos);
 
-    const textCellTop = -INFO_TEXT_BOTTOM - measureControlTextCellHeight(
-      INFO_TEXT_FONT_SIZE,
-      INFO_TEXT_FONT_FAMILY,
-      undefined,
-      undefined,
-      control.engine.displayServer.pixelRatio,
-    );
+    const textCellTop = -INFO_TEXT_BOTTOM - measure('M').lineHeight;
 
     // 步骤 5：依次绘制图标、尺寸和名称。
     if (iconTexture && !iconTexture.isDestroyed) {
@@ -1385,7 +1378,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     if (sizeStr) {
       const anchor = rightCorner.clone();
-      const textWidth = measureTextWidth(sizeStr);
+      const textWidth = measure(sizeStr).width;
 
       drawWithBoxTransform(
         control,

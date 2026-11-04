@@ -1,4 +1,3 @@
-import { Asset } from '../../asset';
 import type { CacheDataManager } from './cache-data-manager';
 
 /**
@@ -26,10 +25,6 @@ export class ClipPlayable extends Playable {
   evaluate (boundObject: object | undefined, context: FrameContext, cache: CacheDataManager): void {
     // Override
   }
-}
-
-export abstract class PlayableAsset extends Asset {
-  abstract createPlayable (): ClipPlayable;
 }
 
 export interface FrameContext {

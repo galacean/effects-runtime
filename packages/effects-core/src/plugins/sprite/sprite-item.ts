@@ -6,7 +6,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { FrameContext } from '../timeline';
-import { ClipPlayable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
+import { ClipPlayable, TimelineClip, TrackMixerPlayable, TrackAsset } from '../timeline';
 import { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
 import { BufferUsage, VertexElementType } from '../../render';
@@ -35,7 +35,7 @@ interface SpriteComponentDataEx extends spec.SpriteComponentData {
 let seed = 0;
 
 @effectsClass(spec.DataType.SpriteColorPlayableAsset)
-export class SpriteColorPlayableAsset extends PlayableAsset {
+export class SpriteColorPlayableAsset extends TimelineClip {
   data: ColorPlayableAssetData;
 
   override createPlayable (): ClipPlayable {
@@ -47,6 +47,7 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
   }
 
   override fromData (data: ColorPlayableAssetData): void {
+    super.fromData(data);
     this.data = data;
   }
 }
@@ -58,18 +59,18 @@ export class ComponentTimeTrack extends TrackAsset {
 }
 
 export class SpriteComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object | undefined {
+  override resolveBoundObject (boundObject: object): object | undefined {
     return boundObject instanceof VFXItem ? boundObject.getComponent(SpriteComponent) : undefined;
   }
 }
 
 export class EffectComponentTimeTrack extends ComponentTimeTrack {
-  override updateAnimatedObject (boundObject: object): object | undefined {
+  override resolveBoundObject (boundObject: object): object | undefined {
     return boundObject instanceof VFXItem ? boundObject.getComponent(EffectComponent) : undefined;
   }
 }
 
-export class ComponentTimePlayableAsset extends PlayableAsset {
+export class ComponentTimePlayableAsset extends TimelineClip {
   override createPlayable (): ClipPlayable {
     const componentTimePlayable = new ComponentTimePlayable();
 

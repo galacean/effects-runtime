@@ -4,20 +4,34 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { effectsClass } from '../../../decorators';
 import type { ClipPlayable } from '../playable';
-import { PlayableAsset } from '../playable';
+import { TimelineClip } from '../timeline-clip';
+import type { TimelineClipData } from '../timeline-clip';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 import type { ValueGetter } from '../../../math';
 
-interface Vector3PropertyPlayableAssetData extends spec.EffectsObjectData {
+/** TODO: update to spec. */
+interface Vector4PropertyPlayableAssetData extends TimelineClipData {
+  dataType: spec.DataType.Vector4PropertyPlayableAsset,
+  curveData: spec.Vector4CurveValue,
+}
+
+/** TODO: update to spec. */
+interface Vector3PropertyPlayableAssetData extends TimelineClipData {
   curveData: spec.Vector3CurveValue,
 }
 
+/** TODO: update to spec. */
+interface Vector2PropertyPlayableAssetData extends TimelineClipData {
+  dataType: spec.DataType.Vector2PropertyPlayableAsset,
+  curveData: spec.Vector2CurveValue,
+}
+
 @effectsClass(spec.DataType.Vector4PropertyPlayableAsset)
-export class Vector4PropertyPlayableAsset extends PlayableAsset {
+export class Vector4PropertyPlayableAsset extends TimelineClip {
   curve: ValueGetter<Vector4>;
 
-  override fromData (data: spec.Vector4PropertyPlayableAssetData): void {
+  override fromData (data: Vector4PropertyPlayableAssetData): void {
     super.fromData(data);
     this.curve = createValueGetter(data.curveData);
   }
@@ -33,7 +47,7 @@ export class Vector4PropertyPlayableAsset extends PlayableAsset {
 }
 
 @effectsClass(spec.DataType.Vector3PropertyPlayableAsset)
-export class Vector3ropertyPlayableAsset extends PlayableAsset {
+export class Vector3ropertyPlayableAsset extends TimelineClip {
   curve: ValueGetter<Vector3>;
 
   override fromData (data: Vector3PropertyPlayableAssetData): void {
@@ -52,10 +66,10 @@ export class Vector3ropertyPlayableAsset extends PlayableAsset {
 }
 
 @effectsClass(spec.DataType.Vector2PropertyPlayableAsset)
-export class Vector2PropertyPlayableAsset extends PlayableAsset {
+export class Vector2PropertyPlayableAsset extends TimelineClip {
   curve: ValueGetter<Vector2>;
 
-  override fromData (data: spec.Vector2PropertyPlayableAssetData): void {
+  override fromData (data: Vector2PropertyPlayableAssetData): void {
     super.fromData(data);
     this.curve = createValueGetter(data.curveData);
   }
