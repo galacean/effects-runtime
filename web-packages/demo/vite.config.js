@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
           'render-level': resolve(__dirname, 'html/render-level.html'),
           'shader-compile': resolve(__dirname, 'html/shader-compile.html'),
           'multi-load-type': resolve(__dirname, 'html/multi-load-type.html'),
+          'multi-mask': resolve(__dirname, 'html/multi-mask.html'),
           'single': resolve(__dirname, 'html/single.html'),
           'dom-content': resolve(__dirname, 'html/dom-content.html'),
           'text': resolve(__dirname, 'html/text.html'),
