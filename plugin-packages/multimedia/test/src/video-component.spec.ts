@@ -1,4 +1,6 @@
-import { generateGUID, Player, spec } from '@galacean/effects';
+import type { Composition, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import { generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
+import type { VideoItemProps } from '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
@@ -7,7 +9,7 @@ interface VideoCompositionOptions {
   id: string,
   videos: spec.AssetBase[],
   start: number,
-  options: spec.VideoContentOptions,
+  options: VideoItemProps['options'],
   compositionDuration?: number,
   compositionEndBehavior?: spec.EndBehavior,
 }
@@ -31,7 +33,7 @@ describe('videoComponent ', function () {
         },
       ],
       start: 0,
-      options: { video: { id } },
+      options: { video: { id }, volume: 0.4, muted: true, playbackRate: 2 },
     };
     const videoJson = getVideoJson(options);
     const composition = await player.loadScene(videoJson);
@@ -43,6 +45,11 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.video!.volume).to.equal(0.4);
+    expect(videoComponent.video!.muted).to.be.true;
+    expect(videoComponent.video!.preservesPitch).to.be.false;
+    expect(videoComponent.video!.playbackRate).to.equal(2);
+    expect(videoComponent.video!.loop).to.be.false;
     composition.dispose();
   });
 
@@ -532,8 +539,278 @@ describe('videoComponent ', function () {
   });
 });
 
+describe('videoComponent:composition restart', function () {
+  this.timeout(15000);
+
+  for (const durationRatio of [1, 0.5]) {
+    it(`hides the previous frame when the destroyed item's duration is ${durationRatio} of the composition`, async function () {
+      const testPlayer = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+      const texture = await Texture.fromVideo('https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr', testPlayer.renderer.engine);
+      const video = (texture.source as Texture2DSourceOptionsVideo).video;
+
+      video.pause();
+      const itemDuration = video.duration * durationRatio;
+      const composition = await testPlayer.loadScene(getVideoJson({
+        duration: itemDuration,
+        compositionDuration: video.duration,
+        compositionEndBehavior: spec.EndBehavior.restart,
+        endBehavior: spec.EndBehavior.destroy,
+        id: generateGUID(),
+        videos: [],
+        start: 0,
+        options: { muted: true },
+      }), { autoplay: false });
+      const component = composition.getItemByName('video')!.getComponent(VideoComponent);
+      const upload = texture.uploadCurrentVideoFrame.bind(texture);
+      let uploadedTime = -1;
+
+      composition.textures.push(texture);
+      component.setTexture(texture);
+      texture.uploadCurrentVideoFrame = () => {
+        uploadedTime = video.currentTime;
+
+        return upload();
+      };
+      try {
+        component.pauseVideo();
+        composition.setTime(itemDuration - 0.05);
+        await new Promise<void>(resolve => {
+          video.addEventListener('seeked', () => resolve(), { once: true });
+          video.currentTime = itemDuration - 0.05;
+        });
+        texture.uploadCurrentVideoFrame();
+        expect(uploadedTime).to.be.above(itemDuration - 0.1);
+
+        composition.resume();
+        if (durationRatio < 1) {
+          composition.update((video.duration - 0.05 - composition.time) * 1000);
+          expect(component.isVideoActive).to.be.false;
+        }
+        composition.update(100);
+        expect(composition.time).to.be.within(0, 0.1);
+        expect(component.material.getTexture('_MainTex')).to.equal(testPlayer.renderer.engine.transparentTexture);
+        await new Promise<void>(resolve => video.addEventListener('seeked', () => resolve(), { once: true }));
+        expect(uploadedTime).to.be.within(0, 0.1);
+        expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      } finally {
+        testPlayer.dispose();
+      }
+    });
+  }
+});
+
+describe('videoComponent:first video binding', function () {
+  let composition: Composition;
+  let component: VideoComponent;
+  let video: HTMLVideoElement;
+  let texture: Texture;
+
+  beforeEach(async function () {
+    composition = await player.loadScene(getVideoJson({
+      duration: 30,
+      endBehavior: spec.EndBehavior.restart,
+      id: generateGUID(),
+      videos: [],
+      start: 0,
+      options: { volume: 0.4, muted: true, playbackRate: 2 },
+    }), { autoplay: false });
+    component = composition.getItemByName('video')!.getComponent(VideoComponent);
+    video = document.createElement('video');
+    texture = Texture.create(player.renderer.engine, { sourceType: TextureSourceType.video, video });
+  });
+
+  afterEach(function () {
+    composition.dispose();
+    texture.dispose();
+  });
+
+  it('applies configured settings after an image placeholder', function () {
+    component.setTexture(player.renderer.engine.whiteTexture);
+    expect(component.video).to.be.undefined;
+
+    component.setTexture(texture);
+
+    expect(component.video).to.equal(video);
+    expect(component.material.getTexture('_MainTex')).to.equal(texture);
+    expect(video.volume).to.equal(0.4);
+    expect(video.muted).to.be.true;
+    expect(video.preservesPitch).to.be.false;
+    expect(video.playbackRate).to.equal(2);
+    expect(video.loop).to.be.true;
+  });
+
+  it('applies settings changed before the video exists', function () {
+    component.setVolume(0);
+    component.setMuted(false);
+    component.setLoop(false);
+    component.setPlaybackRate(0.75);
+    component.setTexture(texture);
+
+    expect(video.volume).to.equal(0);
+    expect(video.muted).to.be.false;
+    expect(video.loop).to.be.false;
+    expect(video.playbackRate).to.equal(0.75);
+  });
+
+  it('uses automatic settings when manual overrides are reset before binding', function () {
+    component.setLoop(false);
+    component.setPlaybackRate(0.75);
+    component.resetLoop();
+    component.resetPlaybackRate();
+    component.setTexture(texture);
+
+    expect(video.loop).to.be.true;
+    expect(video.playbackRate).to.equal(2);
+  });
+
+  it('uses defaults when the component is created without serialized data', function () {
+    const item = new VFXItem(player.renderer.engine);
+    const addedComponent = item.addComponent(VideoComponent);
+
+    composition.addItem(item);
+    item.endBehavior = spec.EndBehavior.freeze;
+    video.volume = 0.2;
+    video.muted = true;
+    video.loop = true;
+    video.playbackRate = 1.5;
+    addedComponent.setTexture(texture);
+
+    expect(video.volume).to.equal(1);
+    expect(video.muted).to.be.false;
+    expect(video.loop).to.be.false;
+    expect(video.playbackRate).to.equal(1);
+  });
+
+  it('applies the latest settings when a video URL finishes loading', async function () {
+    const fromVideo = Texture.fromVideo;
+
+    Texture.fromVideo = async () => texture;
+    try {
+      const pending = component.setTexture('delayed-video.mp4');
+
+      component.setVolume(0.6);
+      await pending;
+      expect(component.video).to.equal(video);
+      expect(video.volume).to.equal(0.6);
+      expect(video.muted).to.be.true;
+      expect(video.playbackRate).to.equal(2);
+      expect(video.loop).to.be.true;
+    } finally {
+      Texture.fromVideo = fromVideo;
+    }
+  });
+
+  it('preserves replacement volume, mute, loop, and rate after switching back to an image', function () {
+    component.setTexture(texture);
+    component.setVolume(0.1);
+    component.setMuted(true);
+    component.setLoop(true);
+    component.setPlaybackRate(0.5);
+    const replacementVideo = document.createElement('video');
+    const replacement = Texture.create(player.renderer.engine, { sourceType: TextureSourceType.video, video: replacementVideo });
+
+    replacementVideo.volume = 0.8;
+    replacementVideo.muted = false;
+    replacementVideo.loop = false;
+    replacementVideo.playbackRate = 1.25;
+    try {
+      component.setTexture(replacement);
+      expect(replacementVideo.volume).to.equal(0.8);
+      expect(replacementVideo.muted).to.be.false;
+      expect(replacementVideo.loop).to.be.false;
+      expect(replacementVideo.playbackRate).to.equal(1.25);
+      expect(replacementVideo.preservesPitch).to.be.false;
+
+      component.setTexture(player.renderer.engine.whiteTexture);
+      component.setTexture(replacement);
+      expect(replacementVideo.volume).to.equal(0.8);
+      expect(replacementVideo.muted).to.be.false;
+      expect(replacementVideo.loop).to.be.false;
+      expect(replacementVideo.playbackRate).to.equal(1.25);
+    } finally {
+      replacement.dispose();
+    }
+  });
+});
+
 describe('videoComponent:playbackRate', function () {
   this.timeout(15000);
+
+  for (const automatic of [false, true]) {
+    it(`keeps frames continuous without pausing or seeking when changing the ${automatic ? 'composition' : 'video'} rate`, async function () {
+      const id = generateGUID();
+      const composition = await player.loadScene(getVideoJson({
+        duration: 30,
+        compositionDuration: 30,
+        endBehavior: spec.EndBehavior.restart,
+        id,
+        videos: [{ id, url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr' }],
+        start: 0,
+        options: { video: { id }, muted: true },
+      }));
+      const component = composition.getItemByName('video')!.getComponent(VideoComponent);
+      const video = component.video!;
+      const frames: number[] = [];
+      let callback: number | undefined;
+      const recordFrame: VideoFrameRequestCallback = (_, metadata) => {
+        frames.push(metadata.mediaTime);
+        callback = video.requestVideoFrameCallback(recordFrame);
+      };
+      const setRate = (rate: number) => {
+        if (automatic) {
+          composition.speed = rate;
+        } else {
+          component.setPlaybackRate(rate);
+        }
+        component.onUpdate(0);
+      };
+
+      try {
+        if (video.requestVideoFrameCallback) {
+          callback = video.requestVideoFrameCallback(recordFrame);
+        }
+        const deadline = performance.now() + 5000;
+
+        while (video.currentTime < 0.75 || video.paused) {
+          if (performance.now() > deadline) {
+            throw new Error('Video did not start playing');
+          }
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+
+        for (const rate of [2, 0.5, 1]) {
+          const time = video.currentTime;
+
+          frames.length = 0;
+          setRate(rate);
+          expect(video.playbackRate).to.equal(rate);
+          expect(video.paused).to.be.false;
+          expect(video.seeking).to.be.false;
+          await new Promise(resolve => setTimeout(resolve, 500));
+          if (callback !== undefined) {
+            // A media clock check alone misses iOS replaying decoded frames from zero.
+            expect(frames.length).to.be.above(0);
+            expect(Math.min(...frames)).to.be.at.least(time - 0.15);
+            expect(frames[frames.length - 1]).to.be.above(time + 0.1);
+          }
+        }
+
+        component.pauseVideo();
+        const pausedTime = video.currentTime;
+
+        setRate(2);
+        expect(video.playbackRate).to.equal(2);
+        expect(video.paused).to.be.true;
+        expect(video.seeking).to.be.false;
+        expect(video.currentTime).to.be.closeTo(pausedTime, 0.01);
+      } finally {
+        if (callback !== undefined) {
+          video.cancelVideoFrameCallback(callback);
+        }
+        composition.dispose();
+      }
+    });
+  }
 
   for (const configuredRate of [undefined, 2]) {
     it(`preserves the ${configuredRate ?? 'default'} rate through automatic updates and manual overrides`, async function () {
@@ -610,13 +887,13 @@ function getVideoJson (options: VideoCompositionOptions) {
         options: options.options,
         renderer: {
           'renderMode': 1,
-          'texture': {
+          'texture': options.videos.length ? {
             'id': 'b582d21fdd524c4684f1c057b220ddd0',
-          },
+          } : undefined,
         },
       },
     ],
-    textures: [
+    textures: options.videos.length ? [
       {
         'id': 'b582d21fdd524c4684f1c057b220ddd0',
         'source': {
@@ -624,7 +901,7 @@ function getVideoJson (options: VideoCompositionOptions) {
         },
         'flipY': true,
       },
-    ],
+    ] : [],
     geometries: [],
     materials: [],
     items: [

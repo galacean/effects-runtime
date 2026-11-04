@@ -529,6 +529,18 @@ let currentIndex = 0;
 let player: Player;
 const container = document.getElementById('J-container');
 
+function getVideoComponent (): VideoComponent | undefined {
+  const composition = player.getCompositions()[0];
+
+  for (const item of composition?.items ?? []) {
+    const component = item.getComponent(VideoComponent);
+
+    if (component) {
+      return component;
+    }
+  }
+}
+
 // 显示当前视频信息
 function updateInfo () {
   const info = document.getElementById('video-info');
@@ -671,12 +683,7 @@ const videoPauseBtn = document.createElement('button');
 videoPauseBtn.textContent = '视频暂停';
 videoPauseBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 videoPauseBtn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  videoComp?.pauseVideo();
+  getVideoComponent()?.pauseVideo();
 };
 
 // 视频播放按钮
@@ -685,12 +692,7 @@ const videoPlayBtn = document.createElement('button');
 videoPlayBtn.textContent = '视频播放';
 videoPlayBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 videoPlayBtn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  videoComp?.playVideo();
+  getVideoComponent()?.playVideo();
 };
 
 // 合成暂停按钮
@@ -727,12 +729,7 @@ const speed05Btn = document.createElement('button');
 speed05Btn.textContent = '视频0.5x';
 speed05Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed05Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  videoComp?.setPlaybackRate(0.5);
+  getVideoComponent()?.setPlaybackRate(0.5);
 };
 
 // 视频倍速1倍按钮
@@ -741,12 +738,7 @@ const speed1Btn = document.createElement('button');
 speed1Btn.textContent = '视频1x';
 speed1Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed1Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  videoComp?.setPlaybackRate(1);
+  getVideoComponent()?.setPlaybackRate(1);
 };
 
 // 视频倍速2倍按钮
@@ -755,12 +747,7 @@ const speed2Btn = document.createElement('button');
 speed2Btn.textContent = '视频2x';
 speed2Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed2Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  videoComp?.setPlaybackRate(2);
+  getVideoComponent()?.setPlaybackRate(2);
 };
 
 speedRow.appendChild(speed05Btn);
@@ -783,11 +770,5 @@ document.body.appendChild(controlPanel);
   });
 
   updateInfo();
-  const sc = await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
-  const videoItem = sc.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  setTimeout(() => {
-    player.gotoAndStop(3.5);
-  }, 2000);
+  await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
 })();
