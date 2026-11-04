@@ -1,9 +1,7 @@
-import type { CustomShape, CustomShapeData } from '@galacean/effects-specification';
+import type { CustomShape, ShapePathData } from '@galacean/effects-specification';
 import { triangulate } from '../../math/shape/triangulate';
 import type { GraphicsPath } from './graphics-path';
 import type { ShapePath } from './shape-path';
-
-type ShapePathData = Pick<CustomShapeData, 'points' | 'easingIns' | 'easingOuts' | 'shapes'>;
 
 export function appendBezierPaths (graphics: GraphicsPath, path: ShapePathData, screenScale = 1, closedOnly = false): void {
   for (const contour of path.shapes) {

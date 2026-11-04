@@ -1,5 +1,5 @@
 import {
-  RendererComponent, ColorPlayable, Engine, Geometry, HitTestType, MaskableGraphic, ParticleSystemRenderer, ShapeComponent,
+  RendererComponent, MaskComponent, ColorPlayable, Engine, Geometry, HitTestType, MaskableGraphic, ParticleSystemRenderer, ShapeComponent, TextComponent,
   TextureLoadAction, VFXItem, math, spec,
 } from '@galacean/effects';
 import type { ItemRenderer, MaskReference, TrackMatteReference } from '@galacean/effects';
@@ -139,5 +139,27 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(particle.maskManager.getMaskReferences()).deep.equals([{ maskable: graphic, inverted: false }]);
     });
 
+    it('preserves text single-material drawing and legacy visibility behavior with clipping', () => {
+      const text = item.addComponent(TextComponent);
+      const extra = item.addComponent(CustomGraphic);
+
+      text.material.setVector2('_Size', item.transform.size);
+      text.setTexture(engine.assetServer.whiteTexture);
+      text.setColor([1, 0, 0, 1]);
+      extra.onUpdate(0);
+      extra.setColor([0, 0, 1, 1]);
+      text.materials.push(extra.material);
+      expect(render(text)).deep.equals(Array.from({ length: 64 }, () => [255, 0, 0, 255]));
+
+      text.setVisible(false);
+      expect(render(text)).deep.equals(Array.from({ length: 64 }, () => [255, 0, 0, 255]));
+      item.addComponent(MaskComponent).setMasks([{
+        id: 'left', path: { easingIns: [], easingOuts: [],
+          shapes: [{ close: true, indexes: [0, 1, 2, 3].map(point => ({ point, easingIn: 0, easingOut: 0 })) }], points: [
+            { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 1 },
+          ] },
+      }]);
+      expect(render(text)).deep.equals(Array.from({ length: 64 }, (_, index) => index % 8 < 4 ? [255, 0, 0, 255] : [0, 0, 0, 0]));
+    });
   });
 }

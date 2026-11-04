@@ -3,6 +3,7 @@ import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effe
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
 import type { VFXItem } from '../vfx-item';
+import type { Renderer } from '../render/renderer';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -89,6 +90,8 @@ export enum ShaderType {
  *
  */
 export interface Maskable {
+  /** Optional content-specific basis for layer-owned paths, such as billboards. */
+  getPathMaskWorldMatrix? (renderer: Renderer): Matrix4,
   item: VFXItem,
   drawStencilMask (maskRef: number): void,
 }

@@ -9,6 +9,11 @@ import { glContext } from '../gl';
 import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { RendererComponent } from '../components';
+import type { MaskComponent } from '../components/mask-component';
+import type { VFXItem } from '../vfx-item';
+import type { CompositionComponent } from '../components/composition-component';
+import { getClass } from '../decorators';
+import { MaskStencil } from './mask-stencil';
 
 // The existing API accepts unresolved references without a mask path.
 type MaskOptions = {
@@ -190,16 +195,7 @@ export class MaskProcessor {
     return this.trackMatteReferences.slice();
   }
 
-  /**
-   * 绘制所有蒙版，被蒙版的元素调用。
-   *
-   * 使用递增 stencil 计数法实现任意数量蒙版的交集：
-   * 1. 正向蒙版按顺序渲染，每个仅在 stencil == 当前步数时递增（增量求交集）
-   * 2. 反向蒙版渲染，将已通过所有正向蒙版的像素标记为无效
-   * 3. 最终只有 stencil == 正向蒙版数量 的像素才通过测试
-   *
-   * 最多支持 254 个蒙版引用（8 位 stencil buffer 上限 255，需为反向 INCR 预留 1）
-   */
+  /** Intersects track mattes, frame clipping and layer-owned path stacks. */
   drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
     const frameClipMasks = maskedComponent.frameClipMasks;
     const addedFrameClipMasks: Maskable[] = [];
@@ -214,48 +210,121 @@ export class MaskProcessor {
       }
     }
 
-    if (this.trackMatteReferences.length > 0) {
-      renderer.clear(this.stencilClearAction);
+    const sources = this.trackMatteReferences.map(reference => ({
+      reference,
+      paths: this.getPathMasks(reference.maskable.item),
+    }));
+    const hasSourcePaths = sources.some(source => source.paths.length > 0);
 
-      // 分离正向和反向蒙版
-      const forwardMasks: MaskReference[] = [];
-      const reverseMasks: MaskReference[] = [];
+    if (hasSourcePaths) {
+      this.drawTrackMattesWithPaths(renderer, sources);
+    } else if (this.trackMatteReferences.length > 0) {
+      this.drawTrackMatteCounter(renderer);
+    }
 
-      for (const ref of this.trackMatteReferences) {
-        if (ref.inverted) {
-          reverseMasks.push(ref);
-        } else {
-          forwardMasks.push(ref);
-        }
+    const pathMasks = this.getPathMasks(maskedComponent.item);
+
+    if (pathMasks.length > 0) {
+      if (!hasSourcePaths && this.trackMatteReferences.length > 0) {
+        // Convert the legacy counter to binary coverage without losing the count == 0 case.
+        renderer.drawFullscreenStencil(MaskStencil.All, this.expectedStencilValue, glContext.EQUAL, glContext.ZERO, glContext.INCR);
+        renderer.drawFullscreenStencil(MaskStencil.All, 0, glContext.EQUAL, glContext.INCR, glContext.ZERO);
+        renderer.drawFullscreenStencil(
+          MaskStencil.Path, MaskStencil.Target | MaskStencil.Path, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target,
+        );
+      } else if (!hasSourcePaths) {
+        renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
       }
+      for (const pathMask of pathMasks) {
+        // A target's billboard basis must not affect an enclosing precomposition's paths.
+        pathMask.drawStencilStack(renderer, pathMask.item === maskedComponent.item ? maskedComponent.getPathMaskWorldMatrix(renderer) : undefined);
+        const intersection = MaskStencil.Target | MaskStencil.Path;
 
-      // 阶段一：绘制正向蒙版（增量求交集）
-      // 每个正向蒙版传入当前步数 i，setupMaskMaterial 会设置
-      // stencilFunc=EQUAL ref=i，只有已通过前 i 个蒙版的像素才会递增
-      for (let i = 0; i < forwardMasks.length; i++) {
-        forwardMasks[i].maskable.drawStencilMask(i);
+        renderer.drawFullscreenStencil(intersection, intersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Target);
       }
-
-      // 阶段二：绘制反向蒙版（"dirty"被覆盖的像素）
-      // 传入 forwardCount，只在 stencil == forwardCount 的像素上递增
-      // 被任意反向蒙版覆盖的像素 stencil 值会 > forwardCount
-      const forwardCount = forwardMasks.length;
-
-      for (const ref of reverseMasks) {
-        ref.maskable.drawStencilMask(forwardCount);
-      }
-
-      // 期望的 stencil 值 = 正向蒙版数量
-      this.expectedStencilValue = forwardCount;
     }
 
     for (const material of maskedComponent.materials) {
-      this.setupMaskedMaterial(material);
+      if (hasSourcePaths || pathMasks.length > 0) {
+        material.stencilTest = true;
+        material.stencilMask = [MaskStencil.Target, MaskStencil.Target];
+        material.stencilRef = [MaskStencil.Target, MaskStencil.Target];
+        material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
+        material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
+        material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
+        material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
+      } else {
+        this.setupMaskedMaterial(material);
+      }
     }
 
     for (const frameClipMask of addedFrameClipMasks) {
       this.removeMaskReference(frameClipMask);
     }
+  }
+
+  private drawTrackMattesWithPaths (renderer: Renderer, sources: { reference: MaskReference, paths: MaskComponent[] }[]): void {
+    const pathBits = MaskStencil.Path | MaskStencil.Scratch;
+    const sourceIntersection = MaskStencil.Source | MaskStencil.Path;
+    const targetIntersection = MaskStencil.Target | MaskStencil.Path;
+
+    renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
+    for (const { reference, paths } of sources) {
+      renderer.drawFullscreenStencil(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE);
+      for (const path of paths) {
+        path.drawStencilStack(renderer, path.item === reference.maskable.item ? reference.maskable.getPathMaskWorldMatrix?.(renderer) : undefined);
+        renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
+      }
+      renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO);
+      // EQUAL/INCR source callbacks set the Path bit only inside both Source and Target coverage.
+      reference.maskable.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
+      if (reference.inverted) {
+        renderer.drawFullscreenStencil(MaskStencil.Path, MaskStencil.Path, glContext.EQUAL, glContext.ZERO, glContext.KEEP, MaskStencil.Target);
+      } else {
+        renderer.drawFullscreenStencil(MaskStencil.Path, targetIntersection, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target);
+      }
+    }
+  }
+
+  private drawTrackMatteCounter (renderer: Renderer): void {
+    renderer.clear(this.stencilClearAction);
+    let forwardCount = 0;
+
+    // EQUAL/INCR keeps only pixels covered by every forward source, regardless of reference order.
+    for (const reference of this.trackMatteReferences) {
+      if (!reference.inverted) {
+        reference.maskable.drawStencilMask(forwardCount++);
+      }
+    }
+    for (const reference of this.trackMatteReferences) {
+      if (reference.inverted) {
+        reference.maskable.drawStencilMask(forwardCount);
+      }
+    }
+    this.expectedStencilValue = forwardCount;
+  }
+
+  private getPathMasks (owner: VFXItem): MaskComponent[] {
+    const MaskClass: typeof MaskComponent = getClass('MaskComponent');
+    const CompositionClass: typeof CompositionComponent = getClass('CompositionComponent');
+    const masks: MaskComponent[] = [];
+
+    if (!MaskClass) {
+      return masks;
+    }
+    for (let item = owner; item; item = item.parent!) {
+      // Only precomposition boundaries propagate clipping, not transform parenting.
+      if (item !== owner && (!CompositionClass || !item.getComponent(CompositionClass))) {
+        continue;
+      }
+      const mask = item.getComponent(MaskClass);
+
+      if (mask?.hasActivePaths()) {
+        masks.push(mask);
+      }
+    }
+
+    return masks;
   }
 
   /**

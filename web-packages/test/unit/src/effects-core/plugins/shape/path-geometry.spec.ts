@@ -47,7 +47,7 @@ describe('core/plugins/shape/path-geometry', () => {
   });
 
   it('keeps open shape paths available for drawing but excludes them from masks', () => {
-    const data: Pick<spec.CustomShapeData, 'points' | 'easingIns' | 'easingOuts' | 'shapes'> = {
+    const data: spec.ShapePathData = {
       points: [{ x: -1, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 1 }],
       easingIns: [], easingOuts: [],
       shapes: [{ close: false, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],

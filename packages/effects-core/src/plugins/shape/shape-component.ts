@@ -71,7 +71,7 @@ interface ShapeAttributes {
 /**
  * 自定义图形参数
  */
-interface CustomShapeAttribute extends ShapeAttributes {
+interface CustomShapeAttribute extends ShapeAttributes, spec.ShapePathData {
   type: spec.ShapePrimitiveType.Custom,
   /**
    * 路径点
@@ -85,10 +85,6 @@ interface CustomShapeAttribute extends ShapeAttributes {
    * 入射控制点
    */
   easingOuts: Vector2[],
-  /**
-   * 自定义形状
-   */
-  shapes: spec.CustomShape[],
 }
 
 /**
