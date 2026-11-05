@@ -1,5 +1,5 @@
 import type { VFXItem } from '@galacean/effects';
-import { FrameComponent, MouseButton, MouseButtonMask, spec, TextComponent, Texture, type FrameTitleStyle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { FrameComponent, MouseButton, MouseButtonMask, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
@@ -173,7 +173,7 @@ export class ResizeSelectionGizmo extends Gizmo {
   /** 当前交互平面，initInteractionPlane 写入。 */
   interactionPlane: Plane;
   private configOff?: () => void;
-  private frameTitleStyle?: FrameTitleStyle;
+  private frameTitleRenderer?: FrameTitle;
   private savedTitleMaxWidth = Infinity;
 
   /** 边与角点共用一次绝对缩放快照。 */
@@ -807,7 +807,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const hasOwnTitle = this.selectedItems.length === 1
       && this.selectedItems[0].type === spec.ItemType.null
       && !!this.selectedItems[0].name
-      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleStyle;
+      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleRenderer?.titleStyle;
 
     if (this.selectedItems.length === 1 && infoShowEnabled && !isSingleTextSelection) {
       this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
@@ -1343,11 +1343,12 @@ export class ResizeSelectionGizmo extends Gizmo {
     const item = this.selectedItems.length === 1 ? this.selectedItems[0] : undefined;
     const frame = this.config.infoShowEnabled && item?.type === spec.ItemType.null
       ? item.getComponent(FrameComponent) : undefined;
-    const next = item?.name && !this.wireframe.box.isEmpty() ? frame?.titleStyle : undefined;
+    const title = frame?.titleRenderer;
+    const next = title?.titleStyle && item?.name && !this.wireframe.box.isEmpty() ? title : undefined;
 
-    if (this.frameTitleStyle !== next) {
+    if (this.frameTitleRenderer !== next) {
       this.releaseFrameTitleWidth();
-      this.frameTitleStyle = next;
+      this.frameTitleRenderer = next;
       this.savedTitleMaxWidth = next?.maxWidth ?? Infinity;
     }
     if (next) {
@@ -1360,9 +1361,9 @@ export class ResizeSelectionGizmo extends Gizmo {
   }
 
   private releaseFrameTitleWidth (): void {
-    if (this.frameTitleStyle) {
-      this.frameTitleStyle.maxWidth = this.savedTitleMaxWidth;
-      this.frameTitleStyle = undefined;
+    if (this.frameTitleRenderer) {
+      this.frameTitleRenderer.maxWidth = this.savedTitleMaxWidth;
+      this.frameTitleRenderer = undefined;
     }
   }
 

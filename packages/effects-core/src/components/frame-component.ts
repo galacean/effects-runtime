@@ -13,12 +13,11 @@ import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { effectsClass } from '../decorators';
 import { HitTestType, type HitTestTriangleParams } from '../plugins';
 import { addItem } from '../utils';
-import { FrameTitle } from './frame-title';
+import { FrameTitle, type FrameTitleStyleData } from './frame-title';
 import type { Paint } from '../plugins/shape/paint';
 import { createPaint, createPaintMaterial, updatePaintMaterial } from '../plugins/shape/paint';
 import { buildLine, type StrokeAttributes } from '../math/shape/build-line';
 import type { Texture } from '../texture';
-import type { FontStyle, FontWeight } from '../render/text-cache';
 
 export interface FrameComponentData extends spec.ComponentData {
   fills?: spec.PaintData[],
@@ -27,33 +26,6 @@ export interface FrameComponentData extends spec.ComponentData {
   strokeCap?: spec.LineCap,
   strokeJoin?: spec.LineJoin,
   titleStyle?: FrameTitleStyleData,
-}
-
-export interface FrameTitleStyleData {
-  color?: spec.ColorData,
-  fontSize?: number,
-  fontFamily?: string,
-  fontWeight?: FontWeight,
-  fontStyle?: FontStyle,
-  gap?: number,
-  icon?: spec.DataPath,
-  iconSize?: number,
-  iconGap?: number,
-}
-
-/** 标题使用屏幕逻辑像素，与元素的缩放无关。 */
-export class FrameTitleStyle {
-  color = new Color(0.4, 0.4, 0.4, 1);
-  fontSize = 14;
-  fontFamily = 'sans-serif';
-  fontWeight: FontWeight = 'normal';
-  fontStyle: FontStyle = 'normal';
-  gap = 5.5;
-  icon?: Texture;
-  iconSize = 15;
-  iconGap = 5;
-  /** 运行时布局限制，供 Gizmo 为尺寸标签预留宽度，不写入组件数据。 */
-  maxWidth = Infinity;
 }
 
 @effectsClass('FrameComponent')
@@ -68,8 +40,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     join: spec.LineJoin.Miter,
     miterLimit: 10,
   };
-  /** 设置后由 Frame 自身绘制元素 name；未设置时不绘制标题。 */
-  titleStyle?: FrameTitleStyle;
+  readonly titleRenderer = new FrameTitle(this.engine);
 
   private clipGeometry: Geometry;
   private strokeGeometry?: Geometry;
@@ -79,8 +50,6 @@ export class FrameComponent extends RendererComponent implements Maskable {
   private readonly fillMaterials: Material[] = [];
   private readonly strokeMaterials: Material[] = [];
   private readonly paintSize = new Vector2();
-  private titleRenderer?: FrameTitle;
-  private titleVisible = false;
   private worldMatrix = new Matrix4();
 
   override onAwake (): void {
@@ -155,10 +124,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
     this.updatePaints(this.fills, this.fillMaterials);
     this.updatePaints(this.strokes, this.strokeMaterials);
-    this.materials = [this.clipMaterial, ...this.fillMaterials, ...this.strokeMaterials];
-    if (this.titleRenderer) {
-      this.materials.push(...this.titleRenderer.materials);
-    }
+    this.materials = [this.clipMaterial, ...this.fillMaterials, ...this.strokeMaterials, ...this.titleRenderer.materials];
   }
 
   override render (renderer: Renderer): void {
@@ -177,15 +143,13 @@ export class FrameComponent extends RendererComponent implements Maskable {
         renderer.drawGeometry(this.strokeGeometry, this.worldMatrix, material);
       }
     }
-    if (this.titleVisible && this.titleRenderer) {
-      this.titleRenderer.render(renderer);
-    }
+    this.titleRenderer.render(renderer);
   }
 
   override onDestroy (): void {
     this.clipGeometry.dispose();
     this.strokeGeometry?.dispose();
-    this.titleRenderer?.dispose();
+    this.titleRenderer.dispose();
     this.fillMaterials.forEach(material => material.dispose());
     this.strokeMaterials.forEach(material => material.dispose());
     this.clipMaterial.dispose();
@@ -217,45 +181,14 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.strokeAttributes.cap = data.strokeCap ?? spec.LineCap.Butt;
     this.strokeAttributes.join = data.strokeJoin ?? spec.LineJoin.Miter;
 
-    const { titleStyle } = data;
-
-    if (titleStyle !== undefined) {
-      const style = new FrameTitleStyle();
-
-      if (titleStyle.color) {
-        style.color.copyFrom(titleStyle.color);
-      }
-      if (titleStyle.fontSize !== undefined) {
-        style.fontSize = titleStyle.fontSize;
-      }
-      if (titleStyle.fontFamily !== undefined) {
-        style.fontFamily = titleStyle.fontFamily;
-      }
-      if (titleStyle.fontWeight !== undefined) {
-        style.fontWeight = titleStyle.fontWeight;
-      }
-      if (titleStyle.fontStyle !== undefined) {
-        style.fontStyle = titleStyle.fontStyle;
-      }
-      if (titleStyle.gap !== undefined) {
-        style.gap = titleStyle.gap;
-      }
-      if (titleStyle.icon !== undefined) {
-        style.icon = this.findObject<Texture>(titleStyle.icon);
-      }
-      if (titleStyle.iconSize !== undefined) {
-        style.iconSize = titleStyle.iconSize;
-      }
-      if (titleStyle.iconGap !== undefined) {
-        style.iconGap = titleStyle.iconGap;
-      }
-      this.titleStyle = style;
+    if (data.titleStyle !== undefined) {
+      this.titleRenderer.fromData(data.titleStyle);
     }
   }
 
   private getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     this.updateDecorationGeometry();
-    if (!force && !this.titleVisible) {
+    if (!force && !this.titleRenderer.visible) {
       return;
     }
 
@@ -272,9 +205,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     const thickness = this.getBorderWorldThickness(TL, TR);
     const triangles = force ? [...this.getBorderTriangles(TL, TR, BR, BL, thickness), ...this.getStrokeTriangles(worldMatrix)] : [];
 
-    if (this.titleVisible && this.titleRenderer) {
-      triangles.push(...this.titleRenderer.getHitTestTriangles());
-    }
+    triangles.push(...this.titleRenderer.getHitTestTriangles());
 
     return {
       type: HitTestType.triangle,
@@ -320,7 +251,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
   /** 根据当前相机投影更新自身描边和标题，绘制与命中共用同一份顶点。 */
   private updateDecorationGeometry (): { width: number, height: number } | undefined {
-    this.titleVisible = false;
+    this.titleRenderer.hide();
     const camera = this.item.composition?.camera;
 
     if (!camera) {
@@ -341,15 +272,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     if (this.strokeAttributes.width > 0 && this.strokes.length > 0) {
       this.updateStrokeGeometry(width, height);
     }
-    const style = this.titleStyle;
-
-    if (this.item.name && style && style.fontSize > 0 && style.color.a > 0) {
-      if (!this.titleRenderer) {
-        this.titleRenderer = new FrameTitle(this.engine);
-      }
-      this.titleRenderer.update(this, style, [topLeft, topRight, project(0.5, -0.5), bottomLeft]);
-      this.titleVisible = true;
-    }
+    this.titleRenderer.update(this, [topLeft, topRight, project(0.5, -0.5), bottomLeft]);
 
     return { width, height };
   }

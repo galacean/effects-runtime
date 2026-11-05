@@ -115,7 +115,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     const frame = data.item.getComponent(FrameComponent);
 
     frame.priority = -100;
-    frame.titleStyle = new FrameTitleStyle();
+    frame.titleRenderer.titleStyle = new FrameTitleStyle();
     frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
     frame.strokeAttributes.width = 1;
     if (id) {
@@ -309,8 +309,8 @@ export class DemoScene extends EventEmitter<SceneEvents> {
       });
       const texture = await this.frameIcon;
 
-      if (!this.disposed && this.items.includes(data) && frame.titleStyle) {
-        frame.titleStyle.icon = texture;
+      if (!this.disposed && this.items.includes(data) && frame.titleRenderer.titleStyle) {
+        frame.titleRenderer.icon = texture;
       }
     } catch (error) {
       if (!this.disposed) {

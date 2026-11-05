@@ -2,48 +2,270 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
+import type * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Material } from '../material';
 import { Geometry, VertexElementType, type Renderer, type TextMeasurement } from '../render';
-import { TextCache, type GlyphAtlas } from '../render/text-cache';
+import { TextCache, type FontStyle, type FontWeight, type GlyphAtlas } from '../render/text-cache';
 import type { Texture } from '../texture';
-import type { FrameComponent, FrameTitleStyle } from './frame-component';
+import type { FrameComponent } from './frame-component';
+
+export interface FrameTitleStyleData {
+  color?: spec.ColorData,
+  fontSize?: number,
+  fontFamily?: string,
+  fontWeight?: FontWeight,
+  fontStyle?: FontStyle,
+  gap?: number,
+  icon?: spec.DataPath,
+  iconSize?: number,
+  iconGap?: number,
+}
+
+/** 标题使用屏幕逻辑像素，与元素的缩放无关。 */
+export class FrameTitleStyle {
+  color = new Color(0.4, 0.4, 0.4, 1);
+  fontSize = 14;
+  fontFamily = 'sans-serif';
+  fontWeight: FontWeight = 'normal';
+  fontStyle: FontStyle = 'normal';
+  gap = 5.5;
+  icon: Texture | undefined = undefined;
+  iconSize = 15;
+  iconGap = 5;
+}
 
 /** Frame 自身绘制标题，共用 Graphics 的字形图集、排版和字重。 */
 export class FrameTitle {
   readonly materials: Material[] = [];
+  private style?: FrameTitleStyle;
+  private titleVisible = false;
+  private dirty = true;
+  private widthLimit = Infinity;
+  private name = '';
+  private width = 0;
+  private activeIcon?: Texture;
+  private atlas?: GlyphAtlas;
   private geometry?: Geometry;
   private readonly drawMaterials: Material[] = [];
   private readonly hitPositions = new Float32Array(12);
   private readonly worldMatrix = new Matrix4();
   private iconMaterial?: Material;
-  private atlas?: GlyphAtlas;
-  private textKey = '';
 
   constructor (private readonly engine: Engine) {}
 
-  update (frame: FrameComponent, style: FrameTitleStyle, corners: Vector3[]): void {
+  get titleStyle (): Readonly<FrameTitleStyle> | undefined {
+    return this.style;
+  }
+
+  set titleStyle (style: FrameTitleStyle | undefined) {
+    this.style = style;
+    this.dirty = true;
+    this.hide();
+  }
+
+  get visible (): boolean {
+    return this.titleVisible;
+  }
+
+  /** 运行时布局限制，供 Gizmo 为尺寸标签预留宽度，不写入组件数据。 */
+  get maxWidth (): number {
+    return this.widthLimit;
+  }
+
+  set maxWidth (width: number) {
+    if (this.widthLimit !== width) {
+      this.widthLimit = width;
+      this.dirty = true;
+    }
+  }
+
+  get color (): Color | undefined {
+    return this.style?.color;
+  }
+
+  set color (value: Color) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.color !== value) {
+      style.color = value;
+      this.dirty = true;
+    }
+  }
+
+  get fontSize (): number | undefined {
+    return this.style?.fontSize;
+  }
+
+  set fontSize (value: number) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.fontSize !== value) {
+      style.fontSize = value;
+      this.dirty = true;
+    }
+  }
+
+  get fontFamily (): string | undefined {
+    return this.style?.fontFamily;
+  }
+
+  set fontFamily (value: string) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.fontFamily !== value) {
+      style.fontFamily = value;
+      this.dirty = true;
+    }
+  }
+
+  get fontWeight (): FontWeight | undefined {
+    return this.style?.fontWeight;
+  }
+
+  set fontWeight (value: FontWeight) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.fontWeight !== value) {
+      style.fontWeight = value;
+      this.dirty = true;
+    }
+  }
+
+  get fontStyle (): FontStyle | undefined {
+    return this.style?.fontStyle;
+  }
+
+  set fontStyle (value: FontStyle) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.fontStyle !== value) {
+      style.fontStyle = value;
+      this.dirty = true;
+    }
+  }
+
+  get gap (): number | undefined {
+    return this.style?.gap;
+  }
+
+  set gap (value: number) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.gap !== value) {
+      style.gap = value;
+      this.dirty = true;
+    }
+  }
+
+  get icon (): Texture | undefined {
+    return this.style?.icon;
+  }
+
+  set icon (value: Texture | undefined) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.icon !== value) {
+      style.icon = value;
+      this.dirty = true;
+    }
+  }
+
+  get iconSize (): number | undefined {
+    return this.style?.iconSize;
+  }
+
+  set iconSize (value: number) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.iconSize !== value) {
+      style.iconSize = value;
+      this.dirty = true;
+    }
+  }
+
+  get iconGap (): number | undefined {
+    return this.style?.iconGap;
+  }
+
+  set iconGap (value: number) {
+    const style = this.style ??= new FrameTitleStyle();
+
+    if (style.iconGap !== value) {
+      style.iconGap = value;
+      this.dirty = true;
+    }
+  }
+
+  fromData (data: FrameTitleStyleData): void {
+    const style = new FrameTitleStyle();
+
+    if (data.color) {
+      style.color.copyFrom(data.color);
+    }
+    if (data.fontSize !== undefined) {
+      style.fontSize = data.fontSize;
+    }
+    if (data.fontFamily !== undefined) {
+      style.fontFamily = data.fontFamily;
+    }
+    if (data.fontWeight !== undefined) {
+      style.fontWeight = data.fontWeight;
+    }
+    if (data.fontStyle !== undefined) {
+      style.fontStyle = data.fontStyle;
+    }
+    if (data.gap !== undefined) {
+      style.gap = data.gap;
+    }
+    if (data.icon !== undefined) {
+      style.icon = this.engine.effectsObjectServer.findObject<Texture>(data.icon);
+    }
+    if (data.iconSize !== undefined) {
+      style.iconSize = data.iconSize;
+    }
+    if (data.iconGap !== undefined) {
+      style.iconGap = data.iconGap;
+    }
+    this.titleStyle = style;
+  }
+
+  hide (): void {
+    this.titleVisible = false;
+  }
+
+  update (frame: FrameComponent, corners: Vector3[]): void {
+    const style = this.style;
+    const name = frame.item.name;
+
+    this.titleVisible = !!(name && style && style.fontSize > 0 && style.color.a > 0);
+    if (!this.titleVisible || !style) {
+      return;
+    }
     const { fontSize, fontFamily, fontWeight, fontStyle } = style;
     const icon = style.icon && !style.icon.isDestroyed && style.iconSize > 0 ? style.icon : undefined;
     const graphics = this.engine.renderingServer.graphics;
     const edgeWidth = this.updateWorldMatrix(frame, corners);
     const textOffset = icon ? style.iconSize + style.iconGap : 0;
-    const maxWidth = Math.max(0, Math.min(edgeWidth, style.maxWidth) - textOffset);
-    const measure = (text: string) => graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
-    const text = this.ellipsize(`${icon ? ' ' : ''}${frame.item.name.replace(/[\r\n]+/g, ' ')}`, maxWidth, measure);
+    const width = Math.min(edgeWidth, this.maxWidth);
     const atlas = graphics.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
-    const key = JSON.stringify([
-      text, fontSize, fontFamily, fontWeight, fontStyle, atlas.resolution,
-      style.gap, icon?.getInstanceId(), style.iconSize, style.iconGap,
-    ]);
 
-    if (this.textKey !== key || this.atlas !== atlas) {
+    // 名称、投影宽度和外部资源可独立于样式更新发生变化。
+    if (this.name !== name || this.width !== width || this.atlas !== atlas || this.activeIcon !== icon) {
+      this.dirty = true;
+    }
+    if (this.dirty) {
+      const measure = (text: string) => graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
+      const text = this.ellipsize(`${icon ? ' ' : ''}${name.replace(/[\r\n]+/g, ' ')}`, Math.max(0, width - textOffset), measure);
       const metrics = measure(text);
 
       this.updateGeometry(style, atlas, text, metrics, icon);
-      this.textKey = key;
+      this.name = name;
+      this.width = width;
       this.atlas = atlas;
+      this.activeIcon = icon;
+      this.dirty = false;
     }
     for (const material of this.materials) {
       if (material !== this.iconMaterial) {
@@ -241,12 +463,15 @@ export class FrameTitle {
   }
 
   render (renderer: Renderer): void {
-    if (this.geometry) {
+    if (this.titleVisible && this.geometry) {
       this.drawMaterials.forEach((material, index) => renderer.drawGeometry(this.geometry!, this.worldMatrix, material, index));
     }
   }
 
   getHitTestTriangles (): TriangleLike[] {
+    if (!this.titleVisible || !this.geometry) {
+      return [];
+    }
     const point = (index: number) => this.worldMatrix.transformPoint(new Vector3(
       this.hitPositions[index * 3], this.hitPositions[index * 3 + 1], this.hitPositions[index * 3 + 2],
     ));
@@ -267,6 +492,7 @@ export class FrameTitle {
   }
 
   dispose (): void {
+    this.hide();
     this.disposeGeometry();
   }
 }
