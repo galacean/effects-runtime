@@ -1,6 +1,6 @@
-import { CompositionComponent, EventEmitter, FrameComponent, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, spec } from '@galacean/effects';
-import type { Composition, Player, VFXItem, math } from '@galacean/effects';
-import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { CompositionComponent, EventEmitter, FrameComponent, FrameTitleStyle, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
+import type { Composition, Player, VFXItem } from '@galacean/effects';
+import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 export type Point2D = [number, number];
@@ -45,6 +45,8 @@ export class DemoScene extends EventEmitter<SceneEvents> {
   private videoCount = 0;
   private effectsCount = 0;
   private defaultFrame?: VFXItem;
+  private frameIcon?: Promise<Texture>;
+  private frameIconTexture?: Texture;
   private disposed = false;
 
   constructor (private readonly player: Player, private readonly composition: Composition) {
@@ -94,6 +96,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     this.createText([0, -2.65], { name: 'Text 2 · 可编辑说明', value: '拖动、缩放、旋转；双击修改文字。', fontSize: 16, width: 600, parent: frame.item });
     this.createText([-1.95, 0.05], { name: 'Video · 说明', value: 'Video · 视频', fontSize: 14, width: 300, parent: frame.item });
     this.createText([1.95, 0.05], { name: 'Effects · 说明', value: 'Effects · 动效', fontSize: 14, width: 300, parent: frame.item });
+    this.createFrameExamples();
 
     return sprites[0];
   }
@@ -109,10 +112,16 @@ export class DemoScene extends EventEmitter<SceneEvents> {
   createFrame (position: Point2D, size: Point2D, id?: string): DemoItem {
     const data = this.createContainer(position, size, 'Frame', `Frame ${++this.frameCount}`);
 
-    data.item.getComponent(FrameComponent).priority = -100;
+    const frame = data.item.getComponent(FrameComponent);
+
+    frame.priority = -100;
+    frame.titleStyle = new FrameTitleStyle();
+    frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
+    frame.strokeAttributes.width = 1;
     if (id) {
       data.item.setInstanceId(id);
     }
+    void this.setFrameTitleIcon(data, frame);
 
     return data;
   }
@@ -284,6 +293,30 @@ export class DemoScene extends EventEmitter<SceneEvents> {
 
   dispose (): void {
     this.disposed = true;
+    this.frameIconTexture?.dispose();
+  }
+
+  private async setFrameTitleIcon (data: DemoItem, frame: FrameComponent): Promise<void> {
+    try {
+      this.frameIcon ??= Texture.fromImage(resizeSelectionConfig.defaults.frameLogoUrl, this.player.engine).then(texture => {
+        if (this.disposed) {
+          texture.dispose();
+        } else {
+          this.frameIconTexture = texture;
+        }
+
+        return texture;
+      });
+      const texture = await this.frameIcon;
+
+      if (!this.disposed && this.items.includes(data) && frame.titleStyle) {
+        frame.titleStyle.icon = texture;
+      }
+    } catch (error) {
+      if (!this.disposed) {
+        this.emit('resourceerror', 'Frame 标题图标加载失败', error);
+      }
+    }
   }
 
   private register (data: DemoItem): DemoItem {
@@ -294,8 +327,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
   }
 
   private createContainer (position: Point2D, size: Point2D, kind: 'Frame' | 'Effects', name: string, parent?: VFXItem): DemoItem {
-    // Gizmo 通过运行时名称区分画板和动效容器，图层使用独立展示名称。
-    const item = VFXItemFactory.createVFXItem(this.composition, null, kind === 'Frame' ? '画板' : '动效', FrameComponent);
+    const item = VFXItemFactory.createVFXItem(this.composition, null, kind === 'Frame' ? name : '动效', FrameComponent);
 
     item.type = spec.ItemType.null;
     if (parent) {
@@ -303,8 +335,35 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     }
     item.setPosition(...position, 0);
     item.transform.setSize(...size);
+    if (kind === 'Effects') {
+      item.getComponent(FrameComponent).fills = [];
+    }
 
     return this.register({ item, name, kind });
+  }
+
+  /** 用同一张底图对照透明与半透明画板，标题和线框始终可见。 */
+  private createFrameExamples (): void {
+    for (const [y, alpha, label] of [[1.55, 0, '透明填充'], [-1.55, 0.5, '半透明填充']] as const) {
+      const background = DefaultVFXItems.createSprite(this.composition, null, `${label} · 底图`);
+      const sprite = background.getComponent(SpriteComponent);
+
+      background.setPosition(6.65, y, 0);
+      background.transform.setSize(3.6, 2.45);
+      sprite.setTexture(this.createCardTexture('下层颜色', '#3478e5'));
+      sprite.priority = -101;
+      this.register({ item: background, name: background.name, kind: 'Sprite' });
+      const data = this.createFrame([6.65, y], [3.2, 2.1]);
+      const component = data.item.getComponent(FrameComponent);
+
+      data.name += ` · ${label}`;
+      data.item.name = data.name;
+      component.fills = [{ type: spec.FillType.Solid, color: new math.Color(1, 1, 1, alpha) }];
+      component.strokeAttributes.width = 2;
+      if (alpha > 0) {
+        data.item.setRotation(0, 0, -8);
+      }
+    }
   }
 
   private reportResourceError (data: DemoItem, error: unknown): void {

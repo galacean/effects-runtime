@@ -1,64 +1,28 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import type { Maskable, MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
+import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
-import { BufferUsage, GLSLVersion, Geometry, VertexElementType } from '../../render';
-import type { GradientValue, StrokeAttributes } from '../../math';
-import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import { BufferUsage, Geometry, VertexElementType } from '../../render';
+import type { StrokeAttributes } from '../../math';
+import { Polygon, buildLine, extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
-import vert from './shaders/shape.vert.glsl';
-import frag from './shaders/shape.frag.glsl';
+import type { Paint, SolidPaint } from './paint';
+import { createPaint, createPaintMaterial, updatePaintMaterial } from './paint';
 import { TrimPath } from './trim-path';
 import { GraphicsPath } from './graphics-path';
 import type { ShapePath } from './shape-path';
 import type { BoundingBoxInfo } from '../interact/mesh-collider';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 
-type Paint = SolidPaint | GradientPaint | TexturePaint;
-
-export interface SolidPaint {
-  type: spec.FillType.Solid,
-  color: Color,
-}
-
-export interface GradientPaint {
-  type: spec.FillType.GradientLinear | spec.FillType.GradientAngular | spec.FillType.GradientRadial,
-  gradientStops: GradientValue,
-  startPoint: Vector2,
-  endPoint: Vector2,
-}
-
-export interface TextureTransform {
-  offset: Vector2,
-  rotation: number,
-  scale: Vector2,
-}
-
-export interface TexturePaint {
-  type: spec.FillType.Texture,
-  texture: Texture,
-  scaleMode: TexturePaintScaleMode,
-  scalingFactor: number,
-  opacity: number,
-  textureTransform: TextureTransform,
-}
-
-export enum TexturePaintScaleMode {
-  Fill,
-  Fit,
-  Crop,
-  Tile
-}
+export type { Paint, SolidPaint, GradientPaint, TexturePaint, TextureTransform } from './paint';
+export { TexturePaintScaleMode } from './paint';
 
 interface ShapeAttributes {
   /**
@@ -644,103 +608,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private updateMaterials () {
-    for (let i = 0; i < this.fills.length; i++) {
-      this.updatePaintMaterial(this.fillMaterials[i], this.fills[i]);
-    }
+    const destSize = new Vector2(1, 1);
 
-    for (let i = 0; i < this.strokes.length; i++) {
-      this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
-    }
-  }
-
-  private updatePaintMaterial (material: Material, paint: Paint) {
-    material.setFloat('_FillType', paint.type);
-
-    if (paint.type === spec.FillType.Solid) {
-      material.color = paint.color;
-    } else if (paint.type === spec.FillType.GradientLinear || paint.type === spec.FillType.GradientAngular || paint.type === spec.FillType.GradientRadial) {
-      this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
-    } else if (paint.type === spec.FillType.Texture) {
-      material.setInt('_ImageScaleMode', paint.scaleMode);
-      material.setVector2('_ImageSize', new Vector2(paint.texture.getWidth(), paint.texture.getHeight()));
-
+    if (this.fills.some(paint => paint.type === spec.FillType.Texture) || this.strokes.some(paint => paint.type === spec.FillType.Texture)) {
       const boundingBox = this.getBoundingBox();
       const topRight = boundingBox.area[0].p1;
       const bottomLeft = boundingBox.area[1].p2;
 
-      material.setVector2('_DestSize', new Vector2(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y));
-      material.setFloat('_ImageOpacity', paint.opacity);
-      material.setFloat('_ImageScalingFactor', paint.scalingFactor);
-      material.setTexture('_ImageTex', paint.texture);
-
-      const transform = paint.textureTransform;
-
-      material.setMatrix3('_TextureTransform', new Matrix3()
-        .scale(transform.scale.x, transform.scale.y)
-        .rotate(transform.rotation)
-        .translate(transform.offset.x, transform.offset.y)
-        .invert()
-      );
+      destSize.set(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y);
     }
-  }
-
-  private updateGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
-    const gradientColors: Vector4[] = [];
-    const gradientStops: number[] = [];
-
-    for (const stop of gradient.stops) {
-      const stopColor = stop.color;
-
-      gradientColors.push(new Vector4(stopColor.r, stopColor.g, stopColor.b, stopColor.a));
-      gradientStops.push(stop.time);
+    for (let i = 0; i < this.fills.length; i++) {
+      updatePaintMaterial(this.fillMaterials[i], this.fills[i], destSize);
     }
-
-    material.setVector4Array('_Colors', gradientColors);
-    material.setFloats('_Stops', gradientStops);
-    material.setInt('_StopsCount', gradientStops.length);
-    material.setVector2('_StartPoint', startPoint);
-    material.setVector2('_EndPoint', endPoint);
-  }
-
-  private createMaterialFromRendererOptions (rendererOptions: ItemRenderer): Material {
-    const materialProps: MaterialProps = {
-      shader: {
-        vertex: vert,
-        fragment: frag,
-        glslVersion: GLSLVersion.GLSL1,
-      },
-    };
-    const material = Material.create(this.engine, materialProps);
-
-    const renderer = rendererOptions;
-    const { side, occlusion, blending: blendMode, texture } = renderer;
-
-    material.blending = true;
-    material.depthTest = true;
-    material.depthMask = occlusion;
-
-    setBlendMode(material, blendMode);
-    setSideMode(material, side);
-
-    material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
-    material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
-    material.setTexture('_ImageTex', texture);
-
-    const preMultiAlpha = getPreMultiAlpha(blendMode);
-    const texParams = new Vector4();
-
-    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = preMultiAlpha;
-    texParams.z = renderer.renderMode;
-    material.setVector4('_TexParams', texParams);
-
-    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
-      material.enableMacro('ALPHA_CLIP');
-    } else {
-      material.disableMacro('ALPHA_CLIP');
+    for (let i = 0; i < this.strokes.length; i++) {
+      updatePaintMaterial(this.strokeMaterials[i], this.strokes[i], destSize);
     }
-
-    return material;
   }
 
   override fromData (data: spec.ShapeComponentData): void {
@@ -787,15 +669,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.fills.length = 0;
     this.fillMaterials.length = 0;
     for (const fill of data.fills) {
-      this.fills.push(this.createPaint(fill));
-      this.fillMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
+      this.fills.push(createPaint(fill, path => this.findObject<Texture>(path)));
+      this.fillMaterials.push(createPaintMaterial(this.engine, this.rendererOptions, this.maskManager.alphaMaskEnabled));
     }
 
     this.strokes.length = 0;
     this.strokeMaterials.length = 0;
     for (const stroke of data.strokes) {
-      this.strokes.push(this.createPaint(stroke));
-      this.strokeMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
+      this.strokes.push(createPaint(stroke, path => this.findObject<Texture>(path)));
+      this.strokeMaterials.push(createPaintMaterial(this.engine, this.rendererOptions, this.maskManager.alphaMaskEnabled));
     }
 
     this.materials = [...this.fillMaterials, ...this.strokeMaterials];
@@ -880,59 +762,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         break;
       }
     }
-  }
-
-  private createPaint (paintData: spec.PaintData): Paint {
-    let paint: Paint;
-
-    switch (paintData.type) {
-      case spec.FillType.Solid: {
-        paint = {
-          type: paintData.type,
-          color: new Color().copyFrom(paintData.color),
-        };
-
-        break;
-      }
-      case spec.FillType.GradientLinear:
-      case spec.FillType.GradientAngular:
-      case spec.FillType.GradientRadial: {
-        paint = {
-          type: paintData.type,
-          gradientStops: createValueGetter(paintData.gradientStops) as GradientValue,
-          startPoint: new Vector2().copyFrom(paintData.startPoint),
-          endPoint: new Vector2().copyFrom(paintData.endPoint),
-        };
-
-        break;
-      }
-      case spec.FillType.Texture: {
-
-        const textureTransform = {
-          offset: { x: 0, y: 0 },
-          rotation: 0,
-          scale: { x: 1, y: 1 },
-          ...(paintData.textureTransform ?? {}),
-        };
-
-        paint = {
-          type: paintData.type,
-          texture: this.findObject<Texture>(paintData.texture),
-          scaleMode: paintData.scaleMode,
-          scalingFactor: paintData.scalingFactor ?? 1,
-          opacity: paintData.opacity ?? 1,
-          textureTransform: {
-            offset: new Vector2().copyFrom(textureTransform.offset),
-            rotation: textureTransform.rotation,
-            scale: new Vector2().copyFrom(textureTransform.scale),
-          },
-        };
-
-        break;
-      }
-    }
-
-    return paint;
   }
 
   override onApplyAnimationProperties (): void {
