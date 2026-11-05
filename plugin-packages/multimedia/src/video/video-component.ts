@@ -36,19 +36,19 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
-  /**
-   * 是否由用户手动控制播放速率（覆盖合成的播放速率）
-   */
-  private manualPlaybackRate = false;
-
-  private videoPlaybackRate = 1;
-
   private initialVideoSettings?: {
     volume: number,
     muted: boolean,
     playbackRate?: number,
     loop?: boolean,
   } = { volume: 1, muted: false };
+
+  /**
+   * 是否由用户手动控制播放速率（覆盖合成的播放速率）
+   */
+  private manualPlaybackRate = false;
+
+  private videoPlaybackRate = 1;
 
   /**
    * 是否由用户手动控制循环播放（覆盖合成的结束行为）
@@ -217,11 +217,11 @@ export class VideoComponent extends MaskableGraphic {
       transparent = false,
     } = options;
 
+    this.setVolume(volume);
+    this.setMuted(muted);
     this.transparent = transparent;
 
     this.videoPlaybackRate = playbackRate;
-    this.setVolume(volume);
-    this.setMuted(muted);
 
     if (video) {
       const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
