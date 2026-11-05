@@ -47,6 +47,8 @@ describe('videoComponent ', function () {
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     expect(videoComponent.video!.volume).to.equal(0.4);
     expect(videoComponent.video!.muted).to.be.true;
+    expect(videoComponent.video!.preservesPitch).to.be.false;
+    expect(videoComponent.video!.playbackRate).to.equal(2);
     expect(videoComponent.video!.loop).to.be.false;
     composition.dispose();
   });
@@ -579,6 +581,7 @@ describe('videoComponent:texture binding', function () {
     expect(component.material.getTexture('_MainTex')).to.equal(texture);
     expect(video.volume).to.equal(0.4);
     expect(video.muted).to.be.true;
+    expect(video.preservesPitch).to.be.false;
     expect(video.playbackRate).to.equal(2);
     expect(video.loop).to.be.true;
   });
@@ -639,6 +642,7 @@ describe('videoComponent:texture binding', function () {
     try {
       component.setTexture(player.renderer.engine.assetServer.whiteTexture);
       component.setTexture(replacement);
+      expect(replacementVideo.preservesPitch).to.be.false;
       expect(replacementVideo.volume).to.equal(0.8);
       expect(replacementVideo.muted).to.be.false;
       expect(replacementVideo.loop).to.be.false;

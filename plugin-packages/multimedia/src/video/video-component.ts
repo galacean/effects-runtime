@@ -202,6 +202,9 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
+    // Pitch correction can rewind decoded frames on iOS when the playback rate changes.
+    this.video.preservesPitch = false;
+
     const settings = this.initialVideoSettings;
 
     if (!settings) {
@@ -232,6 +235,8 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
+    this.updatePlaybackRate();
+
     // 处理延迟 seek（避免与 forwardTime 同步调用产生竞态）
     if (this.processPendingSeek()) {
       return;
@@ -251,7 +256,6 @@ export class VideoComponent extends MaskableGraphic {
       this.startVideo();
     }
 
-    this.updatePlaybackRate();
     this.ensureLoopFlag();
     this.handleDestroyBehavior();
 
@@ -656,7 +660,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 更新视频播放速率
-   * 手动模式下保持用户设置的速率不变，自动模式下根据 engine.speed * composition.speed 计算
+   * 手动模式下保持用户设置的速率不变，自动模式下将配置倍速乘以 engine.speed * composition.speed
    */
   private updatePlaybackRate (): void {
     // 手动模式下不自动更新速率
@@ -674,7 +678,7 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
-    const playbackRate = this.engine.speed * composition.speed;
+    const playbackRate = this.videoPlaybackRate * this.engine.speed * composition.speed;
 
     if (this.video.playbackRate !== playbackRate) {
       this.video.playbackRate = playbackRate;
@@ -868,7 +872,7 @@ export class VideoComponent extends MaskableGraphic {
     if (this.initialVideoSettings) {
       this.initialVideoSettings.playbackRate = rate;
     }
-    if (this.video) {
+    if (this.video && this.video.playbackRate !== rate) {
       this.video.playbackRate = rate;
     }
   }
