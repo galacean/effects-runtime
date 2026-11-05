@@ -1,4 +1,6 @@
-import { generateGUID, Player, spec } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
+import { generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
+import type { VideoItemProps } from '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
@@ -7,7 +9,7 @@ interface VideoCompositionOptions {
   id: string,
   videos: spec.AssetBase[],
   start: number,
-  options: spec.VideoContentOptions,
+  options: VideoItemProps['options'],
   compositionDuration?: number,
   compositionEndBehavior?: spec.EndBehavior,
 }
@@ -31,7 +33,7 @@ describe('videoComponent ', function () {
         },
       ],
       start: 0,
-      options: { video: { id } },
+      options: { video: { id }, volume: 0.4, muted: true, playbackRate: 2 },
     };
     const videoJson = getVideoJson(options);
     const composition = await player.loadScene(videoJson);
@@ -43,6 +45,9 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.video!.volume).to.equal(0.4);
+    expect(videoComponent.video!.muted).to.be.true;
+    expect(videoComponent.video!.loop).to.be.false;
     composition.dispose();
   });
 
@@ -532,6 +537,118 @@ describe('videoComponent ', function () {
   });
 });
 
+describe('videoComponent:texture binding', function () {
+  let player: Player;
+  let composition: Composition;
+  let component: VideoComponent;
+  let video: HTMLVideoElement;
+  let texture: Texture;
+
+  beforeEach(async function () {
+    player = new Player({ canvas: document.createElement('canvas'), manualRender: true, doNotHandleContextLost: false });
+    composition = await player.loadScene(getVideoJson({
+      duration: 30,
+      endBehavior: spec.EndBehavior.restart,
+      id: generateGUID(),
+      videos: [],
+      start: 0,
+      options: { volume: 0.4, muted: true, playbackRate: 2 },
+    }), { autoplay: false });
+    component = composition.getItemByName('video')!.getComponent(VideoComponent);
+    video = document.createElement('video');
+    texture = Texture.create(player.renderer.engine, { sourceType: TextureSourceType.video, video });
+  });
+
+  afterEach(function () {
+    composition.dispose();
+    texture.dispose();
+    player.dispose();
+  });
+
+  it('applies configured settings after a placeholder and resetting manual overrides', function () {
+    component.setTexture(player.renderer.engine.assetServer.whiteTexture);
+    expect(component.video).to.be.undefined;
+
+    component.setLoop(false);
+    component.setPlaybackRate(0.75);
+    component.resetLoop();
+    component.resetPlaybackRate();
+    component.setTexture(texture);
+
+    expect(component.video).to.equal(video);
+    expect(component.material.getTexture('_MainTex')).to.equal(texture);
+    expect(video.volume).to.equal(0.4);
+    expect(video.muted).to.be.true;
+    expect(video.playbackRate).to.equal(2);
+    expect(video.loop).to.be.true;
+  });
+
+  it('uses defaults when the component is created without serialized data', function () {
+    const item = new VFXItem(player.renderer.engine);
+    const addedComponent = item.addComponent(VideoComponent);
+
+    composition.addItem(item);
+    item.endBehavior = spec.EndBehavior.freeze;
+    video.volume = 0.2;
+    video.muted = true;
+    video.loop = true;
+    video.playbackRate = 1.5;
+    addedComponent.setTexture(texture);
+
+    expect(video.volume).to.equal(1);
+    expect(video.muted).to.be.false;
+    expect(video.loop).to.be.false;
+    expect(video.playbackRate).to.equal(1);
+  });
+
+  it('applies the latest settings when a video URL finishes loading', async function () {
+    const fromVideo = Texture.fromVideo;
+
+    Texture.fromVideo = async () => texture;
+    try {
+      const pending = component.setTexture('delayed-video.mp4');
+
+      component.setVolume(0);
+      component.setMuted(false);
+      component.setLoop(false);
+      component.setPlaybackRate(0.75);
+      await pending;
+      expect(component.video).to.equal(video);
+      expect(video.volume).to.equal(0);
+      expect(video.muted).to.be.false;
+      expect(video.playbackRate).to.equal(0.75);
+      expect(video.loop).to.be.false;
+    } finally {
+      Texture.fromVideo = fromVideo;
+    }
+  });
+
+  it('preserves replacement volume, mute, loop, and rate after switching back to an image', function () {
+    component.setTexture(texture);
+    component.setVolume(0.1);
+    component.setMuted(true);
+    component.setLoop(true);
+    component.setPlaybackRate(0.5);
+    const replacementVideo = document.createElement('video');
+    const replacement = Texture.create(player.renderer.engine, { sourceType: TextureSourceType.video, video: replacementVideo });
+
+    replacementVideo.volume = 0.8;
+    replacementVideo.muted = false;
+    replacementVideo.loop = false;
+    replacementVideo.playbackRate = 1.25;
+    try {
+      component.setTexture(player.renderer.engine.assetServer.whiteTexture);
+      component.setTexture(replacement);
+      expect(replacementVideo.volume).to.equal(0.8);
+      expect(replacementVideo.muted).to.be.false;
+      expect(replacementVideo.loop).to.be.false;
+      expect(replacementVideo.playbackRate).to.equal(1.25);
+    } finally {
+      replacement.dispose();
+    }
+  });
+});
+
 function getVideoJson (options: VideoCompositionOptions) {
   return {
     playerVersion: { web: '2.0.4', native: '0.0.1.202311221223' },
@@ -566,13 +683,13 @@ function getVideoJson (options: VideoCompositionOptions) {
         options: options.options,
         renderer: {
           'renderMode': 1,
-          'texture': {
+          'texture': options.videos.length ? {
             'id': 'b582d21fdd524c4684f1c057b220ddd0',
-          },
+          } : undefined,
         },
       },
     ],
-    textures: [
+    textures: options.videos.length ? [
       {
         'id': 'b582d21fdd524c4684f1c057b220ddd0',
         'source': {
@@ -580,7 +697,7 @@ function getVideoJson (options: VideoCompositionOptions) {
         },
         'flipY': true,
       },
-    ],
+    ] : [],
     geometries: [],
     materials: [],
     items: [
