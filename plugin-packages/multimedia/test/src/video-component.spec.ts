@@ -626,6 +626,171 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
+  it('keeps the newest URL when video loads finish out of order', async function () {
+    const fromVideo = Texture.fromVideo;
+    const obsoleteVideo = document.createElement('video');
+    const obsolete = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: obsoleteVideo });
+    const loads = new Map<string, (texture: Texture) => void>();
+    let pauses = 0;
+
+    obsoleteVideo.pause = () => { pauses++; };
+    Texture.fromVideo = url => new Promise(resolve => { loads.set(url, resolve); });
+    try {
+      const first = component.setTexture('first.mp4');
+      const second = component.setTexture('second.mp4');
+
+      loads.get('second.mp4')!(texture);
+      await second;
+      loads.get('first.mp4')!(obsolete);
+      await first;
+      expect(component.video).to.equal(video);
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      expect(video.volume).to.equal(0.4);
+      expect(obsolete.isRegistered).to.be.false;
+      expect(pauses).to.equal(1);
+    } finally {
+      Texture.fromVideo = fromVideo;
+      obsolete.dispose();
+    }
+  });
+
+  it('lets a direct texture binding supersede a pending URL', async function () {
+    const fromVideo = Texture.fromVideo;
+    let finish!: (texture: Texture) => void;
+    const placeholder = player.engine.assetServer.whiteTexture;
+
+    Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
+    try {
+      const pending = component.setTexture('pending.mp4');
+
+      component.setTexture(placeholder);
+      finish(texture);
+      await pending;
+      expect(component.video).to.be.undefined;
+      expect(component.material.getTexture('_MainTex')).to.equal(placeholder);
+      expect(texture.isRegistered).to.be.false;
+    } finally {
+      Texture.fromVideo = fromVideo;
+    }
+  });
+
+  it('releases a URL texture that finishes loading after component disposal', async function () {
+    const fromVideo = Texture.fromVideo;
+    let finish!: (texture: Texture) => void;
+
+    Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
+    try {
+      const pending = component.setTexture('pending.mp4');
+
+      component.dispose();
+      finish(texture);
+      await pending;
+      expect(component.video).to.be.undefined;
+      expect(texture.isRegistered).to.be.false;
+    } finally {
+      Texture.fromVideo = fromVideo;
+    }
+  });
+
+  it('keeps a replaced texture available for context restoration and engine cleanup', function () {
+    const original = Texture.create(player.engine, {
+      sourceType: TextureSourceType.data,
+      data: { data: new Uint8Array([255, 255, 255, 255]), width: 1, height: 1 },
+    });
+    let restores = 0;
+
+    original.initialize();
+    original.restore = () => { restores++; };
+    component.setTexture(original);
+    component.setTexture(texture);
+    player.engine.effectsObjectServer.restoreGraphicsResources();
+    expect(restores).to.equal(1);
+    player.dispose();
+    expect(original.isRegistered).to.be.false;
+    expect(() => original.initialize()).to.throw();
+  });
+
+  it('retains an independent first frame and releases it on replacement and disposal', function () {
+    composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
+    const image = document.createElement('canvas');
+
+    image.width = image.height = 2;
+    Object.assign(image, { videoWidth: 2, videoHeight: 2, readyState: 4, currentTime: 0, pause () {}, load () {} });
+    const context = image.getContext('2d')!;
+
+    context.fillStyle = '#ff0000';
+    context.fillRect(0, 0, 2, 2);
+    const source = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: image as unknown as HTMLVideoElement });
+    const cache = component as unknown as { firstFrameTexture?: Texture };
+
+    try {
+      component.setTexture(source);
+      const firstFrame = cache.firstFrameTexture!;
+      const snapshot = (firstFrame.source as { image: HTMLCanvasElement }).image;
+
+      context.fillStyle = '#0000ff';
+      context.fillRect(0, 0, 2, 2);
+      expect(Array.from(snapshot.getContext('2d')!.getImageData(0, 0, 1, 1).data)).to.deep.equal([255, 0, 0, 255]);
+      component.setTexture(texture);
+      expect(firstFrame.isDestroyed).to.be.true;
+      component.setTexture(source);
+      const nextFrame = cache.firstFrameTexture!;
+
+      component.dispose();
+      expect(nextFrame.isDestroyed).to.be.true;
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it('starts a replacement while the previous video still has a pending play', async function () {
+    component.setTexture(texture);
+    let rejectPlay!: (error: Error) => void;
+    let oldPauses = 0;
+    let replacementPlays = 0;
+    const replacementVideo = document.createElement('video');
+    const replacement = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: replacementVideo });
+
+    video.play = () => new Promise((_resolve, reject) => { rejectPlay = reject; });
+    video.pause = () => { oldPauses++; };
+    replacementVideo.play = async () => { replacementPlays++; };
+    try {
+      component.playVideo();
+      component.setTexture(replacement);
+      component.playVideo();
+      rejectPlay(new DOMException('old playback interrupted', 'AbortError'));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(oldPauses).to.equal(1);
+      expect(replacementPlays).to.equal(1);
+      expect(player.engine.renderErrors.size).to.equal(0);
+    } finally {
+      replacement.dispose();
+    }
+  });
+
+  it('does not let a pending play pause the video after it is resumed', async function () {
+    component.setTexture(texture);
+    let paused = true;
+    const plays: (() => void)[] = [];
+
+    Object.defineProperty(video, 'paused', { get: () => paused });
+    video.play = () => {
+      paused = false;
+
+      return new Promise(resolve => { plays.push(resolve); });
+    };
+    video.pause = () => { paused = true; };
+    component.playVideo();
+    component.pauseVideo();
+    component.playVideo();
+    plays.forEach(resolve => resolve());
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(plays).to.have.length(2);
+    expect(paused).to.be.false;
+  });
+
   it('preserves replacement volume, mute, loop, and rate after switching back to an image', function () {
     component.setTexture(texture);
     component.setVolume(0.1);
