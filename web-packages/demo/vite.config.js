@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => {
           'dashboard': resolve(__dirname, 'html/dashboard.html'),
           'dynamic-image': resolve(__dirname, 'html/dynamic-image.html'),
           'dynamic-video': resolve(__dirname, 'html/dynamic-video.html'),
+          'video': resolve(__dirname, 'html/video.html'),
           'interactive': resolve(__dirname, 'html/interactive.html'),
           'local-file': resolve(__dirname, 'html/local-file.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),

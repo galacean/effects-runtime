@@ -1,20 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>视频元素 - demo</title>
   <style>
+    * { box-sizing: border-box; }
     html, body, div, canvas { margin: 0; padding: 0; }
+    body { background: #f2f4f7; color: #1d2939; font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; }
+    #video-controls { padding: 12px; }
+    #video-controls > div > div { flex-wrap: wrap; }
+    .demo-layout { display: flex; align-items: flex-start; gap: 16px; padding: 0 12px 24px; }
     .container {
       width: 375px;
       height: 812px;
+      flex: 0 0 375px;
       background-color: rgba(0,0,0,255);
+    }
+    .capture-panel { min-width: 0; flex: 1; padding: 16px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; }
+    .capture-panel[hidden] { display: none; }
+    .capture-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .capture-panel h1 { margin: 0; font-size: 20px; }
+    .capture-panel p { margin: 10px 0; color: #475467; }
+    .capture-header button { padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px; background: #fff; white-space: nowrap; cursor: pointer; }
+    #capture-status { padding: 10px; border-radius: 6px; background: #eff8ff; color: #175cd3; }
+    .capture-round { margin-top: 20px; }
+    .capture-round h2 { margin: 0 0 8px; font-size: 15px; }
+    .capture-frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; padding-bottom: 8px; }
+    .capture-frame { min-width: 0; margin: 0; border: 1px solid #d0d5dd; border-radius: 6px; overflow: hidden; }
+    .capture-frame canvas { display: block; width: 100%; height: auto; background-color: #ddd; background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%), linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%); background-size: 12px 12px; background-position: 0 0, 6px 6px; }
+    .capture-frame figcaption { padding: 8px; }
+    .capture-frame strong, .capture-frame span { display: block; }
+    .capture-frame span { margin-top: 4px; font-size: 11px; color: #475467; white-space: pre-line; overflow-wrap: break-word; }
+    @media (max-width: 800px) {
+      .demo-layout { flex-direction: column; padding-left: 0; padding-right: 0; }
+      .container { flex: none; max-width: 100%; }
+      .capture-panel { width: 100%; }
     }
   </style>
 </head>
 <body>
-<div class="container" id="J-container"></div>
+<header id="video-controls"></header>
+<main class="demo-layout">
+  <div class="container" id="J-container"></div>
+  <section id="replay-capture-panel" class="capture-panel" hidden>
+    <div class="capture-header">
+      <h1>视频播放过程：开头 2 秒</h1>
+      <button id="clear-captures" type="button">清空截图</button>
+    </div>
+    <p>12 个案例均在首次播放和每次合成重播时，按视频时间在开头 0～2 秒均匀采样 10 张，约每 0.22 秒一张；暂停和 seek 等待期间不采样，最多采集 8 轮。切换案例后重新采集。截图来自播放器画布，透明区域以棋盘格显示。</p>
+    <p id="capture-status" role="status" aria-live="polite">等待载入案例…</p>
+    <div id="capture-rounds"></div>
+  </section>
+</main>
 
 <script type="module" src="../src/video.ts"></script>
 </body>

@@ -1,48 +1,24 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
-const short_video_jsons = [
-  // 合成重播
-  'https://mdn.alipayobjects.com/mars/afts/file/A*8t8vRKsoon0AAAAAQDAAAAgAelB4AQ', //合成重播 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*VJMvSYFHqBgAAAAAQDAAAAgAelB4AQ', //合成重播 视频销毁
-  'https://mdn.alipayobjects.com/mars/afts/file/A*Bo19SqnCGP8AAAAAQDAAAAgAelB4AQ', //合成重播 视频循环
-  // 合成无限播放
-  'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*FkDGRYxT3MkAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频销毁
-  'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频循环
-  // 合成冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*hiL7SYfNdpQAAAAAQDAAAAgAelB4AQ', //合成冻结 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*OVTDRaYuBs4AAAAAQDAAAAgAelB4AQ', //合成冻结 视频销毁
-  'https://mdn.alipayobjects.com/mars/afts/file/A*V4fNRIAEalcAAAAAQDAAAAgAelB4AQ', //合成冻结 视频循环
-  // 合成销毁
-  'https://mdn.alipayobjects.com/mars/afts/file/A*TyPlT4dEQJcAAAAAQDAAAAgAelB4AQ', //合成销毁 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*wbEISYCBzLoAAAAAQDAAAAgAelB4AQ', //合成销毁 视频销毁
-  'https://mdn.alipayobjects.com/mars/afts/file/A*uLoEQ6JTIQAAAAAAQDAAAAgAelB4AQ', //合成销毁 视频循环
-];
-
-// 视频描述信息
-const shortVideoDescs = [
-  // 合成重播
-  '合成重播 视频冻结',
-  '合成重播 视频销毁',
-  '合成重播 视频循环',
-  // 合成无限播放
-  '合成无限播放 视频冻结',
-  '合成无限播放 视频销毁',
-  '合成无限播放 视频循环',
-  // 合成冻结
-  '合成冻结 视频冻结',
-  '合成冻结 视频销毁',
-  '合成冻结 视频循环',
-  // 合成销毁
-  '合成销毁 视频冻结',
-  '合成销毁 视频销毁',
-  '合成销毁 视频循环',
-];
-
-// 当前视频配置
+import { attachVideoReplayCapture } from './common/video-replay-capture';
 const allVideos = [
-  ...short_video_jsons.map((url, i) => ({ url, name: `short_${i}`, desc: shortVideoDescs[i] })),
+  // 合成重播
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*VJMvSYFHqBgAAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频销毁' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Bo19SqnCGP8AAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频重播' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*8t8vRKsoon0AAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频冻结' },
+  // 合成无限播放
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*FkDGRYxT3MkAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频销毁' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频重播' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频冻结' },
+  // 合成冻结
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*OVTDRaYuBs4AAAAAQDAAAAgAelB4AQ', desc: '合成冻结 视频销毁' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*V4fNRIAEalcAAAAAQDAAAAgAelB4AQ', desc: '合成冻结 视频重播' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*hiL7SYfNdpQAAAAAQDAAAAgAelB4AQ', desc: '合成冻结 视频冻结' },
+  // 合成销毁
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*wbEISYCBzLoAAAAAQDAAAAgAelB4AQ', desc: '合成销毁 视频销毁' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uLoEQ6JTIQAAAAAAQDAAAAgAelB4AQ', desc: '合成销毁 视频重播' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*TyPlT4dEQJcAAAAAQDAAAAgAelB4AQ', desc: '合成销毁 视频冻结' },
 ];
 
 // 视频卡顿案例 JSON
@@ -527,7 +503,16 @@ const stuckVideoJson2 = {
 
 let currentIndex = 0;
 let player: Player;
+let disposeReplayCapture: (() => void) | undefined;
 const container = document.getElementById('J-container');
+const replayCapturePanel = document.getElementById('replay-capture-panel')!;
+
+function disposePlayer () {
+  disposeReplayCapture?.();
+  disposeReplayCapture = undefined;
+  replayCapturePanel.hidden = true;
+  player?.dispose();
+}
 
 // 显示当前视频信息
 function updateInfo () {
@@ -545,7 +530,7 @@ async function switchVideo (index: number) {
 
   updateInfo();
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     interactive: true,
@@ -553,7 +538,19 @@ async function switchVideo (index: number) {
       console.error(err.message);
     },
   });
-  await player.loadScene(video.url, { autoplay: true });
+  const currentPlayer = player;
+
+  try {
+    const composition = await currentPlayer.loadScene(video.url, { autoplay: false });
+
+    if (player !== currentPlayer) {
+      return;
+    }
+    disposeReplayCapture = attachVideoReplayCapture(currentPlayer, composition, replayCapturePanel);
+    currentPlayer.play();
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 // 播放视频卡顿案例
@@ -564,7 +561,7 @@ async function playStuckVideo () {
     info.textContent = '视频卡顿案例';
   }
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -590,7 +587,7 @@ async function playStuckVideo2 () {
     info.textContent = '视频卡顿案例2';
   }
 
-  player.dispose();
+  disposePlayer();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -609,7 +606,7 @@ async function playStuckVideo2 () {
 // 创建控制面板
 const controlPanel = document.createElement('div');
 
-controlPanel.style.cssText = 'position:fixed;top:10px;left:10px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;z-index:9999;';
+controlPanel.style.cssText = 'display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;';
 
 // 第一行：导航按钮
 const navRow = document.createElement('div');
@@ -771,23 +768,6 @@ controlPanel.appendChild(navRow);
 controlPanel.appendChild(stuckRow);
 controlPanel.appendChild(videoControlRow);
 controlPanel.appendChild(speedRow);
-document.body.appendChild(controlPanel);
+document.getElementById('video-controls')!.appendChild(controlPanel);
 
-(async () => {
-  player = new Player({
-    container,
-    interactive: true,
-    onError: (err, ...args) => {
-      console.error(err.message);
-    },
-  });
-
-  updateInfo();
-  const sc = await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
-  const videoItem = sc.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
-
-  setTimeout(() => {
-    player.gotoAndStop(3.5);
-  }, 2000);
-})();
+void switchVideo(currentIndex);
