@@ -6,7 +6,11 @@ import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
  * @returns 是否为画板元素
  */
 export function isFramePlayerItem (item: VFXItem) {
-  return item.type === spec.ItemType.null && item.getComponent(FrameComponent) !== undefined && item.name === '画板';
+  // 画板的 name 也是标题，允许用户重命名；排除复用 FrameComponent 的特殊容器。
+  return item.type === spec.ItemType.null
+    && item.getComponent(FrameComponent) !== undefined
+    && item.name !== '动效'
+    && item.name !== '主合成蒙版';
 }
 
 /**
