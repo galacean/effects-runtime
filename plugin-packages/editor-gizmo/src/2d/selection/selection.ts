@@ -408,7 +408,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
             effectsRegions.push({ id: item.getInstanceId(), name: item.name, position, hitPositions: [position], item, composition: playerComposition });
           }
 
-          // 普通模式按容器包围盒命中，跳过整个特效子树。
+          // 未进入特效内部编辑时，按容器包围盒命中并跳过内部子树。
           return true;
         },
       });
