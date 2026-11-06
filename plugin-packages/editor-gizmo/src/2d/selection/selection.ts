@@ -1,4 +1,4 @@
-import { EventEmitter, type Engine, type Composition, type InputEventMouseButton, type Region, spec, type VFXItem, TextComponent, SpriteComponent, FrameComponent, addItem } from '@galacean/effects';
+import { EventEmitter, type Engine, type Composition, type InputEventMouseButton, type Region, spec, type VFXItem, TextComponent, SpriteComponent, addItem } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
@@ -10,6 +10,7 @@ import {
   getItemViewBox,
   getItemViewTransform,
   getItemChildren,
+  isEffectsPlayerItem,
   isGroupPlayerItem,
   isPlayerItemVisible,
 } from '../items';
@@ -388,14 +389,38 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!playerComposition?.items) {
       return [];
     }
-    const { x, y } = viewPositionToNDC(point, GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!));
+    const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
+    const { x, y } = viewPositionToNDC(point, containerSize);
     const result: HitTestResult = { ray: new Ray(), regions: [] };
+    const effectsRegions: Region[] = [];
 
     try {
-      result.regions = playerComposition.hitTest(x, y, true);
+      result.regions = playerComposition.hitTest(x, y, true, {
+        skip: item => {
+          if (this._effectsEditItemId || !isEffectsPlayerItem(item)) {
+            return false;
+          }
+          const transform = getItemViewTransform(item, containerSize);
+
+          if (item.isActive && transform && transformedBoxContainsPoint(transform, point)) {
+            const position = item.transform.getWorldPosition();
+
+            effectsRegions.push({ id: item.getInstanceId(), name: item.name, position, hitPositions: [position], item, composition: playerComposition });
+          }
+
+          // 普通模式按容器包围盒命中，跳过整个特效子树。
+          return true;
+        },
+      });
       result.ray = playerComposition.getHitTestRay(x, y);
     } catch (e) {
       console.warn(e);
+    }
+    if (effectsRegions.length > 0) {
+      const items = playerComposition.items;
+
+      result.regions.push(...effectsRegions);
+      result.regions.sort((a, b) => items.indexOf(a.item) - items.indexOf(b.item));
     }
     // Effects runtime 在隐藏节点切换后的首帧仍可能返回旧命中区域；以播放器节点的可见性为最终交互依据。
     result.regions = result.regions.filter(region => {
@@ -403,7 +428,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
       return isPlayerItemVisible(item);
     });
-    this.refreshResultRegions(result);
     const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.sceneServer.compositions[0], id)?.type !== spec.ItemType.composition);
 
     return selectedIds;
@@ -769,33 +793,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
     }
 
     return ids;
-  }
-
-  /**
-   * 将动效子元素命中区域归并到动效容器。
-   * @param hitTestResult 原始命中结果
-   */
-  private refreshResultRegions (hitTestResult: HitTestResult): void {
-    const playerComposition = this.engine.sceneServer.compositions[0];
-
-    if (!playerComposition || this._effectsEditItemId) {
-      return;
-    }
-    const effectsItems = playerComposition.items.filter(item => item.name === '动效' && item.getComponent(FrameComponent) !== undefined);
-    const effectsItemMap = new Map<string, string>();
-
-    effectsItems.forEach(item => {
-      const compositionChild = item.children?.[0];
-
-      if (compositionChild?.type === spec.ItemType.composition) {
-        compositionChild.children.forEach(subChild => {
-          effectsItemMap.set(subChild.getInstanceId(), item.getInstanceId());
-        });
-      }
-    });
-    hitTestResult.regions.forEach(region => {
-      region.id = effectsItemMap.get(region.id) ?? region.id;
-    });
   }
 
   /**
