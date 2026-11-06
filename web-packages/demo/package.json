@@ -12,10 +12,14 @@
     "@galacean/effects-plugin-stats": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
     "@galacean/effects-plugin-dom-content": "workspace:*",
+    "@galacean/effects-plugin-ffd": "workspace:*",
     "@galacean/effects-plugin-gui": "workspace:*",
+    "@galacean/effects-plugin-ktx2": "workspace:*",
+    "@galacean/effects-plugin-model": "workspace:*",
     "@galacean/effects-plugin-multimedia": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
+    "@galacean/effects-plugin-rich-text": "workspace:*",
     "three": "^0.149.0"
   },
   "devDependencies": {
