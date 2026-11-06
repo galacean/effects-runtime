@@ -532,6 +532,50 @@ describe('videoComponent ', function () {
   });
 });
 
+describe('videoComponent:playbackRate', function () {
+  this.timeout(15000);
+
+  for (const configuredRate of [undefined, 2]) {
+    it(`preserves the ${configuredRate ?? 'default'} rate through automatic updates and manual overrides`, async function () {
+      const id = generateGUID();
+      const engine = player.renderer.engine;
+      const previousSpeed = engine.speed;
+      const composition = await player.loadScene(getVideoJson({
+        duration: 30,
+        compositionDuration: 30,
+        endBehavior: spec.EndBehavior.restart,
+        id,
+        videos: [{ id, url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr' }],
+        start: 0,
+        options: { video: { id }, muted: true, playbackRate: configuredRate },
+      }));
+      const component = composition.getItemByName('video')!.getComponent(VideoComponent);
+      const baseRate = configuredRate ?? 1;
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(component.video!.playbackRate).to.equal(baseRate);
+
+        composition.speed = 1.5;
+        engine.speed = 0.5;
+        component.onUpdate(0);
+        expect(component.video!.playbackRate).to.equal(baseRate * 0.75);
+
+        component.setPlaybackRate(0.75);
+        component.onUpdate(0);
+        expect(component.video!.playbackRate).to.equal(0.75);
+
+        component.resetPlaybackRate();
+        component.onUpdate(0);
+        expect(component.video!.playbackRate).to.equal(baseRate * 0.75);
+      } finally {
+        engine.speed = previousSpeed;
+        composition.dispose();
+      }
+    });
+  }
+});
+
 function getVideoJson (options: VideoCompositionOptions) {
   return {
     playerVersion: { web: '2.0.4', native: '0.0.1.202311221223' },
