@@ -121,7 +121,7 @@ export class VideoComponent extends MaskableGraphic {
    */
   private eventDisposers: (() => void)[] = [];
 
-  private static readonly threshold = 0.01;
+  private static readonly seekTolerance = 0.01;
   // 只允许媒体结束点略晚于合成末尾，不用作首帧位置或相位校准的容差。
   private static readonly replayEndTolerance = 0.1;
   private static readonly firstFrameWindow = 1 / 24;
@@ -321,10 +321,10 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   private showSeekFrame (time: number): void {
-    if (time > VideoComponent.threshold && this.isVideoActive && !this.videoDestroyed) {
+    if (time > VideoComponent.seekTolerance && this.isVideoActive && !this.videoDestroyed) {
       return;
     }
-    const firstFrame = time <= VideoComponent.threshold && this.isVideoActive && !this.videoDestroyed
+    const firstFrame = time <= VideoComponent.seekTolerance && this.isVideoActive && !this.videoDestroyed
       ? this.firstFrameTexture : undefined;
 
     this.material.setTexture('_MainTex', firstFrame ?? this.engine.assetServer.transparentTexture);
@@ -355,6 +355,9 @@ export class VideoComponent extends MaskableGraphic {
     // 根据结束行为决定视频状态
     if (this.shouldFreezeVideo()) {
       this.freezeVideo();
+      if (!this.videoSeeking) {
+        this.renderer.texture.uploadCurrentVideoFrame();
+      }
 
       return;
     }
@@ -522,7 +525,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return this.video!.currentTime + VideoComponent.threshold >= this.video!.duration;
+    return this.video!.ended || this.video!.currentTime >= this.video!.duration;
   }
 
   /**
@@ -535,7 +538,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return composition.time + VideoComponent.threshold >= composition.sceneRoot.duration;
+    return composition.time >= composition.sceneRoot.duration;
   }
 
   /**
@@ -662,8 +665,8 @@ export class VideoComponent extends MaskableGraphic {
 
     const independentlyLooping = this.item.endBehavior === spec.EndBehavior.restart || (this.manualLoop && video.loop);
 
-    return this.item.duration + VideoComponent.threshold >= duration &&
-      (independentlyLooping || mediaDuration + VideoComponent.threshold >= duration) &&
+    return this.item.duration + VideoComponent.seekTolerance >= duration &&
+      (independentlyLooping || mediaDuration + VideoComponent.seekTolerance >= duration) &&
       mediaDuration <= duration + VideoComponent.replayEndTolerance;
   }
 
@@ -677,7 +680,7 @@ export class VideoComponent extends MaskableGraphic {
     }
 
     // A composition restart may reuse native looping only when the head is already ready.
-    return !video.seeking && video.readyState >= 2 && video.currentTime <= VideoComponent.threshold;
+    return !video.seeking && video.readyState >= 2 && video.currentTime <= VideoComponent.seekTolerance;
   }
 
   private canReusePreparedFrame (): boolean {
@@ -933,7 +936,7 @@ export class VideoComponent extends MaskableGraphic {
     time = this.getClampedSeekTime(time);
     const wasPlaying = !video.paused;
     const isNoopSeek = !clearTexture && !this.videoSeeking && !video.seeking &&
-      Math.abs(video.currentTime - time) <= VideoComponent.threshold;
+      Math.abs(video.currentTime - time) <= VideoComponent.seekTolerance;
 
     if (isNoopSeek) {
       this.isGotoAndStopSeeking = false;
@@ -979,7 +982,7 @@ export class VideoComponent extends MaskableGraphic {
           }
           this.videoSeeking = false;
           this.isGotoAndStopSeeking = false;
-          if (time <= VideoComponent.threshold && (this.videoDestroyed || !this.isVideoActive)) {
+          if (time <= VideoComponent.seekTolerance && (this.videoDestroyed || !this.isVideoActive)) {
             this.replayFramePrepared = true;
             video.pause();
           }
@@ -1102,7 +1105,7 @@ export class VideoComponent extends MaskableGraphic {
     const seekTime = this.getItemSeekTime();
     const clampedSeekTime = this.getClampedSeekTime(seekTime);
 
-    if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.threshold) {
+    if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.seekTolerance) {
       this.pendingSeekTime = clampedSeekTime;
     }
   }

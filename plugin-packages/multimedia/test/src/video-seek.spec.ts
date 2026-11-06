@@ -436,6 +436,9 @@ describe('videoComponent:seek-frame', () => {
       component.detectCompositionRestart();
       component.ensureLoopFlag();
       component.handleDestroyBehavior();
+      expect(component.videoDestroyed).to.equal(false);
+      fixture.setMediaTime(video.duration);
+      component.handleDestroyBehavior();
       fixture.frame(0);
       await flushPromises();
       expect(component.replayFramePrepared).to.equal(true);
@@ -462,7 +465,7 @@ describe('videoComponent:seek-frame', () => {
     });
 
     it('allows playback when a prepared frame finishes uploading after the composition restarts', async () => {
-      const fixture = createFixture(4.999, false);
+      const fixture = createFixture(5, false);
       const { component, video } = fixture;
       const composition = component.item.composition;
 
