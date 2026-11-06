@@ -132,9 +132,26 @@ export class VideoComponent extends MaskableGraphic {
     this.name = 'MVideo' + seed++;
   }
 
+  /**
+   * 替换纹理；若包含视频，保留传入视频自身的播放进度，不继承旧视频的进度
+   */
   override setTexture (input: Texture): void;
+  /**
+   * 通过 URL 替换视频纹理，保留新视频加载完成时的播放进度，不主动归零
+   */
   override async setTexture (input: string): Promise<void>;
   override async setTexture (input: Texture | string): Promise<void> {
+    return this.replaceTexture(input);
+  }
+
+  /**
+   * 通过 URL 更换视频，绑定后将新视频的时间重置
+   */
+  async setVideo (url: string): Promise<void> {
+    return this.replaceTexture(url, true);
+  }
+
+  private async replaceTexture (input: Texture | string, rewind = false): Promise<void> {
     const version = ++this.textureVersion;
     const composition = this.item?.composition;
 
@@ -187,6 +204,9 @@ export class VideoComponent extends MaskableGraphic {
     this.material.setTexture('_MainTex', texture);
     this.video = video;
     this.initializeVideo();
+    if (rewind && video) {
+      this.performSeek(0, video.currentTime !== 0);
+    }
   }
 
   override onAwake (): void {
