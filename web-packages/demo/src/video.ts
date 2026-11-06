@@ -7,10 +7,10 @@ const allVideos = [
   { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*VJMvSYFHqBgAAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频销毁' },
   { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Bo19SqnCGP8AAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频重播' },
   { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*8t8vRKsoon0AAAAAQDAAAAgAelB4AQ', desc: '合成重播 视频冻结' },
-  // 合成无限播放
-  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*FkDGRYxT3MkAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频销毁' },
-  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频重播' },
-  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', desc: '合成无限播放 视频冻结' },
+  // 合成无限
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*FkDGRYxT3MkAAAAAQDAAAAgAelB4AQ', desc: '合成无限 视频销毁' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', desc: '合成无限 视频重播' },
+  { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', desc: '合成无限 视频冻结' },
   // 合成冻结
   { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*OVTDRaYuBs4AAAAAQDAAAAgAelB4AQ', desc: '合成冻结 视频销毁' },
   { url: 'https://mdn.alipayobjects.com/mars/afts/file/A*V4fNRIAEalcAAAAAQDAAAAgAelB4AQ', desc: '合成冻结 视频重播' },
@@ -506,6 +506,98 @@ let player: Player;
 let disposeReplayCapture: (() => void) | undefined;
 const container = document.getElementById('J-container');
 const replayCapturePanel = document.getElementById('replay-capture-panel')!;
+const captureEnabled = new URLSearchParams(location.search).get('capture') === '1';
+const input = document.querySelector<HTMLInputElement>('#video-url')!;
+const status = document.querySelector<HTMLParagraphElement>('#status')!;
+const currentUrl = document.querySelector<HTMLSpanElement>('#current-url')!;
+const playback = document.querySelector<HTMLDivElement>('#playback')!;
+let originalVideoUrl = '';
+
+input.value = stuckVideoJson.videos[0].url;
+
+function getVideoComponent () {
+  return player?.getCompositions()[0]?.items
+    .map(item => item.getComponent(VideoComponent))
+    .find(Boolean);
+}
+
+function showStatus (message: string, error = false) {
+  status.textContent = message;
+  status.dataset.error = String(error);
+}
+
+function syncVideoInfo () {
+  const component = getVideoComponent();
+  const video = component?.video;
+
+  currentUrl.textContent = video?.src || '—';
+}
+
+async function runSceneAction (action: () => Promise<void>) {
+  if (controlPanel.disabled) { return; }
+  controlPanel.disabled = true;
+  showStatus('正在加载场景…');
+  try {
+    await action();
+    originalVideoUrl = getVideoComponent()?.video?.src || '';
+    syncVideoInfo();
+    showStatus('先播放原视频，点击“更换视频”后替换。');
+  } catch (error) {
+    showStatus(`场景加载失败：${String(error)}`, true);
+  } finally {
+    controlPanel.disabled = false;
+  }
+}
+
+async function replaceVideo (url: string) {
+  if (controlPanel.disabled) { return; }
+  const component = getVideoComponent();
+
+  if (!component) {
+    showStatus('当前场景没有可替换的视频，请先选择视频案例。', true);
+
+    return;
+  }
+  controlPanel.disabled = true;
+  showStatus('正在加载新视频…');
+  try {
+    await component.setVideo(url);
+    if (disposeReplayCapture) {
+      disposeReplayCapture();
+      disposeReplayCapture = attachVideoReplayCapture(player, component.item.composition!, replayCapturePanel);
+    }
+    syncVideoInfo();
+    showStatus('视频已更换，播放位置已归零。');
+  } catch (error) {
+    showStatus(`更换失败，已保留当前视频：${String(error)}`, true);
+  } finally {
+    controlPanel.disabled = false;
+  }
+}
+
+document.querySelector('#video-form')!.addEventListener('submit', event => {
+  event.preventDefault();
+  void replaceVideo(input.value.trim());
+});
+document.querySelector('#sample-a')!.addEventListener('click', () => { void replaceVideo(originalVideoUrl); });
+document.querySelector('#invalid-url')!.addEventListener('click', () => { void replaceVideo('data:video/mp4;base64,AAAA'); });
+
+const timer = window.setInterval(() => {
+  const video = getVideoComponent()?.video;
+
+  playback.textContent = video
+    ? `${video.paused ? '已暂停' : '播放中'} · ${video.currentTime.toFixed(2)} / ${video.duration.toFixed(2)} 秒`
+    : '当前场景没有可播放的视频';
+}, 100);
+
+const resizeObserver = new ResizeObserver(() => player?.resize());
+
+resizeObserver.observe(container!);
+window.addEventListener('pagehide', () => {
+  window.clearInterval(timer);
+  resizeObserver.disconnect();
+  disposePlayer();
+});
 
 function disposePlayer () {
   disposeReplayCapture?.();
@@ -540,17 +632,15 @@ async function switchVideo (index: number) {
   });
   const currentPlayer = player;
 
-  try {
-    const composition = await currentPlayer.loadScene(video.url, { autoplay: false });
+  const composition = await currentPlayer.loadScene(video.url, { autoplay: false });
 
-    if (player !== currentPlayer) {
-      return;
-    }
-    disposeReplayCapture = attachVideoReplayCapture(currentPlayer, composition, replayCapturePanel);
-    currentPlayer.play();
-  } catch (error) {
-    console.error(error);
+  if (player !== currentPlayer) {
+    return;
   }
+  if (captureEnabled) {
+    disposeReplayCapture = attachVideoReplayCapture(currentPlayer, composition, replayCapturePanel);
+  }
+  currentPlayer.play();
 }
 
 // 播放视频卡顿案例
@@ -571,10 +661,14 @@ async function playStuckVideo () {
   });
 
   await player.loadScene(stuckVideoJson as any as string, { useHevcVideo: true });
+  const casePlayer = player;
+
   setTimeout(() => {
+    if (player !== casePlayer) { return; }
     player.gotoAndPlay(1);
   }, 1000);
   setTimeout(() => {
+    if (player !== casePlayer) { return; }
     player.gotoAndPlay(2);
   }, 2000);
 }
@@ -597,14 +691,19 @@ async function playStuckVideo2 () {
   });
 
   await player.loadScene(stuckVideoJson2 as any as string, { useHevcVideo: true });
+  const casePlayer = player;
+
   player.gotoAndPlay(0);
   setTimeout(() => {
+    if (player !== casePlayer) { return; }
     player.gotoAndPlay(0);
   }, 1300);
 }
 
 // 创建控制面板
-const controlPanel = document.createElement('div');
+const controlPanel = document.createElement('fieldset');
+
+controlPanel.className = 'control-panel';
 
 controlPanel.style.cssText = 'display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;';
 
@@ -618,7 +717,7 @@ const prevBtn = document.createElement('button');
 
 prevBtn.textContent = '◀ 上一个';
 prevBtn.style.cssText = 'background:#4a90d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-prevBtn.onclick = () => switchVideo(currentIndex - 1);
+prevBtn.onclick = () => runSceneAction(() => switchVideo(currentIndex - 1));
 
 // 视频信息
 const infoEl = document.createElement('span');
@@ -629,7 +728,7 @@ const nextBtn = document.createElement('button');
 
 nextBtn.textContent = '下一个 ▶';
 nextBtn.style.cssText = 'background:#4a90d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-nextBtn.onclick = () => switchVideo(currentIndex + 1);
+nextBtn.onclick = () => runSceneAction(() => switchVideo(currentIndex + 1));
 
 navRow.appendChild(prevBtn);
 navRow.appendChild(infoEl);
@@ -645,14 +744,14 @@ const stuckBtn = document.createElement('button');
 
 stuckBtn.textContent = '视频卡顿案例1';
 stuckBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-stuckBtn.onclick = () => playStuckVideo();
+stuckBtn.onclick = () => runSceneAction(playStuckVideo);
 
 // 视频卡顿案例按钮2
 const stuckBtn2 = document.createElement('button');
 
 stuckBtn2.textContent = '视频卡顿案例2';
 stuckBtn2.style.cssText = 'background:#e74c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-stuckBtn2.onclick = () => playStuckVideo2();
+stuckBtn2.onclick = () => runSceneAction(playStuckVideo2);
 
 stuckRow.appendChild(stuckBtn);
 stuckRow.appendChild(stuckBtn2);
@@ -668,10 +767,7 @@ const videoPauseBtn = document.createElement('button');
 videoPauseBtn.textContent = '视频暂停';
 videoPauseBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 videoPauseBtn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
+  const videoComp = getVideoComponent();
 
   videoComp?.pauseVideo();
 };
@@ -682,10 +778,7 @@ const videoPlayBtn = document.createElement('button');
 videoPlayBtn.textContent = '视频播放';
 videoPlayBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 videoPlayBtn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
+  const videoComp = getVideoComponent();
 
   videoComp?.playVideo();
 };
@@ -724,10 +817,7 @@ const speed05Btn = document.createElement('button');
 speed05Btn.textContent = '视频0.5x';
 speed05Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed05Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
+  const videoComp = getVideoComponent();
 
   videoComp?.setPlaybackRate(0.5);
 };
@@ -738,10 +828,7 @@ const speed1Btn = document.createElement('button');
 speed1Btn.textContent = '视频1x';
 speed1Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed1Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
+  const videoComp = getVideoComponent();
 
   videoComp?.setPlaybackRate(1);
 };
@@ -752,10 +839,7 @@ const speed2Btn = document.createElement('button');
 speed2Btn.textContent = '视频2x';
 speed2Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
 speed2Btn.onclick = () => {
-  const compositions = player.getCompositions();
-  const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_2');
-  const videoComp = videoItem?.getComponent(VideoComponent);
+  const videoComp = getVideoComponent();
 
   videoComp?.setPlaybackRate(2);
 };
@@ -768,6 +852,7 @@ controlPanel.appendChild(navRow);
 controlPanel.appendChild(stuckRow);
 controlPanel.appendChild(videoControlRow);
 controlPanel.appendChild(speedRow);
+controlPanel.appendChild(document.getElementById('replacement-panel')!);
 document.getElementById('video-controls')!.appendChild(controlPanel);
 
-void switchVideo(currentIndex);
+void runSceneAction(() => switchVideo(currentIndex));

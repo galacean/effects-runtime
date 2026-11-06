@@ -8,9 +8,20 @@
     * { box-sizing: border-box; }
     html, body, div, canvas { margin: 0; padding: 0; }
     body { background: #f2f4f7; color: #1d2939; font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; }
-    #video-controls { padding: 12px; }
-    #video-controls > div > div { flex-wrap: wrap; }
-    .demo-layout { display: flex; align-items: flex-start; gap: 16px; padding: 0 12px 24px; }
+    .demo-layout { display: flex; align-items: flex-start; gap: 16px; padding: 12px; }
+    .demo-content { min-width: 0; flex: 1; }
+    #video-controls { margin-bottom: 12px; }
+    .control-panel { min-width: 0; width: 100%; margin: 0; border: 0; }
+    .control-panel > div { flex-wrap: wrap; }
+    .control-panel button { min-height: 44px; touch-action: manipulation; }
+    #replacement-panel { border-top: 1px solid #666; margin-top: 12px; padding-top: 12px; }
+    #video-url { width: 100%; padding: 8px; font-size: 16px; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+    #replacement-panel button { padding: 6px 10px; cursor: pointer; }
+    #current-url { overflow-wrap: anywhere; }
+    #status[data-error="true"] { color: #ffb4ab; }
+    #playback { font-variant-numeric: tabular-nums; }
+    .preview-area { flex: 0 0 375px; }
     .container {
       width: 375px;
       height: 812px;
@@ -33,16 +44,21 @@
     .capture-frame strong, .capture-frame span { display: block; }
     .capture-frame span { margin-top: 4px; font-size: 11px; color: #475467; white-space: pre-line; overflow-wrap: break-word; }
     @media (max-width: 800px) {
-      .demo-layout { flex-direction: column; padding-left: 0; padding-right: 0; }
-      .container { flex: none; max-width: 100%; }
+      body { height: 100vh; height: 100dvh; overflow: hidden; }
+      .demo-layout { height: 100%; flex-direction: column; gap: 0; padding: 0; }
+      .preview-area { display: flex; justify-content: center; width: 100%; flex: 0 0 50%; min-height: 0; overflow: hidden; background: black; }
+      .container { position: relative; flex: none; width: auto; max-width: 100%; height: 100%; aspect-ratio: 375 / 812; }
+      .container canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .demo-content { width: 100%; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
       .capture-panel { width: 100%; }
     }
   </style>
 </head>
 <body>
-<header id="video-controls"></header>
 <main class="demo-layout">
-  <div class="container" id="J-container"></div>
+  <div class="preview-area"><div class="container" id="J-container"></div></div>
+  <div class="demo-content">
+  <header id="video-controls"></header>
   <section id="replay-capture-panel" class="capture-panel" hidden>
     <div class="capture-header">
       <h1>视频播放过程：开头 2 秒</h1>
@@ -52,7 +68,23 @@
     <p id="capture-status" role="status" aria-live="polite">等待载入案例…</p>
     <div id="capture-rounds"></div>
   </section>
+  </div>
 </main>
+
+<section id="replacement-panel">
+  <form id="video-form">
+    <label for="video-url">替换视频 URL</label>
+    <input id="video-url" type="url" required>
+    <div class="row">
+      <button type="submit">更换视频</button>
+      <button type="button" id="sample-a">复原</button>
+      <button type="button" id="invalid-url">测试加载失败</button>
+    </div>
+  </form>
+  <p id="status" role="status" aria-live="polite">正在加载初始视频…</p>
+  <div id="playback">等待视频初始化…</div>
+  <div>当前视频：<span id="current-url">—</span></div>
+</section>
 
 <script type="module" src="../src/video.ts"></script>
 </body>
