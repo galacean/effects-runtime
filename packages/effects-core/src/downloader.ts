@@ -267,10 +267,14 @@ export async function loadBlob (url: string): Promise<Blob> {
 /**
  * 异步加载一个视频文件
  * @param url - 视频文件的 URL 或 MediaProvider 对象
+ * @param autoplay - 是否在加载时开始播放，默认 true；为 false 时仅预加载，等待 canplay 后返回暂停的视频
  */
-export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideoElement> {
+export async function loadVideo (url: string | MediaProvider, autoplay = true): Promise<HTMLVideoElement> {
   const video = document.createElement('video');
 
+  if (!autoplay) {
+    video.preload = 'auto';
+  }
   if (typeof url === 'string') {
     video.src = url;
   } else {
@@ -307,13 +311,19 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
       video.removeEventListener('error', handleError);
     };
 
-    video.addEventListener('loadeddata', handleSuccess);
+    if (autoplay) {
+      video.addEventListener('loadeddata', handleSuccess);
+    }
     video.addEventListener('canplay', handleSuccess);
     video.addEventListener('error', handleError);
 
-    video.play().catch(err => {
-      console.warn('Autoplay blocked:', err);
-    });
+    if (autoplay) {
+      video.play().catch(err => {
+        console.warn('Autoplay blocked:', err);
+      });
+    } else {
+      video.load();
+    }
   });
 }
 

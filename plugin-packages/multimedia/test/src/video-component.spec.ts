@@ -1013,6 +1013,53 @@ describe('videoComponent:setVideo', function () {
   });
 });
 
+describe('videoComponent:loadScene autoplay', function () {
+  this.timeout(15000);
+
+  for (const autoplay of [false, true, undefined]) {
+    it(`respects autoplay=${autoplay}`, async function () {
+      const currentPlayer = new Player({ canvas: document.createElement('canvas') });
+      const id = generateGUID();
+
+      try {
+        const scene = getVideoJson({
+          duration: 30,
+          compositionDuration: 30,
+          endBehavior: spec.EndBehavior.restart,
+          id,
+          videos: [{ id, url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr' }],
+          start: 0,
+          options: { video: { id }, muted: true },
+        });
+        const composition = await currentPlayer.loadScene(scene, autoplay === undefined ? {} : { autoplay });
+        const video = composition.getItemByName('video')!.getComponent(VideoComponent).video!;
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (autoplay === false) {
+          expect(composition.getPaused()).to.be.true;
+          expect(video.paused).to.be.true;
+          expect(video.currentTime).to.equal(0);
+          currentPlayer.play();
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        expect(composition.getPaused()).to.be.false;
+        expect(video.paused).to.be.false;
+        expect(video.currentTime).to.be.greaterThan(0.05);
+
+        composition.pause();
+        const pausedTime = video.currentTime;
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(video.paused).to.be.true;
+        expect(video.currentTime).to.be.closeTo(pausedTime, 0.02);
+        expect(currentPlayer.engine.renderErrors.size).to.equal(0);
+      } finally {
+        currentPlayer.dispose();
+      }
+    });
+  }
+});
+
 function getVideoJson (options: VideoCompositionOptions) {
   return {
     playerVersion: { web: '2.0.4', native: '0.0.1.202311221223' },

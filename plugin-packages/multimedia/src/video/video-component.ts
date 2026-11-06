@@ -1111,10 +1111,10 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * 当前 item 已经进入自己的时间区间，且视频允许自动播放。
+   * 合成处于播放状态，item 已进入自己的时间区间，且视频允许自动播放。
    */
   private canPlayCurrentItem (): boolean {
-    if (!this.video || !this.isVideoActive || this.getItemLocalTime() < 0) {
+    if (!this.video || !this.isVideoActive || this.item.composition?.getPaused() || this.getItemLocalTime() < 0) {
       return false;
     }
 
