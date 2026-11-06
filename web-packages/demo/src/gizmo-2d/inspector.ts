@@ -1,5 +1,5 @@
-import { FrameComponent, TextComponent, math } from '@galacean/effects';
-import type { VFXItem } from '@galacean/effects';
+import { FrameComponent, TextComponent, math, spec } from '@galacean/effects';
+import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { DOMEvents, element } from './dom';
 import type { DemoEditor } from './editor';
 import type { DemoScene } from './scene';
@@ -23,6 +23,12 @@ export class InspectorPanel {
   private readonly fillSection = element('fill-properties');
   private readonly fill = element<HTMLInputElement>('fill');
   private readonly fillValue = element('fill-value');
+  private readonly fillOpacity = element<HTMLInputElement>('fill-opacity');
+  private readonly frameSection = element('frame-properties');
+  private readonly frameTitle = element<HTMLInputElement>('frame-title');
+  private readonly frameStroke = element<HTMLInputElement>('frame-stroke');
+  private readonly frameStrokeWidth = element<HTMLInputElement>('frame-stroke-width');
+  private readonly fillOpacityField = element('fill-opacity-field');
   private readonly mediaSection = element('media-properties');
   private readonly mediaPlay = element<HTMLButtonElement>('media-play');
   private readonly mediaSeek = element<HTMLInputElement>('media-seek');
@@ -52,9 +58,67 @@ export class InspectorPanel {
       const channel = (index: number) => parseInt(hex.slice(index, index + 2), 16) / 255;
 
       this.editor.editSelected('修改填充', item => {
-        item.getComponent(FrameComponent)?.color.copyFrom(new math.Color(channel(1), channel(3), channel(5), 1));
+        const frame = item.getComponent(FrameComponent);
+        const fill = this.getSolidPaint(frame?.fills);
+
+        if (fill) {
+          fill.color.set(channel(1), channel(3), channel(5), fill.color.a);
+        }
         item.getComponent(TextComponent)?.setTextColor([channel(1), channel(3), channel(5), 1]);
       });
+    });
+    this.events.on(this.fillOpacity, 'change', () => {
+      const alpha = this.fillOpacity.valueAsNumber / 100;
+
+      if (Number.isFinite(alpha) && alpha >= 0 && alpha <= 1) {
+        this.editor.editSelected('修改填充透明度', item => {
+          const fill = this.getSolidPaint(item.getComponent(FrameComponent)?.fills);
+
+          if (fill) {
+            fill.color.a = alpha;
+          }
+        });
+      }
+    });
+    this.events.on(this.frameTitle, 'input', () => {
+      this.editor.editSelected('修改画板标题', item => {
+        const frame = item.getComponent(FrameComponent);
+
+        if (frame) {
+          item.name = this.frameTitle.value;
+          const data = this.scene.getItem(item);
+
+          if (data) {
+            data.name = item.name;
+          }
+        }
+      });
+    });
+    this.events.on(this.frameStroke, 'input', () => {
+      const color = this.frameStroke.value;
+
+      this.editor.editSelected('修改画板描边颜色', item => {
+        const frame = item.getComponent(FrameComponent);
+
+        if (frame) {
+          const channel = (index: number) => parseInt(color.slice(index, index + 2), 16) / 255;
+
+          frame.strokes[0] = { type: spec.FillType.Solid, color: new math.Color(channel(1), channel(3), channel(5), 1) };
+        }
+      });
+    });
+    this.events.on(this.frameStrokeWidth, 'change', () => {
+      const width = this.frameStrokeWidth.valueAsNumber;
+
+      if (Number.isFinite(width) && width >= 0) {
+        this.editor.editSelected('修改画板描边宽度', item => {
+          const frame = item.getComponent(FrameComponent);
+
+          if (frame) {
+            frame.strokeAttributes.width = width;
+          }
+        });
+      }
     });
     Object.values(this.fields).forEach(input => {
       this.events.on(input, 'blur', () => this.scheduleRefresh());
@@ -65,6 +129,9 @@ export class InspectorPanel {
     const selected = this.editor.selectedItems;
     const item = this.editor.selectedItem;
     const text = item?.getComponent(TextComponent);
+    const frame = item?.getComponent(FrameComponent);
+    const fill = this.getSolidPaint(frame?.fills);
+    const stroke = this.getSolidPaint(frame?.strokes);
     const color = this.getFillColor(item);
     const data = item ? this.scene.getItem(item) : undefined;
     const media = item ? this.scene.getMediaState(item) : undefined;
@@ -72,6 +139,8 @@ export class InspectorPanel {
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
       item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
+      item?.name, frame?.strokeAttributes, fill?.color.toArray(), stroke?.color.toArray(),
+      frame?.fills[0]?.type, frame?.strokes[0]?.type,
       data?.status, media,
     ]);
 
@@ -95,6 +164,16 @@ export class InspectorPanel {
       this.setInput(this.fields.fontSize, text.textStyle.fontSize);
     }
     this.fillSection.hidden = !color;
+    this.frameSection.hidden = data?.kind !== 'Frame';
+    this.fillOpacityField.hidden = !fill;
+    if (document.activeElement !== this.frameTitle) {
+      this.frameTitle.value = item?.name ?? '';
+    }
+    this.setInput(this.fillOpacity, fill ? fill.color.a * 100 : undefined);
+    this.setInput(this.frameStrokeWidth, frame?.strokeAttributes.width);
+    if (stroke) {
+      this.frameStroke.value = this.toHexColor(stroke.color);
+    }
     if (color) {
       this.fill.value = color;
       this.fillValue.textContent = color.slice(1).toUpperCase();
@@ -207,9 +286,20 @@ export class InspectorPanel {
 
   private getFillColor (item: VFXItem | undefined): string | undefined {
     const frame = item?.getComponent(FrameComponent);
+    const fill = this.getSolidPaint(frame?.fills);
     const text = item?.getComponent(TextComponent);
-    const channels = frame ? [frame.color.r, frame.color.g, frame.color.b] : text?.textStyle.textColor.slice(0, 3);
+    const channels = fill ? [fill.color.r, fill.color.g, fill.color.b] : text?.textStyle.textColor.slice(0, 3);
 
     return channels ? `#${channels.map(value => Math.round(value * 255).toString(16).padStart(2, '0')).join('')}` : undefined;
+  }
+
+  private getSolidPaint (paints?: Paint[]): SolidPaint | undefined {
+    const paint = paints?.[0];
+
+    return paint?.type === spec.FillType.Solid ? paint : undefined;
+  }
+
+  private toHexColor (color: spec.ColorData): string {
+    return `#${[color.r, color.g, color.b].map(value => Math.round(value * 255).toString(16).padStart(2, '0')).join('')}`;
   }
 }

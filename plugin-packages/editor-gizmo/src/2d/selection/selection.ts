@@ -2,7 +2,7 @@ import { EventEmitter, type Engine, type Composition, type InputEventMouseButton
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Ray, Vector2, setBoxFromPoints, transformedBoxContainsPoint } from '../math';
+import { Ray, Vector2, transformedBoxContainsPoint } from '../math';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import {
   getPlayerItemById,
@@ -11,7 +11,6 @@ import {
   getItemViewTransform,
   getItemChildren,
   isGroupPlayerItem,
-  isFramePlayerItem,
   isPlayerItemVisible,
 } from '../items';
 import { viewPositionToNDC } from '../viewport';
@@ -31,12 +30,6 @@ type HitTestResult = {
   /** 引擎返回的命中区域。 */
   regions: Region[],
 };
-
-/**
- * 画板元素左上角点击交互区域尺寸
- */
-const FRAME_INTERACTION_WIDTH = 40;
-const FRAME_INTERACTION_HEIGHT = 20;
 
 /** Selection 事件参数。 */
 export type SelectionEvents = {
@@ -413,7 +406,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     this.refreshResultRegions(result);
     const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.sceneServer.compositions[0], id)?.type !== spec.ItemType.composition);
 
-    return this.preSelectedFrameOutBound(point, selectedIds);
+    return selectedIds;
   }
 
   /**
@@ -877,49 +870,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
     // 4. 返回排序后的元素 ID。
     return results.map(result => result[0]);
-  }
-
-  /**
-   * 将画板左上角扩展交互区的命中加入结果。
-   * @param mouse 指针视图坐标
-   * @param currentSelectedIds 当前命中元素 ID
-   * @returns 补充画板后的命中元素 ID
-   */
-  private preSelectedFrameOutBound (mouse: Vector2, currentSelectedIds: string[]): string[] {
-    const playerComposition = this.engine.sceneServer.compositions[0];
-
-    if (!playerComposition) {
-      return currentSelectedIds;
-    }
-    const framePlayerItems = playerComposition.items.filter(item => (
-      isFramePlayerItem(item)
-      && isPlayerItemVisible(item)
-    ));
-    const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
-    const frameBoxInfoes = framePlayerItems.map(item => ({
-      id: item.getInstanceId(),
-      box: getItemViewBox(item, containerSize),
-    }));
-
-    if (!frameBoxInfoes?.length) {
-      return currentSelectedIds;
-    }
-    let hasSelectedFrame = false;
-
-    frameBoxInfoes.forEach(frameBoxInfo => {
-      if (hasSelectedFrame) {
-        return;
-      }
-      const { min } = frameBoxInfo.box;
-      const interactionBox = setBoxFromPoints(new Box2(), [min.clone(), min.clone().add(new Vector2(FRAME_INTERACTION_WIDTH, -FRAME_INTERACTION_HEIGHT))]);
-
-      if (interactionBox.containsPoint(mouse)) {
-        hasSelectedFrame = true;
-        currentSelectedIds.splice(0, 0, frameBoxInfo.id);
-      }
-    });
-
-    return currentSelectedIds;
   }
 
   /**
