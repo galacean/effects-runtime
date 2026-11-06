@@ -7,6 +7,12 @@
 
 ---
 
+## 2.10.5
+
+`2026-11-06`
+
+- Fix: preserve video playback rate during automatic updates. [#1570](https://github.com/galacean/effects-runtime/pull/1570) @ChengYi996
+
 ## 2.10.4
 
 `2026-10-12`
