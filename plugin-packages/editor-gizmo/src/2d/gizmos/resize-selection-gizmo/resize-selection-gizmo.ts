@@ -807,7 +807,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const hasOwnTitle = this.selectedItems.length === 1
       && this.selectedItems[0].type === spec.ItemType.null
       && !!this.selectedItems[0].name
-      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleRenderer?.titleStyle;
+      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleRenderer?.visible;
 
     if (this.selectedItems.length === 1 && infoShowEnabled && !isSingleTextSelection) {
       this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
@@ -1344,7 +1344,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const frame = this.config.infoShowEnabled && item?.type === spec.ItemType.null
       ? item.getComponent(FrameComponent) : undefined;
     const title = frame?.titleRenderer;
-    const next = title?.titleStyle && item?.name && !this.wireframe.box.isEmpty() ? title : undefined;
+    const next = title?.visible && item?.name && !this.wireframe.box.isEmpty() ? title : undefined;
 
     if (this.frameTitleRenderer !== next) {
       this.releaseFrameTitleWidth();
