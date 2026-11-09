@@ -1,0 +1,19 @@
+web-packages/test/unit/src/plugin-spine/spine-mesh.spec.ts
+  s_b95fdb585843ae::t_7969b640843687 1-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "81c5521f1ec00a5902b6eecf68c6e5a3060a2dc9",
+  "prompts": {},
+  "sessions": {
+    "s_b95fdb585843ae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18675-eaa9-76f2-8159-945441513820",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "chenmo0204 <chenmo.czt@antgroup.com>"
+    }
+  }
+}
