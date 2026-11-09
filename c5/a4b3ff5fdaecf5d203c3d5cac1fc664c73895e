@@ -1,0 +1,62 @@
+CHANGELOG-zh_CN.md
+  h_46fe096e0c556c 11-16
+CHANGELOG.md
+  h_46fe096e0c556c 10-15
+packages/effects-core/package.json
+  h_46fe096e0c556c 3
+packages/effects-core/src/components/frame-title.ts
+  h_46fe096e0c556c 43,69,71-78,243,249-254,257-258,510
+packages/effects-helper/package.json
+  h_46fe096e0c556c 3
+packages/effects-threejs/package.json
+  h_46fe096e0c556c 3
+packages/effects-webgl/package.json
+  h_46fe096e0c556c 3
+packages/effects/package.json
+  h_46fe096e0c556c 3
+plugin-packages/alipay-downgrade/package.json
+  h_46fe096e0c556c 3
+plugin-packages/dom-content/package.json
+  h_46fe096e0c556c 3
+plugin-packages/downgrade/package.json
+  h_46fe096e0c556c 3
+plugin-packages/editor-gizmo/package.json
+  h_46fe096e0c556c 3
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  h_46fe096e0c556c 810,1347
+plugin-packages/editor-gizmo/src/2d/selection/selection.ts
+  h_46fe096e0c556c 1,13,392-393,395,398-414,419-424
+plugin-packages/ffd/package.json
+  h_46fe096e0c556c 3
+plugin-packages/gui/package.json
+  h_46fe096e0c556c 3
+plugin-packages/ktx2/package.json
+  h_46fe096e0c556c 3
+plugin-packages/model/package.json
+  h_46fe096e0c556c 3
+plugin-packages/multimedia/package.json
+  h_46fe096e0c556c 3
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  h_46fe096e0c556c 542-585
+plugin-packages/orientation-transformer/package.json
+  h_46fe096e0c556c 3
+plugin-packages/rich-text/package.json
+  h_46fe096e0c556c 3
+plugin-packages/spine/package.json
+  h_46fe096e0c556c 3
+plugin-packages/stats/package.json
+  h_46fe096e0c556c 3
+web-packages/demo/src/gizmo-2d/scene.ts
+  h_46fe096e0c556c 1,118,312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c5a4b3ff5fdaecf5d203c3d5cac1fc664c73895e",
+  "prompts": {},
+  "humans": {
+    "h_46fe096e0c556c": {
+      "author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
