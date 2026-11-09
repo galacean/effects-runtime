@@ -71,18 +71,7 @@ export class PolyStar extends ShapePrimitive {
   }
 
   override build (points: number[], screenScale?: number): void {
-    switch (this.starType) {
-      case StarType.Star: {
-        this.buildStarPath();
-
-        break;
-      }
-      case StarType.Polygon: {
-        this.buildPolygonPath();
-
-        break;
-      }
-    }
+    this.getBezierPath();
 
     const ppu = screenScale ?? 1;
 
@@ -106,7 +95,24 @@ export class PolyStar extends ShapePrimitive {
       undefined,
       ppu,
     );
+  }
 
+  /** Preserve authored cubic handles for stroke expansion before flattening. */
+  getBezierPath (): { vertices: readonly number[], inTangents: readonly number[], outTangents: readonly number[] } {
+    switch (this.starType) {
+      case StarType.Star: {
+        this.buildStarPath();
+
+        break;
+      }
+      case StarType.Polygon: {
+        this.buildPolygonPath();
+
+        break;
+      }
+    }
+
+    return { vertices: this.v, inTangents: this.in, outTangents: this.out };
   }
 
   override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {

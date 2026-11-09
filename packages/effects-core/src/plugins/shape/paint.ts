@@ -127,10 +127,20 @@ export function createPaintMaterial (engine: Engine, rendererOptions?: ItemRende
     occlusion: false,
     transparentOcclusion: false,
     side: spec.SideMode.DOUBLE,
+    mask: 0,
   };
   const material = Material.create(engine, {
     shader: { vertex: vert, fragment: frag, glslVersion: GLSLVersion.GLSL1 },
   });
+
+  material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
+  applyPaintRendererOptions(material, renderer, alphaMaskEnabled);
+
+  return material;
+}
+
+/** Apply renderer state when creating or reusing a paint material. */
+export function applyPaintRendererOptions (material: Material, renderer: ItemRenderer, alphaMaskEnabled = false): void {
   const { side, occlusion, blending: blendMode, texture } = renderer;
 
   material.blending = true;
@@ -138,7 +148,6 @@ export function createPaintMaterial (engine: Engine, rendererOptions?: ItemRende
   material.depthMask = occlusion;
   setBlendMode(material, blendMode);
   setSideMode(material, side);
-  material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
   material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
   material.setTexture('_ImageTex', texture);
   const texParams = new Vector4();
@@ -152,6 +161,4 @@ export function createPaintMaterial (engine: Engine, rendererOptions?: ItemRende
   } else {
     material.disableMacro('ALPHA_CLIP');
   }
-
-  return material;
 }

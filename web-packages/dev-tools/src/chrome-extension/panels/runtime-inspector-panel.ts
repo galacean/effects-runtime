@@ -45,6 +45,7 @@ export class RuntimeInspectorPanel extends EditorWindow {
   private heading!: Label;
   private preview!: RuntimeImage;
   private structure = '';
+  private editOwner?: Control;
 
   constructor (private readonly connection: RuntimeConnection) { super(); this.title = 'Inspector'; this.open(); }
   protected override createContent (engine: Engine): Control {
@@ -54,7 +55,15 @@ export class RuntimeInspectorPanel extends EditorWindow {
     this.search = new EditorSearchField(engine, 'Search…'); this.search.on('textChanged', query => this.sheet.filter(query));
     append(content, margin(engine, this.search, 8, 6));
     this.preview = append(content, new RuntimeImage(engine));
-    this.sheet = append(content, expand(new PropertySheet(engine, { change: (_title, _owner, action) => action(), finish: owner => this.connection.finish(owner) })));
+    this.sheet = append(content, expand(new PropertySheet(engine, {
+      change: (_title, owner, action) => {
+        const previousOwner = this.editOwner;
+
+        this.editOwner = owner;
+        try { action(); } finally { this.editOwner = previousOwner; }
+      },
+      finish: owner => this.connection.finish(owner),
+    })));
 
     return content;
   }
@@ -80,8 +89,7 @@ export class RuntimeInspectorPanel extends EditorWindow {
   private build (group: PropertyGroup, field: RuntimeField): void {
     const title = propertyLabel(field.name);
     const read = (): RuntimeValue => this.connection.field(field.id)?.value ?? field.value;
-    let owner: Control = group;
-    const write = (value: RuntimeValue): void => this.connection.write(owner, field.id, value);
+    const write = (value: RuntimeValue): void => { if (this.editOwner) { this.connection.write(this.editOwner, field.id, value); } };
 
     if (field.kind === 'group') {
       const nested = group.group(field.id, title, false);
@@ -90,13 +98,13 @@ export class RuntimeInspectorPanel extends EditorWindow {
     } else if (field.kind === 'reference' && field.reference) {
       group.button(title, String(read()), () => this.connection.select(field.reference), 'browseContent');
     } else if (!field.writable) { group.readOnly(title, () => Array.isArray(read()) ? (read() as RuntimeValue[]).join(', ') : String(read() ?? 'None')); } else if (field.kind === 'number') {
-      owner = group.number(title, { read: () => Number(read()), write });
-    } else if (field.kind === 'string') { owner = group.text(title, { read: () => String(read()), write }, String(read()).includes('\n')); } else if (field.kind === 'boolean') {
-      owner = group.boolean(title, { read: () => !!read(), write });
+      group.number(title, { read: () => Number(read()), write });
+    } else if (field.kind === 'string') { group.text(title, { read: () => String(read()), write }, String(read()).includes('\n')); } else if (field.kind === 'boolean') {
+      group.boolean(title, { read: () => !!read(), write });
     } else if (field.kind === 'vector') {
-      owner = group.vector(title, { read: () => read() as number[], write }, (read() as number[]).length);
+      group.vector(title, { read: () => read() as number[], write }, (read() as number[]).length);
     } else if (field.kind === 'color') {
-      owner = group.color(title, { read: () => new math.Color(...read() as [number, number, number, number]), write: value => write([value.r, value.g, value.b, value.a]) });
+      group.color(title, { read: () => new math.Color(...read() as [number, number, number, number]), write: value => write([value.r, value.g, value.b, value.a]) });
     }
   }
 }

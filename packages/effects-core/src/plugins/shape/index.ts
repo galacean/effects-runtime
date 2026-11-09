@@ -1,3 +1,4 @@
 export * from './shape-component';
 export * from './trim-path';
-export { createPaint, createPaintMaterial, updatePaintMaterial } from './paint';
+export * from './trimmed-path-result';
+export * from './paint';

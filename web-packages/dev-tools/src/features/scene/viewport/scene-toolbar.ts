@@ -26,6 +26,7 @@ export class SceneToolbar extends EditorToolbar {
   private readonly add: EditorMenuButton;
   private readonly transform: EditorIconButton;
   private readonly hand: EditorIconButton;
+  private readonly brush: EditorIconButton;
   private readonly snap: EditorIconButton;
   private readonly distance: EditorMenuButton;
   private readonly camera: EditorMenuButton;
@@ -41,6 +42,7 @@ export class SceneToolbar extends EditorToolbar {
     this.addSeparator = append(this, new VSeparator(engine)); this.addSeparator.setCustomMinimumSize(1, 20);
     this.transform = append(this, new EditorViewportToggleButton(engine, 'transform', () => this.options().gizmo?.tool === 'transform', value => { if (value) { this.options().gizmo?.setTool('transform'); } }));
     this.hand = append(this, new EditorViewportToggleButton(engine, 'hand', () => this.options().gizmo?.tool === 'hand', value => { if (value) { this.options().gizmo?.setTool('hand'); } }));
+    this.brush = append(this, new EditorViewportToggleButton(engine, 'brush', () => this.options().gizmo?.tool === 'brush', value => { if (value) { this.options().gizmo?.setTool('brush'); } }));
     this.snap = append(this, new EditorViewportToggleButton(engine, 'magnet', () => !!this.options().gizmo?.snapping, value => {
       const gizmo = this.options().gizmo;
 
@@ -53,13 +55,14 @@ export class SceneToolbar extends EditorToolbar {
     this.show = this.menu('', () => this.showActions()); this.show.iconName = 'view'; this.show.showArrow = true; this.show.themeTypeVariation = 'EditorViewportMenu';
     this.more = this.menu('', () => this.moreActions()); this.more.iconName = 'more';
     setTooltip(this.add, 'Add an item to the scene'); setTooltip(this.transform, 'Transform (V / W)'); setTooltip(this.hand, 'Pan (H)');
+    setTooltip(this.brush, 'Brush (B)');
     setTooltip(this.snap, 'Snapping'); setTooltip(this.camera, 'Camera views and framing'); setTooltip(this.zoom, 'Viewport zoom'); setTooltip(this.show, 'Show flags');
   }
   override getMinimumSize (): math.Vector2 { return new math.Vector2(100, 34); }
   override update (dt: number): void {
     const o = this.options(), gizmo = o.gizmo, disabled = !gizmo || !o.is2DMode;
 
-    this.transform.disabled = this.hand.disabled = this.snap.disabled = this.distance.disabled = this.zoom.disabled = disabled;
+    this.transform.disabled = this.hand.disabled = this.brush.disabled = this.snap.disabled = this.distance.disabled = this.zoom.disabled = disabled;
     this.camera.text = o.is2DMode ? '2D' : this.width > 600 ? 'Perspective' : '3D';
     this.distance.text = (gizmo?.handler.getConfigManager().get(selectionSnapConfig).distance ?? 5) + ' px';
     this.zoom.text = Math.round((gizmo?.scale ?? 1) * 100) + '%';
@@ -70,7 +73,7 @@ export class SceneToolbar extends EditorToolbar {
     this.drawLine(0, this.height - 1, this.width, this.height - 1, editorColors.recessed);
   }
   protected override sortChildren (): void {
-    const optional = [this.transform, this.snap, this.show, this.distance, this.zoom, this.hand];
+    const optional = [this.transform, this.brush, this.hand, this.snap, this.show, this.distance, this.zoom];
     const base = this.add.getCombinedMinimumSize().x + this.camera.getCombinedMinimumSize().x + 44;
     let remaining = this.width - base;
 
@@ -82,7 +85,7 @@ export class SceneToolbar extends EditorToolbar {
     this.addSeparator.visible = true; this.snapSeparator.visible = this.snap.visible;
     let x = 4;
 
-    for (const control of [this.add, this.addSeparator, this.transform, this.hand, this.more, this.snapSeparator, this.snap, this.distance]) {
+    for (const control of [this.add, this.addSeparator, this.transform, this.hand, this.brush, this.more, this.snapSeparator, this.snap, this.distance]) {
       if (!control.visible) { continue; }
       if (control instanceof VSeparator) { place(control, x + 5, 7, 1, 20); x += 12; continue; }
       const width = Math.max(24, control.getCombinedMinimumSize().x);
@@ -144,6 +147,7 @@ export class SceneToolbar extends EditorToolbar {
 
     if (!this.transform.visible) { actions.push({ label: 'Transform', shortcut: 'V / W', enabled: editing, action: () => g?.setTool('transform') }); }
     if (!this.hand.visible) { actions.push({ label: 'Pan', shortcut: 'H', enabled: editing, action: () => g?.setTool('hand') }); }
+    if (!this.brush.visible) { actions.push({ label: 'Brush', shortcut: 'B', enabled: editing, action: () => g?.setTool('brush') }); }
     actions.push({ label: 'Edit Text', shortcut: 'Enter', enabled: editing && g?.canEditText, action: () => g?.editText() });
     if (!this.snap.visible) { actions.push({ label: 'Snapping', checked: g?.snapping, enabled: editing, action: () => { if (g) { g.snapping = !g.snapping; } } }); }
     if (!this.distance.visible) { actions.push({ label: 'Snap Distance', enabled: editing, children: this.snapActions() }); }
@@ -151,6 +155,7 @@ export class SceneToolbar extends EditorToolbar {
     if (!this.show.visible) { actions.push({ label: 'Show', children: this.showActions() }); }
     actions.push({ label: 'Keyboard Shortcuts', children: [
       { label: 'Transform', shortcut: 'V / W', enabled: false }, { label: 'Pan', shortcut: 'H / Space + drag', enabled: false },
+      { label: 'Brush', shortcut: 'B', enabled: false },
       { label: 'Frame Selection / All', shortcut: 'F / Home', enabled: false }, { label: 'Multi-select', shortcut: 'Shift + click', enabled: false },
       { label: 'Edit Text', shortcut: 'Enter / Double-click', enabled: false }, { label: 'Exit Editing', shortcut: 'Esc', enabled: false },
     ] });
