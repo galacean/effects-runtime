@@ -27,8 +27,10 @@ export interface FrameComponentData extends spec.ComponentData {
   fills?: spec.PaintData[],
   strokes?: spec.PaintData[],
   strokeWidth?: number,
+  strokeAlignment?: number,
   strokeCap?: spec.LineCap,
   strokeJoin?: spec.LineJoin,
+  strokeMiterLimit?: number,
   titleStyle?: FrameTitleStyleData,
 }
 
@@ -36,25 +38,82 @@ export interface FrameComponentData extends spec.ComponentData {
 export class FrameComponent extends RendererComponent implements Maskable {
   fills: Paint[] = [{ type: spec.FillType.Solid, color: new Color(1, 1, 1, 1) }];
   strokes: Paint[] = [];
-  /** 复用 Shape 的描边属性，width 使用屏幕逻辑像素。 */
-  strokeAttributes: StrokeAttributes = {
+  readonly titleRenderer = new FrameTitle(this.engine);
+
+  private readonly strokeAttributes: Omit<StrokeAttributes, 'variableWidthPoints'> = {
     width: 1,
     alignment: 0.5,
     cap: spec.LineCap.Butt,
     join: spec.LineJoin.Miter,
     miterLimit: 10,
   };
-  readonly titleRenderer = new FrameTitle(this.engine);
-
   private clipGeometry: Geometry;
   private strokeGeometry?: Geometry;
   private strokePositions = new Float32Array(0);
-  private strokeGeometryKey = '';
+  private strokeGeometryDirty = true;
+  private strokeGeometryWidth = 0;
+  private strokeGeometryHeight = 0;
   private clipMaterial: Material;
   private readonly fillMaterials: Material[] = [];
   private readonly strokeMaterials: Material[] = [];
   private readonly paintSize = new Vector2();
   private worldMatrix = new Matrix4();
+
+  /** 描边宽度，使用屏幕逻辑像素。 */
+  get strokeWidth (): number {
+    return this.strokeAttributes.width;
+  }
+
+  set strokeWidth (value: number) {
+    if (this.strokeAttributes.width !== value) {
+      this.strokeAttributes.width = value;
+      this.strokeGeometryDirty = true;
+    }
+  }
+
+  get strokeAlignment (): number {
+    return this.strokeAttributes.alignment;
+  }
+
+  set strokeAlignment (value: number) {
+    if (this.strokeAttributes.alignment !== value) {
+      this.strokeAttributes.alignment = value;
+      this.strokeGeometryDirty = true;
+    }
+  }
+
+  get strokeCap (): spec.LineCap {
+    return this.strokeAttributes.cap;
+  }
+
+  set strokeCap (value: spec.LineCap) {
+    if (this.strokeAttributes.cap !== value) {
+      this.strokeAttributes.cap = value;
+      this.strokeGeometryDirty = true;
+    }
+  }
+
+  get strokeJoin (): spec.LineJoin {
+    return this.strokeAttributes.join;
+  }
+
+  set strokeJoin (value: spec.LineJoin) {
+    if (this.strokeAttributes.join !== value) {
+      this.strokeAttributes.join = value;
+      this.strokeGeometryDirty = true;
+    }
+  }
+
+  get strokeMiterLimit (): number {
+    return this.strokeAttributes.miterLimit;
+  }
+
+  set strokeMiterLimit (value: number) {
+    if (this.strokeAttributes.miterLimit !== value) {
+      this.strokeAttributes.miterLimit = value;
+      this.strokeGeometryDirty = true;
+    }
+  }
 
   override onAwake (): void {
     this.clipGeometry = Geometry.create(this.engine, {
@@ -181,9 +240,11 @@ export class FrameComponent extends RendererComponent implements Maskable {
     if (data.strokes !== undefined) {
       this.strokes = data.strokes.map(paint => createPaint(paint, path => this.findObject<Texture>(path)));
     }
-    this.strokeAttributes.width = data.strokeWidth ?? 1;
-    this.strokeAttributes.cap = data.strokeCap ?? spec.LineCap.Butt;
-    this.strokeAttributes.join = data.strokeJoin ?? spec.LineJoin.Miter;
+    this.strokeWidth = data.strokeWidth ?? 1;
+    this.strokeAlignment = data.strokeAlignment ?? 0.5;
+    this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
+    this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
+    this.strokeMiterLimit = data.strokeMiterLimit ?? 10;
 
     if (data.titleStyle !== undefined) {
       this.titleRenderer.fromData(data.titleStyle);
@@ -283,12 +344,11 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
   /** Expand the border independently of the rectangular clip applied to children. */
   private updateStrokeGeometry (width: number, height: number): void {
-    const style = this.strokeAttributes;
-    const key = JSON.stringify([width, height, style.width, style.alignment, style.cap, style.join, style.miterLimit, style.variableWidthPoints]);
-
-    if (key === this.strokeGeometryKey) {
+    // 描边保持屏幕逻辑像素宽度，投影尺寸变化时也需要重建。
+    if (!this.strokeGeometryDirty && width === this.strokeGeometryWidth && height === this.strokeGeometryHeight) {
       return;
     }
+    const style = this.strokeAttributes;
     const indices: number[] = [];
     const path = new GraphicsPath().rect(-width / 2, -height / 2, width, height, 0);
     const expanded = expandStrokePath(makeStrokeContourPath(path), style, 1);
@@ -327,7 +387,9 @@ export class FrameComponent extends RendererComponent implements Maskable {
       this.strokeGeometry.setIndexData(new Uint16Array(indices));
       this.strokeGeometry.setDrawCount(indices.length);
     }
-    this.strokeGeometryKey = key;
+    this.strokeGeometryWidth = width;
+    this.strokeGeometryHeight = height;
+    this.strokeGeometryDirty = false;
   }
 
   private updateStrokeAttribute (name: string, data: Float32Array, size: number): void {

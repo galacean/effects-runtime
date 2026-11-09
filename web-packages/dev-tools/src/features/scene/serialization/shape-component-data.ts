@@ -26,8 +26,8 @@ export function readShapeComponentData (component: ShapeComponent): Data {
   const paints = (key: 'fills' | 'strokes'): Data[] => (Reflect.get(component, key) as (SolidPaint | GradientPaint | TexturePaint)[]).map(paintData);
   const data: Data = { ...component.definition, ...component.shape, id: component.getInstanceId(), dataType: spec.DataType.ShapeComponent, _enabled: component.enabled,
     item: component.item ? { id: component.item.getInstanceId() } : component.definition.item,
-    strokeWidth: Reflect.get(component, 'strokeWidth'), strokeCap: Reflect.get(component, 'strokeCap'), strokeJoin: Reflect.get(component, 'strokeJoin'),
-    strokeAlignment: stroke.alignment, strokeMiterLimit: stroke.miterLimit, fills: paints('fills'), strokes: paints('strokes'),
+    strokeWidth: component.strokeWidth, strokeCap: component.strokeCap, strokeJoin: component.strokeJoin,
+    strokeAlignment: component.strokeAlignment, strokeMiterLimit: component.strokeMiterLimit, fills: paints('fills'), strokes: paints('strokes'),
     variableWidthPoints: stroke.variableWidthPoints ?? [],
     renderer: { side: renderer.side, occlusion: renderer.occlusion, transparentOcclusion: component.definition.renderer?.transparentOcclusion ?? false,
       blending: renderer.blending, texture: reference(renderer.texture) },

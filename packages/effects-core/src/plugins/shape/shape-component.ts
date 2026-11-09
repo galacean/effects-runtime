@@ -154,7 +154,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private readonly strokePathResult = new TrimmedPathResult();
 
   private fills: Paint[] = [];
-  private strokeAttributes: StrokeAttributes = {
+  private readonly strokeAttributes: StrokeAttributes = {
     width: 1,
     alignment: 0.5,
     cap: spec.LineCap.Butt,
@@ -162,9 +162,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     miterLimit: 10,
   };
 
-  private strokeWidth = 1;
-  private strokeCap = spec.LineCap.Butt;
-  private strokeJoin = spec.LineJoin.Miter;
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
   private _strokeTrimPath: TrimPath | null = null;
@@ -177,6 +174,61 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get shape () {
     return this.shapeAttributes;
+  }
+
+  get strokeWidth (): number {
+    return this.strokeAttributes.width;
+  }
+
+  set strokeWidth (value: number) {
+    if (this.strokeAttributes.width !== value) {
+      this.strokeAttributes.width = value;
+      this.shapeDirty = true;
+    }
+  }
+
+  get strokeAlignment (): number {
+    return this.strokeAttributes.alignment;
+  }
+
+  set strokeAlignment (value: number) {
+    if (this.strokeAttributes.alignment !== value) {
+      this.strokeAttributes.alignment = value;
+      this.shapeDirty = true;
+    }
+  }
+
+  get strokeCap (): spec.LineCap {
+    return this.strokeAttributes.cap;
+  }
+
+  set strokeCap (value: spec.LineCap) {
+    if (this.strokeAttributes.cap !== value) {
+      this.strokeAttributes.cap = value;
+      this.shapeDirty = true;
+    }
+  }
+
+  get strokeJoin (): spec.LineJoin {
+    return this.strokeAttributes.join;
+  }
+
+  set strokeJoin (value: spec.LineJoin) {
+    if (this.strokeAttributes.join !== value) {
+      this.strokeAttributes.join = value;
+      this.shapeDirty = true;
+    }
+  }
+
+  get strokeMiterLimit (): number {
+    return this.strokeAttributes.miterLimit;
+  }
+
+  set strokeMiterLimit (value: number) {
+    if (this.strokeAttributes.miterLimit !== value) {
+      this.strokeAttributes.miterLimit = value;
+      this.shapeDirty = true;
+    }
   }
 
   get strokeTrimPath (): TrimPath | null {
@@ -386,10 +438,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const vertices: number[] = [];
     const indices: number[] = [];
     const lineStyle = this.strokeAttributes;
-
-    lineStyle.cap = this.strokeCap;
-    lineStyle.join = this.strokeJoin;
-    lineStyle.width = this.strokeWidth;
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.fills.length > 0) {
@@ -715,8 +763,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
-    this.strokeAttributes.alignment = data.strokeAlignment ?? 0.5;
-    this.strokeAttributes.miterLimit = data.strokeMiterLimit ?? 10;
+    this.strokeAlignment = data.strokeAlignment ?? 0.5;
+    this.strokeMiterLimit = data.strokeMiterLimit ?? 10;
     this.strokeAttributes.variableWidthPoints = data.variableWidthPoints?.map(point => ({ ...point }));
 
     this._strokeTrimPath = null;

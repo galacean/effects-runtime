@@ -117,7 +117,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     frame.priority = -100;
     frame.titleRenderer.titleStyle = new FrameTitleStyle();
     frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
-    frame.strokeAttributes.width = 1;
+    frame.strokeWidth = 1;
     if (id) {
       data.item.setInstanceId(id);
     }
@@ -359,7 +359,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
       data.name += ` · ${label}`;
       data.item.name = data.name;
       component.fills = [{ type: spec.FillType.Solid, color: new math.Color(1, 1, 1, alpha) }];
-      component.strokeAttributes.width = 2;
+      component.strokeWidth = 2;
       if (alpha > 0) {
         data.item.setRotation(0, 0, -8);
       }
