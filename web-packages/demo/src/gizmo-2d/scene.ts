@@ -1,4 +1,4 @@
-import { CompositionComponent, EventEmitter, FrameComponent, FrameTitleStyle, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
+import { CompositionComponent, EventEmitter, FrameComponent, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
 import type { Composition, Player, VFXItem } from '@galacean/effects';
 import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
@@ -115,7 +115,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     const frame = data.item.getComponent(FrameComponent);
 
     frame.priority = -100;
-    frame.titleRenderer.titleStyle = new FrameTitleStyle();
+    frame.titleRenderer.visible = true;
     frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
     frame.strokeWidth = 1;
     if (id) {
@@ -309,7 +309,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
       });
       const texture = await this.frameIcon;
 
-      if (!this.disposed && this.items.includes(data) && frame.titleRenderer.titleStyle) {
+      if (!this.disposed && this.items.includes(data)) {
         frame.titleRenderer.icon = texture;
       }
     } catch (error) {

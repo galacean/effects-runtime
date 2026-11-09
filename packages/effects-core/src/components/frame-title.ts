@@ -40,6 +40,7 @@ export class FrameTitleStyle {
 export class FrameTitle {
   readonly materials: Material[] = [];
   private style?: FrameTitleStyle;
+  private _visible = false;
   private titleVisible = false;
   private dirty = true;
   private widthLimit = Infinity;
@@ -65,8 +66,16 @@ export class FrameTitle {
     this.hide();
   }
 
+  /** 标题显示开关，独立于样式；默认隐藏。 */
   get visible (): boolean {
-    return this.titleVisible;
+    return this._visible;
+  }
+
+  set visible (value: boolean) {
+    this._visible = value;
+    if (!value) {
+      this.hide();
+    }
   }
 
   /** 运行时布局限制，供 Gizmo 为尺寸标签预留宽度，不写入组件数据。 */
@@ -231,16 +240,22 @@ export class FrameTitle {
     this.titleStyle = style;
   }
 
+  /** 清除当前帧的渲染状态，保留 visible 显示配置。 */
   hide (): void {
     this.titleVisible = false;
   }
 
   update (frame: FrameComponent, corners: Vector3[]): void {
-    const style = this.style;
+    if (!this.visible) {
+      this.hide();
+
+      return;
+    }
+    const style = this.style ??= new FrameTitleStyle();
     const name = frame.item.name;
 
-    this.titleVisible = !!(name && style && style.fontSize > 0 && style.color.a > 0);
-    if (!this.titleVisible || !style) {
+    this.titleVisible = !!(name && style.fontSize > 0 && style.color.a > 0);
+    if (!this.titleVisible) {
       return;
     }
     const { fontSize, fontFamily, fontWeight, fontStyle } = style;
@@ -492,7 +507,7 @@ export class FrameTitle {
   }
 
   dispose (): void {
-    this.hide();
+    this.visible = false;
     this.disposeGeometry();
   }
 }
