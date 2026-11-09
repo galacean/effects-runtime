@@ -1,6 +1,7 @@
 import { getClass } from '@galacean/effects';
 import { assetLibrary } from '../features/assets/asset-library';
 import { createDefaultDemoScene } from '../examples/scenes/default-scene';
+import { initializeExampleAssets } from '../examples/initialize-example-assets';
 import { DEFAULT_PROJECT_ID } from '../features/projects/project-types';
 import { projectWorkspace } from '../features/projects/project-workspace';
 import { sceneWorkspace } from '../features/scene/scene-workspace';
@@ -12,6 +13,7 @@ export async function initializeEditorRuntime (surface: HTMLCanvasElement): Prom
   EditorRuntimeSession.initialize(document.getElementById('J-container'), surface);
   assetLibrary.registerEngine(EditorRuntimeSession.player.engine);
   await projectWorkspace.initialize();
+  await initializeExampleAssets(assetLibrary.storage);
   const lastScene = await sceneWorkspace.initialize(async source => {
     const player = EditorRuntimeSession.player;
     const manager = player.engine.assetServer.createAssetManager({ env: 'editor', autoplay: false, reusable: true });

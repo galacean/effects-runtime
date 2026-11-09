@@ -21,10 +21,10 @@ export interface SceneItemCopy {
 export class SceneItemOperations {
   constructor (readonly document: SceneDocument) { }
 
-  create (type: SceneItemOptions, target?: SceneItemPlacement): VFXItem | undefined {
+  create (type: SceneItemOptions, target?: SceneItemPlacement, initialize?: (item: VFXItem) => void): VFXItem | undefined {
     let item: VFXItem | undefined;
 
-    this.run('Create ' + type.label, () => {
+    const created = this.run('Create ' + type.label, () => {
       const { item: definition, objects } = createSceneItemData(type, this.document.composition.getDuration());
       const engine = this.document.composition.engine;
       const parent = target?.parent ?? this.document.composition.sceneRoot;
@@ -47,10 +47,11 @@ export class SceneItemOperations {
 
         data.itemFolders[definition.id] = target.folderId;
       }
+      initialize?.(item);
       EditorSelection.setObjects([item]);
     });
 
-    return item;
+    return created ? item : undefined;
   }
 
   rename (item: VFXItem, name: string): boolean {

@@ -16,7 +16,11 @@ import { addItem } from '../utils';
 import { FrameTitle, type FrameTitleStyleData } from './frame-title';
 import type { Paint } from '../plugins/shape/paint';
 import { createPaint, createPaintMaterial, updatePaintMaterial } from '../plugins/shape/paint';
-import { buildLine, type StrokeAttributes } from '../math/shape/build-line';
+import type { StrokeAttributes } from '../math/shape/stroke-attributes';
+import { expandStrokePath, flattenStrokePath } from '../math/shape/stroke-expansion';
+import { triangulate } from '../math/shape/triangulate';
+import { GraphicsPath } from '../plugins/shape/graphics-path';
+import { makeStrokeContourPath } from '../plugins/shape/contour-path';
 import type { Texture } from '../texture';
 
 export interface FrameComponentData extends spec.ComponentData {
@@ -266,7 +270,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     const width = Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y);
     const height = Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y);
 
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    if (width <= 0 || height <= 0) {
       return;
     }
     if (this.strokeAttributes.width > 0 && this.strokes.length > 0) {
@@ -277,23 +281,23 @@ export class FrameComponent extends RendererComponent implements Maskable {
     return { width, height };
   }
 
-  /** 使用 Shape 的 buildLine；描边独立于子元素的矩形裁剪范围。 */
+  /** Expand the border independently of the rectangular clip applied to children. */
   private updateStrokeGeometry (width: number, height: number): void {
     const style = this.strokeAttributes;
-    const key = JSON.stringify([width, height, style.width, style.alignment, style.cap, style.join, style.miterLimit]);
+    const key = JSON.stringify([width, height, style.width, style.alignment, style.cap, style.join, style.miterLimit, style.variableWidthPoints]);
 
     if (key === this.strokeGeometryKey) {
       return;
     }
-    const vertices: number[] = [];
     const indices: number[] = [];
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
+    const path = new GraphicsPath().rect(-width / 2, -height / 2, width, height, 0);
+    const expanded = expandStrokePath(makeStrokeContourPath(path), style, 1);
+    const contours = flattenStrokePath(expanded, 1);
+    const vertices = triangulate(contours.map(contour => contour.points), 'nonzero');
 
-    buildLine([
-      halfWidth, halfHeight, -halfWidth, halfHeight,
-      -halfWidth, -halfHeight, halfWidth, -halfHeight,
-    ], style, false, true, vertices, 2, 0, indices, 0);
+    for (let i = 0; i < vertices.length / 2; i++) {
+      indices.push(i);
+    }
 
     const count = vertices.length / 2;
     const positions = this.strokePositions = new Float32Array(count * 3);
