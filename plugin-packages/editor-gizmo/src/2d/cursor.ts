@@ -16,6 +16,10 @@ export enum GestureCursorType {
   ROTATION = 'rotation',
   /** 缩放光标。 */
   SCALE = 'scale',
+  /** 横向移动光标。 */
+  HORIZONTAL_ARROW = 'horizontal-arrow',
+  /** 纵向移动光标。 */
+  VERTICAL_ARROW = 'vertical-arrow',
   /** 文本旋转光标。 */
   TEXT_ROTATION = 'text-rotation',
   /** 圆形画笔光标。 */

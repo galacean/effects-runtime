@@ -136,8 +136,13 @@ export class SceneViewportPanel extends EditorWindow {
     const item = hits.filter(hit => hit.item.definition.id).at(-1)?.item;
 
     if (item && !EditorSelection.getSelectedObjects().includes(item)) { EditorSelection.select(item); }
+    const editActions = sceneEditCommands.actions();
+
+    if (this.is2DMode && this.gizmo?.ruler.hasSelectedGuide()) {
+      editActions.push({ label: 'Delete Ruler', shortcut: 'Delete / Backspace', action: () => { this.gizmo?.ruler.deleteRuler(); } });
+    }
     this.context.setActions([
-      { label: 'Edit', heading: true }, ...sceneEditCommands.actions(),
+      { label: 'Edit', heading: true }, ...editActions,
       { label: 'Scene', heading: true }, { label: 'Create', children: createItemActions() },
       { label: 'Select All', shortcut: 'Ctrl+A', action: () => sceneEditCommands.selectAll() },
       { label: 'Frame Selection', shortcut: 'F', enabled: this.is2DMode && !!this.gizmo?.selectedItems.length, action: () => this.frameSelection() },
@@ -178,6 +183,18 @@ export class SceneViewportPanel extends EditorWindow {
     const gizmo = this.gizmo;
 
     if (!gizmo || event.echo || event.altPressed) { return; }
+    if (this.is2DMode && !gizmo.handler.isMouseButtonPressed()
+      && gizmo.handler.getActiveEditMode().id !== 'text-edit'
+      && this.deleteSelectedRulerShortcut(gizmo, event)) {
+      return;
+    }
+    const isEscape = (event.physicalKeycode || event.keycode).toLowerCase() === 'escape';
+
+    if (this.is2DMode && isEscape && gizmo.ruler.cancelInteraction()) {
+      event.accept();
+
+      return;
+    }
     if (!gizmo.handler.isMouseButtonPressed() && gizmo.handler.getActiveEditMode().id !== 'text-edit' && sceneEditCommands.shortcut(event)) { return; }
     if (event.ctrlPressed || event.metaPressed) { return; }
     if (!this.is2DMode) { return; }
@@ -185,6 +202,25 @@ export class SceneViewportPanel extends EditorWindow {
       if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
     } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }
     event.accept();
+  }
+
+  /** 标尺选中时优先消费删除快捷键，避免被场景元素删除命令截获。 */
+  private deleteSelectedRulerShortcut (gizmo: SceneGizmo, event: InputEventKey): boolean {
+    if (event.ctrlPressed || event.metaPressed) {
+      return false;
+    }
+    const code = (event.physicalKeycode || event.keycode).toLowerCase();
+
+    if (code !== 'delete' && code !== 'backspace') {
+      return false;
+    }
+    if (!gizmo.ruler.hasSelectedGuide()) {
+      return false;
+    }
+    gizmo.ruler.deleteRuler();
+    event.accept();
+
+    return true;
   }
 }
 

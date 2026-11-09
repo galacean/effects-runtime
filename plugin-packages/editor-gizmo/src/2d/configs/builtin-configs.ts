@@ -12,6 +12,7 @@ import type {
   ResizeSelectionConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
+  RulerConfig,
 } from './types';
 
 export { DEFAULT_LOADING_FRAGMENT, loadingConfig } from './loading-config';
@@ -19,6 +20,31 @@ export { DEFAULT_LOADING_FRAGMENT, loadingConfig } from './loading-config';
 export const effectsEditModeConfig = defineConfig<'mode.effects-edit', EffectsEditModeConfig>({
   id: 'mode.effects-edit',
   defaults: { allowTransform: true },
+});
+
+export const rulerConfig = defineConfig<'ruler', RulerConfig>({
+  id: 'ruler',
+  defaults: {
+    enabled: true,
+    rulerSize: 20,
+    rulerValueScale: 1,
+    guideSelectionMode: 'ruler',
+    guideColor: 0x0d99ff,
+    selectedGuideColor: 0xf59e0b,
+    guideAlpha: 0.9,
+    selectedGuideAlpha: 0.9,
+    guideLineWidth: 1,
+    guideHitDistance: 5,
+    rulerTextColor: 0x6b7280,
+    rulerGridColor: 0x6b7280,
+    rulerBackgroundColor: 0xf3f4f6,
+    guidePositionVisible: true,
+    guidePositionFontSize: 10,
+    guidePositionTextColor: 0xffffff,
+    guidePositionBackgroundColor: 0xf59e0b,
+    shiftSnapEnabled: true,
+    shiftSnapDistance: 5,
+  },
 });
 
 export const viewportNavigationConfig = defineConfig<'viewport.navigation', ViewportNavigationConfig>({

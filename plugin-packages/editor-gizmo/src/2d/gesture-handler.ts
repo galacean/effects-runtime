@@ -16,6 +16,7 @@ import { LoadingManager } from './gizmos/loading-manager';
 import { LoadingGizmo } from './gizmos/loading-gizmo';
 import { HandGizmo } from './gizmos/hand-gizmo';
 import { IconGizmo } from './gizmos/icon-gizmo';
+import { RulerGizmo } from './gizmos/ruler/ruler-gizmo';
 import { drawCorners, toColor } from './drawing';
 import {
   getItemViewTransform,
@@ -88,6 +89,9 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 加载状态管理器。 */
   private loadingManager = new LoadingManager();
 
+  /** 所有工具共享的公共标尺 Gizmo；数据由实例自身持有。 */
+  private ruler: RulerGizmo;
+
   /** Gizmo 生命周期管理器。 */
   private gizmoManager: GizmoManager;
 
@@ -153,6 +157,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     this.selection = new Selection(engine, this.hoveringResults);
     this.snapManager = new SnapManager(this);
     this.editMode = this.createDefaultEditMode();
+    this.ruler = new RulerGizmo(this);
 
     this.selection.on('preselectchange', this.onPreselectChange);
     this.createViewport();
@@ -343,12 +348,15 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 重建公共 Gizmo 与当前工具或编辑模式的 Gizmo 图。 */
   rebuildGizmos (): void {
     const specificGizmos = this.activeGizmoTool.createGizmos();
-
-    this.gizmosToDispose.push(...this.gizmoManager.activeGizmos);
-    this.gizmoManager.activeGizmos = [
+    const gizmos = [
       ...this.createCommonBeforeToolSwitch(),
       ...specificGizmos,
     ];
+    const nextGizmos = new Set(gizmos);
+
+    this.gizmosToDispose = this.gizmosToDispose.filter(gizmo => !nextGizmos.has(gizmo));
+    this.gizmosToDispose.push(...this.gizmoManager.activeGizmos.filter(gizmo => !nextGizmos.has(gizmo)));
+    this.gizmoManager.activeGizmos = gizmos;
   }
 
   /**
@@ -541,6 +549,7 @@ export class GestureHandler extends Control implements GizmoOwner {
       new HandGizmo(this),
       new IconGizmo(this),
       new LoadingGizmo(this, this.loadingManager),
+      this.ruler,
     ];
   }
 

@@ -13,6 +13,7 @@ import {
   selectionSnapConfig,
   viewportNavigationConfig,
 } from '@galacean/effects-plugin-editor-gizmo';
+import type { RulerGizmo } from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import { sceneWorkspace } from '../scene-workspace';
@@ -28,6 +29,8 @@ type CameraView = {
 /** 将 Scene 的工具、面板选区和相机视图接入共享的 2D 编辑能力。 */
 export class SceneGizmo {
   readonly handler: GestureHandler;
+  /** 当前场景的标尺 Gizmo，供场景快捷键和宿主持久化使用。 */
+  readonly ruler: RulerGizmo;
   tool: SceneTool = 'transform';
 
   private syncingSelection = false;
@@ -57,6 +60,7 @@ export class SceneGizmo {
     this.handler.visible = false;
     this.handler.enabled = false;
     this.handler.setActiveTool(new MoveGizmoTool(this.handler));
+    this.ruler = this.handler.getGizmoManager().get('ruler')!;
     const configs = this.handler.getConfigManager();
 
     configs.set(viewportNavigationConfig, { scrollWheelZoom: true });

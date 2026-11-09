@@ -12,6 +12,8 @@ export const cursorMap: Record<GestureCursorType, { type: 'svg' | 'preset', cont
   rotation: { type: 'svg', content: 'default', url: `${assetsPrefix}/icons/cursor-rotate-32.svg` },
   circle: { type: 'svg', content: 'default', url: `${assetsPrefix}/icons/cursor-rotate-32.svg` },
   scale: { type: 'svg', content: 'default', url: `${assetsPrefix}/icons/cursor-scale-32.svg` },
+  'horizontal-arrow': { type: 'svg', content: 'default', url: `${assetsPrefix}/icons/cursor-move-h-32.svg` },
+  'vertical-arrow': { type: 'svg', content: 'default', url: `${assetsPrefix}/icons/cursor-move-v-32.svg` },
   hand: { type: 'preset', content: 'grab' },
   pointer: { type: 'preset', content: 'pointer' },
   text: { type: 'preset', content: 'text' },

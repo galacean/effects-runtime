@@ -332,3 +332,48 @@ export type LoadingConfig = {
   /** Loading 态 fragment 标识 */
   loadingFragment: string,
 };
+
+/** 参考线的选中范围。 */
+export type RulerGuideSelectionMode = 'line' | 'ruler';
+
+/** 标尺、参考线及参考元素吸附配置。 */
+export type RulerConfig = {
+  /** 是否启用标尺刻度、参考线交互与参考线吸附。 */
+  enabled: boolean,
+  /** 标尺带宽度，单位为 CSS 像素。 */
+  rulerSize: number,
+  /** 标尺显示值相对文档坐标的换算倍数。 */
+  rulerValueScale: number,
+  /** 参考线命中范围：仅整条参考线，或整条参考线加对应的标尺带。 */
+  guideSelectionMode: RulerGuideSelectionMode,
+  /** 未选中参考线颜色，格式为 0xRRGGBB。 */
+  guideColor: number,
+  /** 选中参考线颜色，格式为 0xRRGGBB。 */
+  selectedGuideColor: number,
+  /** 未选中参考线透明度。 */
+  guideAlpha: number,
+  /** 选中参考线透明度。 */
+  selectedGuideAlpha: number,
+  /** 参考线宽度，单位为 CSS 像素。 */
+  guideLineWidth: number,
+  /** 参考线命中距离，单位为 CSS 像素。 */
+  guideHitDistance: number,
+  /** 标尺文字颜色，格式为 0xRRGGBB。 */
+  rulerTextColor: number,
+  /** 标尺刻度线颜色，格式为 0xRRGGBB。 */
+  rulerGridColor: number,
+  /** 标尺区域底色，格式为 0xRRGGBB。 */
+  rulerBackgroundColor: number,
+  /** 是否显示选中参考线的当前位置。 */
+  guidePositionVisible: boolean,
+  /** 当前位置文字字号。 */
+  guidePositionFontSize: number,
+  /** 当前位置文字颜色，格式为 0xRRGGBB。 */
+  guidePositionTextColor: number,
+  /** 当前位置标签底色，格式为 0xRRGGBB。 */
+  guidePositionBackgroundColor: number,
+  /** 是否启用按住 Shift 时的参考元素吸附。 */
+  shiftSnapEnabled: boolean,
+  /** 参考元素吸附距离，单位为 CSS 像素。 */
+  shiftSnapDistance: number,
+};
