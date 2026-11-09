@@ -15,57 +15,35 @@ export class BezierLengthData {
 }
 export const BezierMap: Record<string, BezierEasing> = {};
 export const BezierDataMap: Record<string, BezierLengthData> = {};
-const NEWTON_ITERATIONS = 4;
-const NEWTON_MIN_SLOPE = 0.001;
-const SUBDIVISION_PRECISION = 0.0000001;
-const SUBDIVISION_MAX_ITERATIONS = 10;
 const CURVE_SEGMENTS = 300;
 
-const kSplineTableSize = 11;
-const kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
+// Cubic bezier easing, from https://github.com/gre/bezier-easing (MIT License).
+// Solves x(t) = ((2a * t + 3b) * t + 3c) * t = x for t, with x in (0, 1):
+// u = 1/t is the largest real root of x·u³ − 3c·u² − 3b·u − 2a = 0
+function solveTForX (x: number, a: number, b: number, c: number) {
+  const j = 1 / Math.max(c, Math.sqrt(x));
+  const k = x * j;
+  const l = k * j;
+  const s = c * j;
+  const q = b * l;
+  const m = s * s + q;
+  const h = -s * (s * s + 1.5 * q) - a * k * l;
+  const D = h * h - m * m * m;
+  let v: number;
 
-function A (a1: number, a2: number) { return 1.0 - 3.0 * a2 + 3.0 * a1; }
-function B (a1: number, a2: number) { return 3.0 * a2 - 6.0 * a1; }
-function C (a1: number) { return 3.0 * a1; }
+  if (m === 0 || D > 1e-12 * h * h) {
+    // one real root (Cardano)
+    const U = -Math.cbrt(h < 0 ? h - Math.sqrt(D) : h + Math.sqrt(D));
 
-// A * t ^ 3 + B * t ^ 2 + C * t
-// Returns x(t) given t, x1, and x2, or y(t) given t, y1, and y2.
-function calcBezier (t: number, a1: number, a2: number) {
-  return ((A(a1, a2) * t + B(a1, a2)) * t + C(a1)) * t;
-}
+    v = (U + m / U) || 0;
+  } else {
+    // three real roots, take the largest
+    const r = Math.sqrt(m);
 
-// Returns dx/dt given t, x1, and x2, or dy/dt given t, y1, and y2.
-function getSlope (t: number, a1: number, a2: number) {
-  return 3.0 * A(a1, a2) * t * t + 2.0 * B(a1, a2) * t + C(a1);
-}
-
-function binarySubdivide (aX: number, aA: number, aB: number, mX1: number, mX2: number) {
-  let currentX, currentT, i = 0;
-
-  do {
-    currentT = aA + (aB - aA) / 2.0;
-    currentX = calcBezier(currentT, mX1, mX2) - aX;
-    if (currentX > 0.0) {
-      aB = currentT;
-    } else {
-      aA = currentT;
-    }
-  } while (Math.abs(currentX) > SUBDIVISION_PRECISION && ++i < SUBDIVISION_MAX_ITERATIONS);
-
-  return currentT;
-}
-
-function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: number) {
-  for (let i = 0; i < NEWTON_ITERATIONS; ++i) {
-    const currentSlope = getSlope(aGuessT, mX1, mX2);
-
-    if (currentSlope === 0.0) { return aGuessT; }
-    const currentX = calcBezier(aGuessT, mX1, mX2) - aX;
-
-    aGuessT -= currentX / currentSlope;
+    v = 2 * r * Math.cos(Math.acos(Math.max(-1, Math.min(1, -h / (m * r)))) / 3);
   }
 
-  return aGuessT;
+  return Math.min(1, k / (v + s));
 }
 
 // de Casteljau算法构建曲线
@@ -256,9 +234,6 @@ export class BezierQuat {
 }
 
 export class BezierEasing {
-  private precomputed = false;
-  private mSampleValues: number[];
-
   private control1 = new Vector2();
   private control2 = new Vector2();
   private weighted = false;
@@ -268,8 +243,6 @@ export class BezierEasing {
   constructor (control1: number, control2: number);
   constructor (control1X: number, control1Y: number, control2X: number, control2Y: number);
   constructor (control1YOrControl1X?: number, control2YOrControl1Y?: number, control2X?: number, control2Y?: number) {
-    this.mSampleValues = new Array(kSplineTableSize);
-
     if (control1YOrControl1X !== undefined && control2YOrControl1Y !== undefined && control2X !== undefined && control2Y !== undefined) {
       this.control1.x = control1YOrControl1X;
       this.control1.y = control2YOrControl1Y;
@@ -299,12 +272,19 @@ export class BezierEasing {
     if (!this.weighted) {
       return this.bezierInterpolate(0, this.control1.y, this.control2.y, 1, x);
     }
-    if (!this.precomputed) {
-      this.precompute();
+    // x outside (0, 1) saturates to 0 / 1
+    if (x <= 0) {
+      return 0;
     }
-    const value = calcBezier(this.getTForX(x), this.control1.y, this.control2.y);
+    if (x >= 1) {
+      return 1;
+    }
+    // x(t) = ((2a * t + 3b) * t + 3c) * t, y(t) = ((ay * t + by) * t + cy) * t
+    const { x: x1, y: y1 } = this.control1;
+    const { x: x2, y: y2 } = this.control2;
+    const t = solveTForX(x, (3 * x1 - 3 * x2 + 1) / 2, x2 - 2 * x1, x1);
 
-    return value;
+    return (((3 * y1 - 3 * y2 + 1) * t + 3 * (y2 - 2 * y1)) * t + 3 * y1) * t;
   }
 
   private bezierInterpolate (pStart: number, pControl1: number, pControl2: number, pEnd: number, t: number): number {
@@ -317,44 +297,6 @@ export class BezierEasing {
 
     return pStart * omt3 + pControl1 * omt2 * t * 3.0 + pControl2 * omt * t2 * 3.0 + pEnd * t3;
   }
-
-  private calcSampleValues () {
-    for (let i = 0; i < kSplineTableSize; ++i) {
-      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.control1.x, this.control2.x);
-    }
-  }
-
-  private getTForX (aX: number) {
-    const mSampleValues = this.mSampleValues, lastSample = kSplineTableSize - 1;
-    let intervalStart = 0, currentSample = 1;
-
-    for (; currentSample !== lastSample && mSampleValues[currentSample] <= aX; ++currentSample) {
-      intervalStart += kSampleStepSize;
-    }
-    --currentSample;
-
-    // Interpolate to provide an initial guess for t
-    const dist = (aX - mSampleValues[currentSample]) / (mSampleValues[currentSample + 1] - mSampleValues[currentSample]);
-    const guessForT = intervalStart + dist * kSampleStepSize;
-
-    const initialSlope = getSlope(guessForT, this.control1.x, this.control2.x);
-
-    if (initialSlope >= NEWTON_MIN_SLOPE) {
-      return newtonRaphsonIterate(aX, guessForT, this.control1.x, this.control2.x);
-    } if (initialSlope === 0.0) {
-      return guessForT;
-    }
-
-    return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, this.control1.x, this.control2.x);
-  }
-
-  private precompute () {
-    this.precomputed = true;
-    if (this.control1.x !== this.control1.y || this.control2.x !== this.control2.y) {
-      this.calcSampleValues();
-    }
-  }
-
 }
 
 export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightKeyframe: spec.BezierKeyframeValue): {
