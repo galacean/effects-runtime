@@ -25,6 +25,7 @@ export class SpineMesh implements Disposable {
   private indices: Uint16Array | null;
   private verticesLength = 0;
   private indicesLength = 0;
+  private indicesDirty = false;
   private engine: Engine;
 
   mesh: Mesh;
@@ -41,6 +42,8 @@ export class SpineMesh implements Disposable {
     this.lastTexture = texture;
     this.priority = priority;
     this.engine = engine;
+    this.vertices = new Float32Array(SlotGroup.MAX_VERTICES * SlotGroup.VERTEX_SIZE);
+    this.indices = new Uint16Array(SlotGroup.MAX_VERTICES);
     this.geometry = this.createGeometry();
     this.material = this.createMaterial();
     this.mesh = Mesh.create(
@@ -51,9 +54,6 @@ export class SpineMesh implements Disposable {
         material: this.material,
         geometry: this.geometry,
       });
-    this.vertices = new Float32Array(SlotGroup.MAX_VERTICES * SlotGroup.VERTEX_SIZE);
-    this.indices = new Uint16Array(SlotGroup.MAX_VERTICES);
-
   }
 
   get blending () {
@@ -72,7 +72,7 @@ export class SpineMesh implements Disposable {
     const BYTES_PER_ELEMENT = Float32Array.BYTES_PER_ELEMENT;
     const stride = BYTES_PER_ELEMENT * SlotGroup.VERTEX_SIZE;
     const attributes: Record<string, Attribute> = {
-      [VertexElementType.Position]: { size: 2, offset: 0, stride, data: new Float32Array(0) },
+      [VertexElementType.Position]: { size: 2, offset: 0, stride, data: this.vertices! },
       [VertexElementType.Color]: { size: 4, offset: 2 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
       [VertexElementType.TexCoord0]: { size: 2, offset: 6 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
       aColor2: { size: 4, offset: 8 * BYTES_PER_ELEMENT, stride, dataSource: VertexElementType.Position },
@@ -82,7 +82,8 @@ export class SpineMesh implements Disposable {
       this.engine,
       {
         attributes,
-        indices: { data: new Uint16Array(0) },
+        indices: { data: this.indices! },
+        drawCount: 0,
         mode: glContext.TRIANGLES,
         maxVertex: SlotGroup.MAX_VERTICES,
         bufferUsage: glContext.DYNAMIC_DRAW,
@@ -119,7 +120,12 @@ export class SpineMesh implements Disposable {
     this.verticesLength += verticesLength;
 
     for (let i = 0, j = indexStart; i < indices.length; i++, j++) {
-      this.indices[j] = indices[i] + pointBefore;
+      const index = indices[i] + pointBefore;
+
+      if (this.indices[j] !== index) {
+        this.indices[j] = index;
+        this.indicesDirty = true;
+      }
     }
     this.indicesLength += indices.length;
   }
@@ -128,14 +134,17 @@ export class SpineMesh implements Disposable {
     if (!this.vertices || !this.indices) {
       throw new Error('Can not update SpineMesh after dispose.');
     }
-    for (let i = this.verticesLength; i < this.vertices.length; i++) {
-      this.vertices[i] = 0;
+    if (this.indicesLength > 0) {
+      const buffer = this.geometry.getAttributeBuffer(VertexElementType.Position)!;
+
+      this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(
+        buffer, this.vertices.subarray(0, this.verticesLength),
+      );
+      if (this.indicesDirty) {
+        this.geometry.setIndexSubData(0, this.indices.subarray(0, this.indicesLength));
+        this.indicesDirty = false;
+      }
     }
-    for (let i = this.indicesLength; i < this.indices.length; i++) {
-      this.indices[i] = 0;
-    }
-    this.geometry.setAttributeData(VertexElementType.Position, this.vertices);
-    this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
   }
 

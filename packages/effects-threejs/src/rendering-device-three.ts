@@ -129,9 +129,20 @@ export class RenderingDeviceThree extends RenderingDevice {
     if (!Number.isInteger(elementOffset)) {
       throw new RangeError('Buffer update is not aligned.');
     }
+    if (data.length === 0) {
+      return;
+    }
     target.set(data, elementOffset);
-    resource.updateRange.offset = elementOffset;
-    resource.updateRange.count = data.length;
+    const range = resource.updateRange;
+    let start = elementOffset;
+    let end = elementOffset + data.length;
+
+    if (range.count > 0) {
+      start = Math.min(start, range.offset);
+      end = Math.max(end, range.offset + range.count);
+    }
+    range.offset = start;
+    range.count = end - start;
     resource.needsUpdate = true;
   }
 }
