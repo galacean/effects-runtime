@@ -8,6 +8,12 @@
 
 ---
 
+## 2.10.6
+
+`2026-11-09`
+
+- Fix(multimedia): preserve settings until the first video binding. [#1590](https://github.com/galacean/effects-runtime/pull/1590) @ChengYi996
+
 ## 2.10.5
 
 `2026-11-06`
