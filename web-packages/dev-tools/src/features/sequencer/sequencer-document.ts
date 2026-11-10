@@ -1,11 +1,12 @@
 import type { Composition, EffectsObject, TimelineAsset, TimelineClip, TrackAsset } from '@galacean/effects';
 import {
-  ActivationPlayableAsset, ActivationTrack, BezierCurve, Component, CompositionComponent,
+  ActivationPlayableAsset, ActivationTrack, Component, CompositionComponent,
   FloatPropertyPlayableAsset,
   InterpolationMode,
+  MaterialTrack,
   ObjectBindingTrack, ObjectReferencePropertyPlayableAsset,
   REFERENCE_CURVE,
-  SpriteColorPlayableAsset, SpriteColorTrack, TransformPlayableAsset, TransformTrack,
+  SpriteColorPlayableAsset, SpriteColorTrack, SubCompositionTrack, SubCompositionPlayableAsset, TransformPlayableAsset, TransformTrack,
   VFXItem,
   effectsClassStore, spec,
 } from '@galacean/effects';
@@ -18,6 +19,8 @@ import { curveSourceSignature, decodeCurve, encodeCurve, insertBoundary, makeKey
 import type { PositionAnimationData, PositionPathSnapshot, SpatialKey } from './spatial-position';
 import { encodePositionAxes, PositionPathModel } from './spatial-position';
 import { findSequenceTimeline, sampleSequencePreview } from './sequencer-preview';
+import type { SequenceProperty } from './sequencer-properties';
+import { createPropertyClip, createPropertyTrack, initialPropertyCurve, initializeProperty, propertyClipKind, propertyTrackKind, propertyValue, resolvePropertyTarget, sequenceProperties, vectorValues } from './sequencer-properties';
 
 type Payload = Record<string, unknown>;
 type TransformData = Omit<TransformPlayableAsset['transformAnimationData'], 'positionOverLifetime'> & {
@@ -34,6 +37,10 @@ export interface SequenceChannel {
   kind: 'number' | 'reference',
   references?: Map<string, EffectsObject | null>,
   pathView?: 'point' | 'timing',
+  minimum?: number,
+  maximum?: number,
+  integer?: boolean,
+  referenceType?: string,
 }
 export interface SequenceSection {
   clip: TimelineClip,
@@ -67,7 +74,7 @@ interface SectionSnapshot {
   payload: Payload,
   channelState: Map<string, string>,
   position?: PositionPathSnapshot,
-  channels: { channel: SequenceChannel, keys: SequenceKey[], references?: Map<string, EffectsObject | null> }[],
+  channels: { channel: SequenceChannel, keys: SequenceKey[], defaultValue: number, references?: Map<string, EffectsObject | null> }[],
 }
 export interface SequenceSnapshot {
   roots: TrackAsset[],
@@ -137,14 +144,13 @@ export class SequencerDocument {
     this.unregisterEditorState = this.sceneDocument?.registerEditorState<SequenceEditorState>({
       read: () => ({ ...this.selection(), locked: Array.from(this.locked), muted: Array.from(this.muted) }),
       restore: state => {
-        const muteChanged = state.muted.length !== this.muted.size || state.muted.some(id => !this.muted.has(id));
-
         this.transaction = undefined;
         this.restoreSelection(state);
         this.locked.clear(); state.locked.forEach(id => this.locked.add(id));
         this.muted.clear(); state.muted.forEach(id => this.muted.add(id));
         this.sync();
-        if (muteChanged) { this.changed(); }
+        // Object defaults have been restored; evaluate the timeline after them.
+        this.changed();
       },
       valid: () => !this.composition.isDestroyed && this.component.isRegistered,
     });
@@ -212,6 +218,69 @@ export class SequencerDocument {
     return undefined;
   }
 
+  boundObject (track: TrackAsset): object | undefined {
+    const own = this.component.getBinding(track);
+
+    if (own) { return own; }
+    const parent = track.parent && this.boundObject(track.parent);
+
+    if (!parent) { return; }
+
+    return track.resolveBoundObject(parent);
+  }
+
+  properties (track: TrackAsset): SequenceProperty[] {
+    const item = this.boundItem(track);
+
+    return item ? sequenceProperties(item) : [];
+  }
+
+  addPropertyTrack (parent: TrackAsset, property: SequenceProperty): TrackAsset | undefined {
+    if (this.isLocked(parent)) { return; }
+    const item = this.boundItem(parent);
+
+    if (!item) { return; }
+    let root: TrackAsset = parent;
+
+    while (root.parent && this.component.getBinding(root) !== item) { root = root.parent; }
+    const target = resolvePropertyTarget(property.target, property.materialIndex);
+    const existingTrack = this.tracks.find(track => this.boundItem(track) === item && propertyTrackKind(track) === property.kind &&
+      track.definition.path === property.path && this.boundObject(track) === target);
+
+    if (existingTrack) { return existingTrack; }
+    let binding = root.getChildTracks().find(track => track instanceof ObjectBindingTrack && this.component.getBinding(track) === property.target);
+
+    if (!binding) {
+      binding = new ObjectBindingTrack(this.composition.engine);
+      binding.setData({ id: binding.getInstanceId(), dataType: spec.DataType.ObjectBindingTrack,
+        name: this.assetType(property.target).replace(/Component$/, ''), clips: [], children: [] });
+      root.addChild(binding); this.timeline.markAsChanged(); this.component.setBinding(binding, property.target);
+    }
+    let owner = binding;
+
+    if (property.materialIndex !== undefined) {
+      let material = binding.getChildTracks().find((track): track is MaterialTrack => track instanceof MaterialTrack && track.index === property.materialIndex);
+
+      if (!material) {
+        material = new MaterialTrack(this.composition.engine);
+        material.setData({ id: material.getInstanceId(), dataType: 'MaterialTrack', name: 'Material ' + (property.materialIndex + 1), index: property.materialIndex, clips: [], children: [] } as unknown as spec.EffectsObjectData);
+        binding.addChild(material);
+      }
+      owner = material;
+    }
+    if (this.sceneDocument && property.materialIndex !== undefined && propertyValue(target, property.path) === undefined) {
+      this.sceneDocument.observe('Initialize material property', () => initializeProperty(property), [target]);
+    } else { initializeProperty(property); }
+    const track = createPropertyTrack(property);
+
+    owner.addChild(track); this.timeline.markAsChanged();
+    const reference = root.getChildTracks().flatMap(track => track.getClips())[0];
+
+    this.createSection(track, reference?.start ?? 0, reference?.duration ?? this.duration);
+
+    return track;
+  }
+
   trackLabel (track: TrackAsset): string {
     return track instanceof ObjectBindingTrack ? track.name || this.boundItem(track)?.name || 'Unbound object' : track.name || this.assetType(track).replace(/Track$/, '');
   }
@@ -266,17 +335,13 @@ export class SequencerDocument {
 
         return vector.toArray()[channel.axis];
       }
-      if (section.clip instanceof FloatPropertyPlayableAsset) {
-        let node: TrackAsset | undefined = section.track;
-        let target: unknown;
+      const kind = propertyClipKind(section.clip);
 
-        while (node && !target) { target = this.component.getBinding(node); node = node.parent; }
-        const path = section.track.definition.path as string | undefined;
+      if (kind) {
+        const target = propertyValue(this.boundObject(section.track), String(section.track.definition.path ?? ''));
 
-        for (const name of path?.split('.') ?? []) {
-          target = target && typeof target === 'object' ? (target as Record<string, unknown>)[name] : undefined;
-        }
         if (typeof target === 'number') { return target; }
+        if (target && kind !== 'reference') { return vectorValues(target, kind)[channel.axis]; }
       }
     }
 
@@ -285,6 +350,23 @@ export class SequencerDocument {
     }
 
     return channel.keys.length ? sampleCurve(channel.keys, (time - section.clip.start) / section.clip.duration) : channel.defaultValue;
+  }
+
+  referenceValue (section: SequenceSection, time = this.currentTime): EffectsObject | null {
+    return section.clip instanceof ObjectReferencePropertyPlayableAsset ? section.clip.curve.getValue((time - section.clip.start) / section.clip.duration) ?? null : null;
+  }
+
+  setReference (section: SequenceSection, channel: SequenceChannel, value: EffectsObject | null): void {
+    if (channel.kind !== 'reference' || section.clip.duration <= 0 || this.isLocked(section.track) || this.currentTime < section.clip.start || this.currentTime > section.clip.start + section.clip.duration) { return; }
+    if (!value && channel.referenceType) { return; }
+    this.edit('Set reference key', () => {
+      const time = (this.currentTime - section.clip.start) / section.clip.duration;
+      let key = channel.keys.find(key => Math.abs(key.time - time) < 1e-7);
+
+      if (!key) { key = makeKey(time, 0); channel.keys.push(key); channel.keys.sort((a, b) => a.time - b.time); }
+      this.selectedKeys.add(key.id);
+      channel.references!.set(key.id, value); this.write(section);
+    });
   }
 
   /** Convert explicitly, preparing every result before changing any scene data. */
@@ -444,7 +526,7 @@ export class SequencerDocument {
     if (existing instanceof ObjectBindingTrack) { return existing; }
     const track = new ObjectBindingTrack(this.composition.engine);
 
-    track.name = item.name;
+    track.setData({ id: track.getInstanceId(), dataType: spec.DataType.ObjectBindingTrack, name: item.name, clips: [], children: [] });
     this.timeline.tracks.push(track);
     this.timeline.markAsChanged();
     this.component.setBinding(track, item);
@@ -452,11 +534,16 @@ export class SequencerDocument {
     return track;
   }
 
-  addTrack (parent: TrackAsset, kind: 'transform' | 'activation' | 'opacity'): TrackAsset | undefined {
+  addTrack (parent: TrackAsset, kind: 'transform' | 'activation' | 'opacity' | 'composition'): TrackAsset | undefined {
     if (this.isLocked(parent)) { return; }
-    let track: TrackAsset;
+    const Constructor = kind === 'transform' ? TransformTrack : kind === 'activation' ? ActivationTrack : kind === 'composition' ? SubCompositionTrack : SpriteColorTrack;
+    const existing = parent.getChildTracks().find(child => child.constructor === Constructor);
 
-    if (kind === 'transform') { track = new TransformTrack(this.composition.engine); track.name = 'Transform'; } else if (kind === 'activation') { track = new ActivationTrack(this.composition.engine); track.name = 'Activation'; } else { track = new SpriteColorTrack(this.composition.engine); track.name = 'Opacity'; }
+    if (existing) { return existing; }
+    const track = new Constructor(this.composition.engine);
+
+    track.setData({ id: track.getInstanceId(), dataType: this.assetType(track) as spec.DataType,
+      name: kind[0].toUpperCase() + kind.slice(1), clips: [], children: [] });
     parent.addChild(track);
     this.createSection(track, 0, this.duration);
     this.timeline.markAsChanged();
@@ -464,8 +551,13 @@ export class SequencerDocument {
     return track;
   }
 
+  canCreateSection (track: TrackAsset): boolean {
+    return !this.isLocked(track) && (track instanceof TransformTrack || track instanceof ActivationTrack || track instanceof SpriteColorTrack ||
+      track instanceof SubCompositionTrack || !!propertyTrackKind(track) || track.getClips().length > 0);
+  }
+
   createSection (track: TrackAsset, start = this.currentTime, duration = Math.min(1, this.duration)): SequenceSection | undefined {
-    if (this.isLocked(track)) { return; }
+    if (!this.canCreateSection(track)) { return; }
     let clip: TimelineClip;
 
     if (track instanceof TransformTrack) {
@@ -476,6 +568,14 @@ export class SequencerDocument {
     } else if (track instanceof SpriteColorTrack) {
       clip = track.createClip(SpriteColorPlayableAsset, 'Opacity');
       clip.fromData({ id: clip.getInstanceId(), colorOverLifetime: { opacity: 1 } } as unknown as spec.EffectsObjectData);
+    } else if (track instanceof SubCompositionTrack) {
+      clip = track.createClip(SubCompositionPlayableAsset, 'Composition');
+    } else if (propertyTrackKind(track)) {
+      const property = createPropertyClip(track)!;
+
+      property.setData({ id: property.getInstanceId(), dataType: this.assetType(property), name: track.name,
+        curveData: initialPropertyCurve(propertyTrackKind(track)!, propertyValue(this.boundObject(track), String(track.definition.path ?? ''))) } as unknown as spec.EffectsObjectData);
+      clip = property;
     } else {
       const source = track.getClips()[0];
 
@@ -542,6 +642,13 @@ export class SequencerDocument {
       const channel = section.channels[0];
 
       payload.curveData = [REFERENCE_CURVE, channel.keys.map(key => [key.time, channel.references?.get(key.id) ? { id: channel.references.get(key.id)!.getInstanceId() } : null])];
+    } else {
+      const kind = propertyClipKind(clip);
+      const types = { color: spec.ValueType.COLOR_CURVE, vector2: spec.ValueType.VECTOR2_CURVE, vector3: spec.ValueType.VECTOR3_CURVE, vector4: spec.ValueType.VECTOR4_CURVE };
+
+      if (kind && kind !== 'reference' && kind !== 'float') {
+        payload.curveData = [types[kind], section.channels.map(channel => channel.keys.length ? encodeCurve(channel.keys) : [spec.ValueType.CONSTANT, channel.defaultValue])];
+      }
     }
     payload.id = clip.getInstanceId();
     payload.dataType = this.assetType(clip); payload.name = clip.name;
@@ -580,15 +687,27 @@ export class SequencerDocument {
       return;
     }
     const existing = channel.keys.find(key => Math.abs(key.time - normalized) < 1e-7);
-    const targetValue = value ?? this.channelValue(section, channel, time);
+    const reference = channel.kind === 'reference' ? propertyValue(this.boundObject(section.track), String(section.track.definition.path ?? '')) : undefined;
 
+    if (channel.kind === 'reference' && channel.referenceType && !reference) { return; }
+    const rawValue = value ?? this.channelValue(section, channel, time);
+    const targetValue = Math.max(channel.minimum ?? -Infinity, Math.min(channel.maximum ?? Infinity, channel.integer ? Math.round(rawValue) : rawValue));
+
+    if (propertyClipKind(section.clip) && channel.kind === 'number') {
+      // Capture defaults for every unkeyed channel before writing the composite curve.
+      for (const other of section.channels) {
+        if (!other.keys.length) { other.defaultValue = this.channelValue(section, other, time); }
+      }
+    }
     if (existing) { existing.value = targetValue; this.selectedKeys.add(existing.id); } else {
       const key = makeKey(normalized, targetValue);
 
-      if (channel.kind === 'reference') {
-        channel.references?.set(key.id, channel.references.get(channel.keys.at(-1)?.id ?? '') ?? null);
-      }
       channel.keys.push(key); this.selectedKeys.add(key.id);
+    }
+    if (channel.kind === 'reference') {
+      const key = channel.keys.find(key => Math.abs(key.time - normalized) < 1e-7)!;
+
+      channel.references?.set(key.id, reference && typeof reference === 'object' && 'getInstanceId' in reference ? reference as EffectsObject : null);
     }
     if (channel.group === 'Location') {
       for (const axis of section.channels.filter(item => item.group === 'Location' && !item.keys.length)) {
@@ -689,7 +808,7 @@ export class SequencerDocument {
     const section: SequenceSection = {
       clip, track: targetTrack, payload: copy(state.payload), channelState: new Map(state.channelState),
       position: state.position ? PositionPathModel.restore(state.position, true) : undefined,
-      channels: state.channels.map(({ channel, keys: sourceKeys, references: sourceReferences }) => {
+      channels: state.channels.map(({ channel, keys: sourceKeys, defaultValue, references: sourceReferences }) => {
         const references = new Map<string, EffectsObject | null>();
         const keys = sourceKeys.map(key => {
           const result = { ...key, id: makeKey(0, 0).id };
@@ -699,7 +818,7 @@ export class SequencerDocument {
           return result;
         });
 
-        return { ...channel, id: clip.getInstanceId() + ':' + channel.group + '.' + channel.label, keys, references };
+        return { ...channel, id: clip.getInstanceId() + ':' + channel.group + '.' + channel.label, keys, defaultValue, references };
       }),
     };
 
@@ -909,7 +1028,8 @@ export class SequencerDocument {
       section, start: section.clip.start, duration: section.clip.duration, endBehavior: section.clip.endBehavior,
       name: section.clip.name, payload: copy(section.payload), channelState: new Map(section.channelState),
       position: section.position?.snapshot(),
-      channels: section.channels.map(channel => ({ channel, keys: channel.keys.map(key => ({ ...key })), references: channel.references ? new Map(channel.references) : undefined })),
+      channels: section.channels.map(channel => ({ channel, keys: channel.keys.map(key => ({ ...key })), defaultValue: channel.defaultValue,
+        references: channel.references ? new Map(channel.references) : undefined })),
     };
   }
 
@@ -960,6 +1080,7 @@ export class SequencerDocument {
       section.channels = state.channels.map(channel => channel.channel);
       for (const channel of state.channels) {
         channel.channel.keys = channel.keys.map(key => ({ ...key }));
+        channel.channel.defaultValue = channel.defaultValue;
         channel.channel.references = channel.references ? new Map(channel.references) : undefined;
       }
       section.position?.project(section.channels.filter(channel => channel.pathView));
@@ -1067,9 +1188,10 @@ export class SequencerDocument {
     const saved = this.savedChannels(section);
     const add = (group: string, label: string, axis: number, expression: spec.FixedNumberExpression | undefined, fallback: number) => {
       const authored = saved.find(channel => channel.group === group && channel.axis === axis);
+      const constant = typeof expression === 'number' || Array.isArray(expression) && expression[0] === spec.ValueType.CONSTANT;
       const channel: SequenceChannel = {
         id: clip.getInstanceId() + ':' + group + '.' + label, group, label, axis,
-        keys: authored ? authored.keys.map(key => ({ ...key, id: makeKey(key.time, key.value).id })) : decodeCurve(expression, fallback),
+        keys: authored ? authored.keys.map(key => ({ ...key, id: makeKey(key.time, key.value).id })) : propertyClipKind(clip) && constant ? [] : decodeCurve(expression, fallback),
         defaultValue: authored && this.channelSource(section, group) !== undefined ? authored.defaultValue : fallback, kind: 'number',
       };
 
@@ -1110,13 +1232,9 @@ export class SequencerDocument {
     } else if (clip instanceof SpriteColorPlayableAsset) {
       add('Color', 'Opacity', 3, clip.data?.colorOverLifetime?.opacity, 1);
     } else if (clip instanceof FloatPropertyPlayableAsset) {
-      const channel = add('Value', 'Value', 0, undefined, clip.curve?.getValue(0) ?? 0);
-
-      if (!saved.some(entry => entry.group === 'Value' && entry.axis === 0)) {
-        channel.keys = clip.curve instanceof BezierCurve ? clip.curve.getKeyFrames().map(key => ({ ...key, id: makeKey(0, 0).id, tangentMode: 'user' })) : [makeKey(0, channel.defaultValue)];
-      }
+      add('Value', 'Value', 0, payload.curveData as spec.FixedNumberExpression, clip.curve?.getValue(0) ?? 0);
     } else if (clip instanceof ObjectReferencePropertyPlayableAsset) {
-      const channel = add('Sprite', 'Reference', 0, undefined, 0);
+      const channel = add('Value', 'Reference', 0, undefined, 0);
 
       channel.kind = 'reference'; channel.references = new Map();
       channel.keys = clip.curve.keyframes.map(([time, value]) => {
@@ -1126,6 +1244,27 @@ export class SequencerDocument {
 
         return key;
       });
+    } else {
+      const kind = propertyClipKind(clip);
+
+      if (kind && kind !== 'float' && kind !== 'reference') {
+        const curve = (clip as import('./sequencer-properties').PropertyClip).curve;
+        const defaults = vectorValues(curve.getValue(0), kind);
+        const expression = payload.curveData as [number, spec.FixedNumberExpression[]] | undefined;
+        const labels = kind === 'color' ? ['R', 'G', 'B', 'A'] : ['X', 'Y', 'Z', 'W'];
+
+        defaults.forEach((fallback, axis) => add(kind === 'color' ? 'Color' : 'Value', labels[axis], axis, expression?.[1]?.[axis], fallback));
+      }
+    }
+    if (propertyClipKind(clip)) {
+      const target = this.boundObject(track);
+      const property = this.properties(track).find(property => property.path === track.definition.path && resolvePropertyTarget(property.target, property.materialIndex) === target);
+
+      if (property) {
+        for (const channel of section.channels) {
+          channel.minimum = property.minimum; channel.maximum = property.maximum; channel.integer = property.integer; channel.referenceType = property.referenceType;
+        }
+      }
     }
 
     this.recordChannelState(section);

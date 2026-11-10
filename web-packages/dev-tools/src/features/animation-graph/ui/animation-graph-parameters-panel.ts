@@ -1,4 +1,5 @@
 import type { Engine, GraphInstance } from '@galacean/effects';
+import { ControlParameterBoolNodeData, ControlParameterTriggerNodeData } from '@galacean/effects';
 import { PropertySheet } from '../../../ui/property-editor/property-sheet';
 
 export class AnimationGraphParametersPanel extends PropertySheet {
@@ -15,9 +16,9 @@ export class AnimationGraphParametersPanel extends PropertySheet {
       return;
     }
     for (let index = 0; index < graph.getNumControlParameters(); index++) {
-      const name = graph.getControlParameterID(index), type = graph.getNodeDebugInstance(index).constructor.name;
+      const name = graph.getControlParameterID(index), data = graph.getNodeDebugInstance(index).getNodeData();
 
-      if (type.includes('Trigger')) { group.button(name, 'Fire', () => graph.setTrigger(name)); } else if (type.includes('Bool')) { group.boolean(name, { read: () => graph.isInitialized() ? graph.getRuntimeNodeDebugValue<boolean>(index) : false, write: value => graph.setBool(name, value) }); } else { group.number(name, { read: () => graph.isInitialized() ? graph.getRuntimeNodeDebugValue<number>(index) : 0, write: value => graph.setFloat(name, value) }, { step: type.includes('Int') ? 1 : .01, precision: type.includes('Int') ? 0 : 3 }); }
+      if (data instanceof ControlParameterTriggerNodeData) { group.button(name, 'Fire', () => graph.setTrigger(name)); } else if (data instanceof ControlParameterBoolNodeData) { group.boolean(name, { read: () => graph.isInitialized() ? graph.getRuntimeNodeDebugValue<boolean>(index) : false, write: value => graph.setBool(name, value) }); } else { group.number(name, { read: () => graph.isInitialized() ? graph.getRuntimeNodeDebugValue<number>(index) : 0, write: value => graph.setFloat(name, value) }, { step: .01, precision: 3 }); }
     }
     this.refresh();
   }

@@ -19,8 +19,10 @@ import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { SceneDocument } from '../document/scene-document';
 import { sameData } from '../serialization/scene-values';
 import { sceneWorkspace } from '../scene-workspace';
+import type { SceneBrushSettings } from './scene-brush-settings';
+import { SceneBrushTool } from './scene-brush-tool';
 
-export type SceneTool = 'transform' | 'hand';
+export type SceneTool = 'transform' | 'hand' | 'brush';
 
 type CameraView = {
   position: math.Vector3,
@@ -33,6 +35,7 @@ export class SceneGizmo {
   readonly handler: GestureHandler;
   /** 当前场景的标尺 Gizmo，供场景快捷键和宿主持久化使用。 */
   get ruler (): RulerGizmo { return this.handler.getGizmoManager().get('ruler')!; }
+  readonly brush: SceneBrushTool;
   tool: SceneTool = 'transform';
 
   private syncingSelection = false;
@@ -49,7 +52,7 @@ export class SceneGizmo {
   private releaseRulerState?: () => void;
   private rulerDocument?: SceneDocument;
 
-  constructor (readonly composition: Composition) {
+  constructor (readonly composition: Composition, brushSettings: SceneBrushSettings) {
     this.initialView = this.captureView();
     this.initial2DView = {
       position: new math.Vector3(0, 0, Math.max(Math.abs(composition.camera.position.z), 1)),
@@ -63,6 +66,7 @@ export class SceneGizmo {
 
     canvas.order = Number.MAX_SAFE_INTEGER;
     this.handler = new GestureHandler(composition.engine);
+    this.brush = new SceneBrushTool(this.handler, brushSettings);
     this.handler.parent = canvas.rootControl;
     this.handler.visible = false;
     this.handler.enabled = false;
@@ -131,7 +135,7 @@ export class SceneGizmo {
   setTool (tool: SceneTool): void {
     this.handler.resetEditMode();
     this.tool = tool;
-    this.handler.setActiveTool(tool === 'hand' ? new HandGizmoTool(this.handler) : new MoveGizmoTool(this.handler));
+    this.handler.setActiveTool(tool === 'brush' ? this.brush : tool === 'hand' ? new HandGizmoTool(this.handler) : new MoveGizmoTool(this.handler));
   }
 
   editText (): void {

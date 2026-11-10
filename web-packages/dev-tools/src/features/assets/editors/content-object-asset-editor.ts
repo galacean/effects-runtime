@@ -216,7 +216,7 @@ export class ContentObjectAssetEditor extends EditorWindow {
     const sheet = this.layout.inspector, data = this.data, group = sheet.section('material', 'Material');
     const owned = this.draft!.objects.find(object => object.dataType === spec.DataType.Shader);
 
-    group.add('Shader', new ContentAssetPicker(sheet.engine, 'shader', {
+    group.add('Shader', engine => new ContentAssetPicker(engine, 'shader', {
       read: () => owned?.id === data.shader.id ? undefined : data.shader.id,
       write: id => {
         if (!id && !owned) { return; }
@@ -241,7 +241,7 @@ export class ContentObjectAssetEditor extends EditorWindow {
         },
         write: value => data.colors[name] = { r: value.r, g: value.g, b: value.b, a: value.a } });
       } else if (type === '2D') {
-        parameters.add(label, new ContentAssetPicker(sheet.engine, 'texture', {
+        parameters.add(label, engine => new ContentAssetPicker(engine, 'texture', {
           read: () => data.textures[name]?.texture?.id === spec.BuiltinObjectGUID.WhiteTexture ? undefined : data.textures[name]?.texture?.id,
           write: id => data.textures[name] = { ...data.textures[name], texture: { id: id ?? spec.BuiltinObjectGUID.WhiteTexture } },
         }, 'White'));
@@ -263,7 +263,7 @@ export class ContentObjectAssetEditor extends EditorWindow {
   private buildSprite (): void {
     const group = this.layout.inspector.section('sprite', 'Sprite'), data = this.data;
 
-    group.add('Texture', new ContentAssetPicker(group.engine, 'texture', { read: () => data.texture?.id,
+    group.add('Texture', engine => new ContentAssetPicker(engine, 'texture', { read: () => data.texture?.id,
       write: id => { if (id) { data.texture = { id }; } else { delete data.texture; } } }, 'White'));
     ['U', 'V', 'Width', 'Height'].forEach((title, index) => group.number(title, {
       read: () => data.rect[index],

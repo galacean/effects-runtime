@@ -7,6 +7,7 @@ import type { ObjectReferenceOptions } from '../../../ui/property-editor/object-
 import type { ValueBinding } from '../../../ui/property-editor/property-sheet';
 import { sceneWorkspace } from '../../scene/scene-workspace';
 import { assetLibrary } from '../asset-library';
+import { isContentResource, isPersistentResource, isResource, resourceCandidates, resourceIdentity } from '../model/resource-identity';
 import { AssetPreviewControl } from '../preview/asset-preview-control';
 import { openContentAsset, openRuntimeAsset, openTextureAsset, revealContentAsset, selectedContentAssets } from '../editors/asset-editor-registry';
 import type { ContentAssetDrag } from './asset-drag';
@@ -14,13 +15,13 @@ import { CONTENT_ASSET_PAYLOAD } from './asset-drag';
 import { assetReferenceClipboard } from './asset-picker';
 import { AssetReferenceFieldBase } from './asset-reference-field-base';
 import { ASSET_PRESENTATION } from './asset-presentation';
-import type { AssetPickerCandidate } from './asset-picker';
 
 const assetKinds = { Texture: 'texture', Material: 'material', Shader: 'shader', Sprite: 'sprite' } as const;
 
 interface AssetPayload { type: string, data: unknown }
 
 function openReference (reference: object): void {
+  if (isResource(reference) && !isPersistentResource(reference, EditorRuntimeSession.player.engine)) { return; }
   if (reference instanceof VFXItem) {
     EditorSelection.select(reference);
 
@@ -33,7 +34,6 @@ function openReference (reference: object): void {
 
 /** A bound reference field owns its picker and assigns resources from Control signals and drops. */
 export class AssetReferenceControl extends AssetReferenceFieldBase {
-  private available: AssetPickerCandidate[] = [];
   private readonly payloadType: string;
   private readonly kind?: typeof assetKinds[keyof typeof assetKinds];
   private revision = -1;
@@ -57,13 +57,16 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     this.caption.actions = () => {
       const reference = this.binding.read();
       const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
+      const available = !!reference && (!isResource(reference) || isPersistentResource(reference, EditorRuntimeSession.player.engine));
 
       return [
-        { label: 'Edit', icon: 'edit', enabled: !!reference, action: () => { if (reference) { openReference(reference); } } },
-        { label: 'Copy Reference', icon: 'copy', enabled: !!reference, action: () => {
+        { label: 'Edit', icon: 'edit', enabled: available, action: () => { if (available && reference) { openReference(reference); } } },
+        { label: 'Copy Reference', icon: 'copy', enabled: available, action: () => {
+          if (!available) { return; }
           const text = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : reference instanceof EffectsObject ? reference.getInstanceId() : this.caption.text;
 
-          assetReferenceClipboard.id = entry?.id; assetReferenceClipboard.asset = reference ?? undefined; assetReferenceClipboard.project = assetLibrary.projectId;
+          assetReferenceClipboard.id = isResource(reference) ? reference.getInstanceId() : undefined;
+          assetReferenceClipboard.asset = reference ?? undefined; assetReferenceClipboard.project = assetLibrary.projectId;
           void navigator.clipboard.writeText(text).catch(error => assetLibrary.report(error));
         } },
         { label: 'Paste', icon: 'paste', enabled: !options.readOnly && this.canPaste(), action: () => {
@@ -74,14 +77,11 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
       ];
     };
     this.useSelected.visible = this.browse.visible = !!this.kind;
+    if (options.compact) { this.useCompactPresentation(); }
     this.browser.search.placeholderText = 'Search ' + this.payloadType + ' assets';
   }
   protected override get canBrowse (): boolean { return !this.options.readOnly; }
-  protected override chooseAsset (id: string): void {
-    const candidate = this.available.find(candidate => candidate.id === id);
-
-    if (candidate?.asset) { this.assign(candidate.asset); } else { this.assignAsset(id); }
-  }
+  protected override chooseAsset (id: string): void { this.assignAsset(id); }
   protected override useCurrentSelection (): void {
     const id = this.selectedAsset();
 
@@ -94,13 +94,20 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
   }
   private assign (value: object | null): void {
     if (this.options.readOnly || this.isDisposed || value === null && this.options.allowEmpty === false) { return; }
+    if (value && this.kind && !isPersistentResource(value, EditorRuntimeSession.player.engine, this.kind)) { return; }
     const action = () => this.binding.write(value);
 
     if (this.options.changed) { this.options.changed(action); } else { action(); }
   }
   private assignAsset (id: string): void {
-    if (this.options.readOnly || !this.kind || assetLibrary.entry(id)?.kind !== this.kind || assetLibrary.entry(id)?.deletedAt) { return; }
     const engine = EditorRuntimeSession.player.engine;
+
+    if (this.options.readOnly || !this.kind || resourceIdentity(engine, id)?.kind !== this.kind) { return; }
+    if (!assetLibrary.entry(id)) {
+      this.assign(engine.effectsObjectServer.findObject<object>({ id }));
+
+      return;
+    }
     const cached = assetLibrary.asset(engine, id);
 
     if (cached?.isRegistered && !(cached instanceof Texture && cached.isDestroyed)) {
@@ -117,28 +124,16 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
       this.assign(loaded);
     }).catch(error => { if (project === assetLibrary.projectId) { assetLibrary.report(error); } });
   }
-  private selectedAsset (): string | undefined { return selectedContentAssets().find(id => assetLibrary.entry(id)?.kind === this.kind && !assetLibrary.entry(id)?.deletedAt); }
+  private selectedAsset (): string | undefined { return selectedContentAssets().find(id => !!this.kind && isContentResource(id, this.kind)); }
   private canPaste (): boolean {
-    if (assetReferenceClipboard.project !== assetLibrary.projectId) { return false; }
-    if (assetReferenceClipboard.id) { return !!this.kind && assetLibrary.entry(assetReferenceClipboard.id)?.kind === this.kind && !assetLibrary.entry(assetReferenceClipboard.id)?.deletedAt; }
-    const type = { Texture, Sprite, Material, Shader }[this.payloadType as 'Texture' | 'Sprite' | 'Material' | 'Shader'];
+    if (assetReferenceClipboard.project !== assetLibrary.projectId || !this.kind) { return false; }
+    const engine = EditorRuntimeSession.player.engine;
 
-    return !!type && assetReferenceClipboard.asset instanceof type;
+    return assetReferenceClipboard.id ? resourceIdentity(engine, assetReferenceClipboard.id)?.kind === this.kind : isPersistentResource(assetReferenceClipboard.asset, engine, this.kind);
   }
   protected override refreshCandidates (): void {
-    const entries: AssetPickerCandidate[] = assetLibrary.entries.filter(entry => entry.kind === this.kind && !entry.deletedAt).map(entry => ({ id: entry.id, name: entry.name }));
-    const constructors: Record<string, typeof EffectsObject> = { Texture, Sprite, Material, Shader };
-    const type = constructors[this.payloadType];
-
-    if (type) {
-      for (const asset of Object.values(EditorRuntimeSession.player.engine.effectsObjectServer.objectInstance)) {
-        if (!(asset instanceof type) || assetLibrary.entry(asset.getInstanceId()) || asset instanceof Texture && (asset.isDestroyed || EditorRuntimeSession.device.isSceneTexture(asset))) { continue; }
-        const name = (asset as { name?: string }).name || asset.constructor.name;
-
-        entries.push({ id: asset.getInstanceId(), name, asset });
-      }
-    }
-    this.available = entries;
+    const engine = EditorRuntimeSession.player.engine;
+    const entries = this.kind ? resourceCandidates(engine, this.kind).map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectInstance[entry.id] })) : [];
     const reference = this.binding.read();
 
     this.browser.setCandidates(entries, this.kind, reference instanceof EffectsObject ? reference.getInstanceId() : '');
@@ -148,7 +143,8 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     const reference = this.binding.read();
     const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
 
-    this.caption.text = entry?.name || (reference as { name?: string } | null)?.name || (reference ? this.payloadType : 'None');
+    this.caption.text = isResource(reference) ? resourceIdentity(EditorRuntimeSession.player.engine, reference.getInstanceId())?.name ?? 'Default' :
+      (reference as { name?: string } | null)?.name || (reference ? this.payloadType : 'None');
     this.useSelected.disabled = !!this.options.readOnly || !this.selectedAsset(); this.browse.disabled = !entry || !!entry.deletedAt;
     if (this.picker.visible && this.revision !== assetLibrary.revision) { this.refreshCandidates(); }
     super.update(delta);
@@ -157,10 +153,10 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     if (this.options.readOnly) { return false; }
     const payload = data as AssetPayload;
 
-    if (payload?.type === this.payloadType && payload.data) { return true; }
+    if (payload?.type === this.payloadType && this.kind) { return isPersistentResource(payload.data, EditorRuntimeSession.player.engine, this.kind); }
     const assets = payload?.type === CONTENT_ASSET_PAYLOAD ? payload.data as ContentAssetDrag : undefined;
 
-    return !!this.kind && assets?.ids.length === 1 && assetLibrary.entry(assets.ids[0])?.kind === this.kind && !assetLibrary.entry(assets.ids[0])?.deletedAt;
+    return !!this.kind && assets?.ids.length === 1 && isContentResource(assets.ids[0], this.kind);
   }
   protected override recognizesDrop (data: unknown): boolean { return !this.options.readOnly && super.recognizesDrop(data); }
   protected override dropData (position: math.Vector2, data: unknown): void {

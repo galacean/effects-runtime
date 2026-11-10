@@ -1,7 +1,7 @@
 import type { Engine, spec } from '@galacean/effects';
-import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem, math } from '@galacean/effects';
+import { AnimationGraphAsset, Animator, Composition, GraphInstance, InvalidIndex, SerializationHelper, VFXItem, math } from '@galacean/effects';
 import type { Label } from '@galacean/effects-plugin-gui';
-import { Control, TextOverflow } from '@galacean/effects-plugin-gui';
+import { Control, MouseFilter, TextOverflow } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
 import { EditorSelection } from '../../framework/selection/editor-selection';
 import { EditorWindow } from '../../framework/windows/editor-window';
@@ -19,8 +19,10 @@ import type { GraphNodeContent, GraphNodeType } from '../../ui/graph-editor/grap
 import type { GraphModel, GraphNode } from '../../ui/graph-editor/graph-model';
 import * as NodeGraph from '../../ui/graph-editor/index';
 import { CommentGraphNode } from '../../ui/graph-editor/comment-graph-node';
+import { GraphStyle } from '../../ui/graph-editor/graph-style';
+import { GraphColors } from '../../ui/graph-editor/graph-colors';
 import { PropertySheet, propertyBinding } from '../../ui/property-editor/property-sheet';
-import { editorColors as C, setEditorFont } from '../../ui/theme/control-theme';
+import { editorColors as C, EDITOR_FONT_SIZE, setEditorFont } from '../../ui/theme/control-theme';
 import { AnimationGraphCompilationContext } from './compiler/graph-compilation-context';
 import { AnimationGraphDecompiler } from './compiler/graph-decompiler';
 import { AnimationGraphContext } from './model/animation-graph-context';
@@ -42,8 +44,17 @@ import { AnimationGraphParametersPanel } from './ui/animation-graph-parameters-p
 
 class NodePlayback extends Control {
   progress = 0;
-  constructor (engine: Engine) { super(engine); this.setCustomMinimumSize(160, 8); }
-  override draw (): void { this.fillRect(0, 0, this.width, 6, C.recessed); this.fillRect(0, 0, this.width * this.progress, 6, C.primary); }
+  available = false;
+  private readonly fill = new math.Color(GraphColors.LimeGreen.r, GraphColors.LimeGreen.g, GraphColors.LimeGreen.b * .65, 1);
+  constructor (engine: Engine) { super(engine); this.mouseFilter = MouseFilter.Ignore; this.setCustomMinimumSize(120, 16); }
+  override draw (): void {
+    this.fillRect(0, 0, this.width, 12, GraphColors.DarkGray);
+    if (!this.available) { return; }
+    const x = this.width * this.progress;
+
+    this.fillRect(0, 0, x, 12, this.fill); this.drawLine(x, 0, x, 12, GraphColors.LimeGreen);
+    this.fillTriangle(x, 12, x - 4, 16, x + 4, 16, GraphColors.LimeGreen);
+  }
 }
 
 @editorPanel()
@@ -125,14 +136,17 @@ export class AnimationGraphEditor extends EditorWindow {
   }
   override onSelectionChange (): void {
     if (!this.primaryGraphView) { return; }
-    const item = EditorSelection.getSelectedObjects()[0];
+    const selected = EditorSelection.getSelectedObjects()[0];
+    const item = selected instanceof Composition ? selected.sceneRoot : selected;
 
-    if (!(item instanceof VFXItem) || item === this.currentVFXItem) { return; }
+    if (!(item instanceof VFXItem)) { return; }
     const animator = item.getComponent(Animator);
 
     if (!animator?.graphInstance) { return; }
+    this.caption.text = selected instanceof Composition ? selected.name : item.name;
+    if (item === this.currentVFXItem && animator.graphInstance === this.graph) { return; }
     this.currentVFXItem = item; this.graph = animator.graphInstance; this.parametersPanel.setGraphInstance(this.graph);
-    this.buildGraphFromAnimator(animator); this.caption.text = item.name; this.refreshBreadcrumbs();
+    this.buildGraphFromAnimator(animator); this.refreshBreadcrumbs();
   }
   override onUndoRedo (): void {
     if (this.currentVFXItem) {
@@ -160,7 +174,7 @@ export class AnimationGraphEditor extends EditorWindow {
   private refreshDetails (): void {
     const node = this.selectedNodes.at(-1)?.m_pNode, signature = node?.GetID() ?? '';
 
-    if (signature === this.selectedSignature && this.details.body.children.length) { return; }
+    if (signature === this.selectedSignature && this.details.hasContent) { return; }
     this.selectedSignature = signature; this.details.clear(); const group = this.details.section('selection', node?.GetTypeName() ?? 'Details');
 
     if (!node) {
@@ -202,10 +216,14 @@ export class AnimationGraphEditor extends EditorWindow {
       return { label, category: node.GetCategory() || 'Graph', create: (graph, position) => graph.CreateNode(type, position) };
     });
   }
-  private nodeContent (engine: Engine, node: GraphNode): GraphNodeContent {
+  private nodeContent (engine: Engine, node: GraphNode): GraphNodeContent | undefined {
+    if (!(node instanceof AnimationGraphNode) && !(node instanceof StateEditorNode)) { return; }
     const body = column(engine, [], 4); const info = append(body, label(engine, '')); const playback = append(body, new NodePlayback(engine)); const debug = append(body, label(engine, ''));
+    const percent = append(body, label(engine, ''));
 
-    playback.visible = false; debug.setThemeColorOverride('fontColor', C.muted); setEditorFont(debug, 12);
+    body.mouseFilter = MouseFilter.Pass; playback.visible = false;
+    for (const text of [info, debug, percent]) { text.mouseFilter = MouseFilter.Ignore; text.textOverflow = TextOverflow.Ellipsis; setEditorFont(text, EDITOR_FONT_SIZE * GraphStyle.contentFontScale); }
+    debug.setThemeColorOverride('fontColor', C.muted); percent.setThemeColorOverride('fontColor', C.muted);
     const refresh = (): void => {
       const context = this.userContext, index = context.GetRuntimeGraphNodeIndex(node.GetID()), valid = context.HasDebugData() && index !== InvalidIndex && context.IsNodeActive(index);
       const valueType = node instanceof AnimationGraphNode ? node.GetOutputValueType() : GraphValueType.Pose;
@@ -213,10 +231,13 @@ export class AnimationGraphEditor extends EditorWindow {
       if (node instanceof StateEditorNode) { info.text = node.IsOffState() ? 'Off State' : node.IsBlendTreeState() ? 'Blend Tree' : 'State Machine'; } else if (node instanceof TransitionEditorNode) { info.text = 'Duration: ' + node.m_duration.toFixed(2) + 's' + (node.m_canBeForced ? '  Forced' : ''); } else if (node instanceof AnimationClipEditorNode) { info.text = node.m_defaultResourceID || 'Empty Animation Slot'; } else if (node instanceof ConstBoolEditorNode || node instanceof ConstFloatEditorNode) { info.text = String(Reflect.get(node, 'm_value')); } else { info.text = ''; }
       info.visible = !!info.text;
       playback.visible = valueType === GraphValueType.Pose;
+      percent.visible = playback.visible;
       if (playback.visible) {
         const data = valid ? context.GetPoseNodeDebugInfo(index) : undefined;
 
-        playback.progress = Math.max(0, Math.min(1, data?.currentTime ?? 0)); debug.text = data ? 'Time: ' + (data.currentTime * data.duration).toFixed(2) + ' / ' + data.duration.toFixed(2) + ' s' : 'Time: N/A';
+        playback.available = !!data; playback.progress = Math.max(0, Math.min(1, data?.currentTime ?? 0));
+        debug.text = data ? 'Time: ' + (data.currentTime * data.duration).toFixed(2) + '/' + data.duration.toFixed(2) + 's' : 'Time: N/A';
+        percent.text = data ? 'Percent: ' + (data.currentTime * 100).toFixed(1) + '%' : 'Percent: N/A';
       } else {
         const value = valid ? context.GetNodeValue<unknown>(index) : undefined;
 

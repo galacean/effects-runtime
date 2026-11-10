@@ -1,6 +1,5 @@
 import { EffectsObject, MaskableGraphic, RendererComponent, SpriteComponent } from '@galacean/effects';
 import { propertyBinding, type PropertyGroup } from './property-sheet';
-import { createObjectReferenceControl } from './object-reference-field';
 import { reflectProperties } from './property-handle';
 import { PropertyTree } from './property-tree';
 
@@ -10,6 +9,7 @@ const HIDDEN_PROPERTIES = new Set([
   'boundingBoxInfo', 'geometry', 'defaultGeometry', 'canvas', 'context', 'isDirty', 'maxLineWidth',
   'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'disposed', 'visible', 'renderer',
   'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty', 'isEndCalled',
+  'globalVolume', 'postProcessingEnabled',
 ]);
 
 export function propertyLabel (name: string): string {
@@ -49,10 +49,7 @@ export class DefaultObjectDetails {
       group.color('Color', { read: () => (component.material.getColor('_Color') ?? component.color).clone(), write: color => { component.color = color; } });
     }
     if (component instanceof SpriteComponent) {
-      const field = createObjectReferenceControl(group.engine, propertyBinding(component, 'sprite'), { expectedType: 'Sprite', allowEmpty: false,
-        changed: action => { group.sheet.edit.change('Sprite', group, action); group.sheet.edit.finish(group); } });
-
-      group.add('Sprite', field);
+      group.reference('Sprite', propertyBinding(component, 'sprite'), 'Sprite', false, false);
     }
     if (component instanceof RendererComponent) {
       group.number('Render Order', { read: () => component.priority, write: value => { component.priority = Math.round(value); } }, { step: 1, precision: 0 });

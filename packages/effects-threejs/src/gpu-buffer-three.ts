@@ -14,8 +14,10 @@ export class GPUBufferThree extends GPUBuffer {
   protected override onInitialize (description: GPUBufferDescription): void {
     if (description.index) {
       const data = normalizeIndexData(description.data);
+      const attribute = new THREE.BufferAttribute(data, 1);
 
-      this.resource = new THREE.BufferAttribute(data, 1);
+      attribute.onUpload(() => { attribute.updateRange.count = -1; });
+      this.resource = attribute;
       this.capacity = data.byteLength;
       this.is32Bits = data instanceof Uint32Array;
     } else {

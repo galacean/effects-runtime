@@ -23,6 +23,8 @@ export class AssetObjectCache {
   get (engine: Engine, id: string): EffectsObject | undefined {
     const entry = this.source.entry(id), cached = this.loaded.get(engine)?.get(id);
 
+    if (cached?.object instanceof Sprite && (!cached.object.texture?.isRegistered || cached.object.texture.isDestroyed)) { return; }
+
     return cached?.version === entry?.updatedAt && cached?.object.isRegistered && engine.effectsObjectServer.objectInstance[id] === cached.object ? cached.object : undefined;
   }
 

@@ -12,7 +12,6 @@ import type { TexturePreview } from './texture-preview';
 import { assetLibrary } from '../asset-library';
 import { ContentAssetSource } from '../../content-browser/content-asset-source';
 import { AssetThumbnailCache } from './asset-thumbnail-cache';
-import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 
 export function resourcePreview (resource: unknown, size: number): { preview: TexturePreview, width: number, height: number } | undefined {
   const sprite = resource instanceof Sprite ? getSpriteThumbnail(resource) : undefined;
@@ -31,7 +30,7 @@ export class AssetPreviewControl extends Control {
   private aspect = 1;
   private hasImage = false;
   private readonly thumbnails = new AssetThumbnailCache();
-  private readonly source = new ContentAssetSource(this.thumbnails, id => assetLibrary.asset(EditorRuntimeSession.player.engine, id));
+  private readonly source = new ContentAssetSource(this.thumbnails);
   activated?: () => void;
 
   constructor (engine: Engine, private readonly resource: () => unknown, private readonly previewSize = 32, private readonly contentId?: () => string | undefined, private readonly fallbackIcon: AssetIcon = 'texture') {

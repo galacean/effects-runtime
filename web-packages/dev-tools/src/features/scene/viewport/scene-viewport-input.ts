@@ -21,7 +21,13 @@ export class SceneViewportInput {
     const forwarded = event.xformedBy(new math.Matrix3());
 
     forwarded.globalPosition.copyFrom(forwarded.position);
-    this.position.copyFrom(event.position); this.buttons = event.buttonMask;
+    this.position.copyFrom(event.position);
+    if (event instanceof InputEventMouseButton) {
+      const bit = event.buttonIndex === MouseButton.Left ? MouseButtonMask.Left : event.buttonIndex === MouseButton.Right ? MouseButtonMask.Right : event.buttonIndex === MouseButton.Middle ? MouseButtonMask.Middle : MouseButtonMask.None;
+
+      this.buttons = event.pressed ? this.buttons | bit : this.buttons & ~bit;
+    } else { forwarded.pressed = this.buttons !== MouseButtonMask.None; }
+    forwarded.buttonMask = this.buttons;
     this.emit(forwarded); event.accept();
   }
   key (event: InputEventKey): void {

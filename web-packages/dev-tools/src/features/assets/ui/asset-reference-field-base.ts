@@ -19,6 +19,7 @@ export abstract class AssetReferenceFieldBase extends EditorDropTarget {
   private readonly actions: VBoxContainer;
   private readonly browseHeading: MenuHeading;
   private preview?: Control;
+  private compact = false;
 
   constructor (engine: Engine) {
     super(engine);
@@ -44,6 +45,12 @@ export abstract class AssetReferenceFieldBase extends EditorDropTarget {
   protected setPreview (preview: Control): void {
     this.preview = preview; preview.mouseFilter = MouseFilter.Pass; append(this, preview); this.queueSort();
   }
+  protected useCompactPresentation (): void {
+    this.compact = true;
+    if (this.preview) { this.preview.visible = false; }
+    this.useSelected.visible = this.browse.visible = false;
+    this.updateMinimumSize(); this.queueSort();
+  }
   protected get canBrowse (): boolean { return true; }
   protected abstract chooseAsset (id: string): void;
   protected abstract refreshCandidates (): void;
@@ -62,12 +69,12 @@ export abstract class AssetReferenceFieldBase extends EditorDropTarget {
     if (this.picker.y < position.y) { this.picker.setPosition(this.picker.x, Math.max(0, screenPosition(this).y - this.picker.height)); }
     if (this.canBrowse) { this.browser.search.grabFocus(); }
   }
-  override getMinimumSize (): math.Vector2 { return new math.Vector2(80, this.preview?.visible ? 54 : this.useSelected?.visible || this.browse?.visible ? 49 : 24); }
+  override getMinimumSize (): math.Vector2 { return new math.Vector2(80, this.compact ? 22 : this.preview?.visible ? 54 : this.useSelected?.visible || this.browse?.visible ? 49 : 24); }
   protected override sortChildren (): void {
     const left = this.preview?.visible ? 60 : 0;
 
     if (this.preview?.visible) { place(this.preview, 0, 0, 54, 54); }
-    place(this.caption, left, 0, Math.max(0, this.width - left), 24);
+    place(this.caption, left, 0, Math.max(0, this.width - left), this.compact ? this.height : 24);
     place(this.useSelected, left, 27, 22, 22); place(this.browse, left + 26, 27, 22, 22);
   }
   override onDestroy (): void { this.picker.dispose(); super.onDestroy(); }

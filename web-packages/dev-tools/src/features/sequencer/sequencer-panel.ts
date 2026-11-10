@@ -1,7 +1,7 @@
 import { EditorSearchField } from '../../ui/controls/search-field';
 import { setTooltip } from '../../ui/controls/tooltip';
-import type { Engine, TrackAsset, InputEventKey } from '@galacean/effects';
-import { CompositionComponent, InterpolationMode, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
+import type { EffectsObject, Engine, TrackAsset, InputEventKey } from '@galacean/effects';
+import { CompositionComponent, InterpolationMode, MaskableGraphic, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
 import type { HBoxContainer, Label, LineEdit } from '@galacean/effects-plugin-gui';
 import { Control, SizeFlags, TextOverflow, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
@@ -22,8 +22,10 @@ import { EditorIconButton, EditorIconControl } from '../../ui/icons/control-icon
 import type { EditorIcon } from '../../ui/icons/control-icons';
 import { commandMenuItem } from '../../ui/menus/command-menu-item';
 import { PropertySheet } from '../../ui/property-editor/property-sheet';
+import { createObjectReferenceControl } from '../../ui/property-editor/object-reference-field';
 import { EDITOR_FONT_SIZE, setEditorFont } from '../../ui/theme/control-theme';
 import type { TransformEdit } from '../scene/document/scene-document';
+import type { ObjectState } from '../scene/serialization/scene-serializer';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import { updateAutoTangents } from './curve-data';
 import type { SequencerContext } from './sequencer-canvas';
@@ -32,6 +34,8 @@ import type { KeySelection, SequenceSection } from './sequencer-document';
 import { SequencerDocument } from './sequencer-document';
 import { SequencerState } from './sequencer-state';
 import { findSequenceTimeline } from './sequencer-preview';
+import type { SequenceProperty } from './sequencer-properties';
+import { propertyClipKind, resolvePropertyTarget, sequenceProperties, vectorValues } from './sequencer-properties';
 type Interpolation = 'Auto' | 'User' | 'Break' | 'Linear' | 'Constant';
 const interpolationModes: Interpolation[] = ['Auto', 'User', 'Break', 'Linear', 'Constant'];
 const interpolationIcons: Record<Interpolation, EditorIcon> = { Auto: 'tangentAuto', User: 'tangentUser', Break: 'tangentBreak', Linear: 'linear', Constant: 'constant' };
@@ -270,6 +274,8 @@ export class SequencerPanel extends EditorWindow {
     if (!this.keyTime.isEditing) { this.keyTime.value = first ? (first.section.clip.start + first.key.time * first.section.clip.duration) * this.factor : 0; }
     this.keyValueGroup.visible = !first || first.channel.kind === 'number';
     this.keyValue.enabled = numeric && !!first && first.channel.kind === 'number' && first.channel.pathView !== 'timing';
+    this.keyValue.minimum = first?.channel.minimum ?? -Infinity; this.keyValue.maximum = first?.channel.maximum ?? Infinity;
+    this.keyValue.precision = first?.channel.integer ? 0 : 3; this.keyValue.step = first?.channel.integer ? 1 : .01;
     if (!this.keyValue.isEditing) { this.keyValue.value = first?.key.value ?? 0; }
     this.interpolationButtons.forEach(button => button.disabled = !numeric); this.flatten.disabled = !numeric;
     this.caption.text = document.composition.name || 'Sequence';
@@ -314,6 +320,22 @@ export class SequencerPanel extends EditorWindow {
             if (item.key.tangentMode !== 'break') { item.key.inSlope = item.key.outSlope = slope; item.key.tangentMode = 'user'; }
           }), enabled && first.channel.pathView !== 'point');
         }
+      } else {
+        append(this.details, label(this.details.engine, 'Reference'));
+        const field = append(this.details, createObjectReferenceControl(this.details.engine, {
+          read: () => first.channel.references?.get(first.key.id) ?? null,
+          write: value => document.edit('Set reference keys', () => {
+            const sections = new Set<SequenceSection>();
+
+            for (const item of keys) {
+              if (item.channel.kind !== 'reference' || item.channel.referenceType !== first.channel.referenceType || document.isLocked(item.section.track)) { continue; }
+              item.channel.references!.set(item.key.id, value as import('@galacean/effects').EffectsObject | null); sections.add(item.section);
+            }
+            sections.forEach(section => document.write(section));
+          }),
+        }, { expectedType: first.channel.referenceType, allowEmpty: !first.channel.referenceType, compact: true }));
+
+        field.setCustomMinimumSize(180, 22); field.enabled = enabled;
       }
     } else if (section) {
       const enabled = !document.isLocked(section.track);
@@ -367,8 +389,52 @@ export class SequencerPanel extends EditorWindow {
     }));
     const selected = EditorSelection.getSelectedObjects().filter((object): object is VFXItem => object instanceof VFXItem && object.composition === document.composition);
 
-    return [{ label: 'Selected Objects with Transform', enabled: selected.length > 0, action: () => add(selected) }, { label: '', separator: true },
-      ...document.composition.items.filter(item => item !== document.composition.pluginRoot && !item.name?.startsWith('__')).map(item => ({ label: item.name || 'Object', action: () => add([item]) }))];
+    return [{ label: 'Selected Objects with Transform', enabled: selected.length > 0, action: () => add(selected) },
+      ...selected.map(item => ({ label: item.name || 'Selected Object', icon: 'object' as const, children: () => this.propertyTrackActions(item) })),
+      { label: 'Objects', heading: true },
+      ...document.composition.items.filter(item => item !== document.composition.pluginRoot && !item.name?.startsWith('__')).map(item => ({ label: item.name || 'Object', icon: 'object' as const, children: () => this.propertyTrackActions(item) }))];
+  }
+  private propertyTrackActions (source: TrackAsset | VFXItem): MenuAction[] {
+    const document = this.document!;
+    const item = source instanceof VFXItem ? source : document.boundItem(source);
+
+    if (!item) { return []; }
+    const reveal = (track: TrackAsset | undefined): void => {
+      if (!track) { return; }
+      document.selectedTracks.clear(); document.selectedTracks.add(track.getInstanceId());
+      document.selectedKeys.clear(); document.selectedSections.clear(); this.state.activeChannel = '';
+      for (let parent: TrackAsset | undefined = track; parent; parent = parent.parent) { this.state.expanded.add(parent.getInstanceId()); }
+    };
+    const addProperties = (properties: SequenceProperty[]): void => document.edit('Add property tracks', () => {
+      const binding = document.addBinding(item);
+
+      for (const property of properties) { reveal(document.addPropertyTrack(binding, property)); }
+    });
+    const groups = (properties: SequenceProperty[], depth: number): MenuAction[] => {
+      const rows: MenuAction[] = properties.filter(property => property.groups.length === depth).map(property => ({ label: property.label,
+        icon: property.kind === 'reference' ? property.referenceType === 'Texture' ? 'texture' : 'sprite' : 'key', action: () => addProperties([property]) }));
+      const names = Array.from(new Set(properties.filter(property => property.groups.length > depth).map(property => property.groups[depth])));
+
+      for (const name of names) {
+        const entries = properties.filter(property => property.groups[depth] === name);
+
+        rows.push({ label: name, children: () => [
+          ...(entries.length > 1 ? [{ label: 'Add All Properties', icon: 'plus' as const, action: () => addProperties(entries) }, { label: '', separator: true }] : []),
+          ...groups(entries, depth + 1),
+        ] });
+      }
+
+      return rows;
+    };
+    const kinds = ['transform', 'activation', ...(item.getComponent(MaskableGraphic) ? ['opacity'] as const : []),
+      ...(item.getComponent(CompositionComponent) && item !== document.component.item ? ['composition'] as const : [])] as const;
+
+    return [
+      { label: 'Object', heading: true },
+      ...kinds.map(kind => ({ label: kind[0].toUpperCase() + kind.slice(1), icon: kind === 'transform' ? 'transform' as const : kind === 'activation' ? 'view' as const : kind === 'composition' ? 'scene' as const : 'opacity' as const,
+        action: () => document.edit('Add ' + kind + ' track', () => reveal(document.addTrack(document.addBinding(item), kind))) })),
+      ...groups(sequenceProperties(item), 0),
+    ];
   }
   private playbackSettings (): void {
     this.dialog.show(this.canvas, 'Playback Settings', body => {
@@ -426,8 +492,8 @@ export class SequencerPanel extends EditorWindow {
 
       actions.push({ label: 'Rename…', action: () => this.rename(row.track) }, { label: 'Mute Track', checked: document.isMuted(row.track), action: () => document.toggleMute(row.track) },
         { label: 'Lock Track', checked: ownLock, action: () => document.edit('Toggle track lock', () => { if (ownLock) { document.locked.delete(row.track.getInstanceId()); } else { document.locked.add(row.track.getInstanceId()); } }, false) },
-        { label: 'Add Section', enabled: row.kind !== 'object' && !document.isLocked(row.track), action: () => document.edit('Add section', () => { document.createSection(row.track); }) });
-      if (parent) { actions.push({ label: 'Add Property Track', enabled: !document.isLocked(parent), children: (['transform', 'activation', 'opacity'] as const).map(kind => ({ label: kind[0].toUpperCase() + kind.slice(1), action: () => document.edit('Add property track', () => { document.addTrack(parent, kind); this.state.expanded.add(parent.getInstanceId()); }) })) }); }
+        { label: 'Add Section', enabled: row.kind !== 'object' && document.canCreateSection(row.track), action: () => document.edit('Add section', () => { document.createSection(row.track); }) });
+      if (parent) { actions.push({ label: 'Add Property Track', enabled: !document.isLocked(parent), children: () => this.propertyTrackActions(parent) }); }
     }
 
     return [...actions, { label: '', separator: true }, ...this.editActions()];
@@ -443,10 +509,12 @@ export class SequencerPanel extends EditorWindow {
     this.canvas.document = undefined;
     const composition = EditorRuntimeSession.player.getCompositions()[0];
 
-    if (sceneWorkspace.current) { sceneWorkspace.current.autoKeyTarget = () => false; sceneWorkspace.current.autoKeyTransforms = undefined; }
+    if (sceneWorkspace.current) {
+      sceneWorkspace.current.autoKeyTarget = () => false; sceneWorkspace.current.autoKeyTransforms = undefined; sceneWorkspace.current.autoKeyProperties = undefined;
+    }
 
     for (const [component, document] of this.documents) {
-      if (document.composition !== composition) { document.dispose(); this.documents.delete(component); }
+      if (document.composition !== composition) { if (this.canvas.drag?.document === document) { this.canvas.cancel(document); } document.dispose(); this.documents.delete(component); }
     }
 
     if (!composition) {
@@ -466,6 +534,7 @@ export class SequencerPanel extends EditorWindow {
       return;
     }
     if (this.document?.component !== component || this.document.timeline !== timeline) {
+      if (this.document) { this.canvas.cancel(this.document); }
       this.document?.commit();
 
       const cached = this.documents.get(component);
@@ -485,6 +554,7 @@ export class SequencerPanel extends EditorWindow {
         section.clip instanceof TransformPlayableAsset && document.boundItem(section.track) === item && !document.isLocked(section.track) && !document.isMuted(section.track) &&
         document.currentTime >= section.clip.start && document.currentTime <= section.clip.start + section.clip.duration);
       sceneWorkspace.current.autoKeyTransforms = edits => this.recordAutoKey(document, edits);
+      sceneWorkspace.current.autoKeyProperties = (before, after) => this.preparePropertyKeys(document, before, after);
     }
 
     document.sync();
@@ -569,7 +639,13 @@ export class SequencerPanel extends EditorWindow {
     const sections = new Set<SequenceSection>();
 
     keys.forEach(item => {
-      if (!document.isLocked(item.section.track)) { action(item); sections.add(item.section); }
+      if (!document.isLocked(item.section.track)) {
+        action(item);
+        if (item.channel.kind === 'number') {
+          item.key.value = Math.max(item.channel.minimum ?? -Infinity, Math.min(item.channel.maximum ?? Infinity, item.channel.integer ? Math.round(item.key.value) : item.key.value));
+        }
+        sections.add(item.section);
+      }
     });
     sections.forEach(section => {
       section.channels.forEach(channel => updateAutoTangents(channel.keys)); document.write(section);
@@ -642,7 +718,10 @@ export class SequencerPanel extends EditorWindow {
     if (command && pressed('c')) { document.copySelection(); } else if (command && pressed('x')) { document.copySelection(); document.deleteSelection(); } else if (command && pressed('v')) { document.paste(); } else if (command && (pressed('z') || pressed('y'))) {
       if (pressed('y') || event.shiftPressed) { document.redo(); } else { document.undo(); }
     } else if (pressed('Escape')) {
-      this.canvas.cancel(document); document.clearSelection();
+      const dragging = !!this.canvas.drag;
+
+      this.canvas.cancel(document); this.canvas.root?.cancelPointerInput();
+      if (!dragging) { document.clearSelection(); }
       if (!this.state.curveMode) { this.state.activeChannel = ''; this.state.captureCurveSelection(document); }
     } else if (command && pressed('d')) {
       if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
@@ -682,6 +761,44 @@ export class SequencerPanel extends EditorWindow {
 
       if (index >= 0) { this.setInterpolation(document, ['Auto', 'User', 'Break', 'Linear', 'Constant'][index] as Interpolation); } else { event.clearAccepted(); }
     }
+  }
+
+  private preparePropertyKeys (document: SequencerDocument, before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>): (() => boolean) | undefined {
+    if (!this.autoKey || !document.composition.getPaused()) { return; }
+    const serializer = sceneWorkspace.current?.serializer;
+
+    if (!serializer) { return; }
+    const edits = document.allSections().flatMap(section => {
+      const kind = propertyClipKind(section.clip);
+
+      if (!kind || kind === 'reference' || document.isLocked(section.track) || document.isMuted(section.track) ||
+        document.currentTime < section.clip.start || document.currentTime > section.clip.start + section.clip.duration || section.clip.duration <= 0) { return []; }
+      const target = document.boundObject(section.track);
+      const property = document.properties(section.track).find(property => property.path === section.track.definition.path && resolvePropertyTarget(property.target, property.materialIndex) === target);
+
+      if (!property) { return []; }
+      const old = serializer.readProperty(before, property), value = serializer.readProperty(after, property);
+
+      if (old === undefined || value === undefined) { return []; }
+      const previous = kind === 'float' ? [Number(old)] : vectorValues(old, kind);
+      const current = kind === 'float' ? [Number(value)] : vectorValues(value, kind);
+      const channels = section.channels.filter(channel => Number.isFinite(current[channel.axis]) && Math.abs(current[channel.axis] - previous[channel.axis]) > 1e-6);
+
+      return channels.length ? [{ section, property, channels, values: current }] : [];
+    });
+
+    if (!edits.length) { return; }
+    edits.forEach(edit => serializer.preserveProperty(before, after, edit.property));
+
+    return () => {
+      document.begin('Auto key properties'); this.autoRecording = true;
+      edits.forEach(({ section, channels, values }) => {
+        channels.forEach(channel => document.insertKey(section, channel, document.currentTime, values[channel.axis]));
+      });
+      document.changed();
+
+      return true;
+    };
   }
 
   private recordAutoKey (document: SequencerDocument, edits: TransformEdit[]): boolean {

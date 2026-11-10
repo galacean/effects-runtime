@@ -1,5 +1,6 @@
-import { generateGUID, itemFrag, itemVert, spec } from '@galacean/effects';
+import { generateGUID, spec } from '@galacean/effects';
 import type { AssetEntry, AssetObject, AssetObjectData, ObjectAssetKind } from './asset-types';
+import { DEFAULT_UNLIT_FRAGMENT, DEFAULT_UNLIT_VERTEX } from './default-unlit-shader';
 
 const SPRITE_DATA_TYPE = 'Sprite' as spec.DataType;
 const BUILTIN_IDS = new Set<string>(Object.values(spec.BuiltinObjectGUID));
@@ -8,13 +9,13 @@ export const OBJECT_ASSET_TYPES = { material: spec.DataType.Material, shader: sp
 export const DEFAULT_SHADER_PROPERTIES = '_Color("Color", Color) = (1, 1, 1, 1)\n_MainTex("Texture", 2D) = "white"';
 
 export function newObjectAsset (kind: ObjectAssetKind, id: string, name: string, reference?: string): AssetObject {
-  if (kind === 'shader') { return { id, kind, objects: [{ id, name, dataType: spec.DataType.Shader, vertex: itemVert, fragment: itemFrag, properties: DEFAULT_SHADER_PROPERTIES }] }; }
+  if (kind === 'shader') { return { id, kind, objects: [{ id, name, dataType: spec.DataType.Shader, vertex: DEFAULT_UNLIT_VERTEX, fragment: DEFAULT_UNLIT_FRAGMENT, properties: DEFAULT_SHADER_PROPERTIES }] }; }
   if (kind === 'sprite') { return { id, kind, objects: [{ id, name, dataType: SPRITE_DATA_TYPE, rect: [0, 0, 1, 1], rotation: 0, ...(reference ? { texture: { id: reference } } : {}) }] }; }
   const shader = reference ? undefined : newObjectAsset('shader', generateGUID(), name + '_Shader').objects[0];
 
   return { id, kind, objects: [{ id, name, dataType: spec.DataType.Material, shader: { id: reference ?? shader!.id },
     stringTags: { RenderType: spec.RenderType.Transparent, RenderFace: spec.RenderFace.Both }, macros: [], ints: {}, floats: { ZWrite: 0, ZTest: 0 },
-    vector4s: { _TexOffset: { x: 0, y: 0, z: 1, w: 1 }, _TexParams: { x: 1, y: 1, z: 1, w: 0 } }, colors: { _Color: { r: 1, g: 1, b: 1, a: 1 } },
+    vector4s: {}, colors: { _Color: { r: 1, g: 1, b: 1, a: 1 } },
     textures: { _MainTex: { texture: { id: spec.BuiltinObjectGUID.WhiteTexture } } } }, ...(shader ? [shader] : [])] };
 }
 

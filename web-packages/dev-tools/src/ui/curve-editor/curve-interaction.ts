@@ -1,4 +1,5 @@
 import type { CurvePoint } from './curve-model';
+import { isDragThresholdReached } from '@galacean/effects-plugin-editor-gizmo';
 
 export class CurveDragGesture {
   axis?: 'x' | 'y';
@@ -11,7 +12,7 @@ export class CurveDragGesture {
   update (x: number, y: number, constrain: boolean): { dx: number, dy: number } {
     const dx = x - this.x, dy = y - this.y;
 
-    this.moved ||= Math.hypot(dx, dy) > 3;
+    this.moved ||= isDragThresholdReached(this.x, this.y, x, y);
     if (constrain && this.moved && !this.axis) { this.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y'; }
     if (!constrain) { this.axis = undefined; }
 
