@@ -32,7 +32,7 @@ class SplitHandle extends Control {
     event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left) { this.dragging = false; event.accept(); }
+    if (this.dragging) { this.dragging = false; event.accept(); }
   }
 }
 

@@ -38,18 +38,14 @@ class NumberDragButton extends Button {
     }
     super.onMouseDown(event);
     this.moved = false; this.dragging = true; this.previousX = this.startX = event.globalPosition.x; this.startValue = this.field.value;
-    this.pointer ??= new EditorPointerLock(this, motion => this.move(motion));
+    this.pointer ??= new EditorPointerLock(this);
     this.pointer.begin(event);
     this.field.beginEdit?.();
   }
   override onMouseMove (event: InputEventMouseMotion): void {
-    if (this.pointer?.locked) {
-      event.accept();
-
-      return;
-    }
     this.move(event);
-    if (this.dragging && this.moved) { this.pointer?.request(event); }
+    this.pointer?.update(event);
+    if (this.dragging && this.moved) { this.pointer?.request(); }
   }
   private move (event: InputEventMouseMotion): void {
     super.onMouseMove(event);
@@ -65,9 +61,9 @@ class NumberDragButton extends Button {
     event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    this.pointer?.release(event);
+    this.pointer?.finish();
     super.onMouseUp(event);
-    if (event.buttonIndex !== MouseButton.Left || !this.dragging) { return; }
+    if (!this.dragging) { return; }
     this.dragging = false;
     if (event.canceled) { this.field.changeValue(this.startValue); }
     this.field.endEdit?.(event.canceled);
