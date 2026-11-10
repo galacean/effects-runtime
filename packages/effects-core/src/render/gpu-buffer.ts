@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import { GPUResource } from '../gpu-resource';
-import type { GPUVertexLayout } from './gpu-vertex-layout';
 
 export type DataArray = number[] | ArrayBuffer | ArrayBufferView;
 
@@ -30,7 +29,6 @@ export interface GPUBufferOptions {
   byteStride: number,
   instanceDivisor: number,
   label?: string,
-  vertexLayout?: GPUVertexLayout,
 }
 
 export type GPUBufferDescription = GPUBufferOptions & (
@@ -43,14 +41,12 @@ export abstract class GPUBuffer extends GPUResource {
   capacity = 0;
   is32Bits = false;
   byteStride = 0;
-  vertexLayout?: GPUVertexLayout;
 
   abstract get underlyingResource (): unknown;
 
   initialize (description: GPUBufferDescription): void {
     this.releaseGPU();
     this.byteStride = description.byteStride;
-    this.vertexLayout = description.vertexLayout;
     this.onInitialize(description);
     this.initialized = true;
   }
@@ -61,7 +57,6 @@ export abstract class GPUBuffer extends GPUResource {
     this.capacity = 0;
     this.is32Bits = false;
     this.byteStride = 0;
-    this.vertexLayout = undefined;
   }
 }
 

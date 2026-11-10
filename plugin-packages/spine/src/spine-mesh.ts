@@ -135,7 +135,7 @@ export class SpineMesh implements Disposable {
       throw new Error('Can not update SpineMesh after dispose.');
     }
     if (this.indicesLength > 0) {
-      const buffer = this.geometry.getAttributeBuffer(VertexElementType.Position)!;
+      const buffer = this.geometry.getVertexBuffer(VertexElementType.Position)!.buffer;
 
       this.engine.displayServer.renderingDevice.updateDynamicVertexBuffer(
         buffer, this.vertices.subarray(0, this.verticesLength),

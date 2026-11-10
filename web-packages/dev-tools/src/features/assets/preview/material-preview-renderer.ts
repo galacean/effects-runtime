@@ -272,12 +272,15 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     this.geometry?.dispose();
     const type = { sphere: GeometryType.Sphere, plane: GeometryType.Plane, cube: GeometryType.Box, cylinder: GeometryType.Cylinder }[primitive];
     const geometry = createGeometry(this.engine, type, { radius: 1, width: 1.7, height: 1.7, depth: 1.7, widthSegments: 48, heightSegments: 32, radialSegments: 48 });
-    const layout = geometry.getVertexLayout()!, buffers = geometry.getVertexBuffers();
     const aliases = { a_Position: 'aPos', a_Normal: 'aNormal', a_UV1: 'aUV' };
-    const elements = [...layout.elements, ...layout.elements.filter(element => element.name in aliases).map(element => ({ ...element, name: aliases[element.name as keyof typeof aliases] }))];
-    const device = this.engine.displayServer.renderingDevice;
 
-    geometry.setVertexBuffers(buffers, device.getVertexLayout(elements, buffers.map(buffer => buffer?.byteStride ?? 0)));
+    for (const [name, alias] of Object.entries(aliases)) {
+      const view = geometry.getVertexBuffer(name);
+
+      if (view) {
+        geometry.setVerticesBuffer({ ...view, kind: alias });
+      }
+    }
     geometry.unregisterObject(); this.geometry = geometry; this.primitive = primitive;
   }
 
