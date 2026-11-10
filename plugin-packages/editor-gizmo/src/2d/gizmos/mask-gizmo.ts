@@ -442,8 +442,6 @@ export class MaskGizmo extends Gizmo {
         const mbcR = (maskBackgroundColor >>> 24) & 0xFF;
         const mbcG = (maskBackgroundColor >>> 16) & 0xFF;
         const mbcB = (maskBackgroundColor >>> 8) & 0xFF;
-        const maskOpacity = maskColor & 0xFF;
-        const maskBackgroundOpacity = maskBackgroundColor & 0xFF;
 
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
@@ -456,12 +454,10 @@ export class MaskGizmo extends Gizmo {
             data[i] = mcR;
             data[i + 1] = mcG;
             data[i + 2] = mcB;
-            data[i + 3] = Math.round(data[i + 3] * maskOpacity / 255);
           } else {
             data[i] = mbcR;
             data[i + 1] = mbcG;
             data[i + 2] = mbcB;
-            data[i + 3] = Math.round(data[i + 3] * maskBackgroundOpacity / 255);
           }
         }
 
