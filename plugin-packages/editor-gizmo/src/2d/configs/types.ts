@@ -4,7 +4,7 @@ export type SnapConfig = {
   enabled: boolean,
   /** 吸附线宽度 */
   lineWidth: number,
-  /** 吸附线颜色 */
+  /** 吸附线颜色，格式为 0xRRGGBBAA。 */
   lineColor: number,
   /** 吸附判断距离 */
   distance: number,
@@ -30,22 +30,18 @@ export type ViewportNavigationConfig = {
  * 视口展示 Gizmo 配置
  */
 export type ViewportOverlayConfig = {
-  /** 视口包围盒颜色 */
+  /** 视口包围盒颜色，格式为 0xRRGGBBAA。 */
   boxColor: number,
   /** 视口包围盒线宽 */
   boxWidth: number,
   /** 是否绘制画框外遮罩。 */
   outerMaskEnabled: boolean,
-  /** 蒙版颜色 */
+  /** 蒙版颜色，格式为 0xRRGGBBAA。 */
   markColor: number,
-  /** 蒙版透明度 */
-  markAlpha: number,
   /** 出血安全区开关 */
   safeAreaEnabled: boolean,
-  /** 出血安全区包围盒颜色 */
+  /** 出血安全区包围盒颜色，格式为 0xRRGGBBAA。 */
   safeAreaBoxColor: number,
-  /** 出血安全区包围盒透明度 */
-  safeAreaBoxAlpha: number,
 };
 
 /** 选区悬停与框选预览配置。 */
@@ -54,16 +50,12 @@ export type SelectionPreviewConfig = {
   videoPreSelectedPlay: boolean,
   /** 预选中线宽 */
   preSelectedWidth: number,
-  /** 预选中颜色 */
+  /** 预选中颜色，格式为 0xRRGGBBAA。 */
   preSelectedColor: number,
-  /** 框选区域填充色 */
+  /** 框选区域填充色，格式为 0xRRGGBBAA。 */
   regionBoxColor: number,
-  /** 框选区域填充透明度 */
-  regionBoxAlpha: number,
-  /** 框选区域线框颜色 */
+  /** 框选区域线框颜色，格式为 0xRRGGBBAA。 */
   regionWireframeColor: number,
-  /** 框选区域线框透明度 */
-  regionWireframeAlpha: number,
   /** 框选区域线框宽度 */
   regionWireframeWidth: number,
 };
@@ -79,33 +71,29 @@ export type ResizeSelectionConfig = {
   contentRatio: number,
   /** 按运行时元素 ID 解析整体缩放或排版尺寸调整行为；默认整体缩放。 */
   resolveResizeBehavior?: (itemId: string) => ResizeSelectionBehavior,
-  /** 线框颜色 */
+  /** 线框颜色，格式为 0xRRGGBBAA。 */
   wireframeColor: number,
-  /** 线框透明度 */
-  wireframeAlpha: number,
   /** 线框线宽 */
   wireframeWidth: number,
-  /** 角点填充色 */
+  /** 角点填充色，格式为 0xRRGGBBAA。 */
   cornerFillColor: number,
-  /** 角点描边色 */
+  /** 角点描边色，格式为 0xRRGGBBAA。 */
   cornerLineColor: number,
   /** 角点描边宽度 */
   cornerLineWidth: number,
-  /** 角点描边透明度 */
-  cornerLineAlpha: number,
   /** 缩放交互点半径 */
   scaleCircleSize: number,
   /** 旋转交互方形的半边长 */
   rotationCircleSize: number,
-  /** 画板移动元素位置线颜色 */
+  /** 画板移动元素位置线颜色，格式为 0xRRGGBBAA。 */
   frameMoveLineColor: number,
   /** 画板移动元素位置线宽 */
   frameMoveLineWidth: number,
   /** 信息展示开关 */
   infoShowEnabled: boolean,
-  /** 尺寸文案颜色 */
+  /** 尺寸文案颜色，格式为 0xRRGGBBAA。 */
   sizeTextColor: number,
-  /** 名称文案颜色 */
+  /** 名称文案颜色，格式为 0xRRGGBBAA。 */
   nameTextColor: number,
   /** 图片元素 logo 地址 */
   imageLogoUrl: string,
@@ -125,42 +113,32 @@ export type ResizeSelectionConfig = {
  * 图片裁切 Gizmo 配置
  */
 export type ImageCutConfig = {
-  /** 蒙版颜色 */
+  /** 蒙版颜色，格式为 0xRRGGBBAA。 */
   maskColor: number,
-  /** 蒙版透明度 */
-  maskAlpha: number,
   /** 裁切包围盒线宽 */
   cutBoxLineWidth: number,
-  /** 裁切包围盒线色 */
+  /** 裁切包围盒线色，格式为 0xRRGGBBAA。 */
   cutBoxLineColor: number,
-  /** 裁切包围盒线透明度 */
-  cutBoxLineAlpha: number,
   /** 元素包围盒线宽 */
   itemBoxLineWidth: number,
-  /** 元素包围盒线色 */
+  /** 元素包围盒线色，格式为 0xRRGGBBAA。 */
   itemBoxLineColor: number,
-  /** 元素包围盒线透明度 */
-  itemBoxLineAlpha: number,
   /** 角点半径 */
   cutBoxCornerRadius: number,
-  /** 角点填充色 */
+  /** 角点填充色，格式为 0xRRGGBBAA。 */
   cutBoxCornerFillColor: number,
   /** 角点线宽 */
   cutBoxCornerLineWidth: number,
-  /** 角点线色 */
+  /** 角点线色，格式为 0xRRGGBBAA。 */
   cutBoxCornerLineColor: number,
-  /** 角点线透明度 */
-  cutBoxCornerLineAlpha: number,
   /** 缩放交互判断距离 */
   scaleInteractionDistance: number,
   /** 单向缩放交互判断距离 */
   directionScaleInteractionDistance: number,
   /** 网格线宽度 */
   gridLineWidth: number,
-  /** 网格线颜色 */
+  /** 网格线颜色，格式为 0xRRGGBBAA。 */
   gridLineColor: number,
-  /** 网格线透明度 */
-  gridLineAlpha: number,
   /** 网格线数量 */
   gridCount: number,
 };
@@ -169,25 +147,19 @@ export type ImageCutConfig = {
  * 图片扩边 Gizmo 配置
  */
 export type ImageExpandConfig = {
-  /** 蒙版颜色 */
+  /** 蒙版颜色，格式为 0xRRGGBBAA。 */
   maskColor: number,
-  /** 蒙版透明度 */
-  maskAlpha: number,
   /** 扩边包围盒线宽 */
   expandBoxLineWidth: number,
-  /** 扩边包围盒线色 */
+  /** 扩边包围盒线色，格式为 0xRRGGBBAA。 */
   expandBoxLineColor: number,
-  /** 扩边包围盒线透明度 */
-  expandBoxLineAlpha: number,
   /** 角点半径 */
   expandBoxCornerRadius: number,
   /** 角点线宽 */
   expandBoxCornerLineWidth: number,
-  /** 角点线色 */
+  /** 角点线色，格式为 0xRRGGBBAA。 */
   expandBoxCornerLineColor: number,
-  /** 角点线透明度 */
-  expandBoxCornerLineAlpha: number,
-  /** 角点填充色 */
+  /** 角点填充色，格式为 0xRRGGBBAA。 */
   expandBoxCornerFillColor: number,
   /** 缩放交互判断距离 */
   scaleInteractionDistance: number,
@@ -195,10 +167,8 @@ export type ImageExpandConfig = {
   directionScaleInteractionDistance: number,
   /** 网格线宽度 */
   gridLineWidth: number,
-  /** 网格线颜色 */
+  /** 网格线颜色，格式为 0xRRGGBBAA。 */
   gridLineColor: number,
-  /** 网格线透明度 */
-  gridLineAlpha: number,
   /** 网格线数量 */
   gridCount: number,
 };
@@ -211,31 +181,25 @@ export type MaskConfig = {
   maskImage: string,
   /** 画笔大小 */
   brushSize: number,
-  /** 笔刷颜色 */
+  /** 笔刷颜色，格式为 0xRRGGBBAA。 */
   brushColor: number,
-  /** 笔刷透明度 */
-  brushAlpha: number,
-  /** 蒙版颜色 */
+  /** 蒙版颜色，格式为 0xRRGGBBAA。 */
   maskColor: number,
-  /** 蒙版背景色 */
+  /** 蒙版背景色，格式为 0xRRGGBBAA。 */
   maskBackgroundColor: number,
-  /** 蒙版透明度 */
-  maskAlpha: number,
   /** 元素包围盒线框宽度 */
   boxLineWidth: number,
-  /** 元素包围盒线框颜色 */
+  /** 元素包围盒线框颜色，格式为 0xRRGGBBAA。 */
   boxLineColor: number,
-  /** 元素包围盒线框透明度 */
-  boxLineAlpha: number,
 };
 
 /**
  * 精准改字 Gizmo 配置
  */
 export type SpriteTextEditConfig = {
-  /** 文案颜色 */
+  /** 文案颜色，格式为 0xRRGGBBAA。 */
   textColor: number,
-  /** 预选中文案颜色 */
+  /** 预选中文案颜色，格式为 0xRRGGBBAA。 */
   preSelectedTextColor: number,
   /** 包围盒线框宽度 */
   boxLineWidth: number,
@@ -243,42 +207,24 @@ export type SpriteTextEditConfig = {
   dashLineDash: number,
   /** 包围盒间隔线间隔 */
   dashLineGap: number,
-  /** 编辑包围盒颜色 */
+  /** 编辑包围盒颜色，格式为 0xRRGGBBAA。 */
   editBoxColor: number,
-  /** 编辑包围盒透明度 */
-  editBoxAlpha: number,
-  /** 编辑包围盒线框颜色 */
+  /** 编辑包围盒线框颜色，格式为 0xRRGGBBAA。 */
   editBoxLineColor: number,
-  /** 编辑包围盒线框透明度 */
-  editBoxLineAlpha: number,
-  /** 编辑包围盒预选颜色 */
+  /** 编辑包围盒预选颜色，格式为 0xRRGGBBAA。 */
   editBoxPreSelectedColor: number,
-  /** 编辑包围盒预选透明度 */
-  editBoxPreSelectedAlpha: number,
-  /** 编辑包围盒预选线框颜色 */
+  /** 编辑包围盒预选线框颜色，格式为 0xRRGGBBAA。 */
   editBoxLinePreSelectedColor: number,
-  /** 编辑包围盒预选线框透明度 */
-  editBoxLinePreSelectedAlpha: number,
-  /** 已更改编辑包围盒颜色 */
+  /** 已更改编辑包围盒颜色，格式为 0xRRGGBBAA。 */
   hasChangedEditBoxColor: number,
-  /** 已更改编辑包围盒透明度 */
-  hasChangedEditBoxAlpha: number,
-  /** 已更改编辑包围盒线框颜色 */
+  /** 已更改编辑包围盒线框颜色，格式为 0xRRGGBBAA。 */
   hasChangedEditBoxLineColor: number,
-  /** 已更改编辑包围盒线框透明度 */
-  hasChangedEditBoxLineAlpha: number,
-  /** 已更改编辑包围盒预选颜色 */
+  /** 已更改编辑包围盒预选颜色，格式为 0xRRGGBBAA。 */
   hasChangedEditBoxPreSelectedColor: number,
-  /** 已更改编辑包围盒预选透明度 */
-  hasChangedEditBoxPreSelectedAlpha: number,
-  /** 已更改编辑包围盒预选线框颜色 */
+  /** 已更改编辑包围盒预选线框颜色，格式为 0xRRGGBBAA。 */
   hasChangedEditBoxLinePreSelectedColor: number,
-  /** 已更改编辑包围盒预选线框透明度 */
-  hasChangedEditBoxLinePreSelectedAlpha: number,
-  /** 选中状态标记包围盒颜色 */
+  /** 选中状态标记包围盒颜色，格式为 0xRRGGBBAA。 */
   editBoxSelectedColor: number,
-  /** 选中状态标记包围盒透明度 */
-  editBoxSelectedAlpha: number,
 };
 
 /**
@@ -309,19 +255,13 @@ export type IconConfig = {
  * 元素创建 Gizmo 配置
  */
 export type ItemCreateConfig = {
-  /** 边框颜色 */
+  /** 边框颜色，格式为 0xRRGGBBAA。 */
   frameBorderColor: number,
   /** 边框宽度 */
   frameBorderWidth: number,
-  /** 边框透明度 */
-  frameBorderAlpha: number,
-  /** 填充颜色 */
+  /** 填充颜色，格式为 0xRRGGBBAA。 */
   frameFillColor: number,
-  /** 填充透明度 */
-  frameFillAlpha: number,
-  /** 选中子元素包围盒透明度 */
-  frameChildBoxAlpha: number,
-  /** 选中子元素包围盒颜色 */
+  /** 选中子元素包围盒颜色，格式为 0xRRGGBBAA。 */
   frameChildBoxColor: number,
 };
 
@@ -346,31 +286,27 @@ export type RulerConfig = {
   rulerValueScale: number,
   /** 参考线命中范围：仅整条参考线，或整条参考线加对应的标尺带。 */
   guideSelectionMode: RulerGuideSelectionMode,
-  /** 未选中参考线颜色，格式为 0xRRGGBB。 */
+  /** 未选中参考线颜色，格式为 0xRRGGBBAA。 */
   guideColor: number,
-  /** 选中参考线颜色，格式为 0xRRGGBB。 */
+  /** 选中参考线颜色，格式为 0xRRGGBBAA。 */
   selectedGuideColor: number,
-  /** 未选中参考线透明度。 */
-  guideAlpha: number,
-  /** 选中参考线透明度。 */
-  selectedGuideAlpha: number,
   /** 参考线宽度，单位为 CSS 像素。 */
   guideLineWidth: number,
   /** 参考线命中距离，单位为 CSS 像素。 */
   guideHitDistance: number,
-  /** 标尺文字颜色，格式为 0xRRGGBB。 */
+  /** 标尺文字颜色，格式为 0xRRGGBBAA。 */
   rulerTextColor: number,
-  /** 标尺刻度线颜色，格式为 0xRRGGBB。 */
+  /** 标尺刻度线颜色，格式为 0xRRGGBBAA。 */
   rulerGridColor: number,
-  /** 标尺区域底色，格式为 0xRRGGBB。 */
+  /** 标尺区域底色，格式为 0xRRGGBBAA。 */
   rulerBackgroundColor: number,
   /** 是否显示选中参考线的当前位置。 */
   guidePositionVisible: boolean,
   /** 当前位置文字字号。 */
   guidePositionFontSize: number,
-  /** 当前位置文字颜色，格式为 0xRRGGBB。 */
+  /** 当前位置文字颜色，格式为 0xRRGGBBAA。 */
   guidePositionTextColor: number,
-  /** 当前位置标签底色，格式为 0xRRGGBB。 */
+  /** 当前位置标签底色，格式为 0xRRGGBBAA。 */
   guidePositionBackgroundColor: number,
   /** 是否启用按住 Shift 时的参考元素吸附。 */
   shiftSnapEnabled: boolean,

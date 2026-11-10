@@ -762,19 +762,17 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     // 步骤 2：读取绘制配置并绘制主线框与子元素轮廓。
     const {
-      wireframeAlpha,
       wireframeColor,
       wireframeWidth,
       cornerFillColor,
       cornerLineWidth,
       cornerLineColor,
-      cornerLineAlpha,
       infoShowEnabled,
       sizeTextColor,
       nameTextColor,
     } = this.config;
 
-    const wireColor = toColor(wireframeColor, wireframeAlpha);
+    const wireColor = toColor(wireframeColor);
 
     this.wireframe.edges.forEach(edge => {
       control.drawLine(edge.start.x, edge.start.y, edge.end.x, edge.end.y, wireColor, wireframeWidth);
@@ -786,8 +784,8 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     // 步骤 3：沿选框局部轴绘制方形缩放手柄。
     if (this.wireframe.cornerEnable) {
-      const fillColor = toColor(cornerFillColor, 1);
-      const strokeColor = toColor(cornerLineColor, cornerLineAlpha);
+      const fillColor = toColor(cornerFillColor);
+      const strokeColor = toColor(cornerLineColor);
       const { xAxis, yAxis } = this.boxLocalAxes();
 
       this.wireframe.scaleCorners.forEach(corner => {
@@ -1386,7 +1384,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(-textWidth, textCellTop, sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(-textWidth, textCellTop, sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor), INFO_TEXT_FONT_FAMILY);
         },
       );
     }
@@ -1400,7 +1398,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(0, textCellTop, nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(0, textCellTop, nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor), INFO_TEXT_FONT_FAMILY);
         },
       );
     }

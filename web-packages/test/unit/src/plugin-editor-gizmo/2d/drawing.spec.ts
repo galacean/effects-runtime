@@ -1,12 +1,26 @@
 import { restoreTestState, getSpyCalls } from '../helpers/spies';
 import type { Control } from '@galacean/effects-plugin-gui';
-import { drawDashedCorners } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
+import { drawDashedCorners, toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
 import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 
 const { expect } = chai;
 
 describe('plugin-editor-gizmo/drawing', () => {
   afterEach(restoreTestState);
+
+  describe('toColor', () => {
+    it('parses RGBA bytes from a single 0xRRGGBBAA value and reuses the cached color', () => {
+      const color = toColor(0x12345678);
+
+      expect(color.toArray()).to.deep.equal([
+        0x12 / 255,
+        0x34 / 255,
+        0x56 / 255,
+        0x78 / 255,
+      ]);
+      expect(toColor(0x12345678)).to.equal(color);
+    });
+  });
 
   describe('drawDashedCorners', () => {
     it('draws a continuous four-pixel dash and gap around rotated corners', () => {

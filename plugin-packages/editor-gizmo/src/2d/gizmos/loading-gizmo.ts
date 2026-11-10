@@ -24,7 +24,7 @@ import type { LoadingItemOptions, LoadingItemState, LoadingManager } from './loa
 
 const LOADING_TIP_FONT_SIZE = 16;
 const LOADING_TIP_FONT_FAMILY = 'sans-serif';
-const LOADING_TIP_COLOR = 0x000000;
+const LOADING_TIP_COLOR = 0x000000ff;
 
 /** 为目标元素叠加加载动画与提示文案。 */
 export class LoadingGizmo extends Gizmo {
@@ -236,7 +236,7 @@ export class LoadingGizmo extends Gizmo {
       top - textMetrics.inkTop,
       tip.text,
       fontSize,
-      toColor(LOADING_TIP_COLOR, 1),
+      toColor(LOADING_TIP_COLOR),
       LOADING_TIP_FONT_FAMILY,
       'bold',
     );

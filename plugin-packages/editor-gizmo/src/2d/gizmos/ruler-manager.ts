@@ -2,6 +2,24 @@
 export type RulerGuides = { horizontal: number[], vertical: number[] };
 export type RulerDirection = keyof RulerGuides;
 
+function isFiniteNumber (value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function normalizeGuides (guides: unknown): RulerGuides {
+  if (!guides || typeof guides !== 'object') {
+    return { horizontal: [], vertical: [] };
+  }
+  const source = guides as { horizontal?: unknown, vertical?: unknown };
+  const normalizeDirection = (values: unknown): number[] =>
+    Array.isArray(values) ? values.filter(isFiniteNumber) : [];
+
+  return {
+    horizontal: normalizeDirection(source.horizontal),
+    vertical: normalizeDirection(source.vertical),
+  };
+}
+
 function cloneGuides (guides: RulerGuides): RulerGuides {
   return { horizontal: [...guides.horizontal], vertical: [...guides.vertical] };
 }
@@ -41,14 +59,8 @@ export class RulerManager {
   }
 
   /** 从场景编辑数据恢复标尺；恢复操作本身不产生交互事件。 */
-  hydrate (guides: RulerGuides | undefined): void {
-    const next = guides ?? { horizontal: [], vertical: [] };
-
-    if (!next.horizontal.every(Number.isFinite) || !next.vertical.every(Number.isFinite)) {
-      throw new Error('[editor-gizmo] Ruler coordinates must be finite.');
-    }
-
-    this.value = cloneGuides(next);
+  hydrate (guides: unknown): void {
+    this.value = normalizeGuides(guides);
   }
 
   /** 清空全部标尺。 */

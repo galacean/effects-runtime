@@ -329,7 +329,7 @@ export class AssistedLayout {
       const targetFrameInfo = this.owner.getFrameManager().getViewInfo(this.targetFrameId);
 
       if (targetFrameInfo?.box && !targetFrameInfo.box.isEmpty()) {
-        drawCorners(control, getBoxCorners(targetFrameInfo.box), toColor(0xFF0000, 1), 1);
+        drawCorners(control, getBoxCorners(targetFrameInfo.box), toColor(0xFF0000FF), 1);
       }
     }
 
@@ -338,7 +338,7 @@ export class AssistedLayout {
     if (!indicator || indicator.line.distanceSq() === 0) {
       return;
     }
-    const lineColor = toColor(0x3b82f6, 1);
+    const lineColor = toColor(0x3b82f6ff);
     const { start, end } = indicator.line;
 
     control.drawLine(start.x, start.y, end.x, end.y, lineColor, 2);

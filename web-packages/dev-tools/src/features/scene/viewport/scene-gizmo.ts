@@ -72,7 +72,7 @@ export class SceneGizmo {
     const configs = this.handler.getConfigManager();
 
     configs.set(viewportNavigationConfig, { scrollWheelZoom: true });
-    configs.set(resizeSelectionConfig, { nameTextColor: 0xC8C8C8, sizeTextColor: 0xC8C8C8 });
+    configs.set(resizeSelectionConfig, { nameTextColor: 0xC8C8C8FF, sizeTextColor: 0xC8C8C8FF });
     this.unsubscribeSelection = this.handler.getSelection().on('selectionchange', () => this.syncToPanels());
     this.handler.on('textinput', event => {
       const item = this.composition.items.find(item => item.getInstanceId() === event.itemId);

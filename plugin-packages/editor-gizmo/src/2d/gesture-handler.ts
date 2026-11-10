@@ -857,7 +857,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     }
     const config = this.getConfigManager().get(selectionPreviewConfig);
 
-    drawCorners(gizmoControl, getTransformedBoxCorners(transform), toColor(config.preSelectedColor, 1), config.preSelectedWidth);
+    drawCorners(gizmoControl, getTransformedBoxCorners(transform), toColor(config.preSelectedColor), config.preSelectedWidth);
   }
 
   /**
@@ -885,7 +885,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     }
 
     const { lineWidth, lineColor } = this.snapManager.config;
-    const color = toColor(lineColor, 1);
+    const color = toColor(lineColor);
 
     for (const line of visualizations) {
       control.drawLine(

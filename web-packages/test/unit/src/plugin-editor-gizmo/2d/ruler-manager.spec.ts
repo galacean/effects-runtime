@@ -14,4 +14,17 @@ describe('plugin-editor-gizmo/ruler-manager', () => {
     manager.hydrate({ horizontal: [60], vertical: [] });
     expect(manager.guides).to.deep.equal({ horizontal: [60], vertical: [] });
   });
+
+  it('恢复损坏的持久化数据时只保留有限数字', () => {
+    const manager = new RulerManager();
+
+    expect(() => manager.hydrate({
+      horizontal: [20, '40', NaN, Infinity, -Infinity],
+      vertical: undefined,
+    })).not.to.throw();
+    expect(manager.guides).to.deep.equal({ horizontal: [20], vertical: [] });
+
+    expect(() => manager.hydrate({ horizontal: { value: 20 }, vertical: [40, null, '80'] })).not.to.throw();
+    expect(manager.guides).to.deep.equal({ horizontal: [], vertical: [40] });
+  });
 });

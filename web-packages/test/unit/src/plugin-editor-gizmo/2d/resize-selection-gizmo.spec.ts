@@ -241,7 +241,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
       },
     } as unknown as Control;
 
-    internals.renderItemInfo(control, 0x666666, 0x666666);
+    internals.renderItemInfo(control, 0x666666FF, 0x666666FF);
 
     expect(drawTexture).to.have.been.called.with.exactly(0, 0, 15, 15, texture);
     expect(drawText).to.have.been.called.exactly(2);

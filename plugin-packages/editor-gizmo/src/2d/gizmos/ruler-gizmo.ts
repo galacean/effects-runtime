@@ -377,7 +377,7 @@ export class RulerGizmo extends Gizmo {
     const content = layout.contentRect;
     const guides = this.preview ?? this.guides;
 
-    const rulerBackground = toColor(config.rulerBackgroundColor, 1);
+    const rulerBackground = toColor(config.rulerBackgroundColor);
 
     control.fillRect(outer.x, outer.y, outer.width, layout.rulerSize, rulerBackground);
     control.fillRect(outer.x, outer.y, layout.rulerSize, outer.height, rulerBackground);
@@ -385,8 +385,8 @@ export class RulerGizmo extends Gizmo {
     this.drawGuides(control, outer, content, guides);
     const guidePosition = this.getGuidePositionLayout(control, layout, content, guides);
 
-    const gridColor = toColor(config.rulerGridColor, 1);
-    const textColor = toColor(config.rulerTextColor, 1);
+    const gridColor = toColor(config.rulerGridColor);
+    const textColor = toColor(config.rulerTextColor);
     const rulerValueScale = this.getRulerValueScale();
     // 一次性投影内容区角点，两个方向各取自己轴向的分量即可。
     const docMin = this.toDocument(new Vector2(content.x, content.y));
@@ -546,7 +546,7 @@ export class RulerGizmo extends Gizmo {
     const maxX = Math.min(content.x + content.width, box.max.x);
     const minY = Math.max(content.y, box.min.y);
     const maxY = Math.min(content.y + content.height, box.max.y);
-    const color = toColor(this.config.guideColor, 0.25);
+    const color = toColor((this.config.guideColor & 0xffffff00) | 0x40);
 
     if (maxX > minX) {
       control.fillRect(minX, outer.y, maxX - minX, layout.rulerSize, color);
@@ -570,10 +570,7 @@ export class RulerGizmo extends Gizmo {
       guides[direction].forEach((value, index) => {
         const location = this.location(value, direction);
         const selected = this.selected?.direction === direction && this.selected.index === index;
-        const color = toColor(
-          selected ? config.selectedGuideColor : config.guideColor,
-          selected ? config.selectedGuideAlpha : config.guideAlpha,
-        );
+        const color = toColor(selected ? config.selectedGuideColor : config.guideColor);
 
         if (direction === 'horizontal') {
           // 水平参考线对应 Y 坐标，向左延伸到纵向标尺带。
@@ -690,9 +687,9 @@ export class RulerGizmo extends Gizmo {
       position.box.y,
       position.box.width,
       position.box.height,
-      toColor(this.config.guidePositionBackgroundColor, 0.95),
+      toColor(this.config.guidePositionBackgroundColor),
     );
-    const color = toColor(this.config.guidePositionTextColor, 1);
+    const color = toColor(this.config.guidePositionTextColor);
 
     if (position.rotated) {
       this.drawRotatedRulerText(control, position.text, position.fontSize, position.textX, position.textY, color);
