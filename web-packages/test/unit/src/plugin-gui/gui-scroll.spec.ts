@@ -300,6 +300,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.addChild(content);
     player.engine.getServer(GUIServer).windowRoot.update(0);
     player.canvas.dispatchEvent(new WheelEvent('wheel', {
+      deltaX: 70,
       deltaY: 100,
       deltaMode: WheelEvent.DOM_DELTA_PIXEL,
       clientX: 50,
@@ -308,6 +309,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
       bubbles: true,
     }));
     expect(scroll.vScroll).equals(12.5);
+    expect(scroll.hScroll).equals(0);
     player.canvas.remove();
   });
 

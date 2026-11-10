@@ -949,7 +949,7 @@ export class InputServer extends EngineServer implements Disposable {
   }
 
   private releasePressedKeys (): void {
-    const keys = [...this.pressedKeys.values()];
+    const keys = Array.from(this.pressedKeys.values());
 
     this.pressedKeys.clear();
     for (const pressed of keys) {

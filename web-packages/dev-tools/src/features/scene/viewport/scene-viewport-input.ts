@@ -118,7 +118,7 @@ export class SceneViewportInput {
   }
 
   private releaseKeys (): void {
-    const keys = [...this.keys.values()];
+    const keys = Array.from(this.keys.values());
 
     this.keys.clear();
     for (const key of keys) {

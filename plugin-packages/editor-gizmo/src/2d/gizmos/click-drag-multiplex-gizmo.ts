@@ -1,10 +1,11 @@
 import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
-import {
+import type {
   InputEventMouseButton,
-  type InputEventMouse,
-  type InputEventMouseMotion,
+  InputEventMouse,
+  InputEventMouseMotion,
 } from '@galacean/effects';
+import { Matrix3 } from '../math';
 import type { Control } from '@galacean/effects-plugin-gui';
 
 /**
@@ -13,24 +14,7 @@ import type { Control } from '@galacean/effects-plugin-gui';
  * @returns 事件快照。
  */
 function copyMouseButton (source: InputEventMouseButton): InputEventMouseButton {
-  const event = new InputEventMouseButton();
-
-  event.device = source.device;
-  event.pressed = source.pressed;
-  event.canceled = source.isCanceled();
-  event.commandOrControlAutoremap = source.commandOrControlAutoremap;
-  event.shiftPressed = source.shiftPressed;
-  event.altPressed = source.altPressed;
-  event.metaPressed = source.metaPressed;
-  event.ctrlPressed = source.ctrlPressed;
-  event.buttonMask = source.buttonMask;
-  event.position.copyFrom(source.position);
-  event.globalPosition.copyFrom(source.globalPosition);
-  event.factor = source.factor;
-  event.buttonIndex = source.buttonIndex;
-  event.doubleClick = source.doubleClick;
-
-  return event;
+  return source.xformedBy(new Matrix3());
 }
 
 /**
@@ -49,6 +33,7 @@ function canceledReleaseFromMotion (
   event.canceled = true;
   event.buttonMask = source.buttonMask;
   event.position.copyFrom(source.position);
+  event.globalPosition.copyFrom(source.globalPosition);
   event.shiftPressed = source.shiftPressed;
   event.altPressed = source.altPressed;
   event.metaPressed = source.metaPressed;
