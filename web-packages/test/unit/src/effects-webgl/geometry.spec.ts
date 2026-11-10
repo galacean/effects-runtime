@@ -334,20 +334,25 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
-  it('disposes cached vertex array objects when vertex data changes', () => {
+  it('reuses the vertex array after a partial upload and rebuilds it when the attribute is replaced', () => {
     const geometry = createGeometry(engine);
-    const resource = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl.createVertexArray()!;
-    const releaseVertexArrayObject = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject.bind(engine.displayServer.renderingDevice);
-    let released = false;
+    const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
+    const shader = createMaterialStub(['aPosition']).shaderVariant;
 
-    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).releaseVertexArrayObject = vertexArrayObject => {
-      released = vertexArrayObject === resource;
-      releaseVertexArrayObject(vertexArrayObject);
-    };
-    (engine.displayServer.renderingDevice as RenderingDeviceWebGL).recordVertexArrayObject = () => resource;
-    geometry.bind({ key: 'test-program' } as ShaderVariant);
+    geometry.bind(shader);
+    const original = gl.getParameter(gl.VERTEX_ARRAY_BINDING) as WebGLVertexArrayObject;
+
+    expect(gl.isVertexArray(original)).to.equal(true);
     geometry.setAttributeSubData('aPosition', 0, new Float32Array([1, 2]));
-    expect(released).to.equal(true);
+    geometry.bind(shader);
+    expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(original);
+
+    geometry.setAttribute('aPosition', { data: new Float32Array([1, 2, 3]), size: 3 });
+    expect(gl.isVertexArray(original)).to.equal(false);
+    geometry.bind(shader);
+    expect(gl.getVertexAttrib(0, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.equal(3);
+    expect(gl.getVertexAttrib(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING))
+      .to.equal(geometry.getAttributeBuffer('aPosition')!.underlyingResource);
     geometry.dispose();
   });
 
@@ -518,7 +523,7 @@ function createGeometry (engine: Engine): Geometry {
   });
 }
 
-function createMaterialStub (): Material {
+function createMaterialStub (attributes: string[] = []): Material {
   return {
     initialize () {},
     setMatrix () {},
@@ -526,8 +531,8 @@ function createMaterialStub (): Material {
     shaderVariant: {
       key: 'geometry-test',
       program: {
-        getAttributesNames: () => [],
-        getAttributeLocation: () => -1,
+        getAttributesNames: () => attributes,
+        getAttributeLocation: (index: number) => index,
       },
     },
   } as unknown as Material;

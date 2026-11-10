@@ -244,7 +244,7 @@ export class Geometry extends Asset {
     this.disposeVertexArrayObjects();
   }
 
-  /** Offset retains the existing API's Float32 element units. */
+  /** Updates the existing buffer in place, preserving VAOs. Offset is in Float32 elements. */
   setAttributeSubData (name: string, offset: number, data: spec.TypedArray): void {
     const buffer = this.getAttributeBuffer(name);
     const source = buffer && this.bufferData.get(buffer);
@@ -259,7 +259,6 @@ export class Geometry extends Asset {
       new Uint8Array(source.data.buffer, source.data.byteOffset, source.data.byteLength)
         .set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), byteOffset);
     }
-    this.disposeVertexArrayObjects();
   }
 
   getAttributeStride (name: string): number {
