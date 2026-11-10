@@ -354,15 +354,12 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 重建公共 Gizmo 与当前工具或编辑模式的 Gizmo 图。 */
   rebuildGizmos (): void {
     const specificGizmos = this.activeGizmoTool.createGizmos();
-    const gizmos = [
+
+    this.gizmosToDispose.push(...this.gizmoManager.activeGizmos);
+    this.gizmoManager.activeGizmos = [
       ...this.createCommonBeforeToolSwitch(),
       ...specificGizmos,
     ];
-    const nextGizmos = new Set(gizmos);
-
-    this.gizmosToDispose = this.gizmosToDispose.filter(gizmo => !nextGizmos.has(gizmo));
-    this.gizmosToDispose.push(...this.gizmoManager.activeGizmos.filter(gizmo => !nextGizmos.has(gizmo)));
-    this.gizmoManager.activeGizmos = gizmos;
   }
 
   /**
