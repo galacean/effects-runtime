@@ -1,29 +1,24 @@
-web-packages/dev-tools/src/ui/controls/scroll-container.ts
-  s_1170741a4a6c57::t_93ed56573d7865 9
-web-packages/test/unit/src/plugin-gui/gui-scroll.spec.ts
-  s_1170741a4a6c57::t_93ed56573d7865 303,312
-plugin-packages/gui/src/scroll/scroll-container.ts
-  s_1170741a4a6c57::t_93ed56573d7865 278-279,284-285,290-291,296-297
 packages/effects-core/src/input-server.ts
-  s_1170741a4a6c57::t_93ed56573d7865 952
-web-packages/dev-tools/src/features/scene/viewport/scene-viewport-input.ts
-  s_1170741a4a6c57::t_93ed56573d7865 121
+  h_f2571758b99ad7 952
 plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo.ts
-  s_1170741a4a6c57::t_93ed56573d7865 3,5-6,8,17,36
+  h_f2571758b99ad7 3,5-6,8,17,36
+plugin-packages/gui/src/scroll/scroll-container.ts
+  h_f2571758b99ad7 278-279,284-285,290-291,296-297
+web-packages/dev-tools/src/features/scene/viewport/scene-viewport-input.ts
+  h_f2571758b99ad7 121
+web-packages/dev-tools/src/ui/controls/scroll-container.ts
+  h_f2571758b99ad7 9
+web-packages/test/unit/src/plugin-gui/gui-scroll.spec.ts
+  h_f2571758b99ad7 303,312
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.4",
   "base_commit_sha": "63762360207c1f49bd3e1d3994aae7fb509815b5",
   "prompts": {},
-  "sessions": {
-    "s_1170741a4a6c57": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "01a1c3a2-8948-7573-b75a-6564f28a5f8d",
-        "model": "gpt-6.1-sol"
-      },
-      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+  "humans": {
+    "h_f2571758b99ad7": {
+      "author": "wumaolinmaoan <wumaolin1998@outlook.com>"
     }
   }
 }
