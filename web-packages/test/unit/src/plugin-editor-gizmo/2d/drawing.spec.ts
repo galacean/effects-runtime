@@ -1,6 +1,6 @@
 import { restoreTestState, getSpyCalls } from '../helpers/spies';
 import type { Control } from '@galacean/effects-plugin-gui';
-import { drawDashedCorners, toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
+import { drawDashedCorners, toCanvasColor, toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
 import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 
 const { expect } = chai;
@@ -19,6 +19,12 @@ describe('plugin-editor-gizmo/drawing', () => {
         0x78 / 255,
       ]);
       expect(toColor(0x12345678)).to.equal(color);
+    });
+  });
+
+  describe('toCanvasColor', () => {
+    it('converts an RGBA hex value to a Canvas rgba string', () => {
+      expect(toCanvasColor(0x12345680)).to.equal('rgba(18, 52, 86, 0.5019607843137255)');
     });
   });
 

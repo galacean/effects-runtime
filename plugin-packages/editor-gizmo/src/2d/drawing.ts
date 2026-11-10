@@ -38,6 +38,17 @@ export function toColor (hex: number): Color {
 }
 
 /**
+ * 将 RGBA 十六进制色值转为 Canvas 可用的 rgba() 字符串。
+ * @param hex 0xRRGGBBAA 颜色
+ * @returns Canvas CSS 颜色字符串
+ */
+export function toCanvasColor (hex: number): string {
+  const value = hex >>> 0;
+
+  return `rgba(${value >>> 24}, ${((value >>> 16) & 0xff)}, ${((value >>> 8) & 0xff)}, ${(value & 0xff) / 255})`;
+}
+
+/**
  * 按完整 grapheme 截断，并将省略号计入最终宽度。
  * @param text 文本内容
  * @param maxWidth 可用宽度

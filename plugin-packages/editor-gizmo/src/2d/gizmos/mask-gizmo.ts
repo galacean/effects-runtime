@@ -19,14 +19,7 @@ import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { GizmoType } from '../gizmo-type';
 import { GestureCursorType, type GestureCursorResult } from '../cursor';
 import { getItemViewTransform } from '../items';
-import { toColor, drawCorners, drawWithBoxTransform } from '../drawing';
-
-/** 将 RGBA 十六进制颜色转换为 Canvas 可用的 rgba() 字符串。 */
-function toCanvasColor (hex: number): string {
-  const value = hex >>> 0;
-
-  return `rgba(${value >>> 24}, ${((value >>> 16) & 0xFF)}, ${((value >>> 8) & 0xFF)}, ${(value & 0xFF) / 255})`;
-}
+import { toCanvasColor, toColor, drawCorners, drawWithBoxTransform } from '../drawing';
 
 /**
  * 图片蒙版工具结果
