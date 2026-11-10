@@ -16,7 +16,8 @@ import { LoadingManager } from './gizmos/loading-manager';
 import { LoadingGizmo } from './gizmos/loading-gizmo';
 import { HandGizmo } from './gizmos/hand-gizmo';
 import { IconGizmo } from './gizmos/icon-gizmo';
-import { RulerGizmo } from './gizmos/ruler/ruler-gizmo';
+import { RulerGizmo } from './gizmos/ruler-gizmo';
+import { RulerManager } from './gizmos/ruler-manager';
 import { drawCorners, toColor } from './drawing';
 import {
   getItemViewTransform,
@@ -89,8 +90,8 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 加载状态管理器。 */
   private loadingManager = new LoadingManager();
 
-  /** 所有工具共享的公共标尺 Gizmo；数据由实例自身持有。 */
-  private ruler: RulerGizmo;
+  /** 所有工具共享的标尺数据；标尺 Gizmo 可以随交互图重建。 */
+  private rulerManager: RulerManager;
 
   /** Gizmo 生命周期管理器。 */
   private gizmoManager: GizmoManager;
@@ -156,8 +157,8 @@ export class GestureHandler extends Control implements GizmoOwner {
     this.viewportNavigation = new ViewportNavigationController(this);
     this.selection = new Selection(engine, this.hoveringResults);
     this.snapManager = new SnapManager(this);
+    this.rulerManager = new RulerManager();
     this.editMode = this.createDefaultEditMode();
-    this.ruler = new RulerGizmo(this);
 
     this.selection.on('preselectchange', this.onPreselectChange);
     this.createViewport();
@@ -228,6 +229,11 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** @returns 加载状态管理器。 */
   getLoadingManager (): LoadingManager {
     return this.loadingManager;
+  }
+
+  /** @returns 共享标尺数据管理器。 */
+  getRulerManager (): RulerManager {
+    return this.rulerManager;
   }
 
   /** @returns 共享视口导航控制器。 */
@@ -548,8 +554,8 @@ export class GestureHandler extends Control implements GizmoOwner {
     return [
       new HandGizmo(this),
       new IconGizmo(this),
-      new LoadingGizmo(this, this.loadingManager),
-      this.ruler,
+      new LoadingGizmo(this),
+      new RulerGizmo(this),
     ];
   }
 

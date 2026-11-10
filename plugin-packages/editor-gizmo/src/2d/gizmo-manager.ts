@@ -19,7 +19,7 @@ import type { LeaveTextEditGizmo } from './gizmos/leave-text-edit-gizmo';
 import type { EnterEditModeGizmo } from './gizmos/enter-edit-mode-gizmo';
 import type { LeaveEffectsEditGizmo } from './gizmos/leave-effects-edit-gizmo';
 import type { CornerRotationGizmo } from './gizmos/corner-rotation-gizmo';
-import type { RulerGizmo } from './gizmos/ruler/ruler-gizmo';
+import type { RulerGizmo } from './gizmos/ruler-gizmo';
 
 /** 当前交互图中可按类型查询的内置 Gizmo 映射。 */
 export type GizmoTypeMap = {

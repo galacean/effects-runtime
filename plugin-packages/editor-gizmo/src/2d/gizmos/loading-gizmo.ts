@@ -47,9 +47,9 @@ export class LoadingGizmo extends Gizmo {
    * @param owner Gizmo 宿主。
    * @param manager 加载状态管理器。
    */
-  constructor (owner: GizmoOwner, manager: LoadingManager) {
+  constructor (owner: GizmoOwner) {
     super(owner);
-    this.manager = manager;
+    this.manager = owner.getLoadingManager();
     this.configOff = owner.getConfigManager().onChange(
       loadingConfig,
       change => {

@@ -470,6 +470,20 @@ describe('GestureHandler - GizmoTool runtime', () => {
     handler.dispose();
   });
 
+  it('重建 Gizmo 图后由 RulerManager 保留参考线数据', () => {
+    const handler = createHandler();
+    const first = handler.getGizmoManager().get('ruler')!;
+
+    handler.getRulerManager().setGuides({ horizontal: [40], vertical: [80] });
+    handler.rebuildGizmos();
+
+    const current = handler.getGizmoManager().get('ruler')!;
+
+    expect(current).not.to.equal(first);
+    expect(current.guides).to.deep.equal({ horizontal: [40], vertical: [80] });
+    handler.dispose();
+  });
+
   it('setActiveTool 先更新工具，构图失败时保留旧图', () => {
     const handler = createHandler();
     const stable = makeStubGizmo('stable');

@@ -1,23 +1,22 @@
 import { MouseButton, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Gizmo } from '../../gizmo';
-import type { GizmoOwner } from '../../gizmo-owner';
-import type { GizmoActionEvent } from '../../gizmo-action';
-import { GizmoType } from '../../gizmo-type';
-import { GestureCursorType } from '../../cursor';
-import { Matrix3, Vector2 } from '../../math';
-import { getItemViewBox } from '../../items';
-import { toColor } from '../../drawing';
-import { rulerConfig, selectionSnapConfig } from '../../configs/builtin-configs';
-import type { ConfigChange } from '../../configs/config-definition';
-import type { RulerConfig, SnapConfig } from '../../configs/types';
-import type { SnapGuide } from '../../selection/snap-manager';
-import { GizmoViewportUtils, ndcSizeToViewSize, viewPositionToPixel } from '../../viewport';
+import { Gizmo } from '../gizmo';
+import type { GizmoOwner } from '../gizmo-owner';
+import type { GizmoActionEvent } from '../gizmo-action';
+import { RulerManager, type RulerDirection, type RulerGuides } from './ruler-manager';
+import { GizmoType } from '../gizmo-type';
+import { GestureCursorType } from '../cursor';
+import { Matrix3, Vector2 } from '../math';
+import { getItemViewBox } from '../items';
+import { toColor } from '../drawing';
+import { rulerConfig, selectionSnapConfig } from '../configs/builtin-configs';
+import type { ConfigChange } from '../configs/config-definition';
+import type { RulerConfig, SnapConfig } from '../configs/types';
+import type { SnapGuide } from '../selection/snap-manager';
+import { GizmoViewportUtils, ndcSizeToViewSize } from '../viewport';
 
-/** 参考线使用文档坐标；水平线记录 y，垂直线记录 x。 */
-export type RulerGuides = { horizontal: number[], vertical: number[] };
-export type RulerDirection = keyof RulerGuides;
+export type { RulerDirection, RulerGuides } from './ruler-manager';
 
 /** 标尺提交事件携带最终参考线，宿主可据此记录历史或同步外部状态。 */
 export interface RulerActionEvent extends GizmoActionEvent {
@@ -81,8 +80,8 @@ const RULER_EDGE_HIT_TOLERANCE = 2;
 /** 标尺刻度、参考线创建/移动/删除，设计像素与视口缩放独立。 */
 export class RulerGizmo extends Gizmo {
   readonly type = GizmoType.RULER;
-  /** 已提交的参考线状态；只在一次拖拽完成或主动删除后更新。 */
-  private value: RulerGuides = { horizontal: [], vertical: [] };
+  /** 已提交的参考线数据由宿主共享管理，Gizmo 只保存交互预览。 */
+  private readonly rulerManager: RulerManager;
   private readonly unregisterSnapGuides: () => void;
   private readonly configOff: () => void;
   private readonly snapConfigOff: () => void;
@@ -91,6 +90,8 @@ export class RulerGizmo extends Gizmo {
   /** 当前拖拽的可变副本；取消操作时丢弃，避免污染已提交状态。 */
   private preview?: RulerGuides;
   private offset = 0;
+  /** 默认 Canvas 坐标系的固定文档原点，避免容器 resize 改变已存参考线坐标。 */
+  private documentCenter?: Vector2;
 
   /**
    * 创建标尺 Gizmo。
@@ -98,6 +99,7 @@ export class RulerGizmo extends Gizmo {
    */
   constructor (owner: GizmoOwner) {
     super(owner);
+    this.rulerManager = owner.getRulerManager?.() ?? new RulerManager();
     this.unregisterSnapGuides = owner.getSnapManager().registerGuideProvider(() => this.snapGuides());
     this.configOff = owner.getConfigManager().onChange(
       rulerConfig,
@@ -116,15 +118,12 @@ export class RulerGizmo extends Gizmo {
 
   /** 返回参考线数据快照。 */
   get guides (): RulerGuides {
-    return { horizontal: [...this.value.horizontal], vertical: [...this.value.vertical] };
+    return this.rulerManager.guides;
   }
 
   /** 设置参考线数据并隔离外部数组。 */
   private set guides (guides: RulerGuides) {
-    if (!guides.horizontal.every(Number.isFinite) || !guides.vertical.every(Number.isFinite)) {
-      throw new Error('[editor-gizmo] Ruler coordinates must be finite.');
-    }
-    this.value = { horizontal: [...guides.horizontal], vertical: [...guides.vertical] };
+    this.rulerManager.setGuides(guides);
   }
 
   /**
@@ -162,6 +161,7 @@ export class RulerGizmo extends Gizmo {
     const guides = this.guides;
 
     guides[selected.direction].splice(selected.index, 1);
+    this._owner.emit('actionstart', { source: this });
     const changed = this.commit(guides);
 
     if (changed) {
@@ -192,8 +192,17 @@ export class RulerGizmo extends Gizmo {
 
   /** 替换当前标尺中的全部参考线。 */
   setRuler (guides: RulerGuides): void {
+    const wasDragging = !!this.drag;
+
+    // 外部替换不能留下未闭合的 actionstart；提交替换后的快照作为本次动作终点。
+    if (wasDragging) {
+      this.clearDrag();
+    }
     this.guides = guides;
     this.clearInteraction();
+    if (wasDragging) {
+      this.emitActionCommit();
+    }
   }
 
   /** 每帧检查选中索引，防止外部更新标尺数据后继续操作旧参考线。 */
@@ -210,7 +219,8 @@ export class RulerGizmo extends Gizmo {
    * @param event 鼠标按下事件
    */
   override onMouseDown (event: InputEventMouseButton): void {
-    if (!this.config.enabled || event.buttonIndex !== MouseButton.Left) {
+    if (!this.config.enabled || event.buttonIndex !== MouseButton.Left
+      || this._owner.getActiveEditMode?.()?.id === 'text-edit') {
       return;
     }
     const hit = this.hitTest(event.position);
@@ -246,6 +256,11 @@ export class RulerGizmo extends Gizmo {
    * @param event 鼠标移动事件
    */
   override onMouseMove (event: InputEventMouseMotion): void {
+    if (this._owner.getActiveEditMode?.()?.id === 'text-edit') {
+      this.resetCursor();
+
+      return;
+    }
     const hit = this.config.enabled ? this.hitTest(event.position) : undefined;
 
     if (hit) {
@@ -284,12 +299,14 @@ export class RulerGizmo extends Gizmo {
 
     if (!event.isCanceled()) {
       this.updatePreview(event);
-      const content = this.getLayout().contentRect;
+      const layout = this.getLayout();
+      const content = layout.contentRect;
       const axis = this.getAxis(direction);
       const extent = axis === 'y' ? content.height : content.width;
       const location = event.position[axis];
+      const outsideOuter = !this.isPointInRect(event.position, layout.outerRect);
 
-      if (location < content[axis] || location > content[axis] + extent) {
+      if (outsideOuter || location < content[axis] || location > content[axis] + extent) {
         this.preview[direction].splice(this.drag.index, 1);
         this.selected = undefined;
       }
@@ -463,9 +480,13 @@ export class RulerGizmo extends Gizmo {
 
   /** 清理拖拽预览和参考元素吸附状态，但保留当前选中参考线。 */
   private clearDrag (): void {
+    const wasDragging = !!this.drag;
+
     this.drag = undefined;
     this.preview = undefined;
-    this._owner.getSnapManager().reset();
+    if (wasDragging) {
+      this._owner.getSnapManager().reset();
+    }
   }
 
   /** 清理拖拽、选中状态和参考元素吸附状态。 */
@@ -793,7 +814,7 @@ export class RulerGizmo extends Gizmo {
     if (!this.config.enabled || this.drag) {
       return [];
     }
-    const guides = this.value;
+    const guides = this.guides;
     const content = this.getLayout().contentRect;
 
     return [
@@ -1048,13 +1069,16 @@ export class RulerGizmo extends Gizmo {
   /** 将当前视口坐标转换为标尺使用的文档坐标。 */
   private toDocument (point: Vector2): Vector2 {
     const engine = this._owner.getEngine();
+    const size = this.getSize();
+    const center = this.getDocumentCenter(size);
+    const viewportCenter = size.clone().multiply(0.5);
+    const translation = ndcSizeToViewSize(GizmoViewportUtils.getViewportTranslation(engine), size);
 
-    return viewPositionToPixel(
-      point,
-      this.getSize(),
-      GizmoViewportUtils.getViewScale(engine),
-      GizmoViewportUtils.getViewportTranslation(engine),
-    );
+    return point.clone()
+      .subtract(translation)
+      .subtract(viewportCenter)
+      .multiply(new Vector2(1 / GizmoViewportUtils.getViewScale(engine), 1 / GizmoViewportUtils.getViewScale(engine)))
+      .add(center);
   }
 
   /** 将标尺使用的文档坐标投影到当前视口坐标。 */
@@ -1062,13 +1086,24 @@ export class RulerGizmo extends Gizmo {
     const engine = this._owner.getEngine();
     const size = this.getSize();
     const translation = ndcSizeToViewSize(GizmoViewportUtils.getViewportTranslation(engine), size);
-    const center = size.clone().multiply(0.5);
+    const center = this.getDocumentCenter(size);
+    const viewportCenter = size.clone().multiply(0.5);
+    const scale = GizmoViewportUtils.getViewScale(engine);
 
     return point.clone()
       .subtract(center)
-      .multiply(GizmoViewportUtils.getViewScale(engine))
-      .add(center)
+      .multiply(new Vector2(scale, scale))
+      .add(viewportCenter)
       .add(translation);
+  }
+
+  /** 返回默认 Canvas 坐标系的固定文档中心。 */
+  private getDocumentCenter (size: Vector2): Vector2 {
+    if (!this.documentCenter && size.x > 0 && size.y > 0) {
+      this.documentCenter = size.clone().multiply(0.5);
+    }
+
+    return this.documentCenter?.clone() ?? size.clone().multiply(0.5);
   }
 
   /**
@@ -1098,12 +1133,7 @@ export class RulerGizmo extends Gizmo {
    * @returns 是否产生了参考线变更
    */
   private commit (guides: RulerGuides): boolean {
-    if (this.guidesEqual(guides, this.value)) {
-      return false;
-    }
-    this.guides = guides;
-
-    return true;
+    return this.rulerManager.setGuides(guides);
   }
 
   /** 发出参考线动作结束通知，携带当前已提交快照。 */
@@ -1111,15 +1141,4 @@ export class RulerGizmo extends Gizmo {
     this._owner.emit('actioncommit', { source: this, guides: this.guides } as RulerActionEvent);
   }
 
-  /**
-   * 逐元素比较两组参考线快照是否相同。
-   * @param a 第一组参考线
-   * @param b 第二组参考线
-   * @returns 两组参考线是否完全相同
-   */
-  private guidesEqual (a: RulerGuides, b: RulerGuides): boolean {
-    return (['horizontal', 'vertical'] as const).every(direction =>
-      a[direction].length === b[direction].length
-      && a[direction].every((value, index) => value === b[direction][index]));
-  }
 }

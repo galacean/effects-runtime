@@ -2,7 +2,7 @@ import type { Gizmo } from './gizmo';
 import type { FrameCreateData, ItemCreateType, TextCreateData } from './gizmos/item-create-gizmo';
 import type { AutoLayoutChangeInfo } from './frame/frame-assisted-layout';
 import type { TransformType } from './gizmos/resize-selection-gizmo/transform-types';
-import type { RulerActionEvent } from './gizmos/ruler/ruler-gizmo';
+import type { RulerActionEvent } from './gizmos/ruler-gizmo';
 import type { InputEventKey } from '@galacean/effects';
 
 /** Gizmo 操作的生命周期阶段。 */

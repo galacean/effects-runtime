@@ -26,6 +26,7 @@ import './2d/move-selection-gizmo.spec';
 import './2d/projection-sync-gizmos.spec';
 import './2d/resize-selection-gizmo.spec';
 import './2d/ruler-gizmo.spec';
+import './2d/ruler-manager.spec';
 import './2d/select-text-gizmo.spec';
 import './2d/selection.spec';
 import './2d/snap-manager.spec';

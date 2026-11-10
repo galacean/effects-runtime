@@ -13,9 +13,11 @@ import {
   selectionSnapConfig,
   viewportNavigationConfig,
 } from '@galacean/effects-plugin-editor-gizmo';
-import type { RulerGizmo } from '@galacean/effects-plugin-editor-gizmo';
+import type { GizmoActionLifecycleEvent, RulerGizmo } from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
+import type { SceneDocument } from '../document/scene-document';
+import { sameData } from '../serialization/scene-values';
 import { sceneWorkspace } from '../scene-workspace';
 
 export type SceneTool = 'transform' | 'hand';
@@ -30,7 +32,7 @@ type CameraView = {
 export class SceneGizmo {
   readonly handler: GestureHandler;
   /** 当前场景的标尺 Gizmo，供场景快捷键和宿主持久化使用。 */
-  readonly ruler: RulerGizmo;
+  get ruler (): RulerGizmo { return this.handler.getGizmoManager().get('ruler')!; }
   tool: SceneTool = 'transform';
 
   private syncingSelection = false;
@@ -41,6 +43,11 @@ export class SceneGizmo {
   private view2D: CameraView;
   private view3D: CameraView;
   private readonly unsubscribeSelection: () => void;
+  private readonly unsubscribeWorkspace: () => void;
+  private readonly unsubscribeRulerStart: () => void;
+  private readonly unsubscribeRulerCommit: () => void;
+  private releaseRulerState?: () => void;
+  private rulerDocument?: SceneDocument;
 
   constructor (readonly composition: Composition) {
     this.initialView = this.captureView();
@@ -60,7 +67,8 @@ export class SceneGizmo {
     this.handler.visible = false;
     this.handler.enabled = false;
     this.handler.setActiveTool(new MoveGizmoTool(this.handler));
-    this.ruler = this.handler.getGizmoManager().get('ruler')!;
+    this.unsubscribeWorkspace = sceneWorkspace.subscribeDocument(document => this.bindRulerDocument(document));
+    this.bindRulerDocument(sceneWorkspace.current);
     const configs = this.handler.getConfigManager();
 
     configs.set(viewportNavigationConfig, { scrollWheelZoom: true });
@@ -71,6 +79,8 @@ export class SceneGizmo {
 
       if (item) { sceneWorkspace.recordText(item); }
     });
+    this.unsubscribeRulerStart = this.handler.on('actionstart', this.onRulerActionStart);
+    this.unsubscribeRulerCommit = this.handler.on('actioncommit', this.onRulerActionCommit);
     EditorSelection.addSelectionListener(this.syncFromPanels);
     this.syncFromPanels();
   }
@@ -176,7 +186,79 @@ export class SceneGizmo {
   dispose (): void {
     EditorSelection.removeSelectionListener(this.syncFromPanels);
     this.unsubscribeSelection();
+    this.unsubscribeWorkspace();
+    this.unsubscribeRulerStart();
+    this.unsubscribeRulerCommit();
+    this.releaseRulerState?.();
+    this.releaseRulerState = undefined;
+    this.rulerDocument = undefined;
     this.handler.dispose();
+  }
+
+  /** 将标尺数据接入当前场景文档的编辑状态和历史记录。 */
+  private bindRulerDocument (document?: SceneDocument): void {
+    if (document === this.rulerDocument) {
+      return;
+    }
+    this.releaseRulerState?.();
+    this.releaseRulerState = undefined;
+    this.rulerDocument = undefined;
+    const manager = this.handler.getRulerManager();
+
+    if (!document || document.composition !== this.composition) {
+      manager.hydrate(undefined);
+
+      return;
+    }
+
+    manager.hydrate(document.editor.rulerGuides);
+    this.rulerDocument = document;
+    this.releaseRulerState = document.registerEditorState({
+      read: () => manager.snapshot(),
+      restore: state => manager.hydrate(state),
+      equal: sameData,
+      valid: () => !this.handler.isDisposed && document.composition === this.composition,
+    });
+  }
+
+  private readonly onRulerActionStart = (event: GizmoActionLifecycleEvent): void => {
+    if (!this.isRulerEvent(event)) {
+      return;
+    }
+    const document = this.rulerDocument;
+
+    if (document && !document.restoring) {
+      document.begin('Edit rulers');
+    }
+  };
+
+  private readonly onRulerActionCommit = (event: GizmoActionLifecycleEvent): void => {
+    if (!this.isRulerEvent(event)) {
+      return;
+    }
+    const document = this.rulerDocument;
+
+    if (!document || document.restoring) {
+      return;
+    }
+    // 键盘/菜单删除也会先发送 actionstart；begin 在已有事务时是幂等的。
+    document.begin('Edit rulers');
+    const guides = this.handler.getRulerManager().snapshot();
+    const current = document.editor.rulerGuides;
+
+    // 空参考线保持可选字段的缺省表示，取消空操作时不会凭空制造 dirty 历史。
+    if (!sameData(current ?? { horizontal: [], vertical: [] }, guides)) {
+      if (guides.horizontal.length || guides.vertical.length) {
+        document.editor.rulerGuides = guides;
+      } else {
+        delete document.editor.rulerGuides;
+      }
+    }
+    document.commit();
+  };
+
+  private isRulerEvent (event: GizmoActionLifecycleEvent): boolean {
+    return event.source.type === 'ruler';
   }
 
   private readonly syncFromPanels = (): void => {

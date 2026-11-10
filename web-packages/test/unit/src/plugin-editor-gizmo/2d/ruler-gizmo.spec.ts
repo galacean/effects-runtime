@@ -1,6 +1,7 @@
 import { InputEventKey, InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type Engine } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { RulerGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler/ruler-gizmo';
+import { RulerGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler-gizmo';
+import { RulerManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler-manager';
 import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs';
@@ -49,6 +50,7 @@ describe('plugin-editor-gizmo/ruler-gizmo', () => {
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
     } as unknown as Engine;
     const selection = { getSelectedPlayerItems: () => [] };
+    const rulerManager = new RulerManager();
     const owner = {
       emit: (event: string, data: unknown) => {
         if (event === 'actionstart') { actions.start.push(data); }
@@ -61,6 +63,8 @@ describe('plugin-editor-gizmo/ruler-gizmo', () => {
       getEngine: () => engine,
       getMousePosition: () => new Vector2(100, 40),
       setCursor: () => {},
+      getRulerManager: () => rulerManager,
+      getActiveEditMode: () => ({ id: 'default-selection' }),
     } as unknown as GizmoOwner;
     const snapManager = new SnapManager(owner);
 
@@ -117,6 +121,35 @@ describe('plugin-editor-gizmo/ruler-gizmo', () => {
     context.gizmo.onMouseUp(mouseButton(100, 40, false, { shiftPressed: true }));
 
     expect(context.gizmo.guides).to.deep.equal({ horizontal: [44], vertical: [] });
+  });
+
+  it('未按 Shift 时保持原始拖拽坐标', () => {
+    const context = createHarness();
+
+    context.gizmo.onMouseDown(mouseButton(100, 10, true));
+    context.snapManager.cacheSnapTargetBoxes([
+      new Box2(new Vector2(0, 44), new Vector2(20, 54)),
+    ]);
+    context.gizmo.onMouseDrag(mouseMotion(100, 40));
+    context.gizmo.onMouseUp(mouseButton(100, 40, false));
+
+    expect(context.gizmo.guides).to.deep.equal({ horizontal: [40], vertical: [] });
+  });
+
+  it('释放到画布四边界外会删除当前参考线', () => {
+    const horizontal = createHarness();
+
+    horizontal.gizmo.setRuler({ horizontal: [40], vertical: [] });
+    horizontal.gizmo.onMouseDown(mouseButton(100, 40, true));
+    horizontal.gizmo.onMouseUp(mouseButton(-1, 40, false));
+    expect(horizontal.gizmo.guides).to.deep.equal({ horizontal: [], vertical: [] });
+
+    const vertical = createHarness();
+
+    vertical.gizmo.setRuler({ horizontal: [], vertical: [40] });
+    vertical.gizmo.onMouseDown(mouseButton(40, 100, true));
+    vertical.gizmo.onMouseUp(mouseButton(40, -1, false));
+    expect(vertical.gizmo.guides).to.deep.equal({ horizontal: [], vertical: [] });
   });
 
   it('deletes the selected guide and emits its final actioncommit', () => {

@@ -8,6 +8,7 @@ import type { Engine } from '@galacean/effects';
 import type { ViewportNavigationController } from './viewport';
 import type { GizmoOwnerEvents } from './gizmo-action';
 import type { LoadingManager } from './gizmos/loading-manager';
+import type { RulerManager } from './gizmos/ruler-manager';
 import type { GestureCursorResult } from './cursor';
 import type { EditMode } from './modes';
 
@@ -35,6 +36,9 @@ export interface GizmoOwner {
 
   /** 获取加载状态管理器。 */
   getLoadingManager(): LoadingManager,
+
+  /** 获取标尺数据管理器；未提供时标尺 Gizmo 会使用自身的临时管理器。 */
+  getRulerManager?(): RulerManager,
 
   /** 获取视口导航控制器。 */
   getViewportNavigation(): ViewportNavigationController,

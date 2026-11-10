@@ -85,4 +85,5 @@ export * from './gizmos/click-drag-multiplex-gizmo';
 export * from './gizmos/leave-text-edit-gizmo';
 export * from './gizmos/leave-effects-edit-gizmo';
 export * from './gizmos/enter-edit-mode-gizmo';
-export * from './gizmos/ruler/ruler-gizmo';
+export * from './gizmos/ruler-gizmo';
+export * from './gizmos/ruler-manager';
