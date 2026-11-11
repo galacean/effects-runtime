@@ -1,6 +1,6 @@
 import type {
   GPUBuffer, Engine, EngineOptions, IndicesArray, Nullable,
-  FramebufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, GPUVertexLayout, math,
+  FramebufferProps, RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
@@ -154,8 +154,10 @@ export class RenderingDeviceWebGL extends RenderingDevice {
       gl.drawElementsInstanced = () => {
         throw new Error(INSTANCE_DRAW_ERROR);
       };
-      gl.vertexAttribDivisor = () => {
-        throw new Error(INSTANCE_DRAW_ERROR);
+      gl.vertexAttribDivisor = (_index, divisor) => {
+        if (divisor > 0) {
+          throw new Error(INSTANCE_DRAW_ERROR);
+        }
       };
     }
   }
@@ -252,10 +254,9 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
   /** @hide */
   recordVertexArrayObject (
-    vertexBuffers: readonly (GPUBuffer | null)[],
+    vertexBuffers: Readonly<Record<string, VertexBuffer>>,
     indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
-    vertexLayout?: GPUVertexLayout,
   ): WebGLVertexArrayObject | undefined {
     const vertexArrayObject = this.gl.createVertexArray() ?? undefined;
 
@@ -264,7 +265,7 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     }
     this.vaoRecordInProgress = true;
     this.bindVertexArrayObject(vertexArrayObject, null);
-    this.bindVertexBuffersAttributes(vertexBuffers, effect, vertexLayout);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect);
     this.bindIndexBuffer(indexBuffer);
     this.vaoRecordInProgress = false;
     this.bindVertexArrayObject(null, null);
@@ -274,26 +275,23 @@ export class RenderingDeviceWebGL extends RenderingDevice {
 
   /** @hide */
   override bindBuffers (
-    vertexBuffers: readonly (GPUBuffer | null)[],
+    vertexBuffers: Readonly<Record<string, VertexBuffer>>,
     indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
-    vertexLayout?: GPUVertexLayout,
   ): void {
     this.bindVertexArrayObject(null, null);
-    this.bindVertexBuffersAttributes(vertexBuffers, effect, vertexLayout);
+    this.bindVertexBuffersAttributes(vertexBuffers, effect);
     this.bindIndexBuffer(indexBuffer);
   }
 
   private bindVertexBuffersAttributes (
-    vertexBuffers: readonly (GPUBuffer | null)[],
+    vertexBuffers: Readonly<Record<string, VertexBuffer>>,
     effect: ShaderVariant,
-    vertexLayout?: GPUVertexLayout,
   ): void {
     const gl = this.gl;
     const program = effect.program;
     const attributes = program.getAttributesNames();
 
-    vertexLayout ??= this.getVertexLayout(vertexBuffers);
     for (let index = 0; index < attributes.length; index++) {
       const location = program.getAttributeLocation(index);
 
@@ -301,26 +299,22 @@ export class RenderingDeviceWebGL extends RenderingDevice {
         continue;
       }
       const name = attributes[index];
-      const attribute = vertexLayout?.getElement(name);
+      const attribute = vertexBuffers[name];
 
       if (!attribute) {
         continue;
       }
-      const buffer = vertexBuffers[attribute.slot];
-
-      this.bindArrayBuffer(buffer);
+      this.bindArrayBuffer(attribute.buffer);
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(
         location,
         attribute.size,
         attribute.type,
         attribute.normalized,
-        vertexLayout!.getStride(attribute.slot),
+        attribute.byteStride,
         attribute.byteOffset,
       );
-      if (attribute.divisor > 0) {
-        gl.vertexAttribDivisor(location, attribute.divisor);
-      }
+      gl.vertexAttribDivisor(location, attribute.divisor);
     }
   }
 

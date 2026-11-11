@@ -6,8 +6,7 @@ import type { GPUBuffer, GPUBufferOptions, IndexData, IndicesArray } from './gpu
 import {
   BufferDataType, BufferUsage, createTypedArray, getBytesPerElement, getDataType,
 } from './gpu-buffer';
-import type { VertexElement } from './vertex-element';
-import type { GPUVertexLayout } from './gpu-vertex-layout';
+import type { VertexBuffer } from './vertex-buffer';
 import { VertexElementType } from './vertex-element-type';
 import type { ShaderVariant } from './shader';
 
@@ -55,10 +54,9 @@ type VertexArrayObject = object;
 
 interface VertexArrayObjectDevice {
   recordVertexArrayObject: (
-    vertexBuffers: readonly (GPUBuffer | null)[],
+    vertexBuffers: Readonly<Record<string, VertexBuffer>>,
     indexBuffer: GPUBuffer | null,
     shader: ShaderVariant,
-    vertexLayout?: GPUVertexLayout,
   ) => VertexArrayObject | undefined,
   bindVertexArrayObject: (
     vertexArrayObject: VertexArrayObject,
@@ -80,8 +78,7 @@ export class Geometry extends Asset {
   /** @hide */
   instanceCount = 0;
 
-  private vertexBuffers: (GPUBuffer | null)[] = [];
-  private vertexLayout?: GPUVertexLayout;
+  private vertexBuffers: Readonly<Record<string, VertexBuffer>> = {};
   private readonly ownedBuffers = new Set<GPUBuffer>();
   private readonly bufferData = new Map<GPUBuffer, GeometryBufferData>();
   private indices: IndexData = new Uint16Array(0);
@@ -126,107 +123,71 @@ export class Geometry extends Asset {
   }
 
   /** @hide */
-  getVertexElement (name: string): VertexElement | undefined {
-    return this.vertexLayout?.getElement(name);
+  getVertexBuffer (kind: string): VertexBuffer | undefined {
+    return this.vertexBuffers[kind];
   }
 
   /** @hide */
-  getVertexLayout (): GPUVertexLayout | undefined {
-    return this.vertexLayout;
-  }
-
-  /** @hide */
-  getVertexBuffers (): readonly (GPUBuffer | null)[] {
+  getVertexBuffers (): Readonly<Record<string, VertexBuffer>> {
     return this.vertexBuffers;
   }
 
   /**
-   * Bind buffers by slot with a separate layout. External buffers are borrowed by default.
+   * Bind one attribute view by kind. External buffers are borrowed by default.
    * @hide
    */
-  setVertexBuffers (
-    buffers: readonly (GPUBuffer | null)[],
-    layout = this.engine.displayServer.renderingDevice.getVertexLayout(buffers),
+  setVerticesBuffer (
+    view: VertexBuffer,
+    disposeExistingBuffer = true,
     takeBufferOwnership = false,
   ): void {
+    const previous = this.vertexBuffers[view.kind];
+
     this.disposeVertexArrayObjects();
-    this.vertexBuffers = buffers.slice();
-    this.vertexLayout = layout;
+    this.vertexBuffers = { ...this.vertexBuffers, [view.kind]: view };
     if (takeBufferOwnership) {
-      for (const buffer of buffers) {
-        if (buffer) {
-          this.ownedBuffers.add(buffer);
-        }
-      }
+      this.ownedBuffers.add(view.buffer);
     }
-    for (const buffer of this.ownedBuffers) {
-      this.releaseUnusedBuffer(buffer);
+    if (previous && disposeExistingBuffer) {
+      this.releaseUnusedBuffer(previous.buffer);
     }
   }
 
   /**
-   * Creates an owned buffer and retains its CPU data for queries and restoration.
+   * Creates or replaces an attribute's owned buffer and vertex format.
+   * Retains its CPU data for queries and rebuilding.
    * @hide
    */
-  setAttribute (name: string, attribute: spec.AttributeWithData & { data: spec.TypedArray }, usage = this.bufferUsage): void {
-    const device = this.engine.displayServer.renderingDevice;
-    const type = attribute.type ?? getDataType(attribute.data);
+  setVerticesData (
+    kind: string,
+    data: spec.TypedArray,
+    attribute: Omit<spec.AttributeWithData, 'data'>,
+    usage = this.bufferUsage,
+  ): void {
+    const type = attribute.type ?? getDataType(data);
     const byteStride = attribute.stride || attribute.size * getBytesPerElement(type);
-    const element: VertexElement = {
-      name,
-      slot: 0,
-      type,
-      size: attribute.size,
+    const divisor = attribute.instanceDivisor ?? 0;
+    const buffer = this.createOwnedBuffer(data, {
+      usage, type, byteStride, instanceDivisor: divisor, label: kind,
+    });
+
+    this.setVerticesBuffer({
+      kind, buffer, type, size: attribute.size, byteStride,
       byteOffset: attribute.offset ?? 0,
       normalized: attribute.normalize ?? false,
-      divisor: attribute.instanceDivisor ?? 0,
-    };
-    const buffer = this.createVertexBuffer(attribute.data, {
-      usage, type, byteStride, instanceDivisor: element.divisor, label: name,
-      vertexLayout: device.getVertexLayout([element], [byteStride]),
+      divisor,
     });
-    const elements = this.vertexLayout?.elements.slice() ?? [];
-    const buffers = this.vertexBuffers.slice();
-    const strides = buffers.map((item, slot) => this.vertexLayout?.getStride(slot) ?? item?.byteStride ?? 0);
-    const previousIndex = elements.findIndex(item => item.name === name);
-
-    if (previousIndex !== -1) {
-      const previousSlot = elements[previousIndex].slot;
-
-      if (!elements.some((item, index) => index !== previousIndex && item.slot === previousSlot)) {
-        buffers[previousSlot] = null;
-      }
-    }
-    let slot = buffers.indexOf(null);
-
-    if (slot === -1) {
-      slot = buffers.length;
-    }
-    buffers[slot] = buffer;
-    strides[slot] = byteStride;
-    if (previousIndex === -1) {
-      elements.push({ ...element, slot });
-    } else {
-      elements[previousIndex] = { ...element, slot };
-    }
-    this.setVertexBuffers(buffers, device.getVertexLayout(elements, strides));
-  }
-
-  /** @hide */
-  getAttributeBuffer (name: string): GPUBuffer | undefined {
-    const element = this.getVertexElement(name);
-
-    return element ? this.vertexBuffers[element.slot] ?? undefined : undefined;
   }
 
   getAttributeData (name: string): spec.TypedArray | undefined {
-    const buffer = this.getAttributeBuffer(name);
+    const buffer = this.getVertexBuffer(name)?.buffer;
 
     return buffer ? this.bufferData.get(buffer)?.data : undefined;
   }
 
+  /** Updates an existing dynamic buffer, preserving its vertex format and capacity. */
   setAttributeData (name: string, data: spec.TypedArray): void {
-    const buffer = this.getAttributeBuffer(name);
+    const buffer = this.getVertexBuffer(name)?.buffer;
     const source = buffer && this.bufferData.get(buffer);
 
     if (!buffer || source?.options.usage === BufferUsage.Static) {
@@ -246,7 +207,7 @@ export class Geometry extends Asset {
 
   /** Updates the existing buffer in place, preserving VAOs. Offset is in Float32 elements. */
   setAttributeSubData (name: string, offset: number, data: spec.TypedArray): void {
-    const buffer = this.getAttributeBuffer(name);
+    const buffer = this.getVertexBuffer(name)?.buffer;
     const source = buffer && this.bufferData.get(buffer);
 
     if (!buffer || source?.options.usage === BufferUsage.Static) {
@@ -262,13 +223,11 @@ export class Geometry extends Asset {
   }
 
   getAttributeStride (name: string): number {
-    const element = this.getVertexElement(name);
-
-    return element ? this.vertexLayout!.getStride(element.slot) : 0;
+    return this.getVertexBuffer(name)?.byteStride ?? 0;
   }
 
   getAttributeNames (): string[] {
-    return this.vertexLayout?.elements.map(element => element.name) ?? [];
+    return Object.keys(this.vertexBuffers);
   }
 
   /** @hide */
@@ -278,13 +237,6 @@ export class Geometry extends Asset {
 
   getIndexData (): IndexData {
     return this.indices;
-  }
-
-  /** @hide */
-  getIndexType (): number {
-    return this.indexBuffer?.is32Bits || shouldUse32Bits(this.indices)
-      ? BufferDataType.UnsignedInt
-      : BufferDataType.UnsignedShort;
   }
 
   setIndexData (data: IndicesArray): void {
@@ -347,7 +299,7 @@ export class Geometry extends Asset {
     const device = this.engine.displayServer.renderingDevice;
 
     if (!vertexArrayObjects || !supportsVertexArrayObjects(device)) {
-      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader, this.vertexLayout);
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
 
       return;
     }
@@ -358,7 +310,6 @@ export class Geometry extends Asset {
         this.vertexBuffers,
         this.indexBuffer ?? null,
         shader,
-        this.vertexLayout,
       );
       if (vertexArrayObject) {
         vertexArrayObjects[shader.key] = vertexArrayObject;
@@ -367,7 +318,7 @@ export class Geometry extends Asset {
     if (vertexArrayObject) {
       device.bindVertexArrayObject(vertexArrayObject, this.indexBuffer ?? null);
     } else {
-      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader, this.vertexLayout);
+      device.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
     }
   }
 
@@ -487,8 +438,7 @@ export class Geometry extends Asset {
     this.ownedBuffers.clear();
     this.bufferData.clear();
     this.releaseIndexBuffer();
-    this.vertexBuffers = [];
-    this.vertexLayout = undefined;
+    this.vertexBuffers = {};
     this.indices = new Uint16Array(0);
     this.options = undefined;
     this.drawStart = 0;
@@ -534,36 +484,14 @@ export class Geometry extends Asset {
       const instanceDivisor = sourceDivisors[name] ?? 0;
 
       sourceTypes[name] = type;
-      sourceBuffers[name] = this.createVertexBuffer(data, {
+      sourceBuffers[name] = this.createOwnedBuffer(data, {
         usage,
         type,
         byteStride,
         instanceDivisor,
         label: name,
-        vertexLayout: this.engine.displayServer.renderingDevice.getVertexLayout(
-          Object.keys(props.attributes)
-            .filter(key => {
-              const element = props.attributes[key];
-
-              return ('dataSource' in element ? element.dataSource : key) === name;
-            })
-            .map(key => {
-              const element = props.attributes[key];
-
-              return {
-                name: key, slot: 0, type: element.type ?? type, size: element.size,
-                byteOffset: element.offset ?? 0, normalized: element.normalize ?? false,
-                divisor: element.instanceDivisor ?? 0,
-              };
-            }),
-          [byteStride],
-        ),
       });
     });
-    const elements: VertexElement[] = [];
-    const buffers: GPUBuffer[] = [];
-    const strides: number[] = [];
-
     Object.keys(props.attributes).forEach(name => {
       const attribute = props.attributes[name];
       const source = 'dataSource' in attribute ? attribute.dataSource : name;
@@ -577,23 +505,13 @@ export class Geometry extends Asset {
       const byteStride = attribute.stride || this.bufferData.get(buffer)!.options.byteStride;
       const instanceDivisor = attribute.instanceDivisor ?? 0;
 
-      let slot = buffers.findIndex((item, index) => item === buffer && strides[index] === byteStride);
-
-      if (slot === -1) {
-        slot = buffers.length;
-        buffers.push(buffer);
-        strides.push(byteStride);
-      }
-      elements.push({
-        name, slot, size: attribute.size, type,
+      this.setVerticesBuffer({
+        kind: name, buffer, size: attribute.size, type, byteStride,
         byteOffset: attribute.offset ?? 0,
         normalized: attribute.normalize ?? false,
         divisor: instanceDivisor,
       });
     });
-    if (elements.length > 0) {
-      this.setVertexBuffers(buffers, this.engine.displayServer.renderingDevice.getVertexLayout(elements, strides));
-    }
     this.name = props.name ?? `effectsGeometry:${geometryId++}`;
     this.drawStart = props.drawStart ?? 0;
     this.drawCount = props.drawCount ?? 0;
@@ -625,8 +543,7 @@ export class Geometry extends Asset {
     this.ownedBuffers.clear();
     this.bufferData.clear();
     this.releaseIndexBuffer();
-    this.vertexBuffers = [];
-    this.vertexLayout = undefined;
+    this.vertexBuffers = {};
     this.indices = new Uint16Array(0);
     if (wasInitialized) {
       this.engine.effectsObjectServer.removeGeometry(this);
@@ -656,7 +573,7 @@ export class Geometry extends Asset {
       data: indices,
       index: true,
       usage: this.bufferUsage,
-      type: this.getIndexType(),
+      type: shouldUse32Bits(indices) ? BufferDataType.UnsignedInt : BufferDataType.UnsignedShort,
       byteStride: 0,
       instanceDivisor: 0,
       label: `${this.name}##index`,
@@ -671,7 +588,7 @@ export class Geometry extends Asset {
     this.indexBuffer = undefined;
   }
 
-  private createVertexBuffer (data: spec.TypedArray, options: GPUBufferOptions): GPUBuffer {
+  private createOwnedBuffer (data: spec.TypedArray, options: GPUBufferOptions): GPUBuffer {
     const buffer = this.engine.displayServer.renderingDevice.createBuffer();
 
     buffer.initialize({ ...options, data });
@@ -682,7 +599,7 @@ export class Geometry extends Asset {
   }
 
   private releaseUnusedBuffer (buffer: GPUBuffer): void {
-    if (this.vertexBuffers.includes(buffer)) {
+    if (Object.values(this.vertexBuffers).some(view => view.buffer === buffer)) {
       return;
     }
     if (this.ownedBuffers.delete(buffer)) {
