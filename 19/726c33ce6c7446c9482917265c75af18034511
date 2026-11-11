@@ -1,0 +1,32 @@
+packages/effects-core/src/input-server.ts
+  s_a8747b67b3e1dc::t_6a610566be5680 205-207,258,313,319-323,326-327
+  s_a8747b67b3e1dc::t_f9375bba6d1ac6 179-182,185-186,197,202-204,438,911-912
+  s_a8747b67b3e1dc::t_1bd01d5101aa6a 947
+  s_a8747b67b3e1dc::t_9c67d80a6362ae 948,955-956,960-961
+  s_a8747b67b3e1dc::t_69fdb316dcf637 187-196,200
+  s_aeb2d42f373258::t_dccc3cb9cd69a4 908-910,942-944
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "19726c33ce6c7446c9482917265c75af18034511",
+  "prompts": {},
+  "sessions": {
+    "s_a8747b67b3e1dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c997-c17e-7870-9f93-a2a097eeecbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_aeb2d42f373258": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c8a9-28a4-7d21-beb3-0f456d65e63a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
