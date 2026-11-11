@@ -176,24 +176,35 @@ export class InputServer extends EngineServer implements Disposable {
     }
 
     this.usePointerEvents = typeof PointerEvent === 'function';
-    const ownerDocument = target.ownerDocument ?? (typeof document === 'undefined' ? null : document);
-    const continuationTarget = ownerDocument && typeof ownerDocument.addEventListener === 'function' ? ownerDocument : target;
+    const ownerDocument = target.ownerDocument;
+    const continuationTarget = typeof ownerDocument?.addEventListener === 'function' ? ownerDocument : target;
+    const pointerEnter = this.usePointerEvents ? 'pointerenter' : 'mouseenter';
+    const pointerMove = this.usePointerEvents ? 'pointermove' : 'mousemove';
 
     this.addNativeHandler(target, this.usePointerEvents ? 'pointerdown' : 'mousedown', this.onNativePointerDown as EventListener);
-    this.addNativeHandler(continuationTarget, this.usePointerEvents ? 'pointerenter' : 'mouseenter', this.onNativePointerEnter as EventListener);
-    this.addNativeHandler(continuationTarget, this.usePointerEvents ? 'pointermove' : 'mousemove', this.onNativePointingMove as EventListener, true);
+    this.addNativeHandler(target, pointerEnter, this.onNativePointerEnter as EventListener);
+    // Hover stays on the canvas. A press that started there continues across the document.
+    this.addNativeHandler(target, pointerMove, event => {
+      if (continuationTarget === target || !this.hasNativePointerPress()) {
+        this.onNativePointingMove(event as MouseEvent);
+      }
+    });
+    if (continuationTarget !== target) {
+      this.addNativeHandler(continuationTarget, pointerEnter, this.onDocumentPointerEnter as EventListener);
+      this.addNativeHandler(continuationTarget, pointerMove, event => {
+        if (this.hasNativePointerPress()) { this.onNativePointingMove(event as MouseEvent); }
+      }, true);
+    }
     this.addNativeHandler(target, this.usePointerEvents ? 'pointerleave' : 'mouseout', this.onNativePointerLeave as EventListener);
     this.addNativeHandler(continuationTarget, this.usePointerEvents ? 'pointerup' : 'mouseup', this.onNativePointerUp as EventListener, true);
-    // Touch is a separate desktop source. Touch PointerEvents never enter
-    // the mouse/widget projection, and document continuations require a
-    // touch session that started on this canvas.
+    // Touch events stay targeted at the start element even when the touch moves off the canvas.
     this.addNativeHandler(target, 'touchstart', this.onNativeTouchStart as EventListener, { passive: false });
-    this.addNativeHandler(continuationTarget, 'touchmove', this.onNativeTouchMove as EventListener, { passive: false });
-    this.addNativeHandler(continuationTarget, 'touchend', this.onNativeTouchEnd as EventListener, { passive: false });
-    this.addNativeHandler(continuationTarget, 'touchcancel', this.onNativeTouchCancel as EventListener);
-    this.addNativeHandler(continuationTarget, 'wheel', this.onNativeWheel as EventListener, { passive: false });
-    this.addNativeHandler(continuationTarget, 'keydown', this.onNativeKeyDown as EventListener, true);
-    this.addNativeHandler(continuationTarget, 'keyup', this.onNativeKeyUp as EventListener, true);
+    this.addNativeHandler(target, 'touchmove', this.onNativeTouchMove as EventListener, { passive: false });
+    this.addNativeHandler(target, 'touchend', this.onNativeTouchEnd as EventListener, { passive: false });
+    this.addNativeHandler(target, 'touchcancel', this.onNativeTouchCancel as EventListener);
+    this.addNativeHandler(target, 'wheel', this.onNativeWheel as EventListener, { passive: false });
+    this.addNativeHandler(target, 'keydown', this.onNativeKeyDown as EventListener);
+    this.addNativeHandler(target, 'keyup', this.onNativeKeyUp as EventListener);
     this.addNativeHandler(window, 'focus', this.onWindowFocus as EventListener);
     this.addNativeHandler(window, 'blur', this.onWindowBlur as EventListener);
     this.addNativeHandler(target, 'focus', this.onCanvasFocus as EventListener);
@@ -244,7 +255,7 @@ export class InputServer extends EngineServer implements Disposable {
   }
 
   private onNativeWheel = (event: WheelEvent): void => {
-    if (!this.enabled || !this.target || !this.ownsNativeMouseEvent(event)) {
+    if (!this.enabled || !this.target) {
       return;
     }
     const position = this.getNativeMousePosition(event);
@@ -266,12 +277,10 @@ export class InputServer extends EngineServer implements Disposable {
   };
 
   private onNativeKeyDown = (event: KeyboardEvent): void => {
-    if (!this.ownsNativeEvent(event)) { return; }
     this.handleNativeKey(event, true);
   };
 
   private onNativeKeyUp = (event: KeyboardEvent): void => {
-    if (!this.ownsNativeEvent(event) && !this.pressedKeys.has(event.code)) { return; }
     this.handleNativeKey(event, false);
   };
 
@@ -301,20 +310,24 @@ export class InputServer extends EngineServer implements Disposable {
   };
 
   private readonly onNativePointerUp = (event: MouseEvent): void => {
-    if (!this.enabled || !this.target || this.isTouchPointer(event) || !this.ownsNativeMouseEvent(event)) { return; }
+    if (!this.enabled || !this.target || this.isTouchPointer(event) || !this.hasNativePointerPress()) { return; }
     this.preventAcceptedDefault(event, this.releaseNativePointer(event));
   };
 
   private readonly onNativePointerEnter = (event: MouseEvent): void => {
     if (!this.enabled || !this.target || this.isTouchPointer(event)) { return; }
+    this.pushMouseBoundary(event, true);
+  };
+
+  private readonly onDocumentPointerEnter = (event: MouseEvent): void => {
+    if (!this.enabled || this.isTouchPointer(event) || !this.hasNativePointerPress()) { return; }
     const button = this.nativePointerButton;
 
-    // Recover a missed middle/right release when the pointer re-enters Chrome.
-    if (navigator.userAgent.includes('Chrome/') && this.isMouseButtonPressed() &&
+    // Recover a missed middle/right release when the pointer re-enters the document in Chrome.
+    if (navigator.userAgent.includes('Chrome/') &&
       (button === MouseButton.Middle || button === MouseButton.Right) && !(getNativeMouseButtonMask(event.buttons) & getMouseButtonBit(button))) {
       this.preventAcceptedDefault(event, this.releaseNativePointer(event, button));
     }
-    this.pushMouseBoundary(event, true);
   };
 
   private readonly onNativePointerLeave = (event: MouseEvent): void => {
@@ -340,9 +353,6 @@ export class InputServer extends EngineServer implements Disposable {
     const position = this.getNativeMousePosition(event);
 
     // Only the final release ends an admitted pointer sequence.
-    if (!this.isMouseButtonPressed()) {
-      return this.pushNativePointerMotion(event, button, position);
-    }
     const state = this.mouseState!;
     const interaction = this.mouseInteraction!;
 
@@ -425,9 +435,7 @@ export class InputServer extends EngineServer implements Disposable {
   }
 
   private onNativePointingMove = (event: MouseEvent): void => {
-    if (!this.enabled || !this.target || this.isTouchPointer(event) || !this.ownsNativeMouseEvent(event)) {
-      return;
-    }
+    if (!this.enabled || !this.target || this.isTouchPointer(event)) { return; }
     this.preventAcceptedDefault(event, this.pushNativePointerMotion(event, this.usePointerEvents ? getMouseButton(event.button) : MouseButton.None));
   };
 
@@ -897,6 +905,11 @@ export class InputServer extends EngineServer implements Disposable {
     return (this.mouseState?.buttonMask ?? MouseButtonMask.None) !== MouseButtonMask.None;
   }
 
+  private hasNativePointerPress (): boolean {
+    return this.nativePointerButton !== MouseButton.None &&
+      this.mouseState?.lastInput.device === InputEvent.deviceIdMouse && this.isMouseButtonPressed();
+  }
+
   private cancelNativePointerInput (): void {
     const state = this.mouseState;
 
@@ -926,19 +939,26 @@ export class InputServer extends EngineServer implements Disposable {
       if (this.viewFocused) { return false; }
       this.viewFocused = true; this.hadFocus = true;
     } else if (type === FocusEventType.FocusLost) {
-      if (!this.viewFocused) { return false; }
+      // The canvas may have been focused before the listeners were bound.
+      const wasFocused = this.viewFocused;
+
       this.viewFocused = false;
       this.cancelNativePointerInput(); this.releasePressedKeys();
+
+      return wasFocused;
     } else if (type === FocusEventType.WindowFocusGained) {
       if (this.windowFocused) { return false; }
       this.windowFocused = true;
       if (!this.hadFocus) { return false; }
     } else {
       if (!this.windowFocused) { return false; }
+      const hadFocus = this.hadFocus;
+
       this.windowFocused = false;
-      if (!this.hadFocus) { return false; }
       this.cancelNativePointerInput(); this.releasePressedKeys();
       this.touchStates.clear(); this.mouseFromTouchIndex = null;
+
+      return hadFocus;
     }
 
     return true;
@@ -994,15 +1014,6 @@ export class InputServer extends EngineServer implements Disposable {
 
   private isTouchPointer (event: MouseEvent): boolean {
     return 'pointerType' in event && event.pointerType === 'touch';
-  }
-
-  private ownsNativeEvent (event: Event): boolean {
-    return event.target === this.target || typeof Node !== 'undefined' && event.target instanceof Node &&
-      typeof this.target?.contains === 'function' && this.target.contains(event.target);
-  }
-
-  private ownsNativeMouseEvent (event: Event): boolean {
-    return this.ownsNativeEvent(event) || this.isMouseButtonPressed();
   }
 
   private addNativeHandler (
