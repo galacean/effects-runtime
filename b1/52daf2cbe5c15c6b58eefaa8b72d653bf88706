@@ -1,0 +1,62 @@
+web-packages/test/unit/src/effects-webgl/vertex-buffer.spec.ts
+  s_e39a380508d42b::t_d30843e63b9edc 1-126
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_e39a380508d42b::t_d30843e63b9edc 2,16,1054,1146,1510
+packages/effects-core/src/rendering-device.ts
+  s_e39a380508d42b::t_d30843e63b9edc 6,128
+packages/effects-threejs/src/rendering-device-three.ts
+  s_e39a380508d42b::t_d30843e63b9edc 5,8,84-87,92,95-97,100-102
+web-packages/test/unit/src/effects-webgl/gl-context-lost.spec.ts
+  s_e39a380508d42b::t_d30843e63b9edc 169,177,214
+plugin-packages/editor-gizmo/src/3d/wireframe.ts
+  s_e39a380508d42b::t_d30843e63b9edc 215,217-218
+web-packages/dev-tools/src/features/assets/preview/material-preview-renderer.ts
+  s_e39a380508d42b::t_d30843e63b9edc 277-283
+packages/effects-core/src/render/index.ts
+  s_e39a380508d42b::t_d30843e63b9edc 14
+web-packages/test/unit/src/effects-webgl/gl-mesh.spec.ts
+  s_e39a380508d42b::t_d30843e63b9edc 32
+web-packages/test/unit/src/effects-webgl/index.ts
+  s_e39a380508d42b::t_d30843e63b9edc 13
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_e39a380508d42b::t_d30843e63b9edc 550,553
+packages/effects-threejs/src/gpu-buffer-three.ts
+  s_e39a380508d42b::t_d30843e63b9edc 1-2,7-16,19,25-80,103
+packages/effects-core/src/plugins/sprite/sprite-item.ts
+  s_e39a380508d42b::t_d30843e63b9edc 369,372
+web-packages/test/unit/src/effects-webgl/geometry.spec.ts
+  s_e39a380508d42b::t_77396279c3b3bb 350,355
+  s_e39a380508d42b::t_d30843e63b9edc 33,60-61,78,87,90-92,101-104,140-141,143-145,154,157,159,161,170,188,246,269,273-274,298,311
+plugin-packages/model/src/utility/plugin-helper.ts
+  s_e39a380508d42b::t_d30843e63b9edc 2319,2329
+packages/effects-core/src/render/vertex-buffer.ts
+  s_e39a380508d42b::t_d30843e63b9edc 1-13
+packages/effects-core/src/components/frame-component.ts
+  s_e39a380508d42b::t_d30843e63b9edc 397,400
+packages/effects-core/src/render/geometry.ts
+  s_e39a380508d42b::t_d30843e63b9edc 9,57,81,126-127,131,136,139-141,144-145,147,149,151-152,157-158,161-167,169-175,178,183,188,190,210,226,230,302,321,441,487,508-509,546,576,591,602
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_e39a380508d42b::t_d30843e63b9edc 303,320,336,339,350,374,386-387,398,400,466
+packages/effects-core/src/render/graphics-batch-buffer.ts
+  s_e39a380508d42b::t_d30843e63b9edc 71,74
+packages/effects-threejs/src/three-geometry.ts
+  s_e39a380508d42b::t_d30843e63b9edc 1,6,23,27,36-38,40,48-50,59,65-66,76,83,87-94,97-98
+packages/effects-webgl/src/rendering-device-webgl.ts
+  s_e39a380508d42b::t_d30843e63b9edc 3,157-160,257,268,278,283,288,302,307,314,317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b152daf2cbe5c15c6b58eefaa8b72d653bf88706",
+  "prompts": {},
+  "sessions": {
+    "s_e39a380508d42b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c9af-d64e-7481-a0c4-204df86fdb95",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "chenmo0204 <chenmo.czt@antgroup.com>"
+    }
+  }
+}
