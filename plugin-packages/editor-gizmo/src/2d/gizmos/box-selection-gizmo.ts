@@ -136,8 +136,8 @@ export class BoxSelectionGizmo extends Gizmo {
     const config = this.config;
 
     if (this.isBoxSelecting && this.overlay.type === 'region' && !this.overlay.box.isEmpty()) {
-      drawBox(control, this.overlay.box, toColor(config.regionWireframeColor, config.regionWireframeAlpha), config.regionWireframeWidth);
-      fillBox(control, this.overlay.box, toColor(config.regionBoxColor, config.regionBoxAlpha));
+      drawBox(control, this.overlay.box, toColor(config.regionWireframeColor), config.regionWireframeWidth);
+      fillBox(control, this.overlay.box, toColor(config.regionBoxColor));
     }
   }
 

@@ -16,6 +16,8 @@ import { LoadingManager } from './gizmos/loading-manager';
 import { LoadingGizmo } from './gizmos/loading-gizmo';
 import { HandGizmo } from './gizmos/hand-gizmo';
 import { IconGizmo } from './gizmos/icon-gizmo';
+import { RulerGizmo } from './gizmos/ruler-gizmo';
+import { RulerManager } from './gizmos/ruler-manager';
 import { drawCorners, toColor } from './drawing';
 import {
   getItemViewTransform,
@@ -88,6 +90,9 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 加载状态管理器。 */
   private loadingManager = new LoadingManager();
 
+  /** 所有工具共享的标尺数据；标尺 Gizmo 可以随交互图重建。 */
+  private rulerManager: RulerManager;
+
   /** Gizmo 生命周期管理器。 */
   private gizmoManager: GizmoManager;
 
@@ -152,6 +157,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     this.viewportNavigation = new ViewportNavigationController(this);
     this.selection = new Selection(engine, this.hoveringResults);
     this.snapManager = new SnapManager(this);
+    this.rulerManager = new RulerManager();
     this.editMode = this.createDefaultEditMode();
 
     this.selection.on('preselectchange', this.onPreselectChange);
@@ -223,6 +229,11 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** @returns 加载状态管理器。 */
   getLoadingManager (): LoadingManager {
     return this.loadingManager;
+  }
+
+  /** @returns 共享标尺数据管理器。 */
+  getRulerManager (): RulerManager {
+    return this.rulerManager;
   }
 
   /** @returns 共享视口导航控制器。 */
@@ -540,7 +551,8 @@ export class GestureHandler extends Control implements GizmoOwner {
     return [
       new HandGizmo(this),
       new IconGizmo(this),
-      new LoadingGizmo(this, this.loadingManager),
+      new LoadingGizmo(this),
+      new RulerGizmo(this),
     ];
   }
 
@@ -842,7 +854,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     }
     const config = this.getConfigManager().get(selectionPreviewConfig);
 
-    drawCorners(gizmoControl, getTransformedBoxCorners(transform), toColor(config.preSelectedColor, 1), config.preSelectedWidth);
+    drawCorners(gizmoControl, getTransformedBoxCorners(transform), toColor(config.preSelectedColor), config.preSelectedWidth);
   }
 
   /**
@@ -870,7 +882,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     }
 
     const { lineWidth, lineColor } = this.snapManager.config;
-    const color = toColor(lineColor, 1);
+    const color = toColor(lineColor);
 
     for (const line of visualizations) {
       control.drawLine(

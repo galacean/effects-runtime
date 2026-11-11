@@ -100,7 +100,7 @@ export class GizmoDemo {
 
     configs.set(viewportNavigationConfig, { scrollWheelZoom: false });
     configs.set(selectionSnapConfig, { enabled: true });
-    configs.set(viewportOverlayConfig, { outerMaskEnabled: false, boxColor: 0xe0e0e0 });
+    configs.set(viewportOverlayConfig, { outerMaskEnabled: false, boxColor: 0xe0e0e0ff });
     this.handler.getViewportNavigation().setScaleRange(0.2, 5);
   }
 

@@ -270,21 +270,13 @@ export class SpriteTextEditGizmo extends Gizmo {
     const scale = GizmoViewportUtils.getViewScale(this._owner.getEngine());
     const {
       editBoxColor,
-      editBoxAlpha,
       editBoxPreSelectedColor,
-      editBoxPreSelectedAlpha,
       hasChangedEditBoxColor,
-      hasChangedEditBoxAlpha,
       hasChangedEditBoxPreSelectedColor,
-      hasChangedEditBoxPreSelectedAlpha,
       editBoxLineColor,
-      editBoxLineAlpha,
-      editBoxLinePreSelectedAlpha,
       editBoxLinePreSelectedColor,
       hasChangedEditBoxLineColor,
-      hasChangedEditBoxLineAlpha,
       hasChangedEditBoxLinePreSelectedColor,
-      hasChangedEditBoxLinePreSelectedAlpha,
       textColor,
     } = this.config;
 
@@ -312,14 +304,12 @@ export class SpriteTextEditGizmo extends Gizmo {
     /**
      * 绘制单个文本框。
      * @param viewCorners 文本框视口四角。
-     * @param fill 填充色。
-     * @param fillAlpha 填充透明度。
-     * @param line 线框色。
-     * @param lineAlpha 线框透明度。
+     * @param fill 填充色（RGBA 十六进制）。
+     * @param line 线框色（RGBA 十六进制）。
      */
-    const drawEntryBox = (viewCorners: Vector2[], fill: number, fillAlpha: number, line: number, lineAlpha: number) => {
-      fillBoxByCorners(control, viewCorners, toColor(fill, fillAlpha));
-      drawCorners(control, viewCorners, toColor(line, lineAlpha), 1);
+    const drawEntryBox = (viewCorners: Vector2[], fill: number, line: number) => {
+      fillBoxByCorners(control, viewCorners, toColor(fill));
+      drawCorners(control, viewCorners, toColor(line), 1);
     };
 
     // 步骤 3：按未修改、已修改的顺序绘制文本框。
@@ -331,24 +321,20 @@ export class SpriteTextEditGizmo extends Gizmo {
             drawEntryBox(
               viewCorners,
               isPreSelected ? hasChangedEditBoxPreSelectedColor : hasChangedEditBoxColor,
-              isPreSelected ? hasChangedEditBoxPreSelectedAlpha : hasChangedEditBoxAlpha,
               isPreSelected ? hasChangedEditBoxLinePreSelectedColor : hasChangedEditBoxLineColor,
-              isPreSelected ? hasChangedEditBoxLinePreSelectedAlpha : hasChangedEditBoxLineAlpha,
             );
           } else {
             drawEntryBox(
               viewCorners,
               isPreSelected ? editBoxPreSelectedColor : editBoxColor,
-              isPreSelected ? editBoxPreSelectedAlpha : editBoxAlpha,
               isPreSelected ? editBoxLinePreSelectedColor : editBoxLineColor,
-              isPreSelected ? editBoxLinePreSelectedAlpha : editBoxLineAlpha,
             );
           }
         });
     }
 
     // 步骤 4：在最上层绘制编辑态文本。
-    const textFill = toColor(textColor, 1);
+    const textFill = toColor(textColor);
     const fontSize = EDIT_TEXT_FONT_SIZE * scale;
     const lineHeight = EDIT_TEXT_LINE_HEIGHT * scale;
 

@@ -160,7 +160,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(drawLine).to.have.been.called.exactly(8);
       expect(getSpyCalls(drawLine).slice(0, 4).every(call => call[5] === 1)).to.equal(true);
       expect(getSpyCalls(drawLine).slice(4).every(call => call[5] === 2)).to.equal(true);
-      expect(getSpyCalls(drawLine).slice(4).every(call => call[4] === toColor(0x3b82f6, 1))).to.equal(true);
+      expect(getSpyCalls(drawLine).slice(4).every(call => call[4] === toColor(0x3b82f6ff))).to.equal(true);
     });
   });
 
@@ -236,7 +236,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
         [100, 144, 100, 96],
       ]);
       expect(drawLine).to.have.been.called.exactly(4);
-      expect(getSpyCalls(drawLine).every(call => call[4] === toColor(0x3b82f6, 1))).to.equal(true);
+      expect(getSpyCalls(drawLine).every(call => call[4] === toColor(0x3b82f6ff))).to.equal(true);
       expect(getSpyCalls(drawLine).every(call => call[5] === 2)).to.equal(true);
       expect(fillRect).not.to.have.been.called();
     });
