@@ -1,0 +1,19 @@
+web-packages/demo/src/gizmo-2d/app.ts
+  s_1170741a4a6c57::t_3cf3db243a31d6 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cdd025aa45ce96d78d592c7200d838528a351773",
+  "prompts": {},
+  "sessions": {
+    "s_1170741a4a6c57": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c3a2-8948-7573-b75a-6564f28a5f8d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
