@@ -38,7 +38,7 @@ export interface GizmoOwner {
   getLoadingManager(): LoadingManager,
 
   /** 获取标尺数据管理器；未提供时标尺 Gizmo 会使用自身的临时管理器。 */
-  getRulerManager?(): RulerManager,
+  getRulerManager(): RulerManager,
 
   /** 获取视口导航控制器。 */
   getViewportNavigation(): ViewportNavigationController,
