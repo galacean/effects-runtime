@@ -224,9 +224,6 @@ export class ScrollBar extends Range {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex !== MouseButton.Left) {
-      return;
-    }
     this.decrementActive = false;
     this.incrementActive = false;
     this.dragging = false;

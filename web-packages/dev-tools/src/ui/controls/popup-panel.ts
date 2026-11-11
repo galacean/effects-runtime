@@ -20,10 +20,7 @@ class PopupBackdrop extends Control {
     return true;
   }
   override onMouseDown (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left || event.buttonIndex === MouseButton.Right) {
-      this.popup.dismissFromOutside();
-    }
-    event.accept();
+    this.popup.onOutsideMouseDown(event);
   }
 }
 
@@ -100,6 +97,12 @@ export class EditorPopupPanel extends PopupPanel {
   };
   dismissFromOutside (): void {
     if (this.closeOnOutsideClick) { this.hidePopup(); } else { this.grabFocus(); }
+  }
+  onOutsideMouseDown (event: InputEventMouseButton): void {
+    if (event.buttonIndex === MouseButton.Left || event.buttonIndex === MouseButton.Right) {
+      this.dismissFromOutside();
+    }
+    event.accept();
   }
   override onPopupOpened (): void {
     if (!this.modeless) {

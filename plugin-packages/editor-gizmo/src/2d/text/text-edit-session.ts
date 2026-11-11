@@ -203,7 +203,7 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
    * @param event DOM 键盘事件。
    */
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.code.toLocaleLowerCase() === 'escape') {
+    if (event.code === 'Escape' && !event.isComposing) {
       event.preventDefault();
 
       return;

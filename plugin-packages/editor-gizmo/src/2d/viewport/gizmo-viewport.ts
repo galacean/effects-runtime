@@ -88,7 +88,7 @@ export class GizmoViewport extends Control {
   override onMouseEnter (location: Vector2): void {
     this.mouseInside = true;
     this.mousePosition.copyFrom(location);
-    this.onMouseEnterCallback?.(location);
+    if (!this.isMouseButtonPressed()) { this.onMouseEnterCallback?.(location); }
   }
 
   /**
@@ -122,7 +122,7 @@ export class GizmoViewport extends Control {
   /** 记录鼠标离开并转发事件。 */
   override onMouseLeave (): void {
     this.mouseInside = false;
-    this.onMouseLeaveCallback?.();
+    if (!this.isMouseButtonPressed()) { this.onMouseLeaveCallback?.(); }
   }
 
   /**
@@ -183,7 +183,7 @@ export class GizmoViewport extends Control {
     return this.mouseInside;
   }
 
-  /** @returns 当前是否有鼠标按钮按下。 */
+  /** @returns 当前 Pointer 会话是否仍处于按下阶段。 */
   isMouseButtonPressed (): boolean {
     return this.mouseButtonMask !== MouseButtonMask.None;
   }

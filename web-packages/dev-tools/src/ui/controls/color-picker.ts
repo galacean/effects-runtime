@@ -58,7 +58,7 @@ abstract class ColorPickerArea extends Control {
   }
   override onMouseMove (event: InputEventMouseMotion): void { if (this.dragging) { this.select(event.position); event.accept(); } }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.dragging) { this.dragging = false; if (!event.canceled) { this.select(event.position); } event.accept(); }
+    if (this.dragging) { this.dragging = false; if (!event.canceled) { this.select(event.position); } event.accept(); }
   }
 }
 

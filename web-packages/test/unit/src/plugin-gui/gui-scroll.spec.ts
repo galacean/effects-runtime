@@ -290,6 +290,8 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
   });
 
   it('normalizes native pixel wheel deltas to one scroll factor', () => {
+    document.body.appendChild(player.canvas);
+    player.canvas.getBoundingClientRect = () => new DOMRect(0, 0, 200, 100);
     const scroll = new ScrollContainer(player.engine);
     const content = new ScrollContent(player.engine, new math.Vector2(40, 500));
 
@@ -298,6 +300,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.addChild(content);
     player.engine.getServer(GUIServer).windowRoot.update(0);
     player.canvas.dispatchEvent(new WheelEvent('wheel', {
+      deltaX: 70,
       deltaY: 100,
       deltaMode: WheelEvent.DOM_DELTA_PIXEL,
       clientX: 50,
@@ -306,6 +309,8 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
       bubbles: true,
     }));
     expect(scroll.vScroll).equals(12.5);
+    expect(scroll.hScroll).equals(0);
+    player.canvas.remove();
   });
 
   it('drags with a deadzone and continues with inertial scrolling', () => {

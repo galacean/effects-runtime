@@ -1,18 +1,21 @@
 import { EditorTooltips } from '../ui/controls/tooltip';
 import { EditorDragFeedback } from '../ui/controls/drag-feedback';
-import { Engine, VFXItem, InputEventKey, getPixelRatio, math } from '@galacean/effects';
+import { Engine, VFXItem, InputEventKey, getPixelRatio } from '@galacean/effects';
+import type { InputEvent } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { GUIServer, UICanvas, FocusMode, LineEdit, TextEdit } from '@galacean/effects-plugin-gui';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { createEditorTheme, EDITOR_FONT, refreshEditorFonts } from '../ui/theme/control-theme';
 import { TexturePresentation } from '../features/assets/preview/texture-preview';
 import { clearControlIcons, prepareControlIcons } from '../ui/icons/control-icons';
+import { EditorTextInput } from './editor-text-input';
 
 export class EditorSurface {
   engine: Engine;
   canvas: HTMLCanvasElement;
   root: Control;
   private observer?: ResizeObserver;
+  private textInput?: EditorTextInput;
 
   async initialize (canvas: HTMLCanvasElement): Promise<void> {
     this.canvas = canvas;
@@ -21,7 +24,6 @@ export class EditorSurface {
     document.fonts.add(await font.load());
     canvas.addEventListener('contextmenu', this.preventContextMenu);
     canvas.addEventListener('wheel', this.preventWheelDefault, { passive: false });
-    canvas.addEventListener('pointerdown', this.pointerDown, true);
     this.engine = Engine.create(canvas, { name: 'EditorUI', env: 'editor', interactive: true, manualRender: true, ownsCanvas: false, doNotHandleContextLost: false });
     this.engine.renderingServer.graphics.textCache.defaultOptions.padding = 16;
     const item = new VFXItem(this.engine);
@@ -38,7 +40,12 @@ export class EditorSurface {
     this.observer = new ResizeObserver(this.resize);
     this.observer.observe(canvas.parentElement ?? canvas);
     window.addEventListener('resize', this.resize);
-    window.addEventListener('keydown', this.keyDown, true);
+    this.textInput = new EditorTextInput(() => {
+      const focused = windowRoot.guiGetFocusOwner();
+
+      return focused instanceof LineEdit || focused instanceof TextEdit;
+    }, event => { this.engine.inputServer.pushInput(event); });
+    this.engine.inputServer.on('input', this.onInput);
     this.resize();
   }
 
@@ -46,20 +53,6 @@ export class EditorSurface {
 
   private readonly preventContextMenu = (event: Event): void => { event.preventDefault(); };
   private readonly preventWheelDefault = (event: WheelEvent): void => { event.preventDefault(); };
-
-  private readonly pointerDown = (event: PointerEvent): void => {
-    if (event.button !== 0) { return; }
-    const focused = this.engine.getServer(GUIServer).windowRoot.guiGetFocusOwner();
-
-    if (!(focused instanceof LineEdit || focused instanceof TextEdit)) { return; }
-    const bounds = this.canvas.getBoundingClientRect(), point = new math.Vector2(event.clientX - bounds.left, event.clientY - bounds.top);
-    let inside = focused.hasPoint(focused.makePositionLocal(point));
-
-    for (let parent = focused.parent; inside && parent; parent = parent.parent) {
-      if (parent.clipContents && !parent.hasPoint(parent.makePositionLocal(point))) { inside = false; }
-    }
-    if (!inside) { focused.releaseFocus(); }
-  };
 
   private readonly resize = (): void => {
     this.engine.displayServer.pixelRatio = getPixelRatio();
@@ -70,42 +63,30 @@ export class EditorSurface {
     this.engine.getServer(GUIServer).windowRoot.resize(bounds.width, bounds.height);
   };
 
-  private readonly keyDown = (event: KeyboardEvent): void => {
-    if (event.isComposing || event.key !== 'Tab' && event.key !== 'Escape') { return; }
+  private readonly onInput = (event: InputEvent): void => {
+    if (!(event instanceof InputEventKey) || !event.isPressed()) { return; }
     const root = this.engine.getServer(GUIServer).windowRoot;
-    const focused = root.guiGetFocusOwner();
 
-    if (event.target !== this.canvas && !(event.target instanceof HTMLTextAreaElement && (focused instanceof LineEdit || focused instanceof TextEdit))) { return; }
-    if (event.key === 'Escape') {
-      if (root.guiIsDragging()) {
-        root.guiCancelDrag(); root.updateMouseCursorState(); event.preventDefault(); event.stopImmediatePropagation();
+    if (event.keycode === 'Escape' && root.guiIsDragging()) {
+      root.guiCancelDrag(); root.updateMouseCursorState(); event.accept();
+    } else if (!event.isAccepted() && event.keycode === 'Tab' &&
+      !event.altPressed && !event.ctrlPressed && !event.metaPressed) {
+      const focused = root.guiGetFocusOwner(), candidates: Control[] = [];
+      const visit = (control: Control): void => {
+        if (!control.visibleInHierarchy || !control.enabledInHierarchy) { return; }
+        if (control.getFocusModeWithOverride() === FocusMode.All) { candidates.push(control); }
+        control.children.forEach(visit);
+      };
+      let scope = focused ?? this.root;
 
-        return;
-      }
-      const key = new InputEventKey();
+      while (scope.parent && scope.parent !== root && scope.parent !== this.root) { scope = scope.parent; }
+      visit(scope.parent === root ? scope : this.root);
+      const index = candidates.indexOf(focused!);
+      const next = index < 0 ? event.shiftPressed ? candidates.length - 1 : 0 :
+        (index + (event.shiftPressed ? -1 : 1) + candidates.length) % candidates.length;
 
-      key.keycode = event.key; key.physicalKeycode = event.code; key.pressed = true;
-      for (let control = focused; control && !key.isAccepted(); control = control.parent) { control.onKeyDown(key); }
-      event.preventDefault(); event.stopImmediatePropagation();
-
-      return;
+      candidates[next]?.grabFocus(); event.accept();
     }
-    const candidates: Control[] = [];
-    const visit = (control: Control): void => {
-      if (!control.visibleInHierarchy || !control.enabledInHierarchy) { return; }
-      if (control.getFocusModeWithOverride() === FocusMode.All) { candidates.push(control); }
-      control.children.forEach(visit);
-    };
-    // Root layers enforce modal focus and pointer ownership. Traverse the focused popup when one is open.
-    let scope = focused ?? this.root;
-
-    while (scope.parent && scope.parent !== root && scope.parent !== this.root) { scope = scope.parent; }
-    visit(scope.parent === root ? scope : this.root);
-    const index = candidates.indexOf(focused!);
-    const direction = event.shiftKey ? -1 : 1;
-
-    candidates[(index + direction + candidates.length) % candidates.length]?.grabFocus();
-    event.preventDefault(); event.stopImmediatePropagation();
   };
 
   update (delta: number): void {
@@ -135,8 +116,8 @@ export class EditorSurface {
     clearControlIcons(this.engine);
     this.observer?.disconnect(); this.canvas.removeEventListener('contextmenu', this.preventContextMenu);
     this.canvas.removeEventListener('wheel', this.preventWheelDefault);
-    this.canvas.removeEventListener('pointerdown', this.pointerDown, true);
-    window.removeEventListener('resize', this.resize); window.removeEventListener('keydown', this.keyDown, true); this.engine.dispose();
+    window.removeEventListener('resize', this.resize); this.textInput?.dispose();
+    this.engine.inputServer.off('input', this.onInput); this.engine.dispose();
   }
 }
 

@@ -25,3 +25,10 @@ export enum KeyLocation {
   Left,
   Right,
 }
+
+export enum FocusEventType {
+  FocusGained,
+  FocusLost,
+  WindowFocusGained,
+  WindowFocusLost,
+}
