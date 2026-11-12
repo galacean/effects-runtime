@@ -140,7 +140,7 @@ export class Texture extends Asset {
 
   /**
    * Refreshes the current video frame through the texture backend.
-   * @param force - Bypass frame throttling for seeks and other immediate refreshes.
+   * @param force - Bypass new-frame detection for seeks and other immediate refreshes.
    * @returns Whether a ready frame was submitted to the backend.
    */
   uploadCurrentVideoFrame (force = false): boolean {

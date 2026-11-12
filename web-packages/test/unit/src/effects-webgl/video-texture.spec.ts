@@ -5,8 +5,6 @@ const { expect } = chai;
 
 describe('webgl/video-texture', () => {
   let engine: Engine;
-  let time: number;
-  let originalNow: typeof performance.now;
   let textures: Texture[];
 
   before(() => {
@@ -16,15 +14,11 @@ describe('webgl/video-texture', () => {
   after(() => engine.dispose());
 
   beforeEach(() => {
-    time = 0;
     textures = [];
-    originalNow = performance.now;
-    performance.now = () => time;
   });
 
   afterEach(() => {
     textures.forEach(texture => texture.dispose());
-    performance.now = originalNow;
   });
 
   function createVideo (callbacks = true, cancel = true) {
@@ -64,7 +58,7 @@ describe('webgl/video-texture', () => {
         const callbacks = Array.from(pending.values());
 
         pending.clear();
-        callbacks.forEach(callback => callback(time, {} as VideoFrameCallbackMetadata));
+        callbacks.forEach(callback => callback(0, {} as VideoFrameCallbackMetadata));
       },
     };
   }
@@ -138,27 +132,26 @@ describe('webgl/video-texture', () => {
     expect(texture.width).to.equal(8);
   });
 
-  it('throttles fallback uploads when frame callbacks are missing or throw', () => {
-    for (const callbacks of [false, true]) {
-      time = 0;
-      const { video } = createVideo(callbacks);
+  it('uploads on every update when frame callbacks are missing or fail', () => {
+    for (const failure of ['missing', 'initial', 'later']) {
+      const media = createVideo(failure !== 'missing');
+      const { video } = media;
+      const fail = () => { throw new Error('rVFC unavailable'); };
 
-      if (callbacks) {
-        video.requestVideoFrameCallback = () => { throw new Error('rVFC unavailable'); };
+      if (failure === 'initial') {
+        video.requestVideoFrameCallback = fail;
       }
       const entry = createTexture(video);
 
-      for (let tick = 1; tick < 60; tick++) {
-        time = tick * 1000 / 60;
-        video.currentTime = time / 1000;
-        entry.texture.uploadCurrentVideoFrame();
+      if (failure === 'later') {
+        video.requestVideoFrameCallback = fail;
+        media.frame();
       }
-      expect(entry.uploads).to.be.within(29, 31);
-      time = 2000;
-      expect(entry.texture.uploadCurrentVideoFrame()).to.equal(false);
-      video.currentTime = 5;
-      video.dispatchEvent(new Event('seeked'));
-      expect(entry.texture.uploadCurrentVideoFrame()).to.equal(true);
+      for (const time of [0, 0, 1 / 120, 2 / 120]) {
+        video.currentTime = time;
+        expect(entry.texture.uploadCurrentVideoFrame()).to.equal(true);
+      }
+      expect(entry.uploads).to.equal(5);
     }
   });
 
@@ -171,7 +164,7 @@ describe('webgl/video-texture', () => {
     texture.updateSource({ sourceType: TextureSourceType.video, video: newMedia.video });
     expect(oldMedia.cancelled).to.have.length(1);
     expect(oldMedia.pending.size).to.equal(0);
-    oldCallback(time, {} as VideoFrameCallbackMetadata);
+    oldCallback(0, {} as VideoFrameCallbackMetadata);
     expect(oldMedia.pending.size).to.equal(0);
     expect(texture.uploadCurrentVideoFrame()).to.equal(false);
     newMedia.frame();

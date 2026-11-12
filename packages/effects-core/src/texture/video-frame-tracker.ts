@@ -1,5 +1,3 @@
-const FALLBACK_FRAME_INTERVAL = 1000 / 30;
-
 /**
  * Tracks pending frames per texture; the engine still controls frame submission.
  */
@@ -8,8 +6,6 @@ export class VideoFrameTracker {
   private disposed = false;
   private callbackId: number | null = null;
   private usesVideoFrameCallback = false;
-  private lastUploadedTime = -1;
-  private nextUploadTime = 0;
 
   constructor (readonly video: HTMLVideoElement) {
     video.addEventListener('loadeddata', this.invalidate);
@@ -18,29 +14,11 @@ export class VideoFrameTracker {
   }
 
   shouldUpload (): boolean {
-    if (this.dirty) {
-      return true;
-    }
-    if (this.usesVideoFrameCallback) {
-      return false;
-    }
-
-    // currentTime is not a frame ID; only use it to skip stationary fallback frames.
-    return this.video.currentTime !== this.lastUploadedTime && performance.now() >= this.nextUploadTime;
+    return this.dirty || !this.usesVideoFrameCallback;
   }
 
   markUploaded (): void {
     this.dirty = false;
-    this.lastUploadedTime = this.video.currentTime;
-
-    const time = performance.now();
-
-    if (this.nextUploadTime <= 0) {
-      this.nextUploadTime = time + FALLBACK_FRAME_INTERVAL;
-    } else if (this.nextUploadTime <= time) {
-      // Preserve the remainder so render-loop sampling does not lower the fallback rate.
-      this.nextUploadTime += (Math.floor((time - this.nextUploadTime) / FALLBACK_FRAME_INTERVAL) + 1) * FALLBACK_FRAME_INTERVAL;
-    }
   }
 
   dispose (): void {
