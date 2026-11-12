@@ -1,0 +1,21 @@
+web-packages/test/unit/src/effects-webgl/geometry.spec.ts
+  s_e39a380508d42b::t_4acaeeca4829be 337,339-341,343-348,350,521,529-530
+packages/effects-core/src/render/geometry.ts
+  s_e39a380508d42b::t_4acaeeca4829be 208,223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "559986ad6f9dc08b65dfaa22fdbb1f9dafd8dda0",
+  "prompts": {},
+  "sessions": {
+    "s_e39a380508d42b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c9af-d64e-7481-a0c4-204df86fdb95",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "chenmo0204 <chenmo.czt@antgroup.com>"
+    }
+  }
+}
