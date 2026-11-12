@@ -9,7 +9,7 @@ interface VideoCompositionOptions {
   id: string,
   videos: spec.AssetBase[],
   start: number,
-  options: VideoItemProps['options'],
+  options: Omit<VideoItemProps['options'], 'video'> & { video?: spec.DataPath },
   compositionDuration?: number,
   compositionEndBehavior?: spec.EndBehavior,
 }
@@ -180,11 +180,16 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
-    videoComponent.setCurrentTime(3);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.video!;
 
-    expect(videoAsset.currentTime).to.equal(3);
+    videoComponent.setMuted(false);
+    await new Promise<void>(resolve => {
+      videoAsset.addEventListener('seeked', () => resolve(), { once: true });
+      videoComponent.setCurrentTime(3);
+      videoComponent.onUpdate(0);
+    });
+    expect(videoAsset.currentTime).to.be.closeTo(3, 0.1);
+    expect(videoAsset.muted).to.be.false;
     composition.dispose();
   });
 
@@ -674,6 +679,30 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
+  it('pauses a setVideo replacement already at zero when the composition is paused', async function () {
+    const fromVideo = Texture.fromVideo;
+    let paused = false;
+
+    Object.defineProperties(video, {
+      readyState: { get: () => 4 },
+      currentTime: { get: () => 0 },
+      paused: { get: () => paused },
+    });
+    video.play = async () => { paused = false; };
+    video.pause = () => { paused = true; };
+    component.isVideoActive = true;
+    Texture.fromVideo = async () => texture;
+    try {
+      expect(composition.getPaused()).to.be.true;
+      await component.setVideo('replacement.mp4');
+      expect(video.paused).to.be.true;
+      expect(video.currentTime).to.equal(0);
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+    } finally {
+      Texture.fromVideo = fromVideo;
+    }
+  });
+
   for (const method of ['setTexture', 'setVideo'] as const) {
     it(`keeps the newest ${method} URL when video loads finish out of order`, async function () {
       const fromVideo = Texture.fromVideo;
@@ -744,6 +773,118 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
+  it('releases each owned URL texture on replacement and composition disposal without an initial video', async function () {
+    const fromVideo = Texture.fromVideo;
+    const unloads = [0, 0, 0];
+    const videos = unloads.map((_, index) => {
+      const media = document.createElement('video');
+
+      media.preload = 'none';
+      media.src = `owned-${index}.mp4`;
+      media.load = () => { unloads[index]++; };
+
+      return media;
+    });
+    const textures = videos.map(video => Texture.create(player.engine, { sourceType: TextureSourceType.video, video }));
+    let index = 0;
+
+    Texture.fromVideo = async () => textures[index++];
+    try {
+      expect(composition.textures).to.have.length(0);
+      await component.setVideo('first.mp4');
+      component.setTexture(textures[0]);
+      expect(textures[0].isDestroyed).to.be.false;
+      await component.setTexture('second.mp4');
+      expect(textures[0].isDestroyed).to.be.true;
+      expect(textures[1].isDestroyed).to.be.false;
+      await component.setVideo('third.mp4');
+      expect(textures[1].isDestroyed).to.be.true;
+      expect(textures[2].isDestroyed).to.be.false;
+      composition.dispose();
+      expect(textures.map(texture => texture.isDestroyed)).to.deep.equal([true, true, true]);
+      expect(videos.map(video => video.getAttribute('src'))).to.deep.equal([null, null, null]);
+      expect(unloads).to.deep.equal([1, 1, 1]);
+    } finally {
+      Texture.fromVideo = fromVideo;
+      textures.forEach(texture => texture.dispose());
+    }
+  });
+
+  it('preserves scene ownership and a borrowed texture sharing the replaced video', async function () {
+    const fromVideo = Texture.fromVideo;
+    const sceneTexture = Texture.create(player.engine, {
+      sourceType: TextureSourceType.data,
+      data: { data: new Uint8Array([255, 255, 255, 255]), width: 1, height: 1 },
+    });
+    const sharedTexture = texture.clone();
+    const item = new VFXItem(player.engine);
+    const otherComponent = item.addComponent(VideoComponent);
+    let unloads = 0;
+
+    video.preload = 'none';
+    video.src = 'shared.mp4';
+    video.load = () => { unloads++; };
+    composition.addItem(item);
+    composition.textures.push(sceneTexture);
+    component.setTexture(sceneTexture);
+    Texture.fromVideo = async () => texture;
+    try {
+      await component.setVideo('owned.mp4');
+      otherComponent.setTexture(sharedTexture);
+      component.setTexture(sharedTexture);
+      expect(texture.isDestroyed).to.be.true;
+      expect(composition.textures).to.deep.equal([sceneTexture]);
+      component.dispose();
+      expect(sharedTexture.isDestroyed).to.be.false;
+      expect(otherComponent.material.getTexture('_MainTex')).to.equal(sharedTexture);
+      expect(sceneTexture.isDestroyed).to.be.false;
+      composition.dispose();
+      expect(sceneTexture.isDestroyed).to.be.true;
+      expect(sharedTexture.isDestroyed).to.be.false;
+      expect(video.getAttribute('src')).to.equal('shared.mp4');
+      expect(unloads).to.equal(0);
+    } finally {
+      Texture.fromVideo = fromVideo;
+      sharedTexture.dispose();
+    }
+  });
+
+  it('releases bound and pending URL textures when fromData binds an external video', async function () {
+    const fromVideo = Texture.fromVideo;
+    const owned = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: document.createElement('video') });
+    const obsolete = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: document.createElement('video') });
+    const asset = new DataAsset<HTMLVideoElement>(player.engine);
+    let finish!: (texture: Texture) => void;
+
+    asset.data = video;
+    Texture.fromVideo = async () => owned;
+    try {
+      await component.setVideo('owned.mp4');
+      Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
+      const pending = component.setVideo('pending.mp4');
+
+      component.fromData({
+        id: component.getInstanceId(),
+        dataType: spec.DataType.VideoComponent,
+        item: { id: component.item.getInstanceId() },
+        options: { video: { id: asset.getInstanceId() } },
+        renderer: { texture },
+      });
+      expect(owned.isDestroyed).to.be.true;
+      finish(obsolete);
+      await pending;
+      expect(obsolete.isDestroyed).to.be.true;
+      expect(component.video).to.equal(video);
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      component.dispose();
+      expect(texture.isDestroyed).to.be.false;
+    } finally {
+      Texture.fromVideo = fromVideo;
+      owned.dispose();
+      obsolete.dispose();
+    }
+  });
+
   it('keeps a replaced texture available for context restoration and engine cleanup', function () {
     const original = Texture.create(player.engine, {
       sourceType: TextureSourceType.data,
@@ -792,6 +933,51 @@ describe('videoComponent:texture binding', function () {
       expect(nextFrame.isDestroyed).to.be.true;
     } finally {
       source.dispose();
+    }
+  });
+
+  it('replaces the cached first frame when fromData binds a different video', function () {
+    composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
+    const sources = ['#ff0000', '#0000ff'].map(color => {
+      const image = document.createElement('canvas');
+
+      image.width = image.height = 2;
+      Object.assign(image, { videoWidth: 2, videoHeight: 2, readyState: 4, currentTime: 0, pause () {}, load () {} });
+      const context = image.getContext('2d')!;
+
+      context.fillStyle = color;
+      context.fillRect(0, 0, 2, 2);
+
+      return Texture.create(player.engine, { sourceType: TextureSourceType.video, video: image as unknown as HTMLVideoElement });
+    });
+    const asset = new DataAsset<HTMLVideoElement>(player.engine);
+
+    asset.data = (sources[1].source as { video: HTMLVideoElement }).video;
+    try {
+      component.setTexture(sources[0]);
+      const cache = component as unknown as { firstFrameTexture: Texture, showSeekFrame: (time: number) => void };
+      const firstFrame = cache.firstFrameTexture;
+      const data: VideoItemProps = {
+        id: component.getInstanceId(),
+        dataType: spec.DataType.VideoComponent,
+        item: { id: component.item.getInstanceId() },
+        options: { video: { id: asset.getInstanceId() } },
+        renderer: { texture: sources[1] },
+      };
+      const options: spec.VideoContentOptions = data.options;
+
+      expect(options.video.id).to.equal(asset.getInstanceId());
+      component.fromData(data);
+      component.isVideoActive = true;
+      cache.showSeekFrame(0);
+      const image = (cache.firstFrameTexture.source as { image: HTMLCanvasElement }).image;
+
+      expect(firstFrame.isDestroyed).to.be.true;
+      expect(component.video).to.equal(asset.data);
+      expect(component.material.getTexture('_MainTex')).to.equal(cache.firstFrameTexture);
+      expect(Array.from(image.getContext('2d')!.getImageData(0, 0, 1, 1).data)).to.deep.equal([0, 0, 255, 255]);
+    } finally {
+      sources.forEach(source => source.dispose());
     }
   });
 
@@ -964,8 +1150,8 @@ describe('videoComponent:setVideo', function () {
       expect(video.volume).to.equal(1);
       expect(video.muted).to.be.true;
       expect(component.material.getTexture('_MainTex')).to.equal(texture);
-      expect(composition.textures).to.include(texture);
-      expect(composition.textures).not.to.include(originalTexture);
+      expect(composition.textures).to.include(originalTexture);
+      expect(composition.textures).not.to.include(texture);
       composition.play();
       await new Promise(resolve => setTimeout(resolve, 300));
       expect(video.paused).to.be.false;
@@ -985,7 +1171,6 @@ describe('videoComponent:setVideo', function () {
   });
 
   it('preserves the existing texture position and manual playback mode', async function () {
-    const originalTexture = component.renderer.texture;
     const texture = await Texture.fromVideo(replacementUrl, player.renderer.engine);
     const video = (texture.source as { video: HTMLVideoElement }).video;
 
@@ -1016,7 +1201,11 @@ describe('videoComponent:setVideo', function () {
       expect(video.loop).to.be.false;
       expect(video.playbackRate).to.equal(1.5);
     } finally {
-      originalTexture.dispose();
+      composition.dispose();
+      texture.dispose();
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
     }
   });
 
@@ -1063,17 +1252,17 @@ describe('videoComponent:setVideo', function () {
 
     composition.sceneRoot.duration = 1;
     composition.sceneRoot.endBehavior = spec.EndBehavior.freeze;
-    composition.gotoAndStop(0.995);
-    await new Promise(resolve => setTimeout(resolve, 100));
-    await video.play();
-    component.onUpdate(0);
-    expect(video.paused).to.be.false;
 
-    composition.gotoAndStop(1);
-    await new Promise(resolve => setTimeout(resolve, 100));
-    await video.play();
-    component.onUpdate(0);
-    expect(video.paused).to.be.true;
+    for (const time of [0.995, 1]) {
+      composition.gotoAndStop(time);
+      if (video.seeking) {
+        await new Promise<void>(resolve => video.addEventListener('seeked', () => resolve(), { once: true }));
+      }
+      component.onUpdate(0);
+      await video.play();
+      component.onUpdate(0);
+      expect(video.paused).to.equal(time === 1);
+    }
   });
 
   it('keeps the current video when loading a replacement fails', async function () {

@@ -4,9 +4,8 @@ import { MaskableGraphic, Texture, TextureSourceType, effectsClass, math, spec }
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask' | 'options'> {
+export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask'> {
   listIndex?: number,
-  options: Omit<spec.VideoContentOptions, 'video'> & { video?: spec.DataPath },
   renderer: {
     shape?: GeometryFromShape,
     texture: Texture,
@@ -63,6 +62,10 @@ export class VideoComponent extends MaskableGraphic {
   private preparingReplayFrame = false;
   private replayMuted?: boolean;
   private firstFrameTexture?: Texture;
+  /**
+   * 仅管理通过 URL 创建的纹理，外部传入的纹理由调用方释放。
+   */
+  private ownedTexture?: Texture;
 
   /**
    * 是否由用户手动暂停视频
@@ -162,12 +165,7 @@ export class VideoComponent extends MaskableGraphic {
     if (typeof input === 'string') {
       texture = await Texture.fromVideo(input, this.engine);
       if (version !== this.textureVersion || this.item?.composition !== composition) {
-        const video = (texture.source as Texture2DSourceOptionsVideo).video;
-
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-        texture.dispose();
+        this.disposeVideoTexture(texture);
 
         return;
       }
@@ -175,38 +173,32 @@ export class VideoComponent extends MaskableGraphic {
       texture = input;
     }
 
-    const oldTexture = this.renderer.texture;
+    const oldOwnedTexture = this.ownedTexture;
     const video = (texture.source as Texture2DSourceOptionsVideo).video;
 
-    this.cancelVideoSeek();
-    this.firstFrameTexture?.dispose();
-    this.firstFrameTexture = undefined;
-    if (this.video !== video) {
-      this.video?.pause();
-    }
-    this.playPromise = null;
-    this.playTriggered = false;
-    this.videoDestroyed = false;
-    this.nativeCompositionLoop = false;
-    this.lastVideoTime = -1;
-    this.replayFramePrepared = false;
-    this.videoSeeking = false;
-    this.isGotoAndStopSeeking = false;
-    this.pendingSeekTime = null;
-
-    composition.textures.forEach((cachedTexture, index) => {
-      if (cachedTexture === oldTexture) {
-        composition.textures[index] = texture;
-      }
-    });
-
+    this.resetVideoState(video);
+    this.ownedTexture = typeof input === 'string' || texture === oldOwnedTexture ? texture : undefined;
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = video;
+    if (oldOwnedTexture && oldOwnedTexture !== texture) {
+      this.disposeVideoTexture(oldOwnedTexture, video);
+    }
     this.initializeVideo();
     if (rewind && video) {
       this.performSeek(0, video.currentTime !== 0);
     }
+  }
+
+  private disposeVideoTexture (texture: Texture, retainedVideo?: HTMLVideoElement): void {
+    const video = (texture.source as Texture2DSourceOptionsVideo).video;
+
+    if (video !== retainedVideo) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+    texture.dispose();
   }
 
   override onAwake (): void {
@@ -225,7 +217,15 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override fromData (data: VideoItemProps): void {
+    this.textureVersion++;
     super.fromData(data);
+
+    if (this.ownedTexture && this.ownedTexture !== this.renderer.texture) {
+      this.resetVideoState();
+      this.disposeVideoTexture(this.ownedTexture, (this.renderer.texture.source as Texture2DSourceOptionsVideo).video);
+      this.ownedTexture = undefined;
+      this.video = undefined;
+    }
 
     const { interaction, options } = data;
     const {
@@ -246,6 +246,9 @@ export class VideoComponent extends MaskableGraphic {
       const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
 
       if (videoAsset) {
+        if (this.video !== videoAsset.data) {
+          this.resetVideoState(videoAsset.data);
+        }
         this.video = videoAsset.data;
         this.initializeVideo();
       }
@@ -258,6 +261,24 @@ export class VideoComponent extends MaskableGraphic {
     }
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
+  }
+
+  private resetVideoState (video?: HTMLVideoElement): void {
+    this.cancelVideoSeek();
+    this.firstFrameTexture?.dispose();
+    this.firstFrameTexture = undefined;
+    if (this.video !== video) {
+      this.video?.pause();
+    }
+    this.playPromise = null;
+    this.playTriggered = false;
+    this.videoDestroyed = false;
+    this.nativeCompositionLoop = false;
+    this.lastVideoTime = -1;
+    this.replayFramePrepared = false;
+    this.videoSeeking = false;
+    this.isGotoAndStopSeeking = false;
+    this.pendingSeekTime = null;
   }
 
   private initializeVideo (): void {
@@ -388,11 +409,11 @@ export class VideoComponent extends MaskableGraphic {
     super.onDestroy();
     this.playTriggered = false;
     this.playPromise = null;
-    if (this.video) {
-      this.video.pause();
-      this.video.src = '';
-      this.video.load();
+    if (this.ownedTexture) {
+      this.disposeVideoTexture(this.ownedTexture);
+      this.ownedTexture = undefined;
     }
+    this.video = undefined;
   }
 
   override onDisable (): void {
@@ -455,6 +476,14 @@ export class VideoComponent extends MaskableGraphic {
     // 如果正在等待 goto 结果，说明是 gotoAndPlay 场景
     if (this.isWaitingForGotoResult) {
       this.isWaitingForGotoResult = false;
+    }
+    if (this.preparingReplayFrame && this.pendingSeekTime === null) {
+      if (!this.manualPause && !this.item.composition?.getPaused() && this.video?.paused &&
+        this.video.currentTime > VideoComponent.firstFrameWindow) {
+        this.safePlay();
+      }
+
+      return;
     }
     // 合成未结束时（暂停后恢复），恢复视频播放
     if (!this.checkCompositionEnded()) {
@@ -944,9 +973,9 @@ export class VideoComponent extends MaskableGraphic {
 
     if (isNoopSeek) {
       this.isGotoAndStopSeeking = false;
-      if (isGotoAndStop) {
-        video.pause();
-      } else if (wasPlaying && !this.manualPause) {
+      if (isGotoAndStop || !this.canPlayCurrentItem()) {
+        this.pauseVideoElement();
+      } else if (wasPlaying) {
         this.safePlay();
       }
 

@@ -37,6 +37,7 @@ interface SeekController {
   processPendingSeek: () => boolean,
   handleCompositionEnd: () => void,
   handleCompositionPlay: () => void,
+  handleCompositionPause: () => void,
   handleDestroyBehavior: () => void,
   detectCompositionRestart: () => void,
   shouldStartVideo: () => boolean,
@@ -573,6 +574,41 @@ describe('videoComponent:seek-frame', () => {
       await flushPromises();
       expect(fixture.video.muted).to.equal(false);
       expect(fixture.video.paused).to.equal(true);
+    });
+
+    it('resumes hidden frame preparation after a composition pause without seeking', async () => {
+      const fixture = createFixture(4.96, false);
+      const { component, video } = fixture;
+      let paused = false;
+
+      component.item.composition.sceneRoot.duration = 6.5;
+      component.item.composition.getPaused = () => paused;
+      component.isVideoActive = false;
+      component.videoDestroyed = true;
+      component.safePlay = () => { void video.play(); };
+      video.muted = false;
+      expect(component.prepareReplayFrame()).to.be.true;
+      paused = true;
+      component.handleCompositionPause();
+      expect(video.paused).to.be.true;
+      expect(video.muted).to.be.true;
+
+      paused = false;
+      component.manualPause = true;
+      component.handleCompositionPlay();
+      expect(video.paused).to.be.true;
+      component.manualPause = false;
+      component.handleCompositionPlay();
+      expect(video.paused).to.be.false;
+      expect(video.muted).to.be.true;
+      fixture.frame(0);
+      await flushPromises();
+      expect(component.preparingReplayFrame).to.be.false;
+      expect(component.videoSeeking).to.be.false;
+      expect(component.replayFramePrepared).to.be.true;
+      expect(video.paused).to.be.true;
+      expect(video.muted).to.be.false;
+      expect(fixture.seekBindings).to.have.length(0);
     });
 
     it('cancels native preparation when looping is explicitly disabled', async () => {
