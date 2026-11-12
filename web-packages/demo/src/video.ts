@@ -1,3 +1,4 @@
+import type { Texture } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
@@ -507,13 +508,12 @@ let disposeReplayCapture: (() => void) | undefined;
 const container = document.getElementById('J-container');
 const replayCapturePanel = document.getElementById('replay-capture-panel')!;
 const captureEnabled = new URLSearchParams(location.search).get('capture') === '1';
-const input = document.querySelector<HTMLInputElement>('#video-url')!;
 const status = document.querySelector<HTMLParagraphElement>('#status')!;
-const currentUrl = document.querySelector<HTMLSpanElement>('#current-url')!;
+const currentUrl = document.querySelector<HTMLDivElement>('#current-url')!;
 const playback = document.querySelector<HTMLDivElement>('#playback')!;
-let originalVideoUrl = '';
-
-input.value = stuckVideoJson.videos[0].url;
+const textureHistory = document.querySelector<HTMLTableSectionElement>('#texture-history')!;
+const textureSummary = document.querySelector<HTMLParagraphElement>('#texture-summary')!;
+const trackedTextures: { texture?: Texture, sceneOwned: boolean, status: HTMLTableCellElement }[] = [];
 
 function getVideoComponent () {
   return player?.getCompositions()[0]?.items
@@ -533,15 +533,61 @@ function syncVideoInfo () {
   currentUrl.textContent = video?.src || '—';
 }
 
+function trackTexture (texture: Texture, label: string, sceneOwned = false) {
+  const row = document.createElement('tr');
+
+  row.insertCell().textContent = texture.id;
+  row.insertCell().textContent = label;
+  trackedTextures.push({ texture, sceneOwned, status: row.insertCell() });
+  textureHistory.prepend(row);
+  updateTextureStatus();
+}
+
+function updateTextureStatus () {
+  const current = getVideoComponent()?.renderer.texture;
+  let destroyed = 0;
+
+  for (const record of trackedTextures) {
+    let state: string;
+    let text: string;
+
+    if (!record.texture || record.texture.isDestroyed) {
+      record.texture = undefined;
+      destroyed++;
+      state = 'destroyed';
+      text = '已销毁';
+    } else if (record.texture === current) {
+      state = 'current';
+      text = '当前使用';
+    } else {
+      state = record.sceneOwned ? 'retained' : 'pending';
+      text = record.sceneOwned ? '合成持有' : '未销毁';
+    }
+    if (record.status.dataset.state !== state) {
+      record.status.dataset.state = state;
+      record.status.textContent = text;
+    }
+  }
+  const summary = `已销毁 ${destroyed} / ${trackedTextures.length} 个纹理`;
+
+  if (textureSummary.textContent !== summary) {
+    textureSummary.textContent = summary;
+  }
+}
+
 async function runSceneAction (action: () => Promise<void>) {
   if (controlPanel.disabled) { return; }
   controlPanel.disabled = true;
   showStatus('正在加载场景…');
   try {
     await action();
-    originalVideoUrl = getVideoComponent()?.video?.src || '';
+    const component = getVideoComponent();
+
+    if (component?.video) {
+      trackTexture(component.renderer.texture, '初始视频（场景）', true);
+    }
     syncVideoInfo();
-    showStatus('先播放原视频，点击“更换视频”后替换。');
+    showStatus('点击“更换视频 A / B”，可在下方查看旧纹理是否已销毁。');
   } catch (error) {
     showStatus(`场景加载失败：${String(error)}`, true);
   } finally {
@@ -549,7 +595,7 @@ async function runSceneAction (action: () => Promise<void>) {
   }
 }
 
-async function replaceVideo (url: string) {
+async function replaceVideo (url: string, label: string) {
   if (controlPanel.disabled) { return; }
   const component = getVideoComponent();
 
@@ -559,28 +605,35 @@ async function replaceVideo (url: string) {
     return;
   }
   controlPanel.disabled = true;
-  showStatus('正在加载新视频…');
+  showStatus(`正在加载${label}…`);
   try {
     await component.setVideo(url);
+    if (component !== getVideoComponent() || !component.video) {
+      showStatus('合成已销毁，请先选择视频案例。', true);
+
+      return;
+    }
+    trackTexture(component.renderer.texture, `${label}（URL）`);
     if (disposeReplayCapture) {
       disposeReplayCapture();
       disposeReplayCapture = attachVideoReplayCapture(player, component.item.composition!, replayCapturePanel);
     }
     syncVideoInfo();
-    showStatus('视频已更换，播放位置已归零。');
+    showStatus(`已更换为${label}，播放位置已归零。`);
   } catch (error) {
     showStatus(`更换失败，已保留当前视频：${String(error)}`, true);
   } finally {
+    updateTextureStatus();
     controlPanel.disabled = false;
   }
 }
 
-document.querySelector('#video-form')!.addEventListener('submit', event => {
-  event.preventDefault();
-  void replaceVideo(input.value.trim());
+document.querySelector('#replace-video-a')!.addEventListener('click', () => {
+  void replaceVideo(stuckVideoJson.videos[0].url, '视频 A');
 });
-document.querySelector('#sample-a')!.addEventListener('click', () => { void replaceVideo(originalVideoUrl); });
-document.querySelector('#invalid-url')!.addEventListener('click', () => { void replaceVideo('data:video/mp4;base64,AAAA'); });
+document.querySelector('#replace-video-b')!.addEventListener('click', () => {
+  void replaceVideo(stuckVideoJson2.videos[0].url, '视频 B');
+});
 
 const timer = window.setInterval(() => {
   const video = getVideoComponent()?.video;
@@ -588,6 +641,7 @@ const timer = window.setInterval(() => {
   playback.textContent = video
     ? `${video.paused ? '已暂停' : '播放中'} · ${video.currentTime.toFixed(2)} / ${video.duration.toFixed(2)} 秒`
     : '当前场景没有可播放的视频';
+  updateTextureStatus();
 }, 100);
 
 const resizeObserver = new ResizeObserver(() => player?.resize());
@@ -604,6 +658,7 @@ function disposePlayer () {
   disposeReplayCapture = undefined;
   replayCapturePanel.hidden = true;
   player?.dispose();
+  updateTextureStatus();
 }
 
 // 显示当前视频信息

@@ -15,9 +15,21 @@
     .control-panel > div { flex-wrap: wrap; }
     .control-panel button { min-height: 44px; touch-action: manipulation; }
     #replacement-panel { border-top: 1px solid #666; margin-top: 12px; padding-top: 12px; }
-    #video-url { width: 100%; padding: 8px; font-size: 16px; }
     .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
-    #replacement-panel button { padding: 6px 10px; cursor: pointer; }
+    #replacement-panel button { padding: 6px 12px; border: 0; border-radius: 4px; background: #4a90d9; color: #fff; cursor: pointer; font-size: 14px; }
+    #replacement-panel button:disabled { opacity: 0.5; cursor: wait; }
+    #replacement-panel h2 { margin: 16px 0 6px; font-size: 16px; }
+    .texture-history { max-height: 260px; overflow-y: auto; margin-top: 8px; }
+    .texture-history table { width: 100%; border-collapse: collapse; text-align: left; }
+    .texture-history th, .texture-history td { padding: 8px; border-bottom: 1px solid #667085; }
+    .texture-history th { position: sticky; top: 0; background: #48494a; }
+    .texture-history td:first-child { font-family: monospace; }
+    .texture-history [data-state="destroyed"] { color: #86efac; }
+    .texture-history [data-state="current"] { color: #93c5fd; }
+    .texture-history [data-state="retained"] { color: #d0d5dd; }
+    .texture-history [data-state="pending"] { color: #fdba74; }
+    #replacement-panel details { margin-top: 12px; }
+    #replacement-panel summary { cursor: pointer; }
     #current-url { overflow-wrap: anywhere; }
     #status[data-error="true"] { color: #ffb4ab; }
     #playback { font-variant-numeric: tabular-nums; }
@@ -72,18 +84,25 @@
 </main>
 
 <section id="replacement-panel">
-  <form id="video-form">
-    <label for="video-url">替换视频 URL</label>
-    <input id="video-url" type="url" required>
-    <div class="row">
-      <button type="submit">更换视频</button>
-      <button type="button" id="sample-a">复原</button>
-      <button type="button" id="invalid-url">测试加载失败</button>
-    </div>
-  </form>
+  <div class="row">
+    <button type="button" id="replace-video-a">更换视频 A</button>
+    <button type="button" id="replace-video-b">更换视频 B</button>
+  </div>
   <p id="status" role="status" aria-live="polite">正在加载初始视频…</p>
   <div id="playback">等待视频初始化…</div>
-  <div>当前视频：<span id="current-url">—</span></div>
+  <h2>视频纹理状态</h2>
+  <div>初始纹理随合成销毁；A / B 纹理在再次替换或组件销毁时释放。</div>
+  <p id="texture-summary" role="status" aria-live="polite">尚未记录视频纹理</p>
+  <div class="texture-history">
+    <table>
+      <thead><tr><th scope="col">纹理 ID</th><th scope="col">来源</th><th scope="col">状态</th></tr></thead>
+      <tbody id="texture-history"></tbody>
+    </table>
+  </div>
+  <details>
+    <summary>当前视频链接</summary>
+    <div id="current-url">—</div>
+  </details>
 </section>
 
 <script type="module" src="../src/video.ts"></script>
