@@ -237,8 +237,7 @@ export class VideoComponent extends MaskableGraphic {
       transparent = false,
     } = options;
 
-    this.setVolume(volume);
-    this.setMuted(muted);
+    this.initialVideoSettings = { ...this.initialVideoSettings, volume, muted };
     this.transparent = transparent;
 
     this.videoPlaybackRate = playbackRate;
@@ -278,7 +277,12 @@ export class VideoComponent extends MaskableGraphic {
 
     this.video.volume = settings.volume;
     this.video.muted = settings.muted;
-    this.video.playbackRate = settings.playbackRate ?? this.videoPlaybackRate;
+    const composition = this.item.composition;
+    const playbackRate = settings.playbackRate ?? this.videoPlaybackRate;
+
+    this.video.playbackRate = !this.manualPlaybackRate && composition
+      ? playbackRate * this.engine.speed * composition.speed
+      : playbackRate;
     const endBehavior = this.item.endBehavior;
 
     if (settings.loop !== undefined) {

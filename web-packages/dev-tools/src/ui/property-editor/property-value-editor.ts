@@ -1,11 +1,10 @@
 import { math } from '@galacean/effects';
-import type { Control } from '@galacean/effects-plugin-gui';
 import type { PropertyHandle } from './property-handle';
-import type { PropertyGroup, ValueBinding } from './property-sheet';
+import type { PropertyField, PropertyGroup, ValueBinding } from './property-sheet';
 
 export interface PropertyValueEditor {
   accepts(value: unknown): boolean,
-  create(handle: PropertyHandle<any>, group: PropertyGroup): Control,
+  create(handle: PropertyHandle<any>, group: PropertyGroup): PropertyField,
 }
 const editors: PropertyValueEditor[] = [
   { accepts: value => typeof value === 'number' && Number.isFinite(value), create: (handle, group) => group.number(handle.label, binding(handle)) },
@@ -25,13 +24,13 @@ const editors: PropertyValueEditor[] = [
 
 function binding<T> (handle: PropertyHandle<T>): ValueBinding<T> { return { read: () => handle.value, write: value => handle.set(value) }; }
 export function registerPropertyValueEditor (editor: PropertyValueEditor): void { editors.unshift(editor); }
-export function createPropertyValue (handle: PropertyHandle, group: PropertyGroup): Control | undefined {
+export function createPropertyValue (handle: PropertyHandle, group: PropertyGroup): PropertyField | undefined {
   const editor = editors.find(candidate => candidate.accepts(handle.value));
 
   if (!editor) { return; }
-  const control = editor.create(handle, group);
+  const field = editor.create(handle, group);
 
-  control.enabled = handle.writable;
+  field.options.enabled = () => handle.writable;
 
-  return control;
+  return field;
 }

@@ -115,7 +115,7 @@ export class InspectorPanel {
           const frame = item.getComponent(FrameComponent);
 
           if (frame) {
-            frame.strokeAttributes.width = width;
+            frame.strokeWidth = width;
           }
         });
       }
@@ -139,7 +139,7 @@ export class InspectorPanel {
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
       item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
-      item?.name, frame?.strokeAttributes, fill?.color.toArray(), stroke?.color.toArray(),
+      item?.name, frame?.strokeWidth, fill?.color.toArray(), stroke?.color.toArray(),
       frame?.fills[0]?.type, frame?.strokes[0]?.type,
       data?.status, media,
     ]);
@@ -170,7 +170,7 @@ export class InspectorPanel {
       this.frameTitle.value = item?.name ?? '';
     }
     this.setInput(this.fillOpacity, fill ? fill.color.a * 100 : undefined);
-    this.setInput(this.frameStrokeWidth, frame?.strokeAttributes.width);
+    this.setInput(this.frameStrokeWidth, frame?.strokeWidth);
     if (stroke) {
       this.frameStroke.value = this.toHexColor(stroke.color);
     }

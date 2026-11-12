@@ -366,10 +366,10 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
-    const buffer = this.geometry.getAttributeBuffer(name);
+    const buffer = this.geometry.getVertexBuffer(name)?.buffer;
 
     if (!buffer || data.byteLength > buffer.capacity) {
-      this.geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
+      this.geometry.setVerticesData(name, data, { size }, BufferUsage.Dynamic);
 
       return;
     }

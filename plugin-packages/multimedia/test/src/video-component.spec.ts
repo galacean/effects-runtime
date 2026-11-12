@@ -1,5 +1,5 @@
 import type { Composition } from '@galacean/effects';
-import { generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
+import { DataAsset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
 import type { VideoItemProps } from '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
@@ -654,6 +654,8 @@ describe('videoComponent:texture binding', function () {
     video.currentTime = 0.005;
     Texture.fromVideo = async () => texture;
     try {
+      composition.speed = 1.5;
+      player.renderer.engine.speed = 0.5;
       const pending = component.setVideo('delayed-video.mp4');
 
       component.setVolume(0);
@@ -839,6 +841,42 @@ describe('videoComponent:texture binding', function () {
     await Promise.resolve();
     expect(plays).to.have.length(2);
     expect(paused).to.be.false;
+  });
+
+  for (const usePlaceholder of [false, true]) {
+    it(`applies serialized settings to a new video after binding (placeholder: ${usePlaceholder})`, function () {
+      component.setTexture(texture);
+      if (usePlaceholder) {
+        component.setTexture(player.renderer.engine.assetServer.whiteTexture);
+      }
+      const replacementVideo = document.createElement('video');
+      const asset = new DataAsset<HTMLVideoElement>(player.renderer.engine);
+
+      replacementVideo.muted = true;
+      asset.data = replacementVideo;
+      component.fromData({
+        id: component.getInstanceId(),
+        dataType: spec.DataType.VideoComponent,
+        item: { id: component.item.getInstanceId() },
+        options: { video: { id: asset.getInstanceId() }, volume: 0.2, muted: false, playbackRate: 0.75 },
+        renderer: { texture: component.renderer.texture },
+      });
+
+      expect(component.video).to.equal(replacementVideo);
+      expect(replacementVideo.volume).to.equal(0.2);
+      expect(replacementVideo.muted).to.be.false;
+      expect(replacementVideo.playbackRate).to.equal(0.75);
+      expect(replacementVideo.loop).to.be.true;
+      expect(video.volume).to.equal(0.4);
+      expect(video.muted).to.be.true;
+    });
+  }
+
+  it('applies the scaled playback rate on first binding', function () {
+    composition.speed = 1.5;
+    player.renderer.engine.speed = 0.5;
+    component.setTexture(texture);
+    expect(video.playbackRate).to.equal(1.5);
   });
 
   it('preserves replacement volume, mute, loop, and rate after switching back to an image', function () {

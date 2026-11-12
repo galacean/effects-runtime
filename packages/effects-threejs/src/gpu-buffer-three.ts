@@ -1,21 +1,90 @@
-import type { GPUBufferDescription, IndicesArray, spec } from '@galacean/effects-core';
-import { GPUBuffer, createTypedArray, getBytesPerElement } from '@galacean/effects-core';
+import type { GPUBufferDescription, IndicesArray, VertexBuffer, spec } from '@galacean/effects-core';
+import { GPUBuffer, BufferDataType, createTypedArray, getBytesPerElement } from '@galacean/effects-core';
 import * as THREE from 'three';
 
 export type ThreeBufferResource = THREE.InterleavedBuffer | THREE.BufferAttribute;
 
+const arrayTypes: Record<number, new (buffer: ArrayBufferLike, byteOffset: number, length: number) => spec.TypedArray> = {
+  [BufferDataType.Byte]: Int8Array,
+  [BufferDataType.UnsignedByte]: Uint8Array,
+  [BufferDataType.Short]: Int16Array,
+  [BufferDataType.UnsignedShort]: Uint16Array,
+  [BufferDataType.Int]: Int32Array,
+  [BufferDataType.UnsignedInt]: Uint32Array,
+  [BufferDataType.Float]: Float32Array,
+};
+
 export class GPUBufferThree extends GPUBuffer {
   resource?: ThreeBufferResource;
+  private readonly vertexResources = new Map<string, THREE.InterleavedBuffer>();
 
   override get underlyingResource (): ThreeBufferResource | undefined {
     return this.resource;
   }
 
+  /** Reuses native streams with compatible formats without mutating shared strides. */
+  getVertexResource (view: VertexBuffer): THREE.InterleavedBuffer | undefined {
+    const resource = this.resource;
+
+    if (!(resource instanceof THREE.InterleavedBuffer)) {
+      return;
+    }
+    const { type, divisor } = view;
+    const bytesPerElement = getBytesPerElement(type);
+    const stride = view.byteStride ? view.byteStride / bytesPerElement : view.size;
+    const array = resource.array as spec.TypedArray;
+    const ArrayType = arrayTypes[type];
+    const resourceDivisor = resource instanceof THREE.InstancedInterleavedBuffer ? resource.meshPerAttribute : 0;
+
+    if (array.constructor === ArrayType && resource.stride === stride && resourceDivisor === divisor) {
+      return resource;
+    }
+    const key = `${type}/${stride}/${divisor}`;
+    let native = this.vertexResources.get(key);
+
+    if (!native) {
+      const data = new ArrayType(array.buffer, array.byteOffset, array.byteLength / bytesPerElement);
+
+      native = divisor > 0
+        ? new THREE.InstancedInterleavedBuffer(data, stride, divisor)
+        : new THREE.InterleavedBuffer(data, stride);
+      native.setUsage(resource.usage);
+      this.vertexResources.set(key, native);
+    }
+
+    return native;
+  }
+
+  /** All native views share CPU bytes, but Three tracks their GPU uploads separately. */
+  markVertexBuffersUpdated (byteOffset: number, byteLength: number): void {
+    const resources: ThreeBufferResource[] = Array.from(this.vertexResources.values());
+
+    if (this.resource) {
+      resources.push(this.resource);
+    }
+    for (const resource of resources) {
+      const bytesPerElement = (resource.array as spec.TypedArray).BYTES_PER_ELEMENT;
+      const range = resource.updateRange;
+      let start = Math.floor(byteOffset / bytesPerElement);
+      let end = Math.ceil((byteOffset + byteLength) / bytesPerElement);
+
+      if (range.count > 0) {
+        start = Math.min(start, range.offset);
+        end = Math.max(end, range.offset + range.count);
+      }
+      range.offset = start;
+      range.count = end - start;
+      resource.needsUpdate = true;
+    }
+  }
+
   protected override onInitialize (description: GPUBufferDescription): void {
     if (description.index) {
       const data = normalizeIndexData(description.data);
+      const attribute = new THREE.BufferAttribute(data, 1);
 
-      this.resource = new THREE.BufferAttribute(data, 1);
+      attribute.onUpload(() => { attribute.updateRange.count = -1; });
+      this.resource = attribute;
       this.capacity = data.byteLength;
       this.is32Bits = data instanceof Uint32Array;
     } else {
@@ -31,6 +100,7 @@ export class GPUBufferThree extends GPUBuffer {
 
   protected override onReleaseGPU (): void {
     this.resource = undefined;
+    this.vertexResources.clear();
     super.onReleaseGPU();
   }
 }

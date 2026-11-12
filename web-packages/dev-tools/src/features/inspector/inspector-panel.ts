@@ -247,7 +247,7 @@ export class InspectorPanel extends EditorWindow {
     if (object instanceof Material) { buildMaterialProperties(this.sheet!.section('Material', 'Material', true, 'material'), object); } else if (object instanceof Texture || object instanceof Sprite) {
       const group = this.sheet!.section('Image', object instanceof Sprite ? 'Sprite' : 'Texture', true, inspectedObjectIcon(object));
 
-      group.add('Preview', new AssetPreviewControl(this.sheet!.engine, () => object, 144));
+      group.add('Preview', engine => new AssetPreviewControl(engine, () => object, 144), { height: 149 });
       group.readOnly(object instanceof Sprite ? 'Texture Width' : 'Width', () => (object instanceof Sprite ? object.texture : object).width + ' px');
       group.readOnly(object instanceof Sprite ? 'Texture Height' : 'Height', () => (object instanceof Sprite ? object.texture : object).height + ' px');
       if (object instanceof Sprite) {
