@@ -21,7 +21,7 @@ export async function processMultimedia<T> (
         const videoURL = getVideoUrl(medium, options);
         const url = new URL(videoURL, location.href).href;
 
-        return loadVideo(url);
+        return loadVideo(url, false);
       } else if (type === spec.MultimediaType.audio) {
         const url = new URL(medium.url, location.href).href;
 
