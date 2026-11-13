@@ -3,7 +3,7 @@ import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 const FRAMES_PER_ROUND = 5;
 const CAPTURE_DURATION = 0.8;
-const SAMPLE_INTERVAL = CAPTURE_DURATION / (FRAMES_PER_ROUND - 1);
+const SAMPLE_INTERVAL = CAPTURE_DURATION / FRAMES_PER_ROUND;
 const MAX_ROUNDS = 8;
 const THUMBNAIL_WIDTH = 180;
 
@@ -107,7 +107,7 @@ export function attachVideoReplayCapture (player: Player, composition: Compositi
 
   function captureRenderedFrame (): void {
     if (composition.isDestroyed || composition.getPaused() ||
-      (roundCount === MAX_ROUNDS && activeRound?.count === FRAMES_PER_ROUND)) {
+      (roundCount === MAX_ROUNDS && (!activeRound || activeRound.count === FRAMES_PER_ROUND))) {
       return;
     }
     const info = frameInfo();
@@ -133,9 +133,19 @@ export function attachVideoReplayCapture (player: Player, composition: Compositi
 
       const video = videoComponent?.video;
 
-      if (activeRound && activeRound.count < FRAMES_PER_ROUND && videoComponent?.isVideoActive &&
-        video && !video.paused && !video.seeking && video.readyState >= 2 &&
-        video.currentTime >= activeRound.count * SAMPLE_INTERVAL) {
+      if (!activeRound || activeRound.count === FRAMES_PER_ROUND || !videoComponent?.isVideoActive ||
+        !video || video.paused || video.seeking || video.readyState < 2) {
+        return;
+      }
+      if (video.currentTime > CAPTURE_DURATION) {
+        activeRound.heading.textContent = `第 ${roundCount} 轮播放 · ${activeRound.count} / ${FRAMES_PER_ROUND} 张（未采满）`;
+        status.textContent = `第 ${roundCount} 轮采样时间已结束，仅采集 ${activeRound.count} 张。` +
+          (roundCount === MAX_ROUNDS ? '已停止采集；视频和合成继续播放。' : '合成重播时将继续采集。');
+        activeRound = undefined;
+
+        return;
+      }
+      if (video.currentTime >= activeRound.count * SAMPLE_INTERVAL) {
         const index = activeRound.count + 1;
 
         activeRound.frames.appendChild(captureFrame(`采样第 ${index} 张`, info));

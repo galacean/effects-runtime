@@ -652,6 +652,11 @@ window.addEventListener('pagehide', () => {
   resizeObserver.disconnect();
   disposePlayer();
 });
+window.addEventListener('pageshow', event => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
 
 function disposePlayer () {
   disposeReplayCapture?.();

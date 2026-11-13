@@ -126,5 +126,10 @@ window.addEventListener('pagehide', () => {
   resizeObserver.disconnect();
   player?.dispose();
 });
+window.addEventListener('pageshow', event => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
 updateSourceMode();
 if (urlInput) { void loadScene(); }
