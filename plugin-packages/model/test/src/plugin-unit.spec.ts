@@ -1,5 +1,5 @@
 /* eslint-disable padding-line-between-statements */
-import type { Geometry, Scene, VertexElement } from '@galacean/effects';
+import type { Geometry, Scene, VertexBuffer } from '@galacean/effects';
 import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
@@ -13,7 +13,7 @@ import { generateComposition } from './utilities';
 const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 const { expect } = chai;
 
-function getVertexBufferLayout (kind: string, buffer: VertexElement) {
+function getVertexBufferLayout (kind: string, buffer: VertexBuffer) {
   return {
     kind,
     normalized: buffer.normalized,
@@ -1051,7 +1051,7 @@ describe('渲染插件单测', function () {
     expect(geometry.getAttributeData('aUV')?.length).to.eql(6546);
     expect(geometry.getAttributeData('aJoints')?.length).to.eql(13092);
     expect(geometry.getAttributeData('aWeights')?.length).to.eql(13092);
-    const vertexBuffers = Object.fromEntries(geometry.getVertexLayout()!.elements.map(element => [element.name, element]));
+    const vertexBuffers = geometry.getVertexBuffers();
 
     expect(vertexBuffers).not.to.eql(undefined);
     if (vertexBuffers !== undefined) {
@@ -1143,7 +1143,7 @@ describe('渲染插件单测', function () {
       expect(geometry2.getAttributeData('aNormal')?.length).to.eql(7647);
       expect(geometry2.getAttributeData('aUV')?.length).to.eql(5098);
       expect(geometry2.getAttributeData('aTangent')?.length).to.eql(10196);
-      const vertexBuffers = Object.fromEntries(geometry2.getVertexLayout()!.elements.map(element => [element.name, element]));
+      const vertexBuffers = geometry2.getVertexBuffers();
 
       expect(vertexBuffers).not.to.eql(undefined);
       if (vertexBuffers !== undefined) {
@@ -1507,7 +1507,7 @@ describe('渲染插件单测', function () {
     geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
     });
-    const vertexBuffers = Object.fromEntries(geometry.getVertexLayout()!.elements.map(element => [element.name, element]));
+    const vertexBuffers = geometry.getVertexBuffers();
     const position = vertexBuffers.aPos;
     const normal = vertexBuffers.aNormal;
     const uv1 = vertexBuffers.aUV;

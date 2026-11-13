@@ -9,6 +9,7 @@ import type { SceneEditorData } from '../document/scene-types';
 import { getEditorRotation } from '../operations/editor-transform';
 import type { Data } from './scene-values';
 import { jsonData, patchData, sameData } from './scene-values';
+import { readShapeComponentData } from './shape-component-data';
 
 export interface ObjectState {
   object: EffectsObject,
@@ -313,10 +314,12 @@ export class SceneSerializer {
           shadowOffsetX: style.shadowOffsetX, shadowOffsetY: style.shadowOffsetY } : undefined };
     }
     if (object instanceof ShapeComponent) {
-      for (const key of ['fillTrimPath', 'strokeTrimPath'] as const) {
-        const trim = object[key];
+      const shape = this.normalize(readShapeComponentData(object));
 
-        if (trim) { data[key] = { ...data[key], mode: trim.mode, start: trim.start, end: trim.end, offset: trim.offset }; }
+      shape.id = data.id; shape.item = data.item;
+      Object.assign(data, shape);
+      for (const key of ['fillTrimPath', 'strokeTrimPath'] as const) {
+        if (!object[key]) { delete data[key]; }
       }
     }
     if (object instanceof UIControl && object.control) {

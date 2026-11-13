@@ -186,7 +186,7 @@ export class MaskComponent extends Component {
       if (previousVertices && previousVertices.length >= vertices.length) {
         geometry.setAttributeData('aPos', vertices);
       } else {
-        geometry.setAttribute('aPos', { data: vertices, size: 2 }, BufferUsage.Dynamic);
+        geometry.setVerticesData('aPos', vertices, { size: 2 }, BufferUsage.Dynamic);
       }
       geometry.setDrawCount(vertices.length / 2);
       cached = { geometry, revision: this.revision, scale };

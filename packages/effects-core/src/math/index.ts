@@ -2,7 +2,7 @@ export * from './float16array-wrapper';
 export * from './translate';
 export * from './utils';
 export * from './value-getters';
-export * from './shape/build-line';
+export * from './shape/stroke-attributes';
 export * from './shape/ellipse';
 export * from './shape/rectangle';
 export * from './shape/triangle';

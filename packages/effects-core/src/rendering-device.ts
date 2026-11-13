@@ -3,10 +3,9 @@ import type { GPUResource } from './gpu-resource';
 import type { Engine } from './engine';
 import type {
   DataArray, GPUBuffer, GPUProgram, FramebufferProps, GPUCapability, IndicesArray,
-  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexElement,
+  RenderPassClearAction, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import { GPUFramebuffer } from './render/gpu-framebuffer';
-import { GPUVertexLayout } from './render/gpu-vertex-layout';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 
@@ -19,7 +18,6 @@ export class RenderingDevice implements Disposable {
   gpuCapability: GPUCapability;
   protected _disposed = false;
   private resources: GPUResource[] = [];
-  private readonly vertexLayouts = new Map<string, GPUVertexLayout>();
   private framebuffers: GPUFramebuffer[] = [];
   private _contextWasLost = false;
   private viewport?: [x: number, y: number, width: number, height: number];
@@ -76,48 +74,6 @@ export class RenderingDevice implements Disposable {
 
   createProgram (key: string): GPUProgram { throw new Error('The active backend does not provide programs.'); }
 
-  /** @hide Creates a layout; shared lookup is handled by getVertexLayout. */
-  createVertexLayout (elements: readonly VertexElement[], strides: readonly number[]): GPUVertexLayout {
-    return new GPUVertexLayout(this, elements, strides);
-  }
-
-  /** @hide Gets a shared layout for this device. */
-  getVertexLayout (elements: readonly VertexElement[], strides: readonly number[]): GPUVertexLayout;
-  /** @hide Combines the layouts described by the supplied vertex buffers. */
-  getVertexLayout (buffers: readonly (GPUBuffer | null)[]): GPUVertexLayout | undefined;
-  getVertexLayout (
-    source: readonly VertexElement[] | readonly (GPUBuffer | null)[],
-    strides?: readonly number[],
-  ): GPUVertexLayout | undefined {
-    if (!strides) {
-      const buffers = source as readonly (GPUBuffer | null)[];
-      const elements: VertexElement[] = [];
-
-      for (let slot = 0; slot < buffers.length; slot++) {
-        for (const element of buffers[slot]?.vertexLayout?.elements ?? []) {
-          elements.push({ ...element, slot });
-        }
-      }
-
-      return elements.length > 0
-        ? this.getVertexLayout(elements, buffers.map(buffer => buffer?.byteStride ?? 0))
-        : undefined;
-    }
-    const elements = source as readonly VertexElement[];
-    const key = JSON.stringify([strides, elements.map(element => [
-      element.name, element.slot, element.type, element.size,
-      element.byteOffset, element.normalized, element.divisor,
-    ])]);
-    let layout = this.vertexLayouts.get(key);
-
-    if (!layout) {
-      layout = this.createVertexLayout(elements, strides);
-      this.vertexLayouts.set(key, layout);
-    }
-
-    return layout;
-  }
-
   getWidth (): number {
     return 0;
   }
@@ -143,10 +99,6 @@ export class RenderingDevice implements Disposable {
     // can also dispose and unregister its attachments.
     this.framebuffers.slice().forEach(framebuffer => framebuffer.dispose());
     this.framebuffers = [];
-    for (const layout of this.vertexLayouts.values()) {
-      layout.dispose();
-    }
-    this.vertexLayouts.clear();
     for (const resource of this.resources.slice()) {
       resource.onDeviceDispose();
     }
@@ -173,10 +125,9 @@ export class RenderingDevice implements Disposable {
 
   /** @hide */
   bindBuffers (
-    vertexBuffers: readonly (GPUBuffer | null)[],
+    vertexBuffers: Readonly<Record<string, VertexBuffer>>,
     indexBuffer: GPUBuffer | null,
     effect: ShaderVariant,
-    vertexLayout?: GPUVertexLayout,
   ): void {
     throw new Error('The active rendering backend cannot bind geometry buffers.');
   }

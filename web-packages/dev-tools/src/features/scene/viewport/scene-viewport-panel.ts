@@ -18,6 +18,7 @@ import { OrbitController } from './orbit-controller';
 import { SceneGizmo } from './scene-gizmo';
 import { SceneToolbar } from './scene-toolbar';
 import { SceneViewportInput } from './scene-viewport-input';
+import { createBrushSettings, SceneBrushSettingsBar } from './scene-brush-settings';
 
 @editorPanel()
 export class SceneViewportPanel extends EditorWindow {
@@ -34,6 +35,8 @@ export class SceneViewportPanel extends EditorWindow {
   private updatingInput = false;
   private stableViewportFrames = 0;
   private context?: EditorMenu;
+  private readonly brushSettings = createBrushSettings();
+  private brushSettingsBar?: SceneBrushSettingsBar;
 
   get is2DMode (): boolean { return this._is2DMode; }
   set is2DMode (value: boolean) {
@@ -53,6 +56,8 @@ export class SceneViewportPanel extends EditorWindow {
 
     append(root, toolbar);
     this.viewport = append(root, expand(new SceneViewport(engine, this)));
+    this.brushSettingsBar = append(this.viewport, new SceneBrushSettingsBar(engine, this.brushSettings));
+    this.brushSettingsBar.visible = false;
     this.context = new EditorMenu(engine);
 
     return root;
@@ -66,7 +71,7 @@ export class SceneViewportPanel extends EditorWindow {
       this.viewport?.cancelPointerInteraction();
       this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined;
       if (composition) {
-        this.gizmo = new SceneGizmo(composition); this.gizmo.set2DMode(this.is2DMode);
+        this.gizmo = new SceneGizmo(composition, this.brushSettings); this.gizmo.set2DMode(this.is2DMode);
         this.input = new SceneViewportInput(composition.engine, event => this.handleShortcut(event), cursor => {
           if (this.viewport) { this.viewport.defaultCursorShape = cursor; }
         });
@@ -74,23 +79,34 @@ export class SceneViewportPanel extends EditorWindow {
       }
     }
     this.gizmo?.setVisible(!!this.viewport?.visibleInHierarchy);
+    if (this.brushSettingsBar) { this.brushSettingsBar.visible = this.is2DMode && this.gizmo?.tool === 'brush'; }
   }
   protected override onDisable (): void {
+    this.brushSettingsBar?.closePopup();
     this.viewport?.cancelPointerInteraction();
     this.flushEdits(); this.input?.reset(); this.gizmo?.setVisible(false);
     EditorRuntimeSession.player?.container?.style.setProperty('--scene-text-edit-visibility', 'hidden');
   }
   override flushEdits (): void {
     if (this.updatingInput || !this.input || !this.gizmo) { return; }
+    if (this.gizmo.tool === 'brush') {
+      this.input.reset(); this.gizmo.brush.cancel(); sceneWorkspace.current?.setScopeActive(this, false);
+
+      return;
+    }
     sceneWorkspace.observe('Transform selection', () => { this.input?.finish(); this.gizmo?.handler.resetEditMode(); }, this.gizmo.selectedItems);
     sceneWorkspace.current?.setScopeActive(this, false);
   }
-  override onUndoRedo (): void { this.input?.reset(); this.gizmo?.refreshSelection(); }
+  override onUndoRedo (): void {
+    if (!this.updatingInput) { this.input?.reset(); }
+    this.gizmo?.refreshSelection();
+  }
   frameAll (): void { this.pendingFit = true; }
   frameSelection (): void { this.open(); this.pendingSelectionFit = true; }
   resizeViewport (viewport: Control): void {
     const player = EditorRuntimeSession.player, container = player.container;
 
+    this.brushSettingsBar?.layoutForViewport(viewport.width);
     if (!container || !viewport.visibleInHierarchy || viewport.width < 1 || viewport.height < 1) { return; }
     const origin = screenPosition(viewport), width = Math.floor(viewport.width), height = Math.floor(viewport.height);
 
@@ -111,6 +127,16 @@ export class SceneViewportPanel extends EditorWindow {
     if (!this.gizmo) { return; }
     if (this.is2DMode) {
       this.updatingInput = true;
+      if (this.gizmo.tool === 'brush') {
+        try {
+          this.input?.mouse(event);
+          // Selection changes during commit must not reset the current input session.
+          this.gizmo.brush.commitPendingStroke();
+        } finally { this.updatingInput = false; }
+        event.accept();
+
+        return;
+      }
       const changed = sceneWorkspace.observe('Transform selection', () => this.input?.mouse(event), this.gizmo.selectedItems);
 
       this.updatingInput = false;
@@ -172,6 +198,9 @@ export class SceneViewportPanel extends EditorWindow {
     control.drawLine(cx, 0, cx, control.height, new math.Color(.31, .59, .39, .35));
   }
   drawOverlay (control: Control): void {
+    if (this.is2DMode && this.gizmo?.tool === 'brush') {
+      control.drawText(12, control.height - 26, 'Drag to draw · Space to pan · Esc to cancel · V to select', EDITOR_FONT_SIZE, editorColors.muted, EDITOR_FONT);
+    }
     if (!this.showFPS) { return; }
     const ms = this.frameTimeMS, tint = ms > 50 ? new math.Color(.91, .43, .39, 1) : ms > 33.9 ? new math.Color(.96, .73, .44, 1) : new math.Color(.5, .79, .62, 1);
 
@@ -187,8 +216,8 @@ export class SceneViewportPanel extends EditorWindow {
     if (event.ctrlPressed || event.metaPressed) { return; }
     if (!this.is2DMode) { return; }
     if (event.physicalKeycode === 'Escape') {
-      if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
-    } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }
+      if (gizmo.tool === 'brush') { gizmo.setTool('transform'); } else if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
+    } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyB') { gizmo.setTool('brush'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }
     event.accept();
   }
 }

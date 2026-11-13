@@ -174,7 +174,7 @@ export class AnimationGraphEditor extends EditorWindow {
   private refreshDetails (): void {
     const node = this.selectedNodes.at(-1)?.m_pNode, signature = node?.GetID() ?? '';
 
-    if (signature === this.selectedSignature && this.details.body.children.length) { return; }
+    if (signature === this.selectedSignature && this.details.hasContent) { return; }
     this.selectedSignature = signature; this.details.clear(); const group = this.details.section('selection', node?.GetTypeName() ?? 'Details');
 
     if (!node) {

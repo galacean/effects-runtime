@@ -61,9 +61,10 @@ describe('plugin-editor-gizmo/corner-rotation-gizmo', () => {
 
   function createContext (rotationDegrees = 0, selectionItems?: VFXItem[]) {
     const rotate = chai.spy();
+    // 与 Transform.setRotation 一致，GE 角度通过共轭四元数写入世界矩阵。
     const itemWorldMatrix = new Matrix4().compose(
       new Vector3(),
-      new Quaternion().setFromEuler(new Euler(0, 0, rotationDegrees)),
+      new Quaternion().setFromEuler(new Euler(0, 0, rotationDegrees)).conjugate(),
       new Vector3(1, 1, 1),
     );
     const item = {
@@ -291,7 +292,7 @@ describe('plugin-editor-gizmo/corner-rotation-gizmo', () => {
       const rotate = chai.spy();
       const itemWorldMatrix = new Matrix4().compose(
         new Vector3(),
-        new Quaternion().setFromEuler(new Euler(0, 0, 8)),
+        new Quaternion().setFromEuler(new Euler(0, 0, 8)).conjugate(),
         new Vector3(1, 1, 1),
       );
       const group = {
@@ -300,7 +301,7 @@ describe('plugin-editor-gizmo/corner-rotation-gizmo', () => {
         parent: undefined,
         transform: createTransform(itemWorldMatrix),
       } as unknown as VFXItem;
-      // 派生选框保持 0°；节点自身世界矩阵已经旋转 8°。
+      // 派生选框保持 0°；节点自身的 GE 旋转角已经是 8°。
       const context = createContext(0, [group]);
       const start = context.pointAt(10);
 

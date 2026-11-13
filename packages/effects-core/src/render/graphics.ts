@@ -1,4 +1,3 @@
-import * as spec from '@galacean/effects-specification';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
@@ -7,13 +6,13 @@ import { GraphicsBatchBuffer } from './graphics-batch-buffer';
 import { GraphicsTextLayoutCache } from './graphics-text-layout';
 import { VertexElementType } from './vertex-element-type';
 import { Material } from '../material';
-import type { StrokeAttributes } from '../math';
-import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
+import { Circle } from '../math';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight, GlyphAtlas } from './text-cache';
 import { TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
+import { buildCircleStrokeMesh, buildLineMesh, buildPolylineMesh, buildRectangleStrokeMesh } from './graphics-primitives';
 
 /**
  * 纹理 UV 子矩形(Y 向上,Y=0 在底部)。 全图为 `{u0:0, v0:0, u1:1, v1:1}`
@@ -95,11 +94,8 @@ export class Graphics {
   private textMaterial: Material;
   private ninePatchMaterial: Material;
 
-  private readonly lineShape = new Polygon();
-  private readonly bezierShape = new Polygon();
-  private readonly triangleShape = new Triangle();
-  private readonly rectangleShape = new Rectangle();
   private readonly circleShape = new Circle();
+  private readonly linePoints: number[] = [];
   private readonly buildPoints: number[] = [];
   private readonly shapeVertices: number[] = [];
   private readonly shapeIndices: number[] = [];
@@ -114,14 +110,6 @@ export class Graphics {
   private ninePatchOptions: number[] = [];
   private currentVertexCount = 0;
   private currentIndexCount = 0;
-
-  private lineStyle: StrokeAttributes = {
-    width: 1,
-    alignment: 0.5,
-    cap: spec.LineCap.Butt,
-    join: spec.LineJoin.Miter,
-    miterLimit: 10,
-  };
 
   // 当前批次状态：批次切换时(类型变化或纹理变化)需要 flush
   private currentBatchType: BatchType = 'colored';
@@ -598,19 +586,9 @@ export class Graphics {
       return;
     }
 
-    const numPoints = points.length / 2;
     const closed = points[0] === points[points.length - 2] && points[1] === points[points.length - 1];
-    const actualPoints = closed ? numPoints - 1 : numPoints;
 
-    const linePoints = this.lineShape.points;
-
-    linePoints.length = 0;
-    for (let i = 0; i < actualPoints; i++) {
-      linePoints.push(points[i * 2], points[i * 2 + 1]);
-    }
-
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.lineShape, color, thickness, closed);
+    this.buildPolyline(points, color, thickness, closed);
   }
 
   /**
@@ -623,13 +601,8 @@ export class Graphics {
    * @param thickness - 线宽(像素)，默认 1
    */
   drawLine (x1: number, y1: number, x2: number, y2: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    const linePoints = this.lineShape.points;
-
-    linePoints.length = 0;
-    linePoints.push(x1, y1, x2, y2);
-
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.lineShape, color, thickness, false);
+    buildLineMesh(x1, y1, x2, y2, thickness, this.shapeVertices, this.shapeIndices);
+    this.appendShape(color);
   }
 
   /**
@@ -646,14 +619,13 @@ export class Graphics {
    * @param thickness - 线宽(像素)，默认 1
    */
   drawBezier (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    const bezierPoints = this.bezierShape.points;
+    const bezierPoints = this.buildPoints;
 
     bezierPoints.length = 0;
     bezierPoints.push(x1, y1);
-    buildAdaptiveBezier(bezierPoints, x1, y1, x2, y2, x3, y3, x4, y4);
+    buildAdaptiveBezier(bezierPoints, x1, y1, x2, y2, x3, y3, x4, y4, undefined, this.getScreenScale());
 
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.bezierShape, color, thickness, false);
+    this.buildPolyline(bezierPoints, color, thickness, false);
   }
 
   /**
@@ -668,9 +640,9 @@ export class Graphics {
    * @param thickness - 线宽(像素)，默认 1
    */
   drawTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.setTriangleShape(x1, y1, x2, y2, x3, y3);
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.triangleShape, color, thickness, true);
+    this.buildPoints.length = 0;
+    this.buildPoints.push(x1, y1, x2, y2, x3, y3);
+    this.buildPolyline(this.buildPoints, color, thickness, true);
   }
 
   /**
@@ -683,9 +655,8 @@ export class Graphics {
    * @param thickness - 线宽(像素)，默认 1
    */
   drawRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.setRectangleShape(x, y, width, height, 0);
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.rectangleShape, color, thickness, true);
+    buildRectangleStrokeMesh(x, y, width, height, thickness, this.shapeVertices, this.shapeIndices);
+    this.appendShape(color);
   }
 
   /**
@@ -697,9 +668,8 @@ export class Graphics {
    * @param thickness - 线宽(像素)，默认 1
    */
   drawCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.setCircleShape(cx, cy, radius);
-    this.ensureBatch('colored');
-    this.buildShapeLine(this.circleShape, color, thickness, true);
+    buildCircleStrokeMesh(cx, cy, radius, thickness, this.getScreenScale(), this.shapeVertices, this.shapeIndices);
+    this.appendShape(color);
   }
 
   /**
@@ -737,9 +707,7 @@ export class Graphics {
    * @param height - 矩形高度
    * @param color - 填充颜色，默认白色，范围 0-1
    *
-   * 直接用 pushQuad（2 三角形分割）而不是 setRectangleShape + buildShape，
-   * 后者走 Rectangle.triangulate 的中心 fan，中心顶点连到 4 角的 4 条对角内边
-   * 在 MSAA / 亚像素精度下会暴露 1-2 像素缝隙，叠层时底层颜色透出形成可见对角痕迹
+   * 通过 pushQuad 写入 4 个顶点和 6 个索引，并应用当前变换和顶点色。
    */
   fillRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE): void {
     this.ensureBatch('colored');
@@ -755,7 +723,6 @@ export class Graphics {
    */
   fillCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE): void {
     this.setCircleShape(cx, cy, radius);
-    this.ensureBatch('colored');
     this.buildShape(this.circleShape, color);
   }
 
@@ -1022,20 +989,28 @@ export class Graphics {
     this.appendShape(color);
   }
 
-  private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
-    const buildPoints = this.buildPoints;
+  private buildPolyline (points: readonly number[], color: Color, thickness: number, closed: boolean): void {
+    const linePoints = this.linePoints;
 
-    buildPoints.length = 0;
-    shape.build(buildPoints, this.getScreenScale());
-    this.shapeVertices.length = 0; this.shapeIndices.length = 0;
-    this.lineStyle.width = thickness;
-    buildLine(buildPoints, this.lineStyle, false, closed, this.shapeVertices, 2, 0, this.shapeIndices, 0);
+    linePoints.length = 0;
+    for (let index = 0; index < points.length; index += 2) {
+      const x = points[index], y = points[index + 1];
+
+      if (linePoints.length > 0 && x === linePoints[linePoints.length - 2] && y === linePoints[linePoints.length - 1]) { continue; }
+      linePoints.push(x, y);
+    }
+    if (closed && linePoints.length > 2 && linePoints[0] === linePoints[linePoints.length - 2] && linePoints[1] === linePoints[linePoints.length - 1]) {
+      linePoints.length -= 2;
+    }
+    buildPolylineMesh(linePoints, thickness, closed, this.shapeVertices, this.shapeIndices);
     this.appendShape(color);
   }
 
   private appendShape (color: Color): void {
     const count = this.shapeVertices.length / 2;
 
+    if (this.shapeIndices.length === 0) { return; }
+    this.ensureBatch('colored');
     this.reserveVertices(count);
     const vertexOffset = this.currentVertexCount;
     const vertexStart = vertexOffset * 2;
@@ -1059,23 +1034,6 @@ export class Graphics {
     const framebufferScaleY = this.engine.canvas.height / this.logicalHeight;
 
     return Math.max(transformScaleX * framebufferScaleX, transformScaleY * framebufferScaleY, 1);
-  }
-
-  private setTriangleShape (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
-    this.triangleShape.x = x1;
-    this.triangleShape.y = y1;
-    this.triangleShape.x2 = x2;
-    this.triangleShape.y2 = y2;
-    this.triangleShape.x3 = x3;
-    this.triangleShape.y3 = y3;
-  }
-
-  private setRectangleShape (x: number, y: number, width: number, height: number, roundness: number): void {
-    this.rectangleShape.x = x;
-    this.rectangleShape.y = y;
-    this.rectangleShape.width = width;
-    this.rectangleShape.height = height;
-    this.rectangleShape.roundness = roundness;
   }
 
   private setCircleShape (x: number, y: number, radius: number): void {
@@ -1108,8 +1066,7 @@ export class Graphics {
    * - colored 批次：UV 写 0（shader 不读）
    * - textured 批次：UV 按纹理子区域写
    *
-   * 之所以用 2 三角形而不是中心 fan（像 Rectangle.triangulate），是因为 fan 的中心顶点连到 4 角的对角内边
-   * 在像素级亚像素精度下会暴露 1-2 像素缝隙，叠层时底层颜色透出形成可见的对角痕迹
+   * 顶点写入前应用当前变换，索引以当前批次的顶点偏移为起点。
    */
   private pushQuad (
     x: number, y: number, width: number, height: number,

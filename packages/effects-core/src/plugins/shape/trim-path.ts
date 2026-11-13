@@ -1,6 +1,7 @@
 import type { ContourMeasure } from './contour-measure';
 import { ContourMeasureIter } from './contour-measure';
-import { GraphicsPath } from './graphics-path';
+import type { GraphicsPath } from './graphics-path';
+import type { TrimmedPathResult } from './trimmed-path-result';
 
 // TODO: Move to spec.
 export interface TrimPathData {
@@ -20,7 +21,6 @@ export class TrimPath {
   end = 1;
   offset = 0;
   mode = TrimPathMode.Synchronized;
-  private trimmedGraphicsPath = new GraphicsPath();
 
   clone (): TrimPath {
     const trimPath = new TrimPath();
@@ -33,26 +33,27 @@ export class TrimPath {
     return trimPath;
   }
 
-  createTrimmedPath (source: GraphicsPath, screenScale: number): GraphicsPath {
+  /** Writes trimmed geometry and source mappings into the caller-owned result. */
+  createTrimmedPath (source: GraphicsPath, screenScale: number, result: TrimmedPathResult): TrimmedPathResult {
     if (this.isIdentity()) {
-      return source;
+      return result.reset(source);
     }
 
     const contours = new ContourMeasureIter(source, screenScale).toArray();
 
-    this.trimmedGraphicsPath.clear();
+    result.reset();
 
     if (contours.length === 0) {
-      return this.trimmedGraphicsPath;
+      return result;
     }
 
     if (this.mode === TrimPathMode.Sequential) {
-      this.applySequentialTrimPath(contours, this.trimmedGraphicsPath);
+      this.applySequentialTrimPath(contours, result);
     } else {
-      this.applySynchronizedTrimPath(contours, this.trimmedGraphicsPath);
+      this.applySynchronizedTrimPath(contours, result);
     }
 
-    return this.trimmedGraphicsPath;
+    return result;
   }
 
   isIdentity (): boolean {
@@ -72,7 +73,7 @@ export class TrimPath {
 
   private applySequentialTrimPath (
     contours: ContourMeasure[],
-    destination: GraphicsPath,
+    result: TrimmedPathResult,
   ): void {
     let totalLength = 0;
 
@@ -130,12 +131,13 @@ export class TrimPath {
       contour.getSegment(
         piece.startLength,
         piece.endLength,
-        destination,
+        result.path,
         previousContourIndex !== piece.contourIndex || !contour.isClosed(),
+        result,
       );
 
       if (piece.startLength === 0 && piece.endLength - piece.startLength >= contourLength && contour.isClosed()) {
-        destination.closePath();
+        result.path.closePath();
       }
 
       previousContourIndex = piece.contourIndex;
@@ -144,7 +146,7 @@ export class TrimPath {
 
   private applySynchronizedTrimPath (
     contours: ContourMeasure[],
-    destination: GraphicsPath,
+    result: TrimmedPathResult,
   ): void {
     const renderOffset = this.normalizeTrimOffset();
 
@@ -165,16 +167,16 @@ export class TrimPath {
         endLength -= contourLength;
       }
 
-      contour.getSegment(startLength, endLength, destination, true);
+      contour.getSegment(startLength, endLength, result.path, true, result);
 
       while (endLength > contourLength) {
         startLength = 0;
         endLength -= contourLength;
-        contour.getSegment(startLength, endLength, destination, !contour.isClosed());
+        contour.getSegment(startLength, endLength, result.path, !contour.isClosed(), result);
       }
 
       if (this.start === 0 && this.end === 1 && contour.isClosed()) {
-        destination.closePath();
+        result.path.closePath();
       }
     }
   }

@@ -40,22 +40,28 @@ export function buildControlLayout (group: PropertyGroup, control: Control): voi
   vector('Offset Max', () => control.offsetMax, (x, y) => control.setOffsetMax(x, y));
   vector('Pivot', () => control.pivot, (x, y) => control.setPivot(x, y), true);
   group.readOnly('Pivot Offset', () => (control.pivot.x * control.size.x).toFixed(2) + ', ' + (control.pivot.y * control.size.y).toFixed(2));
-  const popup = new EditorPopupPanel(group.engine), grid = append(popup, new GridContainer(group.engine));
-
-  grid.columns = 4;
   const presets: LayoutPreset[][] = [
     ['topLeft', 'centerTop', 'topRight', 'topWide'], ['centerLeft', 'center', 'centerRight', 'hcenterWide'],
     ['bottomLeft', 'centerBottom', 'bottomRight', 'bottomWide'], ['leftWide', 'vcenterWide', 'rightWide', 'fullRect'],
   ];
-  const button = group.button('Anchor Preset', 'Presets...', () => popup.popup(screenPosition(button, 0, button.height), button));
 
-  presets.forEach((row, y) => row.forEach((preset, x) => append(grid, new AnchorPresetButton(group.engine, preset, y, x, keepRect => {
-    group.sheet.edit.change('Anchor Preset', button, () => {
-      if (keepRect) { control.setAnchorsPreset(preset, false); } else { control.setAnchorsAndOffsetsPreset(preset); }
-    });
-    group.sheet.edit.finish(button); popup.hidePopup();
-  }))));
-  const destroy = button.onDestroy.bind(button);
+  group.add('Anchor Preset', engine => {
+    const button = new Button(engine, 'Presets...');
+    const popup = new EditorPopupPanel(engine), grid = append(popup, new GridContainer(engine));
 
-  button.onDestroy = () => { popup.dispose(); destroy(); };
+    grid.columns = 4;
+    button.on('pressed', () => popup.popup(screenPosition(button, 0, button.height), button));
+
+    presets.forEach((row, y) => row.forEach((preset, x) => append(grid, new AnchorPresetButton(engine, preset, y, x, keepRect => {
+      group.sheet.edit.change('Anchor Preset', button, () => {
+        if (keepRect) { control.setAnchorsPreset(preset, false); } else { control.setAnchorsAndOffsetsPreset(preset); }
+      });
+      group.sheet.edit.finish(button); popup.hidePopup();
+    }))));
+    const destroy = button.onDestroy.bind(button);
+
+    button.onDestroy = () => { popup.dispose(); destroy(); };
+
+    return button;
+  });
 }

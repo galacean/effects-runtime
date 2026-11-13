@@ -364,8 +364,9 @@ export class CornerRotationGizmo extends Gizmo {
       return 0;
     }
 
+    // 世界矩阵以逆时针为正，鼠标视图坐标和 VFXItem.rotate 以顺时针为正。
     const angles = this.rotationItems.map(item => (
-      roundNumber(decomposeItemTransform(item).rotation.z, 3)
+      roundNumber(-decomposeItemTransform(item).rotation.z, 3)
     ));
     const sharedAngle = angles[0];
 

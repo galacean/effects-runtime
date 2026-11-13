@@ -2,7 +2,6 @@ import type { ReflectedProperty } from './property-handle';
 import { PropertyHandle } from './property-handle';
 import { createPropertyValue } from './property-value-editor';
 import type { PropertyGroup } from './property-sheet';
-import { createObjectReferenceControl } from './object-reference-field';
 
 export interface PropertyTreePolicy {
   properties(object: object): ReflectedProperty[],
@@ -45,12 +44,8 @@ export class PropertyTree {
     if (property.error !== undefined) { group.readOnly(title, () => 'Unavailable: ' + property.error); } else if (createPropertyValue(handle, group)) { return; } else if (this.policy.inline(value) && !ancestors.has(value)) {
       this.build(group.group(String(property.key), title, false), value, ancestors, [], depth + 1);
     } else if (this.policy.reference(value)) {
-      const reference = createObjectReferenceControl(group.engine, { read: () => handle.value as object, write: next => handle.set(next) }, {
-        readOnly: !property.writable || this.policy.readOnlyReferences,
-        changed: action => { group.sheet.edit.change(title, group, action); group.sheet.edit.finish(group); },
-      });
-
-      group.add(title, reference);
+      group.reference(title, { read: () => handle.value as object, write: next => handle.set(next) }, undefined,
+        !property.writable || this.policy.readOnlyReferences);
     } else if (this.policy.fallbackText) { group.readOnly(title, () => String(handle.value)); }
   }
   private label (key: PropertyKey): string { return this.policy.label?.(key) ?? String(key); }

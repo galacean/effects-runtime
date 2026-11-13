@@ -300,7 +300,7 @@ describe('threejs/rendering-device', () => {
     });
     const device = engine.displayServer.renderingDevice;
     const native = getThreeGeometry(geometry);
-    const gpu = geometry.getAttributeBuffer('aPosition')!;
+    const gpu = geometry.getVertexBuffer('aPosition')!.buffer;
     const index = geometry.getIndexBuffer()!;
     const baseline = device['resources'].length;
     let disposals = 0;
@@ -317,7 +317,7 @@ describe('threejs/rendering-device', () => {
     expect(rebuilt).not.equals(native);
     expect(rebuilt.getAttribute('aPosition').count).equals(3);
     expect(rebuilt.index!.array).deep.equals(new Uint32Array([0, 1, 2]));
-    expect(geometry.getAttributeBuffer('aPosition')!).equals(gpu);
+    expect(geometry.getVertexBuffer('aPosition')!.buffer).equals(gpu);
     expect(geometry.getIndexBuffer()).equals(index);
     expect(device['resources'].length).equals(baseline);
     geometry.dispose();
@@ -333,12 +333,10 @@ describe('threejs/rendering-device', () => {
     buffer.initialize(description);
     const geometries = [new Geometry(engine), new Geometry(engine)];
 
-    const layout = engine.displayServer.renderingDevice.getVertexLayout([
-      { name: 'aPosition', slot: 0, type: glContext.FLOAT, size: 2, byteOffset: 0, normalized: false, divisor: 0 },
-    ], [8]);
+    const view = { kind: 'aPosition', buffer, type: glContext.FLOAT, size: 2, byteStride: 8, byteOffset: 0, normalized: false, divisor: 0 };
 
     for (const geometry of geometries) {
-      geometry.setVertexBuffers([buffer], layout);
+      geometry.setVerticesBuffer(view);
     }
     const originals = geometries.map(getThreeGeometry);
     const gpu = buffer;
@@ -349,7 +347,7 @@ describe('threejs/rendering-device', () => {
     }
     expect(gpu.getListeners('releasing').length).equals(0);
     buffer.initialize(description);
-    expect(geometries[0].getAttributeBuffer('aPosition')).equals(gpu);
+    expect(geometries[0].getVertexBuffer('aPosition')?.buffer).equals(gpu);
     expect(disposals).equals(0);
     for (let i = 0; i < geometries.length; i++) {
       const rebuilt = getThreeGeometry(geometries[i]);
@@ -373,7 +371,7 @@ describe('threejs/rendering-device', () => {
     expect(disposals).equals(2);
   });
 
-  it('rebuilds Three geometry when buffer slots or the separate layout change', () => {
+  it('rebuilds Three geometry when attribute buffers or formats change', () => {
     const geometry = new Geometry(engine, {
       attributes: {
         aPosition: { data: new Float32Array([1, 2, 3, 4]), size: 2, stride: 16 },
@@ -382,11 +380,11 @@ describe('threejs/rendering-device', () => {
     });
     const initial = getThreeGeometry(geometry);
     const buffers = geometry.getVertexBuffers();
-    const layout = geometry.getVertexLayout()!;
     let disposals = 0;
 
     initial.addEventListener('dispose', () => disposals++);
-    geometry.setVertexBuffers([buffers[1], buffers[0]], layout);
+    geometry.setVerticesBuffer({ ...buffers.aPosition, buffer: buffers.aUV.buffer }, false);
+    geometry.setVerticesBuffer({ ...buffers.aUV, buffer: buffers.aPosition.buffer });
     const swapped = getThreeGeometry(geometry);
 
     expect(swapped).not.equals(initial);
@@ -397,12 +395,9 @@ describe('threejs/rendering-device', () => {
     expect('getX' in swappedPosition && swappedPosition.getX(0)).equals(5);
     expect('getX' in swappedUV && swappedUV.getX(0)).equals(1);
     swapped.addEventListener('dispose', () => disposals++);
-    const changedLayout = engine.displayServer.renderingDevice.getVertexLayout(
-      layout.elements.map(element => element.name === 'aPosition' ? { ...element, byteOffset: 8 } : element),
-      [16, 8],
-    );
+    const swappedBuffers = geometry.getVertexBuffers();
 
-    geometry.setVertexBuffers(geometry.getVertexBuffers(), changedLayout);
+    geometry.setVerticesBuffer({ ...swappedBuffers.aPosition, byteOffset: 8 });
     const changed = getThreeGeometry(geometry);
 
     expect(changed).not.equals(swapped);
@@ -468,7 +463,7 @@ describe('threejs/rendering-device', () => {
     const geometry = new Geometry(engine);
     const positions = new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0]);
 
-    geometry.setAttribute('aPos', { data: positions, size: 3 });
+    geometry.setVerticesData('aPos', positions, { size: 3 });
     const attribute = getThreeGeometry(geometry).getAttribute('aPos');
 
     if (!('getX' in attribute)) {

@@ -3,7 +3,8 @@ import { buildAdaptiveBezier } from '../../math/shape/build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
 import { clampNumber, clonePoint, cubicExtract, cubicPointAt, lineExtract, lerpNumber, normalizeVector2, pointsEqual } from './contour-path-utils';
 import type { ContourPathCommand } from './contour-path';
-import { tryMakeContourPathFromGraphicsPath, makeContourPathFromShapePath } from './contour-path';
+import { makeStrokeContourPath } from './contour-path';
+import type { TrimmedPathResult } from './trimmed-path-result';
 
 export type ContourMeasureSegmentType = 'line' | 'cubic';
 
@@ -12,6 +13,7 @@ export type ContourMeasureSegment = {
   pointIndex: number,
   tValue: number,
   type: ContourMeasureSegmentType,
+  segmentId: number,
   smoothness?: number,
   scale?: number,
 };
@@ -26,6 +28,7 @@ type ContourDataSegment = {
   pointIndex: number,
   tValue: number,
   type: 'line' | 'cubic',
+  segmentId: number,
   smoothness?: number,
   scale?: number,
 };
@@ -46,6 +49,7 @@ type ContourMeasureData = {
 type ContourBuildResult = {
   contour: ContourCurve | null,
   nextIndex: number,
+  nextSegmentId: number,
 };
 
 function addLineSeg (
@@ -53,6 +57,7 @@ function addLineSeg (
   segments: ContourDataSegment[],
   target: Vector2,
   distance: number,
+  segmentId: number,
 ): number {
   if (points.length === 0) {
     points.push(clonePoint(target));
@@ -76,6 +81,7 @@ function addLineSeg (
     pointIndex,
     tValue: 1,
     type: 'line',
+    segmentId,
   });
 
   return distance;
@@ -88,6 +94,7 @@ function addCubicSegs (
   sourcePoints: readonly Vector2[],
   screenScale: number,
   tolerance: number,
+  segmentId: number,
   smoothness?: number,
   scale?: number,
 ): { distance: number, segments: ContourDataSegment[] } {
@@ -128,6 +135,7 @@ function addCubicSegs (
         type: 'cubic',
         smoothness,
         scale,
+        segmentId,
       });
       previousPoint = nextPoint;
     }
@@ -164,11 +172,13 @@ function tryNextContour (
   startIndex: number,
   screenScale: number,
   tolerance: number,
+  segmentId: number,
 ): ContourBuildResult {
   let currentPoints: Vector2[] = [];
   let currentSegments: ContourDataSegment[] = [];
   let currentDistance = 0;
   let contourStart: Vector2 | null = null;
+  let currentPoint = new Vector2();
   let isClosed = false;
 
   const ensureContour = (): void => {
@@ -191,6 +201,7 @@ function tryNextContour (
           return {
             contour,
             nextIndex: commandIndex,
+            nextSegmentId: segmentId,
           };
         }
 
@@ -198,6 +209,7 @@ function tryNextContour (
         currentSegments = [];
         currentDistance = 0;
         contourStart = clonePoint(command.data[0]);
+        currentPoint = command.data[0];
         isClosed = false;
         currentPoints.push(clonePoint(contourStart));
 
@@ -205,7 +217,8 @@ function tryNextContour (
       }
       case 'lineTo': {
         ensureContour();
-        currentDistance = addLineSeg(currentPoints, currentSegments, command.data[0], currentDistance);
+        currentDistance = addLineSeg(currentPoints, currentSegments, command.data[0], currentDistance, segmentId++);
+        currentPoint = command.data[0];
 
         break;
       }
@@ -227,18 +240,22 @@ function tryNextContour (
           ],
           screenScale,
           tolerance,
+          segmentId++,
           command.smoothness,
           command.scale,
         );
 
         currentDistance = cubic.distance;
         currentSegments.push(...cubic.segments);
+        currentPoint = endPoint;
 
         break;
       }
       case 'closePath': {
         if (currentPoints.length > 0 && contourStart) {
-          currentDistance = addLineSeg(currentPoints, currentSegments, contourStart, currentDistance);
+          currentDistance = addLineSeg(currentPoints, currentSegments, contourStart, currentDistance, segmentId);
+          if (currentPoint.x !== contourStart.x || currentPoint.y !== contourStart.y) { segmentId++; }
+          currentPoint = contourStart;
           isClosed = true;
         }
 
@@ -248,6 +265,7 @@ function tryNextContour (
           return {
             contour,
             nextIndex: commandIndex + 1,
+            nextSegmentId: segmentId,
           };
         }
 
@@ -265,11 +283,8 @@ function tryNextContour (
   return {
     contour: finishContourCurve(currentPoints, currentSegments, currentDistance, isClosed),
     nextIndex: source.length,
+    nextSegmentId: segmentId,
   };
-}
-
-function resolveContourPath (source: GraphicsPath, screenScale: number): ContourPathCommand[] {
-  return tryMakeContourPathFromGraphicsPath(source) ?? makeContourPathFromShapePath(source.shapePath, screenScale);
 }
 
 function makeMeasureDataFromCurve (curve: ContourCurve): ContourMeasureData | null {
@@ -357,12 +372,16 @@ function evalLine (points: readonly Vector2[], t: number): ContourMeasurePosTan 
 }
 
 export class ContourMeasure {
+  private readonly contourSegmentIds: number[];
+
   constructor (
     private readonly segments: ContourMeasureSegment[],
     private readonly points: Vector2[],
     private readonly contourLength: number,
     private readonly contourClosed: boolean,
-  ) {}
+  ) {
+    this.contourSegmentIds = [...new Set(segments.map(segment => segment.segmentId))];
+  }
 
   length (): number {
     return this.contourLength;
@@ -403,6 +422,7 @@ export class ContourMeasure {
     endDistance: number,
     destination: GraphicsPath,
     startWithMove: boolean,
+    result?: TrimmedPathResult,
   ): void {
     const clampedStart = clampNumber(startDistance, 0, this.contourLength);
     const clampedEnd = clampNumber(endDistance, 0, this.contourLength);
@@ -425,21 +445,21 @@ export class ContourMeasure {
     }
 
     if (startSegment.pointIndex === endSegment.pointIndex) {
-      this.extractSegment(startIndex, startT, endT, destination, startWithMove);
+      this.extractSegment(startIndex, startT, endT, destination, startWithMove, result);
 
       return;
     }
 
-    this.extractSegment(startIndex, startT, 1, destination, startWithMove);
+    this.extractSegment(startIndex, startT, 1, destination, startWithMove, result);
 
     let segmentIndex = nextSegmentBeginning(this.segments, startIndex);
 
     while (segmentIndex < this.segments.length && this.segments[segmentIndex].pointIndex !== endSegment.pointIndex) {
-      this.extractWholeSegment(segmentIndex, destination);
+      this.extractWholeSegment(segmentIndex, destination, result);
       segmentIndex = nextSegmentBeginning(this.segments, segmentIndex);
     }
 
-    this.extractSegment(endIndex, 0, endT, destination, false);
+    this.extractSegment(endIndex, 0, endT, destination, false, result);
   }
 
   warp (source: Vector2): Vector2 {
@@ -488,13 +508,14 @@ export class ContourMeasure {
     return clampNumber(lerpNumber(prevT, segment.tValue, ratio), prevT, segment.tValue);
   }
 
-  private extractWholeSegment (segmentIndex: number, destination: GraphicsPath): void {
+  private extractWholeSegment (segmentIndex: number, destination: GraphicsPath, result?: TrimmedPathResult): void {
     const segment = this.segments[segmentIndex];
 
     if (segment.type === 'line') {
       const [, end] = linePointsForSegment(this.points, segment.pointIndex);
 
       destination.lineTo(end.x, end.y);
+      this.recordTrimSource(destination, segmentIndex, 0, 1, result);
 
       return;
     }
@@ -502,6 +523,42 @@ export class ContourMeasure {
     const [, cp1, cp2, end] = cubicPointsForSegment(this.points, segment.pointIndex);
 
     destination.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y, segment.smoothness, segment.scale);
+    this.recordTrimSource(destination, segmentIndex, 0, 1, result);
+  }
+
+  private recordTrimSource (destination: GraphicsPath, segmentIndex: number, startT: number, endT: number, result?: TrimmedPathResult): void {
+    if (!result) { return; }
+    const segment = this.segments[segmentIndex];
+
+    let first = segmentIndex;
+
+    while (first > 0 && this.segments[first - 1].pointIndex === segment.pointIndex) { first--; }
+    const distanceAt = (t: number): number => {
+      let previousT = 0;
+      let previousDistance = first > 0 ? this.segments[first - 1].distance : 0;
+
+      for (let i = first; i < this.segments.length && this.segments[i].pointIndex === segment.pointIndex; i++) {
+        const sample = this.segments[i];
+
+        if (sample.tValue >= t) {
+          return lerpNumber(previousDistance, sample.distance, (t - previousT) / (sample.tValue - previousT));
+        }
+        previousT = sample.tValue;
+        previousDistance = sample.distance;
+      }
+
+      return previousDistance;
+    };
+
+    result.segments.set(destination.instructions.length - 1, {
+      segmentId: segment.segmentId,
+      start: distanceAt(startT) / this.contourLength, end: distanceAt(endT) / this.contourLength,
+    });
+  }
+
+  private moveTo (destination: GraphicsPath, point: Vector2, result?: TrimmedPathResult): void {
+    destination.moveTo(point.x, point.y);
+    result?.contours.set(destination.instructions.length - 1, { closed: this.contourClosed, segmentIds: this.contourSegmentIds });
   }
 
   private extractSegment (
@@ -510,6 +567,7 @@ export class ContourMeasure {
     endT: number,
     destination: GraphicsPath,
     moveTo: boolean,
+    result?: TrimmedPathResult,
   ): void {
     const segment = this.segments[segmentIndex];
 
@@ -519,10 +577,11 @@ export class ContourMeasure {
       const extractedEnd = new Vector2(lerpNumber(start.x, end.x, endT), lerpNumber(start.y, end.y, endT));
 
       if (moveTo) {
-        destination.moveTo(extractedStart.x, extractedStart.y);
+        this.moveTo(destination, extractedStart, result);
       }
 
       destination.lineTo(extractedEnd.x, extractedEnd.y);
+      this.recordTrimSource(destination, segmentIndex, startT, endT, result);
 
       return;
     }
@@ -530,10 +589,11 @@ export class ContourMeasure {
     const cubic = cubicExtract(cubicPointsForSegment(this.points, segment.pointIndex), startT, endT);
 
     if (moveTo) {
-      destination.moveTo(cubic[0].x, cubic[0].y);
+      this.moveTo(destination, cubic[0], result);
     }
 
     destination.bezierCurveTo(cubic[1].x, cubic[1].y, cubic[2].x, cubic[2].y, cubic[3].x, cubic[3].y, segment.smoothness, segment.scale);
+    this.recordTrimSource(destination, segmentIndex, startT, endT, result);
   }
 }
 
@@ -542,6 +602,7 @@ export class ContourMeasureIter {
 
   private contourPath: ContourPathCommand[] = [];
   private cursor = 0;
+  private segmentId = 0;
   private screenScale = 1;
 
   constructor (source: GraphicsPath, screenScale = 1) {
@@ -549,15 +610,17 @@ export class ContourMeasureIter {
   }
 
   rewind (source: GraphicsPath, screenScale = 1): void {
-    this.contourPath = resolveContourPath(source, screenScale);
+    this.contourPath = makeStrokeContourPath(source);
     this.screenScale = screenScale;
     this.cursor = 0;
+    this.segmentId = 0;
   }
 
   private tryNext (): ContourMeasure | null {
-    const result = tryNextContour(this.contourPath, this.cursor, this.screenScale, ContourMeasureIter.defaultTolerance);
+    const result = tryNextContour(this.contourPath, this.cursor, this.screenScale, ContourMeasureIter.defaultTolerance, this.segmentId);
 
     this.cursor = result.nextIndex;
+    this.segmentId = result.nextSegmentId;
 
     const measure = result.contour ? makeMeasureDataFromCurve(result.contour) : null;
 
@@ -587,6 +650,7 @@ export class ContourMeasureIter {
 
   toArray (): ContourMeasure[] {
     const savedCursor = this.cursor;
+    const savedSegmentId = this.segmentId;
     const contours: ContourMeasure[] = [];
     let contour: ContourMeasure | null;
 
@@ -595,6 +659,7 @@ export class ContourMeasureIter {
     }
 
     this.cursor = savedCursor;
+    this.segmentId = savedSegmentId;
 
     return contours;
   }

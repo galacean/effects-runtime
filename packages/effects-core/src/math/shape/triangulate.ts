@@ -43,7 +43,10 @@ const tessy = (function initTesselator () {
   return tessy;
 })();
 
-export function triangulate (contours: number[][]) {
+export function triangulate (contours: number[][], winding: 'odd' | 'nonzero' = 'odd') {
+  // Set this on every call: stroke patches overlap, while existing fills use the odd rule.
+  tessy.gluTessProperty(libtess.gluEnum.GLU_TESS_WINDING_RULE,
+    winding === 'nonzero' ? libtess.windingRule.GLU_TESS_WINDING_NONZERO : libtess.windingRule.GLU_TESS_WINDING_ODD);
   // libtess will take 3d verts and flatten to a plane for tesselation
   // since only doing 2d tesselation here, provide z=1 normal to skip
   // iterating over verts only to get the same answer.
