@@ -28,7 +28,7 @@ export function readShapeComponentData (component: ShapeComponent): Data {
     item: component.item ? { id: component.item.getInstanceId() } : component.definition.item,
     strokeWidth: component.strokeWidth, strokeCap: component.strokeCap, strokeJoin: component.strokeJoin,
     strokeAlignment: component.strokeAlignment, strokeMiterLimit: component.strokeMiterLimit, fills: paints('fills'), strokes: paints('strokes'),
-    variableWidthPoints: stroke.variableWidthPoints ?? [],
+    variableWidthPoints: stroke.variableWidthPoints ?? [], featherRadius: component.featherRenderer.featherRadius,
     renderer: { side: renderer.side, occlusion: renderer.occlusion, transparentOcclusion: component.definition.renderer?.transparentOcclusion ?? false,
       blending: renderer.blending, texture: reference(renderer.texture) },
     mask: { isMask: component.maskManager.isMask, alphaMaskEnabled: component.maskManager.alphaMaskEnabled,

@@ -33,7 +33,7 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     return ['Geometry', 'Type', 'Rectangle', 'Ellipse', 'Polygon', 'Star', 'Custom', 'Width', 'Height', 'Radius', 'Roundness', 'Point Count',
       'Points', 'Incoming Handles', 'Outgoing Handles', 'Paths', 'Closed', 'Anchor', 'Transform', 'Position', 'Rotation', 'Scale', 'Size',
       'Fills', 'Stroke', 'Paints', 'Color', 'Linear Gradient', 'Radial Gradient', 'Angular Gradient', 'Texture', 'Stops', 'Opacity',
-      'Start Point', 'End Point', 'Scale Mode', 'Scale Factor', 'Alignment', 'Cap', 'Join', 'Miter Limit', 'Effects',
+      'Start Point', 'End Point', 'Scale Mode', 'Scale Factor', 'Alignment', 'Cap', 'Join', 'Miter Limit', 'Effects', 'Feather Radius',
       'Width Profile', 'Width Points', 'Preset', 'Uniform', 'Wedge', 'Taper', 'Eye', 'Ascent', 'Descent', 'Segment ID', 'Bind to Contour',
       'Fill Trim Path', 'Stroke Trim Path', 'Enabled', 'Mode', 'Start', 'End', 'Offset', 'Rendering', 'Blending', 'Side',
       'Depth Write', 'Transparent Occlusion', 'Render Order', 'Mask', 'Is Mask', 'Alpha Mask', 'References', 'Inverted'];
@@ -65,6 +65,7 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     buildShapePaints(stroke.group('Paints', 'Paints'), component, 'strokes');
     const effects = group.group('Effects', 'Effects', false);
 
+    this.number(effects, component, 'Feather Radius', 'featherRadius', { min: 0 });
     this.buildTrimPath(effects.group('FillTrim', 'Fill Trim Path', false), component, 'fillTrimPath');
     this.buildTrimPath(effects.group('StrokeTrim', 'Stroke Trim Path', false), component, 'strokeTrimPath');
     this.buildRenderer(group.group('Rendering', 'Rendering', false), component);
