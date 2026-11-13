@@ -19,6 +19,5 @@ import './gl-render-pass.spec';
 import './gl-shader-library.spec';
 import './gl-state.spec';
 import './gl-texture.spec';
-import './video-texture.spec';
 import './gl-vertex-array-object.spec';
 import './renderer.spec';

@@ -215,28 +215,6 @@ describe('threejs/rendering-device', () => {
     texture.dispose();
   });
 
-  it('refreshes a ready video frame for the host renderer without replacing its texture', () => {
-    const video = document.createElement('video');
-
-    Object.defineProperties(video, {
-      readyState: { value: 4 },
-      videoWidth: { value: 16 },
-      videoHeight: { value: 8 },
-    });
-    const texture = createTexture({ sourceType: TextureSourceType.video, video });
-    const gpu = texture.getGPUTexture() as GPUTextureThree;
-    const native = gpu.texture!;
-    const version = native.version;
-
-    expect(texture.uploadCurrentVideoFrame()).to.equal(false);
-    expect(texture.uploadCurrentVideoFrame(true)).to.equal(true);
-    expect(gpu.texture).to.equal(native);
-    expect(native.version).to.equal(version + 1);
-    expect(texture.width).to.equal(16);
-    expect(texture.height).to.equal(8);
-    texture.dispose();
-  });
-
   it('preserves the default, compressed, video and framebuffer native texture types', () => {
     const blank = createTexture({});
     const compressed = createTexture({

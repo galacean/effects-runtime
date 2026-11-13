@@ -1,7 +1,7 @@
 import type { Composition } from '@galacean/effects';
 import { DataAsset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
 import type { VideoItemProps } from '@galacean/effects-plugin-multimedia';
-import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+import { processMultimedia, VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
   duration: number,
@@ -359,14 +359,7 @@ describe('videoComponent ', function () {
     expect(videoComponent.isVideoActive).to.be.false;
     // @ts-expect-error
     expect(videoComponent.transparent).to.be.true;
-    // @ts-expect-error
-    const macros = videoComponent.material.shader.shaderData.macros;
-
-    macros.forEach((macro: [string, boolean]) => {
-      if (macro[0] === 'TRANSPARENT') {
-        expect(macro[1]).to.be.true;
-      }
-    });
+    expect(videoComponent.material.isMacroEnabled('TRANSPARENT_VIDEO')).to.be.true;
 
     composition.dispose();
   });
@@ -495,8 +488,6 @@ describe('videoComponent ', function () {
     const composition = await player.loadScene(videoJson);
     const video = composition.getItemByName('video');
 
-    player.gotoAndPlay(11);
-
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
@@ -504,8 +495,13 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
+    await new Promise<void>(resolve => {
+      videoComponent.video!.addEventListener('seeked', () => resolve(), { once: true });
+      player.gotoAndPlay(11);
+    });
+    videoComponent.onUpdate(0);
     expect(videoComponent.isVideoActive).to.be.true;
-    expect(videoComponent.getCurrentTime()).to.be.within(1, 1.1);
+    expect(videoComponent.getCurrentTime()).to.be.closeTo(Math.min(options.duration, videoComponent.getDuration()), 0.01);
     expect(videoComponent.video?.paused).to.be.true;
     composition.dispose();
   });
@@ -529,8 +525,6 @@ describe('videoComponent ', function () {
     const composition = await player.loadScene(videoJson);
     const video = composition.getItemByName('video');
 
-    player.gotoAndPlay(12);
-
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
@@ -538,6 +532,10 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
+    await new Promise<void>(resolve => {
+      videoComponent.video!.addEventListener('seeked', () => resolve(), { once: true });
+      player.gotoAndPlay(12);
+    });
     expect(videoComponent.isVideoActive).to.be.true;
     expect(videoComponent.getCurrentTime()).to.be.within(2, 2.1);
     composition.dispose();
@@ -679,101 +677,145 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
-  it('pauses a setVideo replacement already at zero when the composition is paused', async function () {
-    const fromVideo = Texture.fromVideo;
-    let paused = false;
-
-    Object.defineProperties(video, {
-      readyState: { get: () => 4 },
-      currentTime: { get: () => 0 },
-      paused: { get: () => paused },
-    });
-    video.play = async () => { paused = false; };
-    video.pause = () => { paused = true; };
-    component.isVideoActive = true;
-    Texture.fromVideo = async () => texture;
-    try {
-      expect(composition.getPaused()).to.be.true;
-      await component.setVideo('replacement.mp4');
-      expect(video.paused).to.be.true;
-      expect(video.currentTime).to.equal(0);
-      expect(component.material.getTexture('_MainTex')).to.equal(texture);
-    } finally {
-      Texture.fromVideo = fromVideo;
-    }
-  });
-
   for (const method of ['setTexture', 'setVideo'] as const) {
-    it(`keeps the newest ${method} URL when video loads finish out of order`, async function () {
+    it(`pauses a ${method} URL replacement when the composition is paused`, async function () {
       const fromVideo = Texture.fromVideo;
-      const obsoleteVideo = document.createElement('video');
-      const obsolete = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: obsoleteVideo });
-      const loads = new Map<string, (texture: Texture) => void>();
-      let pauses = 0;
+      let paused = false;
+      const currentTime = method === 'setVideo' ? 0 : 1;
 
-      obsoleteVideo.pause = () => { pauses++; };
-      Texture.fromVideo = url => new Promise(resolve => { loads.set(url, resolve); });
+      Object.defineProperties(video, {
+        readyState: { get: () => 4 },
+        currentTime: { get: () => currentTime },
+        paused: { get: () => paused },
+      });
+      video.play = async () => { paused = false; };
+      video.pause = () => { paused = true; };
+      component.isVideoActive = true;
+      Texture.fromVideo = async () => texture;
       try {
-        const first = component[method]('first.mp4');
-        const second = component[method]('second.mp4');
-
-        loads.get('second.mp4')!(texture);
-        await second;
-        video.currentTime = 3;
-        loads.get('first.mp4')!(obsolete);
-        await first;
-        expect(component.video).to.equal(video);
-        expect(video.currentTime).to.equal(3);
+        expect(composition.getPaused()).to.be.true;
+        await component[method]('replacement.mp4');
+        expect(video.paused).to.be.true;
+        expect(video.currentTime).to.equal(currentTime);
         expect(component.material.getTexture('_MainTex')).to.equal(texture);
-        expect(video.volume).to.equal(0.4);
-        expect(obsolete.isRegistered).to.be.false;
-        expect(pauses).to.equal(1);
       } finally {
         Texture.fromVideo = fromVideo;
-        obsolete.dispose();
       }
     });
   }
 
-  it('lets a direct texture binding supersede a pending URL', async function () {
+  it('keeps the newest URL when video loads finish out of order', async function () {
     const fromVideo = Texture.fromVideo;
-    let finish!: (texture: Texture) => void;
-    const placeholder = player.engine.assetServer.whiteTexture;
+    const obsoleteVideo = document.createElement('video');
+    const obsolete = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: obsoleteVideo });
+    const loads = new Map<string, (texture: Texture) => void>();
+    let pauses = 0;
 
-    Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
+    obsoleteVideo.pause = () => { pauses++; };
+    Texture.fromVideo = url => new Promise(resolve => { loads.set(url, resolve); });
     try {
-      const pending = component.setTexture('pending.mp4');
+      const first = component.setTexture('first.mp4');
+      const second = component.setVideo('second.mp4');
 
-      component.setTexture(placeholder);
-      finish(texture);
-      await pending;
-      expect(component.video).to.be.undefined;
-      expect(component.material.getTexture('_MainTex')).to.equal(placeholder);
-      expect(texture.isRegistered).to.be.false;
+      loads.get('second.mp4')!(texture);
+      await second;
+      video.currentTime = 3;
+      loads.get('first.mp4')!(obsolete);
+      await first;
+      expect(component.video).to.equal(video);
+      expect(video.currentTime).to.equal(3);
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      expect(video.volume).to.equal(0.4);
+      expect(obsolete.isRegistered).to.be.false;
+      expect(pauses).to.equal(1);
     } finally {
       Texture.fromVideo = fromVideo;
+      obsolete.dispose();
     }
   });
 
-  it('releases a URL texture that finishes loading after component disposal', async function () {
-    const fromVideo = Texture.fromVideo;
-    let finish!: (texture: Texture) => void;
+  it('resumes hidden preparation after a pause and stops it on disposal without destroying the borrowed texture', function () {
+    let paused = false;
 
-    Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
-    try {
-      const pending = component.setTexture('pending.mp4');
+    Object.defineProperties(video, {
+      readyState: { get: () => 4 },
+      duration: { get: () => 5 },
+      currentTime: { get: () => 4.99 },
+      paused: { get: () => paused },
+    });
+    video.play = async () => { paused = false; };
+    video.pause = () => { paused = true; };
+    composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
+    composition.sceneRoot.duration = 6.5;
+    component.item.endBehavior = spec.EndBehavior.destroy;
+    component.item.duration = 5;
+    Object.defineProperty(composition, 'time', { value: 5.05 });
+    component.setTexture(texture);
+    component.setMuted(false);
+    component.onDisable();
+    expect(video.paused).to.be.false;
+    expect(video.muted).to.be.true;
+    expect(video.loop).to.be.true;
 
-      component.dispose();
-      finish(texture);
-      await pending;
-      expect(component.video).to.be.undefined;
-      expect(texture.isRegistered).to.be.false;
-    } finally {
-      Texture.fromVideo = fromVideo;
-    }
+    composition.play();
+    composition.pause();
+    expect(video.paused).to.be.true;
+    composition.play();
+    expect(video.paused).to.be.false;
+
+    component.dispose();
+    expect(video.paused).to.be.true;
+    expect(video.muted).to.be.false;
+    expect(video.loop).to.be.false;
+    expect(texture.isDestroyed).to.be.false;
   });
 
-  it('releases each owned URL texture on replacement and composition disposal without an initial video', async function () {
+  it('keeps a faster destroy video hidden until the composition restarts from its prepared head', async function () {
+    let mediaTime = 5;
+    let compositionTime = 2.5;
+    let paused = false;
+    let seeks = 0;
+
+    Object.defineProperties(video, {
+      readyState: { get: () => 4 },
+      duration: { get: () => 5 },
+      currentTime: { get: () => mediaTime, set: value => { mediaTime = value; seeks++; } },
+      paused: { get: () => paused },
+    });
+    video.play = async () => { paused = false; };
+    video.pause = () => { paused = true; };
+    texture.initialize = () => {};
+    texture.uploadCurrentVideoFrame = () => true;
+    composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
+    composition.sceneRoot.duration = 5;
+    Object.defineProperty(composition, 'time', { get: () => compositionTime });
+    component.item.endBehavior = spec.EndBehavior.destroy;
+    component.item.duration = 5;
+    component.item.time = 2.5;
+    component.setTexture(texture);
+    component.isVideoActive = true;
+    composition.play();
+    component.onUpdate(0);
+    mediaTime = 0;
+    video.dispatchEvent(new Event('timeupdate'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    compositionTime = component.item.time = 4.9;
+    component.onUpdate(0);
+    expect(video.paused).to.be.true;
+    expect(component.material.getTexture('_MainTex')).to.equal(player.engine.assetServer.transparentTexture);
+
+    compositionTime = component.item.time = 0;
+    composition.emit('end', { composition });
+    component.onUpdate(0);
+    expect(video.paused).to.be.false;
+    expect(video.currentTime).to.equal(0);
+    expect(seeks).to.equal(0);
+    expect(component.material.getTexture('_MainTex')).to.equal(texture);
+  });
+
+  it('releases owned URL textures on replacement, disposal and late loading', async function () {
     const fromVideo = Texture.fromVideo;
     const unloads = [0, 0, 0];
     const videos = unloads.map((_, index) => {
@@ -797,10 +839,16 @@ describe('videoComponent:texture binding', function () {
       await component.setTexture('second.mp4');
       expect(textures[0].isDestroyed).to.be.true;
       expect(textures[1].isDestroyed).to.be.false;
-      await component.setVideo('third.mp4');
-      expect(textures[1].isDestroyed).to.be.true;
-      expect(textures[2].isDestroyed).to.be.false;
+      let finish!: (texture: Texture) => void;
+
+      Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
+      const pending = component.setVideo('third.mp4');
+
       composition.dispose();
+      expect(textures[1].isDestroyed).to.be.true;
+      finish(textures[2]);
+      await pending;
+      expect(component.video).to.be.undefined;
       expect(textures.map(texture => texture.isDestroyed)).to.deep.equal([true, true, true]);
       expect(videos.map(video => video.getAttribute('src'))).to.deep.equal([null, null, null]);
       expect(unloads).to.deep.equal([1, 1, 1]);
@@ -885,58 +933,7 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
-  it('keeps a replaced texture available for context restoration and engine cleanup', function () {
-    const original = Texture.create(player.engine, {
-      sourceType: TextureSourceType.data,
-      data: { data: new Uint8Array([255, 255, 255, 255]), width: 1, height: 1 },
-    });
-    let restores = 0;
-
-    original.initialize();
-    original.restore = () => { restores++; };
-    component.setTexture(original);
-    component.setTexture(texture);
-    player.engine.effectsObjectServer.restoreGraphicsResources();
-    expect(restores).to.equal(1);
-    player.dispose();
-    expect(original.isRegistered).to.be.false;
-    expect(() => original.initialize()).to.throw();
-  });
-
-  it('retains an independent first frame and releases it on replacement and disposal', function () {
-    composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
-    const image = document.createElement('canvas');
-
-    image.width = image.height = 2;
-    Object.assign(image, { videoWidth: 2, videoHeight: 2, readyState: 4, currentTime: 0, pause () {}, load () {} });
-    const context = image.getContext('2d')!;
-
-    context.fillStyle = '#ff0000';
-    context.fillRect(0, 0, 2, 2);
-    const source = Texture.create(player.engine, { sourceType: TextureSourceType.video, video: image as unknown as HTMLVideoElement });
-    const cache = component as unknown as { firstFrameTexture?: Texture };
-
-    try {
-      component.setTexture(source);
-      const firstFrame = cache.firstFrameTexture!;
-      const snapshot = (firstFrame.source as { image: HTMLCanvasElement }).image;
-
-      context.fillStyle = '#0000ff';
-      context.fillRect(0, 0, 2, 2);
-      expect(Array.from(snapshot.getContext('2d')!.getImageData(0, 0, 1, 1).data)).to.deep.equal([255, 0, 0, 255]);
-      component.setTexture(texture);
-      expect(firstFrame.isDestroyed).to.be.true;
-      component.setTexture(source);
-      const nextFrame = cache.firstFrameTexture!;
-
-      component.dispose();
-      expect(nextFrame.isDestroyed).to.be.true;
-    } finally {
-      source.dispose();
-    }
-  });
-
-  it('replaces the cached first frame when fromData binds a different video', function () {
+  it('uses an independent first frame on replay and releases it on rebinding and disposal', function () {
     composition.sceneRoot.endBehavior = spec.EndBehavior.restart;
     const sources = ['#ff0000', '#0000ff'].map(color => {
       const image = document.createElement('canvas');
@@ -955,8 +952,18 @@ describe('videoComponent:texture binding', function () {
     asset.data = (sources[1].source as { video: HTMLVideoElement }).video;
     try {
       component.setTexture(sources[0]);
-      const cache = component as unknown as { firstFrameTexture: Texture, showSeekFrame: (time: number) => void };
+      const cache = component as unknown as { firstFrameTexture: Texture };
       const firstFrame = cache.firstFrameTexture;
+      const snapshot = (firstFrame.source as { image: HTMLCanvasElement }).image;
+      const source = (sources[0].source as { video: HTMLVideoElement }).video;
+
+      (source as unknown as HTMLCanvasElement).getContext('2d')!.clearRect(0, 0, 2, 2);
+      expect(Array.from(snapshot.getContext('2d')!.getImageData(0, 0, 1, 1).data)).to.deep.equal([255, 0, 0, 255]);
+      component.isVideoActive = true;
+      source.currentTime = 1;
+      composition.emit('end', { composition });
+      expect(source.currentTime).to.equal(0);
+      expect(component.material.getTexture('_MainTex')).to.equal(firstFrame);
       const data: VideoItemProps = {
         id: component.getInstanceId(),
         dataType: spec.DataType.VideoComponent,
@@ -964,18 +971,26 @@ describe('videoComponent:texture binding', function () {
         options: { video: { id: asset.getInstanceId() } },
         renderer: { texture: sources[1] },
       };
-      const options: spec.VideoContentOptions = data.options;
 
-      expect(options.video.id).to.equal(asset.getInstanceId());
       component.fromData(data);
       component.isVideoActive = true;
-      cache.showSeekFrame(0);
+      asset.data.currentTime = 1;
+      composition.emit('end', { composition });
       const image = (cache.firstFrameTexture.source as { image: HTMLCanvasElement }).image;
 
       expect(firstFrame.isDestroyed).to.be.true;
       expect(component.video).to.equal(asset.data);
       expect(component.material.getTexture('_MainTex')).to.equal(cache.firstFrameTexture);
       expect(Array.from(image.getContext('2d')!.getImageData(0, 0, 1, 1).data)).to.deep.equal([0, 0, 255, 255]);
+      const replacementFrame = cache.firstFrameTexture;
+
+      component.setTexture(texture);
+      expect(replacementFrame.isDestroyed).to.be.true;
+      component.setTexture(sources[1]);
+      const lastFrame = cache.firstFrameTexture;
+
+      component.dispose();
+      expect(lastFrame.isDestroyed).to.be.true;
     } finally {
       sources.forEach(source => source.dispose());
     }
@@ -1117,6 +1132,29 @@ describe('videoComponent:setVideo', function () {
 
   afterEach(function () {
     composition?.dispose();
+  });
+
+  it('keeps the current image visible during forward and backward goto and pauses after gotoAndStop', async function () {
+    const video = component.video!;
+    const texture = component.renderer.texture;
+
+    for (const time of [1, 2, 0.5]) {
+      const seeked = new Promise<void>(resolve => video.addEventListener('seeked', () => resolve(), { once: true }));
+
+      composition.gotoAndPlay(time);
+      component.onUpdate(0);
+      expect(component.material.getTexture('_MainTex')).to.equal(texture);
+      await seeked;
+      expect(video.currentTime).to.be.closeTo(time, 0.1);
+    }
+    const seeked = new Promise<void>(resolve => video.addEventListener('seeked', () => resolve(), { once: true }));
+
+    composition.gotoAndStop(0.25);
+    expect(component.material.getTexture('_MainTex')).to.equal(texture);
+    await seeked;
+    component.onUpdate(0);
+    expect(video.currentTime).to.be.closeTo(0.25, 0.01);
+    expect(video.paused).to.be.true;
   });
 
   it('explicitly rewinds the loaded URL and retains automatic playback settings', async function () {
@@ -1287,48 +1325,74 @@ describe('videoComponent:setVideo', function () {
 describe('videoComponent:loadScene autoplay', function () {
   this.timeout(15000);
 
-  for (const autoplay of [false, true, undefined]) {
-    it(`respects autoplay=${autoplay}`, async function () {
-      const currentPlayer = new Player({ canvas: document.createElement('canvas') });
-      const id = generateGUID();
+  it('waits for canplay before completing video preloading without playing it', async function () {
+    const video = document.createElement('video');
+    const createElement = document.createElement.bind(document);
 
-      try {
-        const scene = getVideoJson({
-          duration: 30,
-          compositionDuration: 30,
-          endBehavior: spec.EndBehavior.restart,
-          id,
-          videos: [{ id, url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr' }],
-          start: 0,
-          options: { video: { id }, muted: true },
-        });
-        const composition = await currentPlayer.loadScene(scene, autoplay === undefined ? {} : { autoplay });
-        const video = composition.getItemByName('video')!.getComponent(VideoComponent).video!;
+    Object.defineProperty(video, 'src', { value: '', writable: true });
+    video.load = chai.spy();
+    video.play = chai.spy(() => Promise.resolve());
+    chai.spy.on(document, 'createElement', (tag: string, options?: ElementCreationOptions) =>
+      tag === 'video' ? video : createElement(tag, options));
+    try {
+      let ready = false;
+      const pending = processMultimedia<HTMLVideoElement>([{ id: 'video', url: 'video.mp4' }], spec.MultimediaType.video, {}).then(result => {
+        ready = true;
 
-        await new Promise(resolve => setTimeout(resolve, 300));
-        if (autoplay === false) {
-          expect(composition.getPaused()).to.be.true;
-          expect(video.paused).to.be.true;
-          expect(video.currentTime).to.equal(0);
-          currentPlayer.play();
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-        expect(composition.getPaused()).to.be.false;
-        expect(video.paused).to.be.false;
-        expect(video.currentTime).to.be.greaterThan(0.05);
+        return result;
+      });
 
-        composition.pause();
-        const pausedTime = video.currentTime;
+      expect(video.preload).to.equal('auto');
+      expect(video.load).to.have.been.called.once;
+      video.dispatchEvent(new Event('loadeddata'));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(ready).to.be.false;
+      video.dispatchEvent(new Event('canplay'));
+      expect(await pending).to.deep.equal([video]);
+      expect(video.play).not.to.have.been.called();
+    } finally {
+      chai.spy.restore(document);
+    }
+  });
 
-        await new Promise(resolve => setTimeout(resolve, 100));
-        expect(video.paused).to.be.true;
-        expect(video.currentTime).to.be.closeTo(pausedTime, 0.02);
-        expect(currentPlayer.engine.renderErrors.size).to.equal(0);
-      } finally {
-        currentPlayer.dispose();
-      }
-    });
-  }
+  it('keeps a preloaded video paused until the composition starts', async function () {
+    const currentPlayer = new Player({ canvas: document.createElement('canvas') });
+    const id = generateGUID();
+
+    try {
+      const scene = getVideoJson({
+        duration: 30,
+        compositionDuration: 30,
+        endBehavior: spec.EndBehavior.restart,
+        id,
+        videos: [{ id, url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr' }],
+        start: 0,
+        options: { video: { id }, muted: true },
+      });
+      const composition = await currentPlayer.loadScene(scene, { autoplay: false });
+      const video = composition.getItemByName('video')!.getComponent(VideoComponent).video!;
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expect(composition.getPaused()).to.be.true;
+      expect(video.paused).to.be.true;
+      expect(video.currentTime).to.equal(0);
+      currentPlayer.play();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expect(composition.getPaused()).to.be.false;
+      expect(video.paused).to.be.false;
+      expect(video.currentTime).to.be.greaterThan(0.05);
+
+      composition.pause();
+      const pausedTime = video.currentTime;
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(video.paused).to.be.true;
+      expect(video.currentTime).to.be.closeTo(pausedTime, 0.02);
+      expect(currentPlayer.engine.renderErrors.size).to.equal(0);
+    } finally {
+      currentPlayer.dispose();
+    }
+  });
 });
 
 function getVideoJson (options: VideoCompositionOptions) {
