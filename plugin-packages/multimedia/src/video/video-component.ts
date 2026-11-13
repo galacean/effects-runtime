@@ -35,10 +35,19 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
+  private initialVideoSettings?: {
+    volume: number,
+    muted: boolean,
+    playbackRate?: number,
+    loop?: boolean,
+  } = { volume: 1, muted: false };
+
   /**
    * 是否由用户手动控制播放速率（覆盖合成的播放速率）
    */
   private manualPlaybackRate = false;
+
+  private videoPlaybackRate = 1;
 
   /**
    * 是否由用户手动控制循环播放（覆盖合成的结束行为）
@@ -132,6 +141,7 @@ export class VideoComponent extends MaskableGraphic {
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
+    this.initializeVideo();
   }
 
   override onAwake (): void {
@@ -162,24 +172,17 @@ export class VideoComponent extends MaskableGraphic {
       transparent = false,
     } = options;
 
+    this.initialVideoSettings = { ...this.initialVideoSettings, volume, muted };
     this.transparent = transparent;
+
+    this.videoPlaybackRate = playbackRate;
 
     if (video) {
       const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
 
       if (videoAsset) {
         this.video = videoAsset.data;
-        this.video.playbackRate = playbackRate;
-        this.setVolume(volume);
-        this.setMuted(muted);
-        const endBehavior = this.item.definition.endBehavior;
-
-        if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
-          this.video.loop = false;
-        } else if (endBehavior === spec.EndBehavior.restart) {
-          this.video.loop = true;
-        }
-
+        this.initializeVideo();
       }
     }
 
@@ -190,6 +193,39 @@ export class VideoComponent extends MaskableGraphic {
     }
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
+  }
+
+  private initializeVideo (): void {
+    if (!this.video) {
+      return;
+    }
+
+    const settings = this.initialVideoSettings;
+
+    if (!settings) {
+      return;
+    }
+
+    this.video.volume = settings.volume;
+    this.video.muted = settings.muted;
+    const composition = this.item.composition;
+    const playbackRate = settings.playbackRate ?? this.videoPlaybackRate;
+
+    this.video.playbackRate = !this.manualPlaybackRate && composition
+      ? playbackRate * this.engine.speed * composition.speed
+      : playbackRate;
+    const endBehavior = this.item.endBehavior;
+
+    if (settings.loop !== undefined) {
+      this.video.loop = settings.loop;
+    } else if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
+      this.video.loop = false;
+    } else if (endBehavior === spec.EndBehavior.restart) {
+      this.video.loop = true;
+    }
+
+    // Consume pending playback settings only on the first video binding.
+    this.initialVideoSettings = undefined;
   }
 
   override onUpdate (dt: number): void {
@@ -623,7 +659,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 更新视频播放速率
-   * 手动模式下保持用户设置的速率不变，自动模式下根据 engine.speed * composition.speed 计算
+   * 手动模式下保持用户设置的速率不变，自动模式下将配置倍速乘以 engine.speed * composition.speed
    */
   private updatePlaybackRate (): void {
     // 手动模式下不自动更新速率
@@ -641,7 +677,7 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
-    const playbackRate = this.engine.speed * composition.speed;
+    const playbackRate = this.videoPlaybackRate * this.engine.speed * composition.speed;
 
     if (this.video.playbackRate !== playbackRate) {
       this.video.playbackRate = playbackRate;
@@ -761,6 +797,9 @@ export class VideoComponent extends MaskableGraphic {
    */
   setLoop (loop: boolean) {
     this.manualLoop = true;
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.loop = loop;
+    }
     if (this.video) {
       this.video.loop = loop;
     }
@@ -771,6 +810,9 @@ export class VideoComponent extends MaskableGraphic {
    */
   resetLoop () {
     this.manualLoop = false;
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.loop = undefined;
+    }
     // 将 video.loop 同步回合成应有的值，避免残留用户手动设置的状态
     if (this.video) {
       this.video.loop = this.item.endBehavior === spec.EndBehavior.restart;
@@ -782,6 +824,9 @@ export class VideoComponent extends MaskableGraphic {
    * @param muted 是否静音
    */
   setMuted (muted: boolean) {
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.muted = muted;
+    }
     if (this.video && this.video.muted !== muted) {
       this.video.muted = muted;
     }
@@ -792,6 +837,9 @@ export class VideoComponent extends MaskableGraphic {
    * @param volume 视频音量
    */
   setVolume (volume: number) {
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.volume = volume;
+    }
     if (this.video && this.video.volume !== volume) {
       this.video.volume = volume;
     }
@@ -820,6 +868,9 @@ export class VideoComponent extends MaskableGraphic {
    */
   setPlaybackRate (rate: number) {
     this.manualPlaybackRate = true;
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.playbackRate = rate;
+    }
     if (this.video) {
       this.video.playbackRate = rate;
     }
@@ -830,6 +881,9 @@ export class VideoComponent extends MaskableGraphic {
    */
   resetPlaybackRate () {
     this.manualPlaybackRate = false;
+    if (this.initialVideoSettings) {
+      this.initialVideoSettings.playbackRate = undefined;
+    }
   }
 
   /**

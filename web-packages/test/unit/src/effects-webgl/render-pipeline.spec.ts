@@ -3,7 +3,7 @@ import {
   FilterMode, Material, RendererFeature, RenderPassEvent, RenderTextureFormat, VFXItem,
   Camera, FEATHER_GROUP, SceneRendering, ShapeComponent, spec,
 } from '@galacean/effects';
-import type { Geometry, GPUFramebuffer, Renderer, RenderingData, TrimPathData } from '@galacean/effects';
+import type { Geometry, GPUFramebuffer, Renderer, RenderingData, TrimPathData, VariableWidthPoint } from '@galacean/effects';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import { ThreeComposition } from '../../../../../packages/effects-threejs/src/three-composition';
@@ -79,7 +79,12 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         VectorFeatherRenderer.indicatorSoS = indicatorSoS;
       });
 
-      function createShape (overrides: Partial<spec.RectangleData & { featherRadius: number, strokeTrimPath: TrimPathData }> = {}) {
+      function createShape (overrides: Partial<spec.RectangleData & {
+        featherRadius: number,
+        strokeTrimPath: TrimPathData,
+        strokeAlignment: number,
+        variableWidthPoints: VariableWidthPoint[],
+      }> = {}) {
         const item = new VFXItem(player.engine);
         const shape = item.addComponent(ShapeComponent);
 
@@ -127,6 +132,29 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
         expect(shape.getHitTestParams(true)?.triangles).deep.equals(ordinary.getHitTestParams(true)?.triangles);
         renderShape(shape, false);
         expect(readPixel(13, 17)).deep.equals([255, 0, 0, 255]);
+      });
+
+      it('retains inside alignment and the source width profile after trimming a feathered stroke', () => {
+        const shape = createShape({
+          fills: [],
+          strokes: [{ type: spec.FillType.Solid, color: { r: 1, g: 0, b: 0, a: 1 } }],
+          strokeWidth: 1,
+          strokeAlignment: 1,
+          strokeTrimPath: { start: 0, end: 0.25, offset: 0, mode: 0 },
+          variableWidthPoints: [
+            { position: 0, ascent: 1, descent: 1 },
+            { position: 0.25, ascent: 0.05, descent: 0.05 },
+            { position: 0.5, ascent: 1, descent: 1 },
+            { position: 1, ascent: 1, descent: 1 },
+          ],
+        });
+
+        for (const prepareFeather of [false, true]) {
+          renderShape(shape, prepareFeather);
+          expect(readPixel(20, 19)[0]).greaterThan(100); // Thick end of the top edge.
+          expect(readPixel(11, 19)[3]).equals(0); // Thin end at the same depth.
+          expect(readPixel(20, 25)[3]).equals(0); // Outside an inside-aligned stroke.
+        }
       });
 
       for (const mode of [true, false]) {

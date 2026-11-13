@@ -7,6 +7,18 @@
 
 ---
 
+## 2.10.6
+
+`2026-11-09`
+
+- Fix(multimedia): preserve settings until the first video binding. [#1590](https://github.com/galacean/effects-runtime/pull/1590) @ChengYi996
+
+## 2.10.5
+
+`2026-11-06`
+
+- Fix: preserve video playback rate during automatic updates. [#1570](https://github.com/galacean/effects-runtime/pull/1570) @ChengYi996
+
 ## 2.10.4
 
 `2026-10-12`

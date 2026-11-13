@@ -1,6 +1,6 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import { Material } from '../../material';
 import type { Attribute, GPUFramebuffer, Renderer } from '../../render';
@@ -9,10 +9,8 @@ import type { Texture } from '../../texture';
 import { glContext } from '../../gl';
 import type { ItemRenderer } from '../../components';
 import type { ShapeContour } from '../../plugins/shape/shape-path';
-import type { Paint } from '../../plugins/shape/shape-material';
-import { applyShapeRendererOptions, isSolidOrGradient, updateShapePaintMaterial } from '../../plugins/shape/shape-material';
-import type { StrokeAttributes } from './build-line';
-import { buildLineContour } from './build-line';
+import type { Paint } from '../../plugins/shape/paint';
+import { applyPaintRenderState, updatePaintMaterial } from '../../plugins/shape/paint';
 import type { FeatherBBox, FeatherMeshData } from './feather-mesh-builder';
 import { buildContoursFeatherMeshData, buildFeatherMeshData } from './feather-mesh-builder';
 import type { AtlasRect } from './atlas-allocator';
@@ -63,8 +61,7 @@ export type FeatherAtlasLayers = Record<FeatherSide, FeatherAtlasInfo | null>;
 
 type FeatherShapeData = {
   fillContours: readonly ShapeContour[],
-  strokeContours: readonly ShapeContour[],
-  strokeAttributes: StrokeAttributes,
+  strokeOutlines: readonly ShapeContour[],
   fills: readonly Paint[],
   strokes: readonly Paint[],
   rendererOptions: ItemRenderer,
@@ -244,12 +241,8 @@ export class VectorFeatherRenderer {
   /**
    * 读取配置；具体的 paint 支持条件在 update 中判断。
    */
-  fromData (data: spec.ShapeComponentData): void {
-    const extData = data as spec.ShapeComponentData & {
-      featherRadius?: number,
-    };
-
-    this.featherRadius = extData.featherRadius ?? 0;
+  fromData (data: spec.ShapeComponentData & { featherRadius?: number }): void {
+    this.featherRadius = data.featherRadius ?? 0;
     this.atlasLayers = null;
     this._enabled = false;
   }
@@ -257,7 +250,8 @@ export class VectorFeatherRenderer {
   update (data: FeatherShapeData): void {
     this._enabled = this.featherRadius > 0 && !data.isMask
       && data.fills.length <= 1 && data.strokes.length <= 1
-      && data.fills.every(isSolidOrGradient) && data.strokes.every(isSolidOrGradient);
+      && data.fills.every(paint => paint.type !== spec.FillType.Texture)
+      && data.strokes.every(paint => paint.type !== spec.FillType.Texture);
 
     if (!this.enabled) {
       this.atlasLayers = null;
@@ -278,11 +272,7 @@ export class VectorFeatherRenderer {
       buildFeatherMeshData(contour.points, meshes.fill);
     }
 
-    for (const contour of data.strokeContours) {
-      const contours = buildLineContour(contour.points, data.strokeAttributes, false, contour.closed);
-
-      buildContoursFeatherMeshData(contours, meshes.stroke);
-    }
+    buildContoursFeatherMeshData(data.strokeOutlines.map(contour => contour.points), meshes.stroke);
 
     this.updateMeshData(meshes);
   }
@@ -292,9 +282,9 @@ export class VectorFeatherRenderer {
       const material = this.upsampleMaterials[side];
       const paint = (side === 'fill' ? data.fills : data.strokes)[0];
 
-      applyShapeRendererOptions(material, data.rendererOptions);
+      applyPaintRenderState(material, data.rendererOptions);
       if (paint) {
-        updateShapePaintMaterial(material, paint);
+        updatePaintMaterial(material, paint, Vector2.ONE);
       }
     }
   }
@@ -322,10 +312,10 @@ export class VectorFeatherRenderer {
     const strokeTriangles = meshes.stroke.triangles;
 
     const positions = new Float32Array([...fillTriangles, ...strokeTriangles]);
-    const buffer = this.indicatorGeometry.getAttributeBuffer('aPos');
+    const buffer = this.indicatorGeometry.getVertexBuffer('aPos')?.buffer;
 
     if (!buffer || positions.byteLength > buffer.capacity) {
-      this.indicatorGeometry.setAttribute('aPos', { data: positions, size: 2 }, BufferUsage.Dynamic);
+      this.indicatorGeometry.setVerticesData('aPos', positions, { size: 2 }, BufferUsage.Dynamic);
     } else {
       this.indicatorGeometry.setAttributeData('aPos', positions);
     }
@@ -510,7 +500,7 @@ export class VectorFeatherRenderer {
     values: number[],
   ): Geometry {
     const data = new Float32Array(values);
-    const buffer = geometry.getAttributeBuffer(dataSource);
+    const buffer = geometry.getVertexBuffer(dataSource)?.buffer;
 
     if (!buffer || data.byteLength > buffer.capacity) {
       geometry.dispose();

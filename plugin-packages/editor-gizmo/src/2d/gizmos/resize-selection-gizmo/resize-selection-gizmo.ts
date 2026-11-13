@@ -1,5 +1,5 @@
 import type { VFXItem } from '@galacean/effects';
-import { MouseButton, MouseButtonMask, spec, TextComponent, Texture, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { FrameComponent, MouseButton, MouseButtonMask, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
@@ -125,7 +125,7 @@ export const SCALE_CORNER_HIT_SIZE = 14;
 /** 单选信息标签中的类型图标尺寸。 */
 const INFO_ICON_SIZE = 15;
 
-/** 信息文字的字形视觉位置高于字号框，单独下移以对齐图标。 */
+/** 无可见字形时使用的文本 cell 底部偏移。 */
 const INFO_TEXT_BOTTOM = 1;
 
 /** 图标相对选框顶边的底部偏移。 */
@@ -173,6 +173,8 @@ export class ResizeSelectionGizmo extends Gizmo {
   /** 当前交互平面，initInteractionPlane 写入。 */
   interactionPlane: Plane;
   private configOff?: () => void;
+  private frameTitleRenderer?: FrameTitle;
+  private savedTitleMaxWidth = Infinity;
 
   /** 边与角点共用一次绝对缩放快照。 */
   private resizeSession: AnchoredResizeSession | undefined;
@@ -475,6 +477,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const lastActiveType = this.wireframe.activeType;
 
     this.refreshWireframeBySelectedItems();
+    this.updateFrameTitleWidth();
     if (lastActiveType !== this.wireframe.activeType) {
       this.refreshCursorResult(this.wireframe.activeType);
     }
@@ -801,14 +804,19 @@ export class ResizeSelectionGizmo extends Gizmo {
     // 步骤 4：为非文本单选元素绘制信息标签。
     const isSingleTextSelection = this.selectedItems.length === 1
       && this.selectedItems[0].type === spec.ItemType.text;
+    const hasOwnTitle = this.selectedItems.length === 1
+      && this.selectedItems[0].type === spec.ItemType.null
+      && !!this.selectedItems[0].name
+      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleRenderer?.visible;
 
     if (this.selectedItems.length === 1 && infoShowEnabled && !isSingleTextSelection) {
-      this.renderItemInfo(control, sizeTextColor, nameTextColor);
+      this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
     }
   }
 
   /** 释放配置监听器。 */
   override dispose (): void {
+    this.releaseFrameTitleWidth();
     this.configOff?.();
     this.configOff = undefined;
     super.dispose();
@@ -1283,22 +1291,12 @@ export class ResizeSelectionGizmo extends Gizmo {
     return undefined;
   }
 
-  /**
-   * 绘制单选元素的名称、尺寸与类型图标。
-   * @param control 绘制控制器。
-   * @param sizeTextColor 尺寸文本颜色。
-   * @param nameTextColor 名称文本颜色。
-   */
-  private renderItemInfo (control: Control, sizeTextColor: number, nameTextColor: number): void {
-    // 步骤 1：计算元素名称、像素尺寸与图标纹理。
-    const item = this.selectedItems[0];
-    const name = this.getItemInfoName(item);
+  /** 共用同一份顶边与尺寸排版，避免 Frame 标题占用尺寸标签的区域。 */
+  private getItemInfoLayout (measure: (text: string) => { width: number }) {
     const corners = this.wireframe.transform ? getTransformedBoxCorners(this.wireframe.transform) : getBoxCorners(this.wireframe.box);
     const boxWidth = Math.round(corners[0].distance(corners[1]) / this.viewScale * this.config.contentRatio / this.config.pixelRatio);
     const boxHeight = Math.round(corners[1].distance(corners[2]) / this.viewScale * this.config.contentRatio / this.config.pixelRatio);
     const size = [boxWidth, boxHeight];
-
-    const iconTexture = this.getIconTexture(this.iconType, control.engine);
 
     // 步骤 2：查找屏幕最上方的选框边并计算旋转角。
     const topCorner = corners[0].clone();
@@ -1330,8 +1328,6 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     const viewBoxWidth = leftCorner.distance(rightCorner);
 
-    // 步骤 3：根据顶边可用宽度裁剪名称与尺寸文本。
-    const measure = (text: string) => control.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY);
     let sizeStr = size.map(s => roundNumber(s, 0)).join(' * ');
     const sizeTextWidth = measure(sizeStr).width;
 
@@ -1339,7 +1335,54 @@ export class ResizeSelectionGizmo extends Gizmo {
       sizeStr = '';
     }
 
-    let nameStr = ` ${name}`;
+    return { leftCorner, rightCorner, rotation, viewBoxWidth, sizeStr, sizeTextWidth };
+  }
+
+  /** 在 Frame 自绘标题之前，为 Gizmo 的尺寸标签预留宽度。 */
+  private updateFrameTitleWidth (): void {
+    const item = this.selectedItems.length === 1 ? this.selectedItems[0] : undefined;
+    const frame = this.config.infoShowEnabled && item?.type === spec.ItemType.null
+      ? item.getComponent(FrameComponent) : undefined;
+    const title = frame?.titleRenderer;
+    const next = title?.visible && item?.name && !this.wireframe.box.isEmpty() ? title : undefined;
+
+    if (this.frameTitleRenderer !== next) {
+      this.releaseFrameTitleWidth();
+      this.frameTitleRenderer = next;
+      this.savedTitleMaxWidth = next?.maxWidth ?? Infinity;
+    }
+    if (next) {
+      const graphics = this._owner.getEngine().renderingServer.graphics;
+      const layout = this.getItemInfoLayout(text => graphics.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY));
+      const reservedWidth = layout.sizeStr ? layout.sizeTextWidth + 5 : 0;
+
+      next.maxWidth = Math.max(0, Math.min(this.savedTitleMaxWidth, layout.viewBoxWidth - reservedWidth));
+    }
+  }
+
+  private releaseFrameTitleWidth (): void {
+    if (this.frameTitleRenderer) {
+      this.frameTitleRenderer.maxWidth = this.savedTitleMaxWidth;
+      this.frameTitleRenderer = undefined;
+    }
+  }
+
+  /**
+   * 绘制单选元素的名称、尺寸与类型图标。
+   * @param control 绘制控制器。
+   * @param sizeTextColor 尺寸文本颜色。
+   * @param nameTextColor 名称文本颜色。
+   * @param showTitle 是否绘制名称与类型图标，Frame 自绘标题时仅绘制尺寸。
+   */
+  private renderItemInfo (control: Control, sizeTextColor: number, nameTextColor: number, showTitle = true): void {
+    const item = this.selectedItems[0];
+    const name = this.getItemInfoName(item);
+    const measure = (text: string) => control.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY);
+    const layout = this.getItemInfoLayout(measure);
+    const { leftCorner, rightCorner, rotation, viewBoxWidth, sizeTextWidth } = layout;
+    let { sizeStr } = layout;
+    const iconTexture = showTitle ? this.getIconTexture(this.iconType, control.engine) : undefined;
+    let nameStr = showTitle ? ` ${name}` : '';
     const nameTextWidth = measure(nameStr).width;
 
     if ((20 + nameTextWidth + sizeTextWidth) > viewBoxWidth) {
@@ -1359,7 +1402,15 @@ export class ResizeSelectionGizmo extends Gizmo {
     const ex = new Vector2(cos, sin);
     const ey = new Vector2(-sin, cos);
 
-    const textCellTop = -INFO_TEXT_BOTTOM - measure('M').lineHeight;
+    const iconCenter = -INFO_ICON_BOTTOM - INFO_ICON_SIZE / 2;
+    const textCellTop = (text: string): number => {
+      const metrics = measure(text);
+
+      // 图集行高包含排版留白，使用可见字形中心与图标中心对齐。
+      return metrics.inkHeight > 0
+        ? iconCenter - metrics.inkTop - metrics.inkHeight / 2
+        : -INFO_TEXT_BOTTOM - metrics.lineHeight;
+    };
 
     // 步骤 5：依次绘制图标、尺寸和名称。
     if (iconTexture && !iconTexture.isDestroyed) {
@@ -1386,7 +1437,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(-textWidth, textCellTop, sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(-textWidth, textCellTop(sizeStr), sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor, 1), INFO_TEXT_FONT_FAMILY);
         },
       );
     }
@@ -1400,7 +1451,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(0, textCellTop, nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(0, textCellTop(nameStr), nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor, 1), INFO_TEXT_FONT_FAMILY);
         },
       );
     }

@@ -166,7 +166,7 @@ describe('webgl/gl-context-lost', () => {
       });
 
       geometry.initialize();
-      const gpuBuffer = geometry.getAttributeBuffer('aPosition')!;
+      const gpuBuffer = geometry.getVertexBuffer('aPosition')!.buffer;
       const device = engine.displayServer.renderingDevice;
       const bufferCount = device['resources'].length;
       const beforeVertex = gpuBuffer.underlyingResource;
@@ -174,7 +174,7 @@ describe('webgl/gl-context-lost', () => {
 
       await emulateContextLoss(engine);
 
-      expect(geometry.getAttributeBuffer('aPosition')).equals(gpuBuffer);
+      expect(geometry.getVertexBuffer('aPosition')?.buffer).equals(gpuBuffer);
       expect(device['resources'].length).equals(bufferCount);
       expect(gpuBuffer.underlyingResource).to.not.equal(beforeVertex);
       expect(geometry.getIndexBuffer()!.underlyingResource).to.not.equal(beforeIndex);
@@ -211,7 +211,7 @@ describe('webgl/gl-context-lost', () => {
       await emulateContextLoss(engine);
       const restored = new Float32Array(data.length);
 
-      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getAttributeBuffer('aPosition')!, restored);
+      readBufferContents((engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl, geometry.getVertexBuffer('aPosition')!.buffer, restored);
       expect(restored).to.deep.equal(data);
       geometry.dispose();
     }).timeout(8000);

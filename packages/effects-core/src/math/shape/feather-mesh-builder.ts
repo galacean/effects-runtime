@@ -106,7 +106,7 @@ export function buildContoursFeatherMeshData (
   contours: number[][],
   meshData: FeatherMeshData,
 ): void {
-  // 这里保证了路径闭合和CCW
+  // Merge overlapping stroke patches, keeping only closed boundaries and holes.
   const parsedContours = unionContours(contours, true);
 
   for (const contour of parsedContours) {

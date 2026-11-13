@@ -1,8 +1,8 @@
-import { EventEmitter, type Engine, type Composition, type InputEventMouseButton, type Region, spec, type VFXItem, TextComponent, SpriteComponent, FrameComponent, addItem } from '@galacean/effects';
+import { EventEmitter, type Engine, type Composition, type InputEventMouseButton, type Region, spec, type VFXItem, TextComponent, SpriteComponent, addItem } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Ray, Vector2, setBoxFromPoints, transformedBoxContainsPoint } from '../math';
+import { Ray, Vector2, transformedBoxContainsPoint } from '../math';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import {
   getPlayerItemById,
@@ -10,8 +10,8 @@ import {
   getItemViewBox,
   getItemViewTransform,
   getItemChildren,
+  isEffectsPlayerItem,
   isGroupPlayerItem,
-  isFramePlayerItem,
   isPlayerItemVisible,
 } from '../items';
 import { viewPositionToNDC } from '../viewport';
@@ -31,12 +31,6 @@ type HitTestResult = {
   /** 引擎返回的命中区域。 */
   regions: Region[],
 };
-
-/**
- * 画板元素左上角点击交互区域尺寸
- */
-const FRAME_INTERACTION_WIDTH = 40;
-const FRAME_INTERACTION_HEIGHT = 20;
 
 /** Selection 事件参数。 */
 export type SelectionEvents = {
@@ -395,14 +389,38 @@ export class Selection extends EventEmitter<SelectionEvents> {
     if (!playerComposition?.items) {
       return [];
     }
-    const { x, y } = viewPositionToNDC(point, GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!));
+    const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
+    const { x, y } = viewPositionToNDC(point, containerSize);
     const result: HitTestResult = { ray: new Ray(), regions: [] };
+    const effectsRegions: Region[] = [];
 
     try {
-      result.regions = playerComposition.hitTest(x, y, true);
+      result.regions = playerComposition.hitTest(x, y, true, {
+        skip: item => {
+          if (this._effectsEditItemId || !isEffectsPlayerItem(item)) {
+            return false;
+          }
+          const transform = getItemViewTransform(item, containerSize);
+
+          if (item.isActive && transform && transformedBoxContainsPoint(transform, point)) {
+            const position = item.transform.getWorldPosition();
+
+            effectsRegions.push({ id: item.getInstanceId(), name: item.name, position, hitPositions: [position], item, composition: playerComposition });
+          }
+
+          // 未进入特效内部编辑时，按容器包围盒命中并跳过内部子树。
+          return true;
+        },
+      });
       result.ray = playerComposition.getHitTestRay(x, y);
     } catch (e) {
       console.warn(e);
+    }
+    if (effectsRegions.length > 0) {
+      const items = playerComposition.items;
+
+      result.regions.push(...effectsRegions);
+      result.regions.sort((a, b) => items.indexOf(a.item) - items.indexOf(b.item));
     }
     // Effects runtime 在隐藏节点切换后的首帧仍可能返回旧命中区域；以播放器节点的可见性为最终交互依据。
     result.regions = result.regions.filter(region => {
@@ -410,10 +428,9 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
       return isPlayerItemVisible(item);
     });
-    this.refreshResultRegions(result);
     const selectedIds = this.reorderHitTestResult(result, playerComposition).filter(id => id !== 'extra-camera' && !this.ignoreIds.includes(id) && !this.isIgnoredNameById(id) && getPlayerItemById(this.engine.sceneServer.compositions[0], id)?.type !== spec.ItemType.composition);
 
-    return this.preSelectedFrameOutBound(point, selectedIds);
+    return selectedIds;
   }
 
   /**
@@ -779,33 +796,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
   }
 
   /**
-   * 将动效子元素命中区域归并到动效容器。
-   * @param hitTestResult 原始命中结果
-   */
-  private refreshResultRegions (hitTestResult: HitTestResult): void {
-    const playerComposition = this.engine.sceneServer.compositions[0];
-
-    if (!playerComposition || this._effectsEditItemId) {
-      return;
-    }
-    const effectsItems = playerComposition.items.filter(item => item.name === '动效' && item.getComponent(FrameComponent) !== undefined);
-    const effectsItemMap = new Map<string, string>();
-
-    effectsItems.forEach(item => {
-      const compositionChild = item.children?.[0];
-
-      if (compositionChild?.type === spec.ItemType.composition) {
-        compositionChild.children.forEach(subChild => {
-          effectsItemMap.set(subChild.getInstanceId(), item.getInstanceId());
-        });
-      }
-    });
-    hitTestResult.regions.forEach(region => {
-      region.id = effectsItemMap.get(region.id) ?? region.id;
-    });
-  }
-
-  /**
    * 按渲染顺序和深度整理命中结果。
    * @param hitTestResult 原始命中结果
    * @param playerComposition 播放合成
@@ -877,49 +867,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
     // 4. 返回排序后的元素 ID。
     return results.map(result => result[0]);
-  }
-
-  /**
-   * 将画板左上角扩展交互区的命中加入结果。
-   * @param mouse 指针视图坐标
-   * @param currentSelectedIds 当前命中元素 ID
-   * @returns 补充画板后的命中元素 ID
-   */
-  private preSelectedFrameOutBound (mouse: Vector2, currentSelectedIds: string[]): string[] {
-    const playerComposition = this.engine.sceneServer.compositions[0];
-
-    if (!playerComposition) {
-      return currentSelectedIds;
-    }
-    const framePlayerItems = playerComposition.items.filter(item => (
-      isFramePlayerItem(item)
-      && isPlayerItemVisible(item)
-    ));
-    const containerSize = GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!);
-    const frameBoxInfoes = framePlayerItems.map(item => ({
-      id: item.getInstanceId(),
-      box: getItemViewBox(item, containerSize),
-    }));
-
-    if (!frameBoxInfoes?.length) {
-      return currentSelectedIds;
-    }
-    let hasSelectedFrame = false;
-
-    frameBoxInfoes.forEach(frameBoxInfo => {
-      if (hasSelectedFrame) {
-        return;
-      }
-      const { min } = frameBoxInfo.box;
-      const interactionBox = setBoxFromPoints(new Box2(), [min.clone(), min.clone().add(new Vector2(FRAME_INTERACTION_WIDTH, -FRAME_INTERACTION_HEIGHT))]);
-
-      if (interactionBox.containsPoint(mouse)) {
-        hasSelectedFrame = true;
-        currentSelectedIds.splice(0, 0, frameBoxInfo.id);
-      }
-    });
-
-    return currentSelectedIds;
   }
 
   /**

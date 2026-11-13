@@ -1,40 +1,42 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import type { Maskable, MaterialProps } from '../../material';
-import { Material } from '../../material';
+import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
-import { BufferUsage, GLSLVersion, Geometry, VertexElementType } from '../../render';
-import type { GradientValue, StrokeAttributes } from '../../math';
-import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import { BufferUsage, Geometry, VertexElementType } from '../../render';
+import type { StrokeAttributes, VariableWidthPoint } from '../../math';
+import { extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
-import vert from './shaders/shape.vert.glsl';
-import frag from './shaders/shape.frag.glsl';
+import type { Paint, SolidPaint } from './paint';
+import { applyPaintRendererOptions, createPaint, createPaintMaterial, updatePaintMaterial } from './paint';
 import { TrimPath } from './trim-path';
+import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
-import type { ShapeContour, ShapePath } from './shape-path';
+import type { ShapeContour } from './shape-path';
+import { Transform } from '../../transform';
+import { makeStrokeContourPath } from './contour-path';
+import { expandStrokePath, flattenStrokePath } from '../../math/shape/stroke-expansion';
+import { triangulate } from '../../math/shape/triangulate';
 import type { BoundingBoxInfo } from '../interact/mesh-collider';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { VectorFeatherRenderer } from '../../math/shape/vector-feather-renderer';
-import type { Paint, SolidPaint } from './shape-material';
-import { applyShapeRendererOptions, updateShapePaintMaterial } from './shape-material';
 import { FEATHER_GROUP } from '../../render/feather-offscreen-pass';
 
-export type { SolidPaint, GradientPaint, TextureTransform, TexturePaint } from './shape-material';
-export { TexturePaintScaleMode } from './shape-material';
+export * from './paint';
 
 interface ShapeAttributes {
   /**
    * 矢量图形类型
    */
   type: spec.ShapePrimitiveType,
+  transform?: spec.TransformData,
 }
 
 /**
@@ -161,11 +163,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   private dirty = true;
   private graphicsPath = new GraphicsPath();
-  private fillContours: ShapeContour[] = [];
-  private strokeContours: ShapeContour[] = [];
+  private readonly fillPathResult = new TrimmedPathResult();
+  private readonly strokePathResult = new TrimmedPathResult();
 
   private fills: Paint[] = [];
-  private strokeAttributes: StrokeAttributes = {
+  private readonly strokeAttributes: StrokeAttributes = {
     width: 1,
     alignment: 0.5,
     cap: spec.LineCap.Butt,
@@ -173,9 +175,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     miterLimit: 10,
   };
 
-  private strokeWidth = 1;
-  private strokeCap = spec.LineCap.Butt;
-  private strokeJoin = spec.LineJoin.Miter;
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
   private _strokeTrimPath: TrimPath | null = null;
@@ -190,12 +189,77 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.shapeAttributes;
   }
 
+  get strokeWidth (): number {
+    return this.strokeAttributes.width;
+  }
+
+  set strokeWidth (value: number) {
+    if (this.strokeAttributes.width !== value) {
+      this.strokeAttributes.width = value;
+      this.dirty = true;
+    }
+  }
+
+  get strokeAlignment (): number {
+    return this.strokeAttributes.alignment;
+  }
+
+  set strokeAlignment (value: number) {
+    if (this.strokeAttributes.alignment !== value) {
+      this.strokeAttributes.alignment = value;
+      this.dirty = true;
+    }
+  }
+
+  get strokeCap (): spec.LineCap {
+    return this.strokeAttributes.cap;
+  }
+
+  set strokeCap (value: spec.LineCap) {
+    if (this.strokeAttributes.cap !== value) {
+      this.strokeAttributes.cap = value;
+      this.dirty = true;
+    }
+  }
+
+  get strokeJoin (): spec.LineJoin {
+    return this.strokeAttributes.join;
+  }
+
+  set strokeJoin (value: spec.LineJoin) {
+    if (this.strokeAttributes.join !== value) {
+      this.strokeAttributes.join = value;
+      this.dirty = true;
+    }
+  }
+
+  get strokeMiterLimit (): number {
+    return this.strokeAttributes.miterLimit;
+  }
+
+  set strokeMiterLimit (value: number) {
+    if (this.strokeAttributes.miterLimit !== value) {
+      this.strokeAttributes.miterLimit = value;
+      this.dirty = true;
+    }
+  }
+
   get strokeTrimPath (): TrimPath | null {
     return this._strokeTrimPath;
   }
 
+  set strokeTrimPath (value: TrimPath | null) {
+    this._strokeTrimPath = value;
+    this.dirty = true;
+  }
+
   get fillTrimPath (): TrimPath | null {
     return this._fillTrimPath;
+  }
+
+  set fillTrimPath (value: TrimPath | null) {
+    this._fillTrimPath = value;
+    this.dirty = true;
   }
 
   /**
@@ -307,16 +371,18 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     this.buildPath(this.shapeAttributes, screenScale);
 
-    const fillPath = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
-    const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+    const fillResult = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.fillPathResult)
+      ?? this.fillPathResult.reset(this.graphicsPath);
+    const strokeResult = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.strokePathResult)
+      ?? this.strokePathResult.reset(this.graphicsPath);
 
-    this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
+    const { fillContours, strokeOutlines } = this.buildGeometryFromPath(fillResult.path, strokeResult, screenScale);
+
     this.updateMaterials();
 
     this.featherRenderer.update({
-      fillContours: this.fillContours,
-      strokeContours: this.strokeContours,
-      strokeAttributes: this.strokeAttributes,
+      fillContours,
+      strokeOutlines,
       fills: this.fills,
       strokes: this.strokes,
       rendererOptions: this.rendererOptions,
@@ -406,27 +472,23 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
-  private buildGeometryFromPath (fillShapePath: ShapePath, strokeShapePath: ShapePath, screenScale: number) {
+  private buildGeometryFromPath (fillPath: GraphicsPath, strokeResult: TrimmedPathResult, screenScale: number) {
     const vertices: number[] = [];
     const indices: number[] = [];
     const lineStyle = this.strokeAttributes;
-
-    this.fillContours.length = 0;
-    this.strokeContours.length = 0;
-    lineStyle.cap = this.strokeCap;
-    lineStyle.join = this.strokeJoin;
-    lineStyle.width = this.strokeWidth;
+    const fillContours: ShapeContour[] = [];
+    let strokeOutlines: ShapeContour[] = [];
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.fills.length > 0) {
-      for (const shapePrimitive of fillShapePath.shapePrimitives) {
+      for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
 
         shape.build(points, screenScale);
-        this.fillContours.push({ points, closed: true });
+        fillContours.push({ points, closed: true });
         shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
       }
     }
@@ -434,22 +496,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const fillIndexCount = indices.length;
 
     if (this.strokes.length > 0 && this.strokeWidth > 0) {
-      for (const shapePrimitive of strokeShapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
-        const indexOffset = indices.length;
-        const vertOffset = vertices.length / 2;
-        let close = true;
+      const strokePath = strokeResult.path;
+      const strokeContourPath = makeStrokeContourPath(strokePath);
+      const maskPath = lineStyle.alignment === 0.5 || strokePath === this.graphicsPath
+        ? strokeContourPath : makeStrokeContourPath(this.graphicsPath);
+      const expanded = expandStrokePath(strokeContourPath, lineStyle, screenScale, maskPath, strokeResult);
 
-        if (this._strokeTrimPath && !this._strokeTrimPath.isIdentity()) {
-          close = false;
-        } else if (shape instanceof Polygon) {
-          close = shape.closePath;
-        }
+      strokeOutlines = flattenStrokePath(expanded, screenScale);
+      const triangles = triangulate(strokeOutlines.map(contour => contour.points), 'nonzero');
+      const vertexOffset = vertices.length / 2;
 
-        shape.build(points, screenScale);
-        this.strokeContours.push({ points, closed: close });
-        buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
+      for (let i = 0; i < triangles.length; i++) {
+        vertices.push(triangles[i]);
+      }
+      for (let i = 0; i < triangles.length / 2; i++) {
+        indices.push(vertexOffset + i);
       }
     }
 
@@ -468,8 +529,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       uvArray = new Float32Array(vertexCount * 2);
     }
 
-    if (!indexArray || indexArray.length < indices.length) {
-      indexArray = new Uint16Array(indices.length);
+    const IndexArray = vertexCount > 65536 ? Uint32Array : Uint16Array;
+
+    if (!indexArray || !(indexArray instanceof IndexArray) || indexArray.length < indices.length) {
+      indexArray = new IndexArray(indices.length);
     }
 
     // Set position attribute array, calculate bounding box for uv scaling
@@ -523,15 +586,17 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     subMeshes[SHAPE_SUBMESH.fill].offset = 0;
     subMeshes[SHAPE_SUBMESH.fill].indexCount = fillIndexCount;
-    subMeshes[SHAPE_SUBMESH.stroke].offset = fillIndexCount * Uint16Array.BYTES_PER_ELEMENT;
+    subMeshes[SHAPE_SUBMESH.stroke].offset = fillIndexCount * indexArray.BYTES_PER_ELEMENT;
     subMeshes[SHAPE_SUBMESH.stroke].indexCount = strokeIndexCount;
+
+    return { fillContours, strokeOutlines };
   }
 
   private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
-    const buffer = this.geometry.getAttributeBuffer(name);
+    const buffer = this.geometry.getVertexBuffer(name)?.buffer;
 
     if (!buffer || data.byteLength > buffer.capacity) {
-      this.geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
+      this.geometry.setVerticesData(name, data, { size }, BufferUsage.Dynamic);
 
       return;
     }
@@ -593,10 +658,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         const easingOuts = customShapeAtribute.easingOuts;
 
         for (const shape of customShapeAtribute.shapes) {
-          const indices = shape.indexes;
-          const startPoint = points[indices[0].point];
+          const indices = shape.indexes.filter(index => points[index.point]);
 
-          this.graphicsPath.moveTo(startPoint.x, startPoint.y);
+          if (indices.length < 2) {
+            continue;
+          }
+          const startPoint = points[indices[0].point];
+          const path = shape.transform ? new GraphicsPath() : this.graphicsPath;
+
+          path.moveTo(startPoint.x, startPoint.y);
 
           for (let i = 1; i < indices.length; i++) {
             const pointIndex = indices[i];
@@ -606,7 +676,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
+            path.bezierCurveTo((control1?.x ?? 0) + lastPoint.x, (control1?.y ?? 0) + lastPoint.y, (control2?.x ?? 0) + point.x, (control2?.y ?? 0) + point.y, point.x, point.y, undefined, ppu);
           }
 
           if (shape.close) {
@@ -617,8 +687,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
-            this.graphicsPath.closePath();
+            path.bezierCurveTo((control1?.x ?? 0) + lastPoint.x, (control1?.y ?? 0) + lastPoint.y, (control2?.x ?? 0) + point.x, (control2?.y ?? 0) + point.y, point.x, point.y, undefined, ppu);
+            path.closePath();
+          }
+          if (shape.transform) {
+            this.appendTransformedPath(path, shape.transform);
           }
         }
 
@@ -653,70 +726,79 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         break;
       }
     }
+    if (shapeAttribute.transform) {
+      this.appendTransformedPath(this.graphicsPath, shapeAttribute.transform);
+    }
+  }
+
+  private appendTransformedPath (path: GraphicsPath, data: spec.TransformData): void {
+    const commands = makeStrokeContourPath(path);
+    const transform = new Transform();
+
+    transform.fromData(data);
+    transform.setScale(transform.scale.x * (data.size?.x ?? 1), transform.scale.y * (data.size?.y ?? 1), transform.scale.z);
+    const matrix = transform.getMatrix();
+    const point = new Vector3();
+
+    if (path === this.graphicsPath) {
+      this.graphicsPath.clear();
+    }
+    for (const command of commands) {
+      for (const control of command.data) {
+        point.set(control.x, control.y, 0);
+        matrix.transformPoint(point, point); control.set(point.x, point.y);
+      }
+      switch (command.action) {
+        case 'moveTo':
+          this.graphicsPath.moveTo(command.data[0].x, command.data[0].y);
+
+          break;
+        case 'lineTo':
+          this.graphicsPath.lineTo(command.data[0].x, command.data[0].y);
+
+          break;
+        case 'bezierCurveTo':
+          this.graphicsPath.bezierCurveTo(command.data[0].x, command.data[0].y, command.data[1].x, command.data[1].y,
+            command.data[2].x, command.data[2].y, command.smoothness, command.scale);
+
+          break;
+        case 'closePath':
+          this.graphicsPath.closePath();
+
+          break;
+      }
+    }
   }
 
   private updateMaterials () {
-    for (let i = 0; i < this.fills.length; i++) {
-      this.updatePaintMaterial(this.fillMaterials[i], this.fills[i]);
-    }
+    const destSize = new Vector2(1, 1);
 
-    for (let i = 0; i < this.strokes.length; i++) {
-      this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
-    }
-  }
-
-  private updatePaintMaterial (material: Material, paint: Paint) {
-    updateShapePaintMaterial(material, paint);
-
-    if (paint.type === spec.FillType.Texture) {
-      material.setInt('_ImageScaleMode', paint.scaleMode);
-      material.setVector2('_ImageSize', new Vector2(paint.texture.getWidth(), paint.texture.getHeight()));
-
+    if (this.fills.some(paint => paint.type === spec.FillType.Texture) || this.strokes.some(paint => paint.type === spec.FillType.Texture)) {
       const boundingBox = this.getBoundingBox();
       const topRight = boundingBox.area[0].p1;
       const bottomLeft = boundingBox.area[1].p2;
 
-      material.setVector2('_DestSize', new Vector2(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y));
-      material.setFloat('_ImageOpacity', paint.opacity);
-      material.setFloat('_ImageScalingFactor', paint.scalingFactor);
-      material.setTexture('_ImageTex', paint.texture);
-
-      const transform = paint.textureTransform;
-
-      material.setMatrix3('_TextureTransform', new Matrix3()
-        .scale(transform.scale.x, transform.scale.y)
-        .rotate(transform.rotation)
-        .translate(transform.offset.x, transform.offset.y)
-        .invert()
-      );
+      destSize.set(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y);
+    }
+    for (let i = 0; i < this.fills.length; i++) {
+      updatePaintMaterial(this.fillMaterials[i], this.fills[i], destSize);
+    }
+    for (let i = 0; i < this.strokes.length; i++) {
+      updatePaintMaterial(this.strokeMaterials[i], this.strokes[i], destSize);
     }
   }
 
-  private createMaterialFromRendererOptions (rendererOptions: ItemRenderer): Material {
-    const materialProps: MaterialProps = {
-      shader: {
-        vertex: vert,
-        fragment: frag,
-        glslVersion: GLSLVersion.GLSL1,
-      },
-    };
-    const material = Material.create(this.engine, materialProps);
-
-    applyShapeRendererOptions(material, rendererOptions);
-
-    material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
-    material.setTexture('_ImageTex', rendererOptions.texture);
-
-    return material;
-  }
-
-  override fromData (data: spec.ShapeComponentData): void {
+  override fromData (data: spec.ShapeComponentData & {
+    strokeAlignment?: number,
+    strokeMiterLimit?: number,
+    variableWidthPoints?: VariableWidthPoint[],
+    transform?: spec.TransformData,
+    featherRadius?: number,
+  }): void {
     super.fromData(data);
     this.dirty = true;
 
-    if (data.mask) {
-      this.maskManager.setMaskOptions(this.engine, data.mask);
-    }
+    this.maskManager.setMaskOptions(this.engine, data.mask ?? {});
 
     const renderer = data.renderer ?? {};
 
@@ -733,6 +815,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
+    this.strokeAlignment = data.strokeAlignment ?? 0.5;
+    this.strokeMiterLimit = data.strokeMiterLimit ?? 10;
+    this.strokeAttributes.variableWidthPoints = data.variableWidthPoints?.map(point => ({ ...point }));
 
     this._strokeTrimPath = null;
     this._fillTrimPath = null;
@@ -754,18 +839,16 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.featherRenderer.fromData(data);
 
     this.fills.length = 0;
-    this.fillMaterials.length = 0;
     for (const fill of data.fills) {
-      this.fills.push(this.createPaint(fill));
-      this.fillMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
+      this.fills.push(createPaint(fill, path => path ? this.findObject<Texture>(path) : this.engine.assetServer.whiteTexture));
     }
 
     this.strokes.length = 0;
-    this.strokeMaterials.length = 0;
     for (const stroke of data.strokes) {
-      this.strokes.push(this.createPaint(stroke));
-      this.strokeMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
+      this.strokes.push(createPaint(stroke, path => path ? this.findObject<Texture>(path) : this.engine.assetServer.whiteTexture));
     }
+    this.syncPaintMaterials(this.fillMaterials, this.fills.length);
+    this.syncPaintMaterials(this.strokeMaterials, this.strokes.length);
 
     this.materials = [...this.fillMaterials, ...this.strokeMaterials];
 
@@ -849,62 +932,23 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         break;
       }
     }
-  }
-
-  private createPaint (paintData: spec.PaintData): Paint {
-    let paint: Paint;
-
-    switch (paintData.type) {
-      case spec.FillType.Solid: {
-        paint = {
-          type: paintData.type,
-          color: new Color().copyFrom(paintData.color),
-        };
-
-        break;
-      }
-      case spec.FillType.GradientLinear:
-      case spec.FillType.GradientAngular:
-      case spec.FillType.GradientRadial: {
-        paint = {
-          type: paintData.type,
-          gradientStops: createValueGetter(paintData.gradientStops) as GradientValue,
-          startPoint: new Vector2().copyFrom(paintData.startPoint),
-          endPoint: new Vector2().copyFrom(paintData.endPoint),
-        };
-
-        break;
-      }
-      case spec.FillType.Texture: {
-
-        const textureTransform = {
-          offset: { x: 0, y: 0 },
-          rotation: 0,
-          scale: { x: 1, y: 1 },
-          ...(paintData.textureTransform ?? {}),
-        };
-
-        paint = {
-          type: paintData.type,
-          texture: this.findObject<Texture>(paintData.texture),
-          scaleMode: paintData.scaleMode,
-          scalingFactor: paintData.scalingFactor ?? 1,
-          opacity: paintData.opacity ?? 1,
-          textureTransform: {
-            offset: new Vector2().copyFrom(textureTransform.offset),
-            rotation: textureTransform.rotation,
-            scale: new Vector2().copyFrom(textureTransform.scale),
-          },
-        };
-
-        break;
-      }
-    }
-
-    return paint;
+    this.shapeAttributes.transform = data.transform;
   }
 
   override onApplyAnimationProperties (): void {
     this.dirty = true;
+  }
+
+  private syncPaintMaterials (materials: Material[], count: number): void {
+    while (materials.length > count) {
+      materials.pop()!.dispose();
+    }
+    for (let i = 0; i < count; i++) {
+      if (!materials[i]) {
+        materials.push(createPaintMaterial(this.engine, this.rendererOptions, this.maskManager.alphaMaskEnabled));
+      } else {
+        applyPaintRendererOptions(materials[i], this.rendererOptions, this.maskManager.alphaMaskEnabled);
+      }
+    }
   }
 }

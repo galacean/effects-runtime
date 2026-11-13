@@ -29,7 +29,7 @@ describe('webgl/gl-mesh', () => {
     mesh.material.initialize();
     mesh.geometry.initialize();
     const resultGeom = mesh.geometry;
-    const gpubuffer = resultGeom.getAttributeBuffer('aPosition');
+    const gpubuffer = resultGeom.getVertexBuffer('aPosition')?.buffer;
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
 
