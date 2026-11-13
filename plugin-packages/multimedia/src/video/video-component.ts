@@ -187,6 +187,8 @@ export class VideoComponent extends MaskableGraphic {
     this.initializeVideo();
     if (rewind && video) {
       this.performSeek(0, video.currentTime !== 0);
+    } else if (typeof input === 'string' && !this.canPlayCurrentItem()) {
+      this.pauseVideoElement();
     }
   }
 
@@ -400,6 +402,9 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    if (this.preparingReplayFrame) {
+      this.video?.pause();
+    }
     this.textureVersion++;
     this.cancelVideoSeek();
     this.firstFrameTexture?.dispose();
