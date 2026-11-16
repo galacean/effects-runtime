@@ -1,5 +1,6 @@
 import type { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import type { FocusEventType } from './enums';
 import { KeyLocation, MouseButton, MouseButtonMask } from './enums';
 
 function transformPoint (transform: Matrix3, value: Vector2): Vector2 {
@@ -83,6 +84,12 @@ export class InputEventWithModifiers extends InputEvent {
   }
 }
 
+export class InputEventFocus extends InputEvent {
+  constructor (public type: FocusEventType) {
+    super();
+  }
+}
+
 export class InputEventKey extends InputEventWithModifiers {
   keycode = '';
   physicalKeycode = '';
@@ -97,12 +104,16 @@ export class InputEventKey extends InputEventWithModifiers {
 }
 
 export class InputEventMouse extends InputEventWithModifiers {
+  /** Changed button; pointer motion uses None unless a button changed. */
+  buttonIndex = MouseButton.None;
+  /** Normalized button state of the current pointer sequence. */
   buttonMask = MouseButtonMask.None;
   position = new Vector2();
   globalPosition = new Vector2();
 
   protected copyMouseTo (event: InputEventMouse): void {
     this.copyModifiersTo(event);
+    event.buttonIndex = this.buttonIndex;
     event.buttonMask = this.buttonMask;
     event.position.copyFrom(this.position);
     event.globalPosition.copyFrom(this.globalPosition);
@@ -111,7 +122,6 @@ export class InputEventMouse extends InputEventWithModifiers {
 
 export class InputEventMouseButton extends InputEventMouse {
   factor = 1;
-  buttonIndex = MouseButton.None;
   doubleClick = false;
 
   override xformedBy (transform: Matrix3): InputEventMouseButton {
@@ -122,6 +132,21 @@ export class InputEventMouseButton extends InputEventMouse {
     event.factor = this.factor;
     event.buttonIndex = this.buttonIndex;
     event.doubleClick = this.doubleClick;
+
+    return event;
+  }
+}
+
+export class InputEventMouseBoundary extends InputEventMouse {
+  constructor (public entered: boolean) {
+    super();
+  }
+
+  override xformedBy (transform: Matrix3): InputEventMouseBoundary {
+    const event = new InputEventMouseBoundary(this.entered);
+
+    this.copyMouseTo(event);
+    event.position.copyFrom(transformPoint(transform, this.position));
 
     return event;
   }

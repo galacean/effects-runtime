@@ -289,7 +289,7 @@ export class BaseButton extends Control {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (!this.mousePressing || !hasButton(this.buttonMask, event.buttonIndex)) {
+    if (!this.mousePressing) {
       return;
     }
     const activate = !event.canceled && (this.keepPressedOutside || this.hasPoint(event.position));

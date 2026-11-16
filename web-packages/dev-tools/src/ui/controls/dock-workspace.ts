@@ -58,13 +58,13 @@ class DockTab extends EditorPanelTab {
     if (this.dragging) { this.workspace.dragPanel(this.panel.id, event.globalPosition, event.ctrlPressed || event.metaPressed); event.accept(); }
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Middle) {
-      if (this.middlePressed && !event.canceled && this.hasPoint(event.position)) { this.panel.close(); }
+    if (this.middlePressed) {
+      if (!event.canceled && this.hasPoint(event.position)) { this.panel.close(); }
       this.middlePressed = false; event.accept();
 
       return;
     }
-    if (event.buttonIndex !== MouseButton.Left) { return; }
+    if (!this.origin) { return; }
     const dragging = this.dragging;
 
     super.onMouseUp(event); this.origin = undefined;
@@ -231,7 +231,7 @@ class FloatingResizeHandle extends Control {
     this.frame.applyFrameBounds(); event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.resize) { this.finishResize(event.canceled); event.accept(); }
+    if (this.resize) { this.finishResize(event.canceled); event.accept(); }
   }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'Escape' && this.resize) { this.finishResize(true); event.accept(); }

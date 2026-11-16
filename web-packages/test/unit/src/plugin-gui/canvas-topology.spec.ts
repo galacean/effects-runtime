@@ -1,6 +1,8 @@
 import {
   Composition,
   CompositionComponent,
+  FocusEventType,
+  InputEventFocus,
   InputEventMouseButton,
   Player,
   Plugin,
@@ -148,7 +150,7 @@ describe('plugin-gui/GUI topology', () => {
     gui.windowRoot.onCanvasBlur = () => calls.push('blur');
     gui.windowRoot.pushInput = () => calls.push('input');
     engine.emit('resize', engine);
-    engine.inputServer.emit('canvasBlur');
+    engine.inputServer.emit('input', new InputEventFocus(FocusEventType.FocusLost));
     engine.inputServer.emit('input', new InputEventMouseButton());
     expect(calls).deep.equals(['dispose']);
   });

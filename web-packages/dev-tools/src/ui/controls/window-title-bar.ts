@@ -55,7 +55,7 @@ export class EditorWindowTitleBar extends Container {
     event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.move) { this.finishMove(event.canceled); event.accept(); }
+    if (this.move) { this.finishMove(event.canceled); event.accept(); }
   }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'Escape' && this.move) { this.finishMove(true); event.accept(); }
