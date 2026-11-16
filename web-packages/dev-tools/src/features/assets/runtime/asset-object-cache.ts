@@ -3,6 +3,7 @@ import { Material, SerializationHelper, Shader, Sprite, SpriteComponent, spec } 
 import type { AssetEntry, AssetPayload } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
 import { objectReferences, validateObjectAsset, validateObjectAssetReferences } from '../model/object-asset-data';
+import { notifyRuntimeAssetChanged } from './runtime-asset-changes';
 
 interface ObjectSource {
   projectId(): string,
@@ -93,7 +94,10 @@ export class AssetObjectCache {
           for (const candidate of Object.values(engine.effectsObjectServer.objectInstance)) {
             if (candidate instanceof Material && candidate.shader === previous) { candidate.shader = object as Shader; }
           }
-        } else if (object?.isRegistered) { SerializationHelper.deserialize(definition, object); } else { object = engine.effectsObjectServer.findObject({ id: definition.id }); }
+        } else if (object?.isRegistered) {
+          SerializationHelper.deserialize(definition, object);
+          notifyRuntimeAssetChanged(object);
+        } else { object = engine.effectsObjectServer.findObject({ id: definition.id }); }
         if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
         if (object instanceof Sprite) {
           for (const component of Object.values(engine.effectsObjectServer.objectInstance)) {
@@ -116,6 +120,7 @@ export class AssetObjectCache {
 
       if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
       object.definition.name = entry.name; Reflect.set(object, 'name', entry.name);
+      notifyRuntimeAssetChanged(object);
       let loaded = this.loaded.get(engine);
 
       if (!loaded) { loaded = new Map(); this.loaded.set(engine, loaded); }

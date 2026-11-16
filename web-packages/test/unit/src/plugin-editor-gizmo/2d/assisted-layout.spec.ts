@@ -1,5 +1,5 @@
 import { restoreTestState } from '../helpers/spies';
-import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
+import { createCompositionFixture, setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 
 import { FrameComponent, spec, type Engine, type VFXItem } from '@galacean/effects';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
@@ -55,7 +55,7 @@ function frame (
 function setup (frameInfos: FrameInfo[], items: TestItem[]): GizmoOwner {
   const engine = {
     canvas: { parentElement: { offsetWidth: TEST_VIEW_SIZE.x, offsetHeight: TEST_VIEW_SIZE.y } },
-    sceneServer: { compositions: [{ items }] },
+    sceneServer: { compositions: [createCompositionFixture(items)] },
   } as unknown as Engine;
   const frames = {
     updateViewBoxes: chai.spy(),

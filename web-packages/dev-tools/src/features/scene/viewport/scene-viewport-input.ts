@@ -22,6 +22,8 @@ export class SceneViewportInput {
     editorSurface.engine.inputServer.on('input', this.hostInput);
   }
 
+  get hasActivePointer (): boolean { return this.initiatingButton !== MouseButton.None; }
+
   mouse (event: InputEventMouseButton | InputEventMouseMotion): void {
     const forwarded = event.xformedBy(new math.Matrix3());
 

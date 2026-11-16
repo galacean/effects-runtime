@@ -1,5 +1,6 @@
 import { EditorSearchField } from '../../../ui/controls/search-field';
 import type { Engine } from '@galacean/effects';
+import { EffectsObject } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { HSlider, HorizontalAlignment, Label, LineEdit, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import type { ButtonDrawMode, ContentInsets } from '@galacean/effects-plugin-gui';
@@ -43,7 +44,7 @@ export class RuntimeAssetsPanel extends EditorWindow {
   private categories = new Map<RuntimeAssetCategory, AssetCategoryRow>();
   private items: RuntimeAssetItem[] = [];
   private visible: RuntimeAssetItem[] = [];
-  private signature = '';
+  private selectionDirty = true;
 
   constructor () { super(); this.title = 'Runtime Assets'; }
   @menuItem('Window/Runtime Assets')
@@ -65,20 +66,20 @@ export class RuntimeAssetsPanel extends EditorWindow {
       selected: id => this.selection.selected.has(id),
       choose: (id, modifiers) => {
         this.selection.choose(id, this.visible.map(item => item.id), modifiers);
-        EditorSelection.setObjects(this.items.filter(item => this.selection.selected.has(item.id)).map(item => item.object));
+        this.publishSelection();
       },
       open: id => {
-        const item = this.items.find(item => item.id === id);
+        const item = this.source.get(id);
 
         if (item) { openRuntimeAsset(item.object); }
       },
       context: () => {}, rename: () => {}, canDrop: () => false, drop: () => {},
       drag: id => {
-        const object = this.items.find(item => item.id === id)?.object;
+        const object = this.source.get(id)?.object;
 
         return object && { type: object.constructor.name, data: object };
       },
-      marquee: ids => { this.selection.replace(ids); EditorSelection.setObjects(this.items.filter(item => this.selection.selected.has(item.id)).map(item => item.object)); },
+      marquee: ids => { this.selection.replace(ids); this.publishSelection(); },
       key: event => {
         if ((event.ctrlPressed || event.metaPressed) && event.keycode.toLowerCase() === 'a') {
           this.selection.replace(this.visible.map(item => item.id)); EditorSelection.setObjects(this.visible.map(item => item.object)); event.accept();
@@ -99,24 +100,36 @@ export class RuntimeAssetsPanel extends EditorWindow {
 
     slider.minValue = 28; slider.maxValue = 192; slider.value = this.scale; slider.setCustomMinimumSize(160, 24);
     slider.on('valueChanged', value => { this.scale = value; this.assetView.configure(value <= 40 ? 'list' : 'tiles', value); });
+    this.assetView.configure(this.scale <= 40 ? 'list' : 'tiles', this.scale);
     append(root, margin(engine, footer, 6, 2));
 
     return root;
   }
   override update (): void {
-    if (!this.assetView) { return; }
-    const items = this.source.items(EditorRuntimeSession.player.engine);
-    const signature = items.map(item => item.id + item.name + item.summary).join('|');
+    if (!this.isOpened() || !this.isActive() || !this.assetView?.visibleInHierarchy) { return; }
+    if (this.source.update(EditorRuntimeSession.player.engine)) {
+      this.items = Array.from(this.source.values()); this.refresh(); this.selectionDirty = true;
+    }
+    if (!this.selectionDirty) { return; }
+    this.selectionDirty = false;
+    this.selection.replace(EditorSelection.getSelectedObjects().flatMap(object => {
+      if (!(object instanceof EffectsObject)) { return []; }
+      const id = object.getInstanceId();
 
-    if (signature !== this.signature) { this.items = items; this.signature = signature; this.refresh(); }
-    const objects = new Set(EditorSelection.getSelectedObjects());
+      return this.source.get(id)?.object === object ? [id] : [];
+    }));
+  }
+  override onSelectionChange (): void { this.selectionDirty = true; }
+  override dispose (): void { this.source.dispose(); super.dispose(); }
+  private publishSelection (): void {
+    const objects = Array.from(this.selection.selected, id => this.source.get(id)?.object).filter((object): object is EffectsObject => !!object);
 
-    this.selection.replace(this.items.filter(item => objects.has(item.object)).map(item => item.id));
+    EditorSelection.setObjects(objects);
   }
   private refresh (): void {
     if (!this.assetView) { return; }
     this.visible = this.items.filter(item => (this.category === 'All' || this.category === item.category) && (item.name + ' ' + item.type).toLowerCase().includes(this.query));
-    this.assetView.setItems(this.visible); this.assetView.configure(this.scale <= 40 ? 'list' : 'tiles', this.scale);
+    this.assetView.setItems(this.visible);
     this.status.text = this.visible.length + ' of ' + this.items.length + ' assets';
     for (const [category, button] of this.categories) {
       button.count.text = String(category === 'All' ? this.items.length : this.items.filter(item => item.category === category).length);

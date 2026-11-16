@@ -1,8 +1,9 @@
 import type { TrackAsset } from '@galacean/effects';
 import { ObjectBindingTrack } from '@galacean/effects';
-import { controlPoint } from './curve-data';
+import { controlPoint, keyTimeBound } from './curve-data';
 import { propertyTrackKind } from './sequencer-properties';
 import type { SequenceChannel, SequenceSection, SequencerDocument } from './sequencer-document';
+import { SequencerIdSet } from './sequencer-selection';
 import { SEQUENCE_LAYOUT as L } from './sequencer-style';
 
 export interface SequenceRow {
@@ -15,6 +16,7 @@ export interface SequenceRow {
   channels: { section: SequenceSection, channel: SequenceChannel }[],
   top: number,
   height: number,
+  index: number,
 }
 export class SequencerState {
   frameRate = 30;
@@ -43,8 +45,9 @@ export class SequencerState {
   get activeChannel (): string { return this.document?.activeChannel ?? ''; }
   set activeChannel (value: string) { if (this.document) { this.document.activeChannel = value; } }
   get curveTracks (): Set<string> { return this.document?.curveTracks ?? this.emptyCurveTracks; }
-  readonly expanded = new Set<string>();
+  readonly expanded = new SequencerIdSet();
   private readonly initialized = new Set<string>();
+  private rowCache?: { document: SequencerDocument, structure: number, expansion: number, query: string, rows: SequenceRow[] };
 
   layoutOutliner (availableWidth: number): void {
     this.outlinerWidth = Math.max(L.minOutlinerWidth, Math.min(this.preferredOutlinerWidth, availableWidth - L.minTrackAreaWidth));
@@ -70,14 +73,16 @@ export class SequencerState {
   }
 
   rows (document: SequencerDocument): SequenceRow[] {
+    const structure = document.structureRevision, query = this.search.trim().toLowerCase(), cache = this.rowCache;
+
+    if (cache?.document === document && cache.structure === structure && cache.expansion === this.expanded.revision && cache.query === query) { return cache.rows; }
     const rows: SequenceRow[] = [];
     let top = 0;
-    const append = (row: Omit<SequenceRow, 'top' | 'height'>) => {
+    const append = (row: Omit<SequenceRow, 'top' | 'height' | 'index'>) => {
       const height = row.kind === 'object' ? L.objectHeight : row.kind === 'track' ? L.trackHeight : row.kind === 'group' ? L.groupHeight : L.channelHeight;
 
-      rows.push({ ...row, top, height }); top += height;
+      rows.push({ ...row, top, height, index: rows.length }); top += height;
     };
-    const query = this.search.trim().toLowerCase();
     const matches = (track: TrackAsset): boolean =>
       document.trackLabel(track).toLowerCase().includes(query) || track.getChildTracks().some(matches);
     const visit = (track: TrackAsset, depth: number) => {
@@ -121,30 +126,42 @@ export class SequencerState {
     };
 
     document.timeline.tracks.forEach(track => visit(track, 0));
+    this.rowCache = { document, structure, expansion: this.expanded.revision, query, rows };
 
     return rows;
   }
 
-  snap (time: number, document: SequencerDocument, pixelsPerSecond: number, ignore = new Set<string>()): number {
+  snap (time: number, document: SequencerDocument, pixelsPerSecond: number, ignore?: Pick<ReadonlySet<string>, 'has'>): number {
     if (!this.snapping) { return time; }
     let value = this.snapFrames ? Math.round(time * this.frameRate) / this.frameRate : time;
     let distance = this.snapFrames ? Math.abs(value - time) * pixelsPerSecond : Infinity;
-    const candidates = [document.currentTime, this.playbackStart, this.playbackEnd];
-
-    for (const section of document.allSections()) {
-      if (this.snapSections && !ignore.has(section.clip.getInstanceId())) { candidates.push(section.clip.start, section.clip.start + section.clip.duration); }
-      if (this.snapKeys && !ignore.has(section.clip.getInstanceId())) {
-        for (const channel of section.channels) {
-          for (const key of channel.keys) {
-            if (!ignore.has(key.id)) { candidates.push(section.clip.start + key.time * section.clip.duration); }
-          }
-        }
-      }
-    }
-    for (const candidate of candidates) {
+    const consider = (candidate: number): void => {
       const d = Math.abs(candidate - time) * pixelsPerSecond;
 
       if (d < 7 && (distance > 7 || d < distance)) { value = candidate; distance = d; }
+    };
+    const tolerance = 7 / pixelsPerSecond;
+
+    consider(document.currentTime); consider(this.playbackStart); consider(this.playbackEnd);
+    for (const section of document.allSections()) {
+      const { clip } = section;
+
+      if (ignore?.has(clip.getInstanceId())) { continue; }
+      if (this.snapSections) { consider(clip.start); consider(clip.start + clip.duration); }
+      if (!this.snapKeys) { continue; }
+      if (!clip.duration) {
+        if (Math.abs(time - clip.start) < tolerance && section.channels.some(channel => channel.keys.some(key => !ignore?.has(key.id)))) { consider(clip.start); }
+
+        continue;
+      }
+      const a = (time - tolerance - clip.start) / clip.duration, b = (time + tolerance - clip.start) / clip.duration;
+      const min = Math.min(a, b), max = Math.max(a, b);
+
+      for (const { keys } of section.channels) {
+        for (let i = keyTimeBound(keys, min); i < keys.length && keys[i].time <= max; i++) {
+          if (!ignore?.has(keys[i].id)) { consider(clip.start + keys[i].time * clip.duration); }
+        }
+      }
     }
 
     return value;
