@@ -1,0 +1,223 @@
+web-packages/dev-tools/src/features/sequencer/sequencer-preview.ts
+  s_a9e3149e4535b9::t_b5b65ad1e80055 1
+  s_7fd63b67a84e9e::t_3166b24133a8f1 4
+packages/effects-core/src/render/geometry.ts
+  s_7d8762f1bf0cbc::t_16c9f00ac13899 4,72
+packages/effects-core/src/components/component.ts
+  s_32ce5d4a71b8e1::t_283ed7c25e0a86 233-241
+packages/effects-core/src/asset-loader.ts
+  s_a9e3149e4535b9::t_d07ece7d6043b7 59
+  s_7d8762f1bf0cbc::t_f9b4f79ac4b160 22,24,27,30,32-33,35-37,39-40,42,45,48,50,57,61
+  s_7d8762f1bf0cbc::t_c74eae250971d6 17
+  s_7d8762f1bf0cbc::t_4b2883a6e02b2c 2,47,51-53,58
+  s_7d8762f1bf0cbc::t_16c9f00ac13899 1,54,56
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 7
+  s_32ce5d4a71b8e1::t_1bfd2e14a79c3d 29
+web-packages/test/unit/src/effects-core/composition/index.ts
+  s_a9e3149e4535b9::t_bf5a84850764c3 11
+packages/effects-core/src/precompositions/precomposition-manager.ts
+  s_32ce5d4a71b8e1::t_0ed29fea368bd3 1
+  s_a9e3149e4535b9::t_fb99f542295bb2 12,72
+  s_a9e3149e4535b9::t_46e021331a429a 68,70,73
+  s_7d8762f1bf0cbc::t_80f95f2fceef01 4
+  s_a9e3149e4535b9::t_64c8a1785f16a4 14,61
+  s_32ce5d4a71b8e1::t_a81892f2381033 80
+  s_7d8762f1bf0cbc::t_c3b5dba34b9153 69,71,74-79
+  s_32ce5d4a71b8e1::t_3c7ac364fed106 81
+packages/effects-core/src/texture/texture.ts
+  s_7d8762f1bf0cbc::t_16c9f00ac13899 5,19
+web-packages/test/unit/src/effects-core/composition/plugin.spec.ts
+  s_a9e3149e4535b9::t_bf5a84850764c3 45
+packages/effects-core/src/components/composition-component.ts
+  s_32ce5d4a71b8e1::t_0ed29fea368bd3 393
+  s_7fd63b67a84e9e::t_3166b24133a8f1 58,79-80,88,145-146,389-390
+  s_32ce5d4a71b8e1::t_4725cfd2cda24b 387
+  s_a9e3149e4535b9::t_7b2ace60582b6d 78,81-82
+  s_32ce5d4a71b8e1::t_d1a91f1f8f03ee 386
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-asset.spec.ts
+  s_32ce5d4a71b8e1::t_4896ab94dbefe1 174,275
+  s_72bd9de2c6c36f::t_7d5ca6b8e1f376 177
+packages/effects-core/src/composition.ts
+  s_a9e3149e4535b9::t_46e021331a429a 278
+  s_a9e3149e4535b9::t_19037fea12b09e 13,281
+  s_a9e3149e4535b9::t_a3186b78bfd261 272
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_a9e3149e4535b9::t_b5b65ad1e80055 35,51
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_32ce5d4a71b8e1::t_eb4c63b4c2d656 2,111,180,213,246,279,312,606,669,672,715
+packages/effects-core/src/engine.ts
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 8,134
+packages/effects-core/src/vfx-item.ts
+  s_7d8762f1bf0cbc::t_18b3a706561d81 993,998-1006
+  s_7d8762f1bf0cbc::t_80f95f2fceef01 16
+  s_a9e3149e4535b9::t_36a316f76d6f2e 25,65,788-789,1011,1015
+  s_a9e3149e4535b9::t_2ea28400525f8f 966
+  s_5a402bbf82afd7::t_a1b47ab138ec62 785
+  s_7d8762f1bf0cbc::t_8c41775a790456 791,793-794
+  s_32ce5d4a71b8e1::t_9afd73cd2bd5f0 990
+  s_5a402bbf82afd7::t_18503bc9d92e5f 787
+  s_7d8762f1bf0cbc::t_fa48f59d27eb36 994-995,997
+  s_7d8762f1bf0cbc::t_4097f89c7a0350 991
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_aeb2d42f373258::t_b1466c6b0f28b8 5-8,13-14,16-19,27,30,32-34,36,38-39,42-54,56-57,64,72-74,175
+  s_a9e3149e4535b9::t_5e23a244e9e9d7 152,160,162-163
+  s_3b201965361a64::t_7fe8d7cc4d5ce2 174
+  s_a9e3149e4535b9::t_a1b7edee58ee83 71
+  s_a9e3149e4535b9::t_bf5a84850764c3 10-12,15,20,23-24,26,31,35,40,58-61,65-66,68-70,77-78,82,116,124,142,144-146
+  s_a9e3149e4535b9::t_64c8a1785f16a4 21-22,25,28-29,37,41,55,62-63,67,75-76,80,85,87
+  s_aeb2d42f373258::t_b5cdb4d4850209 90-91,120,140
+  s_a9e3149e4535b9::t_d3d34b611085fa 9
+  s_a9e3149e4535b9::t_0c1bd189c582bd 148-151,153-159,161,164-168,171
+  s_72bd9de2c6c36f::t_7d5ca6b8e1f376 79,81,83-84,86,88-89,94-96,99,108,111-113,115,117-119,121-123,125-128,133-139,141,143
+  s_32ce5d4a71b8e1::t_00b0dc76e4abf8 1
+  s_7d8762f1bf0cbc::t_ac3fbf0db71d08 2-4,92-93,97-98,100-107,109-110,114,129-132
+  s_32ce5d4a71b8e1::t_4896ab94dbefe1 147,169-170,172-173
+packages/effects-core/src/plugins/timeline/timeline-asset.ts
+  s_32ce5d4a71b8e1::t_4725cfd2cda24b 13-16
+packages/effects-core/src/plugins/timeline/track.ts
+  s_32ce5d4a71b8e1::t_4725cfd2cda24b 26-29
+packages/effects-core/src/decorators.ts
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 1,13
+packages/effects-threejs/src/material/three-material.ts
+  s_7d8762f1bf0cbc::t_8f4cdd61e036f3 4,24
+packages/effects-core/src/hierarchy-builder.ts
+  s_32ce5d4a71b8e1::t_a202cac8bd6144 46,52-54
+  s_7d8762f1bf0cbc::t_0957639ac1fcc7 78,95,106
+  s_32ce5d4a71b8e1::t_5e15152cb66e90 3-4,7-8,12,14,17,21,24,40,42,45,65,68,80,82,87,90,92,94,101,107
+  s_7d8762f1bf0cbc::t_4097f89c7a0350 5,11,16,20,22,28,31,43,49-50,62,67,71,75-76,97,100,105
+  s_7d8762f1bf0cbc::t_18b3a706561d81 51,77,103-104
+  s_32ce5d4a71b8e1::t_59cd2027b0ba68 57-59
+  s_7d8762f1bf0cbc::t_80f95f2fceef01 1-2,6,9-10,13,15,18-19,23,25-27,29-30,32-39,41,44,47-48,55-56,60-61,63-64,66,69-70,72-74,79,81,83-86,88-89,91,93,96,98-99,102
+packages/effects-core/src/plugins/timeline/timeline-clip.ts
+  s_32ce5d4a71b8e1::t_4725cfd2cda24b 22-25
+packages/effects-core/src/utils/index.ts
+  s_7d8762f1bf0cbc::t_2541e772ca5067 26
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 25
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-base.spec.ts
+  s_7fd63b67a84e9e::t_3166b24133a8f1 51
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_a9e3149e4535b9::t_b5b65ad1e80055 124,151,159-166,172,175,479,482
+  s_7fd63b67a84e9e::t_3166b24133a8f1 158,233
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_7d8762f1bf0cbc::t_b3c6235551aab9 3,11-12
+  s_7d8762f1bf0cbc::t_8f4cdd61e036f3 1-2,4,201,213
+  s_7d8762f1bf0cbc::t_240c96d68038b7 13
+web-packages/dev-tools/src/features/sequencer/sequencer-document.ts
+  s_a9e3149e4535b9::t_b5b65ad1e80055 1105-1106,1109,1111-1114,1120
+web-packages/test/unit/src/effects-core/plugins/timeline/object-reference-property.spec.ts
+  s_32ce5d4a71b8e1::t_4896ab94dbefe1 150-151,161,173,176,188,202
+plugin-packages/model/src/runtime/material.ts
+  s_32ce5d4a71b8e1::t_5c7f241faba9c7 872
+packages/effects-core/src/effects-object.ts
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 3,49
+  s_7d8762f1bf0cbc::t_65f157793932fc 50
+  s_32ce5d4a71b8e1::t_5c7f241faba9c7 19,79-80,92,94
+  s_7d8762f1bf0cbc::t_304af93497e19d 48
+  s_32ce5d4a71b8e1::t_1bfd2e14a79c3d 81
+  s_32ce5d4a71b8e1::t_4725cfd2cda24b 43-47
+plugin-packages/editor-gizmo/src/2d/items/default-vfx-items.ts
+  s_a9e3149e4535b9::t_19037fea12b09e 99
+packages/effects-core/src/effects-object-server.ts
+  s_7d8762f1bf0cbc::t_301dade3fbc3ee 150
+  s_32ce5d4a71b8e1::t_1bfd2e14a79c3d 114,179
+  s_7d8762f1bf0cbc::t_f9b4f79ac4b160 9,147,149,158-178,180-184
+  s_7d8762f1bf0cbc::t_fe9266ccd3a817 152-157
+  s_7d8762f1bf0cbc::t_18b3a706561d81 13,17,19,125,133,135-137
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 11,142
+  s_7d8762f1bf0cbc::t_4097f89c7a0350 15-16,26,126-127,131-132,134,138,148
+  s_a9e3149e4535b9::t_19037fea12b09e 27,128-130,140
+  s_7d8762f1bf0cbc::t_fa48f59d27eb36 2,4,143-146,151,185
+  s_7d8762f1bf0cbc::t_304af93497e19d 188
+  s_7d8762f1bf0cbc::t_0957639ac1fcc7 18
+  s_7d8762f1bf0cbc::t_ac16784822ca4c 14
+web-packages/test/unit/src/effects-core/components/lifecycle.spec.ts
+  s_32ce5d4a71b8e1::t_4896ab94dbefe1 84,86-89,91,93-96,98,100-101,103-104
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_32ce5d4a71b8e1::t_4896ab94dbefe1 2,263-266,278,292,298
+packages/effects-core/src/material/material.ts
+  s_7d8762f1bf0cbc::t_16c9f00ac13899 13,68
+packages/effects-core/src/asset-server.ts
+  s_32ce5d4a71b8e1::t_d028b8b9dd56dc 118
+  s_32ce5d4a71b8e1::t_1bfd2e14a79c3d 95-96,104,207,230
+  s_7d8762f1bf0cbc::t_e7891c02df4adf 17
+  s_7d8762f1bf0cbc::t_f9b4f79ac4b160 27-28,45,92,116-117,119-122,124
+  s_32ce5d4a71b8e1::t_9e92bded8c6588 30,103,106-107,112-115,239
+  s_32ce5d4a71b8e1::t_c7ecd586466ea5 97-100,105,108-111
+  s_32ce5d4a71b8e1::t_5c7f241faba9c7 29,43-44,101-102,123,206,213,227-229,237-238
+  s_32ce5d4a71b8e1::t_7eeaaec8fc6c86 31
+web-packages/dev-tools/src/features/scene/operations/scene-item-operations.ts
+  s_7fd63b67a84e9e::t_3166b24133a8f1 118
+  s_a9e3149e4535b9::t_b5b65ad1e80055 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9bef47403f8790f6102870d1b883c361c1bfb14b",
+  "prompts": {},
+  "sessions": {
+    "s_32ce5d4a71b8e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3cd-84f8-7ac3-9c0b-96365b5d8128",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_3b201965361a64": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "64b227c9-6b86-462d-b8ab-a1527fb9bdc2",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_5a402bbf82afd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e88d-538e-7713-9516-af34dedd73c3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_72bd9de2c6c36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e89e-d769-7980-85f4-3922c3dff6ab",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_7d8762f1bf0cbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e7a4-36b8-7cd2-9255-9fef790f133b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_7fd63b67a84e9e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3b9-fa6a-7901-9524-d8dd200b6aae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_a9e3149e4535b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e32e-8957-7570-b15d-34aab3db9bee",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_aeb2d42f373258": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c8a9-28a4-7d21-beb3-0f456d65e63a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
