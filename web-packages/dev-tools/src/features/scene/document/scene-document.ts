@@ -26,6 +26,7 @@ interface Transaction {
   label: string,
   editorLabel?: string,
   before?: Snapshot,
+  contentChanged?: boolean,
   version: number,
   states: EditorStates,
   mutations: Map<unknown, Mutation>,
@@ -107,7 +108,7 @@ export class SceneDocument {
     });
   }
 
-  get dirty (): boolean { return this.savedVersion !== this.version || !!this.transaction?.before && !sameData(this.transaction.before, this.snapshot()); }
+  get dirty (): boolean { return this.savedVersion !== this.version || this.transactionContentChanged(); }
   get canUndo (): boolean { return this.history.canUndo || !!this.transaction && this.transactionChanged(); }
   get canRedo (): boolean { return !this.transactionChanged() && this.history.canRedo; }
   get undoLabel (): string { return this.transaction?.label ?? this.history.undoLabel; }
@@ -124,7 +125,7 @@ export class SceneDocument {
   }
 
   /** Observe UI selection changes without creating an entry for every rendered frame. */
-  observeEditor (label: string, action: () => void): void {
+  observeEditor (label: string, action: () => void, selectionScope?: () => object | undefined): void {
     if (this.restoring || this.editorObservation) {
       action();
 
@@ -136,7 +137,12 @@ export class SceneDocument {
     this.editorObservation = before;
     try {
       action();
-      if (this.replay === replay && this.statesChanged(before)) { this.begin(label, false); }
+      if (this.replay === replay && this.statesChanged(before)) {
+        const owner = selectionScope?.();
+
+        this.begin(label, false);
+        if (owner) { this.scopes.add(owner); }
+      }
     } catch (error) {
       if (this.replay === replay) {
         if (this.transaction) { this.cancel(); } else { this.restore(undefined, [], false, before); }
@@ -247,33 +253,56 @@ export class SceneDocument {
     } else if (!this.restoring && affectsContent && this.transaction && !this.transaction.before) {
       // A click followed by a drag is one operation, including its initial selection.
       this.transaction.editorLabel ??= this.transaction.label;
-      this.transaction.before = this.snapshot(); this.transaction.label = label;
+      this.transaction.before = this.snapshot();
+      if (!this.transaction.contentChanged) { this.transaction.label = label; }
     } else if (!this.restoring && !affectsContent && this.transaction) {
       this.transaction.editorLabel = label;
     }
   }
 
   observe (label: string, action: () => void, targets?: unknown[]): boolean {
-    if (this.restoring) {
+    return this.observeChanges(label, capture => {
+      capture(targets);
       action();
+    });
+  }
+
+  /** Capture authored objects immediately before an input handler starts changing them. */
+  observeChanges (label: string, action: (capture: (targets?: unknown[]) => void) => void): boolean {
+    if (this.restoring) {
+      action(() => {});
 
       return false;
     }
-    const before = this.serializer.capture(targets);
-    const transforms = new Map([...before.keys()].filter((object): object is VFXItem => object instanceof VFXItem).map(item => [item, transformValues(item)]));
-    const keyed: TransformEdit[] = [];
-    const states = this.readEditorStates();
-    const transaction = this.transaction;
+    let observation: {
+      targets?: unknown[],
+      before: Map<EffectsObject, ObjectState>,
+      transforms: Map<VFXItem, number[]>,
+      states: EditorStates,
+      transaction?: Transaction,
+    } | undefined;
+    const capture = (targets?: unknown[]): void => {
+      if (observation) { return; }
+      const before = this.serializer.capture(targets);
+      const items = [...before.keys()].filter((object): object is VFXItem => object instanceof VFXItem);
 
-    let changed = false;
+      observation = { targets, before, transforms: new Map(items.map(item => [item, transformValues(item)])),
+        states: this.readEditorStates(), transaction: this.transaction };
+    };
 
-    try { action(); } catch (error) {
-      for (const state of before.values()) { this.serializer.apply(state); }
-      this.cancel();
+    try { action(capture); } catch (error) {
+      if (observation) {
+        for (const state of observation.before.values()) { this.serializer.apply(state); }
+        this.cancel();
+      }
       throw error;
     }
+    if (!observation) { return false; }
+    const { targets, before, transforms, states, transaction } = observation;
+    const keyed: TransformEdit[] = [];
     const after = this.serializer.capture(targets);
     const keyProperties = this.autoKeyProperties?.(before, after);
+    let changed = false;
 
     for (const [object, state] of after) {
       const old = before.get(object);
@@ -315,6 +344,20 @@ export class SceneDocument {
 
   recordMutation (key: object, mutation: Mutation): void {
     if (!this.restoring && this.transaction) { this.transaction.mutations.set(key, mutation); }
+  }
+
+  /** Record an edit whose undo and redo update both the saved data and the live objects. */
+  applyContentMutation (label: string, mutation: Mutation, apply = mutation.redo): void {
+    if (this.restoring) { return; }
+    if (!this.transaction?.before && !this.transaction?.contentChanged) {
+      this.begin(label, false);
+      this.transaction!.label = label;
+    }
+    const transaction = this.transaction!;
+
+    transaction.contentChanged = true;
+    transaction.mutations.set(mutation, mutation);
+    apply();
   }
 
   beginSequence (document: SequenceEditor, label: string, before: any, affectsContent = true): void {
@@ -387,7 +430,7 @@ export class SceneDocument {
     if (!transaction || this.restoring || !force && this.scopes.size) { return; }
     const after = transaction.before ? this.snapshot() : undefined;
     const states = this.readEditorStates();
-    const contentChanged = !!transaction.before && !sameData(transaction.before, after);
+    const contentChanged = transaction.contentChanged || !!transaction.before && !sameData(transaction.before, after);
     const editorChanged = this.statesChanged(transaction.states, states);
 
     this.transaction = undefined; this.scopes.clear(); this.runtimeEdits.clear(); this.sequenceStates.clear();
@@ -460,8 +503,12 @@ export class SceneDocument {
     return Array.from(before).some(([state, value]) => after.has(state) && !(state.equal ?? sameData)(value, after.get(state)));
   }
 
+  private transactionContentChanged (): boolean {
+    return !!this.transaction?.contentChanged || !!this.transaction?.before && !sameData(this.transaction.before, this.snapshot());
+  }
+
   private transactionChanged (): boolean {
-    return !!this.transaction && (!!this.transaction.before && !sameData(this.transaction.before, this.snapshot()) || this.statesChanged(this.transaction.states));
+    return !!this.transaction && (this.transactionContentChanged() || this.statesChanged(this.transaction.states));
   }
 
   private selectionKey (object: object): string {

@@ -89,7 +89,7 @@ class ColorPlane extends Control {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.dragging) {
+    if (this.dragging) {
       this.dragging = false;
       this.updateValue(event.position);
       event.accept();
@@ -143,7 +143,7 @@ class HueBar extends Control {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.dragging) {
+    if (this.dragging) {
       this.dragging = false;
       this.updateValue(event.position.x);
       event.accept();

@@ -1,7 +1,7 @@
 import { EditorSearchField } from '../../ui/controls/search-field';
 import { setTooltip } from '../../ui/controls/tooltip';
-import type { EffectsObject, Engine, TrackAsset, InputEventKey } from '@galacean/effects';
-import { CompositionComponent, InterpolationMode, MaskableGraphic, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
+import type { Composition, EffectsObject, Engine, TrackAsset, InputEventKey, InputEvent } from '@galacean/effects';
+import { CompositionComponent, FocusEventType, InputEventFocus, InputEventMouseButton, InterpolationMode, MaskableGraphic, MouseButton, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
 import type { HBoxContainer, Label, LineEdit } from '@galacean/effects-plugin-gui';
 import { Control, SizeFlags, TextOverflow, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
@@ -52,6 +52,8 @@ export class SequencerPanel extends EditorWindow {
   private search: LineEdit;
   private details: HBoxContainer;
   private detailsSignature = '';
+  private controlsSignature = '';
+  private controlsDocument?: SequencerDocument;
   private detailRefresh: (() => void)[] = [];
   private keyTools: Control;
   private keyToolbar: EditorToolbar;
@@ -72,11 +74,18 @@ export class SequencerPanel extends EditorWindow {
   private context?: SequencerContext;
   private autoKey = false;
   private syncingSelection = false;
+  private trackSelection?: { component: CompositionComponent, selectionRevision: number };
   private restoredSelection = false;
   private autoRecording = false;
   private pointerHeld = false;
-  private readonly pointerDown = (): void => { this.pointerHeld = true; };
-  private readonly pointerUp = (): void => { this.pointerHeld = false; };
+  private inputEngine?: Engine;
+  private readonly onInput = (event: InputEvent): void => {
+    if (event instanceof InputEventMouseButton && (event.buttonIndex < MouseButton.WheelUp || event.buttonIndex > MouseButton.WheelRight)) {
+      this.pointerHeld = event.isPressed();
+    } else if (event instanceof InputEventFocus && (event.type === FocusEventType.FocusLost || event.type === FocusEventType.WindowFocusLost)) {
+      this.pointerHeld = false;
+    }
+  };
   private readonly onClipboard = (event: ClipboardEvent): void => {
     if (!this.hasFocus() || !this.document || event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable="true"]')) { return; }
     if (event.type === 'paste') { this.document.paste(); } else { this.document.copySelection(); if (event.type === 'cut') { this.document.deleteSelection(); } }
@@ -90,8 +99,8 @@ export class SequencerPanel extends EditorWindow {
   protected override createContent (engine: Engine): Control {
     const body = column(engine);
 
-    window.addEventListener('pointerdown', this.pointerDown, true); window.addEventListener('pointerup', this.pointerUp, true);
-    window.addEventListener('pointercancel', this.pointerUp, true); window.addEventListener('blur', this.pointerUp);
+    this.inputEngine = engine;
+    engine.inputServer.on('input', this.onInput);
     this.contextMenu = new EditorMenu(engine); this.dialog = new EditorDialog(engine);
     const toolbar = new EditorToolbar(engine, 28);
 
@@ -242,22 +251,37 @@ export class SequencerPanel extends EditorWindow {
   protected override onDisable (): void {
     for (const command of ['copy', 'cut', 'paste'] as const) { window.document.removeEventListener(command, this.onClipboard); }
     if (this.document) { this.canvas.cancel(this.document); this.document.commit(); }
+    this.canvas.document = undefined;
   }
   override dispose (): void {
-    window.removeEventListener('pointerdown', this.pointerDown, true); window.removeEventListener('pointerup', this.pointerUp, true);
-    window.removeEventListener('pointercancel', this.pointerUp, true); window.removeEventListener('blur', this.pointerUp);
+    this.inputEngine?.inputServer.off('input', this.onInput);
     super.dispose(); this.documents.forEach(document => document.dispose()); this.documents.clear(); this.contextMenu.dispose(); this.dialog.dispose();
   }
   private refreshControls (): void {
     const document = this.document;
+    const documentChanged = this.controlsDocument !== document;
 
     this.canvas.document = document;
+    this.controlsDocument = document;
     if (!document) {
+      if (this.controlsSignature === 'empty') { return; }
+      this.controlsSignature = 'empty'; this.detailsSignature = '';
       this.keyTools.visible = this.details.visible = false; this.caption.text = '';
       this.interpolationButtons.forEach(button => button.disabled = true); this.flatten.disabled = true;
 
       return;
     }
+    if (!this.playhead.isEditing) { this.playhead.value = document.currentTime * this.factor; }
+    const controlsSignature = [document.structureRevision, document.revision, document.selectedKeys.revision, document.selectedSections.revision,
+      this.state.frameRate, this.state.displayFrames, this.state.curveMode, this.state.showDetails, document.composition.name].join('/');
+
+    if (!documentChanged && controlsSignature === this.controlsSignature) {
+      if (this.details.visible) { this.detailRefresh.forEach(refresh => refresh()); }
+
+      return;
+    }
+    this.controlsSignature = controlsSignature;
+    if (documentChanged) { this.detailsSignature = ''; }
     const keys = document.selectedKeyItems(), first = keys[0], editable = keys.some(item => !document.isLocked(item.section.track));
     const numeric = keys.some(item => item.channel.kind === 'number' && !document.isLocked(item.section.track));
 
@@ -281,9 +305,9 @@ export class SequencerPanel extends EditorWindow {
     this.caption.text = document.composition.name || 'Sequence';
     this.fps.text = this.state.frameRate + ' fps';
     this.playhead.precision = this.state.displayFrames ? 0 : 3; this.playhead.step = this.factor / this.state.frameRate;
-    if (!this.playhead.isEditing) { this.playhead.value = document.currentTime * this.factor; }
-    this.details.visible = !this.state.curveMode && this.state.showDetails && (keys.length > 0 || document.selectedSectionItems.length > 0);
-    const signature = document.component.getInstanceId() + '/' + keys.map(item => item.key.id).join(',') + '/' + document.selectedSectionItems.map(section => section.clip.getInstanceId()).join(',') + '/' + this.factor + '/' + [...document.locked].join(',');
+    this.details.visible = !this.state.curveMode && this.state.showDetails && (keys.length > 0 || document.selectedSections.size > 0);
+    if (!this.details.visible) { return; }
+    const signature = [document.selectedKeys.revision, document.selectedSections.revision, this.factor, ...document.locked].join('/');
 
     if (signature !== this.detailsSignature) { this.detailsSignature = signature; this.buildDetails(document); }
     this.detailRefresh.forEach(refresh => refresh());
@@ -500,13 +524,42 @@ export class SequencerPanel extends EditorWindow {
   }
   private rename (track: TrackAsset): void {
     const document = this.document!; let field: LineEdit;
-    const accept = (): void => { if (field.text.trim()) { document.edit('Rename track', () => { track.name = field.text.trim(); }); this.dialog.close(); } };
+    const accept = (): void => { if (field.text.trim()) { document.edit('Rename track', () => { track.name = field.text.trim(); document.invalidateStructure(); }); this.dialog.close(); } };
 
     this.dialog.show(this.canvas, 'Rename Track', body => { field = append(body, new EditorTextField(body.engine)); field.text = document.trackLabel(track); field.on('textSubmitted', accept); }, [{ label: 'Rename', primary: true, enabled: () => !!field?.text.trim(), action: accept }, { label: 'Cancel', action: () => this.dialog.close() }]);
     field!.grabFocus(); field!.selectAll();
   }
+  private resolveSequence (composition: Composition) {
+    const trackSelection = this.trackSelection;
+
+    if (trackSelection?.selectionRevision === EditorSelection.userSelectionRevision) {
+      const { component } = trackSelection;
+
+      if (component.isRegistered && component.item?.composition === composition) {
+        const timeline = findSequenceTimeline(component);
+
+        if (timeline) { return { component, timeline }; }
+      }
+    }
+    this.trackSelection = undefined;
+
+    const root = composition.sceneRoot;
+    const selected = EditorSelection.getSelectedObjects()[0];
+
+    if (selected instanceof VFXItem && selected.composition === composition) {
+      for (let item: VFXItem | undefined = selected; item && item !== root; item = item.parent) {
+        const component = item.getComponent(CompositionComponent);
+        const timeline = component && findSequenceTimeline(component);
+
+        if (component && timeline) { return { component, timeline }; }
+      }
+    }
+    const component = root.getComponent(CompositionComponent);
+    const timeline = component && findSequenceTimeline(component);
+
+    return component && timeline ? { component, timeline } : undefined;
+  }
   override update (): void {
-    this.canvas.document = undefined;
     const composition = EditorRuntimeSession.player.getCompositions()[0];
 
     if (sceneWorkspace.current) {
@@ -518,21 +571,20 @@ export class SequencerPanel extends EditorWindow {
     }
 
     if (!composition) {
-      this.document = undefined; this.refreshControls();
+      this.trackSelection = undefined;
+      this.document = undefined; if (this.isActive()) { this.refreshControls(); }
 
       return;
     }
-    let component = composition.sceneRoot.getComponent(CompositionComponent);
-    const selected = EditorSelection.getSelectedObjects()[0];
+    const sequence = this.resolveSequence(composition);
 
-    if (selected instanceof VFXItem) { component = selected.getComponent(CompositionComponent) ?? component; }
-    const timeline = component ? findSequenceTimeline(component) : undefined;
-
-    if (!component || !timeline) {
-      this.document = undefined; this.refreshControls();
+    if (!sequence) {
+      this.document = undefined; if (this.isActive()) { this.refreshControls(); }
 
       return;
     }
+    const { component, timeline } = sequence;
+
     if (this.document?.component !== component || this.document.timeline !== timeline) {
       if (this.document) { this.canvas.cancel(this.document); }
       this.document?.commit();
@@ -544,7 +596,7 @@ export class SequencerPanel extends EditorWindow {
       this.documents.set(component, this.document);
       this.state.initialize(this.document); this.search.text = '';
       this.autoRecording = false;
-      if (!this.restoredSelection) { this.onSelectionChange(); }
+      if (!this.restoredSelection) { this.syncTrackSelection(this.document); }
     }
     this.restoredSelection = false;
     const document = this.document;
@@ -558,6 +610,7 @@ export class SequencerPanel extends EditorWindow {
     }
 
     document.sync();
+    this.canvas.applyPendingScrub(document);
     if (!composition.getPaused() && document.currentTime >= this.state.playbackEnd) {
       document.setTime(this.state.loop ? this.state.playbackStart : this.state.playbackEnd);
       if (this.state.loop) { void composition.resume(); }
@@ -565,7 +618,7 @@ export class SequencerPanel extends EditorWindow {
     if (this.autoRecording && (!this.autoKey || !this.pointerHeld && !(window.document.activeElement instanceof HTMLTextAreaElement))) {
       document.commit(); this.autoRecording = false;
     }
-    this.refreshControls();
+    if (this.isActive()) { this.refreshControls(); }
   }
 
   override flushEdits (): void { this.document?.commit(); }
@@ -573,14 +626,17 @@ export class SequencerPanel extends EditorWindow {
   override onUndoRedo (): void {
     this.canvas.resetInteraction();
     this.autoRecording = false;
-    this.context = undefined; this.restoredSelection = true; this.detailsSignature = '';
+    this.context = undefined; this.restoredSelection = true; this.detailsSignature = ''; this.controlsSignature = '';
+    this.document?.invalidateStructure();
     this.document?.sync();
   }
 
   override onSelectionChange (): void {
-    const document = this.document;
-
-    if (!document || this.syncingSelection || EditorSelection.changeSource === 'history') { return; }
+    if (this.syncingSelection) { return; }
+    this.trackSelection = undefined;
+    if (this.document && EditorSelection.changeSource !== 'history') { this.syncTrackSelection(this.document); }
+  }
+  private syncTrackSelection (document: SequencerDocument): void {
     const objects = EditorSelection.getSelectedObjects().filter((item): item is VFXItem => item instanceof VFXItem);
 
     document.clearSelection(); this.state.activeChannel = '';
@@ -603,8 +659,10 @@ export class SequencerPanel extends EditorWindow {
     }
     const items = selected.map(item => document.boundItem(item)).filter((item): item is VFXItem => !!item);
 
+    // Track selection updates the inspector while the owning sequence stays active.
+    this.trackSelection = { component: document.component, selectionRevision: EditorSelection.userSelectionRevision };
     this.syncingSelection = true;
-    EditorSelection.setObjects(items, 'sync'); this.syncingSelection = false;
+    try { EditorSelection.setObjects(items, 'sync'); } finally { this.syncingSelection = false; }
   }
 
   private setInterpolation (document: SequencerDocument, mode: Interpolation): void {
@@ -726,9 +784,10 @@ export class SequencerPanel extends EditorWindow {
     } else if (command && pressed('d')) {
       if (this.state.curveMode) { document.selectedKeys.clear(); } else { document.duplicateSelection(); }
     } else if (command && pressed('a')) {
-      const channels = this.state.curveMode ? this.state.curveChannels(document).map(entry => entry.channel) : document.allSections().flatMap(section => section.channels);
+      const channels = this.state.curveMode ? this.state.curveChannels(document) :
+        document.allSections().flatMap(section => section.channels.map(channel => ({ section, channel })));
 
-      channels.forEach(channel => channel.keys.forEach(key => document.selectedKeys.add(key.id)));
+      channels.forEach(({ section, channel }) => channel.keys.forEach(key => document.selectedKeys.select({ section, channel, key })));
     } else if (!command && pressed('v')) {
       this.state.toggleSelectedExpansion(document, event.shiftPressed);
     } else if (pressed('ArrowDown')) {

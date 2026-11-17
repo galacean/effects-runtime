@@ -4,13 +4,17 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Composition } from './composition';
 import type { Engine } from './engine';
 import { EventEmitter } from './events';
+import type { InputEventMouse } from './input';
 import {
   InputEvent,
+  InputEventFocus,
   InputEventKey,
+  InputEventMouseBoundary,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
+  FocusEventType,
   KeyLocation,
   MouseButton,
   MouseButtonMask,
@@ -49,12 +53,22 @@ export enum PointerEventType {
   PointerMove
 }
 
-type PointerState = {
+type CompositionInteractionState = {
   start: Vector2,
-  last: Vector2,
-  lastTime: number,
   inputHandled: boolean,
-  pressed: boolean,
+};
+
+type MouseInputState = {
+  initiatingButton: MouseButton,
+  buttonMask: MouseButtonMask,
+  lastInput: InputEventMouse,
+  lastTime: number,
+};
+
+type TouchInputState = {
+  position: Vector2,
+  lastTime: number,
+  interaction: CompositionInteractionState,
 };
 
 type NativeHandler = {
@@ -66,8 +80,6 @@ type NativeHandler = {
 
 export type InputServerEvent = {
   input: [event: InputEvent],
-  canvasFocus: [],
-  canvasBlur: [],
 };
 
 /** Engine-owned input, including native events and composition interaction. */
@@ -82,24 +94,24 @@ export class InputServer extends EngineServer implements Disposable {
   allowPropagation: boolean;
   skipPointerMovePicking = true;
   private readonly emulateMouseFromTouch = true;
-  private readonly emulateTouchFromMouse = false;
 
   private _enabled = true;
   private handlers: Record<string, ((event: TouchEventType) => void)[]> = {};
   private nativeHandlers: NativeHandler[] = [];
   private target: HTMLCanvasElement | null = null;
-  private mouseState: PointerState | null = null;
-  /**
-   * Logical mouse button state maintained from mousedown/mouseup transitions.
-   *
-   * On macOS, a trackpad may emit a release-edge pointermove with buttons=0
-   * before mouseup. Treating that motion as a release ends the drag early and
-   * may skip the final transform commit.
-   */
-  private mouseButtonMask = MouseButtonMask.None;
-  private touchStates = new Map<number, PointerState>();
+  private usePointerEvents = false;
+  private hadFocus = false;
+  private viewFocused = false;
+  private windowFocused = true;
+  private readonly pressedKeys = new Map<string, InputEventKey>();
+  private mouseState: MouseInputState | null = null;
+  private mouseInteraction: CompositionInteractionState | null = null;
+  private nativePointerButton = MouseButton.None;
+  private pointerClickTime = 0;
+  private pointerClickCount = 0;
+  private readonly pointerClickPosition = new Vector2();
+  private touchStates = new Map<number, TouchInputState>();
   private mouseFromTouchIndex: number | null = null;
-  private touchFromMousePressed = false;
   private addedTabIndex = false;
   private addedOutlineStyle = false;
 
@@ -163,19 +175,38 @@ export class InputServer extends EngineServer implements Disposable {
       this.addedOutlineStyle = true;
     }
 
-    this.addNativeHandler(target, 'mousedown', this.onNativeMouseDown as EventListener);
-    // The Window listener runs after the event reaches the host container, so keep a
-    // target listener to preserve notifyTouch/allowPropagation for in-canvas releases.
-    this.addNativeHandler(target, 'mouseup', this.onNativeMouseUp as EventListener);
-    this.addNativeHandler(window, 'mouseup', this.onNativeMouseUp as EventListener);
-    this.addNativeHandler(window, 'pointermove', this.onNativeMouseMove as EventListener);
+    this.usePointerEvents = typeof PointerEvent === 'function';
+    const ownerDocument = target.ownerDocument;
+    const continuationTarget = typeof ownerDocument?.addEventListener === 'function' ? ownerDocument : target;
+    const pointerEnter = this.usePointerEvents ? 'pointerenter' : 'mouseenter';
+    const pointerMove = this.usePointerEvents ? 'pointermove' : 'mousemove';
+
+    this.addNativeHandler(target, this.usePointerEvents ? 'pointerdown' : 'mousedown', this.onNativePointerDown as EventListener);
+    this.addNativeHandler(target, pointerEnter, this.onNativePointerEnter as EventListener);
+    // Hover stays on the canvas. A press that started there continues across the document.
+    this.addNativeHandler(target, pointerMove, event => {
+      if (continuationTarget === target || !this.hasNativePointerPress()) {
+        this.onNativePointingMove(event as MouseEvent);
+      }
+    });
+    if (continuationTarget !== target) {
+      this.addNativeHandler(continuationTarget, pointerEnter, this.onDocumentPointerEnter as EventListener);
+      this.addNativeHandler(continuationTarget, pointerMove, event => {
+        if (this.hasNativePointerPress()) { this.onNativePointingMove(event as MouseEvent); }
+      }, true);
+    }
+    this.addNativeHandler(target, this.usePointerEvents ? 'pointerleave' : 'mouseout', this.onNativePointerLeave as EventListener);
+    this.addNativeHandler(continuationTarget, this.usePointerEvents ? 'pointerup' : 'mouseup', this.onNativePointerUp as EventListener, true);
+    // Touch events stay targeted at the start element even when the touch moves off the canvas.
     this.addNativeHandler(target, 'touchstart', this.onNativeTouchStart as EventListener, { passive: false });
     this.addNativeHandler(target, 'touchmove', this.onNativeTouchMove as EventListener, { passive: false });
     this.addNativeHandler(target, 'touchend', this.onNativeTouchEnd as EventListener, { passive: false });
-    this.addNativeHandler(target, 'touchcancel', this.onNativeTouchCancel as EventListener, { passive: false });
+    this.addNativeHandler(target, 'touchcancel', this.onNativeTouchCancel as EventListener);
     this.addNativeHandler(target, 'wheel', this.onNativeWheel as EventListener, { passive: false });
     this.addNativeHandler(target, 'keydown', this.onNativeKeyDown as EventListener);
     this.addNativeHandler(target, 'keyup', this.onNativeKeyUp as EventListener);
+    this.addNativeHandler(window, 'focus', this.onWindowFocus as EventListener);
+    this.addNativeHandler(window, 'blur', this.onWindowBlur as EventListener);
     this.addNativeHandler(target, 'focus', this.onCanvasFocus as EventListener);
     this.addNativeHandler(target, 'blur', this.onCanvasBlur as EventListener);
   }
@@ -227,7 +258,7 @@ export class InputServer extends EngineServer implements Disposable {
     if (!this.enabled || !this.target) {
       return;
     }
-    const position = this.getCanvasPosition(event.clientX, event.clientY);
+    const position = this.getNativeMousePosition(event);
     let handled = false;
 
     if (event.deltaY !== 0) {
@@ -242,7 +273,7 @@ export class InputServer extends EngineServer implements Disposable {
         normalizeWheelFactor(event.deltaX, event.deltaMode), position, event,
       ) || handled;
     }
-    this.consumeNativeEvent(event, handled);
+    this.preventAcceptedDefault(event, handled);
   };
 
   private onNativeKeyDown = (event: KeyboardEvent): void => {
@@ -253,63 +284,159 @@ export class InputServer extends EngineServer implements Disposable {
     this.handleNativeKey(event, false);
   };
 
-  private onNativeMouseDown = (event: MouseEvent): void => {
-    this.handleNativeMouseDown(event);
+  private readonly onNativePointerDown = (event: MouseEvent): void => {
+    if (!this.enabled || !this.target || this.isTouchPointer(event)) { return; }
+    const position = this.getNativeMousePosition(event);
+
+    this.nativePointerButton = getMouseButton(event.button);
+    this.focusTarget();
+    this.countPointerClick(event);
+    if (this.isMouseButtonPressed()) {
+      this.mouseState!.buttonMask = getNativeMouseButtonMask(event.buttons) | getMouseButtonBit(this.nativePointerButton);
+      this.preventAcceptedDefault(event, this.pushNativePointerMotion(event, this.nativePointerButton, position));
+
+      return;
+    }
+    const interaction = this.createCompositionInteraction(position);
+
+    this.mouseInteraction = interaction;
+    const handled = this.pushNativePointerButton(event, position, true);
+
+    interaction.inputHandled = handled;
+    if (!interaction.inputHandled) {
+      this.dispatchEvent(EVENT_TYPE_TOUCH_START, this.createPointerEvent(event, position, interaction));
+    }
+    this.preventAcceptedDefault(event, interaction.inputHandled);
   };
 
-  private onNativeMouseMove = (event: MouseEvent): void => {
-    if (!this.enabled || !this.target) {
-      return;
-    }
-    const position = this.getCanvasPosition(event.clientX, event.clientY);
-    const state = this.mouseState ?? this.createPointerState(position);
-
-    this.mouseState = state;
-    const relative = new Vector2(position.x - state.last.x, position.y - state.last.y);
-    const velocity = this.getVelocity(state, position);
-    const handled = this.pushNativeMouseMotion(event, position, relative, velocity);
-
-    state.inputHandled ||= handled;
-    if (!handled && (!state.pressed || !state.inputHandled)) {
-      const pointerEvent = this.createPointerEvent(event, position, state, velocity);
-
-      this.dispatchEvent(EVENT_TYPE_TOUCH_MOVE, pointerEvent);
-    }
-    this.updatePointerState(state, position);
-    this.consumeNativeEvent(event, handled);
+  private readonly onNativePointerUp = (event: MouseEvent): void => {
+    if (!this.enabled || !this.target || this.isTouchPointer(event) || !this.hasNativePointerPress()) { return; }
+    this.preventAcceptedDefault(event, this.releaseNativePointer(event));
   };
 
-  private onNativeMouseUp = (event: MouseEvent): void => {
-    if (!this.enabled || !this.target) {
+  private readonly onNativePointerEnter = (event: MouseEvent): void => {
+    if (!this.enabled || !this.target || this.isTouchPointer(event)) { return; }
+    this.pushMouseBoundary(event, true);
+  };
+
+  private readonly onDocumentPointerEnter = (event: MouseEvent): void => {
+    if (!this.enabled || this.isTouchPointer(event) || !this.hasNativePointerPress()) { return; }
+    const button = this.nativePointerButton;
+
+    // Recover a missed middle/right release when the pointer re-enters the document in Chrome.
+    if (navigator.userAgent.includes('Chrome/') &&
+      (button === MouseButton.Middle || button === MouseButton.Right) && !(getNativeMouseButtonMask(event.buttons) & getMouseButtonBit(button))) {
+      this.preventAcceptedDefault(event, this.releaseNativePointer(event, button));
+    }
+  };
+
+  private readonly onNativePointerLeave = (event: MouseEvent): void => {
+    if (!this.enabled || this.isTouchPointer(event)) { return; }
+    this.pushMouseBoundary(event, false);
+  };
+
+  private pushMouseBoundary (event: MouseEvent, entered: boolean): void {
+    if (entered || this.isMouseButtonPressed()) {
+      this.preventAcceptedDefault(event, this.pushNativePointerMotion(event, MouseButton.None));
+
       return;
     }
-    // Keep the canonical mask in sync even when mouseState already ended on a
-    // previous button release. The target and Window listeners may see the
-    // same mouseup, but clearing a bit twice is intentionally idempotent.
-    const wasPressed = (this.mouseButtonMask & getMouseButtonBit(getMouseButton(event.button))) !== 0;
+    const input = new InputEventMouseBoundary(entered);
 
-    this.setMouseButtonPressed(event.button, false);
-    if (!wasPressed) { return; }
-    const position = this.getCanvasPosition(event.clientX, event.clientY);
-    const existingState = this.mouseState;
+    this.copyMouseFields(input, event, this.getNativeMousePosition(event));
+    input.device = InputEvent.deviceIdMouse;
+    this.mouseInteraction ??= this.createCompositionInteraction(input.position);
+    this.preventAcceptedDefault(event, this.pushInput(input));
+  }
 
-    if (!existingState?.pressed) {
-      this.consumeNativeEvent(event, this.pushNativeMouseButton(event, position, false));
+  private releaseNativePointer (event: MouseEvent, button = getMouseButton(event.button)): boolean {
+    const position = this.getNativeMousePosition(event);
 
-      return;
+    // Only the final release ends an admitted pointer sequence.
+    const state = this.mouseState!;
+    const interaction = this.mouseInteraction!;
+
+    if (event.buttons !== 0) {
+      state.buttonMask = getNativeMouseButtonMask(event.buttons);
+
+      return this.pushNativePointerMotion(event, button, position);
     }
-    const state = existingState;
-    const handled = this.pushNativeMouseButton(event, position, false);
-    const pointerEvent = this.createPointerEvent(event, position, state);
+    this.nativePointerButton = MouseButton.None;
+    const handled = this.pushNativePointerButton(event, position, false, button);
+    const pointerEvent = this.createPointerEvent(event, position, interaction);
 
-    if (!state.inputHandled && !handled && this.isClick(state, position)) {
-      this.dispatchEvent(EVENT_TYPE_CLICK, pointerEvent);
-    }
-    if (!handled && !state.inputHandled) {
+    if (!interaction.inputHandled && !handled) {
+      if (this.isClick(interaction, position)) { this.dispatchEvent(EVENT_TYPE_CLICK, pointerEvent); }
       this.dispatchEvent(EVENT_TYPE_TOUCH_END, pointerEvent);
     }
-    this.mouseState = null;
-    this.consumeNativeEvent(event, handled || state.inputHandled || !this.allowPropagation);
+
+    return handled || interaction.inputHandled;
+  }
+
+  private countPointerClick (event: MouseEvent): void {
+    if (!this.usePointerEvents) {
+      this.pointerClickCount = event.detail || 1;
+
+      return;
+    }
+    // PointerEvent.detail is zero; count nearby presses within 500ms.
+    const now = Date.now();
+
+    this.pointerClickCount = this.pointerClickTime && now - this.pointerClickTime < 500 &&
+      Math.abs(event.pageX - this.pointerClickPosition.x) < 4 && Math.abs(event.pageY - this.pointerClickPosition.y) < 4
+      ? this.pointerClickCount + 1 : 1;
+    this.pointerClickTime = now;
+    this.pointerClickPosition.set(event.pageX, event.pageY);
+  }
+
+  private pushNativePointerButton (event: MouseEvent, position: Vector2, pressed: boolean, button = getMouseButton(event.button)): boolean {
+    const input = new InputEventMouseButton();
+
+    this.copyMouseFields(input, event, position);
+    input.device = InputEvent.deviceIdMouse;
+    input.buttonIndex = button;
+    input.buttonMask = pressed ? getNativeMouseButtonMask(event.buttons) | getMouseButtonBit(button) : MouseButtonMask.None;
+    input.pressed = pressed;
+    input.doubleClick = this.pointerClickCount > 1;
+
+    return this.dispatchNativeMouseInput(input);
+  }
+
+  private pushNativePointerMotion (event: MouseEvent, button = getMouseButton(event.button), position?: Vector2): boolean {
+    if (this.isTouchPointer(event)) { return false; }
+    position ??= this.getNativeMousePosition(event);
+    const state = this.mouseState;
+    const previousPosition = state?.lastInput.position ?? position;
+    const interaction = this.mouseInteraction ??= this.createCompositionInteraction(position);
+    const input = new InputEventMouseMotion();
+
+    this.copyMouseFields(input, event, position);
+    input.device = InputEvent.deviceIdMouse;
+    input.buttonIndex = button;
+    input.buttonMask = this.mouseState?.buttonMask ?? MouseButtonMask.None;
+    input.pressed = input.buttonMask !== MouseButtonMask.None;
+    input.relative.set(position.x - previousPosition.x, position.y - previousPosition.y);
+    input.screenRelative.copyFrom(input.relative);
+    input.velocity.copyFrom(this.getVelocity(position, previousPosition, state?.lastTime ?? performance.now()));
+    input.screenVelocity.copyFrom(input.velocity);
+    if ('pressure' in event) {
+      const pointer = event as PointerEvent;
+
+      input.pressure = pointer.pressure; input.tilt.set(pointer.tiltX, pointer.tiltY);
+    }
+    const handled = this.dispatchNativeMouseInput(input);
+
+    if (!handled && (!input.pressed || !interaction.inputHandled)) {
+      this.dispatchEvent(EVENT_TYPE_TOUCH_MOVE, this.createPointerEvent(event, position, interaction, input.velocity));
+    }
+    interaction.inputHandled ||= handled;
+
+    return handled;
+  }
+
+  private onNativePointingMove = (event: MouseEvent): void => {
+    if (!this.enabled || !this.target || this.isTouchPointer(event)) { return; }
+    this.preventAcceptedDefault(event, this.pushNativePointerMotion(event, this.usePointerEvents ? getMouseButton(event.button) : MouseButton.None));
   };
 
   private onNativeTouchStart = (event: TouchEvent): void => {
@@ -319,15 +446,16 @@ export class InputServer extends EngineServer implements Disposable {
     this.focusTarget();
     for (const touch of Array.from(event.changedTouches)) {
       const position = this.getCanvasPosition(touch.clientX, touch.clientY);
-      const state = this.createPointerState(position);
+      const state: TouchInputState = {
+        position: position.clone(), lastTime: performance.now(), interaction: this.createCompositionInteraction(position),
+      };
 
       this.touchStates.set(touch.identifier, state);
-      state.pressed = true;
       const handled = this.pushNativeScreenTouch(touch.identifier, position, true, false, false);
 
-      state.inputHandled = handled;
+      state.interaction.inputHandled = handled;
       if (!handled) {
-        const pointerEvent = this.createPointerEvent(event, position, state);
+        const pointerEvent = this.createPointerEvent(event, position, state.interaction);
 
         this.dispatchEvent(EVENT_TYPE_TOUCH_START, pointerEvent);
       }
@@ -337,25 +465,25 @@ export class InputServer extends EngineServer implements Disposable {
   };
 
   private onNativeTouchMove = (event: TouchEvent): void => {
-    if (!this.enabled) {
+    if (!this.enabled || !this.touchStates.size) {
       return;
     }
     for (const touch of Array.from(event.changedTouches)) {
       const position = this.getCanvasPosition(touch.clientX, touch.clientY);
-      const state = this.touchStates.get(touch.identifier) ?? this.createPointerState(position);
+      const state = this.touchStates.get(touch.identifier);
 
-      this.touchStates.set(touch.identifier, state);
-      const relative = new Vector2(position.x - state.last.x, position.y - state.last.y);
-      const velocity = this.getVelocity(state, position);
+      if (!state) { continue; }
+      const relative = new Vector2(position.x - state.position.x, position.y - state.position.y);
+      const velocity = this.getVelocity(position, state.position, state.lastTime);
       const handled = this.pushNativeScreenDrag(touch.identifier, position, relative, velocity);
 
-      state.inputHandled ||= handled;
-      if (!handled && !state.inputHandled) {
-        const pointerEvent = this.createPointerEvent(event, position, state, velocity);
+      state.interaction.inputHandled ||= handled;
+      if (!handled && !state.interaction.inputHandled) {
+        const pointerEvent = this.createPointerEvent(event, position, state.interaction, velocity);
 
         this.dispatchEvent(EVENT_TYPE_TOUCH_MOVE, pointerEvent);
       }
-      this.updatePointerState(state, position);
+      state.position.copyFrom(position); state.lastTime = performance.now();
       this.consumeNativeEvent(event, handled);
     }
     this.preventTouchDefaults(event);
@@ -370,35 +498,20 @@ export class InputServer extends EngineServer implements Disposable {
   };
 
   private onCanvasFocus = (): void => {
-    this.emit('canvasFocus');
+    this.dispatchNativeFocusInput(FocusEventType.FocusGained);
   };
 
   private onCanvasBlur = (): void => {
-    this.emit('canvasBlur');
+    this.dispatchNativeFocusInput(FocusEventType.FocusLost);
   };
 
-  private handleNativeMouseDown (event: MouseEvent): void {
-    if (!this.enabled || !this.target) {
-      return;
-    }
-    this.setMouseButtonPressed(event.button, true);
-    const position = this.getCanvasPosition(event.clientX, event.clientY);
+  private readonly onWindowFocus = (): void => {
+    this.dispatchNativeFocusInput(FocusEventType.WindowFocusGained);
+  };
 
-    this.focusTarget();
-    const state = this.createPointerState(position);
-
-    this.mouseState = state;
-    state.pressed = true;
-    const handled = this.pushNativeMouseButton(event, position, true);
-
-    state.inputHandled = handled;
-    if (!handled) {
-      const pointerEvent = this.createPointerEvent(event, position, state);
-
-      this.dispatchEvent(EVENT_TYPE_TOUCH_START, pointerEvent);
-    }
-    this.consumeNativeEvent(event, handled);
-  }
+  private readonly onWindowBlur = (): void => {
+    this.dispatchNativeFocusInput(FocusEventType.WindowFocusLost);
+  };
 
   private handleNativeKey (event: KeyboardEvent, pressed: boolean): void {
     if (!this.enabled) {
@@ -418,78 +531,34 @@ export class InputServer extends EngineServer implements Disposable {
     input.altPressed = event.altKey;
     input.metaPressed = event.metaKey;
     input.ctrlPressed = event.ctrlKey;
-    this.consumeNativeEvent(event, this.pushInput(input));
+    if (pressed) { this.pressedKeys.set(event.code, input); } else { this.pressedKeys.delete(event.code); }
+    this.preventAcceptedDefault(event, this.pushInput(input));
   }
 
   private handleNativeTouchEnd (event: TouchEvent, canceled: boolean): void {
-    if (!this.enabled) {
+    if (!this.enabled || !this.touchStates.size) {
       return;
     }
     for (const touch of Array.from(event.changedTouches)) {
       const position = this.getCanvasPosition(touch.clientX, touch.clientY);
       const state = this.touchStates.get(touch.identifier);
 
-      if (!state?.pressed) {
+      if (!state) {
         continue;
       }
       const handled = this.pushNativeScreenTouch(touch.identifier, position, false, canceled, false);
-      const pointerEvent = this.createPointerEvent(event, position, state);
+      const pointerEvent = this.createPointerEvent(event, position, state.interaction);
 
-      if (!canceled && !state.inputHandled && !handled && this.isClick(state, position)) {
+      if (!canceled && !state.interaction.inputHandled && !handled && this.isClick(state.interaction, position)) {
         this.dispatchEvent(EVENT_TYPE_CLICK, pointerEvent);
       }
-      if (!handled && !canceled && !state.inputHandled) {
+      if (!handled && !canceled && !state.interaction.inputHandled) {
         this.dispatchEvent(EVENT_TYPE_TOUCH_END, pointerEvent);
       }
       this.touchStates.delete(touch.identifier);
-      this.consumeNativeEvent(event, handled || state.inputHandled || !this.allowPropagation);
+      this.consumeNativeEvent(event, handled || state.interaction.inputHandled || !this.allowPropagation);
     }
-    this.preventTouchDefaults(event);
-  }
-
-  private pushNativeMouseButton (event: MouseEvent, position: Vector2, pressed: boolean): boolean {
-    let handled = false;
-    const button = getMouseButton(event.button);
-
-    if (pressed && this.emulateTouchFromMouse && button === MouseButton.Left) {
-      this.touchFromMousePressed = true;
-    }
-    if (this.touchFromMousePressed && button === MouseButton.Left) {
-      handled = this.pushScreenTouch(
-        0,
-        position,
-        pressed,
-        false,
-        event.detail > 1,
-        InputEvent.deviceIdEmulation,
-      );
-      if (!pressed) {
-        this.touchFromMousePressed = false;
-      }
-    }
-
-    return this.pushMouseButton(event, position, pressed) || handled;
-  }
-
-  private pushNativeMouseMotion (
-    event: MouseEvent,
-    position: Vector2,
-    relative: Vector2,
-    velocity: Vector2,
-  ): boolean {
-    let handled = false;
-
-    if (this.touchFromMousePressed && (this.mouseButtonMask & MouseButtonMask.Left) !== 0) {
-      handled = this.pushScreenDrag(
-        0,
-        position,
-        relative,
-        velocity,
-        InputEvent.deviceIdEmulation,
-      );
-    }
-
-    return this.pushMouseMotion(event, position, relative, velocity) || handled;
+    if (!canceled) { this.preventTouchDefaults(event); }
   }
 
   private pushNativeScreenTouch (
@@ -548,7 +617,7 @@ export class InputServer extends EngineServer implements Disposable {
     input.canceled = canceled;
     input.doubleClick = doubleClick;
 
-    return this.pushInput(input);
+    return this.dispatchNativeMouseInput(input);
   }
 
   private pushEmulatedMouseMotion (
@@ -568,34 +637,7 @@ export class InputServer extends EngineServer implements Disposable {
     input.velocity.copyFrom(velocity);
     input.screenVelocity.copyFrom(velocity);
 
-    return this.pushInput(input);
-  }
-
-  private pushMouseButton (
-    event: MouseEvent | PointerEvent,
-    position: Vector2,
-    pressed: boolean,
-  ): boolean {
-    const input = new InputEventMouseButton();
-
-    this.copyMouseFields(input, event, position);
-    input.device = InputEvent.deviceIdMouse;
-    input.buttonIndex = getMouseButton(event.button);
-    input.buttonMask = this.mouseButtonMask;
-    input.pressed = pressed;
-    input.doubleClick = event.detail > 1;
-
-    return this.pushInput(input);
-  }
-
-  private setMouseButtonPressed (button: number, pressed: boolean): void {
-    const buttonBit = getMouseButtonBit(getMouseButton(button));
-
-    if (pressed) {
-      this.mouseButtonMask |= buttonBit;
-    } else {
-      this.mouseButtonMask &= ~buttonBit;
-    }
+    return this.dispatchNativeMouseInput(input);
   }
 
   private pushWheelButton (
@@ -609,33 +651,9 @@ export class InputServer extends EngineServer implements Disposable {
     this.copyMouseFields(input, event, position);
     input.device = InputEvent.deviceIdMouse;
     input.buttonIndex = button;
-    input.buttonMask = this.mouseButtonMask;
+    input.buttonMask = this.mouseState?.buttonMask ?? MouseButtonMask.None;
     input.factor = factor;
     input.pressed = true;
-
-    return this.pushInput(input);
-  }
-
-  private pushMouseMotion (
-    event: MouseEvent | PointerEvent,
-    position: Vector2,
-    relative: Vector2,
-    velocity: Vector2,
-  ): boolean {
-    const input = new InputEventMouseMotion();
-
-    this.copyMouseFields(input, event, position);
-    input.device = InputEvent.deviceIdMouse;
-    input.buttonMask = this.mouseButtonMask;
-    input.pressed = this.mouseButtonMask !== MouseButtonMask.None;
-    input.relative.copyFrom(relative);
-    input.screenRelative.copyFrom(relative);
-    input.velocity.copyFrom(velocity);
-    input.screenVelocity.copyFrom(velocity);
-    if ('pressure' in event) {
-      input.pressure = event.pressure;
-      input.tilt.set(event.tiltX, event.tiltY);
-    }
 
     return this.pushInput(input);
   }
@@ -682,7 +700,7 @@ export class InputServer extends EngineServer implements Disposable {
   }
 
   private copyMouseFields (
-    input: InputEventMouseButton | InputEventMouseMotion,
+    input: InputEventMouse,
     event: MouseEvent | PointerEvent | WheelEvent,
     position: Vector2,
   ): void {
@@ -770,40 +788,30 @@ export class InputServer extends EngineServer implements Disposable {
     }
   }
 
-  private createPointerState (position: Vector2): PointerState {
-    const state = {
+  private createCompositionInteraction (position: Vector2): CompositionInteractionState {
+    return {
       start: position.clone(),
-      last: position.clone(),
-      lastTime: performance.now(),
       inputHandled: false,
-      pressed: false,
     };
-
-    return state;
   }
 
-  private updatePointerState (state: PointerState, position: Vector2): void {
-    state.last.copyFrom(position);
-    state.lastTime = performance.now();
-  }
-
-  private getVelocity (state: PointerState, position: Vector2): Vector2 {
-    const elapsed = Math.max(performance.now() - state.lastTime, 1);
+  private getVelocity (position: Vector2, previousPosition: Vector2, previousTime: number): Vector2 {
+    const elapsed = Math.max(performance.now() - previousTime, 1);
 
     return new Vector2(
-      (position.x - state.last.x) / elapsed,
-      (position.y - state.last.y) / elapsed,
+      (position.x - previousPosition.x) / elapsed,
+      (position.y - previousPosition.y) / elapsed,
     );
   }
 
-  private isClick (state: PointerState, position: Vector2): boolean {
+  private isClick (state: CompositionInteractionState, position: Vector2): boolean {
     return Math.abs(position.x - state.start.x) + Math.abs(position.y - state.start.y) < 4;
   }
 
   private createPointerEvent (
     origin: Event,
     position: Vector2,
-    state: PointerState,
+    state: CompositionInteractionState,
     velocity = new Vector2(),
   ): TouchEventType {
     const target = this.target;
@@ -846,11 +854,137 @@ export class InputServer extends EngineServer implements Disposable {
     }
   }
 
-  private pushInput (input: InputEvent): boolean {
+  private preventAcceptedDefault (event: Event, handled: boolean): void {
+    // Allow document-capture events to continue to their targets.
+    if (handled && !this.allowPropagation && event.cancelable) { event.preventDefault(); }
+  }
+
+  /** Dispatches an input event without changing native input state. */
+  pushInput (input: InputEvent): boolean {
     input.clearAccepted();
     this.emit('input', input);
 
     return input.isAccepted();
+  }
+
+  private dispatchNativeMouseInput (input: InputEventMouseButton | InputEventMouseMotion): boolean {
+    let state: MouseInputState | null = null;
+
+    if (input instanceof InputEventMouseButton) {
+      if (input.isPressed()) {
+        this.mouseState = {
+          initiatingButton: input.buttonIndex, buttonMask: input.buttonMask, lastInput: input, lastTime: performance.now(),
+        };
+      } else {
+        input.buttonMask = MouseButtonMask.None;
+        if (this.mouseState) {
+          this.mouseState.buttonMask = MouseButtonMask.None;
+          this.mouseState.initiatingButton = MouseButton.None;
+          this.mouseState.lastInput = input;
+        }
+      }
+      state = this.mouseState;
+    } else {
+      if (!this.isMouseButtonPressed()) { input.buttonMask = MouseButtonMask.None; }
+      this.mouseState ??= {
+        initiatingButton: MouseButton.None, buttonMask: MouseButtonMask.None, lastInput: input, lastTime: performance.now(),
+      };
+      state = this.mouseState;
+      state.buttonMask = input.buttonMask;
+      state.lastInput = input;
+      input.pressed = input.buttonMask !== MouseButtonMask.None;
+    }
+    const handled = this.pushInput(input);
+
+    if (state) { state.lastTime = performance.now(); }
+
+    return handled;
+  }
+
+  private isMouseButtonPressed (): boolean {
+    return (this.mouseState?.buttonMask ?? MouseButtonMask.None) !== MouseButtonMask.None;
+  }
+
+  private hasNativePointerPress (): boolean {
+    return this.nativePointerButton !== MouseButton.None &&
+      this.mouseState?.lastInput.device === InputEvent.deviceIdMouse && this.isMouseButtonPressed();
+  }
+
+  private cancelNativePointerInput (): void {
+    const state = this.mouseState;
+
+    if (!state || !this.isMouseButtonPressed()) { return; }
+    const event = new InputEventMouseButton();
+
+    this.copyMouseInput(event, state.lastInput);
+    event.buttonIndex = state.initiatingButton;
+    event.canceled = true;
+    this.nativePointerButton = MouseButton.None;
+    this.dispatchNativeMouseInput(event);
+  }
+
+  private copyMouseInput (target: InputEventMouse, source: InputEventMouse): void {
+    target.device = source.device;
+    target.position.copyFrom(source.position);
+    target.globalPosition.copyFrom(source.globalPosition);
+    target.shiftPressed = source.shiftPressed;
+    target.altPressed = source.altPressed;
+    target.ctrlPressed = source.ctrlPressed;
+    target.metaPressed = source.metaPressed;
+    target.commandOrControlAutoremap = source.commandOrControlAutoremap;
+  }
+
+  private prepareNativeFocusInput (type: FocusEventType): boolean {
+    if (type === FocusEventType.FocusGained) {
+      if (this.viewFocused) { return false; }
+      this.viewFocused = true; this.hadFocus = true;
+    } else if (type === FocusEventType.FocusLost) {
+      // The canvas may have been focused before the listeners were bound.
+      const wasFocused = this.viewFocused;
+
+      this.viewFocused = false;
+      this.cancelNativePointerInput(); this.releasePressedKeys();
+
+      return wasFocused;
+    } else if (type === FocusEventType.WindowFocusGained) {
+      if (this.windowFocused) { return false; }
+      this.windowFocused = true;
+      if (!this.hadFocus) { return false; }
+    } else {
+      if (!this.windowFocused) { return false; }
+      const hadFocus = this.hadFocus;
+
+      this.windowFocused = false;
+      this.cancelNativePointerInput(); this.releasePressedKeys();
+      this.touchStates.clear(); this.mouseFromTouchIndex = null;
+
+      return hadFocus;
+    }
+
+    return true;
+  }
+
+  private dispatchNativeFocusInput (type: FocusEventType): void {
+    if (this.prepareNativeFocusInput(type)) { this.pushInput(new InputEventFocus(type)); }
+  }
+
+  private releasePressedKeys (): void {
+    const keys = Array.from(this.pressedKeys.values());
+
+    this.pressedKeys.clear();
+    for (const pressed of keys) {
+      const released = Object.assign(new InputEventKey(), pressed);
+
+      released.pressed = false; released.echo = false; this.pushInput(released);
+    }
+  }
+
+  private getNativeMousePosition (event: MouseEvent): Vector2 {
+    if (this.target && this.target.ownerDocument?.pointerLockElement === this.target && this.mouseState) {
+      return this.mouseState.lastInput.position.clone().add(new Vector2(event.movementX, event.movementY));
+    }
+
+    return this.getCanvasPosition(event.clientX, event.clientY);
   }
 
   private preventTouchDefaults (event: TouchEvent): void {
@@ -860,17 +994,26 @@ export class InputServer extends EngineServer implements Disposable {
   }
 
   private focusTarget (): void {
+    this.hadFocus = true;
     if (typeof this.target?.focus === 'function') {
       this.target.focus();
     }
   }
 
   private resetInputState (): void {
+    this.pressedKeys.clear(); this.hadFocus = false;
+    this.viewFocused = false; this.windowFocused = true;
     this.mouseState = null;
-    this.mouseButtonMask = MouseButtonMask.None;
+    this.mouseInteraction = null;
+    this.nativePointerButton = MouseButton.None;
+    this.pointerClickTime = 0;
+    this.pointerClickCount = 0;
     this.touchStates.clear();
     this.mouseFromTouchIndex = null;
-    this.touchFromMousePressed = false;
+  }
+
+  private isTouchPointer (event: MouseEvent): boolean {
+    return 'pointerType' in event && event.pointerType === 'touch';
   }
 
   private addNativeHandler (
@@ -935,6 +1078,12 @@ function getMouseButton (button: number): MouseButton {
     default:
       return MouseButton.None;
   }
+}
+
+function getNativeMouseButtonMask (buttons: number): MouseButtonMask {
+  return (buttons & 7) |
+    (buttons & 8 ? MouseButtonMask.Xbutton1 : MouseButtonMask.None) |
+    (buttons & 16 ? MouseButtonMask.Xbutton2 : MouseButtonMask.None);
 }
 
 function getMouseButtonBit (button: MouseButton): MouseButtonMask {
