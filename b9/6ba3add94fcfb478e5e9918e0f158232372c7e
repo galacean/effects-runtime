@@ -1,0 +1,36 @@
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 46-47,56-57,341,345,354,375,377,390
+web-packages/test/unit/src/index.ts
+  s_c60a5898c265d5::t_8253fc1e0ede78 7
+web-packages/dev-tools/src/features/assets/runtime/asset-object-cache.ts
+  s_c60a5898c265d5::t_d9c4c21ee7a9fb 28,45,81-83,87,92,94-97,99,101,120
+web-packages/test/unit/src/dev-tools/asset-object-cache.spec.ts
+  s_c60a5898c265d5::t_8253fc1e0ede78 1-28,30-51
+  s_c60a5898c265d5::t_7bd13df3bab806 29
+web-packages/test/unit/src/plugin-gui/gui-deserialization.spec.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 578
+packages/effects-core/src/effects-object.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 71
+web-packages/test/unit/src/effects-core/components/lifecycle.spec.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 71,77,82
+web-packages/demo/src/gizmo-2d/editor.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 260,269
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_c60a5898c265d5::t_d6fcea89e77dcb 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b96ba3add94fcfb478e5e9918e0f158232372c7e",
+  "prompts": {},
+  "sessions": {
+    "s_c60a5898c265d5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e8bf-9f3d-7af0-a1ff-a2da5828120a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
