@@ -1,5 +1,5 @@
 import type { Composition } from '@galacean/effects';
-import { Asset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
+import { DataAsset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
@@ -609,7 +609,7 @@ describe('videoComponent:texture binding', function () {
   });
 
   it('applies configured settings after a placeholder and resetting manual overrides', function () {
-    component.setTexture(player.renderer.engine.whiteTexture);
+    component.setTexture(player.renderer.engine.assetServer.whiteTexture);
     expect(component.video).to.be.undefined;
 
     component.setLoop(false);
@@ -672,10 +672,10 @@ describe('videoComponent:texture binding', function () {
     it(`applies serialized settings to a new video after binding (placeholder: ${usePlaceholder})`, function () {
       component.setTexture(texture);
       if (usePlaceholder) {
-        component.setTexture(player.renderer.engine.whiteTexture);
+        component.setTexture(player.renderer.engine.assetServer.whiteTexture);
       }
       const replacementVideo = document.createElement('video');
-      const asset = new Asset<HTMLVideoElement>(player.renderer.engine);
+      const asset = new DataAsset<HTMLVideoElement>(player.renderer.engine);
 
       replacementVideo.muted = true;
       asset.data = replacementVideo;
@@ -718,7 +718,7 @@ describe('videoComponent:texture binding', function () {
     replacementVideo.loop = false;
     replacementVideo.playbackRate = 1.25;
     try {
-      component.setTexture(player.renderer.engine.whiteTexture);
+      component.setTexture(player.renderer.engine.assetServer.whiteTexture);
       component.setTexture(replacement);
       expect(replacementVideo.volume).to.equal(0.8);
       expect(replacementVideo.muted).to.be.false;

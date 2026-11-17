@@ -1,4 +1,4 @@
-import { MouseButton, spec, TextComponent, type InputEventMouseButton } from '@galacean/effects';
+import { MouseButton, ShapeComponent, spec, TextComponent, type InputEventMouseButton } from '@galacean/effects';
 import { GestureCursorType } from '../cursor';
 import { effectsEditModeConfig } from '../configs/builtin-configs';
 import { Gizmo } from '../gizmo';
@@ -40,6 +40,15 @@ export class EnterEditModeGizmo extends Gizmo {
       this._owner.setActiveEditMode(new TextEditMode(this._owner, selectedItem, 'select'));
       this._owner.setCursor({
         type: GestureCursorType.TEXT,
+        angle: 0,
+      });
+    } else if (
+      selectedItem.type === spec.ItemType.shape
+      && selectedItem.getComponent(ShapeComponent)?.shape?.type === spec.ShapePrimitiveType.Custom
+    ) {
+      this._owner.emit('shapeinput', selectedItem);
+      this._owner.setCursor({
+        type: GestureCursorType.PEN,
         angle: 0,
       });
     } else if (isEffectsPlayerItem(selectedItem)) {

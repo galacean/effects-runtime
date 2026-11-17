@@ -687,6 +687,93 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(getSpyCalls(transform.setPosition).at(-1)).to.deep.equal([-25, 30, 0]);
   });
 
+  it('矩形缩放写入基础宽高，保留 transform.scale 并按按下快照绝对计算', () => {
+    const { gizmo } = createGizmo(TransformType.NULL);
+    const shape = {
+      type: spec.ShapePrimitiveType.Rectangle,
+      width: 100,
+      height: 50,
+    };
+    const shapeComponent = {
+      shape,
+      definition: {},
+      onApplyAnimationProperties: chai.spy(),
+    };
+    const transform = {
+      scale: new Vector3(2, 3, 1),
+      position: new Vector3(10, 20, 0),
+      setScale: chai.spy(),
+      setPosition: chai.spy(),
+    };
+    const session = {
+      item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+      initialPosition: new Vector3(10, 20, 0),
+      initialScale: new Vector3(2, 3, 1),
+      parentWorldToLocal: new Matrix4(),
+      shape: {
+        component: shapeComponent,
+        attributes: { type: spec.ShapePrimitiveType.Rectangle, width: 100, height: 50 },
+      },
+    };
+    const apply = (x: number, y: number) => {
+      (gizmo as unknown as {
+        applyAnchoredResize: (session: unknown, resize: unknown) => void,
+      }).applyAnchoredResize(session, {
+        totalScalar: new Vector3(x, y, 1),
+        totalTranslation: new Vector3(),
+      });
+    };
+
+    apply(2, 0.5);
+    apply(1.5, 1.25);
+
+    expect(shape.width).to.equal(150);
+    expect(shape.height).to.equal(62.5);
+    expect(shapeComponent.definition).to.deep.equal({ width: 150, height: 62.5 });
+    expect(transform.setScale).not.to.have.been.called();
+    expect(shapeComponent.onApplyAnimationProperties).to.have.been.called.exactly(2);
+  });
+
+  it('椭圆缩放写入 x/y 半径，并在穿过固定边时只保留 scale 的镜像符号', () => {
+    const { gizmo } = createGizmo(TransformType.NULL);
+    const shape = {
+      type: spec.ShapePrimitiveType.Ellipse,
+      xRadius: 40,
+      yRadius: 20,
+    };
+    const shapeComponent = {
+      shape,
+      onApplyAnimationProperties: chai.spy(),
+    };
+    const transform = {
+      scale: new Vector3(1, 1, 1),
+      position: new Vector3(),
+      setScale: chai.spy(),
+      setPosition: chai.spy(),
+    };
+    const session = {
+      item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+      initialPosition: new Vector3(),
+      initialScale: new Vector3(1, 1, 1),
+      parentWorldToLocal: new Matrix4(),
+      shape: {
+        component: shapeComponent,
+        attributes: { type: spec.ShapePrimitiveType.Ellipse, xRadius: 40, yRadius: 20 },
+      },
+    };
+
+    (gizmo as unknown as {
+      applyAnchoredResize: (session: unknown, resize: unknown) => void,
+    }).applyAnchoredResize(session, {
+      totalScalar: new Vector3(-0.5, 2, 1),
+      totalTranslation: new Vector3(),
+    });
+
+    expect(shape.xRadius).to.equal(20);
+    expect(shape.yRadius).to.equal(40);
+    expect(getSpyCalls(transform.setScale).at(-1)).to.deep.equal([-1, 1, 1]);
+  });
+
   it('手柄在实际拖动时进入变换，Up 结束变换并把 hover 留给 cached Move', () => {
     const { gizmo, owner, emit } = createGizmo(TransformType.SCALE);
 

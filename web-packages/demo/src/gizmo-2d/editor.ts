@@ -1,4 +1,4 @@
-import { EventEmitter, TextComponent, math } from '@galacean/effects';
+import { EventEmitter, ShapeComponent, TextComponent, math, spec } from '@galacean/effects';
 import type { InputEventKey, Player, VFXItem } from '@galacean/effects';
 import {
   GizmoViewportUtils,
@@ -6,18 +6,28 @@ import {
   ItemCreateGizmoTool,
   ItemCreateType,
   MoveGizmoTool,
-  TextEditMode,
+  PenEditMode,
+  ShapeEditMode,
+  shapeConfig,
   createInteractionPlane,
+  getBoxCorners,
+  TextEditMode,
   getItemViewBox,
   ndcSizeToViewSize,
   viewPositionToWorld,
+  type GeometryGizmoHost,
+  type HandleMirrorMode,
+  type PenPathData,
+  type ShapeDrawingActionEvent,
+  type ShapeGeometry,
+  type ShapePrimitive,
 } from '@galacean/effects-plugin-editor-gizmo';
 import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo,
   GestureHandler } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 
-export type DemoTool = 'move' | 'hand' | 'frame' | 'text';
+export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'pen' | 'shape';
 
 type EditorEvents = {
   scenechange: [],
@@ -27,7 +37,67 @@ type EditorEvents = {
   viewportchange: [number],
 };
 
-const SHORTCUTS: Partial<Record<string, DemoTool>> = { KeyV: 'move', KeyH: 'hand', KeyF: 'frame', KeyT: 'text' };
+const SHORTCUTS: Partial<Record<string, DemoTool>> = { KeyV: 'move', KeyH: 'hand', KeyF: 'frame', KeyT: 'text', KeyP: 'pen', KeyS: 'shape' };
+
+type PrimitiveShapeAttributes = {
+  type?: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  pointCount?: number,
+  radius?: number,
+  innerRadius?: number,
+  outerRadius?: number,
+};
+
+function primitiveShapePath (shape: PrimitiveShapeAttributes): PenPathData | undefined {
+  const points: Array<{ x: number, y: number }> = [];
+  const easingIns: Array<{ x: number, y: number }> = [];
+  const easingOuts: Array<{ x: number, y: number }> = [];
+  const add = (x: number, y: number, easingIn = { x: 0, y: 0 }, easingOut = { x: 0, y: 0 }): void => {
+    points.push({ x, y }); easingIns.push(easingIn); easingOuts.push(easingOut);
+  };
+  const type = shape.type;
+
+  if (type === spec.ShapePrimitiveType.Rectangle) {
+    const width = shape.width ?? 1;
+    const height = shape.height ?? 1;
+
+    add(-width / 2, -height / 2); add(width / 2, -height / 2);
+    add(width / 2, height / 2); add(-width / 2, height / 2);
+  } else if (type === spec.ShapePrimitiveType.Ellipse) {
+    const rx = Math.abs(shape.xRadius ?? 0.5);
+    const ry = Math.abs(shape.yRadius ?? 0.5);
+    const k = 0.5522847498307936;
+
+    add(0, -ry, { x: -k * rx, y: 0 }, { x: k * rx, y: 0 });
+    add(rx, 0, { x: 0, y: -k * ry }, { x: 0, y: k * ry });
+    add(0, ry, { x: k * rx, y: 0 }, { x: -k * rx, y: 0 });
+    add(-rx, 0, { x: 0, y: k * ry }, { x: 0, y: -k * ry });
+  } else if (type === spec.ShapePrimitiveType.Polygon || type === spec.ShapePrimitiveType.Star) {
+    const count = Math.max(3, Math.floor(shape.pointCount ?? (type === spec.ShapePrimitiveType.Star ? 5 : 6)));
+    const total = type === spec.ShapePrimitiveType.Star ? count * 2 : count;
+    const outer = Math.abs(shape.outerRadius ?? shape.radius ?? 0.5);
+    const inner = Math.abs(shape.innerRadius ?? outer);
+
+    for (let i = 0; i < total; i++) {
+      const angle = -Math.PI / 2 + i * Math.PI * 2 / total;
+      const radius = type === spec.ShapePrimitiveType.Star && i % 2 === 1 ? inner : outer;
+
+      add(Math.cos(angle) * radius, Math.sin(angle) * radius);
+    }
+  } else {
+    return undefined;
+  }
+
+  return {
+    points,
+    easingIns,
+    easingOuts,
+    shapes: [{ close: true, indexes: points.map((_, point) => ({ point, easingIn: point, easingOut: point })) }],
+  };
+}
 
 /** 管理 Gizmo 工具、选区和创建会话，通过事件通知视图，不直接操作面板。 */
 export class DemoEditor extends EventEmitter<EditorEvents> {
@@ -38,6 +108,14 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   private disposed = false;
   private autoFitViewport = true;
   private fittingViewport = false;
+  private shapePrimitive: ShapePrimitive = 'rect';
+  private geometryMode?: PenEditMode | ShapeEditMode;
+  private readonly geometryHost: GeometryGizmoHost;
+  private draftGeometry?: DemoItem;
+  private readonly vectorEditSnapshots = new Map<string, ShapeGeometry>();
+  private penMirrorMode: HandleMirrorMode = 'angle-length';
+  private penLassoMode = false;
+  private settingTool = false;
 
   constructor (
     private readonly player: Player,
@@ -46,9 +124,15 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     private readonly viewport: HTMLElement,
   ) {
     super();
+    this.geometryHost = this.createGeometryHost();
     this.unsubscribes.push(
       handler.getSelection().on('selectionchange', () => this.emit('selectionchange')),
       handler.on('keyDown', event => this.handleKeyDown(event)),
+      handler.on('shapeinput', item => {
+        if (this.enterSelectedShapeEdit(item)) {
+          this.emit('selectionchange');
+        }
+      }),
       handler.on('textinput', event => this.emit('action', `textinput · ${event.itemId}`)),
       handler.getViewportNavigation().on('change', event => {
         if (!this.fittingViewport) {
@@ -78,6 +162,10 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     return this.activeTool;
   }
 
+  get primitive (): ShapePrimitive {
+    return this.shapePrimitive;
+  }
+
   get selectedItems (): VFXItem[] {
     return this.handler.getSelection().getSelectedPlayerItems();
   }
@@ -89,20 +177,138 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   setTool (tool: DemoTool): void {
-    this.handler.resetEditMode();
-    this.discardDraft();
-    this.activeTool = tool;
-    if (tool === 'frame' || tool === 'text') {
-      const createTool = new ItemCreateGizmoTool(this.handler);
+    if (tool === 'pen' && this.activeTool === 'pen' && this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit') {
+      const previousSetting = this.settingTool;
 
-      createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : ItemCreateType.TEXT;
-      this.handler.setActiveTool(createTool);
-      this.setSelection([]);
-    } else {
-      this.handler.setActiveTool(tool === 'move' ? new MoveGizmoTool(this.handler) : new HandGizmoTool(this.handler));
+      this.settingTool = true;
+      try {
+        this.geometryMode.enterCreate(true);
+        this.player.canvas.focus();
+      } finally {
+        this.settingTool = previousSetting;
+      }
+
+      return;
     }
-    this.emit('toolchange', tool);
-    this.player.canvas.focus();
+    const previousSetting = this.settingTool;
+
+    this.settingTool = true;
+    try {
+      this.handler.resetEditMode();
+      this.discardDraft();
+      this.geometryMode = undefined;
+      this.activeTool = tool;
+      if (tool === 'pen' || tool === 'shape') {
+        this.setSelection([]);
+        const mode = tool === 'pen'
+          ? this.createPenMode()
+          : new ShapeEditMode(this.handler, this.geometryHost, this.shapePrimitive);
+
+        this.geometryMode = mode;
+        this.handler.setActiveEditMode(mode);
+        this.handler.setActiveTool(new MoveGizmoTool(this.handler));
+      } else if (tool === 'frame' || tool === 'text') {
+        const createTool = new ItemCreateGizmoTool(this.handler);
+
+        createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : ItemCreateType.TEXT;
+        this.handler.setActiveTool(createTool);
+        this.setSelection([]);
+      } else {
+        this.handler.setActiveTool(tool === 'move' ? new MoveGizmoTool(this.handler) : new HandGizmoTool(this.handler));
+      }
+      this.emit('toolchange', tool);
+      this.player.canvas.focus();
+    } finally {
+      this.settingTool = previousSetting;
+    }
+  }
+
+  private enterSelectedShapeEdit (item = this.selectedItem): boolean {
+    if (!item?.getComponent(ShapeComponent)) {
+      return false;
+    }
+    const previousSetting = this.settingTool;
+
+    this.settingTool = true;
+    try {
+      this.handler.resetEditMode();
+      this.discardDraft();
+      const mode = this.createPenMode('edit');
+
+      this.geometryMode = mode;
+      this.activeTool = 'pen';
+      this.handler.setActiveEditMode(mode);
+      this.handler.setActiveTool(new MoveGizmoTool(this.handler));
+      this.emit('toolchange', 'pen');
+
+      return true;
+    } finally {
+      this.settingTool = previousSetting;
+    }
+  }
+
+  setShapePrimitive (primitive: ShapePrimitive): void {
+    this.shapePrimitive = primitive;
+    if (this.activeTool === 'shape' && this.geometryMode instanceof ShapeEditMode) {
+      const previousSetting = this.settingTool;
+
+      this.settingTool = true;
+      try {
+        this.geometryMode.setPrimitive(primitive);
+      } finally {
+        this.settingTool = previousSetting;
+      }
+      this.emit('toolchange', 'shape');
+    } else {
+      this.setTool('shape');
+    }
+    this.emit('action', `造型 · ${primitive}`);
+  }
+
+  setPenMirrorMode (mode: HandleMirrorMode): void {
+    this.penMirrorMode = mode;
+    if (this.geometryMode instanceof PenEditMode) {
+      this.geometryMode.setHandleMirrorMode(mode);
+      this.emit('toolchange', 'pen');
+      this.emit('action', `钢笔控制柄 · ${mode}`);
+    }
+  }
+
+  setPenLassoMode (enabled: boolean): void {
+    this.penLassoMode = enabled;
+    if (this.geometryMode instanceof PenEditMode) {
+      this.geometryMode.setLassoMode(enabled);
+      this.emit('toolchange', 'pen');
+      this.emit('action', enabled ? '钢笔套索 · 开启' : '钢笔套索 · 关闭');
+    }
+  }
+
+  setPenEditMode (enabled: boolean): void {
+    if (this.activeTool !== 'pen' || !(this.geometryMode instanceof PenEditMode)) {
+      return;
+    }
+
+    const previousSetting = this.settingTool;
+
+    this.settingTool = true;
+    try {
+      if (enabled) {
+        this.geometryMode.enterEdit();
+      } else {
+        this.geometryMode.enterCreate();
+      }
+      this.emit('action', enabled ? '钢笔编辑态 · 开启' : '钢笔创建态 · 开启');
+    } finally {
+      this.settingTool = previousSetting;
+    }
+  }
+
+  get penMirror (): HandleMirrorMode { return this.penMirrorMode; }
+
+  get penLasso (): boolean { return this.penLassoMode; }
+
+  get penEditMode (): boolean {
+    return this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit';
   }
 
   select (item: VFXItem, append = false): void {
@@ -190,6 +396,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.domEvents.dispose();
     this.unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
     this.discardDraft();
+    this.geometryMode = undefined;
+    this.vectorEditSnapshots.clear();
   }
 
   private setSelection (ids: string[]): void {
@@ -209,6 +417,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         this.handler.resetEditMode();
       } else if (this.activeTool === 'frame' || this.activeTool === 'text') {
         this.setTool('move');
+      } else if (this.activeTool === 'pen' || this.activeTool === 'shape') {
+        return;
       } else {
         this.setSelection([]);
       }
@@ -216,6 +426,14 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       this.emit('selectionchange');
 
       return;
+    }
+    if (event.physicalKeycode === 'Enter' && this.activeTool === 'move') {
+      if (this.enterSelectedShapeEdit()) {
+        event.accept();
+        this.emit('selectionchange');
+
+        return;
+      }
     }
     const tool = SHORTCUTS[event.physicalKeycode];
 
@@ -226,7 +444,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   private handleAction (phase: GizmoActionPhase, event: GizmoActionLifecycleEvent): void {
-    if ('createInfo' in event) {
+    if ('sessionId' in event && 'phase' in event) {
+      this.handleGeometryAction(phase, event);
+    } else if ('createInfo' in event) {
       if (event.canceled) {
         this.discardDraft();
         this.setTool('move');
@@ -241,11 +461,101 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.emit('action', `${phase} · ${event.source.type}`);
   }
 
+  private handleGeometryAction (phase: GizmoActionPhase, event: ShapeDrawingActionEvent): void {
+    if (event.canceled) {
+      if (event.edit) {
+        const target = this.scene.getItemById(event.edit.itemId);
+
+        const snapshot = this.vectorEditSnapshots.get(event.edit.itemId);
+
+        if (target?.kind === 'Vector' && snapshot) {
+          this.scene.updateVectorShape(target, snapshot);
+        } else if (target?.kind === 'CustomShape' || (target?.kind === 'Vector' && event.edit.operations.length > 0)) {
+          this.scene.updateCustomShape(target, event.edit.before);
+        }
+        this.vectorEditSnapshots.delete(event.edit.itemId);
+      }
+      this.discardDraft();
+      if (!this.settingTool && event.finish !== false) {
+        this.setTool('move');
+      } else if (!this.settingTool && event.finish === false && this.geometryMode) {
+        this.handler.rebuildGizmos();
+      }
+
+      return;
+    }
+    if (event.create) {
+      if (phase === 'actionstart') {
+        const creationConfig = this.handler.getConfigManager().get(shapeConfig);
+
+        this.draftGeometry = event.create.kind === 'pen'
+          ? this.scene.createCustomShape(event.create.path, undefined, creationConfig)
+          : this.scene.createVectorShape(event.create.geometry, undefined, creationConfig);
+      } else if (this.draftGeometry) {
+        if (event.create.kind === 'pen' && this.draftGeometry.kind === 'CustomShape') {
+          this.scene.updateCustomShape(this.draftGeometry, event.create.path);
+        } else if (event.create.kind === 'shape' && this.draftGeometry.kind === 'Vector') {
+          this.scene.updateVectorShape(this.draftGeometry, event.create.geometry);
+        }
+      }
+      if (phase === 'actioncommit' && this.draftGeometry) {
+        const draft = this.draftGeometry;
+        const remainInPenEdit = event.finish === false && event.create.kind === 'pen' && this.geometryMode instanceof PenEditMode;
+
+        if (event.create.kind === 'pen' && draft.kind === 'CustomShape') {
+          this.scene.fitCustomShape(draft, event.create.path);
+        }
+        this.draftGeometry = undefined;
+        if (event.finish !== false) {
+          this.setTool('move');
+        }
+        this.setSelection([draft.item.getInstanceId()]);
+        this.emit('scenechange');
+        if (event.continueCreate && remainInPenEdit && this.geometryMode instanceof PenEditMode) {
+          this.geometryMode.restartCreate();
+        } else if (remainInPenEdit && this.geometryMode instanceof PenEditMode) {
+          this.geometryMode.enterEdit();
+        }
+      }
+
+      return;
+    }
+    if (event.edit) {
+      const target = this.scene.getItemById(event.edit.itemId);
+
+      if (phase === 'actionstart' && target?.kind === 'Vector') {
+        const snapshot = this.scene.readVectorGeometry(target);
+
+        if (snapshot) { this.vectorEditSnapshots.set(event.edit.itemId, snapshot); }
+      }
+      if ((target?.kind === 'CustomShape' || target?.kind === 'Vector') && event.edit.operations.length > 0) {
+        this.scene.updateCustomShape(target, event.edit.path);
+      }
+      if (phase === 'actioncommit') {
+        this.vectorEditSnapshots.delete(event.edit.itemId);
+        if (event.finish !== false) {
+          this.setTool('move');
+        }
+        this.setSelection(target ? [target.item.getInstanceId()] : []);
+        this.emit('scenechange');
+        if (event.continueCreate && this.geometryMode instanceof PenEditMode) {
+          this.geometryMode.restartCreate();
+        }
+      }
+    }
+  }
+
   private discardDraft (): void {
     if (this.draftText) {
       this.setSelection([]);
       this.scene.removeItem(this.draftText);
       this.draftText = undefined;
+      this.emit('scenechange');
+    }
+    if (this.draftGeometry) {
+      this.setSelection([]);
+      this.scene.removeItem(this.draftGeometry);
+      this.draftGeometry = undefined;
       this.emit('scenechange');
     }
   }
@@ -313,6 +623,132 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       this.handler.setActiveEditMode(new TextEditMode(this.handler, data.item, 'select'));
     }
     this.emit('action', `创建 ${data.name}`);
+  }
+
+  private createGeometryHost (): GeometryGizmoHost {
+    return {
+      canEdit: itemId => {
+        if (!itemId) {
+          return !this.disposed;
+        }
+        const item = this.scene.getItemById(itemId)?.item;
+
+        return !!item && this.selectedItems.includes(item) && !!item.getComponent(ShapeComponent);
+      },
+      readPath: () => {
+        const item = this.selectedItem;
+        const component = item?.getComponent(ShapeComponent) as ShapeComponent & { shape?: PrimitiveShapeAttributes & { points?: Array<{ x: number, y: number }>, easingIns?: Array<{ x: number, y: number }>, easingOuts?: Array<{ x: number, y: number }>, shapes?: PenPathData['shapes'] } } | undefined;
+        const shape = component?.shape;
+        const data = item && this.scene.getItem(item);
+
+        if (!item || !shape) {
+          return undefined;
+        }
+        const itemId = item.getInstanceId();
+        let path: PenPathData | undefined;
+        let kind: 'custom' | 'vector' = data?.kind === 'Vector' ? 'vector' : 'custom';
+
+        if (shape.type === spec.ShapePrimitiveType.Custom && shape.points && shape.easingIns && shape.easingOuts && shape.shapes) {
+          path = {
+            points: shape.points.map(point => ({ x: point.x, y: point.y })),
+            easingIns: shape.easingIns.map(point => ({ x: point.x, y: point.y })),
+            easingOuts: shape.easingOuts.map(point => ({ x: point.x, y: point.y })),
+            shapes: shape.shapes.map(current => ({ close: current.close, indexes: current.indexes.map(index => ({ ...index })) })),
+          };
+        } else if (data?.kind === 'Vector') {
+          path = primitiveShapePath(shape);
+          kind = 'vector';
+        }
+        if (!path) {
+          return undefined;
+        }
+
+        return {
+          itemId,
+          kind,
+          path,
+        };
+      },
+      viewToLocal: (point, itemId) => {
+        const target = this.geometryItem(itemId);
+        const world = this.viewToWorld(point, target);
+
+        if (!world) {
+          return undefined;
+        }
+        if (!target) {
+          return new math.Vector2(world.x, world.y);
+        }
+        const local = target.transform.getWorldMatrix().clone().invert().projectPoint(world);
+
+        return new math.Vector2(local.x, local.y);
+      },
+      localToView: (point, itemId) => {
+        const target = this.geometryItem(itemId);
+        const world = new math.Vector3(point.x, point.y, 0);
+
+        if (target) {
+          world.applyMatrix(target.transform.getWorldMatrix());
+        }
+
+        return this.worldToView(world);
+      },
+      snapPoints: () => {
+        const size = GizmoViewportUtils.getContainerSize(this.viewport);
+
+        return this.scene.getItems()
+          .filter(data => data.item !== this.selectedItem && data !== this.draftGeometry)
+          .flatMap(data => {
+            const box = getItemViewBox(data.item, size);
+
+            return box.isEmpty() ? [] : [...getBoxCorners(box), box.getCenter()];
+          });
+      },
+      contextKey: () => this.selectedItem?.getInstanceId() ?? 'create',
+      appendSubpaths: true,
+      deleteBehavior: 'reconnect',
+    };
+  }
+
+  private createPenMode (state: 'create' | 'edit' = 'create'): PenEditMode {
+    const mode = new PenEditMode(this.handler, this.geometryHost, state, () => {
+      if (!this.disposed) {
+        this.emit('toolchange', 'pen');
+      }
+    }, () => {
+      if (!this.disposed && !this.settingTool && this.geometryMode === mode) {
+        this.geometryMode = undefined;
+        this.activeTool = 'move';
+        this.emit('toolchange', 'move');
+      }
+    });
+
+    mode.setHandleMirrorMode(this.penMirrorMode);
+    mode.setLassoMode(this.penLassoMode);
+
+    return mode;
+  }
+
+  private geometryItem (itemId?: string): VFXItem | undefined {
+    return itemId ? this.scene.getItemById(itemId)?.item : undefined;
+  }
+
+  private viewToWorld (point: math.Vector2, item?: VFXItem): math.Vector3 | undefined {
+    const size = GizmoViewportUtils.getContainerSize(this.viewport);
+    const position = item?.transform.getWorldPosition() ?? new math.Vector3();
+    const rotation = item?.transform.getWorldRotation() ?? new math.Euler();
+    const plane = createInteractionPlane(new math.Vector3(position.x, position.y, position.z), rotation);
+    const world = viewPositionToWorld(point, GizmoViewportUtils.getCameraInfo(this.player.engine), plane, size);
+
+    return world;
+  }
+
+  private worldToView (point: math.Vector3): math.Vector2 {
+    const size = GizmoViewportUtils.getContainerSize(this.viewport);
+    const composition = this.player.engine.sceneServer.compositions[0];
+    const projected = point.clone().applyProjectionMatrix(composition?.camera.getViewProjectionMatrix() ?? new math.Matrix4());
+
+    return new math.Vector2((projected.x + 1) * size.x / 2, (1 - projected.y) * size.y / 2);
   }
 
   /** 创建事件给的是去除视口变换后的像素坐标，需要还原后再投影到世界平面。 */

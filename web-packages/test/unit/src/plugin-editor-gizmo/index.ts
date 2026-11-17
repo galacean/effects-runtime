@@ -27,6 +27,8 @@ import './2d/projection-sync-gizmos.spec';
 import './2d/resize-selection-gizmo.spec';
 import './2d/select-text-gizmo.spec';
 import './2d/selection.spec';
+import './2d/shape-model-gizmo.spec';
+import './2d/pen-gizmo.spec';
 import './2d/snap-manager.spec';
 import './2d/sprite-text-edit-gizmo.spec';
 import './2d/text-caret-mapper.spec';

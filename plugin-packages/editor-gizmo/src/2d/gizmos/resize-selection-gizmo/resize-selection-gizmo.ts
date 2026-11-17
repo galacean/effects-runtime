@@ -1,5 +1,5 @@
 import type { VFXItem } from '@galacean/effects';
-import { FrameComponent, MouseButton, MouseButtonMask, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { FrameComponent, MouseButton, MouseButtonMask, ShapeComponent, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
@@ -83,6 +83,25 @@ type TextResizeSnapshot = {
   height: number,
 };
 
+type ShapeResizeAttributes = {
+  type: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  outerRadius?: number,
+  innerRadius?: number,
+  points?: Array<{ x: number, y: number }>,
+  easingIns?: Array<{ x: number, y: number }>,
+  easingOuts?: Array<{ x: number, y: number }>,
+};
+
+type ShapeResizeSnapshot = {
+  component: ShapeComponent,
+  attributes: ShapeResizeAttributes,
+};
+
 /** 按下时冻结、用于计算绝对缩放结果的会话。 */
 type AnchoredResizeSession = {
   /** 被缩放元素。 */
@@ -109,6 +128,7 @@ type AnchoredResizeSession = {
   initialLocalSize?: Vector2,
   /** 文本排版快照。 */
   text?: TextResizeSnapshot,
+  shape?: ShapeResizeSnapshot,
   /** 画板已应用的累计位移。 */
   frameAppliedTranslation: Vector3,
   /** 本次元素采用整体缩放或排版尺寸调整。 */
@@ -134,6 +154,101 @@ const INFO_ICON_BOTTOM = 5.5;
 /** 将公开的缩放行为转换为几何计算使用的可变轴。 */
 function getResizeAxis (behavior: ResizeSelectionBehavior): 'both' | 'x' | 'y' {
   return behavior === 'resize-x' ? 'x' : behavior === 'resize-y' ? 'y' : 'both';
+}
+
+function createShapeResizeSnapshot (component: ShapeComponent | undefined): ShapeResizeSnapshot | undefined {
+  if (!component) {
+    return undefined;
+  }
+  const shape = component.shape as ShapeResizeAttributes;
+
+  if (!shape) {
+    return undefined;
+  }
+  const attributes: ShapeResizeAttributes = { type: shape.type };
+
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      attributes.width = shape.width;
+      attributes.height = shape.height;
+
+      break;
+    case spec.ShapePrimitiveType.Ellipse:
+      attributes.xRadius = shape.xRadius;
+      attributes.yRadius = shape.yRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Polygon:
+      attributes.radius = shape.radius;
+
+      break;
+    case spec.ShapePrimitiveType.Star:
+      attributes.outerRadius = shape.outerRadius;
+      attributes.innerRadius = shape.innerRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Custom:
+      if (!shape.points || !shape.easingIns || !shape.easingOuts) {
+        return undefined;
+      }
+      attributes.points = shape.points.map(point => ({ x: point.x, y: point.y }));
+      attributes.easingIns = shape.easingIns.map(point => ({ x: point.x, y: point.y }));
+      attributes.easingOuts = shape.easingOuts.map(point => ({ x: point.x, y: point.y }));
+
+      break;
+    default:
+      return undefined;
+  }
+
+  return { component, attributes };
+}
+
+function scaledShapeSize (value: number | undefined, scalar: number): number | undefined {
+  return value === undefined ? undefined : Math.abs(value) * Math.abs(scalar);
+}
+
+function signedScale (initial: number, scalar: number): number {
+  if (scalar === 0) {
+    return 0;
+  }
+
+  return Math.abs(initial) * (initial < 0 ? -1 : 1) * (scalar < 0 ? -1 : 1);
+}
+
+function syncShapeDefinition (component: ShapeComponent, shape: ShapeResizeAttributes): void {
+  const definition = component.definition as Record<string, unknown> | undefined;
+
+  if (!definition) {
+    return;
+  }
+
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      definition.width = shape.width;
+      definition.height = shape.height;
+
+      break;
+    case spec.ShapePrimitiveType.Ellipse:
+      definition.xRadius = shape.xRadius;
+      definition.yRadius = shape.yRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Polygon:
+      definition.radius = shape.radius;
+
+      break;
+    case spec.ShapePrimitiveType.Star:
+      definition.outerRadius = shape.outerRadius;
+      definition.innerRadius = shape.innerRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Custom:
+      definition.points = shape.points?.map(point => ({ x: point.x, y: point.y }));
+      definition.easingIns = shape.easingIns?.map(point => ({ x: point.x, y: point.y }));
+      definition.easingOuts = shape.easingOuts?.map(point => ({ x: point.x, y: point.y }));
+
+      break;
+  }
 }
 
 /** 缩放选区 Gizmo 的交互配置。 */
@@ -1156,8 +1271,9 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     parentWorldToLocal.setPosition(new Vector3()).invert();
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
+    const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent));
     const frame = isFramePlayerItem(item);
-    const resizeOrigin = textComponent || frame
+    const resizeOrigin = textComponent || frame || shapeResize
       ? initialHandle.clone().add(fixedPoint).multiply(0.5)
       : transformOrigin.clone();
     const text = textComponent
@@ -1191,6 +1307,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       initialWorldSize: frame ? getItemWorldSize(item) : undefined,
       initialLocalSize: frame ? new Vector2().copyFrom(item.transform.size) : undefined,
       text,
+      shape: shapeResize,
       frameAppliedTranslation: new Vector3(),
       resizeBehavior: this.config.resolveResizeBehavior?.(item.getInstanceId()) ?? 'scale',
       externalTranslation: new Vector3(),
@@ -1590,7 +1707,7 @@ export class ResizeSelectionGizmo extends Gizmo {
    */
   private applyAnchoredResize (session: AnchoredResizeSession, resize: AnchoredResizeResult): void {
     // 步骤 1：读取按下时冻结的元素属性。
-    const { item, initialScale, initialWorldSize, initialLocalSize, text } = session;
+    const { item, initialScale, initialWorldSize, initialLocalSize, text, shape } = session;
 
     if (text) {
       // 步骤 2：文本宽度模式更新排版宽度并补齐剩余缩放。
@@ -1644,7 +1761,12 @@ export class ResizeSelectionGizmo extends Gizmo {
       return;
     }
 
-    // 步骤 4：画板按绝对尺寸与增量位移更新。
+    if (shape) {
+      this.applyShapeResize(session, resize);
+
+      return;
+    }
+
     if (isFramePlayerItem(item) && initialWorldSize && initialLocalSize) {
       const translationDelta = resize.totalTranslation.clone().subtract(session.frameAppliedTranslation);
 
@@ -1662,12 +1784,136 @@ export class ResizeSelectionGizmo extends Gizmo {
       return;
     }
 
-    // 步骤 5：普通元素直接应用绝对缩放与位移。
     item.transform.setScale(
       initialScale.x * resize.totalScalar.x,
       initialScale.y * resize.totalScalar.y,
       initialScale.z * resize.totalScalar.z,
     );
+    this.setResizePosition(session, resize.totalTranslation);
+  }
+
+  private applyShapeResize (session: AnchoredResizeSession, resize: AnchoredResizeResult): void {
+    const shape = session.shape;
+
+    if (!shape) {
+      return;
+    }
+    const attributes = shape.attributes;
+    const current = shape.component.shape as ShapeResizeAttributes | undefined;
+
+    if (!current) {
+      return;
+    }
+    const scalarX = resize.totalScalar.x;
+    const scalarY = resize.totalScalar.y;
+    const magnitudeX = Math.abs(scalarX);
+    const magnitudeY = Math.abs(scalarY);
+    let residualX = 1;
+    let residualY = 1;
+
+    switch (attributes.type) {
+      case spec.ShapePrimitiveType.Rectangle:
+        if (attributes.width !== undefined) {
+          current.width = scaledShapeSize(attributes.width, scalarX);
+        }
+        if (attributes.height !== undefined) {
+          current.height = scaledShapeSize(attributes.height, scalarY);
+        }
+
+        break;
+      case spec.ShapePrimitiveType.Ellipse:
+        if (attributes.xRadius !== undefined) {
+          current.xRadius = scaledShapeSize(attributes.xRadius, scalarX);
+        }
+        if (attributes.yRadius !== undefined) {
+          current.yRadius = scaledShapeSize(attributes.yRadius, scalarY);
+        }
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: {
+        const radialScalar = Math.max(magnitudeX, magnitudeY);
+
+        if (attributes.radius !== undefined) {
+          current.radius = scaledShapeSize(attributes.radius, radialScalar);
+        }
+        residualX = radialScalar === 0 ? 0 : magnitudeX / radialScalar;
+        residualY = radialScalar === 0 ? 0 : magnitudeY / radialScalar;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Star: {
+        const radialScalar = Math.max(magnitudeX, magnitudeY);
+
+        if (attributes.outerRadius !== undefined) {
+          current.outerRadius = scaledShapeSize(attributes.outerRadius, radialScalar);
+        }
+        if (attributes.innerRadius !== undefined) {
+          current.innerRadius = scaledShapeSize(attributes.innerRadius, radialScalar);
+        }
+        residualX = radialScalar === 0 ? 0 : magnitudeX / radialScalar;
+        residualY = radialScalar === 0 ? 0 : magnitudeY / radialScalar;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Custom:
+        if (current.points && current.easingIns && current.easingOuts
+          && attributes.points && attributes.easingIns && attributes.easingOuts) {
+          const bounds = attributes.points.reduce((result, point) => ({
+            minX: Math.min(result.minX, point.x),
+            maxX: Math.max(result.maxX, point.x),
+            minY: Math.min(result.minY, point.y),
+            maxY: Math.max(result.maxY, point.y),
+          }), {
+            minX: Infinity,
+            maxX: -Infinity,
+            minY: Infinity,
+            maxY: -Infinity,
+          });
+          const centerX = (bounds.minX + bounds.maxX) / 2;
+          const centerY = (bounds.minY + bounds.maxY) / 2;
+
+          current.points.forEach((point, index) => {
+            const source = attributes.points![index];
+
+            if (source) {
+              point.x = centerX + (source.x - centerX) * magnitudeX;
+              point.y = centerY + (source.y - centerY) * magnitudeY;
+            }
+          });
+          current.easingIns.forEach((point, index) => {
+            const source = attributes.easingIns![index];
+
+            if (source) {
+              point.x = source.x * magnitudeX;
+              point.y = source.y * magnitudeY;
+            }
+          });
+          current.easingOuts.forEach((point, index) => {
+            const source = attributes.easingOuts![index];
+
+            if (source) {
+              point.x = source.x * magnitudeX;
+              point.y = source.y * magnitudeY;
+            }
+          });
+        }
+
+        break;
+      default:
+        return;
+    }
+
+    syncShapeDefinition(shape.component, current);
+    shape.component.onApplyAnimationProperties?.();
+
+    const targetScaleX = signedScale(session.initialScale.x, scalarX) * residualX;
+    const targetScaleY = signedScale(session.initialScale.y, scalarY) * residualY;
+    const targetScaleZ = session.initialScale.z;
+    const currentScale = session.item.transform.scale;
+
+    if (currentScale.x !== targetScaleX || currentScale.y !== targetScaleY || currentScale.z !== targetScaleZ) {
+      session.item.transform.setScale(targetScaleX, targetScaleY, targetScaleZ);
+    }
     this.setResizePosition(session, resize.totalTranslation);
   }
 

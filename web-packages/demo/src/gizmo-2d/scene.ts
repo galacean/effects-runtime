@@ -1,10 +1,12 @@
-import { CompositionComponent, EventEmitter, FrameComponent, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
+import { CompositionComponent, EventEmitter, FrameComponent, PlayState, ShapeComponent, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
 import type { Composition, Player, VFXItem } from '@galacean/effects';
-import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig } from '@galacean/effects-plugin-editor-gizmo';
+import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig, shapeConfig, toColor } from '@galacean/effects-plugin-editor-gizmo';
+import type { PenPathData, ShapeConfig, ShapeGeometry } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 export type Point2D = [number, number];
 export type MediaKind = 'Video' | 'Effects';
+export type GeometryKind = 'Vector' | 'CustomShape';
 
 const VIDEO_URL = 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/fYhsTZMNQ00AAAAAgIAAABgAenV5AQBr';
 const EFFECTS_URL = 'https://mdn.alipayobjects.com/mars/afts/file/A*sq53SZTqNQkAAAAAR7AAAAgAelB4AQ';
@@ -13,7 +15,7 @@ const EFFECTS_URL = 'https://mdn.alipayobjects.com/mars/afts/file/A*sq53SZTqNQkA
 export interface DemoItem {
   item: VFXItem,
   name: string,
-  kind: 'Frame' | 'Text' | 'Sprite' | MediaKind,
+  kind: 'Frame' | 'Text' | 'Sprite' | GeometryKind | MediaKind,
   status?: 'loading' | 'ready' | 'error',
 }
 
@@ -37,13 +39,67 @@ interface TextOptions {
   id?: string,
 }
 
+type VectorShapeAttributes = {
+  type?: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  outerRadius?: number,
+};
+
+function vectorShapeData (type: ShapeGeometry['shapeType'], width: number, height: number, config: Readonly<ShapeConfig>): { type: spec.ShapePrimitiveType, [key: string]: number } {
+  switch (type) {
+    case 'ellipse':
+      return { type: spec.ShapePrimitiveType.Ellipse, xRadius: width / 2, yRadius: height / 2 };
+    case 'polygon':
+      return { type: spec.ShapePrimitiveType.Polygon, pointCount: config.polygonPointCount, radius: config.polygonRadius, roundness: config.polygonRoundness };
+    case 'star':
+      return { type: spec.ShapePrimitiveType.Star, pointCount: config.starPointCount, innerRadius: config.starInnerRadius, outerRadius: config.starOuterRadius,
+        innerRoundness: config.starInnerRoundness, outerRoundness: config.starOuterRoundness };
+    case 'rect':
+    default:
+      return { type: spec.ShapePrimitiveType.Rectangle, width, height, roundness: config.rectangleRoundness };
+  }
+}
+
+function shapeStyle (config: Readonly<ShapeConfig>) {
+  return {
+    fills: [{ type: spec.FillType.Solid, color: toColor(config.initialFillColor, config.initialFillAlpha) }],
+    strokes: [{ type: spec.FillType.Solid, color: toColor(config.initialStrokeColor, config.initialStrokeAlpha) }],
+    strokeWidth: config.initialStrokeWidth,
+    strokeCap: config.initialStrokeCap,
+    strokeJoin: config.initialStrokeJoin,
+    renderer: { renderMode: config.initialRenderMode },
+  };
+}
+
+function vectorShapeBaseSize (shape: VectorShapeAttributes): Point2D | undefined {
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      return [Math.abs(shape.width ?? 0), Math.abs(shape.height ?? 0)];
+    case spec.ShapePrimitiveType.Ellipse:
+      return [Math.abs(shape.xRadius ?? 0) * 2, Math.abs(shape.yRadius ?? 0) * 2];
+    case spec.ShapePrimitiveType.Polygon:
+      return [Math.abs(shape.radius ?? 0) * 2, Math.abs(shape.radius ?? 0) * 2];
+    case spec.ShapePrimitiveType.Star:
+      return [Math.abs(shape.outerRadius ?? 0) * 2, Math.abs(shape.outerRadius ?? 0) * 2];
+    default:
+      return undefined;
+  }
+}
+
 /** 管理示例场景、元素工厂和图层登记，不依赖编辑器 DOM 或工具状态。 */
 export class DemoScene extends EventEmitter<SceneEvents> {
   private readonly items: DemoItem[] = [];
+  private readonly shapeConfigs = new WeakMap<DemoItem, Readonly<ShapeConfig>>();
   private frameCount = 0;
   private textCount = 0;
   private videoCount = 0;
   private effectsCount = 0;
+  private vectorCount = 0;
+  private customShapeCount = 0;
   private defaultFrame?: VFXItem;
   private frameIcon?: Promise<Texture>;
   private frameIconTexture?: Texture;
@@ -281,6 +337,115 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     return data;
   }
 
+  createCustomShape (path: PenPathData, name = `钢笔形状 ${++this.customShapeCount}`, config: Readonly<ShapeConfig> = shapeConfig.defaults): DemoItem {
+    const item = DefaultVFXItems.createShapeItem(this.composition, null, name);
+    const data = { item, name, kind: 'CustomShape' as const };
+
+    this.shapeConfigs.set(data, config);
+    item.setPosition(0, 0, 0);
+    item.transform.setSize(1, 1);
+    item.transform.setScale(1, 1, 1);
+    this.applyCustomShape(data, path);
+    this.register(data);
+
+    return data;
+  }
+
+  updateCustomShape (data: DemoItem, path: PenPathData): void {
+    if (data.kind !== 'CustomShape' && data.kind !== 'Vector') {
+      return;
+    }
+    this.applyCustomShape(data, path);
+    this.emit('change');
+  }
+
+  fitCustomShape (data: DemoItem, path: PenPathData): void {
+    if (data.kind !== 'CustomShape') {
+      return;
+    }
+    const origin = path.points[0] ?? { x: 0, y: 0 };
+    const normalized: PenPathData = {
+      points: path.points.map(point => ({ x: point.x - origin.x, y: point.y - origin.y })),
+      easingIns: path.easingIns.map(point => ({ ...point })),
+      easingOuts: path.easingOuts.map(point => ({ ...point })),
+      shapes: path.shapes.map(shape => ({ close: shape.close, indexes: shape.indexes.map(index => ({ ...index })) })),
+    };
+
+    data.item.setPosition(origin.x, origin.y, 0);
+    data.item.transform.setSize(1, 1);
+    data.item.transform.setScale(1, 1, 1);
+    this.applyCustomShape(data, normalized);
+    this.emit('change');
+  }
+
+  createVectorShape (geometry: ShapeGeometry, name = `矢量形状 ${++this.vectorCount}`, config: Readonly<ShapeConfig> = shapeConfig.defaults): DemoItem {
+    const item = DefaultVFXItems.createShapeItem(this.composition, null, name);
+    const data = { item, name, kind: 'Vector' as const };
+
+    this.shapeConfigs.set(data, config);
+    this.updateVectorShape(data, geometry, false);
+    this.register(data);
+
+    return data;
+  }
+
+  readVectorGeometry (data: DemoItem): ShapeGeometry | undefined {
+    if (data.kind !== 'Vector') {
+      return undefined;
+    }
+    const shape = data.item.getComponent(ShapeComponent).shape as VectorShapeAttributes;
+    const center = data.item.transform.position;
+    const baseSize = vectorShapeBaseSize(shape);
+
+    if (!baseSize) {
+      return undefined;
+    }
+    const width = baseSize[0] * Math.abs(data.item.transform.scale.x);
+    const height = baseSize[1] * Math.abs(data.item.transform.scale.y);
+    let shapeType: ShapeGeometry['shapeType'];
+
+    switch (shape.type) {
+      case spec.ShapePrimitiveType.Ellipse: shapeType = 'ellipse';
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: shapeType = 'polygon';
+
+        break;
+      case spec.ShapePrimitiveType.Star: shapeType = 'star';
+
+        break;
+      case spec.ShapePrimitiveType.Rectangle: shapeType = 'rect';
+
+        break;
+      default: return undefined;
+    }
+
+    return { shapeType, center: { x: center.x, y: center.y }, width, height };
+  }
+
+  updateVectorShape (data: DemoItem, geometry: ShapeGeometry, notify = true): void {
+    if (data.kind !== 'Vector') {
+      return;
+    }
+    const config = this.getShapeConfig(data);
+    const width = Math.max(Math.abs(geometry.width), config.minWidth);
+    const height = Math.max(Math.abs(geometry.height), config.minHeight);
+    const shapeData = vectorShapeData(geometry.shapeType, width, height, config);
+    const shape = data.item.getComponent(ShapeComponent);
+    const independentSize = geometry.shapeType === 'rect' || geometry.shapeType === 'ellipse';
+
+    data.item.setPosition(geometry.center.x, geometry.center.y, 0);
+    data.item.transform.setSize(1, 1);
+    data.item.transform.setScale(independentSize ? 1 : width, independentSize ? 1 : height, 1);
+    shape.fromData({
+      ...shapeData,
+      ...shapeStyle(config),
+    } as unknown as spec.ShapeComponentData);
+    if (notify) {
+      this.emit('change');
+    }
+  }
+
   removeItem (data: DemoItem): void {
     const index = this.items.indexOf(data);
 
@@ -324,6 +489,24 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     this.emit('change');
 
     return data;
+  }
+
+  private applyCustomShape (data: DemoItem, path: PenPathData): void {
+    const shape = data.item.getComponent(ShapeComponent);
+    const config = this.getShapeConfig(data);
+
+    shape.fromData({
+      type: spec.ShapePrimitiveType.Custom,
+      points: path.points.map(point => ({ x: point.x, y: point.y })),
+      easingIns: path.easingIns.map(point => ({ x: point.x, y: point.y })),
+      easingOuts: path.easingOuts.map(point => ({ x: point.x, y: point.y })),
+      shapes: path.shapes.map(current => ({ close: current.close, indexes: current.indexes.map(index => ({ ...index })) })),
+      ...shapeStyle(config),
+    } as unknown as spec.CustomShapeData);
+  }
+
+  private getShapeConfig (data: DemoItem): Readonly<ShapeConfig> {
+    return this.shapeConfigs.get(data) ?? shapeConfig.defaults;
   }
 
   private createContainer (position: Point2D, size: Point2D, kind: 'Frame' | 'Effects', name: string, parent?: VFXItem): DemoItem {
