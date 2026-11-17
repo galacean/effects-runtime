@@ -25,7 +25,7 @@ export class AssetObjectCache {
 
     if (cached?.object instanceof Sprite && (!cached.object.texture?.isRegistered || cached.object.texture.isDestroyed)) { return; }
 
-    return cached?.version === entry?.updatedAt && cached?.object.isRegistered && engine.effectsObjectServer.objectInstance[id] === cached.object ? cached.object : undefined;
+    return cached?.version === entry?.updatedAt && cached?.object.isRegistered && engine.assetServer.findAsset(id) === cached.object ? cached.object : undefined;
   }
 
   private trackEngine (engine: Engine): void {
@@ -42,7 +42,7 @@ export class AssetObjectCache {
 
         return;
       }
-      if (engine.effectsObjectServer.objectInstance[entry.id]?.isRegistered && !entry.deletedAt) { await this.load(engine, entry.id); }
+      if (engine.assetServer.findAsset(entry.id)?.isRegistered && !entry.deletedAt) { await this.load(engine, entry.id); }
     }));
   }
 
@@ -78,22 +78,27 @@ export class AssetObjectCache {
 
         return this.load(engine, id, ancestors);
       }
-      data.forEach(object => engine.assetServer.addEffectsObjectData(object));
+      const { assetServer } = engine;
+
+      data.forEach(object => assetServer.addEffectsObjectData(object));
       const order = [...data].sort((a, b) => Number(a.dataType === spec.DataType.Material) - Number(b.dataType === spec.DataType.Material));
 
       for (const definition of order) {
-        let object = engine.effectsObjectServer.objectInstance[definition.id];
+        let object = assetServer.findAsset(definition.id);
         const previousTexture = object instanceof Sprite ? object.texture : undefined;
 
         if (definition.dataType === spec.DataType.Shader && object instanceof Shader) {
           const previous = object;
+          const shader = new Shader(engine);
 
-          previous.unregisterObject(); object = new Shader(engine); object.setInstanceId(definition.id);
-          SerializationHelper.deserialize(definition, object);
+          previous.unregisterObject();
+          assetServer.addAsset(definition.id, shader);
+          SerializationHelper.deserialize(definition, shader);
+          object = shader;
           for (const candidate of Object.values(engine.effectsObjectServer.objectInstance)) {
-            if (candidate instanceof Material && candidate.shader === previous) { candidate.shader = object as Shader; }
+            if (candidate instanceof Material && candidate.shader === previous) { candidate.shader = shader; }
           }
-        } else if (object?.isRegistered) { SerializationHelper.deserialize(definition, object); } else { object = engine.effectsObjectServer.findObject({ id: definition.id }); }
+        } else if (object?.isRegistered) { SerializationHelper.deserialize(definition, object); } else { object = assetServer.loadGUID<EffectsObject>({ id: definition.id }); }
         if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
         if (object instanceof Sprite) {
           for (const component of Object.values(engine.effectsObjectServer.objectInstance)) {
@@ -112,7 +117,7 @@ export class AssetObjectCache {
           }
         }
       }
-      const object = engine.effectsObjectServer.objectInstance[id];
+      const object = assetServer.findAsset(id);
 
       if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
       object.definition.name = entry.name; Reflect.set(object, 'name', entry.name);

@@ -5,8 +5,6 @@ import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-const dummyRef = { id: 'existing-mask-id' };
-
 const vs = `attribute vec2 aPosition;
 void main() {
   gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
@@ -45,6 +43,8 @@ describe('core/material//mask-ref-manager', () => {
   let canvas: HTMLCanvasElement;
   let engine: Engine;
   let renderer: Renderer;
+  let existingMask: SpriteComponent;
+  let maskRef: { id: string };
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -53,9 +53,8 @@ describe('core/material//mask-ref-manager', () => {
     engine = glEngine;
     renderer = glEngine.renderer;
 
-    const existingMask = createMaskableSprite(engine, 'existing-mask');
-
-    existingMask.setInstanceId('existing-mask-id');
+    existingMask = createMaskableSprite(engine, 'existing-mask');
+    maskRef = { id: existingMask.getInstanceId() };
   });
 
   afterEach(() => {
@@ -336,24 +335,23 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should handle references array with single forward mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,
-        references: [{ mask: dummyRef, inverted: false }],
+        references: [{ mask: maskRef, inverted: false }],
       });
 
       expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].maskable).to.equal(existingMask);
       expect(mp.getMaskReferences()[0].inverted).to.eql(false);
     });
 
     it('should handle references array with single reverse mask', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
       mp.setMaskOptions(engine, {
         isMask: false,
-        references: [{ mask: dummyRef, inverted: true }],
+        references: [{ mask: maskRef, inverted: true }],
       });
 
       expect(mp.getMaskReferences().length).to.eql(1);
@@ -374,12 +372,9 @@ describe('core/material//mask-ref-manager', () => {
     it('should warn and cap when mask references exceed the stencil limit', () => {
       const mp = new MaskProcessor();
       const references = Array.from({ length: 256 }, (_, i) => {
-        const id = `cap-mask-${i}`;
-        const sprite = createMaskableSprite(engine, id);
+        const sprite = createMaskableSprite(engine, `cap-mask-${i}`);
 
-        sprite.setInstanceId(id);
-
-        return { mask: { id }, inverted: false };
+        return { mask: { id: sprite.getInstanceId() }, inverted: false };
       });
 
       mp.setMaskOptions(engine, {
@@ -392,7 +387,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should deduplicate references pointing to the same maskable', () => {
       const mp = new MaskProcessor();
-      const references = Array.from({ length: 5 }, () => ({ mask: dummyRef, inverted: false }));
+      const references = Array.from({ length: 5 }, () => ({ mask: maskRef, inverted: false }));
 
       mp.setMaskOptions(engine, {
         isMask: false,

@@ -34,7 +34,6 @@ interface TextOptions {
   fontSize?: number,
   width?: number,
   parent?: VFXItem,
-  id?: string,
 }
 
 /** 管理示例场景、元素工厂和图层登记，不依赖编辑器 DOM 或工具状态。 */
@@ -109,7 +108,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     ]);
   }
 
-  createFrame (position: Point2D, size: Point2D, id?: string): DemoItem {
+  createFrame (position: Point2D, size: Point2D): DemoItem {
     const data = this.createContainer(position, size, 'Frame', `Frame ${++this.frameCount}`);
 
     const frame = data.item.getComponent(FrameComponent);
@@ -118,9 +117,6 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     frame.titleRenderer.visible = true;
     frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
     frame.strokeWidth = 1;
-    if (id) {
-      data.item.setInstanceId(id);
-    }
     void this.setFrameTitleIcon(data, frame);
 
     return data;
@@ -261,9 +257,6 @@ export class DemoScene extends EventEmitter<SceneEvents> {
 
     if (options.parent) {
       item.setParent(options.parent);
-    }
-    if (options.id) {
-      item.setInstanceId(options.id);
     }
     item.setPosition(...position, 0);
     text.setText(value);

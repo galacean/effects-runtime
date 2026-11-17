@@ -572,12 +572,10 @@ describe('plugin-gui/GUI Control deserialization', () => {
 
   it('loads UIControl through AssetLoader and applies JSON after the initial Item location', () => {
     const item = new VFXItem(player.engine);
-    const itemId = `gui-item-${serial++}`;
     const componentId = `gui-component-${serial++}`;
 
-    item.setInstanceId(itemId);
     item.transform.setPosition(77, 88, 9);
-    const data = createUIControlData(componentId, itemId, 'Button', {
+    const data = createUIControlData(componentId, item.getInstanceId(), 'Button', {
       offsetMin: [20, 21],
       offsetMax: [140, 57],
       text: 'Confirm',

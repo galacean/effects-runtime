@@ -68,17 +68,9 @@ export abstract class EffectsObject {
     this.engine.effectsObjectServer.unregisterObject(this);
   }
 
-  /**
-   *
-   * @returns
-   */
+  /** Returns the runtime ID assigned when this object was constructed. */
   getInstanceId () {
     return this.guid;
-  }
-
-  /** @deprecated Registers a lookup alias. The instance ID is assigned at construction. */
-  setInstanceId (guid: string): void {
-    this.engine.assetServer.addAsset(guid, this);
   }
 
   /**

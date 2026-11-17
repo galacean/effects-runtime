@@ -68,40 +68,18 @@ describe('core/components/lifecycle', () => {
 
   it('keeps repeated object registration and unregistration idempotent', () => {
     const node = item('node');
-
-    node.unregisterObject();
-    node.registerObject();
-    node.registerObject();
-    expect(node.isRegistered).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(node);
-    node.unregisterObject();
-    node.unregisterObject();
-    expect(node.isRegistered).equals(false);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
-    node.dispose();
-  });
-
-  it('preserves instance identity and registration state when assigning lookup aliases', () => {
-    const node = item('node');
     const instanceId = node.getInstanceId();
-    const { objectInstance } = player.engine.effectsObjectServer;
-    const registeredAlias = 'registered-alias';
-    const unregisteredAlias = 'unregistered-alias';
 
-    node.setInstanceId(registeredAlias);
-    expect(node.isRegistered).equals(true);
-    expect(node.getInstanceId()).equals(instanceId);
-    expect(objectInstance[instanceId]).equals(node);
-    expect(objectInstance[registeredAlias]).equals(undefined);
-    expect(node.findObject({ id: registeredAlias })).equals(node);
     node.unregisterObject();
-    node.setInstanceId(unregisteredAlias);
-    expect(node.isRegistered).equals(false);
-    expect(objectInstance[instanceId]).equals(undefined);
-    expect(objectInstance[unregisteredAlias]).equals(undefined);
     node.registerObject();
-    expect(objectInstance[instanceId]).equals(node);
-    expect(node.findObject({ id: unregisteredAlias })).equals(node);
+    node.registerObject();
+    expect(node.isRegistered).equals(true);
+    expect(player.engine.effectsObjectServer.objectInstance[instanceId]).equals(node);
+    node.unregisterObject();
+    node.unregisterObject();
+    expect(node.isRegistered).equals(false);
+    expect(node.getInstanceId()).equals(instanceId);
+    expect(player.engine.effectsObjectServer.objectInstance[instanceId]).equals(undefined);
     node.dispose();
   });
 
