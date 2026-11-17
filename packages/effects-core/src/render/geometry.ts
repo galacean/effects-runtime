@@ -1,6 +1,7 @@
 import type { RenderingDevice } from '../rendering-device';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { GPUBuffer, GPUBufferOptions, IndexData, IndicesArray } from './gpu-buffer';
 import {
@@ -68,6 +69,7 @@ interface VertexArrayObjectDevice {
 /**
  * 几何数据、属性布局和绘制范围的后端无关实现。
  */
+@effectsClass(spec.DataType.Geometry)
 export class Geometry extends Asset {
   static create = (engine: Engine, props?: GeometryProps): Geometry => new Geometry(engine, props);
 

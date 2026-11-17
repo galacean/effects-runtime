@@ -1,4 +1,4 @@
-import type { EffectsObject, TimelineAsset } from '@galacean/effects';
+import type { EffectsObject } from '@galacean/effects';
 import { CompositionComponent, VFXItem, generateGUID, math } from '@galacean/effects';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { SceneDocument } from '../document/scene-document';
@@ -115,7 +115,7 @@ export class SceneItemOperations {
       for (const item of [this.document.composition.sceneRoot, ...this.document.composition.items]) {
         for (const component of item.getComponents(CompositionComponent)) {
           component.items = component.items.filter(item => !deleting.has(item));
-          const timeline = component.definition.timelineAsset ? component.findObject<TimelineAsset>(component.definition.timelineAsset) : undefined;
+          const timeline = component.timelineAsset;
 
           for (const track of timeline?.flattenedTracks ?? []) {
             const binding = component.getBinding(track);

@@ -2,6 +2,7 @@ import type { GPUTexture } from './gpu-texture';
 import { getDefaultTextureFactory } from './texture-factory';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import { TextureSourceType } from './types';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
@@ -15,6 +16,7 @@ let seed = 1;
 /**
  * Texture 资产，组合后端 GPUTexture。
  */
+@effectsClass(spec.DataType.Texture)
 export class Texture extends Asset {
   /**
    * Texture 名称

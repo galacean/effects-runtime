@@ -55,7 +55,7 @@ export class CompositionComponent extends Component {
 
   private time = 0;
   private sceneBindings: SceneBinding[] = [];
-  private timelineAsset: TimelineAsset | null = null;
+  private _timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
   private timelineDirty = true;
 
@@ -75,12 +75,17 @@ export class CompositionComponent extends Component {
     return this._timelineInstance;
   }
 
+  /** Returns the timeline bound to this composition. */
+  get timelineAsset (): TimelineAsset | null {
+    return this._timelineAsset;
+  }
+
   /**
    * Set a track's scene binding. Takes effect on the next binding lookup
    * or evaluation without changing this component's time or playback state.
    */
   setBinding (track: TrackAsset, target: EffectsObject): void {
-    if (!this.timelineAsset?.flattenedTracks.includes(track)) {
+    if (!this._timelineAsset?.flattenedTracks.includes(track)) {
       throw new Error('CompositionComponent.setBinding: track does not belong to this timeline.');
     }
     if (target.engine !== this.engine) {
@@ -137,8 +142,8 @@ export class CompositionComponent extends Component {
     this._timelineInstance?.dispose();
     this._timelineInstance = null;
 
-    if (this.timelineAsset) {
-      this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
+    if (this._timelineAsset) {
+      this._timelineInstance = new TimelineInstance(this._timelineAsset, this.sceneBindings);
     }
     this.timelineDirty = false;
   }
@@ -378,20 +383,20 @@ export class CompositionComponent extends Component {
     if (data.items !== undefined) {
       this.items = data.items.map(item => this.findObject<VFXItem>(item));
     }
+    if (data.timelineAsset !== undefined) {
+      const timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
+
+      if (timelineAsset !== this._timelineAsset) {
+        this._timelineAsset = timelineAsset;
+        this.timelineDirty = true;
+      }
+    }
     if (data.sceneBindings !== undefined) {
       this.sceneBindings = data.sceneBindings.map(binding => ({
         key: this.findObject<TrackAsset>(binding.key),
         value: this.findObject<EffectsObject>(binding.value),
       }));
       this._timelineInstance?.setBindings(this.sceneBindings);
-    }
-    if (data.timelineAsset !== undefined) {
-      const timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
-
-      if (timelineAsset !== this.timelineAsset) {
-        this.timelineAsset = timelineAsset;
-        this.timelineDirty = true;
-      }
     }
   }
 }

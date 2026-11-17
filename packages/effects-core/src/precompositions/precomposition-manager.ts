@@ -1,5 +1,7 @@
+import type * as spec from '@galacean/effects-specification';
 import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
+import { HierarchyBuilder } from '../hierarchy-builder';
 import { PluginSystem } from '../plugin-system';
 import { VFXItem } from '../vfx-item';
 import type { Precomposition } from './precomposition';
@@ -7,9 +9,9 @@ import type { Precomposition } from './precomposition';
 export class PrecompositionManager {
   /**
    * 从预合成数据实例化一棵 VFXItem 树。
-   * 可挂载到现有合成的节点下。
+   * 由调用方挂载返回的根元素。
    * @param precomposition 预合成数据
-   * @param composition 目标合成
+   * @param composition 接收预合成资源的合成
    * @returns 实例化生成的根 VFXItem，其子树包含指定合成的所有元素
    */
   static instantiate (precomposition: Precomposition, composition: Composition): VFXItem {
@@ -56,13 +58,25 @@ export class PrecompositionManager {
     // 3. 实例化预合成
     //-------------------------------------------------------------------------
 
-    rootItem.instantiatePreComposition(compositionData);
+    PrecompositionManager.instantiateHierarchy(compositionData, rootItem);
 
     rootItem.getComponent(CompositionComponent).playOnStart = options.autoplay ?? true;
     rootItem.getComponent(CompositionComponent).endBehavior = rootItem.endBehavior;
 
-    composition.addItem(rootItem);
-
     return rootItem;
+  }
+
+  /** @internal Instantiate a composition into a caller-provided root. */
+  static instantiateHierarchy (
+    definition: spec.CompositionData,
+    root: VFXItem,
+  ): void {
+    const builder = new HierarchyBuilder(root.engine);
+
+    root.name = definition.name;
+    root.duration = definition.duration;
+    root.endBehavior = definition.endBehavior;
+    builder.spawnComposition(definition, root);
+    builder.deserialize();
   }
 }

@@ -1,5 +1,5 @@
 import type { Composition } from '@galacean/effects';
-import { Asset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
+import { DataAsset, generateGUID, Player, Texture, TextureSourceType, VFXItem, spec } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 interface VideoCompositionOptions {
@@ -108,8 +108,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     const duration = videoComponent.getDuration();
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(duration).to.equal(videoAsset.duration);
 
@@ -178,8 +177,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setCurrentTime(3);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(videoAsset.currentTime).to.equal(3);
     composition.dispose();
@@ -212,8 +210,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setLoop(true);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(videoAsset.loop).to.equal(true);
     composition.dispose();
@@ -246,8 +243,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setMuted(true);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(videoAsset.muted).to.equal(true);
     composition.dispose();
@@ -280,8 +276,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setVolume(0.5);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(videoAsset.volume).to.equal(0.5);
     composition.dispose();
@@ -314,8 +309,7 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     videoComponent.setPlaybackRate(0.5);
-    //@ts-expect-error
-    const videoAsset = videoComponent.engine.effectsObjectServer.objectInstance[options.id].data;
+    const videoAsset = videoComponent.findObject<DataAsset<HTMLVideoElement>>({ id: options.id }).data;
 
     expect(videoAsset.playbackRate).to.equal(0.5);
     composition.dispose();
@@ -609,7 +603,7 @@ describe('videoComponent:texture binding', function () {
   });
 
   it('applies configured settings after a placeholder and resetting manual overrides', function () {
-    component.setTexture(player.renderer.engine.whiteTexture);
+    component.setTexture(player.renderer.engine.assetServer.whiteTexture);
     expect(component.video).to.be.undefined;
 
     component.setLoop(false);
@@ -672,10 +666,10 @@ describe('videoComponent:texture binding', function () {
     it(`applies serialized settings to a new video after binding (placeholder: ${usePlaceholder})`, function () {
       component.setTexture(texture);
       if (usePlaceholder) {
-        component.setTexture(player.renderer.engine.whiteTexture);
+        component.setTexture(player.renderer.engine.assetServer.whiteTexture);
       }
       const replacementVideo = document.createElement('video');
-      const asset = new Asset<HTMLVideoElement>(player.renderer.engine);
+      const asset = new DataAsset<HTMLVideoElement>(player.renderer.engine);
 
       replacementVideo.muted = true;
       asset.data = replacementVideo;
@@ -718,7 +712,7 @@ describe('videoComponent:texture binding', function () {
     replacementVideo.loop = false;
     replacementVideo.playbackRate = 1.25;
     try {
-      component.setTexture(player.renderer.engine.whiteTexture);
+      component.setTexture(player.renderer.engine.assetServer.whiteTexture);
       component.setTexture(replacement);
       expect(replacementVideo.volume).to.equal(0.8);
       expect(replacementVideo.muted).to.be.false;

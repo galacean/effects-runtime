@@ -1102,20 +1102,22 @@ export class SequencerDocument {
   }
 
   exportData (): object {
+    const id = (object: EffectsObject) => this.sceneDocument?.serializer.id(object) ?? object.getInstanceId();
+
     return {
       version: '3.9',
-      timelineAsset: { id: this.timeline.getInstanceId() },
+      timelineAsset: { id: id(this.timeline) },
       miscs: [
-        { id: this.timeline.getInstanceId(), dataType: spec.DataType.TimelineAsset, tracks: this.timeline.tracks.map(track => ({ id: track.getInstanceId() })) },
-        ...this.tracks.map(track => ({ ...track.definition, id: track.getInstanceId(), name: track.name, dataType: this.assetType(track),
-          children: track.getChildTracks().map(child => ({ id: child.getInstanceId() })), clips: track.getClips().map(clip => ({ id: clip.getInstanceId() })) })),
-        ...this.allSections().map(section => ({ ...copy(section.payload), id: section.clip.getInstanceId(), name: section.clip.name,
+        { id: id(this.timeline), dataType: spec.DataType.TimelineAsset, tracks: this.timeline.tracks.map(track => ({ id: id(track) })) },
+        ...this.tracks.map(track => ({ ...track.definition, id: id(track), name: track.name, dataType: this.assetType(track),
+          children: track.getChildTracks().map(child => ({ id: id(child) })), clips: track.getClips().map(clip => ({ id: id(clip) })) })),
+        ...this.allSections().map(section => ({ ...copy(section.payload), id: id(section.clip), name: section.clip.name,
           dataType: this.assetType(section.clip), start: section.clip.start, duration: section.clip.duration, endBehavior: section.clip.endBehavior })),
       ],
       sceneBindings: this.tracks.flatMap(track => {
         const target = this.component.getBinding(track);
 
-        return target ? [{ key: { id: track.getInstanceId() }, value: { id: target.getInstanceId() } }] : [];
+        return target ? [{ key: { id: id(track) }, value: { id: id(target) } }] : [];
       }),
     };
   }

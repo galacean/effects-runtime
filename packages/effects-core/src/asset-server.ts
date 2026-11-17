@@ -14,6 +14,7 @@ import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import { generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Texture } from './texture';
+import type { AbstractConstructor } from './utils';
 
 /** Engine-owned asset preparation and built-in resource lifecycle. */
 @effectsClass('AssetServer')
@@ -23,8 +24,11 @@ export class AssetServer extends EngineServer {
   jsonSceneData: SceneData = {};
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   assetManagers: AssetManager[] = [];
-  private readonly assetLoader: AssetLoader;
-  private readonly builtinObjects: EffectsObject[] = [];
+  /** @internal */
+  readonly assetLoader: AssetLoader;
+  private readonly builtinObjects = new Map<string, EffectsObject>();
+  private readonly assets = new Map<string, EffectsObject>();
+  private readonly assetIds = new WeakMap<EffectsObject, string>();
 
   constructor (engine: Engine) {
     super(engine, -600);
@@ -36,7 +40,9 @@ export class AssetServer extends EngineServer {
 
     this.whiteTexture = generateWhiteTexture(engine);
     this.transparentTexture = generateEmptyTexture(engine);
-    this.builtinObjects.push(this.whiteTexture, this.transparentTexture);
+    this.builtinObjects.set(spec.BuiltinObjectGUID.WhiteTexture, this.whiteTexture);
+    this.builtinObjects.set(spec.BuiltinObjectGUID.EmptyTexture, this.transparentTexture);
+    this.registerBuiltinObjects();
   }
 
   /**
@@ -83,10 +89,39 @@ export class AssetServer extends EngineServer {
 
   clearSceneData (): void {
     this.jsonSceneData = {};
+    this.assets.clear();
   }
 
-  loadGUID<T> (guid: spec.DataPath): T {
-    return this.assetLoader.loadGUID<T>(guid);
+  /** @internal Add a loaded asset to the cache by its serialized ID. */
+  addAsset (id: string, asset: EffectsObject): void {
+    const key = String(id);
+
+    this.removeAsset(asset);
+    this.assets.set(key, asset);
+    this.assetIds.set(asset, key);
+  }
+
+  /** @internal Remove the asset when its runtime object is unregistered. */
+  removeAsset (asset: EffectsObject): void {
+    const id = this.assetIds.get(asset);
+
+    if (id !== undefined) {
+      if (this.assets.get(id) === asset) {
+        this.assets.delete(id);
+      }
+      this.assetIds.delete(asset);
+    }
+  }
+
+  /** @internal Find an asset already loaded under its serialized ID. */
+  findAsset (id: string): EffectsObject | undefined {
+    return this.assets.get(String(id));
+  }
+
+  loadGUID<T> (dataPath: spec.DataPath, type?: AbstractConstructor): T {
+    const asset = dataPath ? this.findAsset(dataPath.id) : undefined;
+
+    return asset ? asset as T : this.assetLoader.loadGUID<T>(dataPath, type);
   }
 
   createAssetManager (options: SceneLoadOptions): AssetManager {
@@ -168,16 +203,14 @@ export class AssetServer extends EngineServer {
       const engineAsset = new DataAsset<ImageLike>(this.engine);
 
       engineAsset.data = asset;
-      engineAsset.setInstanceId(assetId);
+      engineAsset.definition.id = assetId;
+      this.addAsset(assetId, engineAsset);
     }
 
     // 加入 json 资产数据
     this.addPackageDatas(scene);
 
-    // 加入内置引擎对象
-    for (const effectsObject of this.builtinObjects) {
-      effectsObject.registerObject();
-    }
+    this.registerBuiltinObjects();
   }
 
   // TODO Material 单独存表, 加速查询
@@ -191,17 +224,18 @@ export class AssetServer extends EngineServer {
     }
   }
 
-  private destroyBuiltinObjects () {
-    for (const effectsObject of this.builtinObjects) {
-      effectsObject.dispose();
+  private registerBuiltinObjects (): void {
+    for (const [id, object] of this.builtinObjects) {
+      object.registerObject();
+      this.addAsset(id, object);
     }
-
-    this.builtinObjects.length = 0;
   }
 
   override onDispose (): void {
     this.assetManagers.forEach(assetManager => assetManager.dispose());
     this.assetManagers.length = 0;
-    this.destroyBuiltinObjects();
+    this.builtinObjects.forEach(object => object.dispose());
+    this.builtinObjects.clear();
+    this.assets.clear();
   }
 }

@@ -147,8 +147,8 @@ describe('core/plugins/timeline/object-reference-property', () => {
     let sprite = spriteComp.sprite;
 
     expect(sprite, 'sprite at 0.1').to.be.instanceOf(Sprite);
-    expect(sprite.getInstanceId(), 'spriteA at 0.1').to.eql(spriteAID);
-    expect(spriteComp.material.getTexture('_MainTex')!.getInstanceId(), 'tex at 0.1').to.eql(textureID);
+    expect(sprite.definition.id, 'spriteA at 0.1').to.eql(spriteAID);
+    expect(spriteComp.material.getTexture('_MainTex')!.definition.id, 'tex at 0.1').to.eql(textureID);
     // aUV 对应 rectA=[0.25,0.25,0.5,0.5]：顶点 (-0.5,0.5) → uv=(0.25,0.75)
     const aUV = spriteComp.geometry.getAttributeData('aUV') as Float32Array;
 
@@ -158,7 +158,7 @@ describe('core/plugins/timeline/object-reference-property', () => {
     // t=1.1 → local 1.1 → 0.55 ≥ 0.5 → spriteB
     player.gotoAndStop(1.1);
     sprite = spriteComp.sprite;
-    expect(sprite.getInstanceId(), 'spriteB at 1.1').to.eql(spriteBID);
+    expect(sprite.definition.id, 'spriteB at 1.1').to.eql(spriteBID);
   });
 
   // 阶梯边界：恰在关键帧 0.5 时刻（local time=1.0）取该帧 spriteB
@@ -170,10 +170,10 @@ describe('core/plugins/timeline/object-reference-property', () => {
 
     // local=1.0 → 0.5，time ≤ t 规则取 spriteB
     player.gotoAndStop(1.0);
-    expect(spriteComp.sprite.getInstanceId(), 'boundary 1.0').to.eql(spriteBID);
+    expect(spriteComp.sprite.definition.id, 'boundary 1.0').to.eql(spriteBID);
     // local=0.99 → 0.495 < 0.5 取 spriteA
     player.gotoAndStop(0.99);
-    expect(spriteComp.sprite.getInstanceId(), 'before boundary 0.99').to.eql(spriteAID);
+    expect(spriteComp.sprite.definition.id, 'before boundary 0.99').to.eql(spriteAID);
   });
 
   // clip 外（clip start=1）不切换：保持初始 spriteA
@@ -185,7 +185,7 @@ describe('core/plugins/timeline/object-reference-property', () => {
 
     player.gotoAndStop(0.5);
     // clip 未开始，mixer 无激活 clip，保持 fromData 设的初始 spriteA
-    expect(spriteComp.sprite.getInstanceId(), 'out of clip').to.eql(spriteAID);
+    expect(spriteComp.sprite.definition.id, 'out of clip').to.eql(spriteAID);
   });
 
   // 关键帧 {id} 解析为 Sprite 实例
@@ -199,6 +199,6 @@ describe('core/plugins/timeline/object-reference-property', () => {
     // setter 后 sprite 是 Sprite 实例，texture 是 Texture 实例
     expect(spriteComp.sprite, 'sprite instance').to.be.instanceOf(Sprite);
     expect(spriteComp.sprite.texture, 'texture instance').to.be.instanceOf(Texture);
-    expect(spriteComp.sprite.getInstanceId(), 'spriteA id').to.eql(spriteAID);
+    expect(spriteComp.sprite.definition.id, 'spriteA id').to.eql(spriteAID);
   });
 });

@@ -10,6 +10,10 @@ export class TimelineAsset extends Asset {
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;
 
+  override get isSceneLocal (): boolean {
+    return true;
+  }
+
   /** Invalidates asset caches and notifies timeline instances after an edit. */
   markAsChanged (): void {
     this.cacheFlattenedTracks = null;

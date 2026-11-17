@@ -1,5 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
+import type { AbstractConstructor } from './utils';
 import { generateGUID } from './utils';
 
 /**
@@ -15,7 +16,7 @@ export abstract class EffectsObject {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
 
-  protected guid: string;
+  protected readonly guid: string;
   private _isRegistered = false;
   /**
    * 存储需要序列化的数据
@@ -39,9 +40,14 @@ export abstract class EffectsObject {
     return this._isRegistered;
   }
 
-  /** Resolve an object reference in this engine, loading serialized data if needed. */
-  findObject<T> (dataPath: spec.DataPath): T {
-    return this.engine.effectsObjectServer.findObject<T>(dataPath);
+  /** @internal Whether to load a separate copy for each scene hierarchy. */
+  get isSceneLocal (): boolean {
+    return false;
+  }
+
+  /** Resolve an object reference. Returns undefined if the object is missing or the type does not match. */
+  findObject<T> (dataPath: spec.DataPath, type?: AbstractConstructor<T>): T {
+    return this.engine.effectsObjectServer.findObject<T>(dataPath, type);
   }
 
   /** @internal */
@@ -70,23 +76,9 @@ export abstract class EffectsObject {
     return this.guid;
   }
 
-  /**
-   *
-   * @param guid
-   */
-  setInstanceId (guid: string) {
-    if (this.guid === guid) {
-      return;
-    }
-    const wasRegistered = this.isRegistered;
-
-    if (wasRegistered) {
-      this.unregisterObject();
-    }
-    this.guid = guid;
-    if (wasRegistered) {
-      this.registerObject();
-    }
+  /** @deprecated Registers a lookup alias. The instance ID is assigned at construction. */
+  setInstanceId (guid: string): void {
+    this.engine.assetServer.addAsset(guid, this);
   }
 
   /**
@@ -97,13 +89,9 @@ export abstract class EffectsObject {
   /**
    * 反序列化函数
    *
-   * @param data - 对象的序列化的数据
+   * @param _data - 对象的序列化数据
    */
-  fromData (data: spec.EffectsObjectData) {
-    if (data.id !== undefined) {
-      this.setInstanceId(data.id);
-    }
-  }
+  fromData (_data: spec.EffectsObjectData): void { }
 
   /**
    * 销毁当前对象

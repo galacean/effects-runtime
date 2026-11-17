@@ -1,5 +1,5 @@
 import type { Scene } from '@galacean/effects';
-import { Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
+import { Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore, spec } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -260,7 +260,10 @@ describe('core/engine/servers', () => {
     assets.prepareAssets(scene, {});
     expect(engine.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
     expect(engine.effectsObjectServer.objectInstance[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
-    expect(other.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(other.assetServer.whiteTexture);
+    const whiteTexturePath = { id: spec.BuiltinObjectGUID.WhiteTexture };
+
+    expect(engine.effectsObjectServer.findObject(whiteTexturePath)).to.equal(engine.assetServer.whiteTexture);
+    expect(other.effectsObjectServer.findObject(whiteTexturePath)).to.equal(other.assetServer.whiteTexture);
     expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
   });
 
@@ -272,6 +275,7 @@ describe('core/engine/servers', () => {
     const assets = engine.assetServer;
     const texture = engine.assetServer.whiteTexture;
     const path = { id: texture.getInstanceId() };
+    const otherPath = { id: other.assetServer.whiteTexture.getInstanceId() };
     let loads = 0;
 
     expect(server).to.equal(engine.effectsObjectServer);
@@ -285,13 +289,13 @@ describe('core/engine/servers', () => {
     expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
     expect(texture.findObject<Texture>(path)).to.equal(texture);
     expect(texture.findObject<Texture>(texture as unknown as typeof path)).to.equal(texture);
-    expect(other.assetServer.whiteTexture.findObject<Texture>(path)).to.equal(other.assetServer.whiteTexture);
+    expect(other.assetServer.whiteTexture.findObject<Texture>(otherPath)).to.equal(other.assetServer.whiteTexture);
     expect(loads).to.equal(0);
 
     server.clearObjectInstances();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
-    expect(other.effectsObjectServer.findObject(path)).to.equal(other.assetServer.whiteTexture);
+    expect(other.effectsObjectServer.findObject(otherPath)).to.equal(other.assetServer.whiteTexture);
     expect(texture.findObject<Texture>(path)).to.equal(texture);
     expect(loads).to.equal(1);
 

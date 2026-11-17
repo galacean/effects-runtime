@@ -10,6 +10,7 @@ import { PluginSystem } from './plugin-system';
 import type { InputServer } from './input-server';
 import type { Region } from './plugins';
 import { PlayState } from './plugins';
+import { PrecompositionManager } from './precompositions/precomposition-manager';
 import { SceneRendering } from './render';
 import type { Scene } from './scene';
 import { TextureLoadAction, type Texture } from './texture';
@@ -268,16 +269,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.sceneRoot.setParent(this.root);
 
     if (sourceContent) {
-      this.sceneRoot.setInstanceId(sourceContent.id);
+      this.sceneRoot.definition.id = sourceContent.id;
     }
 
     PluginSystem.notifyCompositionCreating(this, scene);
 
     if (sourceContent) {
-      this.sceneRoot.instantiatePreComposition(sourceContent, false);
+      PrecompositionManager.instantiateHierarchy(sourceContent, this.sceneRoot);
     }
 
-    // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
+    // 在实例化后设置 rootItem 的 name，避免 name 被覆盖
     this.sceneRoot.name = 'sceneRoot';
 
     this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);

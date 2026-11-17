@@ -1,11 +1,15 @@
-import type { TextureSourceOptions, spec } from '@galacean/effects';
-import { Asset, Engine, Geometry, Renderer, RenderingDevice, Texture, TextureSourceType, glContext } from '@galacean/effects';
+import type { TextureSourceOptions } from '@galacean/effects';
+import {
+  Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Texture, TextureSourceType, effectsClassStore, glContext, spec,
+} from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import type { GPUBufferThree } from '../../../../../packages/effects-threejs/src/gpu-buffer-three';
 import { getThreeGeometry, disposeThreeGeometries } from '../../../../../packages/effects-threejs/src/three-geometry';
-
 import { GPUTextureThree } from '../../../../../packages/effects-threejs/src/gpu-texture-three';
 import { ThreeMaterial } from '../../../../../packages/effects-threejs/src/material/three-material';
+
+// This suite uses ThreeMaterial directly and shares the WebGL registry.
+effectsClassStore[spec.DataType.Material] = Material;
 
 const { expect } = chai;
 
@@ -194,6 +198,7 @@ describe('threejs/rendering-device', () => {
 
   it('initializes a deserialized texture through the material entry point', () => {
     const texture = new Texture(engine);
+    const instanceId = texture.getInstanceId();
     const canvas = document.createElement('canvas');
 
     canvas.width = 3;
@@ -205,7 +210,7 @@ describe('threejs/rendering-device', () => {
     const native = (texture.getGPUTexture() as GPUTextureThree).texture!;
 
     expect(material.material.uniforms._MainTex.value).equals(native);
-    expect(texture.getInstanceId()).equals('three-texture-asset');
+    expect(texture.getInstanceId()).equals(instanceId);
     expect(native.image).equals(canvas);
     expect(texture.width).equals(3);
     expect(texture.height).equals(2);

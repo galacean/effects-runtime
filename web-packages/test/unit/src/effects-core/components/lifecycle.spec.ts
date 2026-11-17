@@ -81,23 +81,27 @@ describe('core/components/lifecycle', () => {
     node.dispose();
   });
 
-  it('preserves registration state when changing an instance ID', () => {
+  it('preserves instance identity and registration state when assigning lookup aliases', () => {
     const node = item('node');
-    const originalID = node.getInstanceId();
-    const registeredID = '11111111111141118111111111111112';
-    const unregisteredID = '11111111111141118111111111111113';
+    const instanceId = node.getInstanceId();
+    const { objectInstance } = player.engine.effectsObjectServer;
+    const registeredAlias = 'registered-alias';
+    const unregisteredAlias = 'unregistered-alias';
 
-    node.setInstanceId(registeredID);
+    node.setInstanceId(registeredAlias);
     expect(node.isRegistered).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[originalID]).equals(undefined);
-    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(node);
+    expect(node.getInstanceId()).equals(instanceId);
+    expect(objectInstance[instanceId]).equals(node);
+    expect(objectInstance[registeredAlias]).equals(undefined);
+    expect(node.findObject({ id: registeredAlias })).equals(node);
     node.unregisterObject();
-    node.setInstanceId(unregisteredID);
+    node.setInstanceId(unregisteredAlias);
     expect(node.isRegistered).equals(false);
-    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(undefined);
-    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(undefined);
+    expect(objectInstance[instanceId]).equals(undefined);
+    expect(objectInstance[unregisteredAlias]).equals(undefined);
     node.registerObject();
-    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(node);
+    expect(objectInstance[instanceId]).equals(node);
+    expect(node.findObject({ id: unregisteredAlias })).equals(node);
     node.dispose();
   });
 

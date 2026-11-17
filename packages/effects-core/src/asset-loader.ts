@@ -1,11 +1,10 @@
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
+import { Asset } from './asset';
 import { getClass } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
-import { Material } from './material';
-import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
-import { Texture } from './texture';
+import type { AbstractConstructor, Constructor } from './utils';
 
 /**
  * @since 2.0.0
@@ -15,57 +14,51 @@ export class AssetLoader {
     private engine: Engine,
   ) { }
 
-  loadGUID<T> (dataPath: spec.DataPath): T {
+  loadGUID<T> (dataPath: spec.DataPath, type?: AbstractConstructor): T {
     if (!dataPath) {
       return null as T;
     }
 
-    const guid = dataPath.id;
-    const effectsObjectData = this.findData(guid);
-    let effectsObject: EffectsObject | undefined;
+    const created = this.createObject(dataPath.id, type);
 
-    if (!effectsObjectData) {
-      console.warn(`Object data with uuid: ${guid} not found.`);
-
+    if (!created) {
       return undefined as T;
     }
+    const { data, instance } = created;
 
-    switch (effectsObjectData.dataType) {
-      case spec.DataType.Material:
-        effectsObject = Material.create(this.engine);
+    this.engine.assetServer.addAsset(dataPath.id, instance);
+    SerializationHelper.deserialize(data, instance);
 
-        break;
-      case spec.DataType.Geometry:
-        effectsObject = Geometry.create(this.engine);
+    return instance as T;
+  }
 
-        break;
-      case spec.DataType.Texture:
-        effectsObject = Texture.create(this.engine);
+  /** @internal Create an instance before resolving its serialized references. */
+  createObject (id: string, type?: AbstractConstructor): { data: spec.EffectsObjectData, instance: EffectsObject } | undefined {
+    const data = this.engine.assetServer.findEffectsObjectData(id);
 
-        break;
-      default: {
-        const classConstructor = getClass(effectsObjectData.dataType);
+    if (!data) {
+      console.warn(`Object data with uuid: ${id} not found.`);
 
-        if (classConstructor) {
-          effectsObject = new classConstructor(this.engine);
-        }
+      return undefined;
+    }
+
+    const objectClass: Constructor<EffectsObject> | undefined = getClass(data.dataType);
+
+    if (!objectClass) {
+      console.warn(`Constructor for DataType: ${data.dataType} not found.`);
+
+      return undefined;
+    }
+    if (type) {
+      const isAsset = objectClass === Asset || objectClass.prototype instanceof Asset;
+      const matchesType = objectClass === type || objectClass.prototype instanceof type;
+
+      if (!isAsset || !matchesType) {
+        return undefined;
       }
     }
 
-    if (!effectsObject) {
-      console.warn(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
-
-      return undefined as T;
-    }
-
-    effectsObject.setInstanceId(effectsObjectData.id);
-    SerializationHelper.deserialize(effectsObjectData, effectsObject);
-
-    return effectsObject as T;
-  }
-
-  private findData (uuid: string): spec.EffectsObjectData | undefined {
-    return this.engine.assetServer.findEffectsObjectData(uuid);
+    return { data, instance: new objectClass(this.engine) };
   }
 }
 
