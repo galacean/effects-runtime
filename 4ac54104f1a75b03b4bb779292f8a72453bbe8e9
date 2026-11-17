@@ -1,0 +1,21 @@
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_554a6251d2f8aa::t_28a7b729836456 2,128,176-177,480,805-808,811,817,1292-1293,1336-1383,1403-1411,1438,1452
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_131a01982f98d4 1-2,11,35,47-49,539-732,767,769,773,781
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4ac54104f1a75b03b4bb779292f8a72453bbe8e9",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}

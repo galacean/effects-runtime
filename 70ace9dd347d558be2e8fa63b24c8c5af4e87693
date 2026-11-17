@@ -1,0 +1,29 @@
+web-packages/test/unit/src/effects-webgl/gl-texture.spec.ts
+  s_554a6251d2f8aa::t_396adfed24dc7e 736-905
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_1fb28592b2a684 681,683-684,686-694,696-699,738,740-745,747-758,766-770
+  s_554a6251d2f8aa::t_ba60f831db3f19 773-815,1137-1157
+  s_554a6251d2f8aa::t_0880d38cfff28d 362,498-502,504,535-538
+  s_554a6251d2f8aa::t_af65a81501f607 955,977-978,1328-1330,1332-1340,1342-1356
+  s_554a6251d2f8aa::t_0ec19f2d8424da 737,746,760-765,818,842-846,848-851,936,957-966,985-993
+  s_554a6251d2f8aa::t_1eb63241f8da62 4,707,709-712,714-715,717-730,733,771,1158,1358-1395
+  s_554a6251d2f8aa::t_9f01fa38e61539 772
+  s_554a6251d2f8aa::t_776996b067577a 1159
+  s_554a6251d2f8aa::t_5ac688317af5e2 1357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "70ace9dd347d558be2e8fa63b24c8c5af4e87693",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}

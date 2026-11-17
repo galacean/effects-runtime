@@ -1,0 +1,207 @@
+web-packages/dev-tools/src/features/assets/preview/material-preview-renderer.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 277-283
+packages/effects-core/src/render/graphics-primitives.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-157
+plugin-packages/ffd/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+plugin-packages/ktx2/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/test/unit/src/effects-webgl/gl-context-lost.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 169,177,214
+web-packages/dev-tools/src/examples/initialize-example-assets.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-76
+packages/effects-core/src/math/shape/poly-star.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 74,98-113,115
+packages/effects-core/src/math/shape/split-union.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-119
+plugin-packages/orientation-transformer/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/math/shape/stroke-attributes.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-26
+packages/effects-core/src/math/shape/stroke-width-profile.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-88
+packages/effects-helper/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+plugin-packages/editor-gizmo/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+plugin-packages/editor-gizmo/src/2d/cursor.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 23-24
+web-packages/dev-tools/src/examples/scenes/vector-stroke-scene.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-60
+packages/effects-core/src/math/shape/triangulate.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 46-49
+web-packages/dev-tools/src/ui/property-editor/property-group.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-213
+packages/effects-threejs/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/test/unit/src/effects-webgl/gl-mesh.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 32
+packages/effects/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/math/shape/stroke-expansion.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-772
+web-packages/dev-tools/src/ui/property-editor/default-object-details.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 52
+web-packages/test/unit/src/effects-webgl/geometry.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 33,60-61,78,87,90-92,101-104,140-141,143-145,154,157,159,161,170,188,246,269,273-274,298,311
+CHANGELOG.md
+  s_554a6251d2f8aa::t_b402eaa260c5d7 10-15
+plugin-packages/multimedia/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/plugins/sprite/sprite-item.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 369,372
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-tool.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-160
+web-packages/test/case/src/common/player/test-controller.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 7
+packages/effects-core/src/plugins/shape/index.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3-4
+packages/effects-core/src/plugins/shape/trim-path.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3-4,36-37,39,44,47,51,53,56,76,134,136,140,149,170,175,179,183
+plugin-packages/multimedia/src/video/video-component.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 240,280-285
+web-packages/dev-tools/src/app/initialize-runtime.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 4,16
+packages/effects-webgl/src/rendering-device-webgl.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3,157-160,257,268,278,283,288,302,307,314,317
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 325,342,358,361,372,396,408-409,420,422,488
+plugin-packages/spine/src/spine-mesh.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 28,45-46,75,85-86,123-128,137-142
+web-packages/dev-tools/src/features/scene/factories/stroke-width-presets.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-10
+web-packages/dev-tools/src/ui/icons/editor-icon-paths.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 2
+web-packages/dev-tools/src/features/inspector/debug-inspector.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 30,32,36
+plugin-packages/stats/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/dev-tools/src/features/inspector/layout-details.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 48-63,65-66
+packages/effects-core/src/render/index.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 14
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-settings.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-195
+packages/effects-core/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/render/geometry.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 9,57,81,126-127,131,136,139-141,144-145,147,149,151-152,157-158,161-167,169-175,178,183,188,190,210,227,231,303,322,442,488,509-510,547,577,592,603
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 12,317,319-322
+packages/effects-core/src/rendering-device.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 6,128
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_5570f206dbf752 2,850,853
+  s_554a6251d2f8aa::t_b402eaa260c5d7 657-658,846-849,851-852,854-879
+  s_554a6251d2f8aa::t_bead6ea064992b 880-881
+web-packages/test/unit/src/effects-webgl/vertex-buffer.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-126
+plugin-packages/spine/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/dev-tools/src/features/animation-graph/animation-graph-editor.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 177
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3,11-12,18,20,22-25,29,36,153-154,157,179-233,238-242,247-251,343-346,348,350,437,440,444,457-471,491-494,545,550,553,615-619,621,623,633,644-648,683-724,745,749,766-768,789,794,796-797,881,888-900
+packages/effects-core/src/plugins/shape/contour-measure.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 6-7,16,31,52,60,84,97,138,175,181,204,212,220-221,243,250,256-258,268,286,375-376,382-384,425,448,453,458,462,511,518,526-561,570,580,584,592,596,605,613,616,620,623,653,662,666
+packages/effects-threejs/src/rendering-device-three.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 5,8,84-87,92,95-97,100-102,128-130,132-141
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 120,362
+web-packages/dev-tools/src/features/inspector/customizations/shape-paint-details.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-134
+web-packages/dev-tools/src/features/scene/viewport/scene-gizmo.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 19-20,22,33,45,59,124
+web-packages/demo/src/gizmo-2d/inspector.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 118,142,173
+packages/effects-threejs/src/gpu-buffer-three.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-2,7-16,19,25-80,84,86-87,103
+plugin-packages/alipay-downgrade/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+plugin-packages/editor-gizmo/src/2d/cursor-icons.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 9-10,14
+plugin-packages/model/src/utility/plugin-helper.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 2319,2329
+web-packages/dev-tools/src/examples/scenes/default-scene.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-55
+packages/effects-threejs/src/three-geometry.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1,6,23,27,36-38,40,48-50,59,65-66,76,83,87-94,97-98
+web-packages/dev-tools/src/features/inspector/inspector-panel.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 250
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-2,5-28,33-39,44,46-78,81-94,96-99,101-119,121-249,251-259
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-path.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-166
+plugin-packages/gui/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/test/unit/src/effects-webgl/index.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 13
+plugin-packages/model/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/plugins/shape/paint.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 130,135-143
+web-packages/dev-tools/src/ui/property-editor/property-sheet.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 2-5,7-8,13-15,24,37,41,72,87-88,90-94,96-115,117-123,125-127,129,131-134,136-137,139,141,143-145,147-150,152-155,157-159,161-163,165-167,169-186,188-191,193,195-197,199-203,205-207,210,212-213,215-218,220-278
+CHANGELOG-zh_CN.md
+  s_554a6251d2f8aa::t_b402eaa260c5d7 11-16
+plugin-packages/editor-gizmo/src/3d/wireframe.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 215,217-218
+plugin-packages/rich-text/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-webgl/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/plugins/shape/trimmed-path-result.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-38
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 2,16,1054,1146,1510
+plugin-packages/dom-content/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+web-packages/dev-tools/src/features/scene/viewport/scene-viewport-panel.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 21,38-39,59-60,74,82,85,92-96,100-103,109,130-139,201-203,219-220
+packages/effects-core/src/math/index.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 5
+web-packages/dev-tools/src/features/assets/editors/content-object-asset-editor.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 219,244,266
+packages/effects-core/src/components/frame-component.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 19-23,30,33,41-43,53-55,62-117,243-247,334,345,347-348,351,353-356,358-360,390-392,397,400
+web-packages/dev-tools/src/features/scene/operations/scene-item-operations.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 24,27,50,54
+plugin-packages/downgrade/package.json
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3
+packages/effects-core/src/render/graphics.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 9,15,98,591,604-605,622,626,628,643-645,658-659,671-672,710,992-993,995-1005,1012-1013,1069
+packages/effects-core/src/plugins/shape/contour-path.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 5,54-57,61-62,66,70,74,78,81-95,97-120,122-126,128-143,145-156,159
+web-packages/dev-tools/src/chrome-extension/panels/runtime-inspector-panel.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 48,58-66,92,101-103,105,107
+packages/effects-core/src/render/vertex-buffer.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-13
+web-packages/dev-tools/src/features/inspector/customizations/shape-width-details.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 1-77
+web-packages/dev-tools/src/features/scene/viewport/scene-toolbar.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 29,45,58,65,76,88,150,158
+web-packages/dev-tools/src/ui/property-editor/property-tree.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 47-48
+web-packages/dev-tools/src/ui/property-editor/property-value-editor.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 3,7,27,31,33,35
+packages/effects-core/src/render/graphics-batch-buffer.ts
+  s_554a6251d2f8aa::t_b402eaa260c5d7 71,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c86c1b60882188f0325be95114b47194d6a6006f",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}

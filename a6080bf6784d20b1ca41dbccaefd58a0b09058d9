@@ -1,0 +1,22 @@
+web-packages/demo/package.json
+  s_554a6251d2f8aa::t_e427c1ca7e152e 15,17-18,22
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_e427c1ca7e152e 3-4,12,50-51,183,185-192,362,498-502,504,535-538,631,654,657,662,670,680-1046,1099,1110-1396
+  s_554a6251d2f8aa::t_1b30f914243016 1397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a6080bf6784d20b1ca41dbccaefd58a0b09058d9",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}

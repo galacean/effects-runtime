@@ -1,0 +1,29 @@
+web-packages/demo/html/scene-player.html
+  s_3474ddc89e982c::t_43d8c47366070c 1-55
+web-packages/demo/src/scene-player.ts
+  s_3474ddc89e982c::t_43d8c47366070c 1-130
+web-packages/demo/index.html
+  s_3474ddc89e982c::t_97a7c95464ce5c 15
+web-packages/demo/html/single.html
+  s_3474ddc89e982c::t_97a7c95464ce5c 2,6,8-13,17-19
+web-packages/demo/src/single.ts
+  s_3474ddc89e982c::t_97a7c95464ce5c 12,14,16
+web-packages/demo/vite.config.js
+  s_3474ddc89e982c::t_97a7c95464ce5c 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da5600941582e9b586e2eb64806200d7d35ffcc0",
+  "prompts": {},
+  "sessions": {
+    "s_3474ddc89e982c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cee2-9a57-7fb0-b32a-0d9acf734e62",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+plugin-packages/multimedia/src/video/video-component.ts
+  s_554a6251d2f8aa::t_514e48c73ce973 7,179,249-251,266-281,480-487,976-978
+  s_554a6251d2f8aa::t_caa68b725120e0 65-67
+  s_554a6251d2f8aa::t_2a982992d4a293 68,168,176,180,184-186,193-203,220,223-228,412-414,416
+  s_554a6251d2f8aa::t_8046ae34c001d2 229
+  s_554a6251d2f8aa::t_5626f1e138df37 282-283
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_949ae4d97d974d 12,682-705,939-980
+  s_554a6251d2f8aa::t_caa68b725120e0 776-887,982
+  s_554a6251d2f8aa::t_a4c62822995d02 981,1256-1265
+  s_554a6251d2f8aa::t_51fd687663c87a 183,185-192
+  s_554a6251d2f8aa::t_17a2fe5b6523ac 1153-1154,1204-1208
+  s_554a6251d2f8aa::t_5d83b2ba30c65d 983
+  s_554a6251d2f8aa::t_b4008ac27eca62 1255
+plugin-packages/multimedia/test/src/video-seek.spec.ts
+  s_554a6251d2f8aa::t_949ae4d97d974d 40,579-611
+  s_554a6251d2f8aa::t_6d8d3cf3c8106c 612-613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fda843e3ae87b7abdca448643395ead9c7fb86b6",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
