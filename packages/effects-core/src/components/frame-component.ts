@@ -394,10 +394,10 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
   private updateStrokeAttribute (name: string, data: Float32Array, size: number): void {
     const geometry = this.strokeGeometry!;
-    const buffer = geometry.getAttributeBuffer(name);
+    const buffer = geometry.getVertexBuffer(name)?.buffer;
 
     if (!buffer || data.byteLength > buffer.capacity) {
-      geometry.setAttribute(name, { data, size }, BufferUsage.Dynamic);
+      geometry.setVerticesData(name, data, { size }, BufferUsage.Dynamic);
     } else {
       geometry.setAttributeData(name, data);
     }

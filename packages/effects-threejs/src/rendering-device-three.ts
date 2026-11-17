@@ -2,10 +2,10 @@ import type {
   Composition, GPUBuffer, IndicesArray, spec,
 } from '@galacean/effects-core';
 import {
-  BufferDataType, RenderingData, RenderingDevice, GPUCapability,
+  RenderingData, RenderingDevice, GPUCapability, toBufferView,
 } from '@galacean/effects-core';
 import type * as THREE from 'three';
-import { GPUBufferThree, toTypedArray } from './gpu-buffer-three';
+import { GPUBufferThree } from './gpu-buffer-three';
 import { GPUTextureThree } from './gpu-texture-three';
 
 export interface RenderingDeviceThreeOptions {
@@ -81,29 +81,25 @@ export class RenderingDeviceThree extends RenderingDevice {
     byteOffset = 0,
     byteLength?: number,
   ): void {
-    let view = toTypedArray(data, BufferDataType.Float);
-
-    if (byteLength !== undefined && byteLength < view.byteLength) {
-      view = new Uint8Array(view.buffer, view.byteOffset, byteLength);
-    }
-    const resource = (vertexBuffer as GPUBufferThree).resource;
+    const view = toBufferView(data);
+    const length = byteLength === undefined ? view.byteLength : Math.min(byteLength, view.byteLength);
+    const buffer = vertexBuffer as GPUBufferThree;
+    const resource = buffer.resource;
 
     if (!resource) {
       return;
     }
-    if (byteOffset < 0 || byteOffset + view.byteLength > vertexBuffer.capacity) {
+    if (byteOffset < 0 || length < 0 || byteOffset + length > vertexBuffer.capacity) {
       throw new RangeError('Buffer update is out of range.');
     }
-    const target = resource.array as spec.TypedArray;
-    const elementOffset = byteOffset / target.BYTES_PER_ELEMENT;
-
-    if (!Number.isInteger(elementOffset)) {
-      throw new RangeError('Buffer update is not aligned.');
+    if (length === 0) {
+      return;
     }
-    target.set(view, elementOffset);
-    resource.updateRange.offset = elementOffset;
-    resource.updateRange.count = view.length;
-    resource.needsUpdate = true;
+    const target = resource.array as spec.TypedArray;
+
+    new Uint8Array(target.buffer, target.byteOffset, target.byteLength)
+      .set(new Uint8Array(view.buffer, view.byteOffset, length), byteOffset);
+    buffer.markVertexBuffersUpdated(byteOffset, length);
   }
 
   override updateDynamicIndexBuffer (

@@ -1,4 +1,5 @@
 import { restoreTestState } from '../helpers/spies';
+import { createCompositionFixture } from '../helpers/items';
 import { Euler, Matrix4, Quaternion, Ray, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameComponent, spec, type Engine, type VFXItem } from '@galacean/effects';
@@ -39,7 +40,7 @@ describe('plugin-editor-gizmo/selection', () => {
 
   function makeSelectionWithItems (items: VFXItem[]): Selection {
     const engine = {
-      sceneServer: { compositions: [{ items }] },
+      sceneServer: { compositions: [createCompositionFixture(items)] },
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
     } as unknown as Engine;
 
@@ -87,7 +88,7 @@ describe('plugin-editor-gizmo/selection', () => {
       const engine = {
         sceneServer: {
           compositions: [{
-            items: [hidden, visible],
+            ...createCompositionFixture([hidden, visible]),
             hitTest: chai.spy(() => [
               { id: 'visible', position: new Vector3() },
               { id: 'hidden', position: new Vector3() },

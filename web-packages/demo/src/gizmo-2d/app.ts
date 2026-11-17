@@ -61,6 +61,7 @@ export class GizmoDemo {
       this.editor.on('action', label => this.view.recordAction(label)),
       this.player.on('update', () => this.view.refreshSelection()),
     );
+    this.events.on(this.player.canvas, 'contextmenu', event => event.preventDefault());
     this.events.on(window, 'resize', () => {
       this.player.resize();
       this.editor.resizeViewport();

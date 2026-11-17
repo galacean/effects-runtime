@@ -1,7 +1,8 @@
 import type { Engine } from '@galacean/effects';
-import { glContext, loadImage, SerializationHelper, spec, Texture, TextureSourceType } from '@galacean/effects';
+import { glContext, loadImage, spec, Texture, TextureSourceType } from '@galacean/effects';
 import { blobDataURL } from '../../../platform/browser-files/blob-data-url';
 import type { AssetEntry, AssetImage } from '../model/asset-types';
+import { notifyRuntimeAssetChanged } from './runtime-asset-changes';
 
 interface TextureSource {
   projectId(): string,
@@ -59,7 +60,11 @@ export class AssetTextureCache {
     const texture = object instanceof Texture ? object : cached?.isRegistered ? cached : undefined;
 
     if (texture && !texture.isDestroyed && entry?.kind === 'texture') {
-      texture.name = entry.name; texture.definition.name = entry.name;
+      if (texture.name !== entry.name) {
+        texture.name = entry.name;
+        notifyRuntimeAssetChanged(texture);
+      }
+      texture.definition.name = entry.name;
 
       return texture;
     }
@@ -97,7 +102,7 @@ export class AssetTextureCache {
       const data = { id, name: entry.name, dataType: spec.DataType.Texture as const, source: dataURL, sourceType: TextureSourceType.image as const,
         image, flipY: true, minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE };
 
-      SerializationHelper.deserialize(data, texture);
+      texture.setData(data);
       if (texture === existing) { texture.updateSource(data); }
       texture.initialize();
       engine.assetServer.addEffectsObjectData(data);

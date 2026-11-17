@@ -4,7 +4,7 @@ import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
 import type { Matrix3 } from '../../math';
-import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../math';
+import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../math';
 import { Gizmo } from '../../gizmo';
 import { GizmoViewportUtils } from '../../viewport/viewport-utils';
 import type { GizmoOwner } from '../../gizmo-owner';
@@ -26,7 +26,6 @@ import { resizeFrameItem } from '../../frame/frame-resize';
 import {
   decomposeItemTransform,
   getItemViewAnchor,
-  getItemViewBox,
   getItemViewTransform,
   getItemWorldSize,
   isEffectsPlayerItem,
@@ -572,13 +571,10 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (selectedItems.length > 1) {
       selectedItems.forEach(item => {
         if (item.isVisible) {
-          const itemBox = getItemViewBox(item, containerSize);
           const itemTransform = getItemViewTransform(item, containerSize);
 
-          if (!itemBox.isEmpty()) {
-            box.union(itemBox);
-          }
           if (itemTransform) {
+            box.union(getTransformedBox(itemTransform));
             this.wireframe.childrenTransforms.push(itemTransform);
           }
         }
@@ -592,7 +588,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
       if (item.isVisible) {
         transform = getItemViewTransform(item, containerSize);
-        box.copyFrom(getItemViewBox(item, containerSize));
+        if (transform) { box.copyFrom(getTransformedBox(transform)); }
 
         this.wireframe.anchor = isSingleText
           ? box.getCenter()
@@ -800,14 +796,11 @@ export class ResizeSelectionGizmo extends Gizmo {
     }
 
     // 步骤 4：为非文本单选元素绘制信息标签。
-    const isSingleTextSelection = this.selectedItems.length === 1
-      && this.selectedItems[0].type === spec.ItemType.text;
-    const hasOwnTitle = this.selectedItems.length === 1
-      && this.selectedItems[0].type === spec.ItemType.null
-      && !!this.selectedItems[0].name
-      && !!this.selectedItems[0].getComponent(FrameComponent)?.titleRenderer?.visible;
+    const selectedItems = this.selectedItems;
+    const item = selectedItems.length === 1 ? selectedItems[0] : undefined;
+    const hasOwnTitle = item?.type === spec.ItemType.null && !!item.name && !!item.getComponent(FrameComponent)?.titleRenderer?.visible;
 
-    if (this.selectedItems.length === 1 && infoShowEnabled && !isSingleTextSelection) {
+    if (infoShowEnabled && item && item.type !== spec.ItemType.text) {
       this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
     }
   }

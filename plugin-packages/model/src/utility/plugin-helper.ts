@@ -2316,7 +2316,7 @@ export class CheckerHelper {
 }
 
 function getAttributeLayout (geometry: Geometry, name: string): AttributeLayout | undefined {
-  const vertexBuffer = geometry.getVertexElement(name);
+  const vertexBuffer = geometry.getVertexBuffer(name);
 
   if (!vertexBuffer) {
     return;
@@ -2326,7 +2326,7 @@ function getAttributeLayout (geometry: Geometry, name: string): AttributeLayout 
     type: vertexBuffer.type,
     size: vertexBuffer.size,
     offset: vertexBuffer.byteOffset,
-    stride: geometry.getAttributeStride(name),
+    stride: vertexBuffer.byteStride,
     normalize: vertexBuffer.normalized,
   };
 }

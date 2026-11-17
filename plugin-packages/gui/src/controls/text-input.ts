@@ -1,7 +1,6 @@
 import {
   EventEmitter,
   MouseButton,
-  MouseButtonMask,
 } from '@galacean/effects';
 import type {
   Engine,
@@ -158,7 +157,7 @@ export abstract class TextInput extends Control {
   }
 
   override onMouseMove (event: InputEventMouseMotion): void {
-    if (!this.selecting || (event.buttonMask & MouseButtonMask.Left) === 0) {return;}
+    if (!this.selecting) {return;}
     const index = this.getCharacterIndex(event.position);
 
     if (this.selectingWords) {
@@ -176,10 +175,10 @@ export abstract class TextInput extends Control {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.selecting) {
+    if (this.selecting) {
       this.selecting = false;
       this.selectingWords = false;
-      this.focusTextarea();
+      if (!event.canceled) { this.focusTextarea(); }
       event.accept();
     }
   }

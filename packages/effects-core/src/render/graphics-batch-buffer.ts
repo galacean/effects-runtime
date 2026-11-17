@@ -68,10 +68,10 @@ export class GraphicsBatchBuffer {
     const device = this.engine.displayServer.renderingDevice;
 
     for (const attribute of this.attributes) {
-      const buffer = this.geometry.getAttributeBuffer(attribute.name);
+      const buffer = this.geometry.getVertexBuffer(attribute.name)?.buffer;
 
       if (!buffer || buffer.capacity < attribute.data.byteLength) {
-        this.geometry.setAttribute(attribute.name, { data: attribute.data, size: attribute.size }, BufferUsage.Dynamic);
+        this.geometry.setVerticesData(attribute.name, attribute.data, { size: attribute.size }, BufferUsage.Dynamic);
       } else {
         const length = this.vertexCount * attribute.size;
 

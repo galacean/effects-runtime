@@ -152,7 +152,7 @@ class SceneBrushGizmo extends Gizmo {
   override onMouseDrag (event: InputEventMouseMotion): void { this.tool.sample(event.position); this.cursor(); event.accept(); }
   override onMouseMove (event: InputEventMouseMotion): void { this.cursor(); event.accept(); }
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left) { this.tool.finish(event); this.cursor(); event.accept(); }
+    this.tool.finish(event); this.cursor(); event.accept();
   }
   override draw (control: Control): void { this.tool.draw(control); }
   override dispose (): void { this.tool.cancel(); }
