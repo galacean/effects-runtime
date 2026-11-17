@@ -1,7 +1,7 @@
 import { EditorSearchField } from '../../ui/controls/search-field';
 import { setTooltip } from '../../ui/controls/tooltip';
-import type { EffectsObject, Engine, TrackAsset, InputEventKey } from '@galacean/effects';
-import { CompositionComponent, InterpolationMode, MaskableGraphic, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
+import type { EffectsObject, Engine, TrackAsset, InputEventKey, InputEvent } from '@galacean/effects';
+import { CompositionComponent, FocusEventType, InputEventFocus, InputEventMouseButton, InterpolationMode, MaskableGraphic, MouseButton, ObjectBindingTrack, TransformPlayableAsset, TransformTrack, VFXItem, spec } from '@galacean/effects';
 import type { HBoxContainer, Label, LineEdit } from '@galacean/effects-plugin-gui';
 import { Control, SizeFlags, TextOverflow, VerticalAlignment } from '@galacean/effects-plugin-gui';
 import { editorPanel, menuItem } from '../../framework/registry/editor-registry';
@@ -75,8 +75,14 @@ export class SequencerPanel extends EditorWindow {
   private restoredSelection = false;
   private autoRecording = false;
   private pointerHeld = false;
-  private readonly pointerDown = (): void => { this.pointerHeld = true; };
-  private readonly pointerUp = (): void => { this.pointerHeld = false; };
+  private inputEngine?: Engine;
+  private readonly onInput = (event: InputEvent): void => {
+    if (event instanceof InputEventMouseButton && (event.buttonIndex < MouseButton.WheelUp || event.buttonIndex > MouseButton.WheelRight)) {
+      this.pointerHeld = event.isPressed();
+    } else if (event instanceof InputEventFocus && (event.type === FocusEventType.FocusLost || event.type === FocusEventType.WindowFocusLost)) {
+      this.pointerHeld = false;
+    }
+  };
   private readonly onClipboard = (event: ClipboardEvent): void => {
     if (!this.hasFocus() || !this.document || event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable="true"]')) { return; }
     if (event.type === 'paste') { this.document.paste(); } else { this.document.copySelection(); if (event.type === 'cut') { this.document.deleteSelection(); } }
@@ -90,8 +96,8 @@ export class SequencerPanel extends EditorWindow {
   protected override createContent (engine: Engine): Control {
     const body = column(engine);
 
-    window.addEventListener('pointerdown', this.pointerDown, true); window.addEventListener('pointerup', this.pointerUp, true);
-    window.addEventListener('pointercancel', this.pointerUp, true); window.addEventListener('blur', this.pointerUp);
+    this.inputEngine = engine;
+    engine.inputServer.on('input', this.onInput);
     this.contextMenu = new EditorMenu(engine); this.dialog = new EditorDialog(engine);
     const toolbar = new EditorToolbar(engine, 28);
 
@@ -244,8 +250,7 @@ export class SequencerPanel extends EditorWindow {
     if (this.document) { this.canvas.cancel(this.document); this.document.commit(); }
   }
   override dispose (): void {
-    window.removeEventListener('pointerdown', this.pointerDown, true); window.removeEventListener('pointerup', this.pointerUp, true);
-    window.removeEventListener('pointercancel', this.pointerUp, true); window.removeEventListener('blur', this.pointerUp);
+    this.inputEngine?.inputServer.off('input', this.onInput);
     super.dispose(); this.documents.forEach(document => document.dispose()); this.documents.clear(); this.contextMenu.dispose(); this.dialog.dispose();
   }
   private refreshControls (): void {

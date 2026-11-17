@@ -75,6 +75,7 @@ export class SceneViewportPanel extends EditorWindow {
         this.input = new SceneViewportInput(composition.engine, event => this.handleShortcut(event), cursor => {
           if (this.viewport) { this.viewport.defaultCursorShape = cursor; }
         });
+        this.input.focus(this.viewport?.hasFocus() ?? false);
         this.cameraController = new OrbitController(); this.pendingFit = true;
       }
     }
@@ -143,7 +144,7 @@ export class SceneViewportPanel extends EditorWindow {
       const editing = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
 
       if (changed || editing) { sceneWorkspace.current?.setScopeActive(this, true); }
-      if (!this.gizmo.handler.isMouseButtonPressed() && !editing) { sceneWorkspace.current?.setScopeActive(this, false); }
+      if (!this.viewport?.pointerActive && !editing) { sceneWorkspace.current?.setScopeActive(this, false); }
     } else if (event instanceof InputEventMouseMotion) {
       if (!this.viewport?.pointerActive) { return; }
       if (event.buttonMask & MouseButtonMask.Left) { this.cameraController.handleRotate(event.relative.x, event.relative.y); }
@@ -175,7 +176,9 @@ export class SceneViewportPanel extends EditorWindow {
     ]);
     this.context.show(viewport, event.globalPosition);
   }
-  leave (): void { this.input?.leave(); }
+  enter (position: math.Vector2): void { this.input?.enter(position); }
+  leave (position: math.Vector2): void { this.input?.leave(position); }
+  focus (focused: boolean): void { this.input?.focus(focused); }
   override dispose (): void { super.dispose(); this.context?.dispose(); this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined; }
   drawBackground (control: Control): void {
     control.fillRect(0, 0, control.width, control.height, new math.Color(22 / 255, 24 / 255, 27 / 255, 1));
@@ -260,17 +263,22 @@ class SceneViewport extends Control {
     this.panel.mouse(event);
   }
   override onMouseUp (event: InputEventMouseButton): void {
+    const button = this.pointerInteraction.buttonIndex;
+
     if (!this.pointerInteraction.end(event)) {
       event.accept();
 
       return;
     }
-    this.panel.mouse(event, !!this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Left && !event.canceled);
-    if (this.pressedAt && this.dragDistance < 5 && event.buttonIndex === MouseButton.Right && !event.canceled) { this.panel.showContext(event); }
+    this.panel.mouse(event, !!this.pressedAt && this.dragDistance < 5 && button === MouseButton.Left && !event.canceled);
+    if (this.pressedAt && this.dragDistance < 5 && button === MouseButton.Right && !event.canceled) { this.panel.showContext(event); }
     this.pressedAt = undefined;
   }
   override onMouseWheel (event: InputEventMouseButton): void { this.panel.mouse(event); }
-  override onMouseLeave (): void { this.panel.leave(); }
+  override onMouseEnter (position: math.Vector2): void { this.panel.enter(position); }
+  override onMouseLeave (): void { this.panel.leave(this.getLocalMousePosition()); }
+  override onGotFocus (): void { this.panel.focus(true); }
+  override onLostFocus (): void { this.panel.focus(false); }
   override onKeyDown (event: InputEventKey): void {
     if (event.keycode === 'Escape' && this.pointerInteraction.active) { this.pointerInteraction.cancel(); this.root?.cancelPointerInput(); event.accept(); } else { this.panel.key(event); }
   }

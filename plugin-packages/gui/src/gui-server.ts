@@ -34,10 +34,6 @@ export class GUIServer extends EngineServer {
     }
   };
 
-  private readonly onCanvasBlur = (): void => {
-    this.windowRoot.onCanvasBlur();
-  };
-
   override onInit (): void {
     const { engine } = this;
 
@@ -45,7 +41,6 @@ export class GUIServer extends EngineServer {
     engine.renderer.addOverlayRenderer(this.overlayRenderer);
     engine.on('resize', this.resizeWindowRoot);
     engine.inputServer.on('input', this.pushInput);
-    engine.inputServer.on('canvasBlur', this.onCanvasBlur);
     this.resizeWindowRoot();
   }
 
@@ -57,7 +52,6 @@ export class GUIServer extends EngineServer {
     this.engine.renderer.removeOverlayRenderer(this.overlayRenderer);
     this.engine.off('resize', this.resizeWindowRoot);
     this.engine.inputServer.off('input', this.pushInput);
-    this.engine.inputServer.off('canvasBlur', this.onCanvasBlur);
     this.windowRoot.dispose();
   }
 }

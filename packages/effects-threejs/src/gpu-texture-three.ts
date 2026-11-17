@@ -56,8 +56,12 @@ export class GPUTextureThree extends GPUTexture {
 
       return;
     }
-    // VideoTexture already refreshes its image through the host renderer.
+    // The host renderer performs the upload, including forced refreshes after a seek.
     if (source.sourceType === TextureSourceType.video && options !== source) {
+      this.texture.needsUpdate = true;
+      this.width = source.video.videoWidth;
+      this.height = source.video.videoHeight;
+
       return;
     }
     this.initialize({ ...source, ...options } as TextureSourceOptions);
@@ -172,10 +176,14 @@ export class GPUTextureThree extends GPUTexture {
       this.width = maxWidth;
       this.height = maxHeight;
     } else if (sourceType === TextureSourceType.video) {
+      const video = (options as Texture2DSourceOptionsVideo).video;
+
       texture = new THREE.VideoTexture(
-        (options as Texture2DSourceOptionsVideo).video,
+        video,
         mapping, wrapS, wrapT, magFilter, minFilter, format, type
       );
+      this.width = video.videoWidth;
+      this.height = video.videoHeight;
     } else if (sourceType === TextureSourceType.framebuffer) {
       const { data } = options as Texture2DSourceOptionsFramebuffer;
 

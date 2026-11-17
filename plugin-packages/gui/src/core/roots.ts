@@ -1,14 +1,16 @@
 import type { UICanvas } from '../components/ui-canvas';
 import {
   InputEvent,
+  InputEventFocus,
   InputEventKey,
   InputEventMouse,
+  InputEventMouseBoundary,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
+  FocusEventType,
   MouseButton,
-  MouseButtonMask,
   math,
 } from '@galacean/effects';
 import type {
@@ -50,17 +52,6 @@ const cursorNames: Record<CursorShape, string> = {
   [CursorShape.Help]: 'help',
 };
 
-function getButtonMask (button: MouseButton): number {
-  switch (button) {
-    case MouseButton.Left: return MouseButtonMask.Left;
-    case MouseButton.Right: return MouseButtonMask.Right;
-    case MouseButton.Middle: return MouseButtonMask.Middle;
-    case MouseButton.Xbutton1: return MouseButtonMask.Xbutton1;
-    case MouseButton.Xbutton2: return MouseButtonMask.Xbutton2;
-    default: return MouseButtonMask.None;
-  }
-}
-
 function isWheelButton (button: MouseButton): boolean {
   return button >= MouseButton.WheelUp && button <= MouseButton.WheelRight;
 }
@@ -68,7 +59,7 @@ function isWheelButton (button: MouseButton): boolean {
 type GUIState = {
   mouseFocus: Control | null,
   mouseClickGrabber: Control | null,
-  mouseFocusMask: number,
+  mouseButton: MouseButton,
   mouseOver: Control | null,
   mouseOverHierarchy: Control[],
   touchFocus: Map<number, Control>,
@@ -177,7 +168,7 @@ export class WindowRootControl extends RootControl {
   private readonly gui: GUIState = {
     mouseFocus: null,
     mouseClickGrabber: null,
-    mouseFocusMask: MouseButtonMask.None,
+    mouseButton: MouseButton.None,
     mouseOver: null,
     mouseOverHierarchy: [],
     touchFocus: new Map(),
@@ -214,7 +205,11 @@ export class WindowRootControl extends RootControl {
   pushInput (event: InputEvent): void {
     this.lastInput = event;
     this.cleanupInternalState();
-    this.processGUIInput(event);
+    if (event instanceof InputEventFocus) {
+      if (event.type === FocusEventType.WindowFocusLost) { this.onWindowBlur(); } else if (event.type === FocusEventType.FocusLost) { this.onCanvasBlur(); }
+    } else if (event instanceof InputEventMouseBoundary) {
+      if (event.entered) { this.onPointerEnter(event.globalPosition); } else { this.onPointerLeave(); }
+    } else { this.processGUIInput(event); }
     this.postGrabClickFocus();
   }
 
@@ -387,7 +382,7 @@ export class WindowRootControl extends RootControl {
   }
 
   override cancelPointerInput (): void {
-    this.dropMouseFocus();
+    this.cancelMouseFocus();
     this.dropMouseOver();
     this.gui.touchFocus.clear();
     this.endDragging(false);
@@ -395,26 +390,42 @@ export class WindowRootControl extends RootControl {
   }
 
   onCanvasBlur (): void {
+    this.cancelMouseFocus();
+  }
+
+  private cancelMouseFocus (): void {
     const target = this.gui.mouseFocus;
-    const mask = this.gui.mouseFocusMask;
+    const button = this.gui.mouseButton;
 
     this.dropMouseFocus();
-    if (!target || target.isDisposed) {
-      return;
-    }
-    for (const button of [MouseButton.Left, MouseButton.Right, MouseButton.Middle]) {
-      if ((mask & getButtonMask(button)) === 0) {
-        continue;
-      }
-      const event = new InputEventMouseButton();
-      const position = target.makePositionLocal(this.gui.lastMousePosition);
+    if (!target || target.isDisposed || button === MouseButton.None) { return; }
+    const event = new InputEventMouseButton();
 
-      event.device = InputEvent.deviceIdInternal;
-      event.buttonIndex = button;
-      event.pressed = false;
-      event.position.copyFrom(position);
-      event.globalPosition.copyFrom(position);
-      this.callControlInput(target, event);
+    event.device = InputEvent.deviceIdInternal;
+    event.canceled = true;
+    event.buttonIndex = button;
+    event.position.copyFrom(this.gui.lastMousePosition);
+    event.globalPosition.copyFrom(event.position);
+    this.callGUIInput(target, event);
+  }
+
+  onPointerLeave (): void { this.dropMouseOver(); }
+
+  onPointerEnter (position: Vector2): void {
+    this.gui.lastMousePosition.copyFrom(position); this.updateMouseOver(position);
+  }
+
+  onWindowBlur (): void {
+    this.cancelMouseFocus();
+    const touches = [...this.gui.touchFocus];
+
+    this.gui.touchFocus.clear(); this.endDragging(false);
+    for (const [index, target] of touches) {
+      if (!this.isControlUsable(target)) { continue; }
+      const event = new InputEventScreenTouch();
+
+      event.device = InputEvent.deviceIdInternal; event.index = index; event.canceled = true;
+      event.position.copyFrom(this.gui.lastMousePosition); this.callGUIInput(target, event);
     }
   }
 
@@ -550,14 +561,12 @@ export class WindowRootControl extends RootControl {
 
       return;
     }
-    const mask = getButtonMask(event.buttonIndex);
-
     if (event.isPressed()) {
-      const target = this.gui.mouseFocusMask !== 0
-        ? this.gui.mouseFocus
-        : mouseOver;
+      this.dropMouseFocus();
+      const target = mouseOver;
 
       this.gui.mouseFocus = target;
+      this.gui.mouseButton = event.buttonIndex;
       if (!target) {
         if (event.buttonIndex === MouseButton.Left && this.gui.keyFocus) {
           this.gui.hideFocus = true;
@@ -565,7 +574,6 @@ export class WindowRootControl extends RootControl {
 
         return;
       }
-      this.gui.mouseFocusMask |= mask;
       if (event.buttonIndex === MouseButton.Left) {
         this.gui.dragAccum.setZero();
         this.gui.dragAttempted = false;
@@ -573,14 +581,12 @@ export class WindowRootControl extends RootControl {
       }
       this.callGUIInput(target, event);
     } else {
-      if (event.buttonIndex === MouseButton.Left && this.gui.dragging) {
-        this.finishDrop(event.globalPosition);
-      }
-      this.gui.mouseFocusMask &= ~mask;
       const target = this.gui.mouseFocus;
 
-      if (this.gui.mouseFocusMask === 0) {
-        this.gui.mouseFocus = null;
+      // Release persistent capture before dispatching the terminal event.
+      this.dropMouseFocus();
+      if (this.gui.dragging) {
+        if (event.canceled) { this.endDragging(false); } else { this.finishDrop(event.globalPosition); }
       }
       if (this.isControlUsable(target)) {
         this.callGUIInput(target, event);
@@ -590,7 +596,7 @@ export class WindowRootControl extends RootControl {
 
   private processMouseMotion (event: InputEventMouseMotion, mouseOver: Control | null): void {
     if (!this.gui.dragging && !this.gui.dragAttempted && this.gui.mouseFocus &&
-      (this.gui.mouseFocusMask & MouseButtonMask.Left) !== 0) {
+      this.gui.mouseButton === MouseButton.Left) {
       this.gui.dragAccum.add(event.relative);
       if (this.gui.dragAccum.length() > this.dragThreshold) {
         const origin = event.globalPosition.clone().subtract(this.gui.dragAccum);
@@ -870,7 +876,7 @@ export class WindowRootControl extends RootControl {
         this.gui.dragging = true;
         this.gui.dragData = data;
         this.gui.mouseFocus = null;
-        this.gui.mouseFocusMask = MouseButtonMask.None;
+        this.gui.mouseButton = MouseButton.None;
 
         return;
       }
@@ -958,7 +964,7 @@ export class WindowRootControl extends RootControl {
 
   private dropMouseFocus (): void {
     this.gui.mouseFocus = null;
-    this.gui.mouseFocusMask = MouseButtonMask.None;
+    this.gui.mouseButton = MouseButton.None;
   }
 
   private dropMouseOver (): void {
