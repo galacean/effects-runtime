@@ -1,0 +1,87 @@
+plugin-packages/editor-gizmo/src/3d/wireframe.ts
+  s_13b128c446dab7::t_76b98dabda6106 215,217-218
+plugin-packages/model/src/utility/plugin-helper.ts
+  s_13b128c446dab7::t_57032752e978d3 2319,2329
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_13b128c446dab7::t_57032752e978d3 374,398
+  s_13b128c446dab7::t_cffe8568dc16c9 336,339,386-387,400
+  s_13b128c446dab7::t_729437e9c69493 303,320,350
+  s_13b128c446dab7::t_d437839021ad83 466
+packages/effects-core/src/render/index.ts
+  s_13b128c446dab7::t_024d1b5ead7ba7 14
+web-packages/dev-tools/src/features/assets/preview/material-preview-renderer.ts
+  s_13b128c446dab7::t_76b98dabda6106 278-281
+  s_13b128c446dab7::t_57032752e978d3 277,282-283
+packages/effects-core/src/render/graphics-batch-buffer.ts
+  s_13b128c446dab7::t_729437e9c69493 71
+  s_13b128c446dab7::t_d437839021ad83 74
+packages/effects-threejs/src/gpu-buffer-three.ts
+  s_13b128c446dab7::t_76b98dabda6106 60-65
+  s_13b128c446dab7::t_57032752e978d3 2,7-16,36
+  s_13b128c446dab7::t_f35fed980952a7 1,19,25-35,37-59,66-80,103
+web-packages/test/unit/src/effects-webgl/vertex-buffer.spec.ts
+  s_13b128c446dab7::t_ccccadcddd6703 1-10,12-28,30-38,41-42,44-48,50-73,76-78,80-126
+  s_13b128c446dab7::t_729437e9c69493 43,49
+  s_13b128c446dab7::t_cffe8568dc16c9 11,29,39-40,74-75
+  s_13b128c446dab7::t_2d4d097cf8c5a4 79
+packages/effects-core/src/rendering-device.ts
+  s_13b128c446dab7::t_024d1b5ead7ba7 6,128
+packages/effects-core/src/plugins/sprite/sprite-item.ts
+  s_13b128c446dab7::t_d437839021ad83 372
+  s_13b128c446dab7::t_729437e9c69493 369
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_13b128c446dab7::t_57032752e978d3 2,16,1054,1146,1510
+web-packages/test/unit/src/effects-webgl/index.ts
+  s_13b128c446dab7::t_ccccadcddd6703 13
+packages/effects-threejs/src/three-geometry.ts
+  s_13b128c446dab7::t_76b98dabda6106 36-37,87-88
+  s_13b128c446dab7::t_f35fed980952a7 1,6,23,27,38,40,48-50,59,76,83,89-94,97-98
+  s_13b128c446dab7::t_811790121d6114 65-66
+packages/effects-core/src/components/frame-component.ts
+  s_13b128c446dab7::t_d437839021ad83 400
+  s_13b128c446dab7::t_729437e9c69493 397
+packages/effects-core/src/render/vertex-buffer.ts
+  s_13b128c446dab7::t_76b98dabda6106 5
+  s_13b128c446dab7::t_024d1b5ead7ba7 1-4,6-13
+web-packages/test/unit/src/effects-webgl/gl-mesh.spec.ts
+  s_13b128c446dab7::t_729437e9c69493 32
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_13b128c446dab7::t_729437e9c69493 550
+  s_13b128c446dab7::t_d437839021ad83 553
+packages/effects-core/src/render/geometry.ts
+  s_13b128c446dab7::t_811790121d6114 126-127,157-158,188,577
+  s_13b128c446dab7::t_76b98dabda6106 136,139-141,144-145,147,149,151-152,161-167,170-175,178,509-510
+  s_13b128c446dab7::t_024d1b5ead7ba7 9,57,81,131,169,227,231,303,322,442,488,547,592,603
+  s_13b128c446dab7::t_729437e9c69493 183,190,210
+web-packages/test/unit/src/effects-webgl/gl-context-lost.spec.ts
+  s_13b128c446dab7::t_729437e9c69493 169,177,214
+web-packages/test/unit/src/effects-webgl/geometry.spec.ts
+  s_13b128c446dab7::t_811790121d6114 246
+  s_13b128c446dab7::t_57032752e978d3 102,140-141,143,145
+  s_13b128c446dab7::t_729437e9c69493 33,60-61,78,87,144,154,159,170,188,298,311
+  s_13b128c446dab7::t_cffe8568dc16c9 90-92,101,103-104,269,273-274
+  s_13b128c446dab7::t_d437839021ad83 157,161
+packages/effects-webgl/src/rendering-device-webgl.ts
+  s_13b128c446dab7::t_f35fed980952a7 157-160
+  s_13b128c446dab7::t_024d1b5ead7ba7 3,257,268,278,283,288,302,307,314,317
+packages/effects-threejs/src/rendering-device-three.ts
+  s_13b128c446dab7::t_f35fed980952a7 5,8,84-87,92,95-97,100-102
+plugin-packages/spine/src/spine-mesh.ts
+  s_13b128c446dab7::t_729437e9c69493 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "68b201cc00406f874dde5416216fd256ad97f997",
+  "prompts": {},
+  "sessions": {
+    "s_13b128c446dab7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bff9-1e9e-7c01-b4c9-8a650e2c33f0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,55 @@
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-tool.ts
+  s_b7f7b9926aec69::t_ac81010b5096c2 1-46,48-140,142-160
+  s_b7f7b9926aec69::t_3e33810b477058 47,141
+web-packages/dev-tools/src/examples/initialize-example-assets.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1-76
+packages/effects-core/src/plugins/shape/index.ts
+  s_b7f7b9926aec69::t_5e0002cf7f4953 3-4
+packages/effects-core/src/plugins/shape/paint.ts
+  s_b7f7b9926aec69::t_71ae78f63f8902 130
+  s_b7f7b9926aec69::t_5e0002cf7f4953 135-143
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-path.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1-166
+packages/effects-core/src/render/graphics-primitives.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1-157
+packages/effects-core/src/math/shape/stroke-expansion.ts
+  s_b7f7b9926aec69::t_3e33810b477058 566-567,576,686,688,691,695,697,700,703,706,713-714
+  s_b7f7b9926aec69::t_71ae78f63f8902 1-565,568-575,577-685,687,689-690,692-694,696,698-699,701-702,704-705,707-712,715-772
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_b7f7b9926aec69::t_5e0002cf7f4953 1-55
+packages/effects-core/src/render/graphics.ts
+  s_b7f7b9926aec69::t_3e33810b477058 9,15,98,591,604-605,622,626,628,643-645,658-659,671-672,710,992-993,995-1005,1012-1013,1069
+web-packages/dev-tools/src/examples/scenes/vector-stroke-scene.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1-60
+web-packages/dev-tools/src/examples/scenes/default-scene.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_b7f7b9926aec69::t_5e0002cf7f4953 1-2,5-28,33-39,44,46-78,81-94,96-99,101-119,121-249,251-259
+packages/effects-core/src/plugins/shape/contour-measure.ts
+  s_b7f7b9926aec69::t_71ae78f63f8902 6-7,16,31,52,60,84,97,138,175,181,204,212,220-221,243,250,256-258,268,286,375-376,382-384,425,448,453,458,462,511,518,526-561,570,580,584,592,596,605,613,616,620,623,653,662,666
+packages/effects-core/src/components/frame-component.ts
+  s_b7f7b9926aec69::t_71ae78f63f8902 293
+  s_b7f7b9926aec69::t_5e0002cf7f4953 19-23,284,287,294-296,298-300
+  s_b7f7b9926aec69::t_3e33810b477058 273
+packages/effects-core/src/math/shape/stroke-width-profile.ts
+  s_b7f7b9926aec69::t_3e33810b477058 1-88
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_b7f7b9926aec69::t_5e0002cf7f4953 3,11-12,18,20,22-25,29,36,153-154,186-190,195-199,291-294,296,298,385,388-392,396,409-423,443-446,497,567-571,573,575,585,596-600,635-676,697,701,719-720,741,746,748-749,833,840-852
+  s_b7f7b9926aec69::t_3e33810b477058 718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6021a631cab7ecd16fc3b326d7dfb416d6007df0",
+  "prompts": {},
+  "sessions": {
+    "s_b7f7b9926aec69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a54c-b3f4-7280-a196-f604ffdb00b4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_a2dcef6c33d20d::t_10afecf25e4e1d 157,179-233,766-767
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_a2dcef6c33d20d::t_10afecf25e4e1d 29-30
+web-packages/demo/src/gizmo-2d/inspector.ts
+  s_a2dcef6c33d20d::t_21b506372380f0 118,142,173
+packages/effects-core/src/components/frame-component.ts
+  s_a2dcef6c33d20d::t_21b506372380f0 30,33,41-42,53-55,62-117,243-247,347-348,351,390-392
+  s_a2dcef6c33d20d::t_0687a7c3433bf8 43
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_a2dcef6c33d20d::t_21b506372380f0 120,362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30c7dc4f6df951903ca599a8c2737bb148048cfd",
+  "prompts": {},
+  "sessions": {
+    "s_a2dcef6c33d20d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1be4b-d762-7640-8181-ea7ce4c5a88e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}

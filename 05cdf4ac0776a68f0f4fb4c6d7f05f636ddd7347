@@ -1,0 +1,21 @@
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_8d754ae2836942::t_18c4afb168ebda 36,68
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_8d754ae2836942::t_18c4afb168ebda 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "05cdf4ac0776a68f0f4fb4c6d7f05f636ddd7347",
+  "prompts": {},
+  "sessions": {
+    "s_8d754ae2836942": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d2ff-2242-7eb0-b51b-99002f038968",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}

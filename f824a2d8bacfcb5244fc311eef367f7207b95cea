@@ -1,0 +1,105 @@
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_aeb2d42f373258::t_7f519fabeff24d 801-802
+  s_aeb2d42f373258::t_1bd1e295623b1a 7,577,591,803-805
+web-packages/test/unit/src/plugin-editor-gizmo/2d/selection.spec.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 2,43,91
+web-packages/test/unit/src/plugin-editor-gizmo/2d/gesture-handler.spec.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 3,106,594
+web-packages/dev-tools/src/features/scene/viewport/scene-viewport-input.ts
+  s_aeb2d42f373258::t_f618242e0868b6 25-26
+plugin-packages/editor-gizmo/src/2d/selection/selection.ts
+  s_aeb2d42f373258::t_1bd1e295623b1a 688,709,722,726,977
+web-packages/dev-tools/src/framework/selection/editor-selection.ts
+  s_aeb2d42f373258::t_1c41bb9db0eb88 11,15-17,29
+plugin-packages/editor-gizmo/src/2d/items/item-hierarchy.ts
+  s_aeb2d42f373258::t_42823b1403548f 108-113,137
+  s_aeb2d42f373258::t_1bd1e295623b1a 1,114
+  s_aeb2d42f373258::t_a7a006bc442665 115
+web-packages/dev-tools/src/features/scene/document/scene-document.ts
+  s_aeb2d42f373258::t_52ac05fa867fab 29,111,256-257,349,351-359,361-362,433,506-509,511
+  s_aeb2d42f373258::t_9d494135c226e0 350,360
+  s_aeb2d42f373258::t_063416150bdb96 128,140-145
+  s_aeb2d42f373258::t_7d127e89ba18a5 264-265,267-273,277-291,293-297,300-302,305
+web-packages/dev-tools/src/features/scene/viewport/scene-viewport-panel.ts
+  s_aeb2d42f373258::t_7d127e89ba18a5 1,36,102,105-107,150-153,160-162,164-168,183-214,216-219
+  s_aeb2d42f373258::t_8a30e942d69c02 182,220-234,251-253
+  s_aeb2d42f373258::t_d889682f78f0a7 215
+  s_aeb2d42f373258::t_be8aedc81a5f88 154,156-159
+  s_aeb2d42f373258::t_f618242e0868b6 93-97,101,103-104
+web-packages/dev-tools/src/features/sequencer/sequencer-document.ts
+  s_aeb2d42f373258::t_7f519fabeff24d 14,649
+  s_aeb2d42f373258::t_5cf5ae667746c5 1097-1115,1122-1125,1138,1142
+  s_aeb2d42f373258::t_6b80cda077ec52 183-184,211,303,577,671,673-705,707-712,714-718,720-744,808-810,1396-1412,1451,1475,1485-1504,1511-1513
+  s_aeb2d42f373258::t_6bd50108cf39c9 88,94,143,188,530,546,558-560,562-564,581,583,595,598,600,606,626,629-634,640-642,1180
+  s_aeb2d42f373258::t_78bfbb5181a3c4 81-86,142,161,182,218-227,229-230,232-236,239-271,547-548,566-576,584-587,589,594,607-612,625,627,643-645,650-670,950,1117-1121,1126-1128,1130-1137,1139,1141,1143-1152
+  s_aeb2d42f373258::t_6ee85a0836f01e 599,601-605
+  s_aeb2d42f373258::t_7acd5b96ab1a40 706,713,719
+  s_aeb2d42f373258::t_9d494135c226e0 87,89-93,545,549-557,561,565,635-639,807,1056
+  s_aeb2d42f373258::t_ea3fcc890cdc80 162-164
+  s_aeb2d42f373258::t_1ed7c32236a3bb 179-181
+  s_aeb2d42f373258::t_66a50671bfc204 208-210
+  s_aeb2d42f373258::t_6210b3009db7b4 212-213
+  s_aeb2d42f373258::t_c807b92d231041 216-217
+  s_aeb2d42f373258::t_443a4199811607 272-273
+  s_aeb2d42f373258::t_eadac053f2bdb6 300-302
+  s_aeb2d42f373258::t_365f06941b1c77 304-306
+  s_aeb2d42f373258::t_73fde8fdb7e6e8 578
+  s_aeb2d42f373258::t_cd2396c6944ce3 672
+  s_aeb2d42f373258::t_82cd7f6db31b60 804-806
+  s_aeb2d42f373258::t_1430301a4cebde 811
+  s_aeb2d42f373258::t_501fd8b69556cd 949
+  s_aeb2d42f373258::t_9f1a078405dccd 1053-1055
+  s_aeb2d42f373258::t_a5a956b1726e61 1057
+  s_aeb2d42f373258::t_db26b9cb8477ee 1116
+web-packages/test/unit/src/plugin-editor-gizmo/2d/change-selection-gizmo.spec.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 1,103
+web-packages/test/unit/src/plugin-editor-gizmo/2d/assisted-layout.spec.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 2,58
+web-packages/test/unit/src/plugin-editor-gizmo/helpers/items.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 8-15
+web-packages/dev-tools/src/features/sequencer/sequencer-selection.ts
+  s_aeb2d42f373258::t_144f0f2f43af89 1-57
+web-packages/test/unit/src/plugin-editor-gizmo/2d/select-text-gizmo.spec.ts
+  s_aeb2d42f373258::t_b96f3cfe6629c1 2,83
+plugin-packages/editor-gizmo/src/2d/math/geometry.ts
+  s_aeb2d42f373258::t_65ef4196985313 103-114
+web-packages/dev-tools/src/features/sequencer/sequencer-panel.ts
+  s_aeb2d42f373258::t_1c41bb9db0eb88 77,533,535-536,538-542,544,574,636,663
+  s_aeb2d42f373258::t_0176a3bc6e01c4 3,282,532,534,537,543,545-561,579,581-582,586-587,599,635,637-639,662,665
+  s_aeb2d42f373258::t_da62a65ebd7215 613
+  s_aeb2d42f373258::t_9adc0244501cd4 279-281
+  s_aeb2d42f373258::t_3ad2a637ded893 283-284
+  s_aeb2d42f373258::t_3a3e1428ddee3a 575
+web-packages/dev-tools/src/features/sequencer/sequencer-canvas.ts
+  s_aeb2d42f373258::t_f247d5b94004da 56,709-710,876,886-893,1001-1002
+  s_aeb2d42f373258::t_da62a65ebd7215 58,83-88,107,136-152,171,175-176,178-180,188,197,206-207,211,213-217,219-222,224-228,230-231,236,238,241-251,328-330,336,350,355-364,372,520,526-527,529,572,707,969,971,1012,1014-1027
+  s_aeb2d42f373258::t_f618242e0868b6 788,910,925,948,967-968,970,972-978,1054
+  s_aeb2d42f373258::t_7acd5b96ab1a40 731,750,847,849,851-852
+  s_aeb2d42f373258::t_063416150bdb96 331-335,1008,1013
+  s_aeb2d42f373258::t_41b32ab1d699cf 991,1028-1030,1094-1096,1100-1102,1104-1108,1110-1111,1113
+  s_aeb2d42f373258::t_92a7d6f4e6c1be 517-519
+  s_aeb2d42f373258::t_43250879688878 521-525
+  s_aeb2d42f373258::t_3172377b16b5da 528
+  s_aeb2d42f373258::t_be6dcb837080c4 530-532
+  s_aeb2d42f373258::t_41f1fc0442c6d4 569-571
+  s_aeb2d42f373258::t_96aebda53db568 573-574
+  s_aeb2d42f373258::t_e8d8ce8238d913 704-706
+  s_aeb2d42f373258::t_3b881aed32ff05 708
+  s_aeb2d42f373258::t_0c42b6293889b5 988-990
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f824a2d8bacfcb5244fc311eef367f7207b95cea",
+  "prompts": {},
+  "sessions": {
+    "s_aeb2d42f373258": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c8a9-28a4-7d21-beb3-0f456d65e63a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}
