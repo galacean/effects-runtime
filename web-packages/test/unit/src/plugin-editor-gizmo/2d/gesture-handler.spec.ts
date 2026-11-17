@@ -1,5 +1,6 @@
 import { InputEventKey, InputEventMouseButton, MouseButton, MouseButtonMask, type InputEventMouse } from '@galacean/effects';
 import { restoreTestState, getSpyCalls, resetSpy } from '../helpers/spies';
+import { createCompositionFixture } from '../helpers/items';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 import { CompositionComponent, Downloader, FrameComponent, InputEventMouseMotion, spec, TextComponent, type Composition, type Engine, type VFXItem } from '@galacean/effects';
@@ -102,7 +103,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     const compositions = handler.getEngine().sceneServer.compositions;
 
     if (compositions.length === 0) {
-      compositions.push({ items: [] } as unknown as Composition);
+      compositions.push(createCompositionFixture([]) as unknown as Composition);
     }
     compositions[0].items.push(item);
 
@@ -590,9 +591,7 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
       getComponent: (component: unknown) => component === FrameComponent ? {} : undefined,
     } as unknown as VFXItem;
 
-    handler.getEngine().sceneServer.compositions.push({
-      items: [effectsItem],
-    } as unknown as Composition);
+    handler.getEngine().sceneServer.compositions.push(createCompositionFixture([effectsItem]) as unknown as Composition);
     activateTool(handler, () => new MoveGizmoTool(handler));
     handler.getSelection().commitSelectedItems(['effects']);
 

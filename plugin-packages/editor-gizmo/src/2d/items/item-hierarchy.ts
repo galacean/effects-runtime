@@ -1,4 +1,4 @@
-import type { Composition, VFXItem } from '@galacean/effects';
+import { VFXItem, type Composition } from '@galacean/effects';
 import { isEffectsPlayerItem, isFramePlayerItem } from './item-predicates';
 
 /**
@@ -105,6 +105,14 @@ export function getPlayerItemById (composition: Composition | undefined, id: str
   if (!composition) {
     return undefined;
   }
+  const { sceneRoot } = composition;
+  const item = composition.engine.effectsObjectServer.objectInstance[id];
+
+  if (item instanceof VFXItem) {
+    for (let parent = item.parent; parent; parent = parent.parent) {
+      if (parent === sceneRoot) { return item; }
+    }
+  }
   /**
    * 在当前元素子树中递归查找实例。
    * @param items 当前层元素。
@@ -126,5 +134,5 @@ export function getPlayerItemById (composition: Composition | undefined, id: str
     return undefined;
   };
 
-  return dfs(composition.items, id);
+  return dfs(sceneRoot.children, id);
 }

@@ -1,5 +1,5 @@
 import { restoreTestState, getSpyCalls, resetSpy, type TestSpy } from '../helpers/spies';
-import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
+import { createCompositionFixture, setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 
 import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, spec, TextComponent, type Engine, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
@@ -80,7 +80,7 @@ describe('plugin-editor-gizmo/select-text-gizmo', () => {
       hitTest: (point: Vector2) => hitResolver?.(point) ?? hitIds,
       commitSelectedItems,
     } as unknown as Selection;
-    const composition = { items: [current, other] };
+    const composition = createCompositionFixture([current, other]);
     const container = document.createElement('div');
 
     Object.defineProperties(container, {

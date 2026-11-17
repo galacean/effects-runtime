@@ -1,4 +1,4 @@
-import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
+import type { Engine, InputEventKey, InputEventMouseButton, VFXItem } from '@galacean/effects';
 import { InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
 import { Control, FocusMode } from '@galacean/effects-plugin-gui';
 import { GizmoViewportUtils } from '@galacean/effects-plugin-editor-gizmo';
@@ -33,6 +33,7 @@ export class SceneViewportPanel extends EditorWindow {
   private pendingFit = false;
   private pendingSelectionFit = false;
   private updatingInput = false;
+  private transformTargets?: VFXItem[];
   private stableViewportFrames = 0;
   private context?: EditorMenu;
   private readonly brushSettings = createBrushSettings();
@@ -89,13 +90,21 @@ export class SceneViewportPanel extends EditorWindow {
     EditorRuntimeSession.player?.container?.style.setProperty('--scene-text-edit-visibility', 'hidden');
   }
   override flushEdits (): void {
-    if (this.updatingInput || !this.input || !this.gizmo) { return; }
-    if (this.gizmo.tool === 'brush') {
-      this.input.reset(); this.gizmo.brush.cancel(); sceneWorkspace.current?.setScopeActive(this, false);
+    const { input, gizmo } = this;
+
+    if (this.updatingInput || !input || !gizmo) { return; }
+    if (gizmo.tool === 'brush') {
+      input.reset(); gizmo.brush.cancel(); sceneWorkspace.current?.setScopeActive(this, false);
 
       return;
     }
-    sceneWorkspace.observe('Transform selection', () => { this.input?.finish(); this.gizmo?.handler.resetEditMode(); }, this.gizmo.selectedItems);
+    if (input.hasActivePointer || gizmo.handler.getActiveEditMode().id !== 'default-selection') {
+      this.observePointer(() => {
+        input.finish();
+        gizmo.handler.resetEditMode();
+      });
+    }
+    this.transformTargets = undefined;
     sceneWorkspace.current?.setScopeActive(this, false);
   }
   override onUndoRedo (): void {
@@ -138,13 +147,25 @@ export class SceneViewportPanel extends EditorWindow {
 
         return;
       }
-      const changed = sceneWorkspace.observe('Transform selection', () => this.input?.mouse(event), this.gizmo.selectedItems);
+      try {
+        if (!(event instanceof InputEventMouseMotion) && event.isPressed() && this.viewport?.pointerActive && !this.input?.hasActivePointer) {
+          this.transformTargets = undefined;
+          sceneWorkspace.flushEdits();
+          const document = sceneWorkspace.current;
 
-      this.updatingInput = false;
-      const editing = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
+          if (document && !sceneWorkspace.changingDocument) {
+            document.begin('Select objects', false);
+            document.setScopeActive(this, true);
+          }
+        }
+        this.observePointer(() => this.input?.mouse(event));
+        const editing = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
 
-      if (changed || editing) { sceneWorkspace.current?.setScopeActive(this, true); }
-      if (!this.viewport?.pointerActive && !editing) { sceneWorkspace.current?.setScopeActive(this, false); }
+        sceneWorkspace.current?.setScopeActive(this, !!this.viewport?.pointerActive || editing);
+      } finally {
+        if (!this.input?.hasActivePointer) { this.transformTargets = undefined; }
+        this.updatingInput = false;
+      }
     } else if (event instanceof InputEventMouseMotion) {
       if (!this.viewport?.pointerActive) { return; }
       if (event.buttonMask & MouseButtonMask.Left) { this.cameraController.handleRotate(event.relative.x, event.relative.y); }
@@ -158,8 +179,59 @@ export class SceneViewportPanel extends EditorWindow {
     }
     event.accept();
   }
-  key (event: InputEventKey): void { this.input?.key(event); }
-  cancelPointerInteraction (): void { this.input?.reset(); sceneWorkspace.current?.setScopeActive(this, false); }
+  key (event: InputEventKey): void { this.forwardPointerInput(() => this.input?.key(event)); }
+  cancelPointerInteraction (): void {
+    this.observePointer(() => this.input?.reset());
+    this.transformTargets = undefined;
+    sceneWorkspace.current?.setScopeActive(this, false);
+  }
+
+  private observePointer (action: () => void): void {
+    const document = sceneWorkspace.current;
+    const gizmo = this.gizmo;
+
+    if (!document || !gizmo || sceneWorkspace.changingDocument) {
+      action();
+
+      return;
+    }
+    const handler = gizmo.handler;
+
+    try {
+      document.observeEditor('Select objects', () => {
+        document.observeChanges('Transform selection', capture => {
+          const mode = handler.getActiveEditMode().id;
+
+          if (this.transformTargets || mode !== 'default-selection' && mode !== 'effects-edit') {
+            capture(this.transformTargets ?? gizmo.selectedItems);
+          }
+          const unsubscribe = handler.on('actionstart', event => {
+            if ('transformType' in event && !this.transformTargets) {
+              this.transformTargets = gizmo.selectedItems;
+              capture(this.transformTargets);
+            }
+          });
+
+          try { action(); } finally { unsubscribe(); }
+        });
+      });
+    } catch (error) { sceneWorkspace.report(error); }
+  }
+
+  // Modifier and viewport boundary events can also replay the active drag.
+  private forwardPointerInput (action: () => void): void {
+    if (this.updatingInput || !this.is2DMode || this.gizmo?.tool === 'brush' || !this.input?.hasActivePointer) {
+      action();
+
+      return;
+    }
+    this.updatingInput = true;
+    try { this.observePointer(action); } finally {
+      if (!this.input?.hasActivePointer) { this.transformTargets = undefined; }
+      this.updatingInput = false;
+    }
+  }
+
   showContext (event: InputEventMouseButton): void {
     const viewport = this.viewport, composition = this.gizmo?.composition;
 
@@ -176,9 +248,9 @@ export class SceneViewportPanel extends EditorWindow {
     ]);
     this.context.show(viewport, event.globalPosition);
   }
-  enter (position: math.Vector2): void { this.input?.enter(position); }
-  leave (position: math.Vector2): void { this.input?.leave(position); }
-  focus (focused: boolean): void { this.input?.focus(focused); }
+  enter (position: math.Vector2): void { this.forwardPointerInput(() => this.input?.enter(position)); }
+  leave (position: math.Vector2): void { this.forwardPointerInput(() => this.input?.leave(position)); }
+  focus (focused: boolean): void { this.forwardPointerInput(() => this.input?.focus(focused)); }
   override dispose (): void { super.dispose(); this.context?.dispose(); this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined; }
   drawBackground (control: Control): void {
     control.fillRect(0, 0, control.width, control.height, new math.Color(22 / 255, 24 / 255, 27 / 255, 1));

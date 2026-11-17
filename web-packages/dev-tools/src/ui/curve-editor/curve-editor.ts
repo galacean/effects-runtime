@@ -9,7 +9,7 @@ export interface CurveEditorOptions {
   rect: CurveRect,
   bounds: CurveBounds,
   models: readonly CurveModel[],
-  selected: ReadonlySet<string>,
+  selected: Pick<ReadonlySet<string>, 'has'>,
   showTangents?: boolean,
   selectedTangents?: ReadonlySet<string>,
   mode?: 'curves' | 'keys',
