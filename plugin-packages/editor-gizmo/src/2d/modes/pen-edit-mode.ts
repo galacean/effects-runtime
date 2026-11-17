@@ -3,7 +3,8 @@ import type { GizmoTool } from '../gizmo-tool';
 import { MoveGizmoTool } from '../gizmo-tools/move-gizmo-tool';
 import { HandGizmoTool } from '../gizmo-tools/hand-gizmo-tool';
 import { PenGizmo } from '../gizmos/shape/pen-gizmo';
-import type { GeometryGizmoHost, HandleMirrorMode, PenNodeSelection, PenToolState } from '../gizmos/shape/geometry';
+import type { GeometryGizmoHost, HandleMirrorMode, PenToolState } from '../gizmos/shape/geometry';
+import { createPenEditContext } from '../gizmos/shape/pen-edit-context';
 import type { EditMode } from './edit-mode';
 
 /** One mode for a new path, an appended subpath and existing Bezier nodes. */
@@ -11,13 +12,10 @@ export class PenEditMode implements EditMode {
   readonly id = 'pen';
   readonly dimension = 2;
   private gizmo?: PenGizmo;
-  private selection: PenNodeSelection[] = [];
-  private target?: string;
+  private editContext = createPenEditContext();
   private toolState: PenToolState;
   private interactionMode: PenToolState;
   private preserveTarget: boolean;
-  private mirrorMode: HandleMirrorMode = 'angle-length';
-  private lassoMode = false;
 
   constructor (
     private readonly owner: GizmoOwner,
@@ -35,6 +33,7 @@ export class PenEditMode implements EditMode {
 
   enterEdit (): void {
     if (this.toolState === 'edit') { return; }
+    this.gizmo?.onCancel('pen-edit');
     this.toolState = 'edit';
     this.interactionMode = 'edit';
     this.preserveTarget = true;
@@ -49,8 +48,8 @@ export class PenEditMode implements EditMode {
     this.interactionMode = 'create';
     this.preserveTarget = preserveTarget;
     if (!preserveTarget) {
-      this.selection = [];
-      this.target = undefined;
+      this.editContext.selected = undefined;
+      this.editContext.selectedNodes.clear();
       this.owner.getSelection().commitSelectedItems([]);
     }
     this.owner.rebuildGizmos();
@@ -62,7 +61,8 @@ export class PenEditMode implements EditMode {
     this.toolState = 'create';
     this.interactionMode = 'create';
     this.preserveTarget = true;
-    this.selection = [];
+    this.editContext.selected = undefined;
+    this.editContext.selectedNodes.clear();
     this.owner.rebuildGizmos();
     this.onStateChange?.();
   }
@@ -72,31 +72,21 @@ export class PenEditMode implements EditMode {
   }
 
   createGizmos (): PenGizmo[] {
-    const target = (this.interactionMode === 'edit' || this.preserveTarget) ? this.host.readPath()?.itemId : undefined;
-
-    const previousPoint = this.gizmo?.selectedInfo;
-
-    this.selection = (this.interactionMode === 'edit' || this.preserveTarget) && target === this.target && previousPoint
-      ? this.gizmo?.selectedPointsInfo ?? this.selection : [];
-    this.target = target;
     this.gizmo = new PenGizmo(this.owner, this.host, this.interactionMode, state => {
       if (state === 'create') {
         this.enterEdit();
       } else {
         this.owner.resetEditMode();
       }
-    }, this.preserveTarget);
-    this.gizmo.setHandleMirrorMode(this.mirrorMode);
-    this.gizmo.setLassoMode(this.lassoMode);
-    this.gizmo.setSelectedPoints(this.selection);
+    }, this.preserveTarget, this.editContext);
+    this.gizmo.onUpdate();
 
     return [this.gizmo];
   }
 
   onExit (): void {
     this.gizmo?.onCancel('mode-exit');
-    this.selection = [];
-    this.target = undefined;
+    this.editContext = createPenEditContext();
     this.toolState = 'create';
     this.interactionMode = 'create';
     this.preserveTarget = false;
@@ -104,12 +94,11 @@ export class PenEditMode implements EditMode {
   }
 
   setHandleMirrorMode (mode: HandleMirrorMode): void {
-    this.mirrorMode = mode;
-    this.gizmo?.setHandleMirrorMode(mode);
+    this.editContext.mirrorMode = mode;
   }
 
   setLassoMode (enabled: boolean): void {
-    this.lassoMode = enabled;
+    this.editContext.lassoMode = enabled;
     this.gizmo?.setLassoMode(enabled);
   }
 }

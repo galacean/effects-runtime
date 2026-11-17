@@ -1,5 +1,5 @@
 import { restoreTestState, getSpyCalls, spyOnGetter, type TestSpy } from '../helpers/spies';
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, Transform, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2, Circle, Line2 } from '@galacean/effects-math/es/extension/index';
 import { getBoxTransform, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
@@ -773,6 +773,42 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(shape.yRadius).to.equal(40);
     expect(getSpyCalls(transform.setScale).at(-1)).to.deep.equal([-1, 1, 1]);
   });
+
+  for (const rotated of [false, true]) {
+    it(`偏移自定义路径穿过零点和镜像时固定点不移动（父变换=${rotated}）`, () => {
+      const { gizmo } = createGizmo(TransformType.NULL);
+      const parent = new Transform(rotated ? { position: [20, -30, 0], scale: [2, 3, 1], rotation: [0, 0, 20] } : {});
+      const transform = new Transform(rotated ? { position: [15, 25, 0], scale: [-2, 3, 1], rotation: [0, 0, 37] } : {}, parent);
+      const points = [{ x: 90, y: 30 }, { x: 110, y: 30 }, { x: 110, y: 50 }, { x: 90, y: 50 }];
+      const attributes = { type: spec.ShapePrimitiveType.Custom, points,
+        easingIns: points.map(() => ({ x: 0, y: 0 })), easingOuts: points.map(() => ({ x: 0, y: 0 })) };
+      const current = JSON.parse(JSON.stringify(attributes)) as typeof attributes;
+      const initialMatrix = transform.getWorldMatrix().clone();
+      const localToWorld = initialMatrix.clone().setPosition(new Vector3());
+      const fixedPoint = new Vector3(90, 30, 0).applyMatrix(initialMatrix);
+      const session = {
+        item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+        initialPosition: transform.position.clone(),
+        initialScale: transform.scale.clone(),
+        parentWorldToLocal: parent.getWorldMatrix().clone().setPosition(new Vector3()).invert(),
+        shape: { component: { shape: current, definition: {}, onApplyAnimationProperties: () => {} }, attributes, localToWorld },
+      };
+
+      for (const [x, y] of [[0.5, 1], [0, 1], [-1, 1], [1, -1], [-2, -0.5], [1.5, 2]]) {
+        (gizmo as unknown as { applyAnchoredResize: (session: unknown, resize: unknown) => void }).applyAnchoredResize(session, {
+          totalScalar: new Vector3(x, y, 1),
+          totalTranslation: new Vector3(-10 * (1 - x), -10 * (1 - y), 0).applyMatrix(localToWorld),
+        });
+        const matrix = transform.getWorldMatrix();
+        const actualFixed = new Vector3(current.points[0].x, current.points[0].y, 0).applyMatrix(matrix);
+        const actualDragged = new Vector3(current.points[2].x, current.points[2].y, 0).applyMatrix(matrix);
+        const expectedDragged = fixedPoint.clone().add(new Vector3(20 * x, 20 * y, 0).applyMatrix(localToWorld));
+
+        expect(actualFixed.distance(fixedPoint)).to.be.lessThan(0.0001);
+        expect(actualDragged.distance(expectedDragged)).to.be.lessThan(0.0001);
+      }
+    });
+  }
 
   it('手柄在实际拖动时进入变换，Up 结束变换并把 hover 留给 cached Move', () => {
     const { gizmo, owner, emit } = createGizmo(TransformType.SCALE);

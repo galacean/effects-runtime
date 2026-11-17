@@ -13,6 +13,7 @@ export const Vector3 = math.Vector3;
 export const DEG2RAD = math.DEG2RAD;
 export const RAD2DEG = math.RAD2DEG;
 export const clamp = math.clamp;
+export const lerp = math.lerp;
 export const isEqual = math.isEqual;
 export const isZero = math.isZero;
 
@@ -25,4 +26,5 @@ export type Matrix4 = math.Matrix4;
 export type Quaternion = math.Quaternion;
 export type Ray = math.Ray;
 export type Vector2 = math.Vector2;
+export type Vector2Like = math.Vector2Like;
 export type Vector3 = math.Vector3;

@@ -140,7 +140,7 @@ export class ShapeModelGizmo extends Gizmo {
     }
 
     const width = this.shift
-      ? Math.max(Math.abs(delta.x), Math.abs(delta.y), minWidth)
+      ? Math.max(Math.abs(delta.x), Math.abs(delta.y), minWidth, minHeight)
       : Math.max(Math.abs(delta.x), minWidth);
     const height = this.shift ? width : Math.max(Math.abs(delta.y), minHeight);
     const shapeCenter = this.centerOrigin

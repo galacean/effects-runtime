@@ -100,6 +100,7 @@ type ShapeResizeAttributes = {
 type ShapeResizeSnapshot = {
   component: ShapeComponent,
   attributes: ShapeResizeAttributes,
+  localToWorld: Matrix4,
 };
 
 /** 按下时冻结、用于计算绝对缩放结果的会话。 */
@@ -156,7 +157,7 @@ function getResizeAxis (behavior: ResizeSelectionBehavior): 'both' | 'x' | 'y' {
   return behavior === 'resize-x' ? 'x' : behavior === 'resize-y' ? 'y' : 'both';
 }
 
-function createShapeResizeSnapshot (component: ShapeComponent | undefined): ShapeResizeSnapshot | undefined {
+function createShapeResizeSnapshot (component: ShapeComponent | undefined, itemMatrix: Matrix4): ShapeResizeSnapshot | undefined {
   if (!component) {
     return undefined;
   }
@@ -200,7 +201,7 @@ function createShapeResizeSnapshot (component: ShapeComponent | undefined): Shap
       return undefined;
   }
 
-  return { component, attributes };
+  return { component, attributes, localToWorld: itemMatrix.clone().setPosition(new Vector3()) };
 }
 
 function scaledShapeSize (value: number | undefined, scalar: number): number | undefined {
@@ -1271,7 +1272,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     parentWorldToLocal.setPosition(new Vector3()).invert();
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
-    const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent));
+    const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent), itemMatrix);
     const frame = isFramePlayerItem(item);
     const resizeOrigin = textComponent || frame || shapeResize
       ? initialHandle.clone().add(fixedPoint).multiply(0.5)
@@ -1810,6 +1811,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const magnitudeY = Math.abs(scalarY);
     let residualX = 1;
     let residualY = 1;
+    const centerOffset = new Vector3();
 
     switch (attributes.type) {
       case spec.ShapePrimitiveType.Rectangle:
@@ -1857,7 +1859,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       }
       case spec.ShapePrimitiveType.Custom:
         if (current.points && current.easingIns && current.easingOuts
-          && attributes.points && attributes.easingIns && attributes.easingOuts) {
+          && attributes.points?.length && attributes.easingIns && attributes.easingOuts) {
           const bounds = attributes.points.reduce((result, point) => ({
             minX: Math.min(result.minX, point.x),
             maxX: Math.max(result.maxX, point.x),
@@ -1872,6 +1874,9 @@ export class ResizeSelectionGizmo extends Gizmo {
           const centerX = (bounds.minX + bounds.maxX) / 2;
           const centerY = (bounds.minY + bounds.maxY) / 2;
 
+          // 点围绕几何中心缩放，transform 镜像围绕原点；补回中心的世界偏移。
+          centerOffset.set(centerX * (1 - Math.sign(scalarX)), centerY * (1 - Math.sign(scalarY)), 0)
+            .applyMatrix(shape.localToWorld);
           current.points.forEach((point, index) => {
             const source = attributes.points![index];
 
@@ -1914,7 +1919,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (currentScale.x !== targetScaleX || currentScale.y !== targetScaleY || currentScale.z !== targetScaleZ) {
       session.item.transform.setScale(targetScaleX, targetScaleY, targetScaleZ);
     }
-    this.setResizePosition(session, resize.totalTranslation);
+    this.setResizePosition(session, resize.totalTranslation.clone().add(centerOffset));
   }
 
   /**

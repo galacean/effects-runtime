@@ -7,6 +7,7 @@ import './2d/config-manager.spec';
 import './2d/coordinates.spec';
 import './2d/corner-rotation-gizmo.spec';
 import './2d/drawing.spec';
+import './2d/demo-shape-size.spec';
 import './2d/enter-edit-mode-gizmo.spec';
 import './2d/frame-manager.spec';
 import './2d/frame-resize.spec';

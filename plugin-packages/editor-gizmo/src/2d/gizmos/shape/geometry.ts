@@ -1,7 +1,9 @@
+import { Line2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoActionEvent } from '../../gizmo-action';
-import type { Vector2 } from '../../math';
+import { lerp, Vector2, type Vector2Like } from '../../math';
 
-export interface PathPoint { x: number, y: number }
+/** 路径数据兼容宿主和 JSON 快照中的普通坐标对象。 */
+export type PathPoint = Vector2Like;
 export interface PathIndex { point: number, easingIn: number, easingOut: number }
 export interface PenPathData {
   points: PathPoint[],
@@ -67,9 +69,55 @@ let sessionSequence = 0;
 
 export function nextGeometrySession (): number { return ++sessionSequence; }
 
-const lerp = (a: PathPoint, b: PathPoint, t: number): PathPoint => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-const add = (a: PathPoint, b?: PathPoint): PathPoint => ({ x: a.x + (b?.x ?? 0), y: a.y + (b?.y ?? 0) });
-const sub = (a: PathPoint, b: PathPoint): PathPoint => ({ x: a.x - b.x, y: a.y - b.y });
+/** 在视口中按四分之一像素容差细分曲线，并限制递归深度。 */
+export function hitPenCurve (
+  point: Vector2,
+  controls: [Vector2, Vector2, Vector2, Vector2],
+  hitDistance: number,
+): { distance: number, t: number } | undefined {
+  let nearest = hitDistance;
+  let hit: { distance: number, t: number } | undefined;
+  const tolerance = Math.min(0.25, hitDistance / 4);
+  const chord = new Line2();
+  const closestPoint = new Vector2();
+  const visit = (p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, start: number, end: number, depth: number): void => {
+    if (point.x < Math.min(p0.x, p1.x, p2.x, p3.x) - nearest
+      || point.x > Math.max(p0.x, p1.x, p2.x, p3.x) + nearest
+      || point.y < Math.min(p0.y, p1.y, p2.y, p3.y) - nearest
+      || point.y > Math.max(p0.y, p1.y, p2.y, p3.y) + nearest) {
+      return;
+    }
+    chord.set(p0, p3);
+    if (depth >= 16 || Math.max(
+      p1.distance(chord.closestPointToPoint(p1, true, closestPoint)),
+      p2.distance(chord.closestPointToPoint(p2, true, closestPoint)),
+    ) <= tolerance) {
+      const t = chord.closestPointToPointParameter(point, true);
+      const distance = point.distance(chord.at(t, closestPoint));
+
+      if (distance < nearest) {
+        nearest = distance;
+        hit = { distance: nearest, t: lerp(start, end, t) };
+      }
+
+      return;
+    }
+    const a = new Vector2().lerpVectors(p0, p1, 0.5);
+    const b = new Vector2().lerpVectors(p1, p2, 0.5);
+    const c = new Vector2().lerpVectors(p2, p3, 0.5);
+    const d = new Vector2().lerpVectors(a, b, 0.5);
+    const e = new Vector2().lerpVectors(b, c, 0.5);
+    const middle = new Vector2().lerpVectors(d, e, 0.5);
+    const t = lerp(start, end, 0.5);
+
+    visit(p0, a, d, middle, start, t, depth + 1);
+    visit(middle, e, c, p3, t, end, depth + 1);
+  };
+
+  visit(...controls, 0, 1, 0);
+
+  return hit;
+}
 
 export function splitPenSegment (path: PenPathData, shapeIndex: number, segment: number, t: number): number | undefined {
   if (!Number.isFinite(t) || t <= 0 || t >= 1) { return; }
@@ -78,20 +126,26 @@ export function splitPenSegment (path: PenPathData, shapeIndex: number, segment:
   const b = shape?.indexes[segment + 1] ?? (shape?.close ? shape.indexes[0] : undefined);
 
   if (!a || !b) { return; }
-  const p0 = path.points[a.point]; const p3 = path.points[b.point];
+  const from = path.points[a.point]; const to = path.points[b.point];
 
-  if (!p0 || !p3) { return; }
-  const p1 = add(p0, path.easingOuts[a.easingOut]); const p2 = add(p3, path.easingIns[b.easingIn]);
-  const q0 = lerp(p0, p1, t); const q1 = lerp(p1, p2, t); const q2 = lerp(p2, p3, t);
-  const r0 = lerp(q0, q1, t); const r1 = lerp(q1, q2, t); const point = lerp(r0, r1, t);
+  if (!from || !to) { return; }
+  const p0 = new Vector2().copyFrom(from); const p3 = new Vector2().copyFrom(to);
+  const p1 = new Vector2().copyFrom(path.easingOuts[a.easingOut] ?? Vector2.ZERO).add(p0);
+  const p2 = new Vector2().copyFrom(path.easingIns[b.easingIn] ?? Vector2.ZERO).add(p3);
+  const q0 = new Vector2().lerpVectors(p0, p1, t);
+  const q1 = new Vector2().lerpVectors(p1, p2, t);
+  const q2 = new Vector2().lerpVectors(p2, p3, t);
+  const r0 = new Vector2().lerpVectors(q0, q1, t);
+  const r1 = new Vector2().lerpVectors(q1, q2, t);
+  const point = new Vector2().lerpVectors(r0, r1, t);
 
-  a.easingOut = path.easingOuts.push(sub(q0, p0)) - 1;
-  b.easingIn = path.easingIns.push(sub(q2, p3)) - 1;
-  const index = path.points.push(point) - 1;
+  a.easingOut = path.easingOuts.push({ ...q0.subtract(p0) }) - 1;
+  b.easingIn = path.easingIns.push({ ...q2.subtract(p3) }) - 1;
+  const index = path.points.push({ ...point }) - 1;
 
   shape.indexes.splice(segment + 1, 0, { point: index,
-    easingIn: path.easingIns.push(sub(r0, point)) - 1,
-    easingOut: path.easingOuts.push(sub(r1, point)) - 1 });
+    easingIn: path.easingIns.push({ ...r0.subtract(point) }) - 1,
+    easingOut: path.easingOuts.push({ ...r1.subtract(point) }) - 1 });
 
   return segment + 1;
 }

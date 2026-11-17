@@ -436,7 +436,9 @@ export class DemoScene extends EventEmitter<SceneEvents> {
 
     data.item.setPosition(geometry.center.x, geometry.center.y, 0);
     data.item.transform.setSize(1, 1);
-    data.item.transform.setScale(independentSize ? 1 : width, independentSize ? 1 : height, 1);
+    const base = independentSize ? undefined : vectorShapeBaseSize(shapeData);
+
+    data.item.transform.setScale(base?.[0] ? width / base[0] : 1, base?.[1] ? height / base[1] : 1, 1);
     shape.fromData({
       ...shapeData,
       ...shapeStyle(config),

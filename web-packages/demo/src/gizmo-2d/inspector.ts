@@ -264,7 +264,17 @@ export class InspectorPanel {
     if (data?.kind !== 'Vector' || !shape) {
       return false;
     }
-    const value = size / Math.max(Math.abs(item.transform.scale[axis]), 0.01);
+    const scale = Math.abs(item.transform.scale[axis]);
+
+    // 零缩放保持折叠；非零缩放按真实值换算尺寸。
+    if (scale === 0) {
+      return true;
+    }
+    const value = size / scale;
+
+    if (!Number.isFinite(value)) {
+      return true;
+    }
     const definitionUpdates: Record<string, unknown> = {};
 
     switch (shape.type) {
@@ -278,11 +288,19 @@ export class InspectorPanel {
         definitionUpdates[axis === 'x' ? 'xRadius' : 'yRadius'] = value / 2;
 
         break;
-      case spec.ShapePrimitiveType.Polygon:
+      case spec.ShapePrimitiveType.Polygon: {
+        const previousRadius = shape.radius ?? 0;
+
         shape.radius = value / 2;
         definitionUpdates.radius = value / 2;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousRadius) / shape.radius;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
 
         break;
+      }
       case spec.ShapePrimitiveType.Star: {
         const previousOuter = shape.outerRadius ?? 0;
         const nextOuter = value / 2;
@@ -291,6 +309,11 @@ export class InspectorPanel {
         shape.innerRadius = previousOuter === 0 ? shape.innerRadius : (shape.innerRadius ?? 0) * nextOuter / previousOuter;
         definitionUpdates.outerRadius = shape.outerRadius;
         definitionUpdates.innerRadius = shape.innerRadius;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousOuter) / nextOuter;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
 
         break;
       }

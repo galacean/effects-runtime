@@ -7,42 +7,18 @@ import type { PenConfig } from '../../configs/types';
 import { GestureCursorType } from '../../cursor';
 import { Vector2 } from '../../math';
 import { toColor } from '../../drawing';
-import { cloneGeometry, deletePenPoint, disconnectPenSegment, nextGeometrySession, openClosedShapeAt, penEditOperations, splitPenSegment,
-  type GeometryEditKind, type GeometryGizmoHost, type HandleMirrorMode, type PenInteractionState,
+import { cloneGeometry, deletePenPoint, disconnectPenSegment, hitPenCurve, nextGeometrySession, openClosedShapeAt, penEditOperations, splitPenSegment,
+  type GeometryGizmoHost, type HandleMirrorMode,
   type PenNodeSelection, type PenPathData, type PenToolState, type PathIndex, type PathPoint, type ShapeDrawingActionEvent } from './geometry';
-
-type PenHit = { shape: number, index: number, part: 'point' | 'in' | 'out' | 'segment', t?: number };
+import { createPenEditContext, type PenEditContext, type PenHit } from './pen-edit-context';
 
 /** Shared pen interaction. Hosts own coordinates, document writes and history. */
 export class PenGizmo extends Gizmo {
   readonly type = 'pen';
-  private path: PenPathData = this.emptyPath();
-  private drawing = false;
-  private interactionState: PenInteractionState = 'idle';
-  private target?: string;
-  private targetKind?: GeometryEditKind;
-  private targetRevision?: number;
-  private selected?: PenHit;
-  private readonly selectedNodes = new Set<string>();
-  private dragging?: PenHit;
-  private beforeDrag?: PenPathData;
-  private dragPath?: PenPathData;
-  private dragOrigin?: Vector2;
-  private beforeDrawing?: PenPathData;
+  private readonly editContext: PenEditContext;
   private hover?: PenHit;
   private hoverPosition?: Vector2;
-  private undoDraft: PenPathData[] = [];
-  private redoDraft: PenPathData[] = [];
-  private activeShape = 0;
-  private sessionId = 0;
-  private context?: unknown;
-  private independentHandleEdit = false;
-  private mirrorMode: HandleMirrorMode = 'angle-length';
-  private lassoMode = false;
-  private lassoing = false;
-  private lassoPoints: Vector2[] = [];
-  private lassoAdditive = false;
-  private prependDrawing = false;
+  private targetLoaded = false;
 
   constructor (
     owner: GizmoOwner,
@@ -50,7 +26,11 @@ export class PenGizmo extends Gizmo {
     private readonly interactionMode: PenToolState = 'create',
     private readonly onEscape?: (state: PenToolState) => void,
     private readonly preserveTarget = false,
-  ) { super(owner); }
+    private readonly sharedContext?: PenEditContext,
+  ) {
+    super(owner);
+    this.editContext = sharedContext ?? createPenEditContext();
+  }
 
   /** 当前钢笔辅助显示配置。 */
   private get config (): Readonly<PenConfig> {
@@ -58,24 +38,24 @@ export class PenGizmo extends Gizmo {
   }
 
   get selectedInfo (): { shape: number, point: number } | undefined {
-    return this.selected?.part !== 'segment' && this.selected
-      ? { shape: this.selected.shape, point: this.selected.index } : undefined;
+    return this.editContext.selected?.part !== 'segment' && this.editContext.selected
+      ? { shape: this.editContext.selected.shape, point: this.editContext.selected.index } : undefined;
   }
 
   get selectedPointsInfo (): PenNodeSelection[] {
-    return Array.from(this.selectedNodes).map(key => this.parseNodeKey(key)).filter((value): value is PenNodeSelection => !!value);
+    return Array.from(this.editContext.selectedNodes).map(key => this.parseNodeKey(key)).filter((value): value is PenNodeSelection => !!value);
   }
 
-  get handleMirrorMode (): HandleMirrorMode { return this.mirrorMode; }
+  get handleMirrorMode (): HandleMirrorMode { return this.editContext.mirrorMode; }
 
-  setHandleMirrorMode (mode: HandleMirrorMode): void { this.mirrorMode = mode; }
+  setHandleMirrorMode (mode: HandleMirrorMode): void { this.editContext.mirrorMode = mode; }
 
   setLassoMode (enabled: boolean): void {
-    this.lassoMode = enabled;
+    this.editContext.lassoMode = enabled;
     if (!enabled) {
-      this.lassoing = false;
-      this.lassoPoints = [];
-      this.lassoAdditive = false;
+      this.editContext.lassoing = false;
+      this.editContext.lassoPoints = [];
+      this.editContext.lassoAdditive = false;
     }
   }
 
@@ -85,15 +65,15 @@ export class PenGizmo extends Gizmo {
 
   setSelectedPoints (selection: PenNodeSelection[] = []): void {
     this.refreshTarget();
-    this.selectedNodes.clear();
+    this.editContext.selectedNodes.clear();
     for (const node of selection) {
-      if (this.path.shapes[node.shape]?.indexes[node.point]) {
-        this.selectedNodes.add(this.nodeKey(node.shape, node.point));
+      if (this.editContext.path.shapes[node.shape]?.indexes[node.point]) {
+        this.editContext.selectedNodes.add(this.nodeKey(node.shape, node.point));
       }
     }
     const first = selection[0];
 
-    this.selected = first && this.path.shapes[first.shape]?.indexes[first.point]
+    this.editContext.selected = first && this.editContext.path.shapes[first.shape]?.indexes[first.point]
       ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
   }
 
@@ -119,27 +99,27 @@ export class PenGizmo extends Gizmo {
     }
     if (event.buttonIndex !== MouseButton.Left) { return; }
     this.refreshTarget();
-    if (!this.host.canEdit(this.target)) { return; }
+    if (!this.host.canEdit(this.editContext.target)) { return; }
     event.accept();
-    const starting = !this.drawing;
+    const starting = !this.editContext.drawing;
 
-    if (!this.drawing && this.lassoMode && this.target) {
-      this.interactionState = 'editing';
-      this.lassoing = true;
-      this.lassoAdditive = event.shiftPressed;
-      this.lassoPoints = [event.position.clone()];
+    if (!this.editContext.drawing && this.editContext.lassoMode && this.editContext.target) {
+      this.editContext.interactionState = 'editing';
+      this.editContext.lassoing = true;
+      this.editContext.lassoAdditive = event.shiftPressed;
+      this.editContext.lassoPoints = [event.position.clone()];
       this._owner.setCursor({ type: GestureCursorType.BOX_SELECT, angle: 0 });
 
       return;
     }
 
-    if (this.drawing) {
-      this.interactionState = 'drawing';
-      const indexes = this.path.shapes[this.activeShape]?.indexes ?? [];
-      const first = this.path.points[indexes[0]?.point];
-      const last = this.path.points[indexes[indexes.length - 1]?.point];
-      const closePoint = this.prependDrawing ? last : first;
-      const currentPoint = this.prependDrawing ? first : last;
+    if (this.editContext.drawing) {
+      this.editContext.interactionState = 'drawing';
+      const indexes = this.editContext.path.shapes[this.editContext.activeShape]?.indexes ?? [];
+      const first = this.editContext.path.points[indexes[0]?.point];
+      const last = this.editContext.path.points[indexes[indexes.length - 1]?.point];
+      const closePoint = this.editContext.prependDrawing ? last : first;
+      const currentPoint = this.editContext.prependDrawing ? first : last;
 
       if (indexes.length >= 3 && closePoint && this.toView(closePoint).distance(event.position) <= this.config.hitDistance) {
         this.finish(true);
@@ -155,20 +135,20 @@ export class PenGizmo extends Gizmo {
       }
       if (indexes.length >= 2 && atCurrent) { return; }
     }
-    let hit = this.drawing ? undefined : this.hitTest(event.position);
+    let hit = this.editContext.drawing ? undefined : this.hitTest(event.position);
 
     if (this.interactionMode === 'edit' && !hit) {
-      this.selected = undefined;
-      this.selectedNodes.clear();
+      this.editContext.selected = undefined;
+      this.editContext.selectedNodes.clear();
       this.hover = undefined;
       this.hoverPosition = undefined;
-      this.interactionState = 'idle';
+      this.editContext.interactionState = 'idle';
       this._owner.getSnapManager().clearSnappingVisualizations();
 
       return;
     }
-    if (this.interactionMode === 'create' && this.preserveTarget && !this.drawing && this.target) {
-      const selectedStart = this.selected?.part === 'point' ? { ...this.selected } : undefined;
+    if (this.interactionMode === 'create' && this.preserveTarget && !this.editContext.drawing && this.editContext.target) {
+      const selectedStart = this.editContext.selected?.part === 'point' ? { ...this.editContext.selected } : undefined;
 
       if (selectedStart && this.canCloseExistingShape(selectedStart, hit)) {
         this.closeExistingShape(selectedStart.shape);
@@ -200,20 +180,20 @@ export class PenGizmo extends Gizmo {
       }
     }
     if (hit?.part === 'segment') {
-      const center = this.segmentPoint(this.path, hit.shape, hit.index, 0.5);
+      const center = this.segmentPoint(this.editContext.path, hit.shape, hit.index, 0.5);
 
       if (center && this.toView(center).distance(event.position) <= this.config.hitDistance) {
-        this.interactionState = 'editing';
+        this.editContext.interactionState = 'editing';
         this.insertSegmentPoint(hit);
 
         return;
       }
       this.selectSegment(hit);
-      this.interactionState = 'editing';
-      this.beforeDrag = cloneGeometry(this.path);
-      this.dragPath = this.beforeDrag;
-      this.dragOrigin = this.toLocal(event.position)?.clone();
-      this.dragging = hit;
+      this.editContext.interactionState = 'editing';
+      this.editContext.beforeDrag = cloneGeometry(this.editContext.path);
+      this.editContext.dragPath = this.editContext.beforeDrag;
+      this.editContext.dragOrigin = this.toLocal(event.position)?.clone();
+      this.editContext.dragging = hit;
       this.beginSession();
       this.emit('start');
 
@@ -224,101 +204,104 @@ export class PenGizmo extends Gizmo {
         const key = this.nodeKey(hit.shape, hit.index);
 
         if (event.shiftPressed) {
-          if (this.selectedNodes.has(key)) {
-            this.selectedNodes.delete(key);
+          if (this.editContext.selectedNodes.has(key)) {
+            this.editContext.selectedNodes.delete(key);
+            const first = this.selectedPointsInfo[0];
+
+            this.editContext.selected = first ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
+            this.editContext.dragging = undefined;
+
+            return;
           } else {
-            this.selectedNodes.add(key);
+            this.editContext.selectedNodes.add(key);
           }
-          if (!this.selectedNodes.size) {
-            this.selected = undefined;
-          }
-        } else if (!this.selectedNodes.has(key)) {
-          this.selectedNodes.clear();
-          this.selectedNodes.add(key);
+        } else if (!this.editContext.selectedNodes.has(key)) {
+          this.editContext.selectedNodes.clear();
+          this.editContext.selectedNodes.add(key);
         }
       } else {
         const key = this.nodeKey(hit.shape, hit.index);
 
-        if (!this.selectedNodes.has(key)) {
-          this.selectedNodes.clear();
-          this.selectedNodes.add(key);
+        if (!this.editContext.selectedNodes.has(key)) {
+          this.editContext.selectedNodes.clear();
+          this.editContext.selectedNodes.add(key);
         }
       }
-      this.selected = hit;
-      this.interactionState = 'editing';
+      this.editContext.selected = hit;
+      this.editContext.interactionState = 'editing';
       this.hover = hit;
-      this.beforeDrag = cloneGeometry(this.path);
-      this.dragPath = this.beforeDrag;
+      this.editContext.beforeDrag = cloneGeometry(this.editContext.path);
+      this.editContext.dragPath = this.editContext.beforeDrag;
       this.beginSession();
-      const shape = this.path.shapes[hit.shape];
+      const shape = this.editContext.path.shapes[hit.shape];
 
       if (this.interactionMode === 'create' && event.doubleClick && hit.part === 'point' && !shape.close && (hit.index === 0 || hit.index === shape.indexes.length - 1)) {
-        this.beforeDrawing = cloneGeometry(this.path);
-        this.drawing = true;
-        this.interactionState = 'drawing';
-        this.activeShape = hit.shape;
-        this.prependDrawing = hit.index === 0;
-        this.selected = { ...hit, index: this.prependDrawing ? 0 : shape.indexes.length - 1 };
-        this.selectedNodes.clear();
-        this.selectedNodes.add(this.nodeKey(this.selected.shape, this.selected.index));
-        this.dragging = undefined;
+        this.editContext.beforeDrawing = cloneGeometry(this.editContext.path);
+        this.editContext.drawing = true;
+        this.editContext.interactionState = 'drawing';
+        this.editContext.activeShape = hit.shape;
+        this.editContext.prependDrawing = hit.index === 0;
+        this.editContext.selected = { ...hit, index: this.editContext.prependDrawing ? 0 : shape.indexes.length - 1 };
+        this.editContext.selectedNodes.clear();
+        this.editContext.selectedNodes.add(this.nodeKey(this.editContext.selected.shape, this.editContext.selected.index));
+        this.editContext.dragging = undefined;
       } else {
-        this.dragging = hit;
-        this.independentHandleEdit = hit.part !== 'point' && event.altPressed;
+        this.editContext.dragging = hit;
+        this.editContext.independentHandleEdit = hit.part !== 'point' && event.altPressed;
       }
     } else {
-      if (!this.drawing) {
-        this.beforeDrawing = this.target && (this.preserveTarget || this.host.appendSubpaths !== false) ? cloneGeometry(this.path) : undefined;
-        if (this.beforeDrawing) {
-          this.activeShape = this.path.shapes.length;
-          this.path.shapes.push({ close: false, indexes: [] });
+      if (!this.editContext.drawing) {
+        this.editContext.beforeDrawing = this.editContext.target && (this.preserveTarget || this.host.appendSubpaths !== false) ? cloneGeometry(this.editContext.path) : undefined;
+        if (this.editContext.beforeDrawing) {
+          this.editContext.activeShape = this.editContext.path.shapes.length;
+          this.editContext.path.shapes.push({ close: false, indexes: [] });
         } else {
-          this.path = this.emptyPath(); this.target = undefined; this.activeShape = 0;
+          this.editContext.path = this.emptyPath(); this.editContext.target = undefined; this.editContext.activeShape = 0;
         }
-        this.prependDrawing = false;
-        this.drawing = true; this.undoDraft = []; this.redoDraft = [];
-        this.interactionState = 'drawing';
+        this.editContext.prependDrawing = false;
+        this.editContext.drawing = true; this.editContext.undoDraft = []; this.editContext.redoDraft = [];
+        this.editContext.interactionState = 'drawing';
         this.beginSession();
       }
       const point = this.toLocal(this.snapPoint(event.position));
 
       if (!point) { return; }
-      this.beforeDrag = cloneGeometry(this.path);
-      this.dragPath = this.beforeDrag;
-      this.undoDraft.push(this.beforeDrag); this.redoDraft = [];
-      const index = this.path.points.push({ x: point.x, y: point.y }) - 1;
-      const easingIn = this.path.easingIns.push({ x: 0, y: 0 }) - 1;
-      const easingOut = this.path.easingOuts.push({ x: 0, y: 0 }) - 1;
+      this.editContext.beforeDrag = cloneGeometry(this.editContext.path);
+      this.editContext.dragPath = this.editContext.beforeDrag;
+      this.editContext.undoDraft.push(this.editContext.beforeDrag); this.editContext.redoDraft = [];
+      const index = this.editContext.path.points.push({ x: point.x, y: point.y }) - 1;
+      const easingIn = this.editContext.path.easingIns.push({ x: 0, y: 0 }) - 1;
+      const easingOut = this.editContext.path.easingOuts.push({ x: 0, y: 0 }) - 1;
 
       const pathIndex = { point: index, easingIn, easingOut };
-      const shapeIndexes = this.path.shapes[this.activeShape].indexes;
+      const shapeIndexes = this.editContext.path.shapes[this.editContext.activeShape].indexes;
 
-      if (this.prependDrawing) {
+      if (this.editContext.prependDrawing) {
         shapeIndexes.unshift(pathIndex);
       } else {
         shapeIndexes.push(pathIndex);
       }
-      const selectedIndex = this.prependDrawing ? 0 : shapeIndexes.length - 1;
+      const selectedIndex = this.editContext.prependDrawing ? 0 : shapeIndexes.length - 1;
 
-      this.selected = { shape: this.activeShape, index: selectedIndex, part: 'point' };
-      this.selectedNodes.clear();
-      this.selectedNodes.add(this.nodeKey(this.selected.shape, this.selected.index));
-      this.dragging = { ...this.selected, part: 'out' };
+      this.editContext.selected = { shape: this.editContext.activeShape, index: selectedIndex, part: 'point' };
+      this.editContext.selectedNodes.clear();
+      this.editContext.selectedNodes.add(this.nodeKey(this.editContext.selected.shape, this.editContext.selected.index));
+      this.editContext.dragging = { ...this.editContext.selected, part: 'out' };
     }
     this.emit(starting ? 'start' : 'update');
   }
 
   override onMouseMove (event: InputEventMouseMotion): void {
     this.onUpdate();
-    if (this.lassoing) {
+    if (this.editContext.lassoing) {
       this.appendLassoPoint(event.position);
 
       return;
     }
-    this.hoverPosition = this.interactionMode === 'create' && (this.drawing || !this.target)
+    this.hoverPosition = this.interactionMode === 'create' && (this.editContext.drawing || !this.editContext.target)
       ? this.snapPoint(event.position) : undefined;
     this.hover = this.hitTest(event.position);
-    if (!this.drawing && this.target) { this._owner.getSnapManager().clearSnappingVisualizations(); }
+    if (!this.editContext.drawing && this.editContext.target) { this._owner.getSnapManager().clearSnappingVisualizations(); }
     this._owner.setCursor({ type: this.hover ? GestureCursorType.POINTER : GestureCursorType.BOX_SELECT, angle: 0 });
   }
 
@@ -328,41 +311,41 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
-    if (this.lassoing) {
+    if (this.editContext.lassoing) {
       this.appendLassoPoint(event.position);
       event.accept();
 
       return;
     }
-    const hit = this.dragging;
+    const hit = this.editContext.dragging;
 
-    if (!hit || this.interactionState === 'idle') { return; }
+    if (!hit || this.editContext.interactionState === 'idle') { return; }
     this._owner.getSnapManager().clearSnappingVisualizations();
     const point = this.toLocal(hit.part !== 'point' && event.shiftPressed ? event.position : this.snapPoint(event.position, hit));
-    const index = this.path.shapes[hit.shape]?.indexes[hit.index];
+    const index = this.editContext.path.shapes[hit.shape]?.indexes[hit.index];
 
     if (!point || !index) { return; }
     if (hit.part === 'point') {
-      const before = this.dragPath ?? this.beforeDrag ?? this.path;
+      const before = this.editContext.dragPath ?? this.editContext.beforeDrag ?? this.editContext.path;
       const source = before.shapes[hit.shape]?.indexes[hit.index];
       const sourcePoint = source && before.points[source.point];
       const delta = sourcePoint ? point.clone().subtract(new Vector2(sourcePoint.x, sourcePoint.y)) : new Vector2();
       const nodes = this.selectedPointsInfo.length ? this.selectedPointsInfo : [{ shape: hit.shape, point: hit.index }];
 
       for (const node of nodes) {
-        const currentIndex = this.path.shapes[node.shape]?.indexes[node.point];
+        const currentIndex = this.editContext.path.shapes[node.shape]?.indexes[node.point];
         const originalIndex = before.shapes[node.shape]?.indexes[node.point];
         const originalPoint = originalIndex && before.points[originalIndex.point];
 
         if (currentIndex && originalPoint) {
-          this.path.points[currentIndex.point] = { x: originalPoint.x + delta.x, y: originalPoint.y + delta.y };
+          this.editContext.path.points[currentIndex.point] = { x: originalPoint.x + delta.x, y: originalPoint.y + delta.y };
         }
       }
     } else if (hit.part === 'segment') {
-      const before = this.beforeDrag ?? this.path;
+      const before = this.editContext.beforeDrag ?? this.editContext.path;
       const source = this.segmentPoint(before, hit.shape, hit.index, hit.t ?? 0.5);
-      const delta = this.dragOrigin
-        ? point.clone().subtract(this.dragOrigin)
+      const delta = this.editContext.dragOrigin
+        ? point.clone().subtract(this.editContext.dragOrigin)
         : source ? point.clone().subtract(new Vector2(source.x, source.y)) : new Vector2();
       const segment = this.segmentIndexes(before, hit.shape, hit.index);
       const movedPoints = new Set<number>();
@@ -373,16 +356,16 @@ export class PenGizmo extends Gizmo {
           const original = before.points[endpoint.point];
 
           if (original) {
-            this.path.points[endpoint.point] = { x: original.x + delta.x, y: original.y + delta.y };
+            this.editContext.path.points[endpoint.point] = { x: original.x + delta.x, y: original.y + delta.y };
             movedPoints.add(endpoint.point);
           }
         }
       }
     } else {
-      const mirrorMode = this.mirrorMode === 'mirrored' ? 'angle-length' : this.mirrorMode === 'independent' ? 'none' : this.mirrorMode;
+      const mirrorMode = this.editContext.mirrorMode === 'mirrored' ? 'angle-length' : this.editContext.mirrorMode === 'independent' ? 'none' : this.editContext.mirrorMode;
 
-      this.independentHandleEdit = event.altPressed || mirrorMode === 'none';
-      const anchor = this.path.points[index.point];
+      this.editContext.independentHandleEdit = event.altPressed || mirrorMode === 'none';
+      const anchor = this.editContext.path.points[index.point];
       const delta = point.subtract(new Vector2(anchor.x, anchor.y));
 
       if (event.shiftPressed) {
@@ -392,20 +375,23 @@ export class PenGizmo extends Gizmo {
         delta.set(Math.cos(angle) * length, Math.sin(angle) * length);
       }
       this.detachHandle(hit, hit.part === 'in' ? 'easingIn' : 'easingOut');
-      if (!this.independentHandleEdit) { this.detachHandle(hit, hit.part === 'in' ? 'easingOut' : 'easingIn'); }
+      if (!this.editContext.independentHandleEdit) { this.detachHandle(hit, hit.part === 'in' ? 'easingOut' : 'easingIn'); }
       const field = hit.part === 'in' ? 'easingIns' : 'easingOuts';
       const opposite = hit.part === 'in' ? 'easingOuts' : 'easingIns';
 
-      this.path[field][hit.part === 'in' ? index.easingIn : index.easingOut] = { x: delta.x, y: delta.y };
-      if (!this.independentHandleEdit) {
+      this.editContext.path[field][hit.part === 'in' ? index.easingIn : index.easingOut] = { x: delta.x, y: delta.y };
+      if (!this.editContext.independentHandleEdit) {
         const oppositeIndex = hit.part === 'in' ? index.easingOut : index.easingIn;
-        const previous = this.beforeDrag?.[opposite]?.[oppositeIndex] ?? { x: 0, y: 0 };
+        const originalIndex = this.editContext.beforeDrag?.shapes[hit.shape]?.indexes[hit.index];
+        const originalOpposite = originalIndex && (hit.part === 'in' ? originalIndex.easingOut : originalIndex.easingIn);
+        const previous = originalOpposite === undefined ? { x: 0, y: 0 }
+          : this.editContext.beforeDrag?.[opposite][originalOpposite] ?? { x: 0, y: 0 };
         const length = mirrorMode === 'angle'
           ? (Math.hypot(previous.x, previous.y) || delta.length())
           : delta.length();
         const direction = delta.length() > 0 ? new Vector2(-delta.x / delta.length() * length, -delta.y / delta.length() * length) : new Vector2(-previous.x, -previous.y);
 
-        this.path[opposite][oppositeIndex] = { x: direction.x, y: direction.y };
+        this.editContext.path[opposite][oppositeIndex] = { x: direction.x, y: direction.y };
       }
     }
     event.accept(); this.emit('update');
@@ -418,30 +404,30 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
-    if (this.lassoing) {
+    if (this.editContext.lassoing) {
       this.finishLasso();
-      this.interactionState = 'idle';
+      this.editContext.interactionState = 'idle';
       event.accept();
 
       return;
     }
-    if (!this.dragging) { return; }
-    this.interactionState = this.drawing ? 'drawing' : 'editing';
-    this.dragging = undefined; this.independentHandleEdit = false; event.accept();
-    if (!this.drawing) {
+    if (!this.editContext.dragging) { return; }
+    this.editContext.interactionState = this.editContext.drawing ? 'drawing' : 'editing';
+    this.editContext.dragging = undefined; this.editContext.independentHandleEdit = false; event.accept();
+    if (!this.editContext.drawing) {
       this.emit('commit');
-      this.sessionId = 0;
-      this.interactionState = 'idle';
+      this.editContext.sessionId = 0;
+      this.editContext.interactionState = 'idle';
     }
-    this.dragPath = undefined;
-    this.dragOrigin = undefined;
-    this.beforeDrag = undefined;
+    this.editContext.dragPath = undefined;
+    this.editContext.dragOrigin = undefined;
+    this.editContext.beforeDrag = undefined;
   }
 
   override onKeyDown (event: InputEventKey): void {
     const key = event.keycode.toLowerCase();
 
-    if (key === 'escape' && this.lassoing) {
+    if (key === 'escape' && this.editContext.lassoing) {
       this.setLassoMode(false); event.accept();
     } else if (key === 'escape') {
       event.accept();
@@ -450,15 +436,15 @@ export class PenGizmo extends Gizmo {
       this.finish(false, this.interactionMode === 'create' ? false : true);
       this.onEscape?.(state);
     } else if (key === 'enter') { event.accept(); this.finish(false); } else if (key === 'q') {
-      this.setLassoMode(!this.lassoMode); event.accept();
-    } else if (key === 'backspace' || key === 'delete') { event.accept(); this.deleteSelectedPoint(); } else if (key === 'z' && (event.ctrlPressed || event.metaPressed) && this.drawing) {
+      this.setLassoMode(!this.editContext.lassoMode); event.accept();
+    } else if (key === 'backspace' || key === 'delete') { event.accept(); this.deleteSelectedPoint(); } else if (key === 'z' && (event.ctrlPressed || event.metaPressed) && this.editContext.drawing) {
       event.accept();
-      const from = event.shiftPressed ? this.redoDraft : this.undoDraft;
-      const to = event.shiftPressed ? this.undoDraft : this.redoDraft;
+      const from = event.shiftPressed ? this.editContext.redoDraft : this.editContext.undoDraft;
+      const to = event.shiftPressed ? this.editContext.undoDraft : this.editContext.redoDraft;
       const previous = from.pop();
 
       if (previous) {
-        to.push(cloneGeometry(this.path)); this.path = previous; this.dragging = undefined; this.selected = undefined;
+        to.push(cloneGeometry(this.editContext.path)); this.editContext.path = previous; this.editContext.dragging = undefined; this.editContext.selected = undefined;
         this._owner.getSnapManager().reset(); this.emit('update');
       }
     }
@@ -467,11 +453,11 @@ export class PenGizmo extends Gizmo {
   override onMouseLeave (): void {
     this.hover = undefined;
     this.hoverPosition = undefined;
-    if (this.lassoing) { this.appendLassoPoint(this._owner.getMousePosition()); }
+    if (this.editContext.lassoing) { this.appendLassoPoint(this._owner.getMousePosition()); }
     this._owner.getSnapManager().reset();
   }
   onCancel (_reason: string): void {
-    if (this.lassoing) { this.setLassoMode(false); }
+    if (this.editContext.lassoing) { this.setLassoMode(false); }
     this.cancel(false);
   }
 
@@ -492,9 +478,9 @@ export class PenGizmo extends Gizmo {
     const activeHandleLineColor = toColor(config.activeHandleLineColor);
     const lassoColor = toColor(config.lassoLineColor);
 
-    for (const [shapeIndex, shape] of this.path.shapes.entries()) {
+    for (const [shapeIndex, shape] of this.editContext.path.shapes.entries()) {
       shape.indexes.forEach((index, i) => {
-        const point = this.path.points[index.point];
+        const point = this.editContext.path.points[index.point];
         const nextIndex = shape.indexes[i + 1] ?? (shape.close ? shape.indexes[0] : undefined);
 
         if (point === undefined) {
@@ -502,25 +488,25 @@ export class PenGizmo extends Gizmo {
         }
         const from = this.toView(point);
 
-        if (nextIndex !== undefined && this.path.points[nextIndex.point] !== undefined) {
-          const next = this.path.points[nextIndex.point];
-          const out = this.path.easingOuts[index.easingOut] ?? { x: 0, y: 0 };
-          const incoming = this.path.easingIns[nextIndex.easingIn] ?? { x: 0, y: 0 };
+        if (nextIndex !== undefined && this.editContext.path.points[nextIndex.point] !== undefined) {
+          const next = this.editContext.path.points[nextIndex.point];
+          const out = this.editContext.path.easingOuts[index.easingOut] ?? { x: 0, y: 0 };
+          const incoming = this.editContext.path.easingIns[nextIndex.easingIn] ?? { x: 0, y: 0 };
           const c1 = this.toView({ x: point.x + out.x, y: point.y + out.y });
           const c2 = this.toView({ x: next.x + incoming.x, y: next.y + incoming.y });
           const to = this.toView(next);
-          const selectedSegment = this.selected?.part === 'segment'
-            && this.selected.shape === shapeIndex && this.selected.index === i;
+          const selectedSegment = this.editContext.selected?.part === 'segment'
+            && this.editContext.selected.shape === shapeIndex && this.editContext.selected.index === i;
           const hoveredSegment = this.hover?.part === 'segment'
             && this.hover.shape === shapeIndex && this.hover.index === i;
 
           control.drawBezier(from.x, from.y, c1.x, c1.y, c2.x, c2.y, to.x, to.y,
             selectedSegment ? selectedColor : hoveredSegment ? hoverColor : pathColor,
             selectedSegment ? config.selectedLineWidth : config.lineWidth);
-        } else if (this.drawing && shapeIndex === this.activeShape && this.hoverPosition && !this.dragging) {
+        } else if (this.editContext.drawing && shapeIndex === this.editContext.activeShape && this.hoverPosition && !this.editContext.dragging) {
           control.drawLine(from.x, from.y, this.hoverPosition.x, this.hoverPosition.y, previewColor, config.previewLineWidth);
         }
-        const selectedAnchor = this.selectedNodes.has(this.nodeKey(shapeIndex, i));
+        const selectedAnchor = this.editContext.selectedNodes.has(this.nodeKey(shapeIndex, i));
         const hoveredAnchor = this.hover?.part === 'point'
           && this.hover.shape === shapeIndex
           && this.hover.index === i;
@@ -533,7 +519,7 @@ export class PenGizmo extends Gizmo {
       });
     }
     if (this.hover?.part === 'segment') {
-      const center = this.segmentPoint(this.path, this.hover.shape, this.hover.index, 0.5);
+      const center = this.segmentPoint(this.editContext.path, this.hover.shape, this.hover.index, 0.5);
 
       if (center) {
         const point = this.toView(center);
@@ -542,38 +528,38 @@ export class PenGizmo extends Gizmo {
         control.drawCircle(point.x, point.y, config.pointSize / 2, hoverColor, config.hoverLineWidth);
       }
     }
-    if (this.lassoing && this.lassoPoints.length > 1) {
-      const vertices = this.lassoPoints.flatMap(point => [point.x, point.y]);
+    if (this.editContext.lassoing && this.editContext.lassoPoints.length > 1) {
+      const vertices = this.editContext.lassoPoints.flatMap(point => [point.x, point.y]);
 
       control.drawPolyline(vertices, lassoColor, config.lassoLineWidth);
     }
     for (const node of this.selectedPointsInfo) {
-      const selected = this.selected && this.selected.shape === node.shape && this.selected.index === node.point
-        ? this.selected
+      const selected = this.editContext.selected && this.editContext.selected.shape === node.shape && this.editContext.selected.index === node.point
+        ? this.editContext.selected
         : { shape: node.shape, index: node.point, part: 'point' as const };
-      const index = this.path.shapes[selected.shape]?.indexes[selected.index];
-      const anchor = index && this.path.points[index.point];
+      const index = this.editContext.path.shapes[selected.shape]?.indexes[selected.index];
+      const anchor = index && this.editContext.path.points[index.point];
 
       if (!index || !anchor) { continue; }
       const from = this.toView(anchor);
       const handles: Array<{ handle: { x: number, y: number } | undefined, part: 'in' | 'out' }> = [
-        { handle: this.path.easingIns[index.easingIn], part: 'in' },
-        { handle: this.path.easingOuts[index.easingOut], part: 'out' },
+        { handle: this.editContext.path.easingIns[index.easingIn], part: 'in' },
+        { handle: this.editContext.path.easingOuts[index.easingOut], part: 'out' },
       ];
 
       for (const { handle, part } of handles) {
         if (handle !== undefined) {
           const to = this.toView({ x: anchor.x + handle.x, y: anchor.y + handle.y });
-          const isActiveHandle = this.dragging?.shape === selected.shape
-            && this.dragging.index === selected.index
-            && this.dragging.part === part;
-          const isEditingHandle = this.dragging?.shape === selected.shape
-            && this.dragging.index === selected.index
-            && (this.dragging.part === 'in' || this.dragging.part === 'out')
-            && (this.independentHandleEdit ? isActiveHandle : true);
-          const isSelectedHandle = this.selected?.shape === selected.shape
-            && this.selected.index === selected.index
-            && this.selected.part === part;
+          const isActiveHandle = this.editContext.dragging?.shape === selected.shape
+            && this.editContext.dragging.index === selected.index
+            && this.editContext.dragging.part === part;
+          const isEditingHandle = this.editContext.dragging?.shape === selected.shape
+            && this.editContext.dragging.index === selected.index
+            && (this.editContext.dragging.part === 'in' || this.editContext.dragging.part === 'out')
+            && (this.editContext.independentHandleEdit ? isActiveHandle : true);
+          const isSelectedHandle = this.editContext.selected?.shape === selected.shape
+            && this.editContext.selected.index === selected.index
+            && this.editContext.selected.part === part;
           const isHoveredHandle = this.hover?.shape === selected.shape
             && this.hover.index === selected.index
             && this.hover.part === part;
@@ -590,72 +576,82 @@ export class PenGizmo extends Gizmo {
   }
 
   override dispose (): void {
-    this._owner.getSnapManager().reset(); this.path = this.emptyPath();
-    this.drawing = false; this.interactionState = 'idle'; this.target = undefined; this.targetKind = undefined; this.targetRevision = undefined;
-    this.selected = undefined; this.selectedNodes.clear(); this.dragging = undefined; this.dragPath = undefined; this.dragOrigin = undefined; this.beforeDrag = undefined; this.beforeDrawing = undefined;
-    this.hover = undefined; this.hoverPosition = undefined; this.undoDraft = []; this.redoDraft = []; this.activeShape = 0; this.sessionId = 0;
-    this.independentHandleEdit = false; this.lassoing = false; this.lassoPoints = []; this.lassoAdditive = false; this.prependDrawing = false;
+    this.hover = undefined;
+    this.hoverPosition = undefined;
+    if (!this.sharedContext) {
+      this.resetState();
+    }
+  }
+
+  private resetState (): void {
+    this._owner.getSnapManager().reset(); this.editContext.path = this.emptyPath();
+    this.editContext.drawing = false; this.editContext.interactionState = 'idle'; this.editContext.target = undefined; this.editContext.targetKind = undefined; this.editContext.targetRevision = undefined;
+    this.editContext.selected = undefined; this.editContext.selectedNodes.clear(); this.editContext.dragging = undefined; this.editContext.dragPath = undefined; this.editContext.dragOrigin = undefined; this.editContext.beforeDrag = undefined; this.editContext.beforeDrawing = undefined;
+    this.hover = undefined; this.hoverPosition = undefined; this.editContext.undoDraft = []; this.editContext.redoDraft = []; this.editContext.activeShape = 0; this.editContext.sessionId = 0;
+    this.editContext.independentHandleEdit = false; this.editContext.lassoing = false; this.editContext.lassoPoints = []; this.editContext.lassoAdditive = false; this.editContext.prependDrawing = false;
   }
 
   private refreshTarget (): void {
-    if (this.drawing || this.dragging) { return; }
+    if (this.editContext.drawing || this.editContext.dragging) { return; }
     if (this.interactionMode === 'create' && !this.preserveTarget) {
-      if (this.target) { this.dispose(); }
+      if (this.editContext.target) { this.resetState(); }
 
       return;
     }
     const target = this.host.readPath();
 
     if (!target) {
-      if (this.target) { this.dispose(); }
+      if (this.editContext.target) { this.resetState(); }
 
       return;
     }
-    if (target.itemId !== this.target || target.revision !== this.targetRevision) {
-      const sameTarget = target.itemId === this.target;
-      const previousSelected = sameTarget && this.selected ? { ...this.selected } : undefined;
+    // 新投影在空闲时重新读取宿主，兼容未提供 revision 的目标。
+    if (!this.targetLoaded || target.itemId !== this.editContext.target || target.revision !== this.editContext.targetRevision) {
+      const sameTarget = target.itemId === this.editContext.target;
+      const previousSelected = sameTarget && this.editContext.selected ? { ...this.editContext.selected } : undefined;
       const previousNodes = sameTarget ? this.selectedPointsInfo : [];
 
-      this.target = target.itemId; this.targetKind = target.kind; this.targetRevision = target.revision; this.path = cloneGeometry(target.path);
-      this.selectedNodes.clear();
+      this.targetLoaded = true;
+      this.editContext.target = target.itemId; this.editContext.targetKind = target.kind; this.editContext.targetRevision = target.revision; this.editContext.path = cloneGeometry(target.path);
+      this.editContext.selectedNodes.clear();
       previousNodes.forEach(node => {
-        if (this.path.shapes[node.shape]?.indexes[node.point]) {
-          this.selectedNodes.add(this.nodeKey(node.shape, node.point));
+        if (this.editContext.path.shapes[node.shape]?.indexes[node.point]) {
+          this.editContext.selectedNodes.add(this.nodeKey(node.shape, node.point));
         }
       });
 
       if (previousSelected
-        && this.path.shapes[previousSelected.shape]?.indexes[previousSelected.index]) {
-        this.selected = previousSelected;
+        && this.editContext.path.shapes[previousSelected.shape]?.indexes[previousSelected.index]) {
+        this.editContext.selected = previousSelected;
       } else {
         const first = this.selectedPointsInfo[0];
 
-        this.selected = first ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
+        this.editContext.selected = first ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
       }
     }
   }
 
   private hitTest (point: Vector2): PenHit | undefined {
     const hitDistance = this.config.hitDistance;
-    const selected = this.selected;
-    const selectedIndex = selected && this.path.shapes[selected.shape]?.indexes[selected.index];
+    const selected = this.editContext.selected;
+    const selectedIndex = selected && this.editContext.path.shapes[selected.shape]?.indexes[selected.index];
 
     if (selected && selectedIndex) {
-      const anchor = this.path.points[selectedIndex.point];
+      const anchor = this.editContext.path.points[selectedIndex.point];
 
       for (const part of ['in', 'out'] as const) {
-        const handle = part === 'in' ? this.path.easingIns[selectedIndex.easingIn] : this.path.easingOuts[selectedIndex.easingOut];
+        const handle = part === 'in' ? this.editContext.path.easingIns[selectedIndex.easingIn] : this.editContext.path.easingOuts[selectedIndex.easingOut];
 
         if (anchor !== undefined && handle !== undefined && (handle.x !== 0 || handle.y !== 0) && this.toView({ x: anchor.x + handle.x, y: anchor.y + handle.y }).distance(point) <= hitDistance) {
           return { ...selected, part };
         }
       }
     }
-    for (let shape = 0; shape < this.path.shapes.length; shape++) {
-      const indexes = this.path.shapes[shape].indexes;
+    for (let shape = 0; shape < this.editContext.path.shapes.length; shape++) {
+      const indexes = this.editContext.path.shapes[shape].indexes;
 
       for (let index = 0; index < indexes.length; index++) {
-        const anchor = this.path.points[indexes[index].point];
+        const anchor = this.editContext.path.points[indexes[index].point];
 
         if (anchor !== undefined && this.toView(anchor).distance(point) <= hitDistance) {
           return { shape, index, part: 'point' };
@@ -678,24 +674,31 @@ export class PenGizmo extends Gizmo {
     let nearest = this.config.hitDistance;
     let hit: { shape: number, index: number, t: number } | undefined;
 
-    this.path.shapes.forEach((shape, shapeIndex) => shape.indexes.forEach((_, index) => {
-      if (!this.segmentIndexes(this.path, shapeIndex, index)) { return; }
-      for (let i = 1; i < 64; i++) {
-        const t = i / 64;
-        const local = this.segmentPoint(this.path, shapeIndex, index, t);
+    this.editContext.path.shapes.forEach((shape, shapeIndex) => shape.indexes.forEach((_, index) => {
+      const indexes = this.segmentIndexes(this.editContext.path, shapeIndex, index);
 
-        if (!local) { continue; }
-        const distance = this.toView(local).distance(point);
+      if (!indexes) { return; }
+      const from = this.editContext.path.points[indexes.from.point];
+      const to = this.editContext.path.points[indexes.to.point];
 
-        if (distance < nearest) { nearest = distance; hit = { shape: shapeIndex, index, t }; }
-      }
+      if (!from || !to) { return; }
+      const outgoing = this.editContext.path.easingOuts[indexes.from.easingOut] ?? { x: 0, y: 0 };
+      const incoming = this.editContext.path.easingIns[indexes.to.easingIn] ?? { x: 0, y: 0 };
+      const closest = hitPenCurve(point, [
+        this.toView(from),
+        this.toView({ x: from.x + outgoing.x, y: from.y + outgoing.y }),
+        this.toView({ x: to.x + incoming.x, y: to.y + incoming.y }),
+        this.toView(to),
+      ], nearest);
+
+      if (closest) { nearest = closest.distance; hit = { shape: shapeIndex, index, t: closest.t }; }
     }));
 
     return hit;
   }
 
-  private toLocal (point: Vector2): Vector2 | undefined { return this.host.viewToLocal(point, this.target); }
-  private toView (point: { x: number, y: number }): Vector2 { return this.host.localToView(point, this.target); }
+  private toLocal (point: Vector2): Vector2 | undefined { return this.host.viewToLocal(point, this.editContext.target); }
+  private toView (point: PathPoint): Vector2 { return this.host.localToView(point, this.editContext.target); }
 
   private segmentIndexes (path: PenPathData, shapeIndex: number, segment: number): { from: PathIndex, to: PathIndex } | undefined {
     const shape = path.shapes[shapeIndex];
@@ -705,37 +708,37 @@ export class PenGizmo extends Gizmo {
     return from && to ? { from, to } : undefined;
   }
 
-  private segmentPoint (path: PenPathData, shapeIndex: number, segment: number, t: number): PathPoint | undefined {
+  private segmentPoint (path: PenPathData, shapeIndex: number, segment: number, t: number): Vector2 | undefined {
     const indexes = this.segmentIndexes(path, shapeIndex, segment);
 
     if (!indexes) { return undefined; }
-    const p0 = path.points[indexes.from.point];
-    const p3 = path.points[indexes.to.point];
+    const from = path.points[indexes.from.point];
+    const to = path.points[indexes.to.point];
 
-    if (!p0 || !p3) { return undefined; }
-    const out = path.easingOuts[indexes.from.easingOut] ?? { x: 0, y: 0 };
-    const incoming = path.easingIns[indexes.to.easingIn] ?? { x: 0, y: 0 };
-    const p1 = { x: p0.x + out.x, y: p0.y + out.y };
-    const p2 = { x: p3.x + incoming.x, y: p3.y + incoming.y };
+    if (!from || !to) { return undefined; }
+    const p0 = new Vector2().copyFrom(from);
+    const p3 = new Vector2().copyFrom(to);
+    const p1 = new Vector2().copyFrom(path.easingOuts[indexes.from.easingOut] ?? Vector2.ZERO).add(p0);
+    const p2 = new Vector2().copyFrom(path.easingIns[indexes.to.easingIn] ?? Vector2.ZERO).add(p3);
     const u = 1 - t;
 
-    return {
-      x: u ** 3 * p0.x + 3 * u ** 2 * t * p1.x + 3 * u * t ** 2 * p2.x + t ** 3 * p3.x,
-      y: u ** 3 * p0.y + 3 * u ** 2 * t * p1.y + 3 * u * t ** 2 * p2.y + t ** 3 * p3.y,
-    };
+    return p0.multiply(u ** 3)
+      .add(p1.multiply(3 * u ** 2 * t))
+      .add(p2.multiply(3 * u * t ** 2))
+      .add(p3.multiply(t ** 3));
   }
 
   private selectSegment (hit: PenHit): void {
-    this.selected = hit;
-    this.selectedNodes.clear();
-    const segment = this.segmentIndexes(this.path, hit.shape, hit.index);
+    this.editContext.selected = hit;
+    this.editContext.selectedNodes.clear();
+    const segment = this.segmentIndexes(this.editContext.path, hit.shape, hit.index);
 
     if (segment) {
-      this.selectedNodes.add(this.nodeKey(hit.shape, hit.index));
-      const nextIndex = this.path.shapes[hit.shape]?.indexes.indexOf(segment.to);
+      this.editContext.selectedNodes.add(this.nodeKey(hit.shape, hit.index));
+      const nextIndex = this.editContext.path.shapes[hit.shape]?.indexes.indexOf(segment.to);
 
       if (nextIndex !== undefined && nextIndex >= 0) {
-        this.selectedNodes.add(this.nodeKey(hit.shape, nextIndex));
+        this.editContext.selectedNodes.add(this.nodeKey(hit.shape, nextIndex));
       }
     }
   }
@@ -744,43 +747,43 @@ export class PenGizmo extends Gizmo {
     if (hit.part !== 'point') {
       return false;
     }
-    const shape = this.path.shapes[hit.shape];
-    const source = this.path.shapes[hit.shape]?.indexes[hit.index];
+    const shape = this.editContext.path.shapes[hit.shape];
+    const source = this.editContext.path.shapes[hit.shape]?.indexes[hit.index];
 
     if (!source) {
       return false;
     }
-    this.beforeDrawing = cloneGeometry(this.path);
+    this.editContext.beforeDrawing = cloneGeometry(this.editContext.path);
     const continueOpenShape = this.isOpenEndpoint(hit.shape, hit.index);
 
     if (continueOpenShape && shape) {
-      this.activeShape = hit.shape;
-      this.prependDrawing = hit.index === 0;
+      this.editContext.activeShape = hit.shape;
+      this.editContext.prependDrawing = hit.index === 0;
     } else {
-      this.activeShape = this.path.shapes.length;
-      this.path.shapes.push({ close: false, indexes: [{ ...source }] });
-      this.prependDrawing = false;
+      this.editContext.activeShape = this.editContext.path.shapes.length;
+      this.editContext.path.shapes.push({ close: false, indexes: [{ ...source }] });
+      this.editContext.prependDrawing = false;
     }
-    this.drawing = true;
-    this.interactionState = 'drawing';
-    this.undoDraft = [];
-    this.redoDraft = [];
-    this.dragging = undefined;
-    this.beforeDrag = undefined;
-    this.dragPath = undefined;
-    const selectedIndex = continueOpenShape && this.prependDrawing ? 0
-      : continueOpenShape ? this.path.shapes[this.activeShape].indexes.length - 1 : 0;
+    this.editContext.drawing = true;
+    this.editContext.interactionState = 'drawing';
+    this.editContext.undoDraft = [];
+    this.editContext.redoDraft = [];
+    this.editContext.dragging = undefined;
+    this.editContext.beforeDrag = undefined;
+    this.editContext.dragPath = undefined;
+    const selectedIndex = continueOpenShape && this.editContext.prependDrawing ? 0
+      : continueOpenShape ? this.editContext.path.shapes[this.editContext.activeShape].indexes.length - 1 : 0;
 
-    this.selected = { shape: this.activeShape, index: selectedIndex, part: 'point' };
-    this.selectedNodes.clear();
-    this.selectedNodes.add(this.nodeKey(this.activeShape, this.selected.index));
+    this.editContext.selected = { shape: this.editContext.activeShape, index: selectedIndex, part: 'point' };
+    this.editContext.selectedNodes.clear();
+    this.editContext.selectedNodes.add(this.nodeKey(this.editContext.activeShape, this.editContext.selected.index));
     this.beginSession();
 
     return true;
   }
 
   private isOpenEndpoint (shapeIndex: number, index: number): boolean {
-    const shape = this.path.shapes[shapeIndex];
+    const shape = this.editContext.path.shapes[shapeIndex];
 
     return !!shape && !shape.close && shape.indexes.length > 0
       && (index === 0 || index === shape.indexes.length - 1);
@@ -790,45 +793,45 @@ export class PenGizmo extends Gizmo {
     if (selected.part !== 'point' || hit?.part !== 'point' || selected.shape !== hit.shape) {
       return false;
     }
-    const shape = this.path.shapes[selected.shape];
+    const shape = this.editContext.path.shapes[selected.shape];
     const last = shape ? shape.indexes.length - 1 : -1;
     const selectedEndpoint = selected.index === 0 || selected.index === last;
     const hitEndpoint = hit ? hit.index === 0 || hit.index === last : false;
 
     return !!shape && !shape.close && shape.indexes.length >= 3
-      && selectedEndpoint && hitEndpoint;
+      && selectedEndpoint && hitEndpoint && selected.index !== hit.index;
   }
 
   private isCreateEndpoint (hit: PenHit): boolean {
     if (hit.part !== 'point') {
       return false;
     }
-    const shape = this.path.shapes[hit.shape];
+    const shape = this.editContext.path.shapes[hit.shape];
 
     return !!shape && !shape.close && shape.indexes.length >= 3
       && (hit.index === 0 || hit.index === shape.indexes.length - 1);
   }
 
   private selectCreatePoint (hit: PenHit): void {
-    this.selected = { ...hit };
-    this.selectedNodes.clear();
-    this.selectedNodes.add(this.nodeKey(hit.shape, hit.index));
-    this.dragging = undefined;
-    this.beforeDrag = undefined;
-    this.dragPath = undefined;
-    this.interactionState = 'idle';
+    this.editContext.selected = { ...hit };
+    this.editContext.selectedNodes.clear();
+    this.editContext.selectedNodes.add(this.nodeKey(hit.shape, hit.index));
+    this.editContext.dragging = undefined;
+    this.editContext.beforeDrag = undefined;
+    this.editContext.dragPath = undefined;
+    this.editContext.interactionState = 'idle';
     this.hover = hit;
   }
 
   private closeExistingShape (shapeIndex: number): void {
-    const shape = this.path.shapes[shapeIndex];
+    const shape = this.editContext.path.shapes[shapeIndex];
 
     if (!shape || shape.close || shape.indexes.length < 3) {
       return;
     }
-    this.beforeDrawing = undefined;
-    this.beforeDrag = cloneGeometry(this.path);
-    this.interactionState = 'editing';
+    this.editContext.beforeDrawing = undefined;
+    this.editContext.beforeDrag = cloneGeometry(this.editContext.path);
+    this.editContext.interactionState = 'editing';
     this.beginSession();
     this.emit('start');
     shape.close = true;
@@ -840,26 +843,26 @@ export class PenGizmo extends Gizmo {
     if (action.edit) {
       action.edit.selection = [];
     }
-    this.dispose();
+    this.resetState();
     this._owner.emit('actioncommit', action);
   }
 
   private insertSegmentPoint (hit: PenHit): void {
-    this.beforeDrag = cloneGeometry(this.path);
+    this.editContext.beforeDrag = cloneGeometry(this.editContext.path);
     this.beginSession();
     this.emit('start');
-    const index = splitPenSegment(this.path, hit.shape, hit.index, 0.5);
+    const index = splitPenSegment(this.editContext.path, hit.shape, hit.index, 0.5);
 
     if (index === undefined) {
       this.cancel(false);
 
       return;
     }
-    this.selected = { shape: hit.shape, index, part: 'point' };
-    this.selectedNodes.clear();
-    this.selectedNodes.add(this.nodeKey(hit.shape, index));
-    this.dragPath = cloneGeometry(this.path);
-    this.dragging = { shape: hit.shape, index, part: 'point' };
+    this.editContext.selected = { shape: hit.shape, index, part: 'point' };
+    this.editContext.selectedNodes.clear();
+    this.editContext.selectedNodes.add(this.nodeKey(hit.shape, index));
+    this.editContext.dragPath = cloneGeometry(this.editContext.path);
+    this.editContext.dragging = { shape: hit.shape, index, part: 'point' };
     this.hover = undefined;
   }
 
@@ -868,12 +871,12 @@ export class PenGizmo extends Gizmo {
 
     snap.clearSnappingVisualizations();
     if (!snap.enabled) { return point.clone(); }
-    const targets = [...(this.host.snapPoints?.(this.target) ?? [])];
-    const movingPoint = dragging?.part === 'point' ? this.path.shapes[dragging.shape]?.indexes[dragging.index]?.point : undefined;
+    const targets = [...(this.host.snapPoints?.(this.editContext.target) ?? [])];
+    const movingPoint = dragging?.part === 'point' ? this.editContext.path.shapes[dragging.shape]?.indexes[dragging.index]?.point : undefined;
 
-    for (const shape of this.path.shapes) {
+    for (const shape of this.editContext.path.shapes) {
       for (const index of shape.indexes) {
-        const anchor = this.path.points[index.point];
+        const anchor = this.editContext.path.points[index.point];
 
         if (anchor && index.point !== movingPoint) { targets.push(this.toView(anchor)); }
       }
@@ -889,9 +892,9 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
-    const shape = this.path.shapes[this.activeShape];
+    const shape = this.editContext.path.shapes[this.editContext.activeShape];
 
-    if (!this.drawing || !shape || shape.indexes.length < 2) {
+    if (!this.editContext.drawing || !shape || shape.indexes.length < 2) {
       this.cancel(exitTool);
 
       return;
@@ -904,76 +907,77 @@ export class PenGizmo extends Gizmo {
     if (action.edit) {
       action.edit.selection = [];
     }
-    this.dispose(); this._owner.emit('actioncommit', action);
+    this.resetState(); this._owner.emit('actioncommit', action);
   }
 
-  private beginSession (): void { this.sessionId = nextGeometrySession(); this.context = this.host.contextKey?.(); }
+  private beginSession (): void { this.editContext.sessionId = nextGeometrySession(); this.editContext.context = this.host.contextKey?.(); }
   private valid (): boolean {
-    if (!this.sessionId) {
+    if (!this.editContext.sessionId) {
       return true;
     }
-    if (!this.host.canEdit(this.target) || this.context !== this.host.contextKey?.()) {
+    if (!this.host.canEdit(this.editContext.target) || this.editContext.context !== this.host.contextKey?.()) {
       return false;
     }
-    if (!this.target) {
+    if (!this.editContext.target) {
       return true;
     }
     const target = this.host.readPath();
 
-    return target?.itemId === this.target && target.revision === this.targetRevision;
+    return target?.itemId === this.editContext.target && target.revision === this.editContext.targetRevision;
   }
   private action (phase: ShapeDrawingActionEvent['phase']): ShapeDrawingActionEvent {
-    const action: ShapeDrawingActionEvent = { source: this, sessionId: this.sessionId, phase };
+    const action: ShapeDrawingActionEvent = { source: this, sessionId: this.editContext.sessionId, phase };
 
-    if (this.target) {
-      const before = cloneGeometry(this.beforeDrawing ?? this.beforeDrag ?? this.path);
-      const path = cloneGeometry(this.path);
+    if (this.editContext.target) {
+      const before = cloneGeometry(this.editContext.beforeDrawing ?? this.editContext.beforeDrag ?? this.editContext.path);
+      const path = cloneGeometry(this.editContext.path);
 
       action.edit = {
-        itemId: this.target,
+        itemId: this.editContext.target,
         before,
         path,
         operations: penEditOperations(before, path),
-        kind: this.targetKind,
+        kind: this.editContext.targetKind,
         selection: this.selectedPointsInfo,
       };
       action.finish = false;
-    } else { action.create = { kind: 'pen', path: cloneGeometry(this.path) }; }
+    } else { action.create = { kind: 'pen', path: cloneGeometry(this.editContext.path) }; }
 
     return action;
   }
   private emit (phase: 'start' | 'update' | 'commit'): void { this._owner.emit(`action${phase}`, this.action(phase)); }
   private cancel (finish: boolean): void {
-    const active = this.sessionId !== 0 || (!!this.target && finish);
+    const active = this.editContext.sessionId !== 0 || (!!this.editContext.target && finish);
 
     if (!active) {
       return;
     }
-    const selected = this.selected && { ...this.selected };
-    const selectedNodes = Array.from(this.selectedNodes);
-    const target = this.target;
-    const targetKind = this.targetKind;
-    const targetRevision = this.targetRevision;
+    const selected = this.editContext.selected && { ...this.editContext.selected };
+    const selectedNodes = Array.from(this.editContext.selectedNodes);
+    const target = this.editContext.target;
+    const targetKind = this.editContext.targetKind;
+    const targetRevision = this.editContext.targetRevision;
     const action = this.action('cancel');
 
     action.canceled = true; action.finish = finish;
-    this.dispose();
+    this.resetState();
     if (selected && target) {
-      this.selected = selected;
-      selectedNodes.forEach(key => this.selectedNodes.add(key));
-      this.target = target;
-      this.targetKind = targetKind;
-      this.targetRevision = targetRevision;
+      this.editContext.selected = selected;
+      selectedNodes.forEach(key => this.editContext.selectedNodes.add(key));
+      this.editContext.target = target;
+      this.editContext.targetKind = targetKind;
+      this.editContext.targetRevision = targetRevision;
+      this.editContext.path = cloneGeometry(action.edit!.before);
     }
     this._owner.emit('actioncommit', action);
   }
 
   private detachHandle (hit: PenHit, field: 'easingIn' | 'easingOut'): void {
-    const index = this.path.shapes[hit.shape].indexes[hit.index];
-    const shared = this.path.shapes.some(shape => shape.indexes.some(other => other !== index && other[field] === index[field]));
+    const index = this.editContext.path.shapes[hit.shape].indexes[hit.index];
+    const shared = this.editContext.path.shapes.some(shape => shape.indexes.some(other => other !== index && other[field] === index[field]));
 
     if (shared) {
-      const handles = field === 'easingIn' ? this.path.easingIns : this.path.easingOuts;
+      const handles = field === 'easingIn' ? this.editContext.path.easingIns : this.editContext.path.easingOuts;
       const handle = handles[index[field]] ?? { x: 0, y: 0 };
 
       index[field] = handles.length;
@@ -982,50 +986,50 @@ export class PenGizmo extends Gizmo {
   }
 
   private deleteSelectedPoint (): void {
-    if (!this.host.canEdit(this.target) || !this.valid()) {
+    if (!this.host.canEdit(this.editContext.target) || !this.valid()) {
       this.onCancel('permission');
 
       return;
     }
     this._owner.getSnapManager().reset();
-    if (this.drawing) {
-      const previous = this.undoDraft.pop();
+    if (this.editContext.drawing) {
+      const previous = this.editContext.undoDraft.pop();
 
-      if (previous) { this.redoDraft.push(cloneGeometry(this.path)); this.path = previous; this.emit('update'); }
-    } else if (this.selected?.part === 'segment' && this.target) {
-      const segment = { ...this.selected };
+      if (previous) { this.editContext.redoDraft.push(cloneGeometry(this.editContext.path)); this.editContext.path = previous; this.emit('update'); }
+    } else if (this.editContext.selected?.part === 'segment' && this.editContext.target) {
+      const segment = { ...this.editContext.selected };
 
-      this.beforeDrag = cloneGeometry(this.path); this.beginSession(); this.emit('start');
-      const disconnected = disconnectPenSegment(this.path, segment.shape, segment.index);
+      this.editContext.beforeDrag = cloneGeometry(this.editContext.path); this.beginSession(); this.emit('start');
+      const disconnected = disconnectPenSegment(this.editContext.path, segment.shape, segment.index);
 
-      this.selected = undefined; this.selectedNodes.clear(); this.dragging = undefined;
+      this.editContext.selected = undefined; this.editContext.selectedNodes.clear(); this.editContext.dragging = undefined;
       if (disconnected) {
         this.emit('commit');
       }
-      this.beforeDrag = undefined; this.sessionId = 0; this.interactionState = 'idle';
-    } else if (this.selected && this.target) {
-      const selected = { ...this.selected };
+      this.editContext.beforeDrag = undefined; this.editContext.sessionId = 0; this.editContext.interactionState = 'idle';
+    } else if (this.editContext.selected && this.editContext.target) {
+      const selected = { ...this.editContext.selected };
       let keepSelection = false;
 
-      this.beforeDrag = cloneGeometry(this.path); this.beginSession(); this.emit('start');
-      if (this.selected.part === 'point') {
-        const shape = this.path.shapes[selected.shape];
+      this.editContext.beforeDrag = cloneGeometry(this.editContext.path); this.beginSession(); this.emit('start');
+      if (this.editContext.selected.part === 'point') {
+        const shape = this.editContext.path.shapes[selected.shape];
 
-        if (shape?.close && openClosedShapeAt(this.path, selected.shape, selected.index)) {
-          this.selected = { shape: selected.shape, index: shape.indexes.length - 1, part: 'point' };
-          this.selectedNodes.clear();
-          this.selectedNodes.add(this.nodeKey(selected.shape, shape.indexes.length - 1));
+        if (shape?.close && openClosedShapeAt(this.editContext.path, selected.shape, selected.index)) {
+          this.editContext.selected = { shape: selected.shape, index: shape.indexes.length - 1, part: 'point' };
+          this.editContext.selectedNodes.clear();
+          this.editContext.selectedNodes.add(this.nodeKey(selected.shape, shape.indexes.length - 1));
           keepSelection = true;
         } else {
           const nodes = this.selectedPointsInfo.length ? this.selectedPointsInfo : [{ shape: selected.shape, point: selected.index }];
 
           nodes.sort((a, b) => b.shape - a.shape || b.point - a.point).forEach(node => {
-            deletePenPoint(this.path, node.shape, node.point, this.host.deleteBehavior ?? 'reconnect');
+            deletePenPoint(this.editContext.path, node.shape, node.point, this.host.deleteBehavior ?? 'reconnect');
           });
-          this.selected = undefined; this.selectedNodes.clear();
+          this.editContext.selected = undefined; this.editContext.selectedNodes.clear();
         }
       } else {
-        const index = this.path.shapes[selected.shape]?.indexes[selected.index];
+        const index = this.editContext.path.shapes[selected.shape]?.indexes[selected.index];
 
         if (index) {
           const field = selected.part === 'in' ? 'easingIns' : 'easingOuts';
@@ -1033,47 +1037,47 @@ export class PenGizmo extends Gizmo {
           this.detachHandle(selected, selected.part === 'in' ? 'easingIn' : 'easingOut');
           const handleIndex = selected.part === 'in' ? index.easingIn : index.easingOut;
 
-          this.path[field][handleIndex] = { x: 0, y: 0 };
+          this.editContext.path[field][handleIndex] = { x: 0, y: 0 };
         }
-        this.selected = { ...selected, part: 'point' };
+        this.editContext.selected = { ...selected, part: 'point' };
       }
-      this.emit('commit'); this.beforeDrag = undefined; this.sessionId = 0;
-      if (!keepSelection) { this.selected = undefined; this.selectedNodes.clear(); }
+      this.emit('commit'); this.editContext.beforeDrag = undefined; this.editContext.sessionId = 0;
+      if (!keepSelection) { this.editContext.selected = undefined; this.editContext.selectedNodes.clear(); }
     }
-    this.dragging = undefined;
+    this.editContext.dragging = undefined;
   }
 
   private appendLassoPoint (point: Vector2): void {
-    const last = this.lassoPoints[this.lassoPoints.length - 1];
+    const last = this.editContext.lassoPoints[this.editContext.lassoPoints.length - 1];
 
-    if (!last || last.distance(point) > 2) { this.lassoPoints.push(point.clone()); }
+    if (!last || last.distance(point) > 2) { this.editContext.lassoPoints.push(point.clone()); }
   }
 
   private finishLasso (): void {
-    const polygon = this.lassoPoints;
+    const polygon = this.editContext.lassoPoints;
 
     if (polygon.length >= 3) {
-      const next = this.lassoAdditive ? new Set(this.selectedNodes) : new Set<string>();
+      const next = this.editContext.lassoAdditive ? new Set(this.editContext.selectedNodes) : new Set<string>();
 
-      for (let shape = 0; shape < this.path.shapes.length; shape++) {
-        for (let index = 0; index < this.path.shapes[shape].indexes.length; index++) {
-          const pathIndex = this.path.shapes[shape].indexes[index];
-          const point = this.path.points[pathIndex.point];
+      for (let shape = 0; shape < this.editContext.path.shapes.length; shape++) {
+        for (let index = 0; index < this.editContext.path.shapes[shape].indexes.length; index++) {
+          const pathIndex = this.editContext.path.shapes[shape].indexes[index];
+          const point = this.editContext.path.points[pathIndex.point];
 
           if (point && this.pointInPolygon(this.toView(point), polygon)) {
             next.add(this.nodeKey(shape, index));
           }
         }
       }
-      this.selectedNodes.clear();
-      next.forEach(key => this.selectedNodes.add(key));
+      this.editContext.selectedNodes.clear();
+      next.forEach(key => this.editContext.selectedNodes.add(key));
       const first = this.selectedPointsInfo[0];
 
-      this.selected = first ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
+      this.editContext.selected = first ? { shape: first.shape, index: first.point, part: 'point' } : undefined;
     }
-    this.lassoing = false;
-    this.lassoPoints = [];
-    this.lassoAdditive = false;
+    this.editContext.lassoing = false;
+    this.editContext.lassoPoints = [];
+    this.editContext.lassoAdditive = false;
   }
 
   private pointInPolygon (point: Vector2, polygon: Vector2[]): boolean {

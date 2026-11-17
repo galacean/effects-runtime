@@ -32,7 +32,7 @@ describe('plugin-editor-gizmo/shape-model-gizmo', () => {
     return event;
   }
 
-  function createHarness (): { gizmo: ShapeModelGizmo, events: Array<{ name: string, event: ShapeDrawingActionEvent }> } {
+  function createHarness (minimums = { minWidth: 0.1, minHeight: 0.1 }): { gizmo: ShapeModelGizmo, events: Array<{ name: string, event: ShapeDrawingActionEvent }> } {
     const events: Array<{ name: string, event: ShapeDrawingActionEvent }> = [];
     const context = {};
     const snap = {
@@ -51,7 +51,7 @@ describe('plugin-editor-gizmo/shape-model-gizmo', () => {
     };
     const configs = new ConfigManager();
 
-    configs.set(shapeConfig, { defaultWidth: 100, defaultHeight: 80, minWidth: 0.1, minHeight: 0.1, minRadius: 0.1 });
+    configs.set(shapeConfig, { defaultWidth: 100, defaultHeight: 80, ...minimums, minRadius: 0.1 });
     const owner = {
       emit: (name: string, event: ShapeDrawingActionEvent) => {
         if (name === 'actionstart' || name === 'actionupdate' || name === 'actioncommit') {
@@ -96,4 +96,31 @@ describe('plugin-editor-gizmo/shape-model-gizmo', () => {
     gizmo.onMouseUp(mouseButton(40, 70, false));
     expect(events.map(({ name }) => name)).to.deep.equal(['actionstart', 'actionupdate', 'actioncommit']);
   });
+
+  for (const minimums of [{ minWidth: 1, minHeight: 10 }, { minWidth: 10, minHeight: 1 }]) {
+    for (const alt of [false, true]) {
+      it(`constrains both minimum dimensions with Shift (minWidth=${minimums.minWidth}, Alt=${alt})`, () => {
+        const { gizmo, events } = createHarness(minimums);
+        const motion = mouseMotion(3, 4);
+
+        motion.shiftPressed = true;
+        motion.altPressed = alt;
+        gizmo.onMouseDown(mouseButton(0, 0, true));
+        gizmo.onMouseDrag(motion);
+        const up = mouseButton(3, 4, false);
+
+        up.shiftPressed = true;
+        up.altPressed = alt;
+        gizmo.onMouseUp(up);
+        const create = events.at(-1)!.event.create;
+
+        expect(create?.kind).to.equal('shape');
+        if (create?.kind === 'shape') {
+          expect(create.geometry.width).to.equal(create.geometry.height);
+          expect(create.geometry.width).to.be.at.least(minimums.minWidth);
+          expect(create.geometry.height).to.be.at.least(minimums.minHeight);
+        }
+      });
+    }
+  }
 });
