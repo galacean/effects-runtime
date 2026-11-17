@@ -9,7 +9,7 @@ import { Vector2 } from '../../math';
 import { drawCorners, toColor } from '../../drawing';
 import { nextGeometrySession, type GeometryGizmoHost, type ShapeDrawingActionEvent, type ShapeGeometry, type ShapePrimitive } from './geometry';
 
-/** Figma-style primitive drawing in the local plane supplied by the host. */
+/** primitive drawing in the local plane supplied by the host. */
 export class ShapeModelGizmo extends Gizmo {
   readonly type = 'shape-model';
   createType: ShapePrimitive = 'rect';
