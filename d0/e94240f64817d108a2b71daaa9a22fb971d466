@@ -1,0 +1,41 @@
+packages/effects-core/src/precompositions/precomposition.ts
+  s_32ce5d4a71b8e1::t_4e674d7e559ee1 30-39
+packages/effects-core/src/composition.ts
+  s_32ce5d4a71b8e1::t_4e674d7e559ee1 719-728
+packages/effects-core/src/asset-manager.ts
+  s_32ce5d4a71b8e1::t_ebb90a8d209f0e 204-205,220-222,373,380-390,397,407,409
+packages/effects-core/src/asset-server.ts
+  s_32ce5d4a71b8e1::t_d946c63222d7e1 122,126,177-188
+packages/effects-core/src/scene.ts
+  s_32ce5d4a71b8e1::t_c8a678d2a0368f 19-20
+packages/effects-core/src/texture/utils.ts
+  s_32ce5d4a71b8e1::t_4e66771b419655 45,54
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_32ce5d4a71b8e1::t_d2385542f8c00b 775,1123
+plugin-packages/multimedia/src/audio/audio-loader.ts
+  s_32ce5d4a71b8e1::t_e9d40e6ca93634 1,16
+plugin-packages/multimedia/src/video/video-loader.ts
+  s_32ce5d4a71b8e1::t_eac09ee2428957 16
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_32ce5d4a71b8e1::t_705f819792ba15 163
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_32ce5d4a71b8e1::t_b48d7e64a939c3 281,307
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_32ce5d4a71b8e1::t_a16f575cb5f299 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d0e94240f64817d108a2b71daaa9a22fb971d466",
+  "prompts": {},
+  "sessions": {
+    "s_32ce5d4a71b8e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3cd-84f8-7ac3-9c0b-96365b5d8128",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
