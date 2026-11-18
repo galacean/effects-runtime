@@ -15,13 +15,6 @@ import type { CompositionComponent } from '../components/composition-component';
 import { getClass } from '../decorators';
 import { MaskStencil } from './mask-stencil';
 
-// The existing API accepts unresolved references without a mask path.
-type MaskOptions = {
-  isMask?: boolean,
-  alphaMaskEnabled?: boolean,
-  references?: { mask?: spec.DataPath, inverted?: boolean }[],
-};
-
 // 8 位 stencil buffer 上限为 255；为反向蒙版的 INCR 预留 1 的递增余量，
 // 否则当正向蒙版填满到 255 时，反向 INCR 会饱和、无法排除任何像素。
 const MAX_TRACK_MATTE_REFERENCE_COUNT = 254;
@@ -84,7 +77,7 @@ export class MaskProcessor {
   get isTrackMatteOnly (): boolean { return this.isTrackMatte && !this.sourceVisible; }
 
   /** Accepts the existing mask options format and preserves source color. */
-  setMaskOptions (engine: Engine, data: MaskOptions): void {
+  setMaskOptions (engine: Engine, data: spec.MaskOptions): void {
     const references: spec.TrackMatteReferenceData[] = [];
 
     for (const reference of data.references ?? []) {

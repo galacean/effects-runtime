@@ -390,7 +390,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
 
       mp.setMaskOptions(engine, {
-        references: [{}, { inverted: true }, { mask: dummyRef, inverted: true }],
+        references: [{ mask: { id: 'missing-mask' } }, { mask: dummyRef, inverted: true }],
       });
 
       expect(mp.getMaskReferences()).to.deep.equal([
