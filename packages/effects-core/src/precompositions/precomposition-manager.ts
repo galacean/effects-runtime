@@ -23,14 +23,6 @@ export class PrecompositionManager {
     const { compositionId } = scene.jsonScene;
     const compositionData = assetServer.findEffectsObjectData(compositionId!) as unknown as spec.CompositionData;
 
-    for (const key of Object.keys(scene.assets)) {
-      const videoAsset = scene.assets[key];
-
-      if (videoAsset instanceof HTMLVideoElement) {
-        composition.videos.push(videoAsset);
-      }
-    }
-
     const rootItem = new VFXItem(engine);
 
     SceneObjectsFactory.instantiateComposition(compositionData, rootItem, scene.textureOptions);

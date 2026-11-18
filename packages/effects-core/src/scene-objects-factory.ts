@@ -18,7 +18,6 @@ export class SceneObjectsFactory {
     data: spec.CompositionData,
     root: VFXItem,
     textureOptions: readonly Record<string, any>[] = [],
-    textures?: Texture[],
   ): void {
     const factory = new SceneObjectsFactory(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
 
@@ -27,8 +26,7 @@ export class SceneObjectsFactory {
     root.endBehavior = data.endBehavior;
     const context = factory.spawnComposition(data, root);
 
-    factory.finish(context, root, textures);
-    textures?.push(...factory.suppliedTextures);
+    factory.finish(context);
   }
 
   static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem): VFXItem {
@@ -77,7 +75,7 @@ export class SceneObjectsFactory {
     this.spawnContents(data, context, template?.components);
   }
 
-  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root, textures?: Texture[]): void {
+  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root): void {
     this.deserialize();
     const contexts = new Set(this.objects.values());
 
@@ -87,13 +85,6 @@ export class SceneObjectsFactory {
       const root = context === outerContext ? assetRoot : context.root;
 
       root.addSceneAssets(context.sceneAssets);
-      if (textures) {
-        context.sceneAssets.forEach(asset => {
-          if (asset instanceof Texture) {
-            textures.push(asset);
-          }
-        });
-      }
     }
   }
 
