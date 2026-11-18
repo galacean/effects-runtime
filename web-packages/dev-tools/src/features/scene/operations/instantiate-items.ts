@@ -1,9 +1,9 @@
 import type { EffectsObject, VFXItem } from '@galacean/effects';
-import { HierarchyBuilder, generateGUID, spec } from '@galacean/effects';
+import { SceneObjectsFactory, generateGUID, spec } from '@galacean/effects';
 
 /** Build editor roots together to resolve references among them, then detach them for placement. */
 export function instantiateItems (paths: readonly spec.DataPath[], sceneRoot: VFXItem): ReadonlyMap<string, EffectsObject> {
-  const group = HierarchyBuilder.instantiateItem({
+  const group = SceneObjectsFactory.instantiateItem({
     id: generateGUID(), dataType: spec.DataType.VFXItemData, name: '', type: spec.ItemType.null,
     duration: 0, endBehavior: spec.EndBehavior.freeze, components: [], children: [...paths], content: {},
   }, sceneRoot.engine);

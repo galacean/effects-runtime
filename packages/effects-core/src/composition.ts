@@ -6,7 +6,7 @@ import type { Asset } from './asset';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
-import { HierarchyBuilder } from './hierarchy-builder';
+import { SceneObjectsFactory } from './scene-objects-factory';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { InputServer } from './input-server';
@@ -274,7 +274,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     PluginSystem.notifyCompositionCreating(this, scene);
 
     if (sourceContent) {
-      HierarchyBuilder.instantiateComposition(sourceContent, this.sceneRoot, scene?.textureOptions, this._textures);
+      SceneObjectsFactory.instantiateComposition(sourceContent, this.sceneRoot, scene?.textureOptions, this._textures);
     }
 
     // 在实例化后设置 rootItem 的 name，避免 name 被覆盖

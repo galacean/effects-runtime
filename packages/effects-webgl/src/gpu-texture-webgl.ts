@@ -396,12 +396,10 @@ export class GPUTextureWebGL extends GPUTexture {
 function resizeImageByCanvas (
   image: spec.HTMLImageLike,
   maxSize: number,
-  targetWidth?: number,
-  targetHeight?: number,
 ): CanvasAndContext | undefined {
   const { width, height } = image;
-  const nw = Math.min(maxSize, targetWidth || nearestPowerOfTwo(width));
-  const nh = Math.min(maxSize, targetHeight || nearestPowerOfTwo(height));
+  const nw = Math.min(maxSize, nearestPowerOfTwo(width));
+  const nh = Math.min(maxSize, nearestPowerOfTwo(height));
 
   if (nh !== height || nw !== width) {
     const canvasAndContext = canvasPool.getCanvasAndContext(nw, nh);

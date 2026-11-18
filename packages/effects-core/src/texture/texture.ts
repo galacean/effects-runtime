@@ -4,6 +4,7 @@ import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
 import { effectsClass } from '../decorators';
 import { TextureSourceType } from './types';
+import { getTextureSourceSize } from './utils';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
@@ -27,11 +28,11 @@ export class Texture extends Asset {
   source: TextureSourceOptions;
 
   /**
-   * Texture 高度
+   * Texture 源数据宽度，不随 GPU 缩放或卸载改变。
    */
   width: number;
   /**
-   * Texture 宽度
+   * Texture 源数据高度，不随 GPU 缩放或卸载改变。
    */
   height: number;
   /**
@@ -156,7 +157,6 @@ export class Texture extends Asset {
       return;
     }
     this.gpuTexture?.offloadData();
-    this.syncSize();
     this.offloaded = true;
   }
 
@@ -178,17 +178,15 @@ export class Texture extends Asset {
     this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
+    [this.width, this.height] = getTextureSourceSize(this.source);
     this.update(this.source);
   }
 
   update (options: TextureSourceOptions): void {
-    if (!this.gpuTexture) {
-      this.width = this.height = 0;
-
+    if (!this.gpuTexture?.isInitialized) {
       return;
     }
     this.gpuTexture.update(this.source, options);
-    this.syncSize();
   }
 
   /**
@@ -203,30 +201,19 @@ export class Texture extends Asset {
     const gpuTexture = this.getGPUTexture();
 
     gpuTexture.initialize(this.source);
-    this.syncSize();
     this.release();
   }
 
   getGPUTexture (): GPUTexture {
     if (!this.gpuTexture) {
       this.gpuTexture = this.engine.displayServer.renderingDevice.createTexture();
-      this.gpuTexture.width = this.width;
-      this.gpuTexture.height = this.height;
     }
 
     return this.gpuTexture;
   }
 
-  private syncSize (): void {
-    if (this.gpuTexture) {
-      this.width = this.gpuTexture.width;
-      this.height = this.gpuTexture.height;
-    }
-  }
-
   restore (): void {
     this.getGPUTexture().restore(this.source);
-    this.syncSize();
   }
 
   override fromData (data: spec.EffectsObjectData): void {
@@ -235,6 +222,7 @@ export class Texture extends Asset {
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     this.name = this.source.name ?? '';
+    [this.width, this.height] = getTextureSourceSize(this.source);
   }
 
   clone (): Texture {

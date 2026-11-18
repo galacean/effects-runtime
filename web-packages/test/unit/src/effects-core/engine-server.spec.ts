@@ -1,4 +1,3 @@
-import type { Scene } from '@galacean/effects';
 import {
   Asset, Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition,
   EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore, spec,
@@ -241,28 +240,20 @@ describe('core/engine/servers', () => {
     expect(other.sceneServer.compositions).to.have.length(0);
   });
 
-  it('initializes registered asset servers per engine and restores built-in object lookup', () => {
+  it('initializes registered asset servers per engine with built-in object lookup', () => {
     expect(effectsClassStore.AssetServer).to.equal(AssetServer);
     register('asset-alias', AssetServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
     const assets = engine.assetServer;
-    const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
 
     expect(assets).to.be.instanceOf(AssetServer);
     expect(engine.assetServer).to.equal(engine.getServer(AssetServer));
     expect(assets).not.to.equal(other.assetServer);
-    const previousData = assets.jsonSceneData;
-
-    engine.effectsObjectServer.clearObjectInstances();
-    expect(assets.jsonSceneData).to.equal(previousData);
-    assets.jsonSceneData = {};
-    expect(assets.jsonSceneData).not.to.equal(previousData);
-    expect(assets.jsonSceneData).to.deep.equal({});
-    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(false);
-    assets.prepareAssets(scene, {});
-    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
-    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
+    expect(assets.objectsDataCache).to.deep.equal({});
+    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(true);
+    expect(engine.effectsObjectServer.objectsCache[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
+    expect(engine.effectsObjectServer.objectsCache[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
     const whiteTexturePath = { id: spec.BuiltinObjectGUID.WhiteTexture };
 
     expect(engine.effectsObjectServer.findObject(whiteTexturePath)).to.equal(engine.assetServer.whiteTexture);
@@ -270,7 +261,7 @@ describe('core/engine/servers', () => {
     expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
   });
 
-  it('owns object lookup per engine and preserves lookup behavior after clearing', () => {
+  it('owns object lookup per engine and falls back to asset loading for unregistered objects', () => {
     register('objects-alias', EffectsObjectServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
@@ -295,7 +286,7 @@ describe('core/engine/servers', () => {
     expect(other.assetServer.whiteTexture.findObject<Texture>(otherPath)).to.equal(other.assetServer.whiteTexture);
     expect(loads).to.equal(0);
 
-    server.clearObjectInstances();
+    texture.unregisterObject();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
     expect(other.effectsObjectServer.findObject(otherPath)).to.equal(other.assetServer.whiteTexture);
@@ -353,7 +344,7 @@ describe('core/engine/servers', () => {
     child.dispose();
   });
 
-  it('preserves live resources across lookup resets until their owners or the server dispose them', () => {
+  it('tracks unregistered GPU resources until their owners or the server dispose them', () => {
     const player = createPlayer(false);
     const engine = player.engine;
     const server = engine.effectsObjectServer;
@@ -365,7 +356,8 @@ describe('core/engine/servers', () => {
 
     texture.initialize();
     geometry.initialize();
-    server.clearObjectInstances();
+    texture.unregisterObject();
+    geometry.unregisterObject();
     expect(texture.isRegistered).to.equal(false);
     expect(geometry.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
@@ -392,7 +384,7 @@ describe('core/engine/servers', () => {
     engine.dispose();
     expect(texture.isDestroyed).to.equal(true);
     expect(disposals).to.equal(1);
-    expect(server.objectInstance).to.deep.equal({});
+    expect(server.objectsCache).to.deep.equal({});
   });
 
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {

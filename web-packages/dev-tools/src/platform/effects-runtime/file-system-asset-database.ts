@@ -189,7 +189,7 @@ export class FileSystemAssetDatabase extends Database {
     }
     // this.dirtyPackageSet.add(guid);
 
-    // TODO 加入到场景资产 SceneData 中
+    // TODO 加入到 AssetServer.objectsDataCache 中
 
     // eslint-disable-next-line no-console
     console.log('import ' + guid + ' : ' + path);

@@ -9,7 +9,7 @@ import { Texture } from './texture';
 import { VFXItem } from './vfx-item';
 
 /** @internal Creates hierarchy objects before deserializing their references. */
-export class HierarchyBuilder {
+export class SceneObjectsFactory {
   private readonly objects = new Map<EffectsObject, DeserializationContext>();
 
   private constructor (private readonly engine: Engine, private readonly suppliedTextures: readonly Texture[] = []) { }
@@ -20,32 +20,24 @@ export class HierarchyBuilder {
     textureOptions: readonly Record<string, any>[] = [],
     textures?: Texture[],
   ): void {
-    const builder = new HierarchyBuilder(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
+    const factory = new SceneObjectsFactory(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
 
     root.name = data.name;
     root.duration = data.duration;
     root.endBehavior = data.endBehavior;
-    const context = builder.spawnComposition(data, root);
-    const { effectsObjectServer } = root.engine;
+    const context = factory.spawnComposition(data, root);
 
-    effectsObjectServer.withDeserializationContext(context, () => {
-      for (const textureData of textureOptions) {
-        const texture = textureData instanceof Texture ? textureData : effectsObjectServer.findObject({ id: textureData.id }, Texture);
-
-        texture.initialize();
-        textures?.push(texture);
-      }
-    });
-    builder.finish(context);
+    factory.finish(context, root, textures);
+    textures?.push(...factory.suppliedTextures);
   }
 
   static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem): VFXItem {
     const item = new VFXItem(engine);
-    const builder = new HierarchyBuilder(engine);
-    const context = builder.createContext(item);
+    const factory = new SceneObjectsFactory(engine);
+    const context = factory.createContext(item);
 
-    builder.spawnItem(data, item, context);
-    builder.finish(context, assetRoot);
+    factory.spawnItem(data, item, context);
+    factory.finish(context, assetRoot);
 
     return item;
   }
@@ -85,15 +77,24 @@ export class HierarchyBuilder {
     this.spawnContents(data, context, template?.components);
   }
 
-  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root): void {
+  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root, textures?: Texture[]): void {
     this.deserialize();
+    const contexts = new Set(this.objects.values());
 
-    for (const context of new Set(this.objects.values())) {
-      if (context !== outerContext) {
-        context.root.addSceneAssets(context.sceneAssets);
+    contexts.add(outerContext);
+
+    for (const context of contexts) {
+      const root = context === outerContext ? assetRoot : context.root;
+
+      root.addSceneAssets(context.sceneAssets);
+      if (textures) {
+        context.sceneAssets.forEach(asset => {
+          if (asset instanceof Texture) {
+            textures.push(asset);
+          }
+        });
       }
     }
-    assetRoot.addSceneAssets(outerContext.sceneAssets);
   }
 
   private deserialize (): void {

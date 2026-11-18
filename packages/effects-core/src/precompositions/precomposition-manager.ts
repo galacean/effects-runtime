@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
-import { HierarchyBuilder } from '../hierarchy-builder';
+import { SceneObjectsFactory } from '../scene-objects-factory';
 import { VFXItem } from '../vfx-item';
 import type { Precomposition } from './precomposition';
 
@@ -33,7 +33,7 @@ export class PrecompositionManager {
 
     const rootItem = new VFXItem(engine);
 
-    HierarchyBuilder.instantiateComposition(compositionData, rootItem, scene.textureOptions);
+    SceneObjectsFactory.instantiateComposition(compositionData, rootItem, scene.textureOptions);
     rootItem.getComponent(CompositionComponent).playOnStart = options.autoplay ?? true;
     rootItem.getComponent(CompositionComponent).endBehavior = rootItem.endBehavior;
 

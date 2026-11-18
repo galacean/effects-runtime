@@ -13,7 +13,7 @@ export interface RuntimeAssetItem extends AssetViewItem { object: EffectsObject,
 
 export class RuntimeAssetSource {
   items (engine: Engine): RuntimeAssetItem[] {
-    return Object.values(engine.effectsObjectServer.objectInstance).flatMap(object => {
+    return Object.values(engine.effectsObjectServer.objectsCache).flatMap(object => {
       const kind = object instanceof Texture ? ['Textures', 'texture', 'Texture'] : object instanceof Material ? ['Materials', 'material', 'Material'] :
         object instanceof Shader || object instanceof ShaderVariant ? ['Shaders', 'shader', 'Shader'] : object instanceof Geometry ? ['Geometries', 'geometry', 'Geometry'] :
           object instanceof AnimationClip ? ['AnimationClips', 'animationClip', 'AnimationClip'] : undefined;

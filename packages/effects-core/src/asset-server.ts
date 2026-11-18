@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { EngineServer } from './engine-server';
 import { effectsClass, getClass } from './decorators';
 import type { Engine } from './engine';
-import type { ImageLike, SceneLoadOptions } from './scene';
+import type { SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { EffectsObject } from './effects-object';
 import { Asset } from './asset';
@@ -15,8 +15,6 @@ import { SerializationHelper } from './serialization-helper';
 import { generateEmptyTexture, generateWhiteTexture, Texture } from './texture';
 import type { AbstractConstructor, Constructor } from './utils';
 
-export type SceneData = Record<string, spec.EffectsObjectData>;
-
 export class Database {
   async loadGUID (guid: string): Promise<EffectsObject | undefined> {
     return undefined;
@@ -28,7 +26,8 @@ export class Database {
 export class AssetServer extends EngineServer {
   whiteTexture: Texture;
   transparentTexture: Texture;
-  jsonSceneData: SceneData = {};
+  /** Object definitions keyed by their serialized IDs. */
+  objectsDataCache: Record<string, spec.EffectsObjectData> = {};
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   assetManagers: AssetManager[] = [];
   private readonly builtinObjects = new Map<string, EffectsObject>();
@@ -44,7 +43,6 @@ export class AssetServer extends EngineServer {
     this.transparentTexture = generateEmptyTexture(engine);
     this.builtinObjects.set(spec.BuiltinObjectGUID.WhiteTexture, this.whiteTexture);
     this.builtinObjects.set(spec.BuiltinObjectGUID.EmptyTexture, this.transparentTexture);
-    this.registerBuiltinObjects();
   }
 
   /**
@@ -77,23 +75,45 @@ export class AssetServer extends EngineServer {
     };
   }
 
-  updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}) {
-    this.engine.sceneServer.updateTextVariables(scene, variables);
+  /**
+   * 根据用户参数修改文本元素的原始数据
+   * @param scene
+   * @param variables
+   */
+  updateTextVariables (
+    scene: Scene,
+    variables: spec.TemplateVariables = {},
+  ) {
+    scene.jsonScene.items.forEach(item => {
+      const textVariable = variables[item.name] as string;
+
+      if (textVariable === undefined || textVariable === null) {
+        return;
+      }
+
+      item.components?.forEach(({ id }) => {
+        const componentData = this.findEffectsObjectData(id) as spec.TextComponentData;
+
+        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
+          componentData.options.text = textVariable;
+        }
+      });
+    });
   }
 
   addEffectsObjectData (data: spec.EffectsObjectData) {
-    this.jsonSceneData[data.id] = data;
+    this.objectsDataCache[data.id] = data;
   }
 
   findEffectsObjectData (uuid: string) {
-    return this.jsonSceneData[uuid];
+    return this.objectsDataCache[uuid];
   }
 
   /** @internal Prepare the definitions and inputs for one scene load. */
   prepareSceneAssets (scene: Scene, options: SceneLoadOptions): void {
-    this.jsonSceneData = {};
+    this.objectsDataCache = {};
     PluginSystem.notifyAssetsLoadFinish(scene, options, this.engine);
-    this.prepareAssets(scene, scene.assets);
+    this.prepareAssets(scene);
     this.updateTextVariables(scene, options.variables);
   }
 
@@ -148,11 +168,12 @@ export class AssetServer extends EngineServer {
     return manager;
   }
 
-  addPackageDatas (scene: Scene) {
-    const { jsonScene, textureOptions = [] } = scene;
+  /** Register the scene definitions and loaded assets together. */
+  prepareAssets (scene: Scene): void {
+    const { jsonScene, assets, bins, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [], miscs = [], compositions,
+      animations = [], bins: binaryDatas = [], miscs = [], compositions,
     } = jsonScene;
 
     for (const compositionData of compositions) {
@@ -186,9 +207,9 @@ export class AssetServer extends EngineServer {
     for (const miscData of miscs) {
       this.addEffectsObjectData(miscData);
     }
-    for (let i = 0; i < bins.length; i++) {
-      const binaryData = bins[i];
-      const binaryBuffer = scene.bins[i];
+    for (let i = 0; i < binaryDatas.length; i++) {
+      const binaryData = binaryDatas[i];
+      const binaryBuffer = bins[i];
 
       if (binaryData.dataType === spec.DataType.BinaryAsset) {
         //@ts-expect-error
@@ -210,36 +231,21 @@ export class AssetServer extends EngineServer {
         this.addEffectsObjectData(textureData as spec.EffectsObjectData);
       }
     }
-  }
-
-  prepareAssets (
-    scene: Scene,
-    assets: Record<string, ImageLike>,
-  ) {
-    // 加入 json 资产数据
-    this.addPackageDatas(scene);
     for (const id of Object.keys(assets)) {
       const input = { id, dataType: 'DataAsset' as spec.DataType, data: assets[id] };
 
       this.addEffectsObjectData(input);
     }
-    this.registerBuiltinObjects();
   }
 
   // TODO Material 单独存表, 加速查询
   createShaderVariant () {
-    for (const guid of Object.keys(this.engine.effectsObjectServer.objectInstance)) {
-      const effectsObject = this.engine.effectsObjectServer.objectInstance[guid];
+    for (const guid of Object.keys(this.engine.effectsObjectServer.objectsCache)) {
+      const effectsObject = this.engine.effectsObjectServer.objectsCache[guid];
 
       if (effectsObject instanceof Material && effectsObject.shader) {
         effectsObject.createShaderVariant();
       }
-    }
-  }
-
-  private registerBuiltinObjects (): void {
-    for (const object of this.builtinObjects.values()) {
-      object.registerObject();
     }
   }
 

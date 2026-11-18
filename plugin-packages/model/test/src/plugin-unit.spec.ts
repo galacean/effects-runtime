@@ -1,5 +1,5 @@
 /* eslint-disable padding-line-between-statements */
-import type { Geometry, Scene, VertexBuffer } from '@galacean/effects';
+import type { Geometry, VertexBuffer } from '@galacean/effects';
 import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
@@ -771,7 +771,9 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    engine.assetServer.addPackageDatas({ jsonScene } as Scene);
+    engine.assetServer.prepareAssets({
+      jsonScene, assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+    });
 
     const animComp = new AnimationComponent(engine);
 
@@ -1117,7 +1119,9 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      engine.assetServer.addPackageDatas({ jsonScene } as Scene);
+      engine.assetServer.prepareAssets({
+        jsonScene, assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+      });
       //
       expect(itemList[1].type).to.eql('mesh');
       const itemMesh = new VFXItem(engine);

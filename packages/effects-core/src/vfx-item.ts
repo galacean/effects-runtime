@@ -14,7 +14,7 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
-import { HierarchyBuilder } from './hierarchy-builder';
+import { SceneObjectsFactory } from './scene-objects-factory';
 import type { Maskable } from './material';
 import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
@@ -797,7 +797,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error('Cannot duplicate an item without serialized data.');
     }
     const sceneRoot = this.composition?.sceneRoot;
-    const newItem = HierarchyBuilder.instantiateItem(definition, this.engine, sceneRoot);
+    const newItem = SceneObjectsFactory.instantiateItem(definition, this.engine, sceneRoot);
 
     if (sceneRoot) {
       newItem.setParent(sceneRoot);

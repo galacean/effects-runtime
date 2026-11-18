@@ -68,7 +68,7 @@ describe('core/composition/runtime instance IDs', () => {
     expect(left.localTrack).not.to.equal(right.localTrack);
     expect(left.local.definition.id).to.equal('inside');
     expect(new Set([left.local, right.local, other.local].map(item => item.getInstanceId())).size).to.equal(3);
-    expect(player.engine.effectsObjectServer.objectInstance.inside).to.be.undefined;
+    expect(player.engine.effectsObjectServer.objectsCache.inside).to.be.undefined;
     expect(scene).to.deep.equal(createScene());
   });
 

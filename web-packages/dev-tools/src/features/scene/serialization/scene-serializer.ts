@@ -121,7 +121,7 @@ export class SceneSerializer {
     const cached = this.objects.get(id);
 
     if (cached?.isRegistered) { return cached; }
-    let live: EffectsObject | undefined = this.composition.engine.effectsObjectServer.objectInstance[id];
+    let live: EffectsObject | undefined = this.composition.engine.effectsObjectServer.objectsCache[id];
 
     if (!live && resourceIdentity(this.composition.engine, id) && this.composition.engine.assetServer.findEffectsObjectData(id)) {
       live = this.composition.engine.effectsObjectServer.findObject<EffectsObject>({ id });
@@ -170,7 +170,7 @@ export class SceneSerializer {
 
     visit(this.composition.sceneRoot);
     timelineObjects.forEach(object => { this.id(object); result.push(object); });
-    for (const object of Object.values(this.composition.engine.effectsObjectServer.objectInstance)) {
+    for (const object of Object.values(this.composition.engine.effectsObjectServer.objectsCache)) {
       if (object.definition.id && !(object instanceof VFXItem) && !(object instanceof Component) &&
         !(object instanceof TimelineAsset) && !(object instanceof TrackAsset) && !(object instanceof TimelineClip) &&
         (!isResource(object) || isPersistentResource(object, this.composition.engine))) { this.id(object); result.push(object); }
@@ -438,7 +438,7 @@ export class SceneSerializer {
 
       if (visited.has(id) || scene.compositions.some(entry => entry.id === id) || TABLES.some(table => (scene[table] as Data[] | undefined)?.some(entry => entry.id === id))) { return; }
       visited.add(id);
-      const object = this.objects.get(id) ?? this.composition.engine.effectsObjectServer.objectInstance[id];
+      const object = this.objects.get(id) ?? this.composition.engine.effectsObjectServer.objectsCache[id];
 
       if (object?.definition.id && object.definition.dataType && (!isResource(object) || isPersistentResource(object, this.composition.engine))) {
         const data = object instanceof Material ? this.read(object).data : this.normalize(object.definition);

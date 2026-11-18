@@ -111,7 +111,7 @@ export class AssetObjectCache {
             idsMapping.set(definition.id, shader.getInstanceId());
             SerializationHelper.deserialize(definition, shader);
             object = shader;
-            for (const candidate of Object.values(effectsObjectServer.objectInstance)) {
+            for (const candidate of Object.values(effectsObjectServer.objectsCache)) {
               if (candidate instanceof Material && candidate.shader === previous) { candidate.shader = shader; }
             }
           } else if (object?.isRegistered) {
@@ -123,7 +123,7 @@ export class AssetObjectCache {
           if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
           objects.set(definition.id, object);
           if (object instanceof Sprite) {
-            for (const component of Object.values(effectsObjectServer.objectInstance)) {
+            for (const component of Object.values(effectsObjectServer.objectsCache)) {
               if (component instanceof SpriteComponent && component.sprite === object) {
                 const textures = component.materials.map(material => material.getTexture('_MainTex'));
 

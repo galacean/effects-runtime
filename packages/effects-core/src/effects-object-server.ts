@@ -21,7 +21,7 @@ export interface DeserializationContext {
 /** Owns live resource tracking and the separate serialized object lookup context. */
 @effectsClass('EffectsObjectServer')
 export class EffectsObjectServer extends EngineServer {
-  objectInstance: Record<string, EffectsObject> = {};
+  objectsCache: Record<string, EffectsObject> = {};
 
   private _deserializationContext?: DeserializationContext;
 
@@ -97,28 +97,20 @@ export class EffectsObjectServer extends EngineServer {
     this.materials = [];
     this.geometries = [];
 
-    for (const id of Object.keys(this.objectInstance)) {
-      this.objectInstance[id].unregisterObject();
+    for (const id of Object.keys(this.objectsCache)) {
+      this.objectsCache[id].unregisterObject();
     }
-    this.objectInstance = {};
+    this.objectsCache = {};
   }
 
   /** @internal Called by EffectsObject to keep its registration state in sync. */
   registerObject (object: EffectsObject): void {
-    this.objectInstance[object.getInstanceId()] = object;
+    this.objectsCache[object.getInstanceId()] = object;
   }
 
   /** @internal Called by EffectsObject to keep its registration state in sync. */
   unregisterObject (object: EffectsObject): void {
-    delete this.objectInstance[object.getInstanceId()];
-  }
-
-  /** Reset the current lookup context without disposing the objects or GPU resources. */
-  clearObjectInstances (): void {
-    for (const id of Object.keys(this.objectInstance)) {
-      this.objectInstance[id].unregisterObject();
-    }
-    this.objectInstance = {};
+    delete this.objectsCache[object.getInstanceId()];
   }
 
   /** @internal */
@@ -131,11 +123,11 @@ export class EffectsObjectServer extends EngineServer {
     const previousContext = this._deserializationContext;
 
     this._deserializationContext = context;
-    try {
-      return deserialize();
-    } finally {
-      this._deserializationContext = previousContext;
-    }
+    const result = deserialize();
+
+    this._deserializationContext = previousContext;
+
+    return result;
   }
 
   findObject<T> (dataPath: spec.DataPath, type?: AbstractConstructor<T>): T {
@@ -146,7 +138,7 @@ export class EffectsObjectServer extends EngineServer {
 
     const id = String(dataPath.id);
     const instanceId = this._deserializationContext?.idsMapping.get(id) ?? id;
-    const object = this.objectInstance[instanceId];
+    const object = this.objectsCache[instanceId];
 
     if (object) {
       return (!type || object instanceof type ? object : undefined) as T;
