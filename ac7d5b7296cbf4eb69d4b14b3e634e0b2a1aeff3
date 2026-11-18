@@ -1,0 +1,19 @@
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_1959265e50472a::t_028c722c2535dd 393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ac7d5b7296cbf4eb69d4b14b3e634e0b2a1aeff3",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
