@@ -1,0 +1,26 @@
+plugin-packages/multimedia/src/video/video-component.ts
+  s_554a6251d2f8aa::t_0ce76af2497bb3 65-67,244
+  s_554a6251d2f8aa::t_f8bf75b71a802f 68,179-182,196,215-220,245-247,411-412
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_554a6251d2f8aa::t_93c34a0244dfe0 845
+  s_554a6251d2f8aa::t_d5211b54a6413f 39,51,811,825,832,847-848,853-854,857,860-861,865,870,878-879,881-888,891,893,918,1189
+packages/effects-core/src/texture/texture.ts
+  s_554a6251d2f8aa::t_f8bf75b71a802f 18,49,105,225,273,280-314,354
+  s_554a6251d2f8aa::t_0ce76af2497bb3 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cdfb90062b8851c6c1b4455e2b878b5176a4bae6",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
