@@ -1,7 +1,7 @@
 import type { Engine } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import { Container, VSeparator } from '@galacean/effects-plugin-gui';
-import { selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
+import { VSeparator } from '@galacean/effects-plugin-gui';
+import { rulerConfig, selectionSnapConfig } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorIconButton } from '../../../ui/icons/control-icons';
 import { EditorToolbar, EditorViewportToggleButton } from '../../../ui/controls/toolbar';
 import { EditorMenuButton, type MenuAction } from '../../../ui/controls/menu';
@@ -133,9 +133,13 @@ export class SceneToolbar extends EditorToolbar {
   }
   private showActions (): MenuAction[] {
     const o = this.options(), g = o.gizmo;
+    const rulerEnabled = g?.handler.getConfigManager().get(rulerConfig).enabled;
 
     return [
       { label: 'Grid', checked: o.showGrid, enabled: !!g && o.is2DMode, action: () => o.setShowGrid(!o.showGrid) },
+      { label: 'Rulers', checked: rulerEnabled, enabled: !!g && o.is2DMode, action: () => {
+        if (g) { g.handler.getConfigManager().set(rulerConfig, { enabled: !rulerEnabled }); }
+      } },
       { label: 'Selection Info', checked: g?.selectionInfo, enabled: !!g, action: () => { if (g) { g.selectionInfo = !g.selectionInfo; } } },
       { label: 'Hover Highlight', checked: g?.hoverHighlight, enabled: !!g, action: () => { if (g) { g.hoverHighlight = !g.hoverHighlight; } } },
       { label: 'Show FPS', checked: o.showFPS, action: () => o.setShowFPS(!o.showFPS) },
@@ -157,6 +161,7 @@ export class SceneToolbar extends EditorToolbar {
       { label: 'Transform', shortcut: 'V / W', enabled: false }, { label: 'Pan', shortcut: 'H / Space + drag', enabled: false },
       { label: 'Brush', shortcut: 'B', enabled: false },
       { label: 'Frame Selection / All', shortcut: 'F / Home', enabled: false }, { label: 'Multi-select', shortcut: 'Shift + click', enabled: false },
+      { label: 'Delete Selected Ruler', shortcut: 'Delete / Backspace', enabled: false },
       { label: 'Edit Text', shortcut: 'Enter / Double-click', enabled: false }, { label: 'Exit Editing', shortcut: 'Esc', enabled: false },
     ] });
 
