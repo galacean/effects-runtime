@@ -1,0 +1,27 @@
+packages/effects-core/src/material/mask-ref-manager.ts
+  s_1959265e50472a::t_c2340c6e741d3d 74
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_1959265e50472a::t_881ae2020c89d2 351-366
+web-packages/test/unit/src/effects-core/components/maskable-graphic-compat.spec.ts
+  s_1959265e50472a::t_c2340c6e741d3d 62
+web-packages/test/unit/src/effects-core/mask-rendering-regressions.spec.ts
+  s_1959265e50472a::t_c2340c6e741d3d 122,124-126,280,285,310
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_1959265e50472a::t_c2340c6e741d3d 39,71,223,225-227,229-231,249,252-254,256-257,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "140fcd04aae2f73a3fc22cc2e267fc22aaccbec9",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
