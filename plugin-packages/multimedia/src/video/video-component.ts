@@ -35,6 +35,8 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
+  private videoInitializationReady = false;
+
   private initialVideoSettings?: {
     volume: number,
     muted: boolean,
@@ -193,6 +195,7 @@ export class VideoComponent extends MaskableGraphic {
 
   override onAwake (): void {
     super.onAwake();
+    this.videoInitializationReady = true;
     this.initializeVideo();
 
     const composition = this.item.composition;
@@ -242,7 +245,7 @@ export class VideoComponent extends MaskableGraphic {
       }
       this.video = videoAsset.data;
       // 首次反序列化时根合成尚未就绪，延迟到 onAwake 初始化视频。
-      if (this.isAwakeCalled) {
+      if (this.videoInitializationReady) {
         this.initializeVideo();
       }
     } else if (previousTexture !== this.renderer.texture) {
@@ -396,6 +399,7 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    this.videoInitializationReady = false;
     if (this.preparingReplayFrame) {
       this.video?.pause();
     }
