@@ -1,3 +1,4 @@
+import { createCompositionFixture } from '../helpers/items';
 import { restoreTestState, resetSpy } from '../helpers/spies';
 import type { Engine } from '@galacean/effects';
 import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
@@ -99,7 +100,7 @@ describe('plugin-editor-gizmo/change-selection-gizmo', () => {
       children: [],
     }));
     const engine = {
-      sceneServer: { compositions: [{ items }] },
+      sceneServer: { compositions: [createCompositionFixture(items)] },
       canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
     } as unknown as Engine;
     const loadingManager = new LoadingManager();

@@ -59,6 +59,20 @@ export function updateAutoTangents (keys: SequenceKey[]): void {
   });
 }
 
+/** Locate a time bound in a channel's sorted keys without copying the visible slice. */
+export function keyTimeBound (keys: readonly SequenceKey[], time: number, upper = false): number {
+  let left = 0, right = keys.length;
+
+  while (left < right) {
+    const middle = (left + right) >>> 1;
+    const value = keys[middle].time;
+
+    if (value < time || upper && value === time) { left = middle + 1; } else { right = middle; }
+  }
+
+  return left;
+}
+
 export function controlPoint (keys: SequenceKey[], index: number, side: 'in' | 'out'): { time: number, value: number } {
   const key = keys[index];
   const neighbor = keys[index + (side === 'in' ? -1 : 1)];

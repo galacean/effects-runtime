@@ -5,6 +5,14 @@ import { Matrix4, Vector2, type Matrix3 } from '../../../../../../plugin-package
 // Power-of-two dimensions keep pixel coordinates exact through projection.
 export const TEST_VIEW_SIZE = new Vector2(1024, 1024);
 
+export function createCompositionFixture<T> (items: T[]) {
+  return {
+    items,
+    sceneRoot: { children: items },
+    engine: { effectsObjectServer: { objectInstance: {} } },
+  };
+}
+
 /** Camera fixture that projects world pixel coordinates into the same view pixels. */
 export function createPixelCamera (size: Vector2 = TEST_VIEW_SIZE) {
   return {

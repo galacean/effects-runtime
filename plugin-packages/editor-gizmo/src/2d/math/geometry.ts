@@ -100,6 +100,18 @@ export function transformedBoxIntersectsBox (
   }
 
   const transformedCorners = getTransformedBoxCorners(transform, box);
+  const [topLeft, topRight, bottomRight, bottomLeft] = transformedCorners;
+  const minX = Math.min(topLeft.x, topRight.x, bottomRight.x, bottomLeft.x);
+  const minY = Math.min(topLeft.y, topRight.y, bottomRight.y, bottomLeft.y);
+  const maxX = Math.max(topLeft.x, topRight.x, bottomRight.x, bottomLeft.x);
+  const maxY = Math.max(topLeft.y, topRight.y, bottomRight.y, bottomLeft.y);
+
+  if (maxX < target.min.x || maxY < target.min.y || minX > target.max.x || minY > target.max.y) {
+    return false;
+  }
+  if (minX >= target.min.x && minY >= target.min.y && maxX <= target.max.x && maxY <= target.max.y) {
+    return true;
+  }
   const targetCorners = getBoxCorners(target);
   const axes = [transformedCorners, targetCorners].reduce<Vector2[]>(
     (result, corners) => result.concat(corners.map((point, index) => {

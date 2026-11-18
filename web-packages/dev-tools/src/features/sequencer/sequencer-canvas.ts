@@ -12,13 +12,13 @@ import { setTooltip } from '../../ui/controls/tooltip';
 import { createObjectReferenceControl } from '../../ui/property-editor/object-reference-field';
 import { propertyTrackKind } from './sequencer-properties';
 import { CurveEditor } from '../../ui/curve-editor/curve-editor';
-import { CurveDragGesture, CurveSelection, moveCurveKeys } from '../../ui/curve-editor/curve-interaction';
+import { CurveDragGesture, moveCurveKeys } from '../../ui/curve-editor/curve-interaction';
 import { CurveScreenSpace, zoomCurveBounds } from '../../ui/curve-editor/curve-screen-space';
 import { editorBox, editorColors, EDITOR_FONT, EDITOR_FONT_SIZE, EDITOR_COMPACT_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, getEditorFont } from '../../ui/theme/control-theme';
 import { sceneWorkspace } from '../scene/scene-workspace';
 import { inspectedObjectIcon } from '../inspector/inspected-object-icons';
 import type { SequenceKey } from './curve-data';
-import { controlPoint, updateAutoTangents } from './curve-data';
+import { controlPoint, keyTimeBound, updateAutoTangents } from './curve-data';
 import { SequencerCurveModel } from './sequencer-curve-model';
 import type { PositionPathSnapshot } from './spatial-position';
 import { PositionPathModel } from './spatial-position';
@@ -27,6 +27,14 @@ import type { SequenceRow, SequencerState } from './sequencer-state';
 import { SEQUENCE_COLORS as C, SEQUENCE_LAYOUT as L, niceStep } from './sequencer-style';
 type PointerPhase = 'down' | 'move' | 'up' | 'wheel';
 interface Rect { x: number, y: number, width: number, height: number }
+interface TrackRowSpan { row: SequenceRow, bottom: number }
+interface TimelineKeyLayout {
+  view: string,
+  versions: number[],
+  selection: number,
+  keys: { x: number, items: KeySelection[], selected: boolean }[],
+  connections: { start: number, end: number, constant: boolean, tint: math.Color }[],
+}
 interface KeyHit { x: number, y: number, keys: KeySelection[] }
 interface SectionHit extends Rect { section: SequenceSection }
 interface TangentHit { x: number, y: number, item: KeySelection, side: 'in' | 'out' }
@@ -41,11 +49,13 @@ interface Drag {
   edge?: 'left' | 'right',
   tangents?: TangentHit[],
   view?: number[],
-  initialSelection?: Set<string>,
+  initialSelection?: Map<string, KeySelection>,
   initialSections?: Set<string>,
   selectionMode?: MarqueeSelectionMode,
   track?: TrackAsset,
+  toggleRowOnClick?: string,
   resume?: boolean,
+  scrubX?: number,
   button?: MouseButton,
   context?: SequencerContext,
   moved?: boolean,
@@ -70,6 +80,12 @@ export class SequencerCanvas extends Container {
   private rect: Rect = { x: 0, y: 0, width: 1, height: 1 };
   private plot!: Rect;
   private rows: SequenceRow[] = [];
+  private rowDocument?: SequencerDocument;
+  private rowLayout?: { rows: SequenceRow[], scroll: number, width: number, height: number };
+  private visibleRows: SequenceRow[] = [];
+  private visibleTrackSpans: TrackRowSpan[] = [];
+  private readonly trackSpans = new Map<TrackAsset, TrackRowSpan>();
+  private readonly timelineKeys = new WeakMap<SequenceRow, TimelineKeyLayout>();
   private keyHits: KeyHit[] = [];
   private sectionHits: SectionHit[] = [];
   private tangentHits: TangentHit[] = [];
@@ -88,6 +104,7 @@ export class SequencerCanvas extends Container {
   }
   private hoveredRow?: string;
   private parentHighlights = new Set<string>();
+  private highlightSignature = '';
 
   document?: SequencerDocument;
   contextRequested?: (context: SequencerContext, position: math.Vector2) => void;
@@ -116,7 +133,23 @@ export class SequencerCanvas extends Container {
     this.layoutRows();
   }
   override update (dt: number): void {
-    this.rows = this.document ? this.state.rows(this.document) : []; this.updateParentHighlights(); this.layoutRows();
+    if (!this.visibleInHierarchy) { return; }
+    const rows = this.document ? this.state.rows(this.document) : undefined;
+
+    if (this.rowDocument !== this.document || rows && rows !== this.rows) {
+      if (this.rowDocument !== this.document) { this.curveModels.clear(); this.highlightSignature = ''; }
+      this.rowDocument = this.document;
+      this.rows = rows ?? [];
+      this.trackSpans.clear();
+      for (const row of this.rows) {
+        if (row.kind === 'track') { this.trackSpans.set(row.track, { row, bottom: row.top + row.height }); } else {
+          const span = this.trackSpans.get(row.track);
+
+          if (span) { span.bottom = row.top + row.height; }
+        }
+      }
+    }
+    this.updateParentHighlights(); this.layoutRows();
     super.update(dt);
   }
   isRowSelected (row: SequenceRow): boolean {
@@ -135,12 +168,16 @@ export class SequencerCanvas extends Container {
     if (this.parentHighlights.has(row.id)) { return hovered ? C.rowHover : editorColors.selectedParent; }
     if (row.depth === 0) { return hovered ? C.headerHover : C.header; }
 
-    return hovered ? C.rowHover : this.rows.indexOf(row) % 2 ? C.rowAlt : C.row;
+    return hovered ? C.rowHover : row.index % 2 ? C.rowAlt : C.row;
   }
   private updateParentHighlights (): void {
-    this.parentHighlights.clear();
     const document = this.document;
+    const signature = document ? [document.structureRevision, document.selectedTracks.revision, document.selectedSections.revision,
+      document.selectedKeys.revision, this.state.activeChannel].join('/') : '';
 
+    if (signature === this.highlightSignature) { return; }
+    this.highlightSignature = signature;
+    this.parentHighlights.clear();
     if (!document) { return; }
     const highlight = (track: TrackAsset, includeTrack: boolean) => {
       for (let node: TrackAsset | undefined = includeTrack ? track : track.parent; node; node = node.parent) {
@@ -148,17 +185,16 @@ export class SequencerCanvas extends Container {
       }
     };
 
-    for (const track of document.tracks) {
+    for (const track of document.selectedTrackItems) {
       const id = track.getInstanceId();
 
-      if (!document.selectedTracks.has(id)) { continue; }
       const channelSelected = this.state.activeChannel.startsWith(id + ':');
 
       highlight(track, channelSelected);
       if (channelSelected && this.state.activeChannel.includes('.')) { this.parentHighlights.add(this.state.activeChannel.slice(0, this.state.activeChannel.lastIndexOf('.'))); }
     }
     document.selectedSectionItems.forEach(section => highlight(section.track, true));
-    for (const { section, channel } of document.selectedKeyItems()) {
+    for (const { section, channel } of document.selectedKeys.values()) {
       const group = section.track.getInstanceId() + ':' + channel.group;
 
       highlight(section.track, true); this.parentHighlights.add(group); this.parentHighlights.add(group + '.' + channel.label);
@@ -167,28 +203,51 @@ export class SequencerCanvas extends Container {
   private layoutRows (): void {
     if (!this.document) {
       for (const control of this.rowControls.values()) { control.dispose(); }
-      this.rowControls.clear(); this.scrollbar.visible = false;
+      this.rowControls.clear(); this.scrollbar.visible = false; this.rowLayout = undefined;
+      this.visibleRows = []; this.visibleTrackSpans = [];
 
       return;
     }
-    this.scrollbar.visible = true;
-    if (!this.plot) { return; }
+    if (!this.plot || this.rowDocument !== this.document) { return; }
     const last = this.rows.at(-1), total = last ? last.top + last.height : 0;
+    const width = this.rowLayer.width, height = this.plot.height;
 
-    this.scrollMax = Math.max(0, total - this.plot.height);
-    this.state.scrollY = Math.max(0, Math.min(this.state.scrollY, this.scrollMax));
-    this.scrollbar.maxValue = total; this.scrollbar.page = this.plot.height; this.scrollbar.value = this.state.scrollY;
+    this.scrollMax = Math.max(0, total - height);
+    const scroll = this.state.scrollY = Math.max(0, Math.min(this.state.scrollY, this.scrollMax));
+    const layout = this.rowLayout;
+
+    if (layout?.rows === this.rows && layout.scroll === scroll && layout.width === width && layout.height === height) { return; }
+    this.rowLayout = { rows: this.rows, scroll, width, height };
+    this.scrollbar.visible = true;
+    this.scrollbar.maxValue = total; this.scrollbar.page = height; this.scrollbar.value = scroll;
     const keep = new Set<string>();
+    const spans = new Set<TrackRowSpan>();
 
-    for (const row of this.rows) {
-      if (row.top + row.height < this.state.scrollY || row.top > this.state.scrollY + this.plot.height) { continue; }
+    this.visibleRows = [];
+    for (let i = this.firstRowAt(scroll); i < this.rows.length && this.rows[i].top < scroll + height; i++) {
+      const row = this.rows[i], span = this.trackSpans.get(row.track);
+
+      this.visibleRows.push(row);
+      if (span) { spans.add(span); }
       keep.add(row.id);
       let control = this.rowControls.get(row.id);
 
       if (!control) { control = append(this.rowLayer, new SequenceRowControl(this.engine, this)); this.rowControls.set(row.id, control); }
-      control.bind(row, this.document); place(control, 0, row.top - this.state.scrollY, this.rowLayer.width, row.height);
+      place(control, 0, row.top - scroll, width, row.height); control.bind(row, this.document);
     }
+    this.visibleTrackSpans = Array.from(spans);
     for (const [id, control] of this.rowControls) { if (!keep.has(id)) { control.dispose(); this.rowControls.delete(id); } }
+  }
+  private firstRowAt (offset: number): number {
+    let first = 0, end = this.rows.length;
+
+    while (first < end) {
+      const middle = (first + end) >>> 1, row = this.rows[middle];
+
+      if (row.top + row.height <= offset) { first = middle + 1; } else { end = middle; }
+    }
+
+    return first;
   }
   override draw (): void {
     const document = this.document;
@@ -266,7 +325,15 @@ export class SequencerCanvas extends Container {
     const action = () => this.interact(document, event, phase);
 
     if (phase === 'down') { sceneWorkspace.flushEdits(); }
-    if (sceneWorkspace.current) { sceneWorkspace.current.observeEditor('Select timeline elements', action); } else { action(); }
+    const scene = sceneWorkspace.current;
+
+    if (scene) {
+      // Keep the press selection in the same undo entry if it becomes a drag.
+      const scope = phase === 'down' && scene.composition === document.composition
+        ? () => this.drag?.kind === 'section' ? document : undefined : undefined;
+
+      scene.observeEditor('Select timeline elements', action, scope);
+    } else { action(); }
     if (phase === 'down' && !this.drag) { this.pointerInteraction.end(); }
     if (this.context) {
       const context = this.context;
@@ -280,10 +347,20 @@ export class SequencerCanvas extends Container {
   get header (): Rect { return { x: this.rect.x, y: this.rect.y, width: this.state.outlinerWidth - 4, height: L.rulerHeight }; }
   private get graphLeft (): number { return this.plot.x + (this.state.curveMode ? L.curveGutter : 0); }
   get pixelsPerSecond (): number { return (this.plot.x + this.plot.width - this.graphLeft) / Math.max(1e-6, this.state.viewEnd - this.state.viewStart); }
-  private timeX (time: number): number { return this.curveSpace.timeX(time); }
+  private timeX (time: number): number { return this.graphLeft + (time - this.state.viewStart) * this.pixelsPerSecond; }
   private timeAt (x: number): number { return this.curveSpace.timeAt(x); }
   private valueY (value: number): number { return this.curveSpace.valueY(value); }
   private valueAt (y: number): number { return this.curveSpace.valueAt(y); }
+
+  applyPendingScrub (document: SequencerDocument): void {
+    const drag = this.drag;
+
+    if (drag?.kind !== 'scrub' || drag.document !== document || drag.scrubX === undefined) { return; }
+    const time = Math.max(0, this.state.snap(this.timeAt(drag.scrubX), document, this.pixelsPerSecond));
+
+    drag.scrubX = undefined;
+    if (Math.abs(time - document.currentTime) > 1e-8) { document.setTime(time); }
+  }
 
   cancel (document: SequencerDocument): void {
     const drag = this.drag;
@@ -292,9 +369,9 @@ export class SequencerCanvas extends Container {
     this.drag = undefined; this.pointerInteraction.end(); this.context = undefined; this.scrubKey = false;
     this.selectedTangents = [];
     if (drag) {
-      owner.cancel();
+      if (drag.kind === 'section' && !drag.sections?.length) { owner.commit(); } else { owner.cancel(); }
       if (drag.kind === 'marquee') {
-        owner.selectedKeys.clear(); drag.initialSelection?.forEach(id => owner.selectedKeys.add(id));
+        owner.restoreKeySelection(drag.initialSelection?.keys() ?? []);
         owner.selectedSections.clear(); drag.initialSections?.forEach(id => owner.selectedSections.add(id));
       }
       if (drag.kind === 'scrub' && drag.resume) { void owner.composition.resume(); }
@@ -356,11 +433,10 @@ export class SequencerCanvas extends Container {
   }
 
   private drawTimeline (document: SequencerDocument): void {
-    for (const [index, row] of this.rows.entries()) {
+    for (const row of this.visibleRows) {
       const y = this.plot.y + row.top - this.state.scrollY;
 
-      if (y + row.height < this.plot.y || y > this.plot.y + this.plot.height) { continue; }
-      const background = row.kind === 'object' ? C.header : index % 2 ? C.rowAlt : C.row;
+      const background = row.kind === 'object' ? C.header : row.index % 2 ? C.rowAlt : C.row;
 
       this.fill({ x: this.plot.x, y, width: this.plot.width, height: row.height }, background);
       if (row.kind === 'object') {
@@ -379,21 +455,19 @@ export class SequencerCanvas extends Container {
       }
     }
     this.drawTimeGrid();
-    for (const row of this.rows) {
-      if (row.kind !== 'track') { continue; }
+    for (const { row, bottom } of this.visibleTrackSpans) {
       const y = this.plot.y + row.top - this.state.scrollY;
-      const children = this.rows.filter(item => item.track === row.track);
-      const last = children.at(-1) ?? row;
-      const expanded = last !== row;
-      const height = last.top + last.height - row.top - 4;
+      const expanded = bottom > row.top + row.height;
+      const height = bottom - row.top - 4;
 
-      if (y + height < this.plot.y || y > this.plot.y + this.plot.height) { continue; }
       for (const clip of row.track.getClips()) {
         const section = document.sections.get(clip);
 
         if (!section) { continue; }
         const x = this.timeX(clip.start), end = this.timeX(clip.start + clip.duration);
         const rect = { x, y: y + 2, width: Math.max(3, end - x), height };
+
+        if (rect.x + rect.width < this.plot.x || rect.x > this.plot.x + this.plot.width) { continue; }
         const color = C.sections[document.assetType(row.track)] ?? C.sections.default;
         const selected = document.selectedSections.has(clip.getInstanceId());
         const mouse = this.pointer;
@@ -423,57 +497,81 @@ export class SequencerCanvas extends Container {
         this.sectionHits.push({ ...rect, height: row.height - 4, section });
       }
     }
-    for (const row of this.rows) {
+    for (const row of this.visibleRows) {
       const y = this.plot.y + row.top - this.state.scrollY;
       const tint = this.isRowSelected(row) ? C.selectionTint : this.parentHighlights.has(row.id) ? C.highlightTint : this.hoveredRow === row.id ? C.hoverTint : undefined;
 
-      if (tint && y + row.height >= this.plot.y && y <= this.plot.y + this.plot.height) {
+      if (tint) {
         this.fill({ x: this.plot.x, y, width: this.plot.width, height: row.height }, tint);
       }
     }
-    for (const row of this.rows) {
+    const view = [this.state.viewStart, this.state.viewEnd, this.plot.x, this.plot.width].join('/');
+
+    for (const row of this.visibleRows) {
       const y = this.plot.y + row.top - this.state.scrollY, center = y + row.height / 2;
 
-      if (y + row.height < this.plot.y || y > this.plot.y + this.plot.height || row.expandable && this.state.expanded.has(row.id)) { continue; }
-      const atTime = new Map<number, KeySelection[]>();
+      if (!row.channels.length || row.expandable && this.state.expanded.has(row.id)) { continue; }
+      const layout = this.keyLayout(document, row, view);
 
-      for (const { section, channel } of row.channels) {
-        if (row.kind === 'channel' && channel.keys.length > 1) {
-          const color = C.axes[channel.axis] ?? C.text;
-
-          const tint = new math.Color(color.r, color.g, color.b, 0.38);
-
-          for (let index = 0; index + 1 < channel.keys.length; index++) {
-            const key = channel.keys[index], next = channel.keys[index + 1];
-            const start = Math.max(this.plot.x, this.timeX(section.clip.start + key.time * section.clip.duration));
-            const end = Math.min(this.plot.x + this.plot.width, this.timeX(section.clip.start + next.time * section.clip.duration));
-
-            if (end <= start) { continue; }
-            if (key.interpolationMode === InterpolationMode.Constant) {
-              for (let x = start; x < end; x += 7) { this.line(x, center, Math.min(x + 4, end), center, tint); }
-            } else { this.line(start, center, end, center, tint); }
-          }
-        }
-        for (const key of channel.keys) {
-          const time = section.clip.start + key.time * section.clip.duration;
-
-          if (time < this.state.viewStart || time > this.state.viewEnd) { continue; }
-          const x = Math.round(this.timeX(time));
-          const items = atTime.get(x) ?? [];
-
-          items.push({ section, channel, key }); atTime.set(x, items);
-        }
+      for (const { start, end, constant, tint } of layout.connections) {
+        if (constant) {
+          for (let x = start; x < end; x += 7) { this.line(x, center, Math.min(x + 4, end), center, tint); }
+        } else { this.line(start, center, end, center, tint); }
       }
-      for (const [x, keys] of atTime) {
-        const selected = keys.some(item => document.selectedKeys.has(item.key.id));
-
-        if (row.kind === 'channel' && keys.length === 1 && keys[0].channel.kind === 'number') {
-          this.drawNumericKey(x, center, keys[0].key, selected);
+      for (const { x, items, selected } of layout.keys) {
+        if (row.kind === 'channel' && items.length === 1 && items[0].channel.kind === 'number') {
+          this.drawNumericKey(x, center, items[0].key, selected);
         } else { this.diamond(x, center, selected ? C.selectedKey : C.text, selected ? 4.5 : 4); }
-        this.keyHits.push({ x, y: center, keys });
+        this.keyHits.push({ x, y: center, keys: items });
       }
     }
     this.drawMarquee();
+  }
+
+  private keyLayout (document: SequencerDocument, row: SequenceRow, view: string): TimelineKeyLayout {
+    let layout = this.timelineKeys.get(row);
+
+    if (layout?.view !== view || row.channels.some(({ section }, index) => document.sectionRevision(section) !== layout!.versions[index])) {
+      const atPixel = new Map<number, KeySelection[]>();
+      const connections: TimelineKeyLayout['connections'] = [];
+      const { viewStart, viewEnd } = this.state, left = this.plot.x, right = left + this.plot.width;
+
+      for (const { section, channel } of row.channels) {
+        const { keys } = channel, { start, duration } = section.clip;
+
+        if (!keys.length || !duration && (start < viewStart || start > viewEnd)) { continue; }
+        const a = duration ? (viewStart - start) / duration : -Infinity, b = duration ? (viewEnd - start) / duration : Infinity;
+        const first = keyTimeBound(keys, Math.min(a, b)), end = keyTimeBound(keys, Math.max(a, b), true);
+        const xAt = (index: number) => this.timeX(start + keys[index].time * duration);
+
+        if (row.kind === 'channel' && duration > 0 && keys.length > 1) {
+          const color = C.axes[channel.axis] ?? C.text, tint = new math.Color(color.r, color.g, color.b, 0.38);
+
+          // Include the neighboring keys for segments crossing either viewport edge.
+          for (let i = Math.max(0, first - 1); i < Math.min(end, keys.length - 1); i++) {
+            const x1 = Math.max(left, xAt(i)), x2 = Math.min(right, xAt(i + 1));
+
+            if (x2 > x1) { connections.push({ start: x1, end: x2, constant: keys[i].interpolationMode === InterpolationMode.Constant, tint }); }
+          }
+        }
+        for (let i = first; i < end; i++) {
+          const x = Math.round(xAt(i));
+          let items = atPixel.get(x);
+
+          if (!items) { items = []; atPixel.set(x, items); }
+          items.push({ section, channel, key: keys[i] });
+        }
+      }
+      layout = { view, versions: row.channels.map(({ section }) => document.sectionRevision(section)), selection: -1,
+        keys: Array.from(atPixel, ([x, items]) => ({ x, items, selected: false })), connections };
+      this.timelineKeys.set(row, layout);
+    }
+    if (layout.selection !== document.selectedKeys.revision) {
+      layout.selection = document.selectedKeys.revision;
+      for (const group of layout.keys) { group.selected = group.items.some(({ key }) => document.selectedKeys.has(key.id)); }
+    }
+
+    return layout;
   }
 
   private drawSectionSelection (rect: Rect, headerHeight: number, expanded: boolean): void {
@@ -596,7 +694,6 @@ export class SequencerCanvas extends Container {
       valueScale: (this.state.curveMax - this.state.curveMin) / this.plot.height };
 
     this.drag = drag;
-    if (['keys', 'section', 'tangent'].includes(kind)) { document.begin(kind === 'keys' ? 'Move keyframes' : kind === 'section' ? 'Edit sections' : 'Edit tangents'); }
 
     return drag;
   }
@@ -604,7 +701,13 @@ export class SequencerCanvas extends Container {
   private rowAt (y: number): SequenceRow | undefined {
     const offset = y - this.plot.y + this.state.scrollY;
 
-    return this.rows.find(row => offset >= row.top && offset < row.top + row.height);
+    const row = this.rows[this.firstRowAt(offset)];
+
+    return row && offset >= row.top ? row : undefined;
+  }
+
+  private toggleRow (id: string): void {
+    if (this.state.expanded.has(id)) { this.state.expanded.delete(id); } else { this.state.expanded.add(id); }
   }
 
   private curveAt (document: SequencerDocument, x: number, y: number): { section: SequenceSection, channel: SequenceChannel } | undefined {
@@ -625,6 +728,7 @@ export class SequencerCanvas extends Container {
     if (!keys.length) { return; }
     const drag = this.start('keys', document);
 
+    document.beginDrag('Move keyframes', keys.map(item => item.section));
     drag.button = button;
     drag.keys = keys.map(item => ({ item, time: item.key.time, value: item.key.value }));
 
@@ -643,6 +747,7 @@ export class SequencerCanvas extends Container {
     if (!tangents.length) { return false; }
     const drag = this.start('tangent', document);
 
+    document.beginDrag('Edit tangents', tangents.map(hit => hit.item.section));
     drag.tangents = tangents; drag.button = button;
 
     return true;
@@ -654,7 +759,7 @@ export class SequencerCanvas extends Container {
 
     if (context.keys?.length) {
       if (!context.keys.some(item => document.selectedKeys.has(item.key.id))) {
-        document.clearSelection(); context.keys.forEach(item => document.selectedKeys.add(item.key.id));
+        document.clearSelection(); context.keys.forEach(item => document.selectedKeys.select(item));
       }
     } else if (context.section && !document.selectedSections.has(context.section.clip.getInstanceId())) {
       document.clearSelection(); document.selectedSections.add(context.section.clip.getInstanceId());
@@ -680,7 +785,7 @@ export class SequencerCanvas extends Container {
     const wheel = phase === 'wheel' && event instanceof MouseEventButton ? event.factor * (event.buttonIndex === MouseButton.WheelUp ? 1 : event.buttonIndex === MouseButton.WheelDown ? -1 : 0) : 0;
     const horizontalWheel = phase === 'wheel' && event instanceof MouseEventButton ? event.factor * (event.buttonIndex === MouseButton.WheelLeft ? 1 : event.buttonIndex === MouseButton.WheelRight ? -1 : 0) : 0;
 
-    if (this.drag?.kind === 'splitter') {
+    if (this.drag?.kind === 'splitter' || this.drag?.kind === 'scrub') {
       this.updateDrag(document, event, phase);
 
       return;
@@ -734,16 +839,17 @@ export class SequencerCanvas extends Container {
 
         if (keyHit && !this.state.curveMode) {
           if (!keyHit.keys.some(item => document.selectedKeys.has(item.key.id))) {
-            document.clearSelection(); keyHit.keys.forEach(item => document.selectedKeys.add(item.key.id));
+            document.clearSelection(); keyHit.keys.forEach(item => document.selectedKeys.select(item));
           }
         } else if (!keyHit && !tangent && !(event.shiftPressed && document.selectedKeys.size) && (curve || !this.state.curveMode && row?.channels.length)) {
           const entries = curve ? [curve] : row!.channels;
           const time = this.state.snap(this.timeAt(mouse.x), document, this.pixelsPerSecond);
+          const editable = entries.filter(entry => !document.isLocked(entry.section.track) && time >= entry.section.clip.start && time <= entry.section.clip.start + entry.section.clip.duration);
 
-          if (entries.some(entry => !document.isLocked(entry.section.track) && time >= entry.section.clip.start && time <= entry.section.clip.start + entry.section.clip.duration)) {
+          if (editable.length) {
             this.selectedTangents = [];
-            document.begin('Insert and move key'); document.clearSelection();
-            entries.forEach(entry => document.insertKey(entry.section, entry.channel, time,
+            document.beginDrag('Insert and move key', editable.map(entry => entry.section)); document.clearSelection();
+            editable.forEach(entry => document.insertKey(entry.section, entry.channel, time,
               this.state.curveMode && !modified ? this.valueAt(mouse.y) : undefined, this.state.curveMode && modified));
             document.changed();
           }
@@ -767,7 +873,7 @@ export class SequencerCanvas extends Container {
       const expanderX = this.rect.x + L.treePadding + row.depth * L.treeIndent;
 
       if (row.expandable && mouse.x >= expanderX && mouse.x < expanderX + L.expanderSize) {
-        if (this.state.expanded.has(row.id)) { this.state.expanded.delete(row.id); } else { this.state.expanded.add(row.id); }
+        this.toggleRow(row.id);
       } else {
         if (this.state.curveMode && (modified || event.shiftPressed)) {
           this.state.curveTracks.forEach(id => document.selectedTracks.add(id));
@@ -777,9 +883,14 @@ export class SequencerCanvas extends Container {
         this.state.activeChannel = row.kind === 'channel' || row.kind === 'group' ? row.id : '';
         this.state.captureCurveSelection(document);
         this.selectTrack(row.track);
-        if (event instanceof MouseEventButton && event.doubleClick && row.expandable) {
-          if (this.state.expanded.has(row.id)) { this.state.expanded.delete(row.id); } else { this.state.expanded.add(row.id); }
-        } else if (row.kind === 'object' || row.kind === 'track') { this.start('track', document).track = row.track; }
+        const toggle = event instanceof MouseEventButton && event.doubleClick && row.expandable;
+
+        if (row.kind === 'object' || row.kind === 'track') {
+          const drag = this.start('track', document);
+
+          drag.track = row.track;
+          if (toggle) { drag.toggleRowOnClick = row.id; }
+        } else if (toggle) { this.toggleRow(row.id); }
         if (this.state.curveMode) { this.state.fitValues(document); }
       }
     }
@@ -796,7 +907,7 @@ export class SequencerCanvas extends Container {
         const drag = this.start('scrub', document);
 
         drag.resume = !document.composition.getPaused();
-        document.setTime(Math.max(0, this.state.snap(this.timeAt(mouse.x), document, this.pixelsPerSecond)));
+        if (drag.resume) { document.composition.pause(); }
       } else if (mouse.x > this.plot.x + this.plot.width) { this.start('scroll', document).value = this.state.scrollY; } else if (event.altPressed && (Math.abs(mouse.x - this.timeX(this.state.playbackStart)) < 6 || Math.abs(mouse.x - this.timeX(this.state.playbackEnd)) < 6)) {
         this.start(Math.abs(mouse.x - this.timeX(this.state.playbackStart)) < 6 ? 'range-start' : 'range-end', document);
       } else if (tangent && !document.isLocked(tangent.item.section.track)) {
@@ -811,7 +922,7 @@ export class SequencerCanvas extends Container {
         }
         if (!keyHit.keys.some(item => document.selectedKeys.has(item.key.id))) {
           if (!modified && !event.shiftPressed) { document.clearSelection(); }
-          keyHit.keys.forEach(item => document.selectedKeys.add(item.key.id));
+          keyHit.keys.forEach(item => document.selectedKeys.select(item));
         } else if (modified) { keyHit.keys.forEach(item => document.selectedKeys.delete(item.key.id)); }
         this.selectTrack(keyHit.keys[0].section.track);
         const drag = this.startKeyDrag(document);
@@ -828,17 +939,13 @@ export class SequencerCanvas extends Container {
         if (!document.isLocked(section.track)) {
           const drag = this.start('section', document);
 
-          drag.sections = document.selectedSectionItems.filter(item => !document.isLocked(item.track)).map(item => ({
-            section: item, start: item.clip.start, duration: item.clip.duration, keys: item.channels.map(channel => channel.keys.map(key => ({ ...key }))),
-            position: item.position?.snapshot(),
-          }));
           drag.edge = Math.abs(mouse.x - sectionHit.x) < 7 ? 'left' : Math.abs(mouse.x - sectionHit.x - sectionHit.width) < 7 ? 'right' : undefined;
           drag.duplicate = !drag.edge && event.altPressed;
         }
       } else {
         const drag = this.start('marquee', document);
 
-        drag.initialSelection = new Set(document.selectedKeys); drag.initialSections = new Set(document.selectedSections);
+        drag.initialSelection = new Map(document.selectedKeys); drag.initialSections = new Set(document.selectedSections);
         drag.selectionMode = this.state.curveMode ? marqueeSelectionMode(event) : event.shiftPressed ? 'add' : !modified && event.altPressed ? 'remove' : 'replace';
         if (this.state.curveMode && graph) {
           const entry = this.curveAt(document, mouse.x, mouse.y);
@@ -857,6 +964,18 @@ export class SequencerCanvas extends Container {
 
     if (!drag) { return; }
     const mouse = this.pointer;
+
+    if (drag.kind === 'scrub') {
+      drag.scrubX = mouse.x;
+      if (phase === 'up') {
+        this.applyPendingScrub(document);
+        if (drag.resume) { void document.composition.resume(); }
+        document.commit();
+        this.drag = undefined;
+      }
+
+      return;
+    }
     const down = phase !== 'up';
 
     if (!down) {
@@ -865,7 +984,11 @@ export class SequencerCanvas extends Container {
       }
       if (drag.kind === 'marquee' && !drag.moved) {
         if (drag.selectionMode === 'replace') { document.selectedKeys.clear(); document.selectedSections.clear(); }
-        if (drag.context?.keys) { CurveSelection.click(document.selectedKeys, drag.context.keys.map(item => item.key.id), event.ctrlPressed || event.metaPressed, event.altPressed, drag.initialSelection); }
+        for (const item of drag.context?.keys ?? []) {
+          if (event.altPressed || (event.ctrlPressed || event.metaPressed) && drag.initialSelection?.has(item.key.id)) {
+            document.selectedKeys.delete(item.key.id);
+          } else { document.selectedKeys.select(item); }
+        }
       }
       if (drag.kind === 'track' && drag.moved && drag.track) {
         const row = this.rowAt(mouse.y);
@@ -875,16 +998,36 @@ export class SequencerCanvas extends Container {
 
           document.reorderTrack(drag.track, row.track, mouse.y >= center);
         }
+      } else if (drag.toggleRowOnClick) {
+        this.toggleRow(drag.toggleRowOnClick);
       }
-      if (drag.kind === 'scrub' && drag.resume) { void document.composition.resume(); }
       document.commit(); this.drag = undefined;
 
       return;
     }
+    if (drag.kind === 'section' && !drag.sections && phase !== 'move') { return; }
     const { dx, dy } = drag.gesture.update(mouse.x, mouse.y, event.shiftPressed);
 
     drag.moved = drag.gesture.moved; drag.axis = drag.gesture.axis;
-    if (drag.moved && drag.duplicate) {
+    if (drag.kind === 'section' && !drag.sections) {
+      if (!drag.moved) { return; }
+      const sections = document.selectedSectionItems.filter(item => !document.isLocked(item.track));
+
+      drag.sections = sections.map(item => ({
+        section: item, start: item.clip.start, duration: item.clip.duration,
+        keys: drag.edge ? item.channels.map(channel => channel.keys.map(key => ({ ...key }))) : [],
+        position: drag.edge ? item.position?.snapshot() : undefined,
+      }));
+      if (sections.length) {
+        const label = drag.edge ? 'Trim sections' : drag.duplicate ? 'Duplicate sections' : 'Move sections';
+        const mode = drag.edge ? 'edit' : drag.duplicate ? 'duplicate' : 'move';
+
+        document.beginDrag(label, sections, mode);
+      }
+    }
+    const duplicate = drag.moved && drag.duplicate;
+
+    if (duplicate) {
       drag.duplicate = false;
       if (drag.keys) {
         document.selectedKeys.clear();
@@ -893,7 +1036,7 @@ export class SequencerCanvas extends Container {
         drag.keys = drag.keys.map(seed => {
           const item = document.duplicateKey(seed.item, spatialCopies);
 
-          document.selectedKeys.add(item.key.id);
+          document.selectedKeys.select(item);
 
           return { ...seed, item };
         });
@@ -908,9 +1051,7 @@ export class SequencerCanvas extends Container {
         });
       }
     }
-    if (drag.kind === 'scrub') {
-      document.setTime(Math.max(0, this.state.snap(this.timeAt(mouse.x), document, this.pixelsPerSecond)));
-    } else if (drag.kind === 'splitter') {
+    if (drag.kind === 'splitter') {
       this.state.resizeOutliner(drag.value + mouse.x - drag.x, this.rect.width);
     } else if (drag.kind === 'pan' && drag.view) {
       const axis = drag.horizontalOnly ? 'x' : drag.graph ? drag.axis : undefined;
@@ -950,24 +1091,27 @@ export class SequencerCanvas extends Container {
       const initial = drag.edge === 'right' ? anchor.start + anchor.duration : anchor.start;
       const dt = this.state.snap(initial + dx / this.pixelsPerSecond, document, this.pixelsPerSecond, document.selectedSections) - initial;
 
-      for (const seed of drag.sections) {
-        const section = seed.section;
-
-        section.clip.start = seed.start; section.clip.duration = seed.duration;
-        section.position = seed.position ? PositionPathModel.restore(seed.position) : undefined;
-        section.channels.forEach((channel, index) => channel.keys = seed.keys[index].map(key => ({ ...key })));
-        if (drag.edge) {
+      if (drag.edge) {
+        for (const seed of drag.sections) {
+          const section = seed.section;
           const start = drag.edge === 'left' ? Math.max(0, Math.min(seed.start + seed.duration - 1 / this.state.frameRate, seed.start + dt)) : seed.start;
           const end = drag.edge === 'right' ? Math.max(seed.start + 1 / this.state.frameRate, seed.start + seed.duration + dt) : seed.start + seed.duration;
 
+          section.clip.start = seed.start; section.clip.duration = seed.duration;
+          section.position = seed.position ? PositionPathModel.restore(seed.position) : undefined;
+          section.channels.forEach((channel, index) => channel.keys = seed.keys[index].map(key => ({ ...key })));
           document.resizeSection(section, start, end, event.ctrlPressed || event.metaPressed);
-        } else {
-          const minStart = Math.min(...drag.sections.map(item => item.start));
-
-          section.clip.start = seed.start + Math.max(-minStart, dt); document.write(section);
         }
+        document.changed();
+      } else {
+        const offset = Math.max(-Math.min(...drag.sections.map(seed => seed.start)), dt);
+        let changed = !!duplicate;
+
+        for (const seed of drag.sections) {
+          changed = document.moveSection(seed.section, seed.start + offset) || changed;
+        }
+        if (changed) { document.changed(); }
       }
-      document.changed();
     } else if (drag.kind === 'tangent' && drag.moved && drag.tangents?.length) {
       const sections = new Set<SequenceSection>();
 
@@ -999,10 +1143,11 @@ export class SequencerCanvas extends Container {
     } else if (drag.kind === 'marquee' && drag.moved) {
       const minX = Math.min(drag.x, mouse.x), maxX = Math.max(drag.x, mouse.x);
       const minY = Math.min(drag.y, mouse.y), maxY = Math.max(drag.y, mouse.y);
-      const keys = this.keyHits.filter(hit => hit.x >= minX && hit.x <= maxX && hit.y >= minY && hit.y <= maxY).flatMap(hit => hit.keys.map(item => item.key.id));
+      const hits = this.keyHits.filter(hit => hit.x >= minX && hit.x <= maxX && hit.y >= minY && hit.y <= maxY);
+      const keys = new Map(hits.flatMap(hit => hit.keys.map(item => [item.key.id, item] as const)));
+      const selected = applyMarqueeSelection(drag.initialSelection?.keys() ?? [], keys.keys(), drag.selectionMode!);
 
-      document.selectedKeys.clear();
-      applyMarqueeSelection(drag.initialSelection ?? [], keys, drag.selectionMode!).forEach(id => document.selectedKeys.add(id));
+      document.selectedKeys.replace(selected.map(id => keys.get(id) ?? drag.initialSelection!.get(id)!));
       if (!this.state.curveMode) {
         const sections = this.sectionHits.filter(hit => hit.x < maxX && hit.x + hit.width > minX && hit.y < maxY && hit.y + hit.height > minY).map(hit => hit.section.clip.getInstanceId());
 
@@ -1055,10 +1200,10 @@ class SequenceRowControl extends Container {
       const entry = this.activeEntry();
 
       if (!entry) { return; }
-      const selected = new Set(this.document.selectedKeys);
+      const selected = this.document.selectedKeyItems();
 
       this.document.begin('Edit channel value'); this.document.insertKey(entry.section, entry.channel, this.document.currentTime, value);
-      this.document.selectedKeys.clear(); selected.forEach(id => this.document.selectedKeys.add(id)); this.document.changed();
+      this.document.selectedKeys.replace(selected); this.document.changed();
     };
     this.number.endEdit = canceled => canceled ? this.document.cancel() : this.document.commit();
     for (const [icon, hint] of [['previousKey', 'Previous Key'], ['addKey', 'Add Key'], ['nextKey', 'Next Key'], ['view', 'Toggle Track Visibility']] as const) {
@@ -1095,7 +1240,6 @@ class SequenceRowControl extends Container {
     if (this.reference) { this.reference.visible = reference; }
     this.number.minimum = channel?.minimum ?? -Infinity; this.number.maximum = channel?.maximum ?? Infinity;
     this.number.precision = channel?.integer ? 0 : 3; this.number.step = channel?.integer ? 1 : .01;
-    this.buttons[3].iconName = document.isMuted(row.track) ? 'hidden' : 'view';
     this.buttons.forEach((button, index) => { button.visible = index === 3 ? row.kind === 'object' || row.kind === 'track' : !!row.channels.length || index === 1 && row.kind === 'object'; });
     this.queueSort();
   }
@@ -1112,6 +1256,7 @@ class SequenceRowControl extends Container {
   override update (dt: number): void {
     const entry = this.activeEntry();
 
+    this.buttons[3].iconName = this.document.isMuted(this.rowData.track) ? 'hidden' : 'view';
     if (entry) {
       if (!this.number.isEditing) { this.number.value = this.document.channelValue(entry.section, entry.channel); }
       this.number.enabled = !this.document.isLocked(this.rowData.track) && entry.channel.pathView !== 'timing' && this.document.currentTime >= entry.section.clip.start && this.document.currentTime <= entry.section.clip.start + entry.section.clip.duration;

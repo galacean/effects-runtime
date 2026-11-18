@@ -8,8 +8,12 @@ export class EditorSelection {
   private static handler?: SelectionHandler;
   private static pending?: object[];
   private static source: SelectionSource = 'sync';
+  private static _userSelectionRevision = 0;
 
   static get changeSource (): SelectionSource { return EditorSelection.source; }
+
+  /** Includes explicit requests to select the same objects again. */
+  static get userSelectionRevision (): number { return EditorSelection._userSelectionRevision; }
 
   static setChangeHandler (handler?: SelectionHandler): void { EditorSelection.handler = handler; }
 
@@ -22,6 +26,7 @@ export class EditorSelection {
     const next = Array.from(new Set(objects));
     const current = EditorSelection.getSelectedObjects();
 
+    if (source === 'user') { EditorSelection._userSelectionRevision++; }
     if (next.length === current.length && next.every((object, index) => object === current[index])) { return; }
     if (EditorSelection.pending) {
       EditorSelection.pending = next;

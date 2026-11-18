@@ -685,7 +685,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
     selectedIds: string[],
     groupFilter?: (group: VFXItem) => boolean,
   ): string[] {
-    const resultSelectedIds: string[] = [];
+    const resultSelectedIds = new Set<string>();
 
     selectedIds.forEach(id => {
       const item = getPlayerItemById(this.engine.sceneServer.compositions[0], id);
@@ -706,7 +706,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
         if (!this._effectsEditItemId) {
           if (!this.ignoreIds.includes(effectsOwnerId) && !this.isIgnoredNameById(effectsOwnerId)) {
-            addItem(resultSelectedIds, effectsOwnerId);
+            resultSelectedIds.add(effectsOwnerId);
           }
 
           return;
@@ -719,11 +719,11 @@ export class Selection extends EventEmitter<SelectionEvents> {
       const selectableItem = this.getOutermostSelectableItem(item, groupFilter);
 
       if (selectableItem) {
-        addItem(resultSelectedIds, selectableItem.getInstanceId());
+        resultSelectedIds.add(selectableItem.getInstanceId());
       }
     });
 
-    return resultSelectedIds;
+    return Array.from(resultSelectedIds);
   }
 
   /**
@@ -974,6 +974,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
    * @returns 保持稳定顺序的层级互斥选区
    */
   private normalizeHierarchySelection (ids: readonly string[]): string[] {
+    if (!ids.length) { return []; }
     const uniqueIds = Array.from(new Set(ids));
     const itemById = new Map<string, VFXItem>();
     /**

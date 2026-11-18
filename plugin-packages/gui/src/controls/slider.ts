@@ -162,7 +162,7 @@ export class Slider extends Range {
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
-    if (event.buttonIndex === MouseButton.Left && this.dragging) {
+    if (this.dragging) {
       this.endDrag();
       event.accept();
     }
