@@ -1,0 +1,19 @@
+packages/effects-core/src/components/animator.ts
+  s_5b780b69410eb0::t_9aaed72af24611 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "41d4aa9ce69c9cec9ddb0b143f891c968c36442f",
+  "prompts": {},
+  "sessions": {
+    "s_5b780b69410eb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ed0f-aa9c-7400-bb2d-4375cf1d6705",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
