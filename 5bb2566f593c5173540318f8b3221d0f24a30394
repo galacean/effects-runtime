@@ -1,0 +1,27 @@
+web-packages/dev-tools/src/features/scene/factories/scene-item-factory.ts
+  s_d5aaf58010768c::t_24c08decac30a4 10,42
+packages/effects-core/src/components/component.ts
+  s_d5aaf58010768c::t_24c08decac30a4 7,243-244
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_d5aaf58010768c::t_24c08decac30a4 292,479-480
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_d5aaf58010768c::t_24c08decac30a4 27,52
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_d5aaf58010768c::t_24c08decac30a4 131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5bb2566f593c5173540318f8b3221d0f24a30394",
+  "prompts": {},
+  "sessions": {
+    "s_d5aaf58010768c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e772-738e-7142-88f4-2c640fddf5df",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
