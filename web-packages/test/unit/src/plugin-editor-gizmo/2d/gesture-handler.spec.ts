@@ -13,7 +13,10 @@ import { BoxSelectionGizmo } from '../../../../../../plugin-packages/editor-gizm
 import { ChangeSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/change-selection-gizmo';
 import { MoveSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/move-selection-gizmo';
 import { ClickDragMultiplexGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo';
-import { selectionPreviewConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
+import { selectionPreviewConfig, selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
+import { PenGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-gizmo';
+import { PenEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode';
+import type { GeometryGizmoHost, ShapeDrawingActionEvent } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
 import { ResizeSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo';
 import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { GizmoTool } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-tool';
@@ -506,6 +509,119 @@ describe('GestureHandler - GizmoTool runtime', () => {
 });
 
 describe('GestureHandler - GizmoTool EditMode runtime', () => {
+  function createPenModeHarness () {
+    const handler = createHandler();
+    const events: ShapeDrawingActionEvent[] = [];
+    const host: GeometryGizmoHost = {
+      canEdit: () => true,
+      readPath: () => undefined,
+      viewToLocal: point => point.clone(),
+      localToView: point => new Vector2(point.x, point.y),
+    };
+
+    handler.getConfigManager().set(selectionSnapConfig, { enabled: false });
+    for (const phase of ['actionstart', 'actionupdate', 'actioncommit'] as const) {
+      handler.on(phase, event => events.push(event as ShapeDrawingActionEvent));
+    }
+    handler.setActiveTool(new MoveGizmoTool(handler));
+    const mode = new PenEditMode(handler, host);
+
+    handler.setActiveEditMode(mode);
+    const pen = handler.getGizmoManager().activeGizmos.find(gizmo => gizmo instanceof PenGizmo) as PenGizmo;
+
+    return { handler, mode, pen, events };
+  }
+
+  it('PenEditMode keeps its draft through Hand and resumes it in a new Move gizmo', () => {
+    const { handler, mode, pen, events } = createPenModeHarness();
+
+    sendMouseDown(handler, createMouseEvent('mousedown', 1));
+    sendMouseUp(handler, createMouseEvent('mouseup', 0));
+    const sessionId = events[0].sessionId;
+    const dispose = chai.spy.on(pen, 'dispose');
+
+    handler.setActiveTool(new HandGizmoTool(handler));
+    expect(dispose).to.have.been.called.once;
+    expect(handler.getActiveEditMode()).to.equal(mode);
+    expect(events.map(event => event.phase)).to.deep.equal(['start']);
+    handler.setActiveTool(new MoveGizmoTool(handler));
+    const next = handler.getGizmoManager().activeGizmos.find(gizmo => gizmo instanceof PenGizmo) as PenGizmo;
+
+    expect(next).not.to.equal(pen);
+    sendMouseDown(handler, new MouseEvent('mousedown', { button: 0, buttons: 1, clientX: 100, clientY: 20 }));
+    sendMouseUp(handler, new MouseEvent('mouseup', { button: 0, buttons: 0, clientX: 100, clientY: 20 }));
+    const create = events.at(-1)!.create;
+
+    expect(events.at(-1)!.sessionId).to.equal(sessionId);
+    expect(create?.kind).to.equal('pen');
+    if (create?.kind === 'pen') { expect(create.path.points).to.have.lengthOf(2); }
+    handler.resetEditMode();
+    expect(events.filter(event => event.phase === 'cancel')).to.have.lengthOf(1);
+    expect(events.at(-1)!.sessionId).to.equal(sessionId);
+    handler.dispose();
+    expect(events.filter(event => event.phase === 'cancel')).to.have.lengthOf(1);
+  });
+
+  it('a captured pen keeps updating shared state after the mode graph is rebuilt', () => {
+    const { handler, pen, events } = createPenModeHarness();
+
+    sendMouseDown(handler, createMouseEvent('mousedown', 1));
+    const dispose = chai.spy.on(pen, 'dispose');
+
+    handler.setActiveTool(new MoveGizmoTool(handler));
+    const next = handler.getGizmoManager().activeGizmos.find(gizmo => gizmo instanceof PenGizmo) as PenGizmo;
+
+    expect(next).not.to.equal(pen);
+    expect(dispose).not.to.have.been.called();
+    sendMouseDrag(handler, new MouseEvent('mousemove', { buttons: 1, clientX: 40, clientY: 20 }));
+    sendMouseUp(handler, new MouseEvent('mouseup', { button: 0, buttons: 0, clientX: 40, clientY: 20 }));
+    expect(dispose).to.have.been.called.once;
+    sendMouseDown(handler, new MouseEvent('mousedown', { button: 0, buttons: 1, clientX: 100, clientY: 20 }));
+    sendMouseUp(handler, new MouseEvent('mouseup', { button: 0, buttons: 0, clientX: 100, clientY: 20 }));
+    const create = events.at(-1)!.create;
+
+    if (create?.kind === 'pen') {
+      expect(create.path.points).to.have.lengthOf(2);
+      expect(create.path.easingOuts[0]).to.deep.equal({ x: 30, y: 0 });
+    } else {
+      expect.fail('expected a pen draft');
+    }
+    handler.dispose();
+    expect(events.filter(event => event.phase === 'cancel')).to.have.lengthOf(1);
+  });
+
+  it('exiting PenEditMode while Hand is active cancels the retained draft exactly once', () => {
+    const { handler, events } = createPenModeHarness();
+
+    sendMouseDown(handler, createMouseEvent('mousedown', 1));
+    sendMouseUp(handler, createMouseEvent('mouseup', 0));
+    const sessionId = events[0].sessionId;
+
+    handler.setActiveTool(new HandGizmoTool(handler));
+    handler.resetEditMode();
+    handler.dispose();
+    expect(events.map(event => event.phase)).to.deep.equal(['start', 'cancel']);
+    expect(events.at(-1)!.sessionId).to.equal(sessionId);
+  });
+
+  it('exiting PenEditMode after committing a draft does not emit another terminal event', () => {
+    const { handler, pen, events } = createPenModeHarness();
+
+    sendMouseDown(handler, createMouseEvent('mousedown', 1));
+    sendMouseUp(handler, createMouseEvent('mouseup', 0));
+    sendMouseDown(handler, new MouseEvent('mousedown', { button: 0, buttons: 1, clientX: 100, clientY: 20 }));
+    sendMouseUp(handler, new MouseEvent('mouseup', { button: 0, buttons: 0, clientX: 100, clientY: 20 }));
+    const enter = new InputEventKey();
+
+    enter.keycode = 'Enter';
+    pen.onKeyDown(enter);
+    handler.setActiveTool(new HandGizmoTool(handler));
+    handler.resetEditMode();
+    handler.dispose();
+    expect(events.filter(event => event.phase === 'commit')).to.have.lengthOf(1);
+    expect(events.filter(event => event.phase === 'cancel')).to.have.lengthOf(0);
+  });
+
   function createTextTarget (): VFXItem {
     return {
       type: spec.ItemType.text,

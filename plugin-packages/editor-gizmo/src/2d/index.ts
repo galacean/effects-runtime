@@ -27,6 +27,8 @@ export {
   resizeSelectionConfig,
   selectionPreviewConfig,
   selectionSnapConfig,
+  penConfig,
+  shapeConfig,
   spriteTextEditConfig,
   viewportNavigationConfig,
   viewportOverlayConfig,
@@ -49,6 +51,8 @@ export type {
   ResizeSelectionConfig,
   SelectionPreviewConfig,
   SnapConfig,
+  PenConfig,
+  ShapeConfig,
   SpriteTextEditConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
@@ -82,3 +86,6 @@ export * from './gizmos/click-drag-multiplex-gizmo';
 export * from './gizmos/leave-text-edit-gizmo';
 export * from './gizmos/leave-effects-edit-gizmo';
 export * from './gizmos/enter-edit-mode-gizmo';
+export * from './gizmos/shape/geometry';
+export * from './gizmos/shape/pen-gizmo';
+export * from './gizmos/shape/shape-model-gizmo';

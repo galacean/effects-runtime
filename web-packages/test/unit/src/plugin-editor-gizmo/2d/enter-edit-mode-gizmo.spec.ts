@@ -1,5 +1,5 @@
 import { restoreTestState, getSpyCalls, type TestSpy } from '../helpers/spies';
-import { InputEventMouseButton, MouseButton, MouseButtonMask, FrameComponent, spec, TextComponent, type Engine, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, MouseButton, MouseButtonMask, FrameComponent, ShapeComponent, spec, TextComponent, type Engine, type VFXItem } from '@galacean/effects';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameManager, GestureCursorType, ConfigManager, SnapManager, effectsEditModeConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 
@@ -36,14 +36,17 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
     return event;
   }
 
-  function createItem (kind: 'text' | 'effects', hasTextComponent: boolean): VFXItem {
+  function createItem (kind: 'text' | 'effects' | 'shape', hasTextComponent: boolean): VFXItem {
     return {
-      name: kind === 'effects' ? '动效' : 'text',
-      type: kind === 'effects' ? spec.ItemType.null : spec.ItemType.text,
+      name: kind === 'effects' ? '动效' : kind === 'shape' ? 'shape' : 'text',
+      type: kind === 'effects' ? spec.ItemType.null : kind === 'shape' ? spec.ItemType.shape : spec.ItemType.text,
       getInstanceId: () => `selected-${kind}`,
       getComponent: (component: unknown) => {
         if (kind === 'text' && component === TextComponent && hasTextComponent) {
           return {};
+        }
+        if (kind === 'shape' && component === ShapeComponent) {
+          return { shape: { type: spec.ShapePrimitiveType.Custom } };
         }
         if (kind === 'effects' && component === FrameComponent) {
           return {};
@@ -54,10 +57,11 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
     } as unknown as VFXItem;
   }
 
-  function createFixture (kind: 'text' | 'effects', hitIds: string[], hasTextComponent = true): {
+  function createFixture (kind: 'text' | 'effects' | 'shape', hitIds: string[], hasTextComponent = true): {
     gizmo: EnterEditModeGizmo,
     item: VFXItem,
     configs: ConfigManager,
+    emit: TestSpy,
     setActiveEditMode: TestSpy,
     setCursor: TestSpy,
   } {
@@ -108,6 +112,7 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
       gizmo: new EnterEditModeGizmo(owner),
       item,
       configs,
+      emit,
       setActiveEditMode,
       setCursor,
     };
@@ -159,6 +164,21 @@ describe('plugin-editor-gizmo/enter-edit-mode-gizmo', () => {
       expect(modeGizmos.some(gizmo => gizmo.type === 'corner-rotation')).to.equal(true);
       modeGizmos.forEach(gizmo => gizmo.dispose());
       expect(event.isAccepted()).to.equal(true);
+    });
+
+    it('双击自定义形状时发出形状编辑请求', () => {
+      const { gizmo, item, emit, setActiveEditMode, setCursor } = createFixture('shape', ['selected-shape']);
+      const event = createDoubleClick();
+
+      gizmo.onMouseDown(event);
+
+      expect(setActiveEditMode).not.to.have.been.called();
+      expect(getSpyCalls(emit)).to.deep.equal([['shapeinput', item]]);
+      expect(event.isAccepted()).to.equal(true);
+      expect(getSpyCalls(setCursor).at(-1)).to.deep.equal([{
+        type: GestureCursorType.PEN,
+        angle: 0,
+      }]);
     });
 
     it('双击时读取当前配置，进入只读 EffectsEditMode', () => {

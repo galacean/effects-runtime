@@ -1,8 +1,19 @@
-import { FrameComponent, TextComponent, math, spec } from '@galacean/effects';
+import { FrameComponent, ShapeComponent, TextComponent, math, spec } from '@galacean/effects';
 import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { DOMEvents, element } from './dom';
 import type { DemoEditor } from './editor';
 import type { DemoScene } from './scene';
+
+type InspectorShapeAttributes = {
+  type?: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  innerRadius?: number,
+  outerRadius?: number,
+};
 
 /** 负责属性表单的读取、校验与显示，所有修改交给编辑器执行。 */
 export class InspectorPanel {
@@ -134,6 +145,7 @@ export class InspectorPanel {
     const stroke = this.getSolidPaint(frame?.strokes);
     const color = this.getFillColor(item);
     const data = item ? this.scene.getItem(item) : undefined;
+    const vectorGeometry = data?.kind === 'Vector' ? this.scene.readVectorGeometry(data) : undefined;
     const media = item ? this.scene.getMediaState(item) : undefined;
     const signature = JSON.stringify([
       selected.map(target => target.getInstanceId()),
@@ -141,7 +153,7 @@ export class InspectorPanel {
       item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
       item?.name, frame?.strokeWidth, fill?.color.toArray(), stroke?.color.toArray(),
       frame?.fills[0]?.type, frame?.strokes[0]?.type,
-      data?.status, media,
+      vectorGeometry, data?.status, media,
     ]);
 
     if (!force && signature === this.signature) {
@@ -153,8 +165,8 @@ export class InspectorPanel {
     this.setInput(this.fields.x, item?.transform.position.x);
     this.setInput(this.fields.y, item?.transform.position.y);
     this.setInput(this.fields.rotation, item?.transform.rotation.z);
-    this.setInput(this.fields.width, item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined);
-    this.setInput(this.fields.height, item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined, !!text);
+    this.setInput(this.fields.width, vectorGeometry?.width ?? (item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined));
+    this.setInput(this.fields.height, vectorGeometry?.height ?? (item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined), !!text);
     this.scale.textContent = item ? `${item.transform.scale.x.toFixed(2)} × ${item.transform.scale.y.toFixed(2)}` : '—';
     this.textSection.hidden = !text;
     if (text) {
@@ -232,7 +244,7 @@ export class InspectorPanel {
 
           if (text) {
             text.setTextWidth(text.textLayout.width * input.valueAsNumber / Math.max(current, 0.01));
-          } else {
+          } else if (!this.setVectorSize(item, axis, input.valueAsNumber)) {
             item.transform.setSize(
               axis === 'x' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.x), 0.01) : item.transform.size.x,
               axis === 'y' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.y), 0.01) : item.transform.size.y,
@@ -242,6 +254,76 @@ export class InspectorPanel {
         });
       });
     }
+  }
+
+  private setVectorSize (item: VFXItem, axis: 'x' | 'y', size: number): boolean {
+    const data = this.scene.getItem(item);
+    const component = item.getComponent(ShapeComponent);
+    const shape = component?.shape as InspectorShapeAttributes | undefined;
+
+    if (data?.kind !== 'Vector' || !shape) {
+      return false;
+    }
+    const scale = Math.abs(item.transform.scale[axis]);
+
+    // 零缩放保持折叠；非零缩放按真实值换算尺寸。
+    if (scale === 0) {
+      return true;
+    }
+    const value = size / scale;
+
+    if (!Number.isFinite(value)) {
+      return true;
+    }
+    const definitionUpdates: Record<string, unknown> = {};
+
+    switch (shape.type) {
+      case spec.ShapePrimitiveType.Rectangle:
+        shape[axis === 'x' ? 'width' : 'height'] = value;
+        definitionUpdates[axis === 'x' ? 'width' : 'height'] = value;
+
+        break;
+      case spec.ShapePrimitiveType.Ellipse:
+        shape[axis === 'x' ? 'xRadius' : 'yRadius'] = value / 2;
+        definitionUpdates[axis === 'x' ? 'xRadius' : 'yRadius'] = value / 2;
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: {
+        const previousRadius = shape.radius ?? 0;
+
+        shape.radius = value / 2;
+        definitionUpdates.radius = value / 2;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousRadius) / shape.radius;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Star: {
+        const previousOuter = shape.outerRadius ?? 0;
+        const nextOuter = value / 2;
+
+        shape.outerRadius = nextOuter;
+        shape.innerRadius = previousOuter === 0 ? shape.innerRadius : (shape.innerRadius ?? 0) * nextOuter / previousOuter;
+        definitionUpdates.outerRadius = shape.outerRadius;
+        definitionUpdates.innerRadius = shape.innerRadius;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousOuter) / nextOuter;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
+
+        break;
+      }
+      default:
+        return false;
+    }
+    Object.assign(component.definition, definitionUpdates);
+    component.onApplyAnimationProperties();
+
+    return true;
   }
 
   private bindTextFields (): void {

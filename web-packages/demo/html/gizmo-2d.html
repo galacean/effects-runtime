@@ -55,6 +55,10 @@
     .toolbar button:hover { background: #f4f4f4; }
     .toolbar button[aria-pressed="true"] { background: var(--blue); color: white; }
     .tool-separator { height: 25px; width: 1px; background: var(--border); margin: 0 4px; }
+    .shape-tools { display: flex; align-items: center; gap: 2px; padding-left: 3px; border-left: 1px solid var(--border); }
+    .shape-tools button { width: 30px; height: 30px; }
+    .pen-tools { display: flex; align-items: center; gap: 2px; padding-left: 3px; border-left: 1px solid var(--border); }
+    .pen-tools button { width: 30px; height: 30px; font-size: 11px; font-weight: 600; }
     .zoom-controls { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 3px; padding: 5px; border: 1px solid #e3e3e3; border-radius: 0 8px 0 0; background: white; box-shadow: 0 2px 5px #0001; }
     #zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
     .zoom-controls button { width: 24px; height: 24px; border-radius: 4px; font-size: 16px; color: #666; }
@@ -104,6 +108,11 @@
     <symbol id="icon-effects" viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM20 3v4M18 5h4"/></symbol>
     <symbol id="icon-move" viewBox="0 0 24 24"><path d="M5 3l14 9-7 1-3 7z"/></symbol>
     <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M7 12V7a1.5 1.5 0 0 1 3 0V5a1.5 1.5 0 0 1 3 0v1a1.5 1.5 0 0 1 3 0v2a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-1c-2 0-3-1-4-3l-4-5a1.5 1.5 0 0 1 2-2l3 3M10 7v5M13 6v6M16 8v4"/></symbol>
+    <symbol id="icon-pen" viewBox="0 0 24 24"><path d="M4 20l4.8-1.2L19 8.6a2.2 2.2 0 0 0-3.1-3.1L5.7 16.7zM14.5 7.5l2 2M4 20l1.2-4.8"/></symbol>
+    <symbol id="icon-shape" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM5 12h14M12 5v14"/></symbol>
+    <symbol id="icon-ellipse" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></symbol>
+    <symbol id="icon-polygon" viewBox="0 0 24 24"><path d="M12 4l7.6 5.5-2.9 8.9H7.3l-2.9-8.9z"/></symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="icon-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"/></symbol>
     <symbol id="icon-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7M8 12h13"/></symbol>
@@ -120,6 +129,8 @@
         <div id="create-menu" hidden>
           <button id="menu-frame" type="button"><svg aria-hidden="true"><use href="#icon-frame"/></svg>拖动创建 Frame<span class="shortcut">F</span></button>
           <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>拖动创建 Text<span class="shortcut">T</span></button>
+          <button id="menu-pen" type="button"><svg aria-hidden="true"><use href="#icon-pen"/></svg>钢笔工具<span class="shortcut">P</span></button>
+          <button id="menu-shape" type="button"><svg aria-hidden="true"><use href="#icon-shape"/></svg>造型工具<span class="shortcut">S</span></button>
           <button id="menu-video" type="button"><svg aria-hidden="true"><use href="#icon-video"/></svg>添加 Video</button>
           <button id="menu-effects" type="button"><svg aria-hidden="true"><use href="#icon-effects"/></svg>添加 Effects</button>
         </div>
@@ -135,6 +146,21 @@
         <span class="tool-separator"></span>
         <button id="create-frame" class="tooltip-trigger" type="button" aria-label="拖动创建 Frame" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">拖动创建画板<kbd>F</kbd></span></button>
         <button id="create-text" class="tooltip-trigger" type="button" aria-label="拖动创建 Text" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-text"/></svg><span class="tooltip" aria-hidden="true">拖动创建文本<kbd>T</kbd></span></button>
+        <button id="create-pen" class="tooltip-trigger" type="button" aria-label="钢笔工具" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-pen"/></svg><span class="tooltip" aria-hidden="true">钢笔工具<kbd>P</kbd></span></button>
+        <button id="create-shape" class="tooltip-trigger" type="button" aria-label="造型工具" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-shape"/></svg><span class="tooltip" aria-hidden="true">造型工具<kbd>S</kbd></span></button>
+        <div id="shape-tools" class="shape-tools" hidden aria-label="造型类型">
+          <button id="shape-rect" class="tooltip-trigger" type="button" aria-label="矩形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">矩形</span></button>
+          <button id="shape-ellipse" class="tooltip-trigger" type="button" aria-label="椭圆" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-ellipse"/></svg><span class="tooltip" aria-hidden="true">椭圆</span></button>
+          <button id="shape-polygon" class="tooltip-trigger" type="button" aria-label="多边形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-polygon"/></svg><span class="tooltip" aria-hidden="true">多边形</span></button>
+          <button id="shape-star" class="tooltip-trigger" type="button" aria-label="星形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-star"/></svg><span class="tooltip" aria-hidden="true">星形</span></button>
+        </div>
+        <div id="pen-tools" class="pen-tools" hidden aria-label="钢笔节点编辑">
+          <button id="pen-mirror-angle-length" class="tooltip-trigger" type="button" aria-label="镜像控制柄" aria-pressed="true">↔<span class="tooltip" aria-hidden="true">镜像控制柄</span></button>
+          <button id="pen-mirror-angle" class="tooltip-trigger" type="button" aria-label="同角度控制柄" aria-pressed="false">∠<span class="tooltip" aria-hidden="true">同角度、独立长度</span></button>
+          <button id="pen-mirror-none" class="tooltip-trigger" type="button" aria-label="独立控制柄" aria-pressed="false">·<span class="tooltip" aria-hidden="true">独立控制柄</span></button>
+          <button id="pen-lasso" class="tooltip-trigger" type="button" aria-label="套索选择节点" aria-pressed="false">⌁<span class="tooltip" aria-hidden="true">套索选择节点<kbd>Q</kbd></span></button>
+          <button id="pen-edit-mode" class="tooltip-trigger" type="button" aria-label="钢笔工具编辑态" aria-pressed="false">✎<span class="tooltip" aria-hidden="true">钢笔工具编辑态</span></button>
+        </div>
         <button id="create-video" class="tooltip-trigger" type="button" aria-label="添加 Video"><svg aria-hidden="true"><use href="#icon-video"/></svg><span class="tooltip" aria-hidden="true">添加视频</span></button>
         <button id="create-effects" class="tooltip-trigger" type="button" aria-label="添加 Effects"><svg aria-hidden="true"><use href="#icon-effects"/></svg><span class="tooltip" aria-hidden="true">添加动效</span></button>
       </nav>

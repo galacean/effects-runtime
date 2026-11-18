@@ -3,6 +3,7 @@ import {
   AssetManager,
   type Composition,
   PrecompositionManager,
+  ShapeComponent,
   SpriteComponent,
   spec,
   TextComponent,
@@ -25,6 +26,14 @@ export class DefaultVFXItems {
     const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name);
 
     vfxItem.type = spec.ItemType.null;
+
+    return vfxItem;
+  }
+
+  static createShapeItem (composition: Composition, parent = null, name = 'NewShape'): VFXItem {
+    const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name, ShapeComponent);
+
+    vfxItem.type = spec.ItemType.shape;
 
     return vfxItem;
   }

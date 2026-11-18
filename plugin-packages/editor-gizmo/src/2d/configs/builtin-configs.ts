@@ -1,3 +1,4 @@
+import { spec } from '@galacean/effects';
 import { defineConfig } from './config-definition';
 import type {
   EffectsEditModeConfig,
@@ -12,6 +13,8 @@ import type {
   ResizeSelectionConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
+  PenConfig,
+  ShapeConfig,
 } from './types';
 
 export { DEFAULT_LOADING_FRAGMENT, loadingConfig } from './loading-config';
@@ -213,5 +216,68 @@ export const itemCreateConfig = defineConfig<'tool.item-create', ItemCreateConfi
     frameFillAlpha: 0.15,
     frameChildBoxAlpha: 0.35,
     frameChildBoxColor: 0x2178FF,
+  },
+});
+
+export const penConfig = defineConfig<'tool.pen', PenConfig>({
+  id: 'tool.pen',
+  defaults: {
+    hitDistance: 8,
+    pointSize: 6,
+    controlPointSize: 6,
+    pointColor: 0xffffff,
+    selectedPointColor: 0x0d99ff,
+    pointLineColor: 0x0d99ff,
+    hoverPointLineColor: 0x80c8ff,
+    lineColor: 0x8c8c8c,
+    selectedLineColor: 0x0d99ff,
+    hoverLineColor: 0x80c8ff,
+    handleColor: 0xffffff,
+    selectedHandleColor: 0x0d99ff,
+    handleLineColor: 0x0d99ff,
+    hoverHandleLineColor: 0x80c8ff,
+    activeHandleLineColor: 0xff8a00,
+    previewLineColor: 0x0d99ff,
+    lassoLineColor: 0x80c8ff,
+    lineWidth: 1.5,
+    selectedLineWidth: 2,
+    pointLineWidth: 1,
+    controlPointLineWidth: 1,
+    hoverLineWidth: 1.5,
+    handleLineWidth: 1,
+    activeHandleLineWidth: 1,
+    previewLineWidth: 1,
+    lassoLineWidth: 1,
+  },
+});
+
+export const shapeConfig = defineConfig<'tool.shape', ShapeConfig>({
+  id: 'tool.shape',
+  defaults: {
+    previewColor: 0x80c8ff,
+    previewAlpha: 0.8,
+    previewLineWidth: 1,
+    defaultWidth: 2.4,
+    defaultHeight: 1.6,
+    minWidth: 0.0024,
+    minHeight: 0.0016,
+    minRadius: 0.0024,
+    initialFillColor: 0xffffff,
+    initialFillAlpha: 1,
+    initialStrokeColor: 0x000000,
+    initialStrokeAlpha: 1,
+    initialStrokeWidth: 0,
+    initialStrokeCap: spec.LineCap.Round,
+    initialStrokeJoin: spec.LineJoin.Round,
+    initialRenderMode: spec.RenderMode.MESH,
+    rectangleRoundness: 0,
+    polygonPointCount: 6,
+    polygonRadius: 0.5,
+    polygonRoundness: 0,
+    starPointCount: 5,
+    starInnerRadius: 0.25,
+    starOuterRadius: 0.5,
+    starInnerRoundness: 0,
+    starOuterRoundness: 0,
   },
 });
