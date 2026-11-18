@@ -1,5 +1,6 @@
 import { restoreTestState } from '../helpers/spies';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
+import { cloneGeometry, hitPenCurve, splitPenSegment, type PenPathData } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
 import {
   Vector2,
   getBoxTransform,
@@ -15,6 +16,79 @@ const { expect } = chai;
 
 describe('plugin-editor-gizmo/geometry', () => {
   afterEach(restoreTestState);
+
+  describe('Pen path geometry', () => {
+    it('splits curves from JSON data while preserving existing anchors and handles', () => {
+      const path: PenPathData = {
+        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+        easingIns: [{ x: 0, y: 0 }, { x: 0, y: 100 }],
+        easingOuts: [{ x: 0, y: 100 }, { x: 0, y: 0 }],
+        shapes: [{ close: false, indexes: [
+          { point: 0, easingIn: 0, easingOut: 0 },
+          { point: 1, easingIn: 1, easingOut: 1 },
+        ] }],
+      };
+      const before = cloneGeometry(path);
+
+      expect(splitPenSegment(path, 0, 0, 0.5)).to.equal(1);
+      const [from, middle, to] = path.shapes[0].indexes;
+
+      expect(path.points[middle.point]).to.deep.equal({ x: 50, y: 75 });
+      expect(path.easingOuts[from.easingOut]).to.deep.equal({ x: 0, y: 50 });
+      expect(path.easingIns[to.easingIn]).to.deep.equal({ x: 0, y: 50 });
+      expect(path.easingIns[middle.easingIn]).to.deep.equal({ x: -25, y: 0 });
+      expect(path.easingOuts[middle.easingOut]).to.deep.equal({ x: 25, y: 0 });
+      expect(path.points.slice(0, 2)).to.deep.equal(before.points);
+      expect(path.easingIns.slice(0, 2)).to.deep.equal(before.easingIns);
+      expect(path.easingOuts.slice(0, 2)).to.deep.equal(before.easingOuts);
+      for (const point of [...path.points, ...path.easingIns, ...path.easingOuts]) {
+        expect(Object.getPrototypeOf(point)).to.equal(Object.prototype);
+      }
+
+      const restored = cloneGeometry(path);
+
+      expect(splitPenSegment(restored, 0, 1, 0.5)).to.equal(2);
+      expect(restored.points[restored.shapes[0].indexes[2].point]).to.deep.equal({ x: 84.375, y: 56.25 });
+    });
+
+    it('splits a plain path with missing handles without changing the next segment', () => {
+      const path: PenPathData = {
+        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
+        easingIns: [],
+        easingOuts: [],
+        shapes: [{ close: false, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],
+      };
+      const nextStart = path.shapes[0].indexes[1];
+
+      expect(splitPenSegment(path, 0, 0, 0.25)).to.equal(1);
+      expect(path.points[path.shapes[0].indexes[1].point]).to.deep.equal({ x: 15.625, y: 0 });
+      expect(path.easingOuts[nextStart.easingOut] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
+    });
+
+    it('handles collapsed curves with the same pixel hit threshold', () => {
+      const controls: [Vector2, Vector2, Vector2, Vector2] = [
+        new Vector2(5, 5), new Vector2(5, 5), new Vector2(5, 5), new Vector2(5, 5),
+      ];
+      const point = new Vector2(8, 9);
+
+      expect(hitPenCurve(point, controls, 8)).to.deep.equal({ distance: 5, t: 0 });
+      expect(hitPenCurve(point, controls, 5)).to.equal(undefined);
+    });
+
+    it('hits a loop with coincident endpoints without mutating input vectors', () => {
+      const controls: [Vector2, Vector2, Vector2, Vector2] = [
+        new Vector2(), new Vector2(100, 100), new Vector2(-100, 100), new Vector2(),
+      ];
+      const before = controls.map(point => point.toArray());
+      const point = new Vector2(0, 75);
+      const hit = hitPenCurve(point, controls, 8);
+
+      expect(hit!.distance).to.be.lessThan(0.0001);
+      expect(hit!.t).to.be.closeTo(0.5, 0.0001);
+      expect(controls.map(value => value.toArray())).to.deep.equal(before);
+      expect(point.toArray()).to.deep.equal([0, 75]);
+    });
+  });
 
   describe('Box2 geometry helpers', () => {
     it('derives independent corners from min/max without storing outline state on Box2', () => {

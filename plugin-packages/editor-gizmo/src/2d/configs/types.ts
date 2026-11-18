@@ -1,3 +1,5 @@
+import type { spec } from '@galacean/effects';
+
 /** 选区移动与缩放的吸附配置。 */
 export type SnapConfig = {
   /** 是否启用选区吸附。 */
@@ -263,6 +265,116 @@ export type ItemCreateConfig = {
   frameFillColor: number,
   /** 选中子元素包围盒颜色，格式为 0xRRGGBBAA。 */
   frameChildBoxColor: number,
+};
+
+/** 钢笔工具节点、线段和控制柄辅助显示配置。 */
+export type PenConfig = {
+  /** 节点命中距离。 */
+  hitDistance: number,
+  /** 锚点直径。 */
+  pointSize: number,
+  /** 控制柄直径。 */
+  controlPointSize: number,
+  /** 普通锚点填充色。 */
+  pointColor: number,
+  /** 选中锚点填充色。 */
+  selectedPointColor: number,
+  /** 锚点描边色。 */
+  pointLineColor: number,
+  /** 悬停锚点描边色。 */
+  hoverPointLineColor: number,
+  /** 普通线段颜色。 */
+  lineColor: number,
+  /** 选中线段颜色。 */
+  selectedLineColor: number,
+  /** 悬在线段颜色。 */
+  hoverLineColor: number,
+  /** 普通控制柄填充色。 */
+  handleColor: number,
+  /** 选中控制柄填充色。 */
+  selectedHandleColor: number,
+  /** 控制柄连线颜色。 */
+  handleLineColor: number,
+  /** 悬停控制柄描边色。 */
+  hoverHandleLineColor: number,
+  /** 拖动控制柄连线颜色。 */
+  activeHandleLineColor: number,
+  /** 创建预览线颜色。 */
+  previewLineColor: number,
+  /** 套索线颜色。 */
+  lassoLineColor: number,
+  /** 普通线段宽度。 */
+  lineWidth: number,
+  /** 选中线段宽度。 */
+  selectedLineWidth: number,
+  /** 锚点描边宽度。 */
+  pointLineWidth: number,
+  /** 控制柄描边宽度。 */
+  controlPointLineWidth: number,
+  /** 悬在线段描边宽度。 */
+  hoverLineWidth: number,
+  /** 控制柄连线宽度。 */
+  handleLineWidth: number,
+  /** 拖动控制柄连线宽度。 */
+  activeHandleLineWidth: number,
+  /** 创建预览线宽度。 */
+  previewLineWidth: number,
+  /** 套索线宽度。 */
+  lassoLineWidth: number,
+};
+
+/** 造型工具预览与新形状初始化配置。 */
+export type ShapeConfig = {
+  /** 造型拖动预览颜色。 */
+  previewColor: number,
+  /** 造型拖动预览透明度。 */
+  previewAlpha: number,
+  /** 造型拖动预览线宽。 */
+  previewLineWidth: number,
+  /** 点击创建时的默认宽度。 */
+  defaultWidth: number,
+  /** 点击创建时的默认高度。 */
+  defaultHeight: number,
+  /** 拖动创建的最小宽度。 */
+  minWidth: number,
+  /** 拖动创建的最小高度。 */
+  minHeight: number,
+  /** 多边形和星形的最小半径。 */
+  minRadius: number,
+  /** 新元素填充颜色。 */
+  initialFillColor: number,
+  /** 新元素填充透明度。 */
+  initialFillAlpha: number,
+  /** 新元素描边颜色。 */
+  initialStrokeColor: number,
+  /** 新元素描边透明度。 */
+  initialStrokeAlpha: number,
+  /** 新元素描边宽度。 */
+  initialStrokeWidth: number,
+  /** 新元素描边端点样式。 */
+  initialStrokeCap: spec.LineCap,
+  /** 新元素描边连接样式。 */
+  initialStrokeJoin: spec.LineJoin,
+  /** 新元素渲染模式。 */
+  initialRenderMode: spec.RenderMode,
+  /** 矩形圆角。 */
+  rectangleRoundness: number,
+  /** 多边形顶点数。 */
+  polygonPointCount: number,
+  /** 多边形半径。 */
+  polygonRadius: number,
+  /** 多边形圆角。 */
+  polygonRoundness: number,
+  /** 星形顶点数。 */
+  starPointCount: number,
+  /** 星形内半径。 */
+  starInnerRadius: number,
+  /** 星形外半径。 */
+  starOuterRadius: number,
+  /** 星形内角圆度。 */
+  starInnerRoundness: number,
+  /** 星形外角圆度。 */
+  starOuterRoundness: number,
 };
 
 /**
