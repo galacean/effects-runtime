@@ -1,9 +1,9 @@
-import type { CustomShape, ShapePathData } from '@galacean/effects-specification';
+import type { CustomShape, MaskPathData } from '@galacean/effects-specification';
 import { triangulate } from '../../math/shape/triangulate';
 import type { GraphicsPath } from './graphics-path';
 import type { ShapePath } from './shape-path';
 
-export function appendBezierPaths (graphics: GraphicsPath, path: ShapePathData, screenScale = 1, closedOnly = false): void {
+export function appendBezierPaths (graphics: GraphicsPath, path: MaskPathData, screenScale = 1, closedOnly = false): void {
   for (const contour of path.shapes) {
     if (!closedOnly || contour.close) {
       appendBezierPath(graphics, path, contour, screenScale);
@@ -14,7 +14,7 @@ export function appendBezierPaths (graphics: GraphicsPath, path: ShapePathData, 
 /**
  * 按轮廓索引追加贝塞尔路径，控制柄使用相对顶点的偏移量。
  */
-export function appendBezierPath (graphics: GraphicsPath, path: ShapePathData, contour: CustomShape, screenScale = 1): void {
+export function appendBezierPath (graphics: GraphicsPath, path: MaskPathData, contour: CustomShape, screenScale = 1): void {
   const { points, easingIns, easingOuts } = path;
   const { indexes, close } = contour;
 

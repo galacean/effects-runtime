@@ -73,15 +73,15 @@ let compositions: Composition[] = [];
 let videoListeners: (() => void)[] = [];
 let resultScene: spec.JSONScene | undefined;
 
-function contour (points: spec.Vector2Data[], easingIns: spec.Vector2Data[] = [], easingOuts: spec.Vector2Data[] = []): spec.ShapePathData {
+function contour (points: spec.Vector2Data[], easingIns: spec.Vector2Data[] = [], easingOuts: spec.Vector2Data[] = []): spec.MaskPathData {
   return { points, easingIns, easingOuts, shapes: [{ close: true, indexes: points.map((_, i) => ({ point: i, easingIn: i, easingOut: i })) }] };
 }
 
-function rectangle (left: number, bottom: number, right: number, top: number): spec.ShapePathData {
+function rectangle (left: number, bottom: number, right: number, top: number): spec.MaskPathData {
   return contour([{ x: left, y: bottom }, { x: right, y: bottom }, { x: right, y: top }, { x: left, y: top }]);
 }
 
-function getPath (shape: Shape): spec.ShapePathData {
+function getPath (shape: Shape): spec.MaskPathData {
   if (shape === 'rectangle') {
     return rectangle(-2.7, -2.1, 0.9, 1.4);
   }
@@ -109,7 +109,7 @@ function pathData (): spec.PathMaskData[] {
   });
 }
 
-function shapeData (id: string, path: spec.ShapePathData, color: string) {
+function shapeData (id: string, path: spec.MaskPathData, color: string) {
   const rgb = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255);
 
   return {

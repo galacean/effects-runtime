@@ -81,7 +81,7 @@ export class MaskComponent extends Component {
     return this.order.map(id => cloneMask(this.masks[id]));
   }
 
-  setMaskPath (id: string, path: spec.ShapePathData): void {
+  setMaskPath (id: string, path: spec.MaskPathData): void {
     if (!this.masks[id]) {
       throw new Error(`Path mask not found: ${id}`);
     }
@@ -247,7 +247,7 @@ void main() { gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos
   }
 }
 
-function validatePath (path: spec.ShapePathData): void {
+function validatePath (path: spec.MaskPathData): void {
   if (!path || !Array.isArray(path.shapes)) {
     throw new Error('A mask path requires indexed contours.');
   }
@@ -270,7 +270,7 @@ function validatePath (path: spec.ShapePathData): void {
   }
 }
 
-function copyPath (target: spec.ShapePathData, source: spec.ShapePathData): void {
+function copyPath (target: spec.MaskPathData, source: spec.MaskPathData): void {
   for (const key of ['points', 'easingIns', 'easingOuts'] as const) {
     const sourcePoints = source[key];
     const points = target[key];
@@ -306,7 +306,7 @@ function copyPath (target: spec.ShapePathData, source: spec.ShapePathData): void
 }
 
 function cloneMask (mask: spec.PathMaskData): spec.PathMaskData {
-  const path: spec.ShapePathData = { points: [], easingIns: [], easingOuts: [], shapes: [] };
+  const path: spec.MaskPathData = { points: [], easingIns: [], easingOuts: [], shapes: [] };
 
   copyPath(path, mask.path);
 

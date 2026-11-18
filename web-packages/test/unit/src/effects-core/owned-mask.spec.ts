@@ -16,15 +16,15 @@ uniform mat4 effects_ObjectToWorld;
 void main() { gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos, 0.0, 1.0); }`;
 const fragment = 'precision mediump float; void main() { gl_FragColor = vec4(1.0); }';
 
-function pathData (points: spec.Vector2Data[], easingIns: spec.Vector2Data[] = [], easingOuts: spec.Vector2Data[] = [], close = true): spec.ShapePathData {
+function pathData (points: spec.Vector2Data[], easingIns: spec.Vector2Data[] = [], easingOuts: spec.Vector2Data[] = [], close = true): spec.MaskPathData {
   return { points, easingIns, easingOuts, shapes: [{ close, indexes: points.map((_, i) => ({ point: i, easingIn: i, easingOut: i })) }] };
 }
 
-function rectangle (left: number, bottom: number, right: number, top: number): spec.ShapePathData {
+function rectangle (left: number, bottom: number, right: number, top: number): spec.MaskPathData {
   return pathData([{ x: left, y: bottom }, { x: right, y: bottom }, { x: right, y: top }, { x: left, y: top }]);
 }
 
-function entry (id: string, path: spec.ShapePathData, operation = Add, inverted = false): spec.PathMaskData {
+function entry (id: string, path: spec.MaskPathData, operation = Add, inverted = false): spec.PathMaskData {
   return { id, path, operation, inverted };
 }
 
@@ -301,7 +301,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     });
 
     it('clips indexed compound contours with a hole and skips open contours', () => {
-      const path: spec.ShapePathData = {
+      const path: spec.MaskPathData = {
         points: [
           { x: -1, y: -1 }, { x: 1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: 1 },
           { x: -0.5, y: -0.5 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: -0.5 }, { x: -0.5, y: 0.5 },

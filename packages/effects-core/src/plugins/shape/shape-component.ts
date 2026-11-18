@@ -40,7 +40,7 @@ interface ShapeAttributes {
 /**
  * 自定义图形参数
  */
-interface CustomShapeAttribute extends ShapeAttributes, spec.ShapePathData {
+interface CustomShapeAttribute extends ShapeAttributes, spec.MaskPathData {
   type: spec.ShapePrimitiveType.Custom,
   /**
    * 路径点
