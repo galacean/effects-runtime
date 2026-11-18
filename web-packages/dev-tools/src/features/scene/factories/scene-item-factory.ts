@@ -7,7 +7,7 @@ type Data = spec.EffectsObjectData & Record<string, any>;
 export function createSceneItemData (entry: SceneItemOptions, duration: number): { item: Data, objects: Data[] } {
   const id = generateGUID(), objects: Data[] = [];
   const component = (dataType: spec.DataType, data: Record<string, any> = {}) => {
-    const result = { id: generateGUID(), dataType, item: { id }, _enabled: true, ...data };
+    const result = { id: generateGUID(), dataType, item: { id }, enabled: true, ...data };
 
     objects.push(result);
 
@@ -39,7 +39,7 @@ export function createSceneItemData (entry: SceneItemOptions, duration: number):
     emission: { rateOverTime: 10, bursts: [] }, positionOverLifetime: { startSpeed: 0.5 },
     renderer: { renderMode: spec.RenderMode.BILLBOARD, anchor: [0, 0] } }));
   } else if (entry.type === spec.ItemType.camera) {
-    components.push(component(spec.DataType.CameraController, { _enabled: false, options: { fov: 60, near: 0.1, far: 100, clipMode: spec.CameraClipMode.portrait } }));
+    components.push(component(spec.DataType.CameraController, { enabled: false, options: { fov: 60, near: 0.1, far: 100, clipMode: spec.CameraClipMode.portrait } }));
   } else if (entry.type === spec.ItemType.light) {
     components.push(component(spec.DataType.LightComponent, { lightType: spec.LightType.point, color: { r: 1, g: 1, b: 1 }, intensity: 1, range: 10 }));
   } else if (entry.type === spec.ItemType.mesh) {

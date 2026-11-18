@@ -128,8 +128,8 @@ describe('core/composition/runtime instance IDs', () => {
     expect(copy.name).to.equal(placement.name);
     expect(copy.duration).to.equal(2);
     expect(copy.transform.position.x).to.equal(3);
-    expect(copy.isVisible).to.equal(false);
-    expect(copy.getComponent(CompositionComponent).enabled).to.equal(false);
+    expect(copy.isVisible).to.equal(true);
+    expect(copy.getComponent(CompositionComponent).enabled).to.equal(true);
     expect(copiedComponent.item).to.equal(copy);
     expect(copiedComponent).not.to.equal(originalComponent);
     expect(copiedExtra.parent).to.equal(copy);

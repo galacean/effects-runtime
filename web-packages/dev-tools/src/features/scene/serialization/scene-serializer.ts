@@ -289,7 +289,7 @@ export class SceneSerializer {
       extras.active = object.isActive; extras.renderOrder = object.renderOrder; extras.visible = object.isVisible;
     }
     if (object instanceof Component) {
-      if (object.definition.id) { data._enabled = object.enabled; }
+      if (object.definition.id) { data.enabled = object.enabled; }
       extras.enabled = object.enabled;
     }
     if (object instanceof PostProcessVolume) {
@@ -476,8 +476,8 @@ export class SceneSerializer {
       const enabled = object.enabled;
 
       if (object instanceof RendererComponent && !data.materials) { this.restoreMaterials(object, extras.materials ?? []); }
-      object.definition = jsonData(state.data); object.fromData({ ...data, _enabled: enabled });
-      object.enabled = data._enabled;
+      object.definition = jsonData(state.data); object.fromData({ ...data, enabled });
+      object.enabled = data.enabled;
     } else if (data.dataType && !(object instanceof Material && !object.definition.id)) {
       object.definition = jsonData(state.data); object.fromData(data);
     }
@@ -546,12 +546,6 @@ export class SceneSerializer {
 
   restoreEditor (editor: SceneEditorData): void {
     this.removeTemporaryResourceState(editor);
-    // Item visibility is applied after component data by the loader; restore authored component switches afterward.
-    for (const object of this.objects.values()) {
-      if (object instanceof Component && object.item.isVisible && typeof object.definition._enabled === 'boolean') {
-        object.enabled = object.definition._enabled;
-      }
-    }
     for (const [id, extras] of Object.entries(editor.objects)) {
       const object = this.object(id);
 

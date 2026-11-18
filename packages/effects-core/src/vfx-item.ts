@@ -1004,7 +1004,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.visible = data.visible ?? true;
     const root = this.engine.effectsObjectServer.deserializationContext?.root;
 
     // The caller mounts the hierarchy root after its data has been read.

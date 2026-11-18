@@ -4,7 +4,7 @@ import { removeItem } from '../utils';
 import { VFXItem } from '../vfx-item';
 
 interface ComponentData extends spec.ComponentData {
-  _enabled?: boolean,
+  enabled?: boolean,
 }
 
 /**
@@ -240,8 +240,8 @@ export abstract class Component extends EffectsObject {
         item.components.push(this);
       }
     }
-    if (data._enabled !== undefined) {
-      this._enabled = data._enabled;
+    if (data.enabled !== undefined) {
+      this._enabled = data.enabled;
     }
   }
 

@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Asset } from './asset';
-import { Component } from './components/component';
 import { getClass } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { DeserializationContext } from './effects-object-server';
@@ -94,10 +93,6 @@ export class SceneObjectsFactory {
     for (const [object, context] of this.objects) {
       objectServer.withDeserializationContext(context, () => {
         object.fromData(object.definition as spec.EffectsObjectData);
-        // Hidden items disable their components; visible items keep each component's authored state.
-        if (object instanceof Component && this.objects.has(object.item)) {
-          object.enabled = object.item.isVisible && object.enabled;
-        }
       });
     }
   }
