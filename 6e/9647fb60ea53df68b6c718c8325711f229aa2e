@@ -1,0 +1,45 @@
+packages/effects-core/src/plugins/shape/path-geometry.ts
+  s_1959265e50472a::t_82f76945ee73a6 14-16,58-61
+packages/effects-core/src/material/material.ts
+  s_1959265e50472a::t_82f76945ee73a6 269-271
+packages/effects-core/src/material/mask-stencil.ts
+  s_1959265e50472a::t_82f76945ee73a6 1
+web-packages/demo/src/multi-mask.ts
+  s_1959265e50472a::t_82f76945ee73a6 241,438,657
+packages/effects-core/src/render/renderer.ts
+  s_1959265e50472a::t_82f76945ee73a6 311,377-380
+packages/effects-core/src/material/mask-ref-manager.ts
+  s_1959265e50472a::t_82f76945ee73a6 18-19,26,28,35,40,53-55,60-62,82-84,87-89,110,160,201-203,220,245,255,294,301,315,338,353,388,391,396,400,414,416-418,430
+  s_1959265e50472a::t_4032ac196080fe 27
+packages/effects-core/src/components/mask-component.ts
+  s_1959265e50472a::t_4032ac196080fe 15
+  s_1959265e50472a::t_82f76945ee73a6 14,16-17,20-22,37-39,77-79,111-113,118-121,151,245
+web-packages/test/unit/src/effects-core/fallback/mask.spec.ts
+  s_1959265e50472a::t_82f76945ee73a6 189
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-graphic.spec.ts
+  s_1959265e50472a::t_82f76945ee73a6 66
+packages/effects-core/src/material/types.ts
+  s_1959265e50472a::t_82f76945ee73a6 93-95
+web-packages/test/unit/src/effects-core/owned-mask.spec.ts
+  s_1959265e50472a::t_82f76945ee73a6 290
+packages/effects-core/src/components/base-render-component.ts
+  s_1959265e50472a::t_82f76945ee73a6 311-313,326-327
+packages/effects-core/src/components/renderer-component.ts
+  s_1959265e50472a::t_82f76945ee73a6 72-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6e9647fb60ea53df68b6c718c8325711f229aa2e",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
