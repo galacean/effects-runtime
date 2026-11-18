@@ -96,31 +96,19 @@ export class Texture extends Asset {
     options?: TextureOptionsBase,
   ): Promise<Texture> {
     const video = await loadVideo(url);
-    let texture: Texture | undefined;
 
-    try {
-      texture = Texture.create(engine, {
-        sourceType: TextureSourceType.video,
-        video,
-        id: generateGUID(),
-        flipY: true,
-        ...options,
-      });
-      texture.ownedVideo = video;
-      texture.initialize();
+    const texture = Texture.create(engine, {
+      sourceType: TextureSourceType.video,
+      video,
+      id: generateGUID(),
+      flipY: true,
+      ...options,
+    });
 
-      return texture;
-    } catch (error) {
-      if (texture) {
-        texture.dispose();
-      } else {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-      }
+    texture.ownedVideo = video;
+    texture.initialize();
 
-      throw error;
-    }
+    return texture;
   }
 
   /**
