@@ -1,0 +1,37 @@
+packages/effects-core/src/texture/texture.ts
+  s_32ce5d4a71b8e1::t_0e3adc7dcc6a2b 14,48,146-184,188-192,221,234,249,263,267,313
+packages/effects-threejs/src/gpu-texture-three.ts
+  s_32ce5d4a71b8e1::t_3f81491df3041e 59,61-64
+plugin-packages/editor-gizmo/src/2d/items/item-hierarchy.ts
+  s_32ce5d4a71b8e1::t_75e0fcd0440d3d 1,108-115,137
+plugin-packages/multimedia/src/video/video-component.ts
+  s_32ce5d4a71b8e1::t_c27554ea0d9cf5 2,57-65,92-95,123-126,134-136,138-140,143-144,146-157,162-168,173-175,178,180-184,203-205,223,225-227,229-233,245-262,268-271,300-336,344-350,362-364,382-388,394,401-407,414,426-427,458-465,494-501,503-509,511-513,535,539,552,579,604-605,614-616,635,639-647,651,653-654,658-726,728-842,845,854-856,868-870,879,882,886,892-893,896,899-900,902,905-906,923-924,929-938,940,944-946,948-952,954-956,960-970,972-973,977-979,981-999,1001-1002,1005-1008,1010-1014,1023,1032,1109-1112,1119,1125,1128,1180-1184,1191,1203,1214-1218,1263
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_32ce5d4a71b8e1::t_dec5129a435f43 3-4,12,50-51,114,182,184-191,222,255,288,321,357,493-497,499,530-533,626,649,652,657,665,675-1031,1084,1095-1383
+web-packages/dev-tools/src/features/assets/runtime/asset-object-cache.ts
+  s_32ce5d4a71b8e1::t_9662837dc0f2b4 7,121,149
+web-packages/dev-tools/src/features/assets/runtime/runtime-asset-changes.ts
+  s_32ce5d4a71b8e1::t_ed53ffe08f5f46 1-61
+web-packages/dev-tools/src/features/assets/runtime/runtime-asset-source.ts
+  s_32ce5d4a71b8e1::t_8f10ee613258e2 1,8,12,14-21,23-99
+web-packages/dev-tools/src/features/sequencer/sequencer-document.ts
+  s_32ce5d4a71b8e1::t_684bf19a9f9773 14,25,81-94,136-138,142-143,145,150-159,161-165,176-184,188,207-213,216-227,229-230,232-236,239-273,278,284-287,291-295,299-308,471,494,530,545-578,581,583-587,589,594-595,598-612,625-627,629-645,649-744,781,786,788-790,795-811,882,949-950,963,966-968,978,996,999,1049-1057,1059,1061-1062,1064,1080,1090,1097-1128,1130-1139,1141-1152,1180,1182,1297-1301,1320,1396-1412,1451,1477,1487-1506,1513-1515,1649,1663-1665
+web-packages/test/unit/src/plugin-editor-gizmo/helpers/items.ts
+  s_32ce5d4a71b8e1::t_4350e47e6abc4b 8-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e221683c9a0dc532eaddefa4339f40fd112d2bb9",
+  "prompts": {},
+  "sessions": {
+    "s_32ce5d4a71b8e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3cd-84f8-7ac3-9c0b-96365b5d8128",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
