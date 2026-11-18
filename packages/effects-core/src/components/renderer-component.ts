@@ -69,7 +69,10 @@ export class RendererComponent extends Component {
     }
   }
 
-  /** The layer's mask follows the coordinate system used to draw its content. @internal */
+  /**
+   * 返回与图层内容绘制一致的路径蒙版变换矩阵。
+   * @internal
+   */
   getPathMaskWorldMatrix (renderer: Renderer): Matrix4 {
     return this.transform.getWorldMatrix();
   }

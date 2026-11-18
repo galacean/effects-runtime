@@ -63,7 +63,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
             component.time = 1;
           }
           component.onUpdate(0);
-          // Compare geometry coverage independently of text layout, glyphs and media decoding.
+          // 统一尺寸和纹理，排除文字排版、字形及媒体解码对几何覆盖测试的影响。
           item.transform.setSize(2, 2);
           component.material.setVector2('_Size', item.transform.size);
           component.material.setTexture('_MainTex', engine.assetServer.whiteTexture);

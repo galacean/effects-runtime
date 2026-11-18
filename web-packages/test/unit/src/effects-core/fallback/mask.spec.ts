@@ -186,7 +186,7 @@ describe('core/fallback/mask', () => {
             shapes: [{ close: true, indexes: [0, 1, 2].map(point => ({ point, easingIn: 0, easingOut: 0 })) }],
           },
         }],
-        // Unknown fields on a path component must not enter legacy matte migration either.
+        // 路径蒙版组件中的同名扩展字段也不能参与旧轨道遮罩迁移。
         mask: { references: [{ mask: { id: 'path-metadata' }, inverted: true }] },
       };
       const pathsBefore = JSON.parse(JSON.stringify(pathComponent));

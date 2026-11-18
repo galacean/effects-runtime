@@ -1,4 +1,4 @@
-// Shared bit layout for path stacks and track-matte composition.
+// 路径蒙版与轨道遮罩组合运算共用的 stencil 位分配。
 export const MaskStencil = {
   Path: 0b0001,
   Scratch: 0b0010,

@@ -238,7 +238,7 @@ function buildScene (view: 'input' | 'sources' | 'result'): spec.JSONScene {
     ]] },
   } as spec.EffectsObjectData);
 
-  // Only referenced layers exist as scene sources; owned paths never become source items.
+  // 仅轨道遮罩引用创建独立来源图层，自有路径保存在目标的 MaskComponent 中。
   if (mode !== 'paths' && view !== 'input') {
     for (const [index, source] of [...new Set(tracks.map(t => t.source))].entries()) {
       const id = `source-${source}`;
@@ -435,7 +435,7 @@ function watchVideoFrames (): void {
     const player = players[index];
 
     if (!video) { continue; }
-    // A paused seek decodes asynchronously; redraw after the component has uploaded that frame.
+    // 暂停时 seek 会异步解码，待组件上传视频帧后重绘。
     const redraw = () => requestAnimationFrame(() => {
       if (ready && players.includes(player)) { player.tick(0); }
     });
@@ -654,7 +654,7 @@ function frame (now: number): void {
       time = (time + dt / 1000) % duration;
       render();
     } else {
-      // Tick normally while playing; repeated gotoAndStop would seek the video on every frame.
+      // 播放时使用 tick 推进，避免 gotoAndStop 导致视频每帧 seek。
       players.forEach(player => player.tick(dt));
       time = compositions[0].time;
       updatePreview();

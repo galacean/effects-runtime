@@ -287,7 +287,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
       expect(coverage[4 * 8 + 4]).equals(true);
       expect(coverage[0]).equals(false);
-      // The same indexed fields are consumed directly, without remapping vertices or handles.
+      // 直接复用形状的路径数据，顶点和控制柄索引保持不变。
       mask.setMasks([entry('shape', data)]);
       expect(render()).deep.equals(coverage);
       const saved = SerializationHelper.serialize(shape);

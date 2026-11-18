@@ -11,10 +11,15 @@ import { Geometry } from '../render/geometry';
 import { BufferUsage } from '../render/gpu-buffer';
 import type { Renderer } from '../render/renderer';
 
-/** Ordered, hard-edge paths owned by one layer; not independently rendered scene items. */
+/**
+ * 图层自有的路径蒙版，按列表顺序参与裁剪。
+ * 路径使用图层局部坐标，不作为独立图层绘制。
+ */
 @effectsClass(spec.DataType.MaskComponent)
 export class MaskComponent extends Component {
-  /** Animation bindings use masks.<id>.path.points.<index>, independently of stack order. */
+  /**
+   * 动画通过 masks.<id>.path.points.<index> 绑定路径点，不受蒙版顺序影响。
+   */
   readonly masks: Record<string, spec.PathMaskData> = Object.create(null);
 
   private order: string[] = [];
@@ -29,7 +34,9 @@ export class MaskComponent extends Component {
     }
   }
 
-  /** Replaces the ordered stack. Surviving IDs retain their animation binding objects. */
+  /**
+   * 替换有序蒙版列表，同 ID 的路径保留原有动画绑定对象。
+   */
   setMasks (masks: readonly spec.PathMaskData[]): void {
     const ids = new Set<string>();
 
@@ -67,7 +74,9 @@ export class MaskComponent extends Component {
     this.revision++;
   }
 
-  /** Returns a detached snapshot in evaluation order. */
+  /**
+   * 按运算顺序返回蒙版数据的深拷贝。
+   */
   getMasks (): spec.PathMaskData[] {
     return this.order.map(id => cloneMask(this.masks[id]));
   }
@@ -99,12 +108,17 @@ export class MaskComponent extends Component {
     this.revision++;
   }
 
-  /** @internal */
+  /**
+   * @internal
+   */
   hasActivePaths (): boolean {
     return this.isActiveAndEnabled && this.order.some(id => this.isPathActive(this.masks[id]));
   }
 
-  /** Writes the stack to bit 0; bit 1 is scratch, all other stencil bits are preserved. @internal */
+  /**
+   * 将路径运算结果写入 stencil 第 0 位，第 1 位用于临时计算，其余位保持不变。
+   * @internal
+   */
   drawStencilStack (renderer: Renderer, worldMatrix = this.transform.getWorldMatrix()): void {
     let first = true;
     const scale = this.computeScreenScale(renderer, worldMatrix);
@@ -134,7 +148,7 @@ export class MaskComponent extends Component {
         this.drawPath(renderer, id, scale, MaskStencil.Scratch, MaskStencil.Scratch, worldMatrix);
         if (operation === spec.MaskOperation.Add) {
           renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.INVERT);
-          // GL compares reference <= stored value: either coverage bit makes the union true.
+          // LEQUAL 比较 reference <= stencil；Path 或 Scratch 任一位置位即属于并集。
           renderer.drawFullscreenStencil(pathBits, MaskStencil.Path, gl.LEQUAL, gl.REPLACE, gl.KEEP, MaskStencil.Path);
         } else {
           renderer.drawFullscreenStencil(pathBits, pathBits, gl.EQUAL, gl.KEEP, gl.ZERO, MaskStencil.Path);
@@ -228,7 +242,7 @@ void main() { gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos
     const w = Math.abs(e[15]) || 1;
     const scale = Math.max(Math.hypot(e[0] * width, e[1] * height), Math.hypot(e[4] * width, e[5] * height)) / (2 * w);
 
-    // Quantization avoids retessellating a curve on every small transform change.
+    // 按 2 的幂对缩放值分档，避免微小变换触发重复三角化。
     return 2 ** Math.ceil(Math.log2(Math.max(1, Math.min(65536, scale))));
   }
 }

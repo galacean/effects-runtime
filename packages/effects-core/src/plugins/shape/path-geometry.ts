@@ -11,7 +11,9 @@ export function appendBezierPaths (graphics: GraphicsPath, path: ShapePathData, 
   }
 }
 
-/** Appends a contour without imposing fill, stroke, material or ownership semantics. */
+/**
+ * 按轮廓索引追加贝塞尔路径，控制柄使用相对顶点的偏移量。
+ */
 export function appendBezierPath (graphics: GraphicsPath, path: ShapePathData, contour: CustomShape, screenScale = 1): void {
   const { points, easingIns, easingOuts } = path;
   const { indexes, close } = contour;
@@ -53,13 +55,15 @@ export function buildPathContours (path: ShapePath, screenScale = 1) {
   });
 }
 
-/** Separate fills retain primitive-specific triangulation; compound fills resolve holes across contours. */
+/**
+ * separate 按各形状的算法独立三角化；compound 按奇偶规则处理多轮廓与孔洞。
+ * compound 返回无索引三角形。
+ */
 export function buildPathGeometry (path: ShapePath, screenScale: number, fillMode: 'separate' | 'compound') {
   const contours = buildPathContours(path, screenScale);
   const indices: number[] = [];
 
   if (fillMode === 'compound') {
-    // Compound coverage uses non-indexed triangles, with no degenerate bounds geometry.
     return { vertices: triangulate(contours.map(({ points }) => points)), indices };
   }
   const vertices: number[] = [];

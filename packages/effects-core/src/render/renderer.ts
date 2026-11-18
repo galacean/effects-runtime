@@ -308,7 +308,7 @@ export class Renderer {
 
   renderMeshes (meshes: RendererComponent[]) {
     for (const mesh of meshes) {
-      // Matte-only sources still update and draw through drawStencilMask, but do not contribute color.
+      // 仅作轨道遮罩的来源跳过颜色绘制，由 drawStencilMask 写入遮罩覆盖范围。
       if (!mesh.maskManager.isTrackMatteOnly) {
         mesh.render(this);
       }
@@ -374,7 +374,10 @@ export class Renderer {
     this.engine.renderingServer.renderTargetPool.release(rt);
   }
 
-  /** Updates stencil in the current viewport without changing color or depth. @internal */
+  /**
+   * 更新当前视口内的 stencil，不写入颜色和深度。
+   * @internal
+   */
   drawFullscreenStencil (
     readMask: number, reference: number, comparison: number, pass: number,
     fail: number = glContext.KEEP, writeMask = readMask,

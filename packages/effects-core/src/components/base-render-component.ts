@@ -308,7 +308,9 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  /** @internal */
+  /**
+   * @internal
+   */
   override getPathMaskWorldMatrix (renderer: Renderer): Matrix4 {
     const worldMatrix = this.transform.getWorldMatrix();
     const view = renderer.renderingData.globalUniforms.matrices.effects_MatrixV;
@@ -321,8 +323,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     const world = worldMatrix.elements;
     const scale = this.material.getVector3('_Scale') ?? this.transform.scale;
 
-    // Match item.vert.glsl: camera-facing axes use local scale, with a world-space origin.
-    // Paths already use layer-local units, so the content's _Size must not be applied again.
+    // 与 item.vert.glsl 保持一致：朝向相机的坐标轴使用局部缩放，原点使用世界坐标。
+    // 路径已使用图层局部坐标，无需再乘以内容尺寸 _Size。
     return matrix.set(
       v[0] * scale.x, v[4] * scale.x, v[8] * scale.x, 0,
       v[1] * scale.y, v[5] * scale.y, v[9] * scale.y, 0,

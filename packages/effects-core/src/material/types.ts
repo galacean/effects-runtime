@@ -90,7 +90,9 @@ export enum ShaderType {
  *
  */
 export interface Maskable {
-  /** Optional content-specific basis for layer-owned paths, such as billboards. */
+  /**
+   * 路径蒙版的局部到世界变换，用于 Billboard 等特殊绘制模式。
+   */
   getPathMaskWorldMatrix? (renderer: Renderer): Matrix4,
   item: VFXItem,
   drawStencilMask (maskRef: number): void,

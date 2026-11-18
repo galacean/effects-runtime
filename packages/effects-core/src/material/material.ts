@@ -266,7 +266,9 @@ export class Material extends Asset implements Disposable {
     value && this.materialState.setStencilMask(value);
   }
 
-  /** Omission retains the shared stencil read/write mask used by existing materials. */
+  /**
+   * stencil 写入掩码，未设置时沿用 stencilMask 的读写共用行为。
+   */
   get stencilWriteMask () {
     return this.materialState.stencilWriteMask;
   }
