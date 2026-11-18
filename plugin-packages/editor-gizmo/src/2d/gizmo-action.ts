@@ -3,6 +3,7 @@ import type { ShapeDrawingActionEvent } from './gizmos/shape/geometry';
 import type { FrameCreateData, ItemCreateType, TextCreateData } from './gizmos/item-create-gizmo';
 import type { AutoLayoutChangeInfo } from './frame/frame-assisted-layout';
 import type { TransformType } from './gizmos/resize-selection-gizmo/transform-types';
+import type { RulerActionEvent } from './gizmos/ruler-gizmo';
 import type { InputEventKey, VFXItem } from '@galacean/effects';
 
 /** Gizmo 操作的生命周期阶段。 */
@@ -163,6 +164,7 @@ export type GizmoActionLifecycleEvent =
   | GizmoTransformActionEvent
   | GizmoSelectionActionEvent
   | GizmoItemCreateActionEvent
+  | RulerActionEvent
   | ShapeDrawingActionEvent;
 
 /** GizmoOwner 发出的事件及其参数。 */

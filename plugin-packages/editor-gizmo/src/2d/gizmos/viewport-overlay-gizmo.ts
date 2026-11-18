@@ -22,8 +22,8 @@ export type ViewProperty = {
   previewSafeAreas: {
     /** 安全区包围盒 [左, 上, 宽, 高]，单位为设计稿像素，相对画板左上角 */
     box: [number, number, number, number],
-    /** 填充色 [r, g, b, a?]，0..255 */
-    color?: number[],
+    /** 填充色，格式为 0xRRGGBBAA。 */
+    color?: number,
     /** 背景贴图地址 */
     url?: string,
     /** 是否可见 */
@@ -128,15 +128,13 @@ export class ViewportOverlayGizmo extends Gizmo {
       boxColor,
       outerMaskEnabled,
       markColor,
-      markAlpha,
       safeAreaEnabled,
       safeAreaBoxColor,
-      safeAreaBoxAlpha,
     } = this.config;
 
     // 步骤 1：绘制画板外遮罩。
     if (outerMaskEnabled) {
-      const markFill = toColor(markColor, markAlpha);
+      const markFill = toColor(markColor);
       const size = GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!);
       const screen = [new Vector2(), new Vector2(size.x, 0), size.clone(), new Vector2(0, size.y)];
 
@@ -150,7 +148,7 @@ export class ViewportOverlayGizmo extends Gizmo {
     if (safeAreaEnabled && this.viewProperty) {
       const { size, safeArea } = this.viewProperty;
       const [top, bottom, left, right] = safeArea;
-      const safeFill = toColor(safeAreaBoxColor, safeAreaBoxAlpha);
+      const safeFill = toColor(safeAreaBoxColor);
       const topRatio = top / size[1];
       const bottomRatio = bottom / size[1];
       const leftRatio = left / size[0];
@@ -187,19 +185,15 @@ export class ViewportOverlayGizmo extends Gizmo {
             control.drawTexture(0, 0, 1, 1, texture);
           });
         } else {
-          const alpha = color?.[3] ?? 0.3;
-          const cr = color?.[0] ?? 255;
-          const cg = color?.[1] ?? 0;
-          const cb = color?.[2] ?? 0;
-          const resultColor = (cr << 16) | (cg << 8) | cb;
+          const resultColor = color ?? 0xFF00004D;
 
-          fillBoxByCorners(control, previewCorners, toColor(resultColor, alpha));
+          fillBoxByCorners(control, previewCorners, toColor(resultColor));
         }
       }
     }
 
     // 步骤 4：绘制画板边框。
-    drawCorners(control, corners, toColor(boxColor, 1), boxWidth);
+    drawCorners(control, corners, toColor(boxColor), boxWidth);
   }
 
   /** 释放预览安全区贴图缓存，调用父类释放。 */

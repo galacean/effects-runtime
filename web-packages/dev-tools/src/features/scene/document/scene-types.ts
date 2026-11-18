@@ -1,4 +1,5 @@
 import type { Keyframe, spec } from '@galacean/effects';
+import type { RulerGuides } from '@galacean/effects-plugin-editor-gizmo';
 
 export interface SequenceChannelEditorData {
   group: string,
@@ -20,6 +21,7 @@ export interface SceneEditorData {
   objects: Record<string, Record<string, any>>,
   sequences?: Record<string, SequenceEditorData>,
   hierarchy?: SceneHierarchyData,
+  rulerGuides?: RulerGuides,
 }
 export interface SceneMetadata { id: string, name: string, updatedAt: number, parentId?: string, projectId?: string }
 export interface StoredScene extends SceneMetadata { scene: spec.JSONScene, editor: SceneEditorData }

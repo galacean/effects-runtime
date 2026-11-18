@@ -361,7 +361,6 @@ export class ItemCreateGizmo extends Gizmo {
     }
 
     const {
-      frameBorderAlpha,
       frameBorderColor,
       frameBorderWidth,
     } = this.config;
@@ -370,14 +369,14 @@ export class ItemCreateGizmo extends Gizmo {
       control,
       previewBox,
       isTextPreview
-        ? toColor(TEXT_EDIT_BOX_LINE_COLOR, 1)
-        : toColor(frameBorderColor, frameBorderAlpha),
+        ? toColor(TEXT_EDIT_BOX_LINE_COLOR)
+        : toColor(frameBorderColor),
       isTextPreview ? TEXT_EDIT_BOX_LINE_WIDTH : frameBorderWidth,
     );
 
     if (this._createType === ItemCreateType.FRAME) {
       const hoverConfig = this._owner.getConfigManager().get(selectionPreviewConfig);
-      const hoverColor = toColor(hoverConfig.preSelectedColor, 1);
+      const hoverColor = toColor(hoverConfig.preSelectedColor);
 
       this.frameChildren.forEach(id => {
         const box = this.interactiveChildrenBoxes.get(id);

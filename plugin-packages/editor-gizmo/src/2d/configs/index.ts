@@ -31,6 +31,7 @@ export {
   spriteTextEditConfig,
   viewportNavigationConfig,
   viewportOverlayConfig,
+  rulerConfig,
 } from './builtin-configs';
 export type {
   EffectsEditModeConfig,
@@ -49,4 +50,6 @@ export type {
   SpriteTextEditConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
+  RulerConfig,
+  RulerGuideSelectionMode,
 } from './types';

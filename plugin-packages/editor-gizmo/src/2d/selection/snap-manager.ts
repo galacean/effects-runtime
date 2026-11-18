@@ -11,6 +11,14 @@ const SNAP_MARKER_HALF_SIZE = 2;
 
 type SnapAxis = 'x' | 'y';
 
+/** 视口 CSS 像素坐标中的参考线，只参与指定轴的吸附。 */
+export type SnapGuide = {
+  axis: SnapAxis,
+  coordinate: number,
+  /** 正交轴上的提示线范围。 */
+  range?: readonly [number, number],
+};
+
 type SnapGapSegment = {
   axis: SnapAxis,
   start: number,
@@ -23,6 +31,7 @@ type AxisSnapCandidate = {
   point?: Vector2,
   target?: Vector2,
   targetBox?: Box2,
+  guide?: SnapGuide,
   gaps?: SnapGapSegment[],
 };
 
@@ -64,6 +73,9 @@ export class SnapManager {
   /** 当前拖拽会话缓存的吸附目标。 */
   private targetBoxes: Box2[] = [];
 
+  /** 参考线按帧投影，不随拖拽会话的 reset 清除。 */
+  private readonly guideProviders = new Set<() => readonly SnapGuide[]>();
+
   /** 本帧每轴选中的最近候选。 */
   private axisSelections: Partial<Record<SnapAxis, AxisSnapSelection>> = {};
 
@@ -85,6 +97,17 @@ export class SnapManager {
   /** 当前吸附配置。 */
   get config (): Readonly<SnapConfig> {
     return this.owner.getConfigManager().get(selectionSnapConfig);
+  }
+
+  /**
+   * 注册实时参考线来源，返回注销函数。
+   * @param provider 返回当前参考线投影视图坐标的函数
+   * @returns 注销参考线来源的函数
+   */
+  registerGuideProvider (provider: () => readonly SnapGuide[]): () => void {
+    this.guideProviders.add(provider);
+
+    return () => { this.guideProviders.delete(provider); };
   }
 
   /**
@@ -121,6 +144,37 @@ export class SnapManager {
   }
 
   /**
+   * 缓存参考线交互使用的吸附目标。
+   *
+   * 参考线没有自身包围盒，但仍需沿用移动元素的选区排除和作用域隔离规则。
+   * 没有选区时保留原有行为，允许参考线吸附到所有可见元素；存在选区时只保留
+   * 与选区相同作用域的候选，并排除选中项、选中项后代和选中项祖先。
+   * @param items 场景元素
+   * @param selectedItems 当前选中元素
+   * @param containerSize 画布容器尺寸
+   */
+  cacheSnapTargetsForGuide (
+    items: readonly VFXItem[],
+    selectedItems: readonly VFXItem[],
+    containerSize: Vector2,
+  ): void {
+    const selectedIdSet = new Set(selectedItems.map(item => item.getInstanceId()));
+    const selectedAncestorIdSet = this.getAncestorIdSet(selectedItems);
+    const scopeItemId = selectedItems.length > 0 ? this.getCommonSnapScopeId(selectedItems) : undefined;
+
+    this.cacheSnapTargetBoxes(
+      items
+        .filter(item => item.isVisible
+          && !selectedAncestorIdSet.has(item.getInstanceId())
+          && !this.isSelectedOrDescendant(item, selectedIdSet)
+          && (selectedItems.length === 0 || this.getNearestSnapScopeId(item) === scopeItemId),
+        )
+        .map(item => getItemViewBox(item, containerSize))
+        .filter(box => !box.isEmpty()),
+    );
+  }
+
+  /**
    * 缓存视图空间中的吸附目标包围盒。
    * @param boxes 吸附目标包围盒
    */
@@ -140,10 +194,7 @@ export class SnapManager {
 
   /** @returns 当前吸附目标的角点和中心点。 */
   getSnapTargetPoints (): Vector2[] {
-    return this.targetBoxes.flatMap(box => [
-      ...getBoxCorners(box),
-      box.getCenter(),
-    ]);
+    return this.targetBoxes.flatMap(box => this.getBoxSnapPoints(box));
   }
 
   /**
@@ -182,6 +233,8 @@ export class SnapManager {
       this.considerBoxAlignment(sourceBox, targetBox, 'x', xEnabled);
       this.considerBoxAlignment(sourceBox, targetBox, 'y', yEnabled);
     }
+
+    this.considerGuideSnaps([sourceBox.min, sourceBox.getCenter(), sourceBox.max], xEnabled, yEnabled);
 
     if (xEnabled) {
       this.considerGapSnaps(sourceBox, otherBoxes, 'x');
@@ -229,6 +282,43 @@ export class SnapManager {
           point: sourcePoint,
           target,
         });
+      }
+    }
+
+    this.considerGuideSnaps([sourcePoint], xEnabled, yEnabled);
+
+    this.publishResult();
+  }
+
+  /**
+   * 参考线单轴吸附。
+   *
+   * 参考线移动时只允许一个轴产生修正，避免把参考线的正交坐标也一起改变。
+   * @param point 当前参考线的未吸附视图坐标
+   * @param axis 参考线参与吸附的视图坐标轴
+   * @param targetBoxes 参考元素的视图包围盒
+   * @param distance 本次吸附允许的最大距离，单位为 CSS 像素
+   */
+  prepareGuide (
+    point: Vector2,
+    axis: SnapAxis,
+    targetBoxes: readonly Box2[],
+    distance = this.config.distance,
+  ): void {
+    this.clearFrameState();
+    const sourcePoint = point.clone();
+
+    for (const targetBox of targetBoxes) {
+      if (targetBox.isEmpty()) {
+        continue;
+      }
+      for (const target of this.getBoxSnapPoints(targetBox)) {
+        this.considerAxisCandidate(axis, {
+          distance: sourcePoint[axis] - target[axis],
+          point: sourcePoint,
+          target,
+          targetBox,
+        }, distance);
       }
     }
 
@@ -333,6 +423,38 @@ export class SnapManager {
   /** 画板和动效容器都会隔离内外吸附候选。 */
   private isSnapScopeItem (item: VFXItem): boolean {
     return isFramePlayerItem(item) || isEffectsPlayerItem(item);
+  }
+
+  /**
+   * 参考线只提供单轴候选，不生成虚假的正交轴或等距间隔候选。
+   * @param points 当前待吸附点
+   * @param xEnabled 是否计算 x 轴候选
+   * @param yEnabled 是否计算 y 轴候选
+   */
+  private considerGuideSnaps (points: readonly Vector2[], xEnabled: boolean, yEnabled: boolean): void {
+    for (const provider of this.guideProviders) {
+      for (const guide of provider()) {
+        if (!Number.isFinite(guide.coordinate) || (guide.axis === 'x' ? !xEnabled : !yEnabled)) {
+          continue;
+        }
+        for (const point of points) {
+          const target = point.clone();
+
+          target[guide.axis] = guide.coordinate;
+          this.considerAxisCandidate(guide.axis, {
+            distance: point[guide.axis] - guide.coordinate,
+            point,
+            target,
+            guide,
+          });
+        }
+      }
+    }
+  }
+
+  /** 返回包围盒的角点和中心点。 */
+  private getBoxSnapPoints (box: Box2): Vector2[] {
+    return [...getBoxCorners(box), box.getCenter()];
   }
 
   /** 比较一个目标包围盒的 min / center / max 锚点。 */
@@ -450,8 +572,12 @@ export class SnapManager {
   }
 
   /** 只保留阈值内最近的候选；同一修正量的命中全部合并用于渲染。 */
-  private considerAxisCandidate (axis: SnapAxis, candidate: AxisSnapCandidate): void {
-    if (Math.abs(candidate.distance) > this.config.distance + SNAP_EPSILON) {
+  private considerAxisCandidate (
+    axis: SnapAxis,
+    candidate: AxisSnapCandidate,
+    distance = this.config.distance,
+  ): void {
+    if (!Number.isFinite(candidate.distance) || Math.abs(candidate.distance) > distance + SNAP_EPSILON) {
       return;
     }
 
@@ -555,6 +681,10 @@ export class SnapManager {
 
         min = Math.min(min, snappedPoint[orthogonalAxis], match.target[orthogonalAxis]);
         max = Math.max(max, snappedPoint[orthogonalAxis], match.target[orthogonalAxis]);
+        if (match.guide?.range?.every(Number.isFinite)) {
+          min = Math.min(min, ...match.guide.range);
+          max = Math.max(max, ...match.guide.range);
+        }
         if (match.targetBox) {
           min = Math.min(min, match.targetBox.min[orthogonalAxis]);
           max = Math.max(max, match.targetBox.max[orthogonalAxis]);

@@ -247,21 +247,16 @@ export class ImageCutGizmo extends Gizmo {
 
     const {
       maskColor,
-      maskAlpha,
       cutBoxLineWidth,
       cutBoxLineColor,
-      cutBoxLineAlpha,
       itemBoxLineWidth,
       itemBoxLineColor,
-      itemBoxLineAlpha,
       cutBoxCornerRadius,
       cutBoxCornerFillColor,
       cutBoxCornerLineWidth,
       cutBoxCornerLineColor,
-      cutBoxCornerLineAlpha,
       gridLineWidth,
       gridLineColor,
-      gridLineAlpha,
       gridCount,
     } = this.config;
 
@@ -269,7 +264,7 @@ export class ImageCutGizmo extends Gizmo {
     const cutCorners = getTransformedBoxCorners(geometry.boxTransform, this.result.normalizeCutBox);
 
     // 步骤 2：绘制裁剪区域外的蒙版。
-    const maskFill = toColor(maskColor, maskAlpha);
+    const maskFill = toColor(maskColor);
 
     fillBoxByCorners(control, [itemCorners[0], itemCorners[1], cutCorners[1], cutCorners[0]], maskFill);
     fillBoxByCorners(control, [itemCorners[1], itemCorners[2], cutCorners[2], cutCorners[1]], maskFill);
@@ -277,7 +272,7 @@ export class ImageCutGizmo extends Gizmo {
     fillBoxByCorners(control, [itemCorners[3], itemCorners[0], cutCorners[0], cutCorners[3]], maskFill);
 
     // 步骤 3：绘制裁剪辅助网格。
-    const gridColor = toColor(gridLineColor, gridLineAlpha);
+    const gridColor = toColor(gridLineColor);
 
     for (let i = 1; i <= gridCount; i++) {
       const ratio = i / (gridCount + 1);
@@ -291,10 +286,10 @@ export class ImageCutGizmo extends Gizmo {
     }
 
     // 步骤 4：绘制元素、裁剪框和角点。
-    drawCorners(control, itemCorners, toColor(itemBoxLineColor, itemBoxLineAlpha), itemBoxLineWidth);
-    drawCorners(control, cutCorners, toColor(cutBoxLineColor, cutBoxLineAlpha), cutBoxLineWidth);
-    const cornerFill = toColor(cutBoxCornerFillColor, 1);
-    const cornerStroke = toColor(cutBoxCornerLineColor, cutBoxCornerLineAlpha);
+    drawCorners(control, itemCorners, toColor(itemBoxLineColor), itemBoxLineWidth);
+    drawCorners(control, cutCorners, toColor(cutBoxLineColor), cutBoxLineWidth);
+    const cornerFill = toColor(cutBoxCornerFillColor);
+    const cornerStroke = toColor(cutBoxCornerLineColor);
 
     cutCorners.forEach(corner => {
       control.fillCircle(corner.x, corner.y, cutBoxCornerRadius, cornerFill);

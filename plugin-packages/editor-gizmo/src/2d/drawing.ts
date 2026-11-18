@@ -10,34 +10,42 @@ export const INFO_TEXT_FONT_SIZE = 14;
 /** 信息标签默认字体。 */
 export const INFO_TEXT_FONT_FAMILY = 'sans-serif';
 
-/**
- * 颜色缓存：`hex_alpha` → effects Color。键到颜色映射不可变，全局缓存无需清理。
- */
-const colorCache = new Map<string, Color>();
+/** 颜色缓存：RGBA 十六进制值 → effects Color。键到颜色映射不可变，全局缓存无需清理。 */
+const colorCache = new Map<number, Color>();
 
 /**
- * 将十六进制色值 + alpha 转为 effects Color（带全局缓存）。
- * @param hex 0xRRGGBB 颜色
- * @param alpha 透明度 0..1
+ * 将 RGBA 十六进制色值转为 effects Color（带全局缓存）。
+ * @param hex 0xRRGGBBAA 颜色
  * @returns effects Color
  */
-export function toColor (hex: number, alpha = 1): Color {
-  const key = `${hex}_${alpha}`;
+export function toColor (hex: number): Color {
+  const key = hex >>> 0;
   const cached = colorCache.get(key);
 
   if (cached) {
     return cached;
   }
   const color = new Color(
-    ((hex >> 16) & 0xff) / 255,
-    ((hex >> 8) & 0xff) / 255,
-    (hex & 0xff) / 255,
-    alpha,
+    ((key >>> 24) & 0xff) / 255,
+    ((key >>> 16) & 0xff) / 255,
+    ((key >>> 8) & 0xff) / 255,
+    (key & 0xff) / 255,
   );
 
   colorCache.set(key, color);
 
   return color;
+}
+
+/**
+ * 将 RGBA 十六进制色值转为 Canvas 可用的 rgba() 字符串。
+ * @param hex 0xRRGGBBAA 颜色
+ * @returns Canvas CSS 颜色字符串
+ */
+export function toCanvasColor (hex: number): string {
+  const value = hex >>> 0;
+
+  return `rgba(${value >>> 24}, ${((value >>> 16) & 0xff)}, ${((value >>> 8) & 0xff)}, ${(value & 0xff) / 255})`;
 }
 
 /**

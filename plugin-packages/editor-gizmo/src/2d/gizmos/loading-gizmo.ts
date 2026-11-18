@@ -24,7 +24,7 @@ import type { LoadingItemOptions, LoadingItemState, LoadingManager } from './loa
 
 const LOADING_TIP_FONT_SIZE = 16;
 const LOADING_TIP_FONT_FAMILY = 'sans-serif';
-const LOADING_TIP_COLOR = 0x000000;
+const LOADING_TIP_COLOR = 0x000000ff;
 
 /** 为目标元素叠加加载动画与提示文案。 */
 export class LoadingGizmo extends Gizmo {
@@ -47,9 +47,9 @@ export class LoadingGizmo extends Gizmo {
    * @param owner Gizmo 宿主。
    * @param manager 加载状态管理器。
    */
-  constructor (owner: GizmoOwner, manager: LoadingManager) {
+  constructor (owner: GizmoOwner) {
     super(owner);
-    this.manager = manager;
+    this.manager = owner.getLoadingManager();
     this.configOff = owner.getConfigManager().onChange(
       loadingConfig,
       change => {
@@ -236,7 +236,7 @@ export class LoadingGizmo extends Gizmo {
       top - textMetrics.inkTop,
       tip.text,
       fontSize,
-      toColor(LOADING_TIP_COLOR, 1),
+      toColor(LOADING_TIP_COLOR),
       LOADING_TIP_FONT_FAMILY,
       'bold',
     );
