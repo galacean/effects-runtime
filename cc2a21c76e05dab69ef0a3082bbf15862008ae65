@@ -1,0 +1,19 @@
+plugin-packages/multimedia/src/video/video-component.ts
+  s_60ba6bcc05ed2b::t_f06f3cb747af17 38-39,198,248,402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cc2a21c76e05dab69ef0a3082bbf15862008ae65",
+  "prompts": {},
+  "sessions": {
+    "s_60ba6bcc05ed2b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee1d-6098-70d3-8050-f36ca7f6290c",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}

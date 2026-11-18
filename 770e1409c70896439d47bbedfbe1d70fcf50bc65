@@ -1,0 +1,20 @@
+packages/effects-core/src/texture/texture.ts
+  s_39cdf2d9198efa::t_23a3f4b780cb1f 100-111
+  s_39cdf2d9198efa::t_6f05cf84665a22 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "770e1409c70896439d47bbedfbe1d70fcf50bc65",
+  "prompts": {},
+  "sessions": {
+    "s_39cdf2d9198efa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee1e-caf1-7693-8176-aa8aa15714e4",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
