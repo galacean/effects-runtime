@@ -227,9 +227,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     if (scene) {
       this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
-      if (reusable) {
-        scene.consumed = true;
-      }
 
       sourceContent = scene.jsonScene.compositions[0];
 
@@ -719,15 +716,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.sceneTicking.clear();
 
     if (this.scene) {
-      const { scene } = this;
-
-      for (const id of Object.keys(scene.assets)) {
-        const asset = scene.assets[id];
-
-        if (asset instanceof HTMLVideoElement) {
-          asset.pause();
-          asset.removeAttribute('src');
-          asset.load();
+      for (const video of this.scene.videos) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+      for (const image of this.scene.images) {
+        if (image instanceof HTMLVideoElement) {
+          image.pause();
+          image.removeAttribute('src');
+          image.load();
         }
       }
     }

@@ -772,7 +772,7 @@ describe('渲染插件单测', function () {
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
     engine.assetServer.prepareAssets({
-      jsonScene, assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+      jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
     });
 
     const animComp = new AnimationComponent(engine);
@@ -1120,7 +1120,7 @@ describe('渲染插件单测', function () {
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
       engine.assetServer.prepareAssets({
-        jsonScene, assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+        jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
       });
       //
       expect(itemList[1].type).to.eql('mesh');

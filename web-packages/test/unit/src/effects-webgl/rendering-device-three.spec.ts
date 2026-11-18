@@ -78,7 +78,7 @@ describe('threejs/rendering-device', () => {
         compositionId: 'scene', items: [],
         compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
       } as unknown as spec.JSONScene,
-      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+      bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
     });
     const assets = displayObject.engine.assetServer;
     let disposals = 0;

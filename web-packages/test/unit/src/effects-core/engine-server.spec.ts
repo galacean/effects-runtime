@@ -278,7 +278,7 @@ describe('core/engine/servers', () => {
         items: [degraded, { id: 'label', name: 'label', components: [{ id: text.id }, { id: richText.id }] }],
         components: [text, richText],
       } as unknown as spec.JSONScene,
-      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '', renderLevel: spec.RenderLevel.B,
+      bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '', renderLevel: spec.RenderLevel.B,
     };
 
     engine.assetServer.prepareAssets(scene);
@@ -304,7 +304,7 @@ describe('core/engine/servers', () => {
         compositionId: 'scene', items: [],
         compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
       } as unknown as spec.JSONScene,
-      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+      bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
     });
     const firstScene = Object.assign(createScene(), { options: { speed: 2, autoplay: false } });
     const secondScene = Object.assign(createScene(), { options: { speed: 3, autoplay: true } });

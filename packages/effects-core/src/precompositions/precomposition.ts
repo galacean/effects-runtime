@@ -27,13 +27,16 @@ export class Precomposition implements Disposable {
     }
     this.disposed = true;
 
-    for (const id of Object.keys(this.scene.assets)) {
-      const asset = this.scene.assets[id];
-
-      if (asset instanceof HTMLVideoElement) {
-        asset.pause();
-        asset.removeAttribute('src');
-        asset.load();
+    for (const video of this.scene.videos) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+    for (const image of this.scene.images) {
+      if (image instanceof HTMLVideoElement) {
+        image.pause();
+        image.removeAttribute('src');
+        image.load();
       }
     }
   }

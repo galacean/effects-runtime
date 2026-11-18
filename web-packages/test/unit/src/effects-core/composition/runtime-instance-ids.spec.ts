@@ -160,7 +160,7 @@ describe('core/composition/runtime instance IDs', () => {
           item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }))],
         miscs: [...jsonScene.miscs, { id: spriteId, dataType: 'Sprite', texture: ref(textureId) }],
       } as unknown as spec.JSONScene,
-      assets: {}, bins: [], images: [], storage: {}, timeInfos: {}, url: '',
+      bins: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
       textureOptions: [{ id: textureId, dataType: spec.DataType.Texture, sourceType: TextureSourceType.data,
         data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) } }],
     };

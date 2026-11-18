@@ -119,10 +119,11 @@ export class AssetServer extends EngineServer {
 
   /** Register the scene definitions and loaded assets together. */
   prepareAssets (scene: Scene): void {
-    const { jsonScene, assets, bins, textureOptions = [] } = scene;
+    const { jsonScene, images, videos, audios, bins, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
       animations = [], bins: binaryDatas = [], miscs = [], compositions,
+      videos: videoDefinitions = [], audios: audioDefinitions = [], images: imageDefinitions,
     } = jsonScene;
 
     for (const compositionData of compositions) {
@@ -173,8 +174,18 @@ export class AssetServer extends EngineServer {
         this.addEffectsObjectData(textureData as spec.EffectsObjectData);
       }
     }
-    for (const id of Object.keys(assets)) {
-      const input = { id, dataType: 'DataAsset' as spec.DataType, data: assets[id] };
+    for (let i = 0; i < videos.length; i++) {
+      const input = { id: videoDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: videos[i] };
+
+      this.addEffectsObjectData(input);
+    }
+    for (let i = 0; i < audios.length; i++) {
+      const input = { id: audioDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: audios[i] };
+
+      this.addEffectsObjectData(input);
+    }
+    for (let i = 0; i < images.length; i++) {
+      const input = { id: imageDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: images[i] };
 
       this.addEffectsObjectData(input);
     }

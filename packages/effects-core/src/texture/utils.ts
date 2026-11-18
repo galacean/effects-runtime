@@ -42,7 +42,7 @@ type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptio
 export async function deserializeMipmapTexture (
   textureOptions: TextureJSONOptions,
   bins: ArrayBuffer[],
-  assets: Record<string, any>,
+  imageSources: Record<string, any>,
   files: spec.BinaryFile[] = [],
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (textureOptions.target === 34067) {
@@ -51,7 +51,7 @@ export async function deserializeMipmapTexture (
       // @ts-expect-error
       if (pointer.id) {
         // @ts-expect-error
-        const loadedImage = assets[pointer.id];
+        const loadedImage = imageSources[pointer.id];
 
         return loadedImage;
       } else {
