@@ -14,6 +14,8 @@ import { logger } from '../utils/logger';
 import { VideoFrameTracker } from './video-frame-tracker';
 
 let seed = 1;
+// 仅释放由 Texture.fromVideo 创建的视频源，并等待所有纹理解除引用。
+const videoSources = new WeakMap<HTMLVideoElement, { references: number, owned: boolean }>();
 
 /**
  * Texture 资产，组合后端 GPUTexture。
@@ -44,7 +46,7 @@ export class Texture extends Asset {
   protected destroyed = false;
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
-  private ownedVideo?: HTMLVideoElement;
+  private retainedVideo?: HTMLVideoElement;
   private videoFrameTracker?: VideoFrameTracker;
 
   /**
@@ -100,7 +102,7 @@ export class Texture extends Asset {
       ...options,
     });
 
-    texture.ownedVideo = video;
+    videoSources.get(video)!.owned = true;
     texture.initialize();
 
     return texture;
@@ -220,6 +222,7 @@ export class Texture extends Asset {
   updateSource (options: TextureSourceOptions): void {
     this.disposeVideoFrameTracker();
     this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
+    this.retainVideoSource();
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     [this.width, this.height] = getTextureSourceSize(this.source);
@@ -267,10 +270,46 @@ export class Texture extends Asset {
     this.disposeVideoFrameTracker();
     super.fromData(data);
     this.source = this.assembleOptions(data as unknown as TextureSourceOptions);
+    this.retainVideoSource();
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     this.name = this.source.name ?? '';
     [this.width, this.height] = getTextureSourceSize(this.source);
+  }
+
+  private retainVideoSource (): void {
+    const video = this.source.sourceType === TextureSourceType.video ? this.source.video : undefined;
+
+    if (this.destroyed || video === this.retainedVideo) {
+      return;
+    }
+    this.releaseVideoSource();
+    if (video) {
+      const source = videoSources.get(video) ?? { references: 0, owned: false };
+
+      source.references++;
+      videoSources.set(video, source);
+      this.retainedVideo = video;
+    }
+  }
+
+  private releaseVideoSource (): void {
+    const video = this.retainedVideo;
+
+    if (!video) {
+      return;
+    }
+    this.retainedVideo = undefined;
+    const source = videoSources.get(video)!;
+
+    if (--source.references === 0) {
+      videoSources.delete(video);
+      if (source.owned) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+    }
   }
 
   clone (): Texture {
@@ -312,12 +351,7 @@ export class Texture extends Asset {
   override dispose (): void {
     this.disposeVideoFrameTracker();
     this.gpuTexture?.dispose();
-    if (this.ownedVideo) {
-      this.ownedVideo.pause();
-      this.ownedVideo.removeAttribute('src');
-      this.ownedVideo.load();
-      this.ownedVideo = undefined;
-    }
+    this.releaseVideoSource();
     this.width = this.height = 0;
     this.destroyed = true;
     this.update = () => {
