@@ -1,7 +1,7 @@
 import type {
   InputServer, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer,
 } from '@galacean/effects-core';
-import { Engine, isWebGL2, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
+import { Engine, isWebGL2, assertExist, AssetManager, isArray, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { disposeThreeGeometries } from './three-geometry';
@@ -110,15 +110,7 @@ export class ThreeDisplayObject extends THREE.Group {
         const assetManager = new AssetManager(opts);
         const scene = await assetManager.loadScene(source, this.renderer);
 
-        const engine = this.engine;
-
-        engine.effectsObjectServer.clearObjectInstances();
-        this.assetServer.clearSceneData();
-
-        // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
-        PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);
-        this.assetServer.prepareAssets(scene, assetManager.getAssets());
-        this.assetServer.updateTextVariables(scene, assetManager.options.variables);
+        this.assetServer.prepareSceneAssets(scene, assetManager.options);
 
         const composition = this.createComposition(scene, opts);
 

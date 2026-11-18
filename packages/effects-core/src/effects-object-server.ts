@@ -6,16 +6,16 @@ import type { Engine } from './engine';
 import { EngineServer } from './engine-server';
 import type { Material } from './material';
 import type { Geometry } from './render/geometry';
-import { SerializationHelper } from './serialization-helper';
 import type { Texture } from './texture';
 import type { AbstractConstructor, RestoreHandler } from './utils';
 import { addItem, isPlainObject, logger, removeItem } from './utils';
 import type { VFXItem } from './vfx-item';
 
-/** @internal The root and ID mapping for one hierarchy being deserialized. */
+/** @internal Object lookup and asset ownership while instantiating a hierarchy. */
 export interface DeserializationContext {
   root: VFXItem,
   idsMapping: Map<string, string>,
+  sceneAssets: Set<Asset>,
 }
 
 /** Owns live resource tracking and the separate serialized object lookup context. */
@@ -25,7 +25,7 @@ export class EffectsObjectServer extends EngineServer {
 
   private _deserializationContext?: DeserializationContext;
 
-  // These lists survive lookup resets and track resources until their owners dispose them.
+  // Track GPU resources until their owners dispose them.
   private textures: Texture[] = [];
   private materials: Material[] = [];
   private geometries: Geometry[] = [];
@@ -111,7 +111,6 @@ export class EffectsObjectServer extends EngineServer {
   /** @internal Called by EffectsObject to keep its registration state in sync. */
   unregisterObject (object: EffectsObject): void {
     delete this.objectInstance[object.getInstanceId()];
-    this.engine.assetServer.removeAsset(object);
   }
 
   /** Reset the current lookup context without disposing the objects or GPU resources. */
@@ -128,12 +127,12 @@ export class EffectsObjectServer extends EngineServer {
   }
 
   /** @internal */
-  withDeserializationContext (context: DeserializationContext, deserialize: () => void): void {
+  withDeserializationContext<T> (context: DeserializationContext, deserialize: () => T): T {
     const previousContext = this._deserializationContext;
 
     this._deserializationContext = context;
     try {
-      deserialize();
+      return deserialize();
     } finally {
       this._deserializationContext = previousContext;
     }
@@ -141,50 +140,33 @@ export class EffectsObjectServer extends EngineServer {
 
   findObject<T> (dataPath: spec.DataPath, type?: AbstractConstructor<T>): T {
     // The editor may pass the object directly.
-    let object: unknown = dataPath;
+    if (!isPlainObject(dataPath)) {
+      return (!type || dataPath instanceof type ? dataPath : undefined) as T;
+    }
 
-    if (isPlainObject(dataPath)) {
-      const { id } = dataPath;
-      const idsMapping = this._deserializationContext?.idsMapping;
-      const instanceId = idsMapping?.get(String(id)) ?? id;
+    const id = String(dataPath.id);
+    const instanceId = this._deserializationContext?.idsMapping.get(id) ?? id;
+    const object = this.objectInstance[instanceId];
 
-      object = this.objectInstance[instanceId];
-      if (!object && (
-        !type ||
-        type.prototype === EffectsObject.prototype ||
-        type.prototype === Asset.prototype ||
-        type.prototype instanceof Asset
-      )) {
-        const { assetServer } = this.engine;
+    if (object) {
+      return (!type || object instanceof type ? object : undefined) as T;
+    }
 
-        if (!idsMapping) {
-          object = assetServer.loadGUID(dataPath, type);
-        } else {
-          const asset = assetServer.findAsset(id);
+    const { assetServer } = this.engine;
 
-          if (asset && !asset.isSceneLocal) {
-            object = asset;
-          } else {
-            const created = assetServer.assetLoader.createObject(id, type);
+    if (!type) {
+      return assetServer.loadGUID<T>(dataPath);
+    }
+    const prototype = type.prototype;
 
-            if (!created) {
-              return undefined as T;
-            }
-            const { data, instance } = created;
-            const { isSceneLocal } = instance;
+    if (prototype === EffectsObject.prototype || prototype === Asset.prototype || prototype instanceof Asset) {
+      const asset = assetServer.loadGUID<T>(dataPath, type);
 
-            if (isSceneLocal) {
-              idsMapping.set(String(id), instance.getInstanceId());
-            } else {
-              assetServer.addAsset(id, instance);
-            }
-            SerializationHelper.deserialize(isSceneLocal ? { ...data } : data, instance);
-            object = instance;
-          }
-        }
+      if (asset instanceof type) {
+        return asset;
       }
     }
 
-    return (!type || object instanceof type ? object : undefined) as T;
+    return undefined as T;
   }
 }

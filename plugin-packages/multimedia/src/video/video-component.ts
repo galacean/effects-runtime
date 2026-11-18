@@ -118,8 +118,7 @@ export class VideoComponent extends MaskableGraphic {
   override setTexture (input: Texture): void;
   override async setTexture (input: string): Promise<void>;
   override async setTexture (input: Texture | string): Promise<void> {
-    const oldTexture = this.renderer.texture;
-    const composition = this.item.composition;
+    const composition = this.item?.composition;
 
     if (!composition) { return; }
 
@@ -127,17 +126,11 @@ export class VideoComponent extends MaskableGraphic {
 
     if (typeof input === 'string') {
       texture = await Texture.fromVideo(input, this.item.engine);
+      composition.addSceneAssets([texture]);
     } else {
       texture = input;
     }
 
-    composition.textures.forEach((cachedTexture, index) => {
-      if (cachedTexture === oldTexture) {
-        composition.textures[index] = texture;
-      }
-    });
-
-    this.engine.effectsObjectServer.removeTexture(oldTexture);
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
@@ -270,11 +263,6 @@ export class VideoComponent extends MaskableGraphic {
     super.onDestroy();
     this.playTriggered = false;
     this.playPromise = null;
-    if (this.video) {
-      this.video.pause();
-      this.video.src = '';
-      this.video.load();
-    }
   }
 
   override onDisable (): void {

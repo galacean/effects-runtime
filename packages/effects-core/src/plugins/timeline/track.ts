@@ -23,10 +23,6 @@ export class TrackAsset extends Asset {
 
   protected children: TrackAsset[] = [];
 
-  override get isSceneLocal (): boolean {
-    return true;
-  }
-
   /**
    * 根据父轨道的绑定对象解析当前轨道的目标对象
    */

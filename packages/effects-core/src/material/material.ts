@@ -767,7 +767,7 @@ export class Material extends Asset implements Disposable {
         this.shaderSource = shader.shaderData;
       }
     }
-    this.stringTags = data.stringTags ?? {};
+    this.stringTags = { ...data.stringTags };
     this.initialized = false;
   }
 

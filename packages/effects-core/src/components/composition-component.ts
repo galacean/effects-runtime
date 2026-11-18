@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import type { VFXItem } from '../vfx-item';
+import { VFXItem } from '../vfx-item';
 import type { EffectsObject } from '../effects-object';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
@@ -381,7 +381,16 @@ export class CompositionComponent extends Component {
     super.fromData(data);
 
     if (data.items !== undefined) {
-      this.items = data.items.map(item => this.findObject<VFXItem>(item));
+      const items: VFXItem[] = [];
+
+      for (let i = 0; i < data.items.length; i++) {
+        const item = this.findObject(data.items[i], VFXItem);
+
+        if (item) {
+          items.push(item);
+        }
+      }
+      this.items = items;
     }
     if (data.timelineAsset !== undefined) {
       const timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);

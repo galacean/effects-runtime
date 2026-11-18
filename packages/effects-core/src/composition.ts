@@ -2,18 +2,19 @@ import * as spec from '@galacean/effects-specification';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import type { Asset } from './asset';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
+import { HierarchyBuilder } from './hierarchy-builder';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { InputServer } from './input-server';
 import type { Region } from './plugins';
 import { PlayState } from './plugins';
-import { PrecompositionManager } from './precompositions/precomposition-manager';
 import { SceneRendering } from './render';
 import type { Scene } from './scene';
-import { TextureLoadAction, type Texture } from './texture';
+import { TextureLoadAction, Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
 import { assertExist, generateGUID, noop } from './utils';
 import { VFXItem } from './vfx-item';
@@ -230,8 +231,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     let sourceContent: spec.CompositionData | null = null;
 
     if (scene) {
-      this.createTexturesFromData(scene.textureOptions);
-
       for (const key of Object.keys(scene.assets)) {
         const videoAsset = scene.assets[key];
 
@@ -275,7 +274,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     PluginSystem.notifyCompositionCreating(this, scene);
 
     if (sourceContent) {
-      PrecompositionManager.instantiateHierarchy(sourceContent, this.sceneRoot);
+      HierarchyBuilder.instantiateComposition(sourceContent, this.sceneRoot, scene?.textureOptions, this._textures);
     }
 
     // 在实例化后设置 rootItem 的 name，避免 name 被覆盖
@@ -592,16 +591,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
-  /**
-   * @internal
-   */
-  createTexturesFromData (textureDataList: Record<string, any>[]) {
-    for (const textureData of textureDataList) {
-      const texture = this.engine.effectsObjectServer.findObject<Texture>({ id: textureData.id });
-
-      texture.initialize();
-      this._textures.push(texture);
-    }
+  /** @internal Take ownership of assets created when loading scene data. */
+  addSceneAssets (assets: Iterable<Asset>): void {
+    this.sceneRoot.addSceneAssets(assets);
   }
 
   /**
@@ -739,10 +731,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     this.sceneTicking.clear();
 
-    for (const texture of this.textures) {
-      texture.dispose();
-    }
-
     this._textures = [];
 
     for (const video of this.videos) {
@@ -860,7 +848,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   offloadTexture () {
     if (!this.textureOffloaded) {
-      this.textures.forEach(tex => tex && tex.offloadData());
+      this.getSceneTextures().forEach(texture => texture.offloadData());
       this.textureOffloaded = true;
     }
   }
@@ -871,8 +859,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   async reloadTexture () {
     if (this.textureOffloaded) {
-      await Promise.all(this.textures.map(tex => tex?.reloadData()));
+      await Promise.all(this.getSceneTextures().map(texture => texture.reloadData()));
       this.textureOffloaded = false;
     }
+  }
+
+  private getSceneTextures (): Texture[] {
+    const textures: Texture[] = [];
+
+    for (const item of this.root.getDescendants()) {
+      item.sceneAssets?.forEach(asset => {
+        if (asset instanceof Texture) {
+          textures.push(asset);
+        }
+      });
+    }
+
+    return textures;
   }
 }

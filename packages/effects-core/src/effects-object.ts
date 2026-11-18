@@ -40,11 +40,6 @@ export abstract class EffectsObject {
     return this._isRegistered;
   }
 
-  /** @internal Whether to load a separate copy for each scene hierarchy. */
-  get isSceneLocal (): boolean {
-    return false;
-  }
-
   /** Resolve an object reference. Returns undefined if the object is missing or the type does not match. */
   findObject<T> (dataPath: spec.DataPath, type?: AbstractConstructor<T>): T {
     return this.engine.effectsObjectServer.findObject<T>(dataPath, type);

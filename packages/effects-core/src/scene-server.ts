@@ -5,7 +5,6 @@ import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import type { Scene, SceneLoadOptions } from './scene';
 import { addItem, removeItem, logger } from './utils';
-import { PluginSystem } from './plugin-system';
 import { EngineServer } from './engine-server';
 import { effectsClass } from './decorators';
 
@@ -57,14 +56,7 @@ export class SceneServer extends EngineServer {
 
     const loadedScene = await assetManager.loadScene(scene, engine.renderer);
 
-    engine.effectsObjectServer.clearObjectInstances();
-    engine.assetServer.clearSceneData();
-
-    // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
-    PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
-
-    engine.assetServer.prepareAssets(loadedScene, loadedScene.assets);
-    this.updateTextVariables(loadedScene, options.variables);
+    engine.assetServer.prepareSceneAssets(loadedScene, assetManager.options);
 
     const composition = this.createComposition(loadedScene, options);
 

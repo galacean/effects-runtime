@@ -374,13 +374,13 @@ export class Geometry extends Asset {
 
   override fromData (data: spec.GeometryData): void {
     super.fromData(data);
-    this.subMeshes = data.subMeshes;
+    this.subMeshes = data.subMeshes?.map(subMesh => ({ ...subMesh })) ?? [];
     let buffer: Uint8Array | undefined;
 
     if (data.buffer) {
       buffer = new Uint8Array(decodeBase64ToArrayBuffer(data.buffer));
     } else if (data.binaryData) {
-      buffer = data.binaryData;
+      buffer = data.binaryData.slice();
     }
     if (!buffer) {
       return;
@@ -424,9 +424,9 @@ export class Geometry extends Asset {
     }
     this.processProps(props);
     this.skin = {
-      boneNames: data.boneNames,
+      boneNames: data.boneNames?.slice(),
       rootBoneName: data.rootBoneName,
-      inverseBindMatrices: data.inverseBindMatrices,
+      inverseBindMatrices: data.inverseBindMatrices?.slice(),
     };
   }
 

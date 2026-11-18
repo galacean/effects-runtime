@@ -1,6 +1,7 @@
 import type { Engine, spec } from '@galacean/effects';
 import { Database, EffectsObject, base64ToFile, loadImage } from '@galacean/effects';
 import { readFileAsText } from '../browser-files/file-reader';
+import { deserializeAssets } from './deserialize-assets';
 import { EffectsPackage } from './effects-package';
 
 export class FileSystemAssetDatabase extends Database {
@@ -42,7 +43,7 @@ export class FileSystemAssetDatabase extends Database {
       effectsPackage = loadedPackage;
     }
     for (const effectsObject of effectsPackage.exportObjects) {
-      if (effectsObject.getInstanceId() === guid) {
+      if (effectsObject.definition.id === guid) {
         return effectsObject;
       }
     }
@@ -88,9 +89,11 @@ export class FileSystemAssetDatabase extends Database {
 
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
-    for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(await this.engine.effectsObjectServer.findObject(objectData));
-    }
+    deserializeAssets(this.engine, new Map(), () => {
+      for (const { id } of packageData.exportObjects) {
+        effectsPackage.exportObjects.push(this.engine.effectsObjectServer.findObject({ id }));
+      }
+    });
 
     return effectsPackage;
   }

@@ -1,6 +1,6 @@
 import type { Scene, VFXItem } from '@galacean/effects';
 import {
-  AssetManager, CompositionComponent, Fake3DComponent, Player, PrecompositionManager, SpriteComponent, TextureSourceType, spec,
+  AssetManager, CompositionComponent, Fake3DComponent, Player, PrecompositionManager, Sprite, SpriteComponent, TextureSourceType, spec,
 } from '@galacean/effects';
 
 const { expect } = chai;
@@ -144,17 +144,20 @@ describe('core/composition/runtime instance IDs', () => {
     expect(bindings(original).local).to.equal(local);
   });
 
-  it('shares assets by their serialized IDs across precomposition instances', async () => {
+  it('reuses assets within one instance and creates separate assets for each precomposition', async () => {
     const textureId = 'scene-texture';
     const spriteId = 'shared-sprite';
     const jsonScene = createScene();
     const [inside, ...placements] = jsonScene.items;
+    const components = ['sprite-component', 'second-sprite-component'];
     const scene: Scene = {
       jsonScene: {
         ...jsonScene,
-        items: [{ ...inside, components: [ref('sprite-component')] }, ...placements],
-        components: [...jsonScene.components, { id: 'sprite-component', dataType: spec.DataType.SpriteComponent,
-          item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }],
+        compositions: jsonScene.compositions.map(composition => composition.id === jsonScene.compositionId ?
+          { ...composition, children: [ref(inside.id), ...composition.children] } : composition),
+        items: [{ ...inside, components: components.map(ref) }, ...placements],
+        components: [...jsonScene.components, ...components.map(id => ({ id, dataType: spec.DataType.SpriteComponent,
+          item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }))],
         miscs: [...jsonScene.miscs, { id: spriteId, dataType: 'Sprite', texture: ref(textureId) }],
       } as unknown as spec.JSONScene,
       assets: {}, bins: [], images: [], storage: {}, timeInfos: {}, url: '',
@@ -162,14 +165,35 @@ describe('core/composition/runtime instance IDs', () => {
         data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) } }],
     };
     const composition = await player.loadScene(scene, { autoplay: false });
-    const spriteIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponent(SpriteComponent).sprite;
-    const sprite = spriteIn('left');
+    const rootSprite = composition.sceneRoot.find('inside')!.getComponent(SpriteComponent).sprite;
+    const spritesIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponents(SpriteComponent).map(component => component.sprite);
+    const [left, leftAgain] = spritesIn('left');
+    const [right] = spritesIn('right');
+    const standalone = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
+    const another = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
 
-    expect(sprite).to.equal(spriteIn('right'));
-    expect(sprite.definition.id).to.equal(spriteId);
-    expect(sprite.getInstanceId()).not.to.equal(spriteId);
-    expect(sprite.texture).to.equal(composition.textures[0]);
-    expect(sprite.texture.definition.id).to.equal(textureId);
-    expect(sprite.texture.getInstanceId()).not.to.equal(textureId);
+    expect(left).to.equal(leftAgain);
+    expect(new Set([rootSprite, left, right, standalone, another]).size).to.equal(5);
+    expect(new Set([rootSprite, left, right, standalone, another].map(sprite => sprite.texture)).size).to.equal(5);
+    expect(rootSprite.texture).to.equal(composition.textures[0]);
+    expect(left.definition.id).to.equal(spriteId);
+    expect(left.getInstanceId()).not.to.equal(spriteId);
+    expect(left.texture.definition.id).to.equal(textureId);
+
+    composition.getItemByName('left')!.dispose();
+
+    expect(left.texture.isDestroyed).to.equal(true);
+    expect(right.texture.isDestroyed).to.equal(false);
+    expect(rootSprite.texture.isDestroyed).to.equal(false);
+
+    composition.dispose();
+
+    expect(rootSprite.texture.isDestroyed).to.equal(true);
+    expect(right.texture.isDestroyed).to.equal(true);
+    expect(standalone.texture.isDestroyed).to.equal(false);
+    for (const sprite of [standalone, another]) {
+      sprite.texture.dispose();
+      sprite.dispose();
+    }
   });
 });

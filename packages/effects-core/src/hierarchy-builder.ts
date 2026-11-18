@@ -1,32 +1,74 @@
 import type * as spec from '@galacean/effects-specification';
+import type { Asset } from './asset';
 import { Component } from './components/component';
 import { getClass } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { DeserializationContext } from './effects-object-server';
 import type { Engine } from './engine';
+import { Texture } from './texture';
 import { VFXItem } from './vfx-item';
 
-/** Creates hierarchy objects before deserializing their references. */
+/** @internal Creates hierarchy objects before deserializing their references. */
 export class HierarchyBuilder {
   private readonly objects = new Map<EffectsObject, DeserializationContext>();
 
-  constructor (private readonly engine: Engine) { }
+  private constructor (private readonly engine: Engine, private readonly suppliedTextures: readonly Texture[] = []) { }
 
-  spawnComposition (data: spec.CompositionData, item: VFXItem): void {
-    const context = createDeserializationContext(data.id, item);
+  static instantiateComposition (
+    data: spec.CompositionData,
+    root: VFXItem,
+    textureOptions: readonly Record<string, any>[] = [],
+    textures?: Texture[],
+  ): void {
+    const builder = new HierarchyBuilder(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
 
+    root.name = data.name;
+    root.duration = data.duration;
+    root.endBehavior = data.endBehavior;
+    const context = builder.spawnComposition(data, root);
+    const { effectsObjectServer } = root.engine;
+
+    effectsObjectServer.withDeserializationContext(context, () => {
+      for (const textureData of textureOptions) {
+        const texture = textureData instanceof Texture ? textureData : effectsObjectServer.findObject({ id: textureData.id }, Texture);
+
+        texture.initialize();
+        textures?.push(texture);
+      }
+    });
+    builder.finish(context);
+  }
+
+  static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem): VFXItem {
+    const item = new VFXItem(engine);
+    const builder = new HierarchyBuilder(engine);
+    const context = builder.createContext(item);
+
+    builder.spawnItem(data, item, context);
+    builder.finish(context, assetRoot);
+
+    return item;
+  }
+
+  private spawnComposition (data: spec.CompositionData, item: VFXItem) {
+    const context = this.createContext(item);
+
+    context.idsMapping.set(String(data.id), item.getInstanceId());
     // The composition and its placement can both refer to the same root.
     if (item.definition.id !== undefined) {
       context.idsMapping.set(String(item.definition.id), item.getInstanceId());
     }
     this.spawnContents(data, context);
+
+    return context;
   }
 
-  spawnItem (
+  private spawnItem (
     data: spec.VFXItemData,
     item: VFXItem,
-    context = createDeserializationContext(data.id, item),
+    context: DeserializationContext,
   ): void {
+    context.idsMapping.set(String(data.id), item.getInstanceId());
     item.definition = { ...data };
     this.objects.set(item, context);
 
@@ -43,18 +85,35 @@ export class HierarchyBuilder {
     this.spawnContents(data, context, template?.components);
   }
 
-  deserialize (): void {
+  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root): void {
+    this.deserialize();
+
+    for (const context of new Set(this.objects.values())) {
+      if (context !== outerContext) {
+        context.root.addSceneAssets(context.sceneAssets);
+      }
+    }
+    assetRoot.addSceneAssets(outerContext.sceneAssets);
+  }
+
+  private deserialize (): void {
     const objectServer = this.engine.effectsObjectServer;
 
     for (const [object, context] of this.objects) {
       objectServer.withDeserializationContext(context, () => {
         object.fromData(object.definition as spec.EffectsObjectData);
-        // Serialized items apply their visibility after each component reads its own enabled state.
+        // Hidden items disable their components; visible items keep each component's authored state.
         if (object instanceof Component && this.objects.has(object.item)) {
-          object.enabled = object.item.isVisible;
+          object.enabled = object.item.isVisible && object.enabled;
         }
       });
     }
+  }
+
+  private createContext (root: VFXItem): DeserializationContext {
+    const idsMapping = new Map(this.suppliedTextures.map(texture => [texture.id, texture.getInstanceId()]));
+
+    return { root, idsMapping, sceneAssets: new Set<Asset>() };
   }
 
   private spawnContents (
@@ -92,16 +151,12 @@ export class HierarchyBuilder {
     }
     const object: EffectsObject = new Constructor(this.engine);
 
-    idsMapping.set(String(id), object.getInstanceId());
     if (object instanceof VFXItem) {
       this.spawnItem(entry as spec.VFXItemData, object, context);
     } else {
+      idsMapping.set(String(id), object.getInstanceId());
       object.definition = { ...entry };
       this.objects.set(object, context);
     }
   }
-}
-
-function createDeserializationContext (id: string, root: VFXItem): DeserializationContext {
-  return { root, idsMapping: new Map([[String(id), root.getInstanceId()]]) };
 }

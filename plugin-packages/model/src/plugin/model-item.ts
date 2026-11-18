@@ -1,8 +1,8 @@
 import type {
-  Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer, VFXItem,
+  Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer,
 } from '@galacean/effects';
 import {
-  HitTestType, Behaviour, RendererComponent, effectsClass, spec, AnimationClip,
+  HitTestType, Behaviour, RendererComponent, VFXItem, effectsClass, spec, AnimationClip,
 } from '@galacean/effects';
 import type {
   ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
@@ -129,7 +129,7 @@ export class ModelMeshComponent extends RendererComponent {
       materials: [],
     };
 
-    this.data.rootBone = data.rootBone ? this.findObject(data.rootBone) : undefined;
+    this.data.rootBone = data.rootBone ? this.findObject(data.rootBone, VFXItem) : undefined;
     this.data.geometry = this.findObject(data.geometry);
 
     if (data.materials) {

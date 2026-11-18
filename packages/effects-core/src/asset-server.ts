@@ -1,20 +1,27 @@
 import * as spec from '@galacean/effects-specification';
 import { EngineServer } from './engine-server';
-import { effectsClass } from './decorators';
+import { effectsClass, getClass } from './decorators';
 import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { EffectsObject } from './effects-object';
-import { DataAsset } from './asset';
+import { Asset } from './asset';
 import { Material } from './material';
-import { AssetLoader } from './asset-loader';
-import type { Database, SceneData } from './asset-loader';
+import { PluginSystem } from './plugin-system';
 import { AssetManager } from './asset-manager';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
-import { generateEmptyTexture, generateWhiteTexture } from './texture';
-import type { Texture } from './texture';
-import type { AbstractConstructor } from './utils';
+import { SerializationHelper } from './serialization-helper';
+import { generateEmptyTexture, generateWhiteTexture, Texture } from './texture';
+import type { AbstractConstructor, Constructor } from './utils';
+
+export type SceneData = Record<string, spec.EffectsObjectData>;
+
+export class Database {
+  async loadGUID (guid: string): Promise<EffectsObject | undefined> {
+    return undefined;
+  }
+}
 
 /** Engine-owned asset preparation and built-in resource lifecycle. */
 @effectsClass('AssetServer')
@@ -24,15 +31,10 @@ export class AssetServer extends EngineServer {
   jsonSceneData: SceneData = {};
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   assetManagers: AssetManager[] = [];
-  /** @internal */
-  readonly assetLoader: AssetLoader;
   private readonly builtinObjects = new Map<string, EffectsObject>();
-  private readonly assets = new Map<string, EffectsObject>();
-  private readonly assetIds = new WeakMap<EffectsObject, string>();
 
   constructor (engine: Engine) {
     super(engine, -600);
-    this.assetLoader = new AssetLoader(engine);
   }
 
   override onInit (): void {
@@ -87,41 +89,55 @@ export class AssetServer extends EngineServer {
     return this.jsonSceneData[uuid];
   }
 
-  clearSceneData (): void {
+  /** @internal Prepare the definitions and inputs for one scene load. */
+  prepareSceneAssets (scene: Scene, options: SceneLoadOptions): void {
     this.jsonSceneData = {};
-    this.assets.clear();
-  }
-
-  /** @internal Add a loaded asset to the cache by its serialized ID. */
-  addAsset (id: string, asset: EffectsObject): void {
-    const key = String(id);
-
-    this.removeAsset(asset);
-    this.assets.set(key, asset);
-    this.assetIds.set(asset, key);
-  }
-
-  /** @internal Remove the asset when its runtime object is unregistered. */
-  removeAsset (asset: EffectsObject): void {
-    const id = this.assetIds.get(asset);
-
-    if (id !== undefined) {
-      if (this.assets.get(id) === asset) {
-        this.assets.delete(id);
-      }
-      this.assetIds.delete(asset);
-    }
-  }
-
-  /** @internal Find an asset already loaded under its serialized ID. */
-  findAsset (id: string): EffectsObject | undefined {
-    return this.assets.get(String(id));
+    PluginSystem.notifyAssetsLoadFinish(scene, options, this.engine);
+    this.prepareAssets(scene, scene.assets);
+    this.updateTextVariables(scene, options.variables);
   }
 
   loadGUID<T> (dataPath: spec.DataPath, type?: AbstractConstructor): T {
-    const asset = dataPath ? this.findAsset(dataPath.id) : undefined;
+    if (!dataPath) {
+      return null as T;
+    }
 
-    return asset ? asset as T : this.assetLoader.loadGUID<T>(dataPath, type);
+    const id = String(dataPath.id);
+    const builtin = this.builtinObjects.get(id);
+
+    if (builtin) {
+      return builtin as T;
+    }
+    const data = this.findEffectsObjectData(id);
+
+    if (!data) {
+      console.warn(`Object data with uuid: ${id} not found.`);
+
+      return undefined as T;
+    }
+
+    const objectClass: Constructor<Asset> | undefined = getClass(data.dataType);
+
+    if (!objectClass) {
+      console.warn(`Constructor for DataType: ${data.dataType} not found.`);
+
+      return undefined as T;
+    }
+    const isAsset = objectClass === Asset || objectClass.prototype instanceof Asset;
+
+    if (!isAsset || (type && objectClass !== type && !(objectClass.prototype instanceof type))) {
+      return undefined as T;
+    }
+
+    const instance = new objectClass(this.engine);
+    const context = this.engine.effectsObjectServer.deserializationContext;
+
+    // References read in fromData can already resolve this instance.
+    context?.idsMapping.set(id, instance.getInstanceId());
+    context?.sceneAssets.add(instance);
+    SerializationHelper.deserialize({ ...data }, instance);
+
+    return instance as T;
   }
 
   createAssetManager (options: SceneLoadOptions): AssetManager {
@@ -190,7 +206,9 @@ export class AssetServer extends EngineServer {
       }
     }
     for (const textureData of textureOptions) {
-      this.addEffectsObjectData(textureData as spec.EffectsObjectData);
+      if (!(textureData instanceof Texture)) {
+        this.addEffectsObjectData(textureData as spec.EffectsObjectData);
+      }
     }
   }
 
@@ -198,18 +216,13 @@ export class AssetServer extends EngineServer {
     scene: Scene,
     assets: Record<string, ImageLike>,
   ) {
-    for (const assetId of Object.keys(assets)) {
-      const asset = assets[assetId];
-      const engineAsset = new DataAsset<ImageLike>(this.engine);
-
-      engineAsset.data = asset;
-      engineAsset.definition.id = assetId;
-      this.addAsset(assetId, engineAsset);
-    }
-
     // 加入 json 资产数据
     this.addPackageDatas(scene);
+    for (const id of Object.keys(assets)) {
+      const input = { id, dataType: 'DataAsset' as spec.DataType, data: assets[id] };
 
+      this.addEffectsObjectData(input);
+    }
     this.registerBuiltinObjects();
   }
 
@@ -218,16 +231,15 @@ export class AssetServer extends EngineServer {
     for (const guid of Object.keys(this.engine.effectsObjectServer.objectInstance)) {
       const effectsObject = this.engine.effectsObjectServer.objectInstance[guid];
 
-      if (effectsObject instanceof Material) {
+      if (effectsObject instanceof Material && effectsObject.shader) {
         effectsObject.createShaderVariant();
       }
     }
   }
 
   private registerBuiltinObjects (): void {
-    for (const [id, object] of this.builtinObjects) {
+    for (const object of this.builtinObjects.values()) {
       object.registerObject();
-      this.addAsset(id, object);
     }
   }
 
@@ -236,6 +248,5 @@ export class AssetServer extends EngineServer {
     this.assetManagers.length = 0;
     this.builtinObjects.forEach(object => object.dispose());
     this.builtinObjects.clear();
-    this.assets.clear();
   }
 }

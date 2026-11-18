@@ -42,6 +42,7 @@ export class Texture extends Asset {
   protected destroyed = false;
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
+  private ownedVideo?: HTMLVideoElement;
 
   /**
    * 创建一个新的 Texture 对象。
@@ -96,6 +97,7 @@ export class Texture extends Asset {
       ...options,
     });
 
+    texture.ownedVideo = video;
     texture.initialize();
 
     return texture;
@@ -273,6 +275,12 @@ export class Texture extends Asset {
 
   override dispose (): void {
     this.gpuTexture?.dispose();
+    if (this.ownedVideo) {
+      this.ownedVideo.pause();
+      this.ownedVideo.removeAttribute('src');
+      this.ownedVideo.load();
+      this.ownedVideo = undefined;
+    }
     this.width = this.height = 0;
     this.destroyed = true;
     this.update = () => {

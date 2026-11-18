@@ -1,5 +1,8 @@
 import type { Scene } from '@galacean/effects';
-import { Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore, spec } from '@galacean/effects';
+import {
+  Asset, Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition,
+  EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore, spec,
+} from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -253,7 +256,7 @@ describe('core/engine/servers', () => {
 
     engine.effectsObjectServer.clearObjectInstances();
     expect(assets.jsonSceneData).to.equal(previousData);
-    assets.clearSceneData();
+    assets.jsonSceneData = {};
     expect(assets.jsonSceneData).not.to.equal(previousData);
     expect(assets.jsonSceneData).to.deep.equal({});
     expect(engine.assetServer.whiteTexture.isRegistered).to.equal(false);
@@ -302,6 +305,34 @@ describe('core/engine/servers', () => {
     texture.registerObject();
     expect(server.findObject(path)).to.equal(texture);
     expect(loads).to.equal(1);
+  });
+
+  it('resolves assets that refer back to each other in the same context', () => {
+    const { engine } = createPlayer();
+    const { assetServer, effectsObjectServer } = engine;
+    const { sceneRoot } = new Composition(engine);
+    const dataType = 'test-linked-asset' as spec.DataType;
+    const first = { id: 'first' }, second = { id: 'second' };
+    const definitions = [{ ...first, dataType, peer: second }, { ...second, dataType, peer: first }];
+
+    class LinkedAsset extends Asset {
+      peer: LinkedAsset;
+
+      override fromData (data: spec.EffectsObjectData & { peer: spec.DataPath }): void {
+        this.peer = this.findObject(data.peer, LinkedAsset);
+      }
+    }
+
+    registrations.push(dataType);
+    effectsClass(dataType)(LinkedAsset);
+    definitions.forEach(data => assetServer.addEffectsObjectData(data));
+
+    const sceneAssets = new Set<Asset>();
+    const instance = effectsObjectServer.withDeserializationContext({ root: sceneRoot, idsMapping: new Map(), sceneAssets }, () =>
+      effectsObjectServer.findObject(first, LinkedAsset));
+
+    sceneRoot.addSceneAssets(sceneAssets);
+    expect(instance.peer.peer).to.equal(instance);
   });
 
   it('preserves item name searches alongside inherited object reference lookup', () => {

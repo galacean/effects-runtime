@@ -19,10 +19,6 @@ export abstract class TimelineClip extends Asset {
   duration = 0;
   endBehavior: spec.EndBehavior;
 
-  override get isSceneLocal (): boolean {
-    return true;
-  }
-
   abstract createPlayable (): ClipPlayable;
 
   override fromData (data: TimelineClipData): void {

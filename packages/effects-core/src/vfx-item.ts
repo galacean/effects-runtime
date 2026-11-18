@@ -4,6 +4,7 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
+import type { Asset } from './asset';
 import type { Component } from './components';
 import { CompositionComponent, EffectComponent, RendererComponent } from './components';
 import type { Composition, CompositionHitTestOptions } from './composition';
@@ -20,9 +21,15 @@ import type {
   HitTestTriangleParams, Region,
 } from './plugins';
 import { HitTestType } from './plugins';
+import { Texture } from './texture';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
+
+export type VFXItemData = spec.Item & {
+  dataType: spec.DataType,
+  components: spec.DataPath[],
+};
 
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
@@ -87,6 +94,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   isManuallySetRenderOrder = false;
+  /** @internal Assets owned by this item hierarchy. */
+  sceneAssets?: Set<Asset>;
   /**
    * 元素是否激活
    */
@@ -787,17 +796,25 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (definition.id == null) {
       throw new Error('Cannot duplicate an item without serialized data.');
     }
-    const newItem = new VFXItem(this.engine);
-    const builder = new HierarchyBuilder(this.engine);
+    const sceneRoot = this.composition?.sceneRoot;
+    const newItem = HierarchyBuilder.instantiateItem(definition, this.engine, sceneRoot);
 
-    builder.spawnItem(definition, newItem);
-    builder.deserialize();
-
-    if (this.composition) {
-      newItem.setParent(this.composition.sceneRoot);
+    if (sceneRoot) {
+      newItem.setParent(sceneRoot);
     }
 
     return newItem;
+  }
+
+  /** @internal Finish loading the assets this item will dispose with its hierarchy. */
+  addSceneAssets (assets: Iterable<Asset>): void {
+    for (const asset of assets) {
+      if (asset instanceof Texture) {
+        asset.initialize();
+      }
+      this.sceneAssets ??= new Set<Asset>();
+      this.sceneAssets.add(asset);
+    }
   }
 
   /**
@@ -1047,6 +1064,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     for (const component of this.components.slice()) {
       component.dispose();
     }
+    this.sceneAssets?.forEach(asset => asset.dispose());
+    this.sceneAssets = undefined;
     this.children = [];
     this.components = [];
     this._composition = null;
