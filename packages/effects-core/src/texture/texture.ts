@@ -44,6 +44,9 @@ export class Texture extends Asset {
   protected destroyed = false;
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
+  /**
+   * 仅持有 fromVideo 创建的视频源，外部传入和克隆的视频源由原所有者释放。
+   */
   private ownedVideo?: HTMLVideoElement;
   private videoFrameTracker?: VideoFrameTracker;
 
@@ -80,6 +83,7 @@ export class Texture extends Asset {
 
   /**
    * 通过视频 URL 创建 Texture 对象。
+   * 创建的视频源在纹理换源或销毁时释放。
    * @param url - 要创建的 Texture URL
    * @param engine - 引擎对象
    * @param options - 可选的 Texture 选项
@@ -92,6 +96,7 @@ export class Texture extends Asset {
     options?: TextureOptionsBase,
   ): Promise<Texture> {
     const video = await loadVideo(url);
+
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.video,
       video,
@@ -220,6 +225,7 @@ export class Texture extends Asset {
   updateSource (options: TextureSourceOptions): void {
     this.disposeVideoFrameTracker();
     this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
+    this.disposeOwnedVideo(this.source);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     [this.width, this.height] = getTextureSourceSize(this.source);
@@ -267,12 +273,28 @@ export class Texture extends Asset {
     this.disposeVideoFrameTracker();
     super.fromData(data);
     this.source = this.assembleOptions(data as unknown as TextureSourceOptions);
+    this.disposeOwnedVideo(this.source);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     this.name = this.source.name ?? '';
     [this.width, this.height] = getTextureSourceSize(this.source);
   }
 
+  private disposeOwnedVideo (nextSource?: TextureSourceOptions): void {
+    const video = this.ownedVideo;
+
+    if (!video || (nextSource?.sourceType === TextureSourceType.video && nextSource.video === video)) {
+      return;
+    }
+    this.ownedVideo = undefined;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+
+  /**
+   * 克隆纹理并共享源数据。视频源仍由原所有者管理，克隆纹理须在其释放或换源前停止使用。
+   */
   clone (): Texture {
     const texture = new Texture(this.engine, this.source);
 
@@ -312,12 +334,7 @@ export class Texture extends Asset {
   override dispose (): void {
     this.disposeVideoFrameTracker();
     this.gpuTexture?.dispose();
-    if (this.ownedVideo) {
-      this.ownedVideo.pause();
-      this.ownedVideo.removeAttribute('src');
-      this.ownedVideo.load();
-      this.ownedVideo = undefined;
-    }
+    this.disposeOwnedVideo();
     this.width = this.height = 0;
     this.destroyed = true;
     this.update = () => {

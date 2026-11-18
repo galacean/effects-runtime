@@ -35,6 +35,8 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
+  private videoInitializationReady = false;
+
   private initialVideoSettings?: {
     volume: number,
     muted: boolean,
@@ -62,6 +64,10 @@ export class VideoComponent extends MaskableGraphic {
   private preparingReplayFrame = false;
   private replayMuted?: boolean;
   private firstFrameTexture?: Texture;
+  /**
+   * 仅管理组件通过 URL 创建的纹理，外部传入的纹理由调用方释放。
+   */
+  private ownedTexture?: Texture;
 
   /**
    * 是否由用户手动暂停视频
@@ -165,7 +171,6 @@ export class VideoComponent extends MaskableGraphic {
 
         return;
       }
-      item.addSceneAssets([texture]);
     } else {
       texture = input;
     }
@@ -173,6 +178,10 @@ export class VideoComponent extends MaskableGraphic {
     const video = (texture.source as Texture2DSourceOptionsVideo).video;
 
     this.resetVideoState(video);
+    if (this.ownedTexture !== texture) {
+      this.ownedTexture?.dispose();
+      this.ownedTexture = typeof input === 'string' ? texture : undefined;
+    }
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = video;
@@ -186,6 +195,8 @@ export class VideoComponent extends MaskableGraphic {
 
   override onAwake (): void {
     super.onAwake();
+    this.videoInitializationReady = true;
+    this.initializeVideo();
 
     const composition = this.item.composition;
 
@@ -204,6 +215,12 @@ export class VideoComponent extends MaskableGraphic {
     const previousTexture = this.renderer.texture;
 
     super.fromData(data);
+    if (this.ownedTexture && this.ownedTexture !== this.renderer.texture) {
+      this.resetVideoState();
+      this.ownedTexture.dispose();
+      this.ownedTexture = undefined;
+      this.video = undefined;
+    }
 
     const { interaction, options } = data;
     const {
@@ -227,7 +244,10 @@ export class VideoComponent extends MaskableGraphic {
         this.resetVideoState(videoAsset.data);
       }
       this.video = videoAsset.data;
-      this.initializeVideo();
+      // 首次反序列化时根合成尚未就绪，延迟到 onAwake 初始化视频。
+      if (this.videoInitializationReady) {
+        this.initializeVideo();
+      }
     } else if (previousTexture !== this.renderer.texture) {
       this.resetVideoState();
       this.video = undefined;
@@ -379,6 +399,7 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    this.videoInitializationReady = false;
     if (this.preparingReplayFrame) {
       this.video?.pause();
     }
@@ -391,6 +412,8 @@ export class VideoComponent extends MaskableGraphic {
     super.onDestroy();
     this.playTriggered = false;
     this.playPromise = null;
+    this.ownedTexture?.dispose();
+    this.ownedTexture = undefined;
     this.video = undefined;
   }
 

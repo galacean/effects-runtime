@@ -36,7 +36,7 @@ describe('videoComponent ', function () {
       options: { video: { id }, volume: 0.4, muted: true, playbackRate: 2 },
     };
     const videoJson = getVideoJson(options);
-    const composition = await player.loadScene(videoJson);
+    const composition = await player.loadScene(videoJson, { autoplay: false, speed: 1.5 });
     const video = composition.getItemByName('video');
 
     if (!video) { throw new Error('video is null'); }
@@ -48,7 +48,7 @@ describe('videoComponent ', function () {
     expect(videoComponent.video!.volume).to.equal(0.4);
     expect(videoComponent.video!.muted).to.be.true;
     expect(videoComponent.video!.preservesPitch).to.be.false;
-    expect(videoComponent.video!.playbackRate).to.equal(2);
+    expect(videoComponent.video!.playbackRate).to.equal(3);
     expect(videoComponent.video!.loop).to.be.false;
     composition.dispose();
   });
@@ -808,7 +808,7 @@ describe('videoComponent:texture binding', function () {
     expect(component.material.getTexture('_MainTex')).to.equal(texture);
   });
 
-  it('releases loaded URL textures with the item and disposes late loads', async function () {
+  it('releases URL textures on replacement and component disposal, including late loads', async function () {
     const fromVideo = Texture.fromVideo;
     const textures = [1, 2, 3].map(() => Texture.create(player.engine, {
       sourceType: TextureSourceType.video,
@@ -822,15 +822,14 @@ describe('videoComponent:texture binding', function () {
       component.setTexture(textures[0]);
       expect(textures[0].isDestroyed).to.be.false;
       await component.setTexture('second.mp4');
-      expect(textures[0].isDestroyed).to.be.false;
+      expect(textures[0].isDestroyed).to.be.true;
       expect(textures[1].isDestroyed).to.be.false;
-      expect(component.item.sceneAssets).to.deep.equal(new Set(textures.slice(0, 2)));
       let finish!: (texture: Texture) => void;
 
       Texture.fromVideo = () => new Promise(resolve => { finish = resolve; });
       const pending = component.setVideo('third.mp4');
 
-      composition.dispose();
+      component.dispose();
       expect(textures[1].isDestroyed).to.be.true;
       finish(textures[2]);
       await pending;
@@ -842,43 +841,103 @@ describe('videoComponent:texture binding', function () {
     }
   });
 
-  it('preserves scene ownership and a borrowed texture sharing the replaced video', async function () {
-    const fromVideo = Texture.fromVideo;
-    const sceneTexture = Texture.create(player.engine, {
-      sourceType: TextureSourceType.data,
-      data: { data: new Uint8Array([255, 255, 255, 255]), width: 1, height: 1 },
-    });
-    const sharedTexture = texture.clone();
-    const item = new VFXItem(player.engine);
-    const otherComponent = item.addComponent(VideoComponent);
+  it('leaves scene and caller-owned textures to their owners, including clones', async function () {
+    this.timeout(15000);
+    const callerTexture = await Texture.fromVideo('https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr', player.engine);
+    const source = (callerTexture.source as { video: HTMLVideoElement }).video;
+    const clone = callerTexture.clone();
+    const load = source.load.bind(source);
     let unloads = 0;
 
-    video.preload = 'none';
-    video.src = 'shared.mp4';
-    video.load = () => { unloads++; };
-    composition.addItem(item);
-    composition.sceneRoot.addSceneAssets([sceneTexture]);
-    component.setTexture(sceneTexture);
-    Texture.fromVideo = async () => texture;
+    source.load = () => { unloads++; load(); };
+    composition.sceneRoot.addSceneAssets([texture]);
     try {
-      await component.setVideo('owned.mp4');
-      otherComponent.setTexture(sharedTexture);
-      component.setTexture(sharedTexture);
-      expect(component.item.sceneAssets?.has(sharedTexture)).to.be.false;
+      component.setTexture(texture);
+      component.setTexture(callerTexture);
+      component.setTexture(clone);
       component.dispose();
       expect(texture.isDestroyed).to.be.false;
-      expect(sharedTexture.isDestroyed).to.be.false;
-      expect(otherComponent.material.getTexture('_MainTex')).to.equal(sharedTexture);
-      expect(sceneTexture.isDestroyed).to.be.false;
       composition.dispose();
-      expect(sceneTexture.isDestroyed).to.be.true;
       expect(texture.isDestroyed).to.be.true;
-      expect(sharedTexture.isDestroyed).to.be.false;
-      expect(video.getAttribute('src')).to.equal('shared.mp4');
+      expect(callerTexture.isDestroyed).to.be.false;
+      expect(clone.isDestroyed).to.be.false;
+      clone.dispose();
+      expect(source.getAttribute('src')).not.to.be.null;
       expect(unloads).to.equal(0);
+      callerTexture.dispose();
+      callerTexture.dispose();
+      expect(source.getAttribute('src')).to.be.null;
+      expect(unloads).to.equal(1);
     } finally {
-      Texture.fromVideo = fromVideo;
-      sharedTexture.dispose();
+      clone.dispose();
+      callerTexture.dispose();
+    }
+  });
+
+  for (const method of ['updateSource', 'fromData'] as const) {
+    it(`releases its own video on ${method} without taking ownership of the new source`, async function () {
+      this.timeout(15000);
+      const owned = await Texture.fromVideo('https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr', player.engine);
+      const source = (owned.source as { video: HTMLVideoElement }).video;
+      const load = source.load.bind(source);
+      let unloads = 0;
+      let externalUnloads = 0;
+
+      source.load = () => { unloads++; load(); };
+      video.load = () => { externalUnloads++; };
+      try {
+        owned.updateSource({ flipY: false });
+        owned.fromData(owned.source as unknown as spec.EffectsObjectData);
+        expect(unloads).to.equal(0);
+        if (method === 'updateSource') {
+          const image = document.createElement('canvas');
+
+          image.width = image.height = 1;
+          owned.updateSource({ sourceType: TextureSourceType.image, image });
+        } else {
+          owned.fromData({ sourceType: TextureSourceType.video, video } as unknown as spec.EffectsObjectData);
+        }
+        expect(source.getAttribute('src')).to.be.null;
+        expect(unloads).to.equal(1);
+        owned.dispose();
+        expect(unloads).to.equal(1);
+        expect(externalUnloads).to.equal(0);
+      } finally {
+        owned.dispose();
+      }
+    });
+  }
+
+  it('releases a failed URL texture without replacing the current video', async function () {
+    this.timeout(15000);
+    const create = Texture.create;
+    const error = new Error('Texture initialization failed');
+    let failedTexture: Texture | undefined;
+    let failure: unknown;
+
+    component.setTexture(texture);
+    Texture.create = (engine, source) => {
+      const created = create(engine, source);
+
+      if (source?.sourceType === TextureSourceType.video) {
+        failedTexture = created;
+        const initialize = created.initialize.bind(created);
+
+        created.initialize = () => { initialize(); throw error; };
+      }
+
+      return created;
+    };
+    try {
+      await component.setVideo('https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr').catch(err => { failure = err; });
+      expect(failure).to.equal(error);
+      expect(component.video).to.equal(video);
+      expect(component.renderer.texture).to.equal(texture);
+      expect(failedTexture!.isDestroyed).to.be.true;
+      expect((failedTexture!.source as { video: HTMLVideoElement }).video.getAttribute('src')).to.be.null;
+    } finally {
+      Texture.create = create;
+      failedTexture?.dispose();
     }
   });
 
@@ -903,7 +962,7 @@ describe('videoComponent:texture binding', function () {
         options: { video: { id: asset.getInstanceId() } },
         renderer: { texture },
       });
-      expect(component.item.sceneAssets?.has(owned)).to.be.true;
+      expect(owned.isDestroyed).to.be.true;
       finish(obsolete);
       await pending;
       expect(obsolete.isDestroyed).to.be.true;
@@ -1174,7 +1233,7 @@ describe('videoComponent:setVideo', function () {
       expect(video.muted).to.be.true;
       expect(component.material.getTexture('_MainTex')).to.equal(texture);
       expect(composition.sceneRoot.sceneAssets?.has(originalTexture)).to.be.true;
-      expect(component.item.sceneAssets?.has(texture)).to.be.true;
+      expect(composition.textures).not.to.include(texture);
       composition.play();
       await new Promise(resolve => setTimeout(resolve, 300));
       expect(video.paused).to.be.false;
@@ -1289,19 +1348,27 @@ describe('videoComponent:setVideo', function () {
     }
   });
 
-  it('keeps the current video when loading a replacement fails', async function () {
+  it('keeps the current video and unloads the failed replacement', async function () {
     const video = component.video!;
     const texture = component.renderer.texture;
+    const replacement = document.createElement('video');
+    const createElement = document.createElement.bind(document);
 
     component.setVolume(0.4);
     let failed = false;
 
+    chai.spy.on(document, 'createElement', (tag: string, options?: ElementCreationOptions) =>
+      tag === 'video' ? replacement : createElement(tag, options));
     try {
       await component.setVideo('data:video/mp4;base64,AAAA');
     } catch {
       failed = true;
+    } finally {
+      chai.spy.restore(document);
     }
     expect(failed).to.be.true;
+    expect(replacement.getAttribute('src')).to.be.null;
+    expect(replacement.paused).to.be.true;
     expect(component.video).to.equal(video);
     expect(component.renderer.texture).to.equal(texture);
     expect(video.volume).to.equal(0.4);
