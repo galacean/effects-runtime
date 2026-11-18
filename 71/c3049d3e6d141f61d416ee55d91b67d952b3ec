@@ -1,0 +1,19 @@
+packages/effects-core/src/texture/texture.ts
+  s_554a6251d2f8aa::t_528c5c18e8b739 99-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "71c3049d3e6d141f61d416ee55d91b67d952b3ec",
+  "prompts": {},
+  "sessions": {
+    "s_554a6251d2f8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a5b7-cce4-7b13-b95f-ba4e2fedf881",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
