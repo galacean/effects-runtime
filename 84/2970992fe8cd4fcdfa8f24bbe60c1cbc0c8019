@@ -1,0 +1,36 @@
+packages/effects-core/src/asset-server.ts
+  s_f0fd348f53fb92::t_740b1ee4ae5dd2 5,29,45-46,49-51,108,113-119,195
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_f0fd348f53fb92::t_096ff57716c1f7 70-75,82
+  s_f0fd348f53fb92::t_d0d0fd184d2cde 1,6,69,76-81,83-108
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_f0fd348f53fb92::t_3ad7e2bd9dfb17 1,265-294,296-348
+  s_f0fd348f53fb92::t_cb82db69b7acc0 295
+  s_f0fd348f53fb92::t_43404140cf6e76 349
+packages/effects-threejs/src/three-display-object.ts
+  s_f0fd348f53fb92::t_46b90e5b7054a2 115
+  s_f0fd348f53fb92::t_740b1ee4ae5dd2 4,107,110-112
+packages/effects-core/src/scene-server.ts
+  s_f0fd348f53fb92::t_740b1ee4ae5dd2 1,5-6,10-11,50-100,108-109
+  s_f0fd348f53fb92::t_46b90e5b7054a2 111,113,115
+packages/effects-core/src/precompositions/precomposition-manager.ts
+  s_f0fd348f53fb92::t_740b1ee4ae5dd2 21
+packages/effects/src/player.ts
+  s_f0fd348f53fb92::t_740b1ee4ae5dd2 295,416,420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "842970992fe8cd4fcdfa8f24bbe60c1cbc0c8019",
+  "prompts": {},
+  "sessions": {
+    "s_f0fd348f53fb92": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ec92-e80c-74e0-a262-5203db4cce25",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
