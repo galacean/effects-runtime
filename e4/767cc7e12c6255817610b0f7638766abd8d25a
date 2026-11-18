@@ -1,0 +1,99 @@
+packages/effects-threejs/src/gpu-texture-three.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 175-176,178,181-182
+packages/effects-core/src/asset-server.ts
+  s_39bba36db2f768::t_dc751fc07830ca 105,109,114,243-244
+  s_39bba36db2f768::t_1a8a14b6daa3dc 29
+  s_6e6207d98c1a2c::t_52913b3ebbedab 5,116,171-173,176,210-212
+  s_39bba36db2f768::t_258aeef66fef1f 78-101
+  s_32ce5d4a71b8e1::t_c68ff738ce90de 30
+packages/effects-core/src/precompositions/precomposition-manager.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 4,36
+web-packages/test/unit/src/effects-core/components/lifecycle.spec.ts
+  s_39bba36db2f768::t_dc751fc07830ca 62,77,82,542,609
+packages/effects-webgl/src/gpu-texture-webgl.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 401-402
+packages/effects-core/src/composition.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 9,277
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_39bba36db2f768::t_dc751fc07830ca 124,173,441
+web-packages/test/unit/src/effects-webgl/gl-texture.spec.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 139-140,635-636
+  s_32ce5d4a71b8e1::t_09605cc019f742 356-357,512-513,558-559
+web-packages/dev-tools/src/chrome-extension/bridge/runtime-agent.ts
+  s_39bba36db2f768::t_dc751fc07830ca 154
+packages/effects-core/src/effects-object-server.ts
+  s_6e6207d98c1a2c::t_0442f694f62476 126-130
+  s_39bba36db2f768::t_dc751fc07830ca 24,100-101,103,108,113,141
+web-packages/dev-tools/src/features/assets/runtime/asset-object-cache.ts
+  s_39bba36db2f768::t_dc751fc07830ca 114,126
+web-packages/dev-tools/src/features/scene/operations/instantiate-items.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 2,6
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_6e6207d98c1a2c::t_22312cf4d023e9 2,774-776,1122-1124
+packages/effects-webgl/src/gpu-framebuffer-webgl.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 107,116,324
+web-packages/dev-tools/src/features/assets/model/resource-identity.ts
+  s_39bba36db2f768::t_dc751fc07830ca 46
+packages/effects-core/src/texture/texture.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 7,31,35,181,225
+  s_32ce5d4a71b8e1::t_09605cc019f742 186
+web-packages/dev-tools/src/features/assets/runtime/asset-texture-cache.ts
+  s_39bba36db2f768::t_dc751fc07830ca 46,57,95
+packages/effects-core/src/index.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 14
+packages/effects-core/src/vfx-item.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 17,800
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_39bba36db2f768::t_dc751fc07830ca 253,255-256,387
+  s_6e6207d98c1a2c::t_4774f013dd1d45 243,254,264,289,347,359-360
+web-packages/dev-tools/src/features/assets/editors/runtime-asset-editor.ts
+  s_39bba36db2f768::t_dc751fc07830ca 109
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_39bba36db2f768::t_dc751fc07830ca 71
+web-packages/dev-tools/src/features/assets/runtime/runtime-asset-source.ts
+  s_39bba36db2f768::t_dc751fc07830ca 16
+packages/effects-core/src/scene-objects-factory.ts
+  s_6e6207d98c1a2c::t_24c6658fb84928 12,23,28,30-31,36-37,39-40,80,82-87,89-95
+web-packages/dev-tools/src/features/assets/ui/asset-reference-field.ts
+  s_39bba36db2f768::t_dc751fc07830ca 136
+web-packages/dev-tools/src/platform/effects-runtime/file-system-asset-database.ts
+  s_39bba36db2f768::t_dc751fc07830ca 192
+packages/effects-core/src/texture/utils.ts
+  s_32ce5d4a71b8e1::t_8fcb07e47fc827 7-8,33-34
+  s_32ce5d4a71b8e1::t_09605cc019f742 2,6,9-17,19-21,28-32,35-38
+  s_32ce5d4a71b8e1::t_ea49e77bb7e204 5,18,22-27
+web-packages/test/unit/src/effects-webgl/texture-utils.ts
+  s_32ce5d4a71b8e1::t_857b865bcff0f4 434-436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e4767cc7e12c6255817610b0f7638766abd8d25a",
+  "prompts": {},
+  "sessions": {
+    "s_32ce5d4a71b8e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3cd-84f8-7ac3-9c0b-96365b5d8128",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_39bba36db2f768": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ec83-e090-7033-bbe6-abf08e5f0c44",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_6e6207d98c1a2c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ec82-fa17-76f3-bb20-77a431568d76",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
