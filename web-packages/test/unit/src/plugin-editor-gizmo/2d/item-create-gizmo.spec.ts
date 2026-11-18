@@ -67,7 +67,10 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       setCursor: chai.spy(),
       getEngine: () => engine,
       getConfigManager: () => configs,
-      getSelection: () => ({ getSelectedPlayerItems: () => selectedItems }),
+      getSelection: () => ({
+        getSelectedPlayerItems: () => selectedItems,
+        hitTest: () => [],
+      }),
     } as unknown as GizmoOwner;
     const gizmo = new ItemCreateGizmo(owner);
 
@@ -164,12 +167,12 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
     });
   });
 
-  describe('ItemCreateGizmo text creation', () => {
+  [ItemCreateType.TEXT, ItemCreateType.RICH_TEXT].forEach(createType => describe(`ItemCreateGizmo ${createType} creation`, () => {
     it('commits the final width of a quick horizontal drag without waiting for the preview delay', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { starts, commits, gizmo } = createHarness(ItemCreateType.TEXT);
+      const { starts, commits, gizmo } = createHarness(createType);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 100;
@@ -188,7 +191,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { starts, commits, gizmo } = createHarness(ItemCreateType.TEXT);
+      const { starts, commits, gizmo } = createHarness(createType);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -196,13 +199,13 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
 
       expect(starts).to.have.lengthOf(1);
       expect(commits).to.have.lengthOf(0);
-      expect(starts[0]).to.have.deep.nested.property('type', ItemCreateType.TEXT);
+      expect(starts[0]).to.have.deep.nested.property('type', createType);
       expect(starts[0]).to.have.deep.nested.property('position', [130, 120]);
       expect(starts[0]).to.have.deep.nested.property('info.width', 60);
 
       gizmo.onMouseUp(mouseButton(160, 400, false));
 
-      expect(commits[0]).to.have.deep.nested.property('type', ItemCreateType.TEXT);
+      expect(commits[0]).to.have.deep.nested.property('type', createType);
       expect(commits[0]).to.have.deep.nested.property('position', [130, 120]);
       expect(commits[0]).to.have.deep.nested.property('info.position', [130, 120]);
       expect(commits[0]).to.have.deep.nested.property('info.width', 60);
@@ -213,11 +216,11 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const selectedText = { type: spec.ItemType.text } as VFXItem;
+      const selectedText = { type: createType === ItemCreateType.RICH_TEXT ? spec.ItemType.richtext : spec.ItemType.text } as VFXItem;
       const actualBox = new Box2(new Vector2(100, 96), new Vector2(160, 144));
 
       const projection = setItemViewTransform(selectedText, getBoxTransformFromBox(actualBox));
-      const { gizmo } = createHarness(ItemCreateType.TEXT, [selectedText]);
+      const { gizmo } = createHarness(createType, [selectedText]);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -245,7 +248,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { commits, gizmo } = createHarness(ItemCreateType.TEXT);
+      const { commits, gizmo } = createHarness(createType);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -260,7 +263,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { commits, gizmo } = createHarness(ItemCreateType.TEXT);
+      const { commits, gizmo } = createHarness(createType);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -271,5 +274,5 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(commits[0]).to.have.deep.nested.property('info.position', [70, 120]);
       expect(commits[0]).to.have.deep.nested.property('info.width', 60);
     });
-  });
+  }));
 });

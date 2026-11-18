@@ -32,9 +32,13 @@
     .tooltip::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; border-radius: 1px; background: #1f1f1f; transform: translateX(-50%) rotate(45deg); }
     .tooltip kbd { color: #b5b5b5; font: inherit; }
     .tooltip-trigger:hover > .tooltip, .tooltip-trigger:focus-visible > .tooltip { opacity: 1; transform: translate(-50%, 0); transition-delay: 650ms; }
-    #create-menu { position: absolute; z-index: 10; top: 46px; right: 12px; min-width: 160px; padding: 5px; border: 1px solid var(--border); border-radius: 8px; background: white; box-shadow: 0 6px 20px #0002; }
-    #create-menu button { width: 100%; padding: 8px; display: flex; align-items: center; gap: 10px; border-radius: 4px; text-align: left; }
-    #create-menu button:hover { background: #f1f7ff; }
+    .creation-menu { position: absolute; z-index: 10; min-width: 224px; padding: 5px; border: 1px solid var(--border); border-radius: 8px; background: white; color: #292929; box-shadow: 0 6px 20px #0002; }
+    .creation-menu button { width: 100%; min-height: 36px; padding: 8px; display: flex; align-items: center; gap: 10px; border-radius: 4px; text-align: left; white-space: nowrap; }
+    .creation-menu button:hover, .creation-menu button:focus-visible { background: #f1f7ff; }
+    .creation-menu button[aria-checked="true"] { background: #e5f4ff; }
+    .creation-menu .menu-check { width: 14px; height: 14px; color: var(--blue); visibility: hidden; }
+    .creation-menu button[aria-checked="true"] .menu-check { visibility: visible; }
+    #create-menu { top: 46px; right: 12px; }
     .shortcut { margin-left: auto; color: var(--muted); font-size: 10px; }
     #items { overflow: auto; padding: 0 6px 16px; flex: 1; }
     #items button { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 5px; text-align: left; }
@@ -51,9 +55,17 @@
     .canvas-status { position: absolute; left: 20px; right: 20px; bottom: 8px; display: flex; justify-content: flex-end; color: #9c9c9c; font-size: 10px; pointer-events: none; }
     #status[data-error="true"] { color: #ba283d; }
     .toolbar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; padding: 7px; border: 1px solid #e3e3e3; border-radius: 13px; background: white; box-shadow: 0 2px 5px #0001, 0 8px 24px #0001; }
-    .toolbar button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
-    .toolbar button:hover { background: #f4f4f4; }
-    .toolbar button[aria-pressed="true"] { background: var(--blue); color: white; }
+    .toolbar > button, .text-tool > button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar > button:hover, .text-tool > button:hover { background: #f4f4f4; }
+    .toolbar > button[aria-pressed="true"], .text-tool[data-active="true"] { background: var(--blue); color: white; }
+    .text-tool { position: relative; display: flex; align-items: center; border-radius: 7px; }
+    .text-tool > button { color: inherit; }
+    .text-tool #create-text { border-radius: 7px 0 0 7px; }
+    .text-tool #text-tool-toggle { width: 20px; border-radius: 0 7px 7px 0; }
+    #text-tool-toggle > svg { width: 12px; height: 12px; }
+    .text-tool[data-active="true"] > button:hover { background: #ffffff26; }
+    .text-tool[data-menu-open="true"] .tooltip { display: none; }
+    #text-tool-menu { bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); }
     .tool-separator { height: 25px; width: 1px; background: var(--border); margin: 0 4px; }
     .zoom-controls { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 3px; padding: 5px; border: 1px solid #e3e3e3; border-radius: 0 8px 0 0; background: white; box-shadow: 0 2px 5px #0001; }
     #zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -76,6 +88,8 @@
     .field.wide { margin-top: 8px; }
     .readout { display: flex; justify-content: space-between; margin-top: 12px; color: #8b8b8b; font-size: 11px; }
     .readout output { color: #555; font-variant-numeric: tabular-nums; }
+    #rich-text-tools { margin-top: 12px; font-size: 11px; color: var(--muted); }
+    #rich-text-tools button { width: 30px; height: 28px; border: 1px solid var(--border); border-radius: 4px; }
     #text-value { width: 100%; min-height: 75px; margin-top: 12px; padding: 9px; resize: vertical; border: 1px solid var(--border); border-radius: 5px; outline-color: var(--blue); background: #fafafa; }
     .fill-row { display: flex; align-items: center; gap: 9px; margin-top: 13px; padding: 5px 8px; border-radius: 5px; background: #f5f5f5; }
     #fill, #frame-stroke { width: 22px; height: 22px; border: 0; padding: 0; background: transparent; cursor: pointer; flex-shrink: 0; }
@@ -99,6 +113,9 @@
     <symbol id="icon-file" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 3v18M3 12h18"/></symbol>
     <symbol id="icon-frame" viewBox="0 0 24 24"><path d="M7 3v18M17 3v18M3 7h18M3 17h18"/></symbol>
     <symbol id="icon-text" viewBox="0 0 24 24"><path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/></symbol>
+    <symbol id="icon-richtext" viewBox="0 0 24 24"><path d="M3 7h14M10 7v13M6 20h8M3 7v3M17 7v3M20 1.5v6M17 4.5h6"/></symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="icon-rectangle" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/></symbol>
     <symbol id="icon-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
     <symbol id="icon-effects" viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM20 3v4M18 5h4"/></symbol>
@@ -117,9 +134,10 @@
       <div class="layers-heading">
         <h2>图层</h2>
         <button id="create-toggle" class="icon-button tooltip-trigger" type="button" aria-label="创建元素" aria-expanded="false" aria-controls="create-menu"><svg aria-hidden="true"><use href="#icon-plus"/></svg><span class="tooltip" aria-hidden="true">创建元素</span></button>
-        <div id="create-menu" hidden>
+        <div id="create-menu" class="creation-menu" hidden>
           <button id="menu-frame" type="button"><svg aria-hidden="true"><use href="#icon-frame"/></svg>拖动创建 Frame<span class="shortcut">F</span></button>
-          <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>拖动创建 Text<span class="shortcut">T</span></button>
+          <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>创建文本元素<span class="shortcut">T</span></button>
+          <button id="menu-richtext" type="button"><svg aria-hidden="true"><use href="#icon-richtext"/></svg>创建富文本元素<span class="shortcut">⇧ T</span></button>
           <button id="menu-video" type="button"><svg aria-hidden="true"><use href="#icon-video"/></svg>添加 Video</button>
           <button id="menu-effects" type="button"><svg aria-hidden="true"><use href="#icon-effects"/></svg>添加 Effects</button>
         </div>
@@ -134,7 +152,14 @@
         <button id="hand" class="tooltip-trigger" type="button" aria-label="抓手" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-hand"/></svg><span class="tooltip" aria-hidden="true">抓手平移<kbd>H</kbd></span></button>
         <span class="tool-separator"></span>
         <button id="create-frame" class="tooltip-trigger" type="button" aria-label="拖动创建 Frame" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">拖动创建画板<kbd>F</kbd></span></button>
-        <button id="create-text" class="tooltip-trigger" type="button" aria-label="拖动创建 Text" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-text"/></svg><span class="tooltip" aria-hidden="true">拖动创建文本<kbd>T</kbd></span></button>
+        <div id="text-tool" class="text-tool" role="group" aria-label="文本工具">
+          <button id="create-text" class="tooltip-trigger" type="button" aria-label="创建文本元素" aria-pressed="false"><svg aria-hidden="true"><use id="text-tool-icon" href="#icon-text"/></svg><span class="tooltip" aria-hidden="true"><span id="text-tool-label">创建文本元素</span><kbd id="text-tool-shortcut">T</kbd></span></button>
+          <button id="text-tool-toggle" class="tooltip-trigger" type="button" aria-label="选择文本类型" aria-haspopup="menu" aria-expanded="false" aria-controls="text-tool-menu"><svg aria-hidden="true"><use href="#icon-chevron-down"/></svg><span class="tooltip" aria-hidden="true">选择文本类型</span></button>
+          <div id="text-tool-menu" class="creation-menu" role="menu" aria-label="文本创建工具" hidden>
+            <button id="text-tool-plain" type="button" role="menuitemradio" aria-checked="true" tabindex="-1"><svg aria-hidden="true"><use href="#icon-text"/></svg><span>创建文本元素</span><span class="shortcut">T</span><svg class="menu-check" aria-hidden="true"><use href="#icon-check"/></svg></button>
+            <button id="text-tool-rich" type="button" role="menuitemradio" aria-checked="false" tabindex="-1"><svg aria-hidden="true"><use href="#icon-richtext"/></svg><span>创建富文本元素</span><span class="shortcut">⇧ T</span><svg class="menu-check" aria-hidden="true"><use href="#icon-check"/></svg></button>
+          </div>
+        </div>
         <button id="create-video" class="tooltip-trigger" type="button" aria-label="添加 Video"><svg aria-hidden="true"><use href="#icon-video"/></svg><span class="tooltip" aria-hidden="true">添加视频</span></button>
         <button id="create-effects" class="tooltip-trigger" type="button" aria-label="添加 Effects"><svg aria-hidden="true"><use href="#icon-effects"/></svg><span class="tooltip" aria-hidden="true">添加动效</span></button>
       </nav>
@@ -158,7 +183,13 @@
           <div class="readout"><span>缩放</span><output id="scale">—</output></div>
         </section>
         <section id="text-properties" hidden>
-          <h2>文本</h2><textarea id="text-value" aria-label="文本内容"></textarea>
+          <h2>文本</h2>
+          <div id="rich-text-tools" hidden>
+            <button id="text-bold" type="button" aria-label="选区加粗" title="选区加粗（⌘/Ctrl B）"><b>B</b></button>
+            <button id="text-italic" type="button" aria-label="选区斜体" title="选区斜体（⌘/Ctrl I）"><i>I</i></button>
+            <span>选择画布文字后调整样式</span>
+          </div>
+          <textarea id="text-value" aria-label="文本内容"></textarea>
           <label class="field wide"><span>字号</span><input id="font-size" type="number" min="1" step="1" aria-label="字号"></label>
         </section>
         <section id="frame-properties" hidden>

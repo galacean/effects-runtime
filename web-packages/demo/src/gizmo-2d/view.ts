@@ -14,12 +14,20 @@ export class DemoView {
   private readonly actionList = element('events');
   private readonly createMenu = element('create-menu');
   private readonly createToggle = element('create-toggle');
+  private readonly textTool = element('text-tool');
+  private readonly textButton = element('create-text');
+  private readonly textMenu = element('text-tool-menu');
+  private readonly textToggle = element('text-tool-toggle');
+  private readonly textOptions: [HTMLButtonElement, 'text' | 'richtext'][] = [
+    [element<HTMLButtonElement>('text-tool-plain'), 'text'],
+    [element<HTMLButtonElement>('text-tool-rich'), 'richtext'],
+  ];
+  private textToolType: 'text' | 'richtext' = 'text';
   private readonly layerButtons = new Map<VFXItem, HTMLButtonElement>();
   private readonly toolButtons: [HTMLElement, DemoTool][] = [
     [element('move'), 'move'],
     [element('hand'), 'hand'],
     [element('create-frame'), 'frame'],
-    [element('create-text'), 'text'],
   ];
   private readonly actions: { label: string, count: number }[] = [];
   private selectionSignature = '';
@@ -29,8 +37,49 @@ export class DemoView {
     this.toolButtons.forEach(([button, tool]) => {
       this.events.on(button, 'click', () => editor.setTool(tool));
     });
+    this.events.on(this.textButton, 'click', () => editor.setTool(this.textToolType));
+    this.textOptions.forEach(([button, tool]) => {
+      this.events.on(button, 'click', () => editor.setTool(tool));
+    });
+    this.events.on(this.textToggle, 'click', () => this.setTextMenuOpen(this.textMenu.hidden));
+    this.events.on(this.textToggle, 'keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.setTextMenuOpen(true);
+      }
+    });
+    this.events.on(this.textMenu, 'keydown', event => {
+      const current = this.textOptions.findIndex(([button]) => button === document.activeElement);
+      let next: number;
+
+      switch (event.key) {
+        case 'ArrowDown': next = (current + 1) % this.textOptions.length;
+
+          break;
+        case 'ArrowUp': next = (current - 1 + this.textOptions.length) % this.textOptions.length;
+
+          break;
+        case 'Home': next = 0;
+
+          break;
+        case 'End': next = this.textOptions.length - 1;
+
+          break;
+        case 'Tab':
+          this.setTextMenuOpen(false);
+          this.textToggle.focus();
+
+          return;
+        default: return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.textOptions[next][0].focus();
+    });
     this.events.on(element('menu-frame'), 'click', () => editor.setTool('frame'));
     this.events.on(element('menu-text'), 'click', () => editor.setTool('text'));
+    this.events.on(element('menu-richtext'), 'click', () => editor.setTool('richtext'));
     for (const [suffix, kind] of [['video', 'Video'], ['effects', 'Effects']] as const) {
       for (const prefix of ['menu', 'create']) {
         this.events.on(element(`${prefix}-${suffix}`), 'click', () => {
@@ -46,6 +95,17 @@ export class DemoView {
     this.events.on(document, 'pointerdown', event => {
       if (event.target instanceof Node && !this.createMenu.contains(event.target) && !this.createToggle.contains(event.target)) {
         this.setCreateMenuOpen(false);
+      }
+      if (event.target instanceof Node && !this.textTool.contains(event.target)) {
+        this.setTextMenuOpen(false);
+      }
+    });
+    this.events.on(document, 'keydown', event => {
+      if (event.key === 'Escape' && !this.textMenu.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.setTextMenuOpen(false);
+        this.textToggle.focus();
       }
     });
     this.events.on(this.layerList, 'click', event => {
@@ -81,6 +141,20 @@ export class DemoView {
 
   showTool (tool: DemoTool): void {
     this.toolButtons.forEach(([button, value]) => button.setAttribute('aria-pressed', String(tool === value)));
+    const isTextTool = tool === 'text' || tool === 'richtext';
+
+    if (isTextTool) { this.textToolType = tool; }
+    const richText = this.textToolType === 'richtext';
+    const label = richText ? '创建富文本元素' : '创建文本元素';
+
+    this.textTool.dataset.active = String(isTextTool);
+    this.textButton.setAttribute('aria-pressed', String(isTextTool));
+    this.textButton.setAttribute('aria-label', label);
+    this.textButton.querySelector('use')?.setAttribute('href', richText ? '#icon-richtext' : '#icon-text');
+    element('text-tool-label').textContent = label;
+    element('text-tool-shortcut').textContent = richText ? '⇧ T' : 'T';
+    this.textOptions.forEach(([button, value]) => button.setAttribute('aria-checked', String(this.textToolType === value)));
+    this.setTextMenuOpen(false);
     this.setCreateMenuOpen(false);
   }
 
@@ -114,6 +188,17 @@ export class DemoView {
   private setCreateMenuOpen (open: boolean): void {
     this.createMenu.hidden = !open;
     this.createToggle.setAttribute('aria-expanded', String(open));
+    if (open) { this.setTextMenuOpen(false); }
+  }
+
+  private setTextMenuOpen (open: boolean): void {
+    this.textMenu.hidden = !open;
+    this.textToggle.setAttribute('aria-expanded', String(open));
+    this.textTool.dataset.menuOpen = String(open);
+    if (open) {
+      this.setCreateMenuOpen(false);
+      this.textOptions.find(([, tool]) => tool === this.textToolType)?.[0].focus();
+    }
   }
 
   private renderLayers (): void {
@@ -155,7 +240,7 @@ export class DemoView {
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     const label = document.createElement('span');
 
-    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', Sprite: 'rectangle', Video: 'video', Effects: 'effects' };
+    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', RichText: 'richtext', Sprite: 'rectangle', Video: 'video', Effects: 'effects' };
 
     use.setAttribute('href', `#icon-${icons[data.kind]}`);
     icon.setAttribute('aria-hidden', 'true');

@@ -22,6 +22,8 @@ export enum GizmoType {
   IMAGE_CUT = 'image-cut',
   /** 文本编辑工具。 */
   TEXT = 'text',
+  /** 富文本编辑工具。 */
+  RICH_TEXT = 'rich-text',
   /** 蒙版编辑工具。 */
   MASK = 'mask',
   /** 加载状态工具。 */

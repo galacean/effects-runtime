@@ -1,5 +1,5 @@
 import { restoreTestState, getSpyCalls, spyOnGetter, type TestSpy } from '../helpers/spies';
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type InputEventMouse, spec, type Engine, TextComponent, type Texture, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2, Circle, Line2 } from '@galacean/effects-math/es/extension/index';
 import { getBoxTransform, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
@@ -905,6 +905,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
     const textItem = {
       type: spec.ItemType.text,
+      getComponent: (type: unknown) => type === TextComponent ? {} : undefined,
       transform: { rotation: { z: 0 } },
     } as VFXItem;
 
@@ -983,7 +984,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
       type: spec.ItemType.text,
       isVisible: true,
       getInstanceId: () => 'wrapped-text',
-      getComponent: () => undefined,
+      getComponent: (type: unknown) => type === TextComponent ? {} : undefined,
       transform: {
         size,
         updateLocalMatrix: () => {},
@@ -1020,7 +1021,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
 
   it('旋转文本的左右边线带按旋转矩形命中，旋转矩形外的点不误命中', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
-    const textItem = { type: spec.ItemType.text, transform: { rotation: { z: Math.PI / 4 } } } as VFXItem;
+    const textItem = { type: spec.ItemType.text, getComponent: (type: unknown) => type === TextComponent ? {} : undefined, transform: { rotation: { z: Math.PI / 4 } } } as VFXItem;
 
     spyOnGetter(gizmo, 'selectedItems', () => ([textItem]));
 
@@ -1051,7 +1052,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
 
   it('文字左右边改输入框宽度，上下边改字号', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
-    const textItem = { type: spec.ItemType.text } as VFXItem;
+    const textItem = { type: spec.ItemType.text, getComponent: (type: unknown) => type === TextComponent ? {} : undefined } as unknown as VFXItem;
 
     spyOnGetter(gizmo, 'selectedItems', () => ([textItem]));
     // 轴对齐盒 100..200 × 100..200，按固定四角顺序构造。

@@ -1,13 +1,14 @@
 import type { Composition } from '@galacean/effects';
-import { TextComponent, VFXItem, math, spec } from '@galacean/effects';
+import { VFXItem, math } from '@galacean/effects';
 import {
   GestureHandler,
   GizmoViewportUtils,
   HandGizmoTool,
   MoveGizmoTool,
-  TextEditMode,
+  createTextEditMode,
   getItemViewBox,
   isPlayerItemVisible,
+  isEditableTextItem,
   resizeSelectionConfig,
   selectionPreviewConfig,
   selectionSnapConfig,
@@ -66,11 +67,14 @@ export class SceneGizmo {
     configs.set(viewportNavigationConfig, { scrollWheelZoom: true });
     configs.set(resizeSelectionConfig, { nameTextColor: 0xC8C8C8, sizeTextColor: 0xC8C8C8 });
     this.unsubscribeSelection = this.handler.getSelection().on('selectionchange', () => this.syncToPanels());
-    this.handler.on('textinput', event => {
+    const recordText = (event: { itemId: string }): void => {
       const item = this.composition.items.find(item => item.getInstanceId() === event.itemId);
 
       if (item) { sceneWorkspace.recordText(item); }
-    });
+    };
+
+    this.handler.on('textinput', recordText);
+    this.handler.on('richtextinput', recordText);
     EditorSelection.addSelectionListener(this.syncFromPanels);
     this.syncFromPanels();
   }
@@ -88,7 +92,7 @@ export class SceneGizmo {
   get canEditText (): boolean {
     const items = this.selectedItems;
 
-    return items.length === 1 && items[0].type === spec.ItemType.text && !!items[0].getComponent(TextComponent);
+    return items.length === 1 && isEditableTextItem(items[0]);
   }
 
   set2DMode (value: boolean): void {
@@ -127,7 +131,7 @@ export class SceneGizmo {
   editText (): void {
     if (this.canEditText) {
       this.setTool('transform');
-      this.handler.setActiveEditMode(new TextEditMode(this.handler, this.selectedItems[0], 'select'));
+      this.handler.setActiveEditMode(createTextEditMode(this.handler, this.selectedItems[0], 'select'));
     }
   }
 

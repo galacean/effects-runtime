@@ -1,11 +1,11 @@
-import { MouseButton, spec, TextComponent, type InputEventMouseButton } from '@galacean/effects';
+import { MouseButton, type InputEventMouseButton } from '@galacean/effects';
 import { GestureCursorType } from '../cursor';
 import { effectsEditModeConfig } from '../configs/builtin-configs';
 import { Gizmo } from '../gizmo';
-import { isEffectsPlayerItem } from '../items';
+import { isEditableTextItem, isEffectsPlayerItem } from '../items';
 import { Vector2 } from '../math';
 import { EffectsEditMode } from '../modes/effects-edit-mode';
-import { TextEditMode } from '../modes/text-edit-mode';
+import { createTextEditMode } from '../modes/create-text-edit-mode';
 
 /** 识别可编辑元素的双击，并进入对应的编辑模式。 */
 export class EnterEditModeGizmo extends Gizmo {
@@ -36,8 +36,8 @@ export class EnterEditModeGizmo extends Gizmo {
       return;
     }
 
-    if (selectedItem.type === spec.ItemType.text && selectedItem.getComponent(TextComponent)) {
-      this._owner.setActiveEditMode(new TextEditMode(this._owner, selectedItem, 'select'));
+    if (isEditableTextItem(selectedItem)) {
+      this._owner.setActiveEditMode(createTextEditMode(this._owner, selectedItem, 'select'));
       this._owner.setCursor({
         type: GestureCursorType.TEXT,
         angle: 0,

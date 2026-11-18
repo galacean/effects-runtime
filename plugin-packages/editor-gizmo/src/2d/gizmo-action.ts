@@ -1,3 +1,4 @@
+import type { RichTextInputPayload } from './rich-text/rich-text-edit-session';
 import type { Gizmo } from './gizmo';
 import type { FrameCreateData, ItemCreateType, TextCreateData } from './gizmos/item-create-gizmo';
 import type { AutoLayoutChangeInfo } from './frame/frame-assisted-layout';
@@ -31,6 +32,14 @@ export type GizmoTextItemCreateInfo = {
   info?: TextCreateData,
 };
 
+/** 富文本元素创建信息。 */
+export type GizmoRichTextItemCreateInfo = {
+  type: ItemCreateType.RICH_TEXT,
+  id: string,
+  position: [number, number],
+  info?: TextCreateData,
+};
+
 /** 无附加参数的元素创建信息。 */
 export type GizmoSimpleItemCreateInfo = {
   /** 创建类型。 */
@@ -47,6 +56,7 @@ export type GizmoSimpleItemCreateInfo = {
 export type GizmoItemCreateInfo =
   | GizmoFrameItemCreateInfo
   | GizmoTextItemCreateInfo
+  | GizmoRichTextItemCreateInfo
   | GizmoSimpleItemCreateInfo;
 
 /** 所有 Gizmo 业务操作共享的基础事件。 */
@@ -135,6 +145,9 @@ export interface GizmoTextInputEvent extends GizmoActionEvent {
   fontFamily: string,
 }
 
+/** 富文本输入事件，独立提供源码和可见文字。 */
+export interface GizmoRichTextInputEvent extends GizmoActionEvent, RichTextInputPayload {}
+
 /** 视频播放位置变更事件。 */
 export interface GizmoVideoPlayEvent extends GizmoActionEvent {
   /** 视频元素 ID。 */
@@ -181,6 +194,8 @@ export type GizmoOwnerEvents = {
   framerefreshchildren: [GizmoFrameRefreshChildrenEvent],
   /** 文本输入事件。 */
   textinput: [GizmoTextInputEvent],
+  /** 富文本输入或局部格式变更事件。 */
+  richtextinput: [GizmoRichTextInputEvent],
   /** 视频播放事件。 */
   videoplay: [GizmoVideoPlayEvent],
   /** 精准文字点击事件。 */

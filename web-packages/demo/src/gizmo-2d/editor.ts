@@ -1,23 +1,28 @@
-import { EventEmitter, TextComponent, math } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
+import { EventEmitter, math, spec, TextComponent } from '@galacean/effects';
 import type { InputEventKey, Player, VFXItem } from '@galacean/effects';
 import {
   GizmoViewportUtils,
   HandGizmoTool,
   ItemCreateGizmoTool,
   ItemCreateType,
+  type RichTextFormat,
+  type RichTextSelectionFormats,
   MoveGizmoTool,
   TextEditMode,
+  createTextEditMode,
+  RichTextEditMode,
   createInteractionPlane,
   getItemViewBox,
   ndcSizeToViewSize,
   viewPositionToWorld,
 } from '@galacean/effects-plugin-editor-gizmo';
-import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo,
+import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo, GizmoRichTextItemCreateInfo,
   GestureHandler } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 
-export type DemoTool = 'move' | 'hand' | 'frame' | 'text';
+export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'richtext';
 
 type EditorEvents = {
   scenechange: [],
@@ -47,9 +52,16 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   ) {
     super();
     this.unsubscribes.push(
-      handler.getSelection().on('selectionchange', () => this.emit('selectionchange')),
+      handler.getSelection().on('selectionchange', () => {
+        if (this.isTextEditing() && (this.activeTool === 'text' || this.activeTool === 'richtext')) {
+          this.activeTool = 'move';
+          this.emit('toolchange', 'move');
+        }
+        this.emit('selectionchange');
+      }),
       handler.on('keyDown', event => this.handleKeyDown(event)),
       handler.on('textinput', event => this.emit('action', `textinput · ${event.itemId}`)),
+      handler.on('richtextinput', event => this.emit('action', `richtextinput · ${event.itemId}`)),
       handler.getViewportNavigation().on('change', event => {
         if (!this.fittingViewport) {
           this.autoFitViewport = false;
@@ -92,10 +104,10 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.handler.resetEditMode();
     this.discardDraft();
     this.activeTool = tool;
-    if (tool === 'frame' || tool === 'text') {
+    if (tool === 'frame' || tool === 'text' || tool === 'richtext') {
       const createTool = new ItemCreateGizmoTool(this.handler);
 
-      createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : ItemCreateType.TEXT;
+      createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : tool === 'richtext' ? ItemCreateType.RICH_TEXT : ItemCreateType.TEXT;
       this.handler.setActiveTool(createTool);
       this.setSelection([]);
     } else {
@@ -111,6 +123,25 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     const ids = this.handler.getSelection().getSelectedIds();
 
     this.setSelection(append ? ids.includes(id) ? ids.filter(selectedId => selectedId !== id) : [...ids, id] : [id]);
+  }
+
+  /** 属性面板对当前文字选区修改样式，并保留编辑会话。 */
+  formatRichTextSelection (attribute: RichTextFormat, value?: string | null): boolean {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode && mode.formatSelection(attribute, value);
+  }
+
+  get hasRichTextSelection (): boolean {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode && mode.hasSelection;
+  }
+
+  get richTextSelectionFormats (): RichTextSelectionFormats | undefined {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode ? mode.selectionFormats : undefined;
   }
 
   editSelected (label: string, edit: (item: VFXItem) => void): void {
@@ -197,7 +228,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   private isTextEditing (): boolean {
-    return this.handler.getActiveEditMode() instanceof TextEditMode;
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof TextEditMode || mode instanceof RichTextEditMode;
   }
 
   private handleKeyDown (event: InputEventKey): void {
@@ -207,7 +240,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     if (event.physicalKeycode === 'Escape') {
       if (this.isTextEditing()) {
         this.handler.resetEditMode();
-      } else if (this.activeTool === 'frame' || this.activeTool === 'text') {
+      } else if (this.activeTool === 'frame' || this.activeTool === 'text' || this.activeTool === 'richtext') {
         this.setTool('move');
       } else {
         this.setSelection([]);
@@ -217,7 +250,13 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
       return;
     }
-    const tool = SHORTCUTS[event.physicalKeycode];
+    if (event.physicalKeycode === 'Enter' && this.activeTool === 'move' && this.selectedItem?.type === spec.ItemType.richtext) {
+      this.handler.setActiveEditMode(createTextEditMode(this.handler, this.selectedItem, 'select'));
+      event.accept();
+
+      return;
+    }
+    const tool = event.physicalKeycode === 'KeyT' && event.shiftPressed ? 'richtext' : SHORTCUTS[event.physicalKeycode];
 
     if (tool) {
       this.setTool(tool);
@@ -234,6 +273,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         this.draftText = this.createItem(event.createInfo);
       } else if (phase === 'actionupdate' && this.draftText && event.createInfo.type === ItemCreateType.TEXT) {
         this.updateCreatedText(this.draftText, event.createInfo);
+      } else if (phase === 'actionupdate' && this.draftText && event.createInfo.type === ItemCreateType.RICH_TEXT) {
+        this.updateCreatedRichText(this.draftText, event.createInfo);
       } else if (phase === 'actioncommit') {
         this.finishCreation(event.createInfo);
       }
@@ -268,6 +309,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     } else if (info.type === ItemCreateType.TEXT) {
       data = this.scene.createText([position.x, position.y], { id: info.id });
       this.updateCreatedText(data, info);
+    } else if (info.type === ItemCreateType.RICH_TEXT) {
+      data = this.scene.createRichText([position.x, position.y], {
+        id: info.id, autoResize: info.info ? spec.TextSizeMode.autoHeight : spec.TextSizeMode.autoWidth,
+      });
+      this.updateCreatedRichText(data, info);
     } else {
       return;
     }
@@ -291,14 +337,36 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
   }
 
+  private updateCreatedRichText (data: DemoItem, info: GizmoRichTextItemCreateInfo): void {
+    const position = this.pixelToWorld(info.position);
+    const rich = data.item.getComponent(RichTextComponent);
+
+    data.item.setPosition(position.x, position.y, 0);
+    if (info.info) {
+      const right = this.pixelToWorld([info.position[0] + info.info.width, info.position[1]]);
+      const width = Math.abs(right.x - position.x);
+
+      rich.setLayoutProperties({
+        maxTextWidth: width * rich.textLayout.width / data.item.transform.size.x,
+        autoResize: spec.TextSizeMode.autoHeight,
+        wrapEnabled: true,
+      });
+      rich.ensureLayout();
+    }
+  }
+
   private finishCreation (info: GizmoItemCreateInfo): void {
     const data = this.draftText ?? this.createItem(info);
 
     if (!data) {
       return;
     }
-    if (info.type === ItemCreateType.TEXT) {
-      this.updateCreatedText(data, info);
+    if (info.type === ItemCreateType.TEXT || info.type === ItemCreateType.RICH_TEXT) {
+      if (info.type === ItemCreateType.RICH_TEXT) {
+        this.updateCreatedRichText(data, info);
+      } else {
+        this.updateCreatedText(data, info);
+      }
       const frame = this.scene.findFrameAt(data.item.transform.getWorldPosition());
 
       if (frame) {
@@ -309,8 +377,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.setTool('move');
     this.emit('scenechange');
     this.setSelection([data.item.getInstanceId()]);
-    if (data.kind === 'Text') {
-      this.handler.setActiveEditMode(new TextEditMode(this.handler, data.item, 'select'));
+    if (data.kind === 'Text' || data.kind === 'RichText') {
+      this.handler.setActiveEditMode(createTextEditMode(this.handler, data.item, 'select'));
     }
     this.emit('action', `创建 ${data.name}`);
   }

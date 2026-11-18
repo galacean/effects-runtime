@@ -1,5 +1,7 @@
-import { FrameComponent, TextComponent, math, spec } from '@galacean/effects';
+import { FrameComponent, math, spec } from '@galacean/effects';
+import { applyRichTextResize, createRichTextResizeSnapshot, getEditableTextComponent, getRichTextFrameWidth, RichTextDocument } from '@galacean/effects-plugin-editor-gizmo';
 import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DOMEvents, element } from './dom';
 import type { DemoEditor } from './editor';
 import type { DemoScene } from './scene';
@@ -35,6 +37,8 @@ export class InspectorPanel {
   private readonly mediaTime = element('media-time');
   private readonly mediaStatus = element('media-status');
   private signature = '';
+  private textTarget?: VFXItem;
+  private beforeTextInput?: { item: VFXItem, source: string, start: number, end: number };
   private refreshFrame?: number;
 
   constructor (private readonly scene: DemoScene, private readonly editor: DemoEditor) {
@@ -55,6 +59,12 @@ export class InspectorPanel {
     });
     this.events.on(this.fill, 'input', () => {
       const hex = this.fill.value;
+
+      if (this.editor.hasRichTextSelection) {
+        this.editor.formatRichTextSelection('color', hex);
+
+        return;
+      }
       const channel = (index: number) => parseInt(hex.slice(index, index + 2), 16) / 255;
 
       this.editor.editSelected('修改填充', item => {
@@ -64,7 +74,7 @@ export class InspectorPanel {
         if (fill) {
           fill.color.set(channel(1), channel(3), channel(5), fill.color.a);
         }
-        item.getComponent(TextComponent)?.setTextColor([channel(1), channel(3), channel(5), 1]);
+        getEditableTextComponent(item)?.setTextColor([channel(1), channel(3), channel(5), 1]);
       });
     });
     this.events.on(this.fillOpacity, 'change', () => {
@@ -128,17 +138,20 @@ export class InspectorPanel {
   refresh (force = false): void {
     const selected = this.editor.selectedItems;
     const item = this.editor.selectedItem;
-    const text = item?.getComponent(TextComponent);
+    const text = getEditableTextComponent(item);
+    const textFormats = this.editor.richTextSelectionFormats;
     const frame = item?.getComponent(FrameComponent);
     const fill = this.getSolidPaint(frame?.fills);
     const stroke = this.getSolidPaint(frame?.strokes);
-    const color = this.getFillColor(item);
+    const color = typeof textFormats?.color === 'string' && /^#[\da-f]{6}/i.test(textFormats.color)
+      ? textFormats.color.slice(0, 7) : this.getFillColor(item);
     const data = item ? this.scene.getItem(item) : undefined;
     const media = item ? this.scene.getMediaState(item) : undefined;
     const signature = JSON.stringify([
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
-      item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
+      item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, textFormats, color,
+      text instanceof RichTextComponent ? [text.textLayout.maxTextWidth, text.textLayout.useLegacyRichText] : undefined,
       item?.name, frame?.strokeWidth, fill?.color.toArray(), stroke?.color.toArray(),
       frame?.fills[0]?.type, frame?.strokes[0]?.type,
       data?.status, media,
@@ -153,15 +166,26 @@ export class InspectorPanel {
     this.setInput(this.fields.x, item?.transform.position.x);
     this.setInput(this.fields.y, item?.transform.position.y);
     this.setInput(this.fields.rotation, item?.transform.rotation.z);
-    this.setInput(this.fields.width, item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined);
+    this.setInput(this.fields.width, text instanceof RichTextComponent ? getRichTextFrameWidth(text)
+      : item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined, text instanceof RichTextComponent && text.textLayout.useLegacyRichText);
     this.setInput(this.fields.height, item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined, !!text);
     this.scale.textContent = item ? `${item.transform.scale.x.toFixed(2)} × ${item.transform.scale.y.toFixed(2)}` : '—';
     this.textSection.hidden = !text;
+    element('rich-text-tools').hidden = item?.type !== spec.ItemType.richtext;
+    const textTargetChanged = this.textTarget !== item;
+
+    this.textTarget = item;
+    if (textTargetChanged || this.beforeTextInput?.source !== text?.text) { this.beforeTextInput = undefined; }
     if (text) {
-      if (document.activeElement !== this.textValue) {
-        this.textValue.value = text.text;
+      if (textTargetChanged || document.activeElement !== this.textValue) {
+        this.beforeTextInput = undefined;
+        this.textValue.value = item?.type === spec.ItemType.richtext ? new RichTextDocument(text.text).text : text.text;
       }
-      this.setInput(this.fields.fontSize, text.textStyle.fontSize);
+      this.setInput(this.fields.fontSize, textFormats?.size == null ? text.textStyle.fontSize : Number(textFormats.size));
+      this.fields.fontSize.placeholder = textFormats?.size === null ? '混合' : '';
+      if (textFormats?.size === null && document.activeElement !== this.fields.fontSize) { this.fields.fontSize.value = ''; }
+      element('text-bold').setAttribute('aria-pressed', String(textFormats?.b === ''));
+      element('text-italic').setAttribute('aria-pressed', String(textFormats?.i === ''));
     }
     this.fillSection.hidden = !color;
     this.frameSection.hidden = data?.kind !== 'Frame';
@@ -176,7 +200,7 @@ export class InspectorPanel {
     }
     if (color) {
       this.fill.value = color;
-      this.fillValue.textContent = color.slice(1).toUpperCase();
+      this.fillValue.textContent = textFormats?.color === null ? '混合' : color.slice(1).toUpperCase();
     }
     this.mediaSection.hidden = data?.kind !== 'Video' && data?.kind !== 'Effects';
     this.mediaPlay.disabled = !media;
@@ -227,10 +251,17 @@ export class InspectorPanel {
           return;
         }
         this.editor.editSelected('修改尺寸', item => {
-          const text = item.getComponent(TextComponent);
+          const text = getEditableTextComponent(item);
           const current = Math.abs(item.transform.size[axis] * item.transform.scale[axis]);
 
-          if (text) {
+          if (text instanceof RichTextComponent) {
+            if (axis !== 'x' || text.textLayout.useLegacyRichText) { return; }
+            const snapshot = createRichTextResizeSnapshot(text, 'width');
+            const currentWidth = getRichTextFrameWidth(text);
+
+            if (input.valueAsNumber === Math.round(currentWidth * 100) / 100) { return; }
+            applyRichTextResize(snapshot, input.valueAsNumber / Math.max(currentWidth, 0.01));
+          } else if (text) {
             text.setTextWidth(text.textLayout.width * input.valueAsNumber / Math.max(current, 0.01));
           } else {
             item.transform.setSize(
@@ -245,18 +276,53 @@ export class InspectorPanel {
   }
 
   private bindTextFields (): void {
-    this.events.on(this.textValue, 'input', () => {
-      this.editor.editSelected('修改文本', item => item.getComponent(TextComponent)?.setText(this.textValue.value));
+    this.events.on(this.textValue, 'beforeinput', () => {
+      const item = this.editor.selectedItem;
+      const text = getEditableTextComponent(item);
+
+      this.beforeTextInput = item && text ? { item, source: text.text,
+        start: this.textValue.selectionStart, end: this.textValue.selectionEnd } : undefined;
     });
+    this.events.on(this.textValue, 'input', () => {
+      const selection = this.beforeTextInput;
+
+      this.beforeTextInput = undefined;
+      this.editor.editSelected('修改文本', item => {
+        const text = getEditableTextComponent(item);
+
+        if (!text) { return; }
+        if (item.type === spec.ItemType.richtext) {
+          const document = new RichTextDocument(text.text);
+
+          document.updateText(this.textValue.value, selection?.item === item && selection.source === text.text ? selection : undefined);
+          text.setText(document.markup);
+        } else {
+          text.setText(this.textValue.value);
+        }
+      });
+    });
+    for (const [id, attribute] of [['text-bold', 'b'], ['text-italic', 'i']] as const) {
+      this.events.on(element(id), 'mousedown', event => event.preventDefault());
+      this.events.on(element(id), 'click', () => this.editor.formatRichTextSelection(attribute));
+    }
     const fontSize = this.fields.fontSize;
 
     this.events.on(fontSize, 'change', () => {
       if (this.isValidNumber(fontSize) && fontSize.valueAsNumber > 0) {
-        this.editor.editSelected('修改字号', item => {
-          const text = item.getComponent(TextComponent);
+        if (this.editor.hasRichTextSelection) {
+          this.editor.formatRichTextSelection('size', fontSize.value);
 
-          text?.setFontSize(fontSize.valueAsNumber);
-          text?.setLineHeight(Math.round(fontSize.valueAsNumber * 1.35));
+          return;
+        }
+        this.editor.editSelected('修改字号', item => {
+          const text = getEditableTextComponent(item);
+
+          if (text instanceof RichTextComponent) {
+            text.setLayoutProperties({ fontSize: fontSize.valueAsNumber, lineHeight: fontSize.valueAsNumber * 1.35 });
+          } else {
+            text?.setFontSize(fontSize.valueAsNumber);
+            text?.setLineHeight(Math.round(fontSize.valueAsNumber * 1.35));
+          }
         });
       }
     });
@@ -287,7 +353,7 @@ export class InspectorPanel {
   private getFillColor (item: VFXItem | undefined): string | undefined {
     const frame = item?.getComponent(FrameComponent);
     const fill = this.getSolidPaint(frame?.fills);
-    const text = item?.getComponent(TextComponent);
+    const text = getEditableTextComponent(item);
     const channels = fill ? [fill.color.r, fill.color.g, fill.color.b] : text?.textStyle.textColor.slice(0, 3);
 
     return channels ? `#${channels.map(value => Math.round(value * 255).toString(16).padStart(2, '0')).join('')}` : undefined;

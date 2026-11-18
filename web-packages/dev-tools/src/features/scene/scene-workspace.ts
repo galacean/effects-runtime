@@ -1,4 +1,5 @@
 import type { Composition, Scene, VFXItem, spec } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { generateGUID } from '@galacean/effects';
 import { assetLibrary } from '../assets/asset-library';
 import { ASSET_ROOT } from '../assets/model/asset-types';
@@ -292,14 +293,15 @@ export class SceneWorkspace {
     if (!document) { return; }
     for (const component of item.components) {
       if (!isTextComponent(component)) { continue; }
+      if (component instanceof RichTextComponent) { component.ensureLayout(); }
       const after = document.serializer.read(component);
       const source = document.scene.components.find(entry => entry.id === after.data.id) as any;
 
       if (!source) { continue; }
       const before = { ...after, data: jsonData(after.data) };
 
-      before.data.options.text = source.options.text;
-      if (source.options.textHeight !== undefined) { before.data.options.textHeight = source.options.textHeight; }
+      // 从文档恢复全部旧约束，输入引起的自动尺寸变化也必须进入同一条记录。
+      before.data.options = jsonData(source.options);
       document.recordObject('Edit text', before, after);
     }
   }

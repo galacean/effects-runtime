@@ -1,5 +1,7 @@
 import type { VFXItem } from '@galacean/effects';
 import { FrameComponent, MouseButton, MouseButtonMask, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
+import { applyRichTextResize, createRichTextResizeSnapshot, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
@@ -32,6 +34,8 @@ import {
   isFramePlayerItem,
   isGeneratorPlayerItem,
   isGroupPlayerItem,
+  isRichTextPlayerItem,
+  isTextPlayerItem,
   isVideoGeneratorPlayerItem,
 } from '../../items';
 import {
@@ -108,6 +112,11 @@ type AnchoredResizeSession = {
   initialLocalSize?: Vector2,
   /** 文本排版快照。 */
   text?: TextResizeSnapshot,
+  /** 富文本基础属性及真实外框固定点。 */
+  richText?: RichTextResizeSnapshot & {
+    initialMatrix: Matrix4,
+    fixedPointRatio: Vector3,
+  },
   /** 画板已应用的累计位移。 */
   frameAppliedTranslation: Vector3,
   /** 本次元素采用整体缩放或排版尺寸调整。 */
@@ -542,9 +551,12 @@ export class ResizeSelectionGizmo extends Gizmo {
   refreshWireframeBySelectedItems () {
     // 步骤 1：解析选区类型并重置线框数据。
     const { selectedItems, scaleEnabled } = this;
-    const isSingleText = selectedItems.length === 1 && selectedItems[0].type === spec.ItemType.text;
+    const isSingleText = this.isSingleTextSelection();
     const transformEnabled = this.interactionEnabled && !this.hasLoadingSelection(selectedItems);
 
+    if (selectedItems.length === 1 && isRichTextPlayerItem(selectedItems[0])) {
+      selectedItems[0].getComponent(RichTextComponent).ensureLayout();
+    }
     this.iconType = selectedItems.length === 1
       ? this.getIconType(selectedItems[0])
       : ResizeSelectionIconType.NULL;
@@ -616,7 +628,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (selectedItems.length === 1 && transformEnabled) {
       const { scaleCircleSize } = this.config;
 
-      if (isSingleText) {
+      if (isSingleText && !selectedItems[0].getComponent(RichTextComponent)?.textLayout.useLegacyRichText) {
         const boxCorners = points;
 
         if (!boxCorners) {
@@ -802,7 +814,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const item = selectedItems.length === 1 ? selectedItems[0] : undefined;
     const hasOwnTitle = item?.type === spec.ItemType.null && !!item.name && !!item.getComponent(FrameComponent)?.titleRenderer?.visible;
 
-    if (infoShowEnabled && item && item.type !== spec.ItemType.text) {
+    if (infoShowEnabled && item && !this.isSingleTextSelection()) {
       this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
     }
   }
@@ -965,6 +977,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       case spec.ItemType.video:
         return ResizeSelectionIconType.VIDEO;
       case spec.ItemType.text:
+      case spec.ItemType.richtext:
         return ResizeSelectionIconType.TEXT;
       default:
         return ResizeSelectionIconType.IMAGE;
@@ -1021,7 +1034,8 @@ export class ResizeSelectionGizmo extends Gizmo {
 
   /** 是否为单个文字元素选区。 */
   private isSingleTextSelection (): boolean {
-    return this.selectedItems.length === 1 && this.selectedItems[0].type === spec.ItemType.text;
+    return this.selectedItems.length === 1
+      && (isTextPlayerItem(this.selectedItems[0]) || isRichTextPlayerItem(this.selectedItems[0]));
   }
 
   /**
@@ -1149,8 +1163,18 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     parentWorldToLocal.setPosition(new Vector3()).invert();
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
+    const richComponent = item.type === spec.ItemType.richtext ? item.getComponent(RichTextComponent) : undefined;
+    const fixedLocal = richComponent ? fixedPoint.clone().applyMatrix(itemMatrix.clone().invert()) : undefined;
+    const richText = richComponent && fixedLocal
+      ? {
+        ...createRichTextResizeSnapshot(richComponent, textResizeMode),
+        initialMatrix: itemMatrix.clone(),
+        fixedPointRatio: new Vector3(fixedLocal.x / (item.transform.size.x || 1),
+          fixedLocal.y / (item.transform.size.y || 1), 0),
+      }
+      : undefined;
     const frame = isFramePlayerItem(item);
-    const resizeOrigin = textComponent || frame
+    const resizeOrigin = textComponent || richText || frame
       ? initialHandle.clone().add(fixedPoint).multiply(0.5)
       : transformOrigin.clone();
     const text = textComponent
@@ -1184,8 +1208,9 @@ export class ResizeSelectionGizmo extends Gizmo {
       initialWorldSize: frame ? getItemWorldSize(item) : undefined,
       initialLocalSize: frame ? new Vector2().copyFrom(item.transform.size) : undefined,
       text,
+      richText,
       frameAppliedTranslation: new Vector3(),
-      resizeBehavior: this.config.resolveResizeBehavior?.(item.getInstanceId()) ?? 'scale',
+      resizeBehavior: richText ? 'scale' : this.config.resolveResizeBehavior?.(item.getInstanceId()) ?? 'scale',
       externalTranslation: new Vector3(),
     };
   }
@@ -1561,8 +1586,9 @@ export class ResizeSelectionGizmo extends Gizmo {
     const resizeAxis = getResizeAxis(resizeBehavior);
     const isFreeScaleByDefault = isFramePlayerItem(session.item) || resizeBehavior === 'resize';
     const isShiftFreeScale = isFreeScaleByDefault ? !event.shiftPressed : event.shiftPressed;
-    const lockAspectRatio = session.text
-      ? session.text.mode === 'font'
+    const textResize = session.text ?? session.richText;
+    const lockAspectRatio = textResize
+      ? textResize.mode === 'font'
       : resizeAxis === 'both' && this.isLockScale && !isShiftFreeScale;
     const resize = calculateAnchoredResize(session.geometry, handleWorld, {
       handleKind: session.handleKind,
@@ -1583,7 +1609,23 @@ export class ResizeSelectionGizmo extends Gizmo {
    */
   private applyAnchoredResize (session: AnchoredResizeSession, resize: AnchoredResizeResult): void {
     // 步骤 1：读取按下时冻结的元素属性。
-    const { item, initialScale, initialWorldSize, initialLocalSize, text } = session;
+    const { item, initialScale, initialWorldSize, initialLocalSize, text, richText } = session;
+
+    if (richText) {
+      applyRichTextResize(richText, resize.totalScalar.x, resize.totalScalar.y);
+      const { fixedPointRatio, initialMatrix } = richText;
+      const { size } = item.transform;
+      // 重排、尺寸钳制以及越过固定点后，使用真实外框反算固定点，scale 始终不参与写入。
+      const fixedAfterResize = new Vector3(
+        fixedPointRatio.x * size.x * (resize.totalScalar.x < 0 ? -1 : 1),
+        fixedPointRatio.y * size.y * (resize.totalScalar.y < 0 ? -1 : 1),
+        0,
+      ).applyMatrix(initialMatrix);
+
+      this.setResizePosition(session, session.geometry.fixedPoint.clone().subtract(fixedAfterResize));
+
+      return;
+    }
 
     if (text) {
       // 步骤 2：文本宽度模式更新排版宽度并补齐剩余缩放。

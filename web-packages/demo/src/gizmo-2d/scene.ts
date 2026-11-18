@@ -1,5 +1,6 @@
 import { CompositionComponent, EventEmitter, FrameComponent, PlayState, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
 import type { Composition, Player, VFXItem } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
@@ -13,7 +14,7 @@ const EFFECTS_URL = 'https://mdn.alipayobjects.com/mars/afts/file/A*sq53SZTqNQkA
 export interface DemoItem {
   item: VFXItem,
   name: string,
-  kind: 'Frame' | 'Text' | 'Sprite' | MediaKind,
+  kind: 'Frame' | 'Text' | 'RichText' | 'Sprite' | MediaKind,
   status?: 'loading' | 'ready' | 'error',
 }
 
@@ -37,9 +38,21 @@ interface TextOptions {
   id?: string,
 }
 
+/** 富文本创建参数，源码、默认样式与布局约束单独表达。 */
+interface RichTextOptions {
+  markup?: string,
+  defaultFontSize?: number,
+  maxTextWidth?: number,
+  autoResize?: spec.TextSizeMode,
+  name?: string,
+  parent?: VFXItem,
+  id?: string,
+}
+
 /** 管理示例场景、元素工厂和图层登记，不依赖编辑器 DOM 或工具状态。 */
 export class DemoScene extends EventEmitter<SceneEvents> {
   private readonly items: DemoItem[] = [];
+  private richTextCount = 0;
   private frameCount = 0;
   private textCount = 0;
   private videoCount = 0;
@@ -93,7 +106,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     });
 
     this.createText([0, 2.45], { name: 'Text 1 · 标题', value: '2D Gizmo Playground', fontSize: 28, width: 640, parent: frame.item });
-    this.createText([0, -2.65], { name: 'Text 2 · 可编辑说明', value: '拖动、缩放、旋转；双击修改文字。', fontSize: 16, width: 600, parent: frame.item });
+    this.createRichText([0, -2.65], { name: 'RichText 1 · 可编辑说明', markup: '双击编辑 <b>富文本</b>，支持 <color=#2563eb>局部样式</color>。', defaultFontSize: 16, maxTextWidth: 600, parent: frame.item });
     this.createText([-1.95, 0.05], { name: 'Video · 说明', value: 'Video · 视频', fontSize: 14, width: 300, parent: frame.item });
     this.createText([1.95, 0.05], { name: 'Effects · 说明', value: 'Effects · 动效', fontSize: 14, width: 300, parent: frame.item });
     this.createFrameExamples();
@@ -248,6 +261,40 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     const scale = item.transform.size.x / viewSize.x;
 
     item.children[0]?.transform.setScale(scale, scale, 1);
+  }
+
+  createRichText (position: Point2D, options: RichTextOptions = {}): DemoItem {
+    const name = options.name ?? `RichText ${++this.richTextCount}`;
+    const fontSize = options.defaultFontSize ?? 24;
+    const item = DefaultVFXItems.createRichText(this.composition, null, name);
+    const rich = item.getComponent(RichTextComponent);
+
+    rich.fromData({
+      id: rich.getInstanceId(), dataType: spec.DataType.RichTextComponent,
+      item: { id: item.getInstanceId() }, renderer: {},
+      options: {
+        text: options.markup ?? '输入文字',
+        fontSize,
+        fontFamily: 'sans-serif',
+        lineHeight: Math.round(fontSize * 1.35),
+        maxTextWidth: options.maxTextWidth ?? 200,
+        wrapEnabled: true,
+        autoResize: options.autoResize ?? spec.TextSizeMode.autoHeight,
+        textVerticalAlign: spec.TextVerticalAlign.top,
+        textOverflow: spec.TextOverflow.visible,
+        textColor: [0.12, 0.12, 0.12, 1],
+      },
+    });
+    const data: DemoItem = { item, name, kind: 'RichText' };
+
+    if (options.parent) { item.setParent(options.parent); }
+    if (options.id) { item.setInstanceId(options.id); }
+    item.setPosition(...position, 0);
+    rich.setFontScale(4);
+    rich.priority = this.items.length;
+    this.register(data);
+
+    return data;
   }
 
   createText (position: Point2D, options: TextOptions = {}): DemoItem {
