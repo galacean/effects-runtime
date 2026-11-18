@@ -119,7 +119,6 @@ export class SceneItemOperations {
       beforeRemove?.();
       for (const item of [this.document.composition.sceneRoot, ...this.document.composition.items]) {
         for (const component of item.getComponents(CompositionComponent)) {
-          component.items = component.items.filter(item => !deleting.has(item));
           const timeline = component.timelineAsset;
 
           for (const track of timeline?.flattenedTracks ?? []) {

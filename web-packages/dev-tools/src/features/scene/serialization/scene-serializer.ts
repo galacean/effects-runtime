@@ -229,7 +229,7 @@ export class SceneSerializer {
     }
     if (object instanceof Component && object.item) { data.item = this.reference(object.item); }
     if (object instanceof CompositionComponent) {
-      data.items = object.items.filter(item => item.definition.id).map(item => this.reference(item));
+      delete data.items;
       const timeline = object.timelineAsset;
 
       if (timeline) {

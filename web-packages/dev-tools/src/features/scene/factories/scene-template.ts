@@ -2,9 +2,9 @@ import { generateGUID, spec } from '@galacean/effects';
 
 export function createEmptyScene (): spec.JSONScene {
   const compositionId = generateGUID(), componentId = generateGUID(), timelineId = generateGUID();
-  const component: spec.CompositionComponentData = {
+  const component: Omit<spec.CompositionComponentData, 'items'> = {
     id: componentId, dataType: spec.DataType.CompositionComponent, item: { id: compositionId },
-    items: [], timelineAsset: { id: timelineId }, sceneBindings: [],
+    timelineAsset: { id: timelineId }, sceneBindings: [],
   };
   const timeline: spec.TimelineAssetData = { id: timelineId, dataType: spec.DataType.TimelineAsset, tracks: [] };
 

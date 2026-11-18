@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, PlayState } from '../plugins';
-import { VFXItem } from '../vfx-item';
 import type { EffectsObject } from '../effects-object';
 import { effectsClass } from '../decorators';
 import { EventEmitter } from '../events';
@@ -32,7 +31,6 @@ export type CompositionComponentEvent = {
  */
 @effectsClass('CompositionComponent')
 export class CompositionComponent extends Component {
-  items: VFXItem[] = [];  // 场景的所有元素
   /**
    * @internal
    */
@@ -305,12 +303,7 @@ export class CompositionComponent extends Component {
   }
 
   /**
-   * 设置当前合成子元素的渲染顺序
-   *
-   * 1. 按场景树递归（DFS）顺序遍历所有子元素，得到默认排序队列
-   * 2. 收集队列中属于 masterTracks 绑定的 item 及其坑位索引
-   * 3. 按 masterTracks 的顺序重新分配这些坑位，非 track 绑定的元素坑位不变
-   * 4. 最终按调整后的队列依次分配 renderOrder
+   * 按时间轴主轨道顺序设置绑定元素的渲染顺序
    *
    * @internal
    */
@@ -320,32 +313,7 @@ export class CompositionComponent extends Component {
     if (!timelineInstance) {
       return startOrder;
     }
-    const orderedBoundItems = timelineInstance.orderedBoundItems;
-
-    // 1. 场景树 DFS 顺序收集直接子元素
-    const sceneOrder: VFXItem[] = [];
-
-    this.collectChildren(this.item, sceneOrder);
-
-    // 2. 构建 masterTracks 绑定的 item 集合
-    const trackedItems = new Set(orderedBoundItems);
-
-    // 3. 收集 tracked items 在场景队列中的坑位索引
-    const slotIndices: number[] = [];
-
-    for (let i = 0; i < sceneOrder.length; i++) {
-      if (trackedItems.has(sceneOrder[i])) {
-        slotIndices.push(i);
-      }
-    }
-
-    // 4. 将编译时缓存的有序绑定元素填回原坑位
-    for (let i = 0; i < slotIndices.length && i < orderedBoundItems.length; i++) {
-      sceneOrder[slotIndices[i]] = orderedBoundItems[i];
-    }
-
-    // 5. 分配 renderOrder
-    for (const child of sceneOrder) {
+    for (const child of timelineInstance.orderedBoundItems) {
       const renderOrder = startOrder++;
 
       // 用户手动设置的 renderOrder 优先级最高，覆盖默认顺序
@@ -363,35 +331,9 @@ export class CompositionComponent extends Component {
     return startOrder;
   }
 
-  /**
-   * 递归收集场景树中的直接子元素（DFS 前序）
-   */
-  private collectChildren (item: VFXItem, result: VFXItem[]) {
-    for (const child of item.children) {
-      result.push(child);
-
-      // 预合成元素内部的渲染顺序由其自身的 CompositionComponent 分配
-      if (!child.getComponent(CompositionComponent)) {
-        this.collectChildren(child, result);
-      }
-    }
-  }
-
-  override fromData (data: spec.CompositionComponentData): void {
+  override fromData (data: Omit<spec.CompositionComponentData, 'items'>): void {
     super.fromData(data);
 
-    if (data.items !== undefined) {
-      const items: VFXItem[] = [];
-
-      for (let i = 0; i < data.items.length; i++) {
-        const item = this.findObject(data.items[i], VFXItem);
-
-        if (item) {
-          items.push(item);
-        }
-      }
-      this.items = items;
-    }
     if (data.timelineAsset !== undefined) {
       const timelineAsset = this.findObject<TimelineAsset>(data.timelineAsset);
 

@@ -63,7 +63,7 @@ export function createSceneItemData (entry: SceneItemOptions, duration: number):
     const timeline = { id: generateGUID(), dataType: spec.DataType.TimelineAsset, tracks: [] };
 
     objects.push(timeline);
-    components.push(component(spec.DataType.CompositionComponent, { items: [], sceneBindings: [], timelineAsset: { id: timeline.id } }));
+    components.push(component(spec.DataType.CompositionComponent, { sceneBindings: [], timelineAsset: { id: timeline.id } }));
   } else if (entry.type !== spec.ItemType.null) {
     throw new Error('Unsupported scene item type: ' + entry.type);
   }
