@@ -11,6 +11,7 @@ import type { Engine } from '../engine';
 import { loadImage, loadVideo } from '../downloader';
 import { generateGUID, throwDestroyedError } from '../utils';
 import { logger } from '../utils/logger';
+import { VideoFrameTracker } from './video-frame-tracker';
 
 let seed = 1;
 
@@ -44,6 +45,7 @@ export class Texture extends Asset {
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
   private ownedVideo?: HTMLVideoElement;
+  private videoFrameTracker?: VideoFrameTracker;
 
   /**
    * 创建一个新的 Texture 对象。
@@ -141,10 +143,51 @@ export class Texture extends Asset {
     return this.height || 0;
   }
 
-  uploadCurrentVideoFrame (): void {
-    if (this.source.sourceType === TextureSourceType.video && this.source.video && this.gpuTexture?.isInitialized) {
-      this.update({ video: this.source.video });
+  /**
+   * Refreshes the current video frame through the texture backend.
+   * @param force - Bypass new-frame detection for seeks and other immediate refreshes.
+   * @returns Whether a ready frame was submitted to the backend.
+   */
+  uploadCurrentVideoFrame (force = false): boolean {
+    if (this.destroyed || this.source.sourceType !== TextureSourceType.video || !this.source.video || !this.gpuTexture?.isInitialized) {
+      return false;
     }
+    const video = this.source.video;
+    const tracker = this.getVideoFrameTracker(video);
+
+    if (video.readyState < 2 || video.seeking) {
+      return false;
+    }
+    if (!force && this.width === video.videoWidth && this.height === video.videoHeight && !tracker.shouldUpload()) {
+      return false;
+    }
+    this.update({ video });
+
+    return true;
+  }
+
+  private getVideoFrameTracker (video: HTMLVideoElement): VideoFrameTracker {
+    if (this.videoFrameTracker?.video !== video) {
+      this.disposeVideoFrameTracker();
+      this.videoFrameTracker = new VideoFrameTracker(video);
+    }
+
+    return this.videoFrameTracker;
+  }
+
+  private markVideoFrameUploaded (): void {
+    if (this.source.sourceType === TextureSourceType.video && this.source.video) {
+      const { video } = this.source;
+
+      this.width = video.videoWidth;
+      this.height = video.videoHeight;
+      this.getVideoFrameTracker(video).markUploaded();
+    }
+  }
+
+  private disposeVideoFrameTracker (): void {
+    this.videoFrameTracker?.dispose();
+    this.videoFrameTracker = undefined;
   }
 
   /**
@@ -175,6 +218,7 @@ export class Texture extends Asset {
    * @param options - 创建 Texture 选项
    */
   updateSource (options: TextureSourceOptions): void {
+    this.disposeVideoFrameTracker();
     this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
@@ -187,6 +231,7 @@ export class Texture extends Asset {
       return;
     }
     this.gpuTexture.update(this.source, options);
+    this.markVideoFrameUploaded();
   }
 
   /**
@@ -201,6 +246,7 @@ export class Texture extends Asset {
     const gpuTexture = this.getGPUTexture();
 
     gpuTexture.initialize(this.source);
+    this.markVideoFrameUploaded();
     this.release();
   }
 
@@ -214,9 +260,11 @@ export class Texture extends Asset {
 
   restore (): void {
     this.getGPUTexture().restore(this.source);
+    this.markVideoFrameUploaded();
   }
 
   override fromData (data: spec.EffectsObjectData): void {
+    this.disposeVideoFrameTracker();
     super.fromData(data);
     this.source = this.assembleOptions(data as unknown as TextureSourceOptions);
     this.sourceType = this.source.sourceType;
@@ -262,6 +310,7 @@ export class Texture extends Asset {
   }
 
   override dispose (): void {
+    this.disposeVideoFrameTracker();
     this.gpuTexture?.dispose();
     if (this.ownedVideo) {
       this.ownedVideo.pause();

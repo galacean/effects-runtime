@@ -4,6 +4,7 @@ import { deserializeAssets } from '../../../platform/effects-runtime/deserialize
 import type { AssetEntry, AssetPayload } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
 import { objectReferences, validateObjectAsset, validateObjectAssetReferences } from '../model/object-asset-data';
+import { notifyRuntimeAssetChanged } from './runtime-asset-changes';
 
 interface ObjectSource {
   projectId(): string,
@@ -117,6 +118,7 @@ export class AssetObjectCache {
           } else if (object?.isRegistered) {
             idsMapping.set(definition.id, object.getInstanceId());
             SerializationHelper.deserialize(definition, object);
+            notifyRuntimeAssetChanged(object);
           } else {
             object = effectsObjectServer.findObject<EffectsObject>({ id: definition.id });
           }
@@ -144,6 +146,7 @@ export class AssetObjectCache {
 
       if (!object) { throw new Error('The asset could not be loaded: ' + entry.name); }
       object.definition.name = entry.name; Reflect.set(object, 'name', entry.name);
+      notifyRuntimeAssetChanged(object);
       let loaded = this.loaded.get(engine);
 
       if (!loaded) { loaded = new Map(); this.loaded.set(engine, loaded); }

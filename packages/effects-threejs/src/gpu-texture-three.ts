@@ -56,8 +56,12 @@ export class GPUTextureThree extends GPUTexture {
 
       return;
     }
-    // VideoTexture already refreshes its image through the host renderer.
+    // The host renderer performs the upload, including forced refreshes after a seek.
     if (source.sourceType === TextureSourceType.video && options !== source) {
+      this.texture.needsUpdate = true;
+      this.width = source.video.videoWidth;
+      this.height = source.video.videoHeight;
+
       return;
     }
     this.initialize({ ...source, ...options } as TextureSourceOptions);

@@ -9,13 +9,14 @@ describe('core/engine/input-server', () => {
   function createEngine (options: EngineOptions = {}) {
     const engine = Engine.create(document.createElement('canvas'), { manualRender: true, ...options });
 
+    document.body.appendChild(engine.canvas);
     engines.push(engine);
 
     return engine;
   }
 
   afterEach(() => {
-    engines.splice(0).forEach(engine => engine.dispose());
+    engines.splice(0).forEach(engine => { engine.canvas.remove(); engine.dispose(); });
   });
 
   it('isolates input per engine and preserves composition references and options', () => {

@@ -11,6 +11,7 @@ import {
   effectsClassStore, spec,
 } from '@galacean/effects';
 import { EditorHistory, historyBytes } from '../../framework/history/editor-history';
+import type { SceneDocument } from '../scene/document/scene-document';
 import type { SequenceChannelEditorData, SequenceEditorData } from '../scene/document/scene-types';
 import { getEditorRotation } from '../scene/operations/editor-transform';
 import { sceneWorkspace } from '../scene/scene-workspace';
@@ -21,6 +22,7 @@ import { encodePositionAxes, PositionPathModel } from './spatial-position';
 import { findSequenceTimeline, sampleSequencePreview } from './sequencer-preview';
 import type { SequenceProperty } from './sequencer-properties';
 import { createPropertyClip, createPropertyTrack, initialPropertyCurve, initializeProperty, propertyClipKind, propertyTrackKind, propertyValue, resolvePropertyTarget, sequenceProperties, vectorValues } from './sequencer-properties';
+import { SequencerIdSet, SequencerKeySelection } from './sequencer-selection';
 
 type Payload = Record<string, unknown>;
 type TransformData = Omit<TransformPlayableAsset['transformAnimationData'], 'positionOverLifetime'> & {
@@ -76,6 +78,20 @@ interface SectionSnapshot {
   position?: PositionPathSnapshot,
   channels: { channel: SequenceChannel, keys: SequenceKey[], defaultValue: number, references?: Map<string, EffectsObject | null> }[],
 }
+interface SectionMove {
+  section: SequenceSection,
+  start: number,
+  id: string,
+  savedStart?: number,
+}
+interface SectionEdits {
+  kind: 'edit',
+  label: string,
+  before: SectionSnapshot[],
+  added: SequenceSection[],
+  changed: boolean,
+}
+type SectionDrag = { kind: 'move', moves: SectionMove[] } | SectionEdits;
 export interface SequenceSnapshot {
   roots: TrackAsset[],
   tracks: TrackSnapshot[],
@@ -117,20 +133,36 @@ export class SequencerDocument {
   readonly sections = new Map<TimelineClip, SequenceSection>();
   readonly locked = new Set<string>();
   readonly muted = new Set<string>();
-  readonly selectedTracks = new Set<string>();
-  readonly selectedSections = new Set<string>();
-  readonly selectedKeys = new Set<string>();
+  readonly selectedTracks = new SequencerIdSet();
+  readonly selectedSections = new SequencerIdSet();
+  readonly selectedKeys = new SequencerKeySelection();
   activeChannel = '';
   readonly curveTracks = new Set<string>();
   readonly history = new EditorHistory();
-  private transaction?: { label: string, before: SequenceSnapshot, changed: boolean, affectsContent: boolean };
+  private transaction?: { label: string, before: SequenceSnapshot, changed: boolean, affectsContent: boolean, deferred?: boolean };
+  private sectionDrag?: SectionDrag;
   private unregisterEditorState?: () => void;
+  private unregisterSceneChanges?: () => void;
   private keyClipboard: KeyClipboard[] = [];
   private sectionClipboard: SectionClipboard[] = [];
   private trackClipboard: TrackClipboard[] = [];
   private classNames = new Map<Function, string>();
+  private structureDirty = true;
+  private structureVersion = 0;
+  private sectionList: SequenceSection[] = [];
+  private readonly sectionsById = new Map<string, SequenceSection>();
+  private readonly tracksById = new Map<string, TrackAsset>();
+  private readonly boundTrackLabels = new Map<TrackAsset, string>();
+  private readonly sectionOrder = new Map<SequenceSection, number>();
+  private readonly changedKeySections = new Set<SequenceSection>();
+  private readonly sectionVersions = new WeakMap<SequenceSection, number>();
+  private samplingPreview = false;
   private previewDirty = false;
-  private readonly onTimelineChanged = () => { this.previewDirty = true; };
+  private previewPending = false;
+  private readonly onTimelineChanged = () => {
+    // Sampling rebuilds the playable graph, and may temporarily hide muted tracks.
+    if (!this.samplingPreview) { this.invalidateStructure(); this.previewDirty = true; }
+  };
   readonly timeline: TimelineAsset;
   revision = 0;
 
@@ -141,10 +173,19 @@ export class SequencerDocument {
     this.timeline = timeline;
     timeline.on('changed', this.onTimelineChanged);
     this.sync();
+    this.unregisterSceneChanges = this.sceneDocument?.subscribe(() => {
+      if (this.structureDirty) { return; }
+      for (const [track, label] of this.boundTrackLabels) {
+        if (this.trackLabel(track) === label) { continue; }
+        this.invalidateStructure();
+
+        return;
+      }
+    });
     this.unregisterEditorState = this.sceneDocument?.registerEditorState<SequenceEditorState>({
       read: () => ({ ...this.selection(), locked: Array.from(this.locked), muted: Array.from(this.muted) }),
       restore: state => {
-        this.transaction = undefined;
+        this.transaction = undefined; this.sectionDrag = undefined;
         this.restoreSelection(state);
         this.locked.clear(); state.locked.forEach(id => this.locked.add(id));
         this.muted.clear(); state.muted.forEach(id => this.muted.add(id));
@@ -163,45 +204,108 @@ export class SequencerDocument {
   get canUndo (): boolean { return this.sceneDocument?.canUndo ?? this.history.canUndo; }
   get canRedo (): boolean { return this.sceneDocument?.canRedo ?? this.history.canRedo; }
   get hasClipboard (): boolean { return this.keyClipboard.length > 0 || this.sectionClipboard.length > 0 || this.trackClipboard.length > 0; }
+  get structureRevision (): number {
+    this.syncStructure();
+
+    return this.structureVersion;
+  }
+
+  sectionRevision (section: SequenceSection): number { return this.sectionVersions.get(section) ?? 0; }
 
   sync (): void {
+    this.syncStructure();
+    this.syncKeySelection();
+    if (this.previewPending || this.previewDirty && this.muted.size) { this.samplePreview(); }
+    this.previewDirty = false;
+  }
+
+  invalidateStructure (): void { this.structureDirty = true; }
+
+  private syncStructure (): void {
+    if (!this.structureDirty) { return; }
+    this.structureDirty = false; this.structureVersion++;
+    this.sectionList = []; this.sectionsById.clear(); this.tracksById.clear(); this.sectionOrder.clear(); this.boundTrackLabels.clear();
     for (const track of this.tracks) {
+      this.tracksById.set(track.getInstanceId(), track);
+      if (track instanceof ObjectBindingTrack && !track.name) { this.boundTrackLabels.set(track, this.trackLabel(track)); }
       for (const clip of track.getClips()) {
-        if (!this.sections.has(clip)) { this.sections.set(clip, this.readSection(clip, track)); }
+        const section = this.sections.get(clip) ?? this.readSection(clip, track);
+
+        this.sections.set(clip, section); section.track = track;
+        this.sectionsById.set(clip.getInstanceId(), section);
+        this.sectionOrder.set(section, this.sectionList.length); this.sectionList.push(section);
       }
     }
-    const sections = this.allSections();
-    const live = new Set(sections.map(section => section.clip.getInstanceId()));
-    const keys = new Set(sections.flatMap(section => section.channels.flatMap(channel => channel.keys.map(key => key.id))));
-    const tracks = new Set(this.tracks.map(track => track.getInstanceId()));
+    for (const [clip, section] of this.sections) { if (!this.sectionOrder.has(section)) { this.sections.delete(clip); } }
+    for (const id of this.selectedSections) { if (!this.sectionsById.has(id)) { this.selectedSections.delete(id); } }
+    for (const [id, item] of this.selectedKeys) { if (!this.sectionOrder.has(item.section)) { this.selectedKeys.delete(id); } }
+    for (const id of this.selectedTracks) { if (!this.tracksById.has(id)) { this.selectedTracks.delete(id); } }
+    for (const id of this.muted) { if (!this.tracksById.has(id)) { this.muted.delete(id); } }
+  }
 
-    for (const id of this.selectedSections) { if (!live.has(id)) { this.selectedSections.delete(id); } }
-    for (const id of this.selectedKeys) { if (!keys.has(id)) { this.selectedKeys.delete(id); } }
-    for (const id of this.selectedTracks) { if (!tracks.has(id)) { this.selectedTracks.delete(id); } }
-    for (const id of this.muted) { if (!tracks.has(id)) { this.muted.delete(id); } }
-    if (this.previewDirty && this.muted.size) { sampleSequencePreview(this.component, this.timeline, this.muted); }
-    this.previewDirty = false;
+  private syncKeySelection (): void {
+    if (!this.changedKeySections.size) { return; }
+    const affected = new Map<SequenceChannel, KeySelection[]>();
+
+    for (const item of this.selectedKeys.values()) {
+      if (!this.changedKeySections.has(item.section)) { continue; }
+      if (!item.section.channels.includes(item.channel)) { this.selectedKeys.delete(item.key.id); continue; }
+      let items = affected.get(item.channel);
+
+      if (!items) { items = []; affected.set(item.channel, items); }
+      items.push(item);
+    }
+    for (const [channel, items] of affected) {
+      const keys = new Map(channel.keys.map(key => [key.id, key]));
+
+      for (const item of items) {
+        const key = keys.get(item.key.id);
+
+        if (!key) { this.selectedKeys.delete(item.key.id); } else if (key !== item.key) { this.selectedKeys.select({ ...item, key }); }
+      }
+    }
+    this.changedKeySections.clear();
+  }
+
+  private samplePreview (): void {
+    this.previewPending = false;
+    this.samplingPreview = true;
+    try { sampleSequencePreview(this.component, this.timeline, this.muted); } finally { this.samplingPreview = false; }
   }
 
   dispose (): void {
     this.unregisterEditorState?.();
+    this.unregisterSceneChanges?.();
     this.history.clear('The timeline editor was closed.');
     this.timeline.off('changed', this.onTimelineChanged);
     if (this.muted.size && this.component.isRegistered) { sampleSequencePreview(this.component, this.timeline, new Set()); }
   }
 
-  allSections (): SequenceSection[] {
-    return this.tracks.flatMap(track => track.getClips().map(clip => this.sections.get(clip)!)).filter(Boolean);
+  allSections (): readonly SequenceSection[] {
+    this.syncStructure();
+
+    return this.sectionList;
   }
 
   selectedKeyItems (): KeySelection[] {
-    return this.allSections().flatMap(section => section.channels.flatMap(channel =>
-      channel.keys.filter(key => this.selectedKeys.has(key.id)).map(key => ({ section, channel, key })),
-    ));
+    this.syncStructure(); this.syncKeySelection();
+
+    return Array.from(this.selectedKeys.values()).sort((a, b) =>
+      this.sectionOrder.get(a.section)! - this.sectionOrder.get(b.section)! ||
+      a.section.channels.indexOf(a.channel) - b.section.channels.indexOf(b.channel) || a.key.time - b.key.time);
   }
 
   get selectedSectionItems (): SequenceSection[] {
-    return this.allSections().filter(section => this.selectedSections.has(section.clip.getInstanceId()));
+    this.syncStructure();
+
+    return Array.from(this.selectedSections, id => this.sectionsById.get(id)!).filter(Boolean)
+      .sort((a, b) => this.sectionOrder.get(a)! - this.sectionOrder.get(b)!);
+  }
+
+  get selectedTrackItems (): TrackAsset[] {
+    this.syncStructure();
+
+    return Array.from(this.selectedTracks, id => this.tracksById.get(id)!).filter(Boolean);
   }
 
   boundItem (track: TrackAsset): VFXItem | undefined {
@@ -364,7 +468,7 @@ export class SequencerDocument {
       let key = channel.keys.find(key => Math.abs(key.time - time) < 1e-7);
 
       if (!key) { key = makeKey(time, 0); channel.keys.push(key); channel.keys.sort((a, b) => a.time - b.time); }
-      this.selectedKeys.add(key.id);
+      this.selectedKeys.select({ section, channel, key });
       channel.references!.set(key.id, value); this.write(section);
     });
   }
@@ -387,6 +491,7 @@ export class SequencerDocument {
         section.position = undefined; section.channelState.delete('Location');
         this.write(section);
       }
+      this.invalidateStructure();
     });
   }
 
@@ -422,6 +527,7 @@ export class SequencerDocument {
   }
 
   begin (label: string, affectsContent = true, initialTransforms?: ReadonlyMap<VFXItem, number[]>): void {
+    if (this.sectionDrag) { this.commit(); }
     if (!this.transaction) {
       this.transaction = { label, before: this.snapshot(), changed: false, affectsContent };
       for (const transform of this.transaction.before.transforms) {
@@ -436,21 +542,74 @@ export class SequencerDocument {
     }
   }
 
+  beginDrag (label: string, sections: SequenceSection[], mode: 'move' | 'edit' | 'duplicate' = 'edit'): void {
+    if (this.transaction || this.sectionDrag) { return; }
+    const scene = this.sceneDocument;
+
+    if (scene && sections.length) {
+      const definitions = new Map(scene.scene.miscs.map(entry => [entry.id, entry as { start?: number, clips?: spec.DataPath[] }]));
+      const targets = Array.from(new Set(sections), section => ({ section, id: scene.serializer.id(section.clip) }));
+      const authored = mode === 'move' ? undefined : this.savedEditorData();
+      const canEdit = targets.every(({ section, id }) => definitions.has(id) && (mode !== 'duplicate' ||
+        Array.isArray(definitions.get(scene.serializer.id(section.track))?.clips)));
+
+      if (canEdit && (!authored || authored.version === 3)) {
+        if (mode === 'move') {
+          const moves = targets.map(({ section, id }) => ({ section, id, start: section.clip.start, savedStart: definitions.get(id)?.start }));
+
+          this.sectionDrag = { kind: 'move', moves };
+        } else {
+          const before = mode === 'edit' ? targets.map(({ section }) => this.snapshotSection(section)) : [];
+
+          this.sectionDrag = { kind: 'edit', label, before, added: [], changed: false };
+        }
+
+        scene.begin(label, false);
+        scene.setScopeActive(this, true);
+
+        return;
+      }
+    }
+    const before = this.snapshot();
+
+    this.transaction = { label, before, changed: false, affectsContent: true, deferred: true };
+    scene?.beginSequence(this, label, before, false);
+  }
+
   changed (): void {
     if (this.transaction) { this.transaction.changed = true; }
+    if (this.sectionDrag?.kind === 'edit') { this.sectionDrag.changed = true; }
     this.revision++;
+    if (this.sectionDrag || this.transaction?.deferred) {
+      this.previewPending = true;
+
+      return;
+    }
     if (this.transaction?.affectsContent) { this.sceneDocument?.changedSequence(this); }
-    sampleSequencePreview(this.component, this.timeline, this.muted);
+    this.samplePreview();
     this.previewDirty = false;
   }
 
   commit (): void {
+    const scene = this.sceneDocument;
+    const drag = this.sectionDrag;
     const transaction = this.transaction;
 
-    this.transaction = undefined;
-    if (this.sceneDocument) {
-      if (transaction?.changed && transaction.affectsContent) { this.sceneDocument.changedSequence(this); }
-      this.sceneDocument.setScopeActive(this, false);
+    if (scene && drag) {
+      try {
+        if (drag.kind === 'move') { this.commitSectionMoves(scene, drag.moves); } else if (drag.changed) { this.commitSectionEdits(scene, drag); }
+      } catch (error) {
+        this.cancel();
+        throw error;
+      }
+    }
+    this.sectionDrag = undefined; this.transaction = undefined;
+    if (scene) {
+      if (transaction?.changed && transaction.affectsContent) {
+        if (transaction.deferred) { scene.beginSequence(this, transaction.label, transaction.before); }
+        scene.changedSequence(this);
+      }
+      scene.setScopeActive(this, false);
 
       return;
     }
@@ -463,12 +622,124 @@ export class SequencerDocument {
   }
 
   cancel (): void {
-    const before = this.transaction?.before;
+    const scene = this.sceneDocument;
+    const drag = this.sectionDrag;
+    const transaction = this.transaction;
 
-    this.transaction = undefined;
-    if (before) {
-      if (this.sceneDocument) { this.sceneDocument.cancelSequence(this); } else { this.restore(before); }
+    this.sectionDrag = undefined; this.transaction = undefined;
+    if (drag?.kind === 'move') {
+      drag.moves.forEach(move => this.moveSection(move.section, move.start));
+    } else if (drag) {
+      if (drag.changed) { drag.before.forEach(state => this.restoreSection(state)); }
+      for (const section of drag.added) {
+        const clips = section.track.getClips();
+        const index = clips.indexOf(section.clip);
+
+        if (index >= 0) { clips.splice(index, 1); }
+      }
+      if (drag.added.length) { this.timeline.markAsChanged(); }
     }
+    if (drag) { scene?.cancel(); }
+    if (transaction) {
+      if (!scene || transaction.deferred && transaction.changed) { this.restore(transaction.before); }
+      scene?.cancelSequence(this);
+    }
+  }
+
+  private commitSectionMoves (scene: SceneDocument, moves: SectionMove[]): void {
+    const changed = moves.filter(move => move.section.clip.start !== move.start).map(move => ({ ...move, end: move.section.clip.start }));
+
+    if (!changed.length) { return; }
+    const apply = (redo: boolean): void => {
+      const definitions = new Map(scene.scene.miscs.map(entry => [entry.id, entry as { start?: number }]));
+
+      for (const move of changed) {
+        const definition = definitions.get(move.id);
+        const start = redo ? move.end : move.savedStart;
+
+        if (!definition) { throw new Error('The moved section is missing from the saved timeline.'); }
+        if (start === undefined) { delete definition.start; } else { definition.start = start; }
+        this.moveSection(move.section, redo ? move.end : move.start);
+      }
+    };
+
+    scene.applyContentMutation('Move sections', {
+      undo: () => apply(false), redo: () => apply(true),
+      valid: () => changed.every(move => move.section.clip.isRegistered),
+      bytes: historyBytes(changed.map(({ id, start, end, savedStart }) => [id, start, end, savedStart])),
+    });
+  }
+
+  private commitSectionEdits (scene: SceneDocument, edits: SectionEdits): void {
+    const sections = [...edits.before.map(state => state.section), ...edits.added];
+    const ids = sections.map(section => scene.serializer.id(section.clip));
+    const definitions = new Map(scene.scene.miscs.map(entry => [entry.id, entry]));
+    const afterAssets = new Map<string, spec.EffectsObjectData | undefined>();
+    const clipData = scene.serializer.normalize(sections.map(section => this.exportSection(section)));
+    const timelineId = scene.serializer.id(this.timeline);
+    const hadSequences = !!scene.editor.sequences;
+    const beforeAuthored = scene.editor.sequences?.[timelineId];
+    const authored = this.savedEditorData();
+    const afterAuthored: SequenceEditorData = {
+      timelineId, version: 3, sections: { ...authored?.sections }, positions: { ...authored?.positions },
+    };
+
+    sections.forEach((section, index) => {
+      const id = ids[index];
+
+      afterAssets.set(id, { ...clipData[index], id });
+      afterAuthored.sections[id] = this.exportSectionEditorData(section);
+      if (section.clip instanceof TransformPlayableAsset) { afterAuthored.positions![id] = this.exportPositionEditorData(section); }
+    });
+
+    const added = new Set(edits.added.map(section => section.clip));
+    const orders = new Map(Array.from(new Set(edits.added.map(section => section.track)), track => {
+      const after = [...track.getClips()];
+      const id = scene.serializer.id(track);
+      const definition = definitions.get(id)!;
+      const data = { ...definition, clips: after.map(clip => scene.serializer.reference(clip)) };
+
+      afterAssets.set(id, data);
+
+      return [track, { before: after.filter(clip => !added.has(clip)), after }];
+    }));
+    const beforeAssets = new Map(Array.from(afterAssets.keys(), id => [id, copy(definitions.get(id))]));
+    const after = sections.map(section => this.snapshotSection(section));
+    const write = (assets: typeof afterAssets, sequence: SequenceEditorData | undefined): void => {
+      const pending = new Map(assets);
+      const miscs: spec.EffectsObjectData[] = [];
+
+      for (const entry of scene.scene.miscs) {
+        const next = pending.has(entry.id) ? copy(pending.get(entry.id)) : entry;
+
+        if (next) { miscs.push(next); }
+        pending.delete(entry.id);
+      }
+      for (const entry of pending.values()) {
+        if (entry) { miscs.push(copy(entry)); }
+      }
+      scene.scene.miscs = miscs;
+      if (sequence) { (scene.editor.sequences ??= {})[timelineId] = sequence; } else if (scene.editor.sequences) {
+        delete scene.editor.sequences[timelineId];
+        if (!hadSequences && !Object.keys(scene.editor.sequences).length) { delete scene.editor.sequences; }
+      }
+    };
+    const restore = (redo: boolean): void => {
+      write(redo ? afterAssets : beforeAssets, redo ? afterAuthored : beforeAuthored);
+      for (const [track, order] of orders) {
+        const clips = track.getClips();
+
+        clips.splice(0, clips.length, ...(redo ? order.after : order.before));
+      }
+      (redo ? after : edits.before).forEach(state => this.restoreSection(state));
+      if (orders.size) { this.timeline.markAsChanged(); }
+    };
+
+    scene.applyContentMutation(edits.label, {
+      undo: () => restore(false), redo: () => restore(true),
+      valid: () => this.component.isRegistered && sections.every(section => section.clip.isRegistered && section.track.isRegistered),
+      bytes: historyBytes([edits.before, after, beforeAssets, afterAssets, ids.map(id => [authored?.sections[id], afterAuthored.sections[id]])]),
+    }, () => write(afterAssets, afterAuthored));
   }
 
   edit (label: string, action: () => void, affectsContent = true): void {
@@ -507,17 +778,35 @@ export class SequencerDocument {
   }
 
   private selection (): SequenceSelection {
-    return { tracks: Array.from(this.selectedTracks), sections: Array.from(this.selectedSections), keys: Array.from(this.selectedKeys),
+    return { tracks: Array.from(this.selectedTracks), sections: Array.from(this.selectedSections), keys: Array.from(this.selectedKeys.keys()),
       activeChannel: this.activeChannel, curveTracks: Array.from(this.curveTracks) };
   }
 
   private restoreSelection (state: SequenceSelection): void {
+    this.syncStructure();
     this.clearSelection();
-    state.tracks.forEach(id => this.selectedTracks.add(id));
-    state.sections.forEach(id => this.selectedSections.add(id));
-    state.keys.forEach(id => this.selectedKeys.add(id));
+    state.tracks.forEach(id => { if (this.tracksById.has(id)) { this.selectedTracks.add(id); } });
+    state.sections.forEach(id => { if (this.sectionsById.has(id)) { this.selectedSections.add(id); } });
+    this.restoreKeySelection(state.keys);
     this.activeChannel = state.activeChannel;
     this.curveTracks.clear(); state.curveTracks.forEach(id => this.curveTracks.add(id));
+  }
+
+  /** Rebind saved handles after history or a cancelled interaction replaces curve objects. */
+  restoreKeySelection (saved: Iterable<string>): void {
+    this.syncStructure();
+    const ids = new Set(saved);
+
+    this.selectedKeys.clear();
+    if (!ids.size) { return; }
+    for (const section of this.sectionList) {
+      for (const channel of section.channels) {
+        for (const key of channel.keys) {
+          if (ids.delete(key.id)) { this.selectedKeys.select({ section, channel, key }); }
+          if (!ids.size) { return; }
+        }
+      }
+    }
   }
 
   addBinding (item: VFXItem): ObjectBindingTrack {
@@ -590,6 +879,7 @@ export class SequencerDocument {
 
     this.sections.set(clip, section);
     this.write(section);
+    this.invalidateStructure();
 
     return section;
   }
@@ -656,6 +946,8 @@ export class SequencerDocument {
     clip.setData(copy(payload) as unknown as spec.EffectsObjectData);
     section.payload = payload;
     this.recordChannelState(section);
+    this.changedKeySections.add(section);
+    this.sectionVersions.set(section, this.sectionRevision(section) + 1);
   }
 
   insertKey (section: SequenceSection, channel: SequenceChannel, time: number, value?: number, preserveCurve = false): void {
@@ -668,10 +960,12 @@ export class SequencerDocument {
       const point = existing ? [...existing.point] as spec.vec3 : [0, 1, 2].map(axis => section.position!.evaluate(normalized, axis)) as spec.vec3;
 
       if (channel.pathView === 'point' && !preserveCurve) { point[channel.axis] = value ?? this.channelValue(section, channel, time); }
-      const key = section.position.insert(normalized, channel.pathView === 'point' && !preserveCurve ? point : undefined);
+      const inserted = section.position.insert(normalized, channel.pathView === 'point' && !preserveCurve ? point : undefined);
 
       section.position.project(section.channels.filter(channel => channel.pathView));
-      this.selectedKeys.add(key.id + ':' + channel.axis);
+      const key = channel.keys.find(key => key.pathKeyId === inserted.id);
+
+      if (key) { this.selectedKeys.select({ section, channel, key }); }
       this.write(section);
 
       return;
@@ -681,7 +975,7 @@ export class SequencerDocument {
       insertBoundary(channel.keys, normalized);
       const key = channel.keys.find(item => Math.abs(item.time - normalized) < 1e-7);
 
-      if (key) { this.selectedKeys.add(key.id); }
+      if (key) { this.selectedKeys.select({ section, channel, key }); }
       this.write(section);
 
       return;
@@ -699,10 +993,10 @@ export class SequencerDocument {
         if (!other.keys.length) { other.defaultValue = this.channelValue(section, other, time); }
       }
     }
-    if (existing) { existing.value = targetValue; this.selectedKeys.add(existing.id); } else {
+    if (existing) { existing.value = targetValue; this.selectedKeys.select({ section, channel, key: existing }); } else {
       const key = makeKey(normalized, targetValue);
 
-      channel.keys.push(key); this.selectedKeys.add(key.id);
+      channel.keys.push(key); this.selectedKeys.select({ section, channel, key });
     }
     if (channel.kind === 'reference') {
       const key = channel.keys.find(key => Math.abs(key.time - normalized) < 1e-7)!;
@@ -752,14 +1046,22 @@ export class SequencerDocument {
   deleteSelection (): void {
     this.edit('Delete selection', () => {
       if (this.selectedKeys.size) {
-        for (const section of this.allSections()) {
-          if (this.isLocked(section.track)) { continue; }
-          if (section.position) {
-            const ids = new Set(section.channels.flatMap(channel => channel.keys.filter(key => this.selectedKeys.has(key.id) && key.pathKeyId).map(key => key.pathKeyId!)));
+        const keysBySection = new Map<SequenceSection, KeySelection[]>();
 
-            section.position.remove(ids); section.position.project(section.channels.filter(channel => channel.pathView));
+        for (const item of this.selectedKeyItems()) {
+          let items = keysBySection.get(item.section);
+
+          if (!items) { items = []; keysBySection.set(item.section, items); }
+          items.push(item);
+        }
+        for (const [section, items] of keysBySection) {
+          if (this.isLocked(section.track)) { continue; }
+          const spatialIds = new Set(items.flatMap(({ key }) => key.pathKeyId ? [key.pathKeyId] : []));
+
+          if (section.position && spatialIds.size) {
+            section.position.remove(spatialIds); section.position.project(section.channels.filter(channel => channel.pathView));
           }
-          for (const channel of section.channels) {
+          for (const channel of new Set(items.map(item => item.channel))) {
             if (!channel.pathView) { channel.keys = channel.keys.filter(key => !this.selectedKeys.has(key.id)); }
           }
           this.write(section);
@@ -775,6 +1077,7 @@ export class SequencerDocument {
           }
         }
         this.selectedSections.clear();
+        this.invalidateStructure();
       } else {
         for (const track of [...this.tracks].reverse()) {
           if (!this.selectedTracks.has(track.getInstanceId()) || this.isLocked(track)) { continue; }
@@ -784,18 +1087,69 @@ export class SequencerDocument {
           if (index >= 0) { siblings.splice(index, 1); this.component.clearBinding(track); }
         }
         this.selectedTracks.clear();
+        this.timeline.markAsChanged();
       }
     });
   }
 
   reorderTrack (track: TrackAsset, target: TrackAsset, after = false): void {
     if (track === target || track.parent !== target.parent || this.isLocked(track)) { return; }
-    this.edit('Reorder tracks', () => {
-      const siblings = track.parent ? track.parent.getChildTracks() : this.timeline.tracks;
+    const parent = track.parent;
+    const siblings = parent ? parent.getChildTracks() : this.timeline.tracks;
+    const from = siblings.indexOf(track), targetIndex = siblings.indexOf(target);
+    const to = targetIndex + Number(after) - Number(from < targetIndex);
 
-      siblings.splice(siblings.indexOf(track), 1);
-      siblings.splice(siblings.indexOf(target) + (after ? 1 : 0), 0, track);
+    if (from < 0 || targetIndex < 0 || from === to) { return; }
+    const previous = [...siblings];
+    const next = [...siblings];
+
+    next.splice(from, 1);
+    next.splice(to, 0, track);
+    const applyOrder = (order: TrackAsset[]): void => {
+      const tracks = parent ? parent.getChildTracks() : this.timeline.tracks;
+
+      tracks.splice(0, tracks.length, ...order);
+      this.timeline.markAsChanged();
+    };
+    const scene = this.sceneDocument;
+    const owner = parent ?? this.timeline;
+    const ownerId = scene?.serializer.id(owner);
+    const key = parent ? 'children' : 'tracks';
+    const findDefinition = () => scene?.scene.miscs.find(entry => entry.id === ownerId) as Record<string, spec.DataPath[]> | undefined;
+    const previousReferences = findDefinition()?.[key];
+
+    if (!scene || !Array.isArray(previousReferences) || this.transaction) {
+      this.edit('Reorder tracks', () => applyOrder(next));
+
+      return;
+    }
+    const nextReferences = next.map(item => scene.serializer.reference(item));
+    const apply = (order: TrackAsset[], references: spec.DataPath[]): void => {
+      const definition = findDefinition();
+
+      if (!definition) { throw new Error('The reordered tracks are missing from the saved timeline.'); }
+      definition[key] = references;
+      applyOrder(order);
+    };
+
+    scene.applyContentMutation('Reorder tracks', {
+      undo: () => apply(previous, previousReferences),
+      redo: () => apply(next, nextReferences),
+      valid: () => owner.isRegistered && previous.every(item => item.isRegistered && item.parent === parent),
+      bytes: historyBytes([previousReferences, nextReferences]),
     });
+    this.revision++; this.previewPending = true;
+    scene.commit();
+  }
+
+  moveSection (section: SequenceSection, start: number): boolean {
+    if (section.clip.start === start) { return false; }
+    section.clip.start = start;
+    section.clip.definition.start = start;
+    section.payload.start = start;
+    this.sectionVersions.set(section, this.sectionRevision(section) + 1);
+
+    return true;
   }
 
   duplicateSection (source: SequenceSection, start: number, targetTrack = source.track, state = this.snapshotSection(source)): SequenceSection {
@@ -823,7 +1177,9 @@ export class SequencerDocument {
     };
 
     section.position?.project(section.channels.filter(channel => channel.pathView));
+    if (this.sectionDrag?.kind === 'edit') { this.sectionDrag.added.push(section); }
     this.sections.set(clip, section); this.write(section);
+    this.invalidateStructure();
 
     return section;
   }
@@ -938,7 +1294,11 @@ export class SequencerDocument {
               section.position.setControl(key.id, 'incoming', entry.spatial.incoming);
               section.position.setControl(key.id, 'outgoing', entry.spatial.outgoing);
               section.position.project(section.channels.filter(channel => channel.pathView));
-              this.selectedKeys.add(key.id + ':0'); this.write(section);
+              const channel = section.channels.find(channel => channel.pathView === 'point' && channel.axis === 0);
+              const projected = channel?.keys.find(item => item.pathKeyId === key.id);
+
+              if (channel && projected) { this.selectedKeys.select({ section, channel, key: projected }); }
+              this.write(section);
             } else {
               for (const channel of section.channels.filter(channel => channel.group === 'Location')) {
                 this.insertKey(section, channel, time + entry.offset, entry.spatial.point[channel.axis]);
@@ -957,7 +1317,7 @@ export class SequencerDocument {
           const key = { ...entry.key, id: makeKey(0, 0).id, time: t };
 
           channel.keys.push(key); channel.references?.set(key.id, entry.reference ?? null);
-          updateAutoTangents(channel.keys); this.selectedKeys.add(key.id); this.write(section);
+          updateAutoTangents(channel.keys); this.selectedKeys.select({ section, channel, key }); this.write(section);
         }
       }
       for (const entry of this.sectionClipboard) {
@@ -1033,6 +1393,23 @@ export class SequencerDocument {
     };
   }
 
+  private restoreSection (state: SectionSnapshot): void {
+    const section = state.section;
+
+    this.sections.set(section.clip, section);
+    section.clip.start = state.start; section.clip.duration = state.duration;
+    section.clip.endBehavior = state.endBehavior; section.clip.name = state.name; section.payload = copy(state.payload); section.channelState = new Map(state.channelState);
+    section.position = state.position ? PositionPathModel.restore(state.position) : undefined;
+    section.channels = state.channels.map(channel => channel.channel);
+    for (const channel of state.channels) {
+      channel.channel.keys = channel.keys.map(key => ({ ...key }));
+      channel.channel.defaultValue = channel.defaultValue;
+      channel.channel.references = channel.references ? new Map(channel.references) : undefined;
+    }
+    section.position?.project(section.channels.filter(channel => channel.pathView));
+    this.write(section);
+  }
+
   private cloneTrack (source: TrackAsset, snapshot: SequenceSnapshot, parent?: TrackAsset): TrackAsset {
     const state = snapshot.tracks.find(entry => entry.track === source)!;
     const Constructor = source.constructor as new (engine: Composition['engine']) => TrackAsset;
@@ -1071,21 +1448,7 @@ export class SequencerDocument {
     this.locked.clear(); snapshot.locked.forEach(id => this.locked.add(id));
     this.timeline.markAsChanged();
     for (const state of snapshot.tracks) { if (state.binding) { this.component.setBinding(state.track, state.binding); } }
-    for (const state of snapshot.sections) {
-      const section = state.section;
-
-      section.clip.start = state.start; section.clip.duration = state.duration;
-      section.clip.endBehavior = state.endBehavior; section.clip.name = state.name; section.payload = copy(state.payload); section.channelState = new Map(state.channelState);
-      section.position = state.position ? PositionPathModel.restore(state.position) : undefined;
-      section.channels = state.channels.map(channel => channel.channel);
-      for (const channel of state.channels) {
-        channel.channel.keys = channel.keys.map(key => ({ ...key }));
-        channel.channel.defaultValue = channel.defaultValue;
-        channel.channel.references = channel.references ? new Map(channel.references) : undefined;
-      }
-      section.position?.project(section.channels.filter(channel => channel.pathView));
-      this.write(section);
-    }
+    snapshot.sections.forEach(state => this.restoreSection(state));
     for (const { item, position, rotation, scale } of snapshot.transforms) {
       item.transform.setPosition(position[0], position[1], position[2]);
       item.transform.setRotation(rotation[0], rotation[1], rotation[2]);
@@ -1111,8 +1474,7 @@ export class SequencerDocument {
         { id: id(this.timeline), dataType: spec.DataType.TimelineAsset, tracks: this.timeline.tracks.map(track => ({ id: id(track) })) },
         ...this.tracks.map(track => ({ ...track.definition, id: id(track), name: track.name, dataType: this.assetType(track),
           children: track.getChildTracks().map(child => ({ id: id(child) })), clips: track.getClips().map(clip => ({ id: id(clip) })) })),
-        ...this.allSections().map(section => ({ ...copy(section.payload), id: id(section.clip), name: section.clip.name,
-          dataType: this.assetType(section.clip), start: section.clip.start, duration: section.clip.duration, endBehavior: section.clip.endBehavior })),
+        ...this.allSections().map(section => this.exportSection(section, id(section.clip))),
       ],
       sceneBindings: this.tracks.flatMap(track => {
         const target = this.component.getBinding(track);
@@ -1122,20 +1484,35 @@ export class SequencerDocument {
     };
   }
 
+  private exportSection (section: SequenceSection, id = section.clip.getInstanceId()): spec.EffectsObjectData {
+    const { clip } = section;
+    const data = { ...copy(section.payload), id, name: clip.name,
+      dataType: this.assetType(clip) as spec.DataType, start: clip.start, duration: clip.duration, endBehavior: clip.endBehavior };
+
+    return data;
+  }
+
+  private exportSectionEditorData (section: SequenceSection): SequenceChannelEditorData[] {
+    return section.channels.filter(channel => channel.kind === 'number' && !channel.pathView).map(channel => ({
+      group: channel.group, axis: channel.axis, defaultValue: channel.defaultValue,
+      source: curveSourceSignature(this.channelSource(section, channel.group)),
+      keys: channel.keys.map(({ id: _id, ...key }) => ({ ...key })),
+    }));
+  }
+
+  private exportPositionEditorData (section: SequenceSection): NonNullable<SequenceEditorData['positions']>[string] {
+    return { mode: section.position ? 'path' : 'separated', source: curveSourceSignature(this.channelSource(section, 'Location')) };
+  }
+
   exportEditorData (): SequenceEditorData {
     const id = (object: EffectsObject) => this.sceneDocument?.serializer.id(object) ?? object.getInstanceId();
 
     return {
       timelineId: id(this.timeline),
       version: 3,
-      positions: Object.fromEntries(this.allSections().filter(section => section.clip instanceof TransformPlayableAsset).map(section => [id(section.clip), {
-        mode: section.position ? 'path' : 'separated', source: curveSourceSignature(this.channelSource(section, 'Location')),
-      }])),
-      sections: Object.fromEntries(this.allSections().map(section => [id(section.clip), section.channels.filter(channel => channel.kind === 'number' && !channel.pathView).map(channel => ({
-        group: channel.group, axis: channel.axis, defaultValue: channel.defaultValue,
-        source: curveSourceSignature(this.channelSource(section, channel.group)),
-        keys: channel.keys.map(({ id: _id, ...key }) => ({ ...key })),
-      }))])),
+      positions: Object.fromEntries(this.allSections().filter(section => section.clip instanceof TransformPlayableAsset).map(section =>
+        [id(section.clip), this.exportPositionEditorData(section)])),
+      sections: Object.fromEntries(this.allSections().map(section => [id(section.clip), this.exportSectionEditorData(section)])),
     };
   }
 
@@ -1269,6 +1646,7 @@ export class SequencerDocument {
       }
     }
 
+    for (const channel of section.channels) { channel.keys.sort((a, b) => a.time - b.time); }
     this.recordChannelState(section);
 
     return section;
@@ -1282,6 +1660,8 @@ export class SequencerDocument {
   }
 
   private recordChannelState (section: SequenceSection): void {
-    for (const channel of section.channels) { section.channelState.set(channel.group, this.channelSignature(section, channel.group)); }
+    const groups = new Set(section.channels.map(channel => channel.group));
+
+    for (const group of groups) { section.channelState.set(group, this.channelSignature(section, group)); }
   }
 }

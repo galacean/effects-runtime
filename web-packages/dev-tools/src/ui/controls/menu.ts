@@ -1,5 +1,5 @@
-import { math } from '@galacean/effects';
-import type { Engine, InputEventKey } from '@galacean/effects';
+import { MouseButton, math } from '@galacean/effects';
+import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
 import type { ContentInsets } from '@galacean/effects-plugin-gui';
 import { Button, ButtonActionMode, ButtonDrawMode, Control, HBoxContainer, VBoxContainer, HorizontalAlignment } from '@galacean/effects-plugin-gui';
 import { EDITOR_FONT_SIZE, EDITOR_SMALL_FONT_SIZE, EDITOR_TINY_FONT_SIZE, editorColors, setEditorFont, getEditorFont } from '../theme/control-theme';
@@ -129,6 +129,21 @@ export class EditorMenu extends EditorPopupPanel {
   }
   override get parentPopup (): EditorMenu | undefined { return this.parentMenu; }
   override dismissFromOutside (): void { this.closeBranch(); }
+  override onOutsideMouseDown (event: InputEventMouseButton): void {
+    if (this.parentMenu) {
+      this.parentMenu.onOutsideMouseDown(event);
+
+      return;
+    }
+    const source = this.source;
+    const next = event.buttonIndex === MouseButton.Left && source?.menuBar ?
+      source.menuSiblings().find(button => button.hasPoint(button.makePositionLocal(event.globalPosition))) : undefined;
+
+    if (next) {
+      if (next !== source) { next.showMenu(); }
+      event.accept();
+    } else { super.onOutsideMouseDown(event); }
+  }
   setActions (actions: MenuAction[]): void {
     this.closeSubmenu(); disposeChildren(this.content); this.rows = [];
     this.themeTypeVariation = this.selectionList ? 'EditorChoiceMenu' : 'EditorMenu';
@@ -319,25 +334,5 @@ export class EditorMenuButton extends Button {
 export class EditorMenuBar extends HBoxContainer {
   constructor (engine: Engine) {
     super(engine); this.setThemeConstantOverride('separation', 0);
-    engine.canvas.addEventListener('mousedown', this.switchMenu, true);
-  }
-  private readonly switchMenu = (event: MouseEvent): void => {
-    if (event.button !== 0 || !this.visibleInHierarchy || !this.enabledInHierarchy) { return; }
-    const buttons = this.children.filter((control): control is EditorMenuButton => control instanceof EditorMenuButton && control.menuBar && !control.disabled && control.visibleInHierarchy);
-    const opened = buttons.find(button => button.menu.visible);
-
-    if (!opened) { return; }
-    const bounds = this.engine.canvas.getBoundingClientRect();
-    const point = new math.Vector2(event.clientX - bounds.left, event.clientY - bounds.top);
-    const next = buttons.find(button => button.hasPoint(button.makePositionLocal(point)));
-
-    if (next) {
-      // The open popup owns pointer input outside its bounds, including the menu bar.
-      if (next !== opened) { next.showMenu(); }
-      event.preventDefault(); event.stopImmediatePropagation();
-    }
-  };
-  override onDestroy (): void {
-    this.engine.canvas.removeEventListener('mousedown', this.switchMenu, true); super.onDestroy();
   }
 }

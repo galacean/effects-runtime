@@ -1,6 +1,8 @@
 import {
   Composition,
+  FocusEventType,
   InputEvent,
+  InputEventFocus,
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
@@ -169,12 +171,13 @@ describe('plugin-gui/input', () => {
       manualRender: true,
       interactive: true,
     });
+    document.body.appendChild(player.canvas);
     composition = new Composition(player.engine);
     composition.root.initializeHierarchy();
     composition.root.beginPlay();
   });
 
-  afterEach(() => player.dispose());
+  afterEach(() => { player.canvas.remove(); player.dispose(); });
 
   it('keeps acceptance state on InputEvent', () => {
     const event = new InputEvent();
@@ -227,7 +230,7 @@ describe('plugin-gui/input', () => {
     const top = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 40);
     const bottom = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 60, 100, 40);
 
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+    player.canvas.dispatchEvent(new PointerEvent('pointerdown', {
       clientX: 20,
       clientY: 30,
       button: 0,
@@ -247,29 +250,30 @@ describe('plugin-gui/input', () => {
       0, 0, 100, 100,
     );
 
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+    player.canvas.dispatchEvent(new PointerEvent('pointerdown', {
       clientX: 20,
       clientY: 30,
       button: 0,
       buttons: 1,
     }));
-    window.dispatchEvent(new PointerEvent('pointermove', {
+    document.dispatchEvent(new PointerEvent('pointermove', {
       clientX: 21,
       clientY: 30,
       button: 0,
       buttons: 0,
     }));
-    window.dispatchEvent(new MouseEvent('mouseup', {
+    document.dispatchEvent(new PointerEvent('pointerup', {
       clientX: 21,
       clientY: 30,
       button: 0,
       buttons: 0,
     }));
-    window.dispatchEvent(new PointerEvent('pointermove', {
+    player.canvas.dispatchEvent(new PointerEvent('pointermove', {
       clientX: 22,
       clientY: 30,
       button: 0,
       buttons: 0,
+      bubbles: true,
     }));
 
     expect(control.states).deep.equals([
@@ -288,35 +292,36 @@ describe('plugin-gui/input', () => {
       0, 0, 100, 100,
     );
 
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+    player.canvas.dispatchEvent(new PointerEvent('pointerdown', {
       clientX: 20,
       clientY: 30,
       button: 0,
       buttons: 1,
     }));
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+    document.dispatchEvent(new PointerEvent('pointermove', {
       clientX: 20,
       clientY: 30,
       button: 2,
       buttons: 3,
     }));
-    window.dispatchEvent(new MouseEvent('mouseup', {
+    document.dispatchEvent(new PointerEvent('pointermove', {
       clientX: 20,
       clientY: 30,
       button: 2,
       buttons: 1,
     }));
-    window.dispatchEvent(new MouseEvent('mouseup', {
+    document.dispatchEvent(new PointerEvent('pointerup', {
       clientX: 20,
       clientY: 30,
       button: 0,
       buttons: 0,
     }));
-    window.dispatchEvent(new PointerEvent('pointermove', {
+    player.canvas.dispatchEvent(new PointerEvent('pointermove', {
       clientX: 21,
       clientY: 30,
       button: 0,
       buttons: 0,
+      bubbles: true,
     }));
 
     expect(control.states[control.states.length - 1]).deep.equals({
@@ -324,6 +329,63 @@ describe('plugin-gui/input', () => {
       buttonMask: MouseButtonMask.None,
       pressed: false,
     });
+  });
+
+  it('keeps one captured drag while switching left and right buttons until the final release', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const control = addControl(composition.sceneRoot, new MouseStateRecordingControl(player.engine), 0, 0, 50, 100);
+    const other = addControl(composition.sceneRoot, new MouseStateRecordingControl(player.engine), 100, 0, 100, 100);
+    const buttonEvents: InputEventMouseButton[] = [];
+    const dispatch = (target: EventTarget, type: string, button: number, buttons: number, clientX: number) => {
+      target.dispatchEvent(new PointerEvent(type, { button, buttons, clientX, clientY: 30, bubbles: true }));
+    };
+
+    player.engine.inputServer.on('input', event => {
+      if (event instanceof InputEventMouseButton) { buttonEvents.push(event); }
+    });
+    for (const first of [0, 2]) {
+      for (const releaseFirst of [true, false]) {
+        const second = 2 - first;
+        const released = releaseFirst ? first : second;
+        const last = releaseFirst ? second : first;
+        const firstMask = first === 0 ? MouseButtonMask.Left : MouseButtonMask.Right;
+        const remainingMask = last === 0 ? MouseButtonMask.Left : MouseButtonMask.Right;
+        const scenario = `first button ${first}, first released button ${released}`;
+
+        control.states.length = 0; other.states.length = 0; buttonEvents.length = 0;
+        dispatch(player.canvas, 'pointerdown', first, firstMask, 20);
+        dispatch(document, 'pointermove', -1, firstMask, 30);
+        dispatch(document, 'pointermove', second, MouseButtonMask.Left | MouseButtonMask.Right, 130);
+        dispatch(document, 'pointermove', released, remainingMask, 130);
+        dispatch(document, 'pointermove', -1, remainingMask, 140);
+
+        expect(control.states, scenario).deep.equals([
+          { phase: 'down', buttonMask: firstMask, pressed: true },
+          { phase: 'move', buttonMask: firstMask, pressed: true },
+          { phase: 'move', buttonMask: firstMask, pressed: true },
+          { phase: 'move', buttonMask: firstMask, pressed: true },
+          { phase: 'move', buttonMask: firstMask, pressed: true },
+        ]);
+        expect(other.states, scenario).deep.equals([]);
+
+        dispatch(document, 'pointerup', last, MouseButtonMask.None, 140);
+
+        expect(control.states[5], scenario).deep.equals({
+          phase: 'up', buttonMask: MouseButtonMask.None, pressed: false,
+        });
+        expect(buttonEvents.map(event => [event.buttonIndex, event.pressed, event.canceled]), scenario).deep.equals([
+          [first === 0 ? MouseButton.Left : MouseButton.Right, true, false],
+          [last === 0 ? MouseButton.Left : MouseButton.Right, false, false],
+        ]);
+
+        dispatch(player.canvas, 'pointermove', -1, MouseButtonMask.None, 150);
+
+        expect(control.states, scenario).to.have.length(6);
+        expect(other.states, scenario).deep.equals([
+          { phase: 'move', buttonMask: MouseButtonMask.None, pressed: false },
+        ]);
+      }
+    }
   });
 
   it('focusing before mapping native touch coordinates', () => {
@@ -365,7 +427,7 @@ describe('plugin-gui/input', () => {
     player.engine.inputServer.addEventListener('touchstart', event => {
       pointerY = event.y;
     });
-    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+    player.canvas.dispatchEvent(new PointerEvent('pointerdown', {
       clientX: 20,
       clientY: 30,
       button: 0,
@@ -405,7 +467,7 @@ describe('plugin-gui/input', () => {
     player.engine.inputServer.on('input', event => {
       input = event;
     });
-    const nativeEvent = new MouseEvent('mousedown', {
+    const nativeEvent = new PointerEvent('pointerdown', {
       bubbles: true,
       cancelable: true,
       clientX: 20,
@@ -441,8 +503,9 @@ describe('plugin-gui/input', () => {
   it('emits canvas focus and blur events exactly once', () => {
     const focusEvents: string[] = [];
 
-    player.engine.inputServer.on('canvasFocus', () => focusEvents.push('in'));
-    player.engine.inputServer.on('canvasBlur', () => focusEvents.push('out'));
+    player.engine.inputServer.on('input', event => {
+      if (event instanceof InputEventFocus) { focusEvents.push(event.type === FocusEventType.FocusGained ? 'in' : 'out'); }
+    });
 
     player.canvas.dispatchEvent(new Event('focus'));
     player.canvas.dispatchEvent(new Event('blur'));
@@ -468,9 +531,15 @@ describe('plugin-gui/input', () => {
     );
 
     control.focusMode = FocusMode.Click;
+    player.canvas.focus();
     windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Left));
-    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Right));
-    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Middle));
+    const chord = new InputEventMouseMotion();
+
+    chord.position.set(20, 10);
+    chord.globalPosition.copyFrom(chord.position);
+    chord.buttonMask = MouseButtonMask.Left | MouseButtonMask.Right | MouseButtonMask.Middle;
+    chord.pressed = true;
+    windowRoot.pushInput(chord);
     const touch = new InputEventScreenTouch();
 
     touch.index = 7;
@@ -492,25 +561,9 @@ describe('plugin-gui/input', () => {
         button: MouseButton.Left,
         device: InputEvent.deviceIdInternal,
         pressed: false,
-        canceled: false,
+        canceled: true,
         position: new Vector2(10, 10),
-        globalPosition: new Vector2(10, 10),
-      },
-      {
-        button: MouseButton.Right,
-        device: InputEvent.deviceIdInternal,
-        pressed: false,
-        canceled: false,
-        position: new Vector2(10, 10),
-        globalPosition: new Vector2(10, 10),
-      },
-      {
-        button: MouseButton.Middle,
-        device: InputEvent.deviceIdInternal,
-        pressed: false,
-        canceled: false,
-        position: new Vector2(10, 10),
-        globalPosition: new Vector2(10, 10),
+        globalPosition: new Vector2(20, 10),
       },
     ]);
     expect(control.hasFocus()).equals(true);
@@ -579,7 +632,7 @@ describe('plugin-gui/input', () => {
     expect(remainingTouchRelease[0]).includes({ index: 2, pressed: false, canceled: false });
   });
 
-  it('preserves dragging on blur and drops on a canceled mouse release', () => {
+  it('preserves dragging on canvas blur and cancels a canceled mouse release', () => {
     addControl(composition.sceneRoot, new DragSourceControl(player.engine), 0, 0, 50, 50);
     const target = addControl(composition.sceneRoot, new DropTargetControl(player.engine), 100, 0, 50, 50);
     const windowRoot = player.engine.getServer(GUIServer).windowRoot;
@@ -601,9 +654,9 @@ describe('plugin-gui/input', () => {
 
     release.canceled = true;
     windowRoot.pushInput(release);
-    expect(target.drops).deep.equals(['drag-data']);
+    expect(target.drops).deep.equals([]);
     expect(windowRoot.guiIsDragging()).equals(false);
-    expect(windowRoot.guiIsDragSuccessful()).equals(true);
+    expect(windowRoot.guiIsDragSuccessful()).equals(false);
   });
 
   it('keeps InputServer disposal silent and lets GUIServer clean up independently', () => {
@@ -932,7 +985,7 @@ function nativeTouchEvent (
   type: 'touchstart' | 'touchend' | 'touchcancel',
   changedTouches: Array<{ identifier: number, clientX: number, clientY: number }>,
 ): Event {
-  const event = new Event(type, { cancelable: true });
+  const event = new Event(type, { cancelable: true, bubbles: true });
 
   Object.defineProperty(event, 'changedTouches', { value: changedTouches });
 
