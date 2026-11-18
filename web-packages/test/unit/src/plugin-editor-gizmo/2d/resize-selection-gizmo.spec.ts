@@ -1,8 +1,13 @@
+import { GizmoViewportUtils } from '../../../../../../plugin-packages/editor-gizmo/src/2d/viewport/viewport-utils';
+import { createInteractionPlane } from '../../../../../../plugin-packages/editor-gizmo/src/2d/viewport/coordinates';
+import type { AnchoredResizeGeometry, AnchoredResizeResult } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize';
+import { PolyStar, StarType } from '../../../../../../packages/effects-core/src/math/shape/poly-star';
+import { calculateAnchoredResize } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize';
 import { restoreTestState, getSpyCalls, spyOnGetter, type TestSpy } from '../helpers/spies';
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, ShapeComponent, Transform, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2, Circle, Line2 } from '@galacean/effects-math/es/extension/index';
-import { getBoxTransform, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { getBoxTransform, Euler, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { getRotatedBoxCorners } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameManager, LoadingManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
@@ -686,6 +691,187 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(getSpyCalls(transform.setScale).at(-1)).to.deep.equal([-1, 2.25, 3]);
     expect(getSpyCalls(transform.setPosition).at(-1)).to.deep.equal([-25, 30, 0]);
   });
+
+  it('矩形缩放写入基础宽高，保留 transform.scale 并按按下快照绝对计算', () => {
+    const { gizmo } = createGizmo(TransformType.NULL);
+    const shape = {
+      type: spec.ShapePrimitiveType.Rectangle,
+      width: 100,
+      height: 50,
+    };
+    const shapeComponent = {
+      shape,
+      definition: {},
+      onApplyAnimationProperties: chai.spy(),
+    };
+    const transform = {
+      scale: new Vector3(2, 3, 1),
+      position: new Vector3(10, 20, 0),
+      setScale: chai.spy(),
+      setPosition: chai.spy(),
+    };
+    const session = {
+      item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+      initialPosition: new Vector3(10, 20, 0),
+      initialScale: new Vector3(2, 3, 1),
+      parentWorldToLocal: new Matrix4(),
+      shape: {
+        component: shapeComponent,
+        attributes: { type: spec.ShapePrimitiveType.Rectangle, width: 100, height: 50 },
+      },
+    };
+    const apply = (x: number, y: number) => {
+      (gizmo as unknown as {
+        applyAnchoredResize: (session: unknown, resize: unknown) => void,
+      }).applyAnchoredResize(session, {
+        totalScalar: new Vector3(x, y, 1),
+        totalTranslation: new Vector3(),
+      });
+    };
+
+    apply(2, 0.5);
+    apply(1.5, 1.25);
+
+    expect(shape.width).to.equal(150);
+    expect(shape.height).to.equal(62.5);
+    expect(shapeComponent.definition).to.deep.equal({ width: 150, height: 62.5 });
+    expect(transform.setScale).not.to.have.been.called();
+    expect(shapeComponent.onApplyAnimationProperties).to.have.been.called.exactly(2);
+  });
+
+  it('椭圆缩放写入 x/y 半径，并在穿过固定边时只保留 scale 的镜像符号', () => {
+    const { gizmo } = createGizmo(TransformType.NULL);
+    const shape = {
+      type: spec.ShapePrimitiveType.Ellipse,
+      xRadius: 40,
+      yRadius: 20,
+    };
+    const shapeComponent = {
+      shape,
+      onApplyAnimationProperties: chai.spy(),
+    };
+    const transform = {
+      scale: new Vector3(1, 1, 1),
+      position: new Vector3(),
+      setScale: chai.spy(),
+      setPosition: chai.spy(),
+    };
+    const session = {
+      item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+      initialPosition: new Vector3(),
+      initialScale: new Vector3(1, 1, 1),
+      parentWorldToLocal: new Matrix4(),
+      shape: {
+        component: shapeComponent,
+        attributes: { type: spec.ShapePrimitiveType.Ellipse, xRadius: 40, yRadius: 20 },
+      },
+    };
+
+    (gizmo as unknown as {
+      applyAnchoredResize: (session: unknown, resize: unknown) => void,
+    }).applyAnchoredResize(session, {
+      totalScalar: new Vector3(-0.5, 2, 1),
+      totalTranslation: new Vector3(),
+    });
+
+    expect(shape.xRadius).to.equal(20);
+    expect(shape.yRadius).to.equal(40);
+    expect(getSpyCalls(transform.setScale).at(-1)).to.deep.equal([-1, 1, 1]);
+  });
+
+  for (const kind of ['curve', 'star'] as const) {
+    it(`keeps the fixed edge of a rotated asymmetric ${kind} through scaling and reflection`, () => {
+      const { gizmo } = createGizmo(TransformType.NULL);
+      const parent = new Transform({ position: [20, -30, 0], scale: [2, 2, 1], rotation: [0, 0, 20] });
+      const transform = new Transform({ position: [15, 25, 0], scale: [-2, 3, 1], rotation: [0, 0, 37] }, parent);
+      const current = {
+        type: kind === 'curve' ? spec.ShapePrimitiveType.Custom : spec.ShapePrimitiveType.Star,
+        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+        easingIns: [{ x: 0, y: 0 }, { x: 0, y: 100 }],
+        easingOuts: [{ x: 0, y: 100 }, { x: 0, y: 0 }],
+        outerRadius: 100, innerRadius: 40,
+      };
+      const component = { shape: current, definition: {}, onApplyAnimationProperties: () => {} };
+      const item = {
+        type: spec.ItemType.shape, transform, getInstanceId: () => kind,
+        getComponent: (requested: unknown) => requested === ShapeComponent ? component : undefined,
+      } as unknown as VFXItem;
+      const starY = new PolyStar(5, 100, 40, 0, 0, StarType.Star).getBezierPath().vertices.filter((_, index) => index % 2 === 1);
+      const minY = kind === 'curve' ? 0 : Math.min(...starY);
+      const maxY = kind === 'curve' ? 75 : Math.max(...starY);
+      const centerX = kind === 'curve' ? 50 : 0;
+      const initialMatrix = transform.getWorldMatrix().clone();
+      const fixedPoint = new Vector3(centerX, minY, 0).applyMatrix(initialMatrix);
+      const initialHandle = new Vector3(centerX, maxY, 0).applyMatrix(initialMatrix);
+      const toView = (point: Vector3) => new Vector2(point.x + 400, 300 - point.y);
+      const internals = gizmo as unknown as {
+        interactionPlane: ReturnType<typeof createInteractionPlane>,
+        createAnchoredResizeSession: (item: VFXItem, matrix: Matrix4, origin: Vector3, pointer: Vector2, handle: Vector2, fixed: Vector2, kind: 'edge') => { geometry: AnchoredResizeGeometry } | undefined,
+        applyAnchoredResize: (session: unknown, resize: AnchoredResizeResult) => void,
+      };
+
+      // 相机将世界平面 z=0 映射到像素坐标，经过真实的会话创建及缩放计算。
+      chai.spy.on(GizmoViewportUtils, 'getCameraInfo', () => ({ position: new Vector3(0, 0, 1), matrix: Matrix4.fromScale(200, 150, 1) }));
+      internals.interactionPlane = createInteractionPlane(new Vector3(), new Euler());
+      const handleView = toView(initialHandle);
+      const session = internals.createAnchoredResizeSession(item, initialMatrix, transform.getWorldPosition(), handleView, handleView, toView(fixedPoint), 'edge')!;
+
+      expect(session).not.to.equal(undefined);
+      for (const scalar of [0.5, 0, -1, 2]) {
+        const pointer = fixedPoint.clone().add(initialHandle.clone().subtract(fixedPoint).multiply(scalar));
+        const resize = calculateAnchoredResize(session.geometry, pointer, { handleKind: 'edge', lockAspectRatio: false });
+
+        internals.applyAnchoredResize(session, resize);
+        const localFixed = kind === 'curve'
+          ? new Vector3(centerX, current.points[0].y, 0)
+          : new Vector3(0, -current.outerRadius, 0);
+        const actualFixed = localFixed.applyMatrix(transform.getWorldMatrix());
+        const localHandle = kind === 'curve'
+          ? new Vector3(centerX, current.points[0].y + (current.easingOuts[0].y + current.easingIns[1].y) * 3 / 8, 0)
+          : new Vector3(0, maxY * current.outerRadius / 100, 0);
+        const actualHandle = localHandle.applyMatrix(transform.getWorldMatrix());
+
+        expect(actualFixed.distance(fixedPoint), `fixed edge at scalar ${scalar}`).to.be.lessThan(1e-6);
+        expect(actualHandle.distance(pointer), `dragged edge at scalar ${scalar}`).to.be.lessThan(1e-6);
+      }
+    });
+  }
+
+  for (const rotated of [false, true]) {
+    it(`偏移自定义路径穿过零点和镜像时固定点不移动（父变换=${rotated}）`, () => {
+      const { gizmo } = createGizmo(TransformType.NULL);
+      const parent = new Transform(rotated ? { position: [20, -30, 0], scale: [2, 3, 1], rotation: [0, 0, 20] } : {});
+      const transform = new Transform(rotated ? { position: [15, 25, 0], scale: [-2, 3, 1], rotation: [0, 0, 37] } : {}, parent);
+      const points = [{ x: 90, y: 30 }, { x: 110, y: 30 }, { x: 110, y: 50 }, { x: 90, y: 50 }];
+      const attributes = { type: spec.ShapePrimitiveType.Custom, points,
+        easingIns: points.map(() => ({ x: 0, y: 0 })), easingOuts: points.map(() => ({ x: 0, y: 0 })) };
+      const current = JSON.parse(JSON.stringify(attributes)) as typeof attributes;
+      const initialMatrix = transform.getWorldMatrix().clone();
+      const localToWorld = initialMatrix.clone().setPosition(new Vector3());
+      const fixedPoint = new Vector3(90, 30, 0).applyMatrix(initialMatrix);
+      const session = {
+        item: { type: spec.ItemType.shape, transform } as unknown as VFXItem,
+        initialPosition: transform.position.clone(),
+        initialScale: transform.scale.clone(),
+        parentWorldToLocal: parent.getWorldMatrix().clone().setPosition(new Vector3()).invert(),
+        shape: { component: { shape: current, definition: {}, onApplyAnimationProperties: () => {} }, attributes, localCenter: new Vector3(100, 40, 0), localToWorld },
+      };
+
+      for (const [x, y] of [[0.5, 1], [0, 1], [-1, 1], [1, -1], [-2, -0.5], [1.5, 2]]) {
+        (gizmo as unknown as { applyAnchoredResize: (session: unknown, resize: unknown) => void }).applyAnchoredResize(session, {
+          totalScalar: new Vector3(x, y, 1),
+          totalTranslation: new Vector3(-10 * (1 - x), -10 * (1 - y), 0).applyMatrix(localToWorld),
+        });
+        const matrix = transform.getWorldMatrix();
+        const actualFixed = new Vector3(current.points[0].x, current.points[0].y, 0).applyMatrix(matrix);
+        const actualDragged = new Vector3(current.points[2].x, current.points[2].y, 0).applyMatrix(matrix);
+        const expectedDragged = fixedPoint.clone().add(new Vector3(20 * x, 20 * y, 0).applyMatrix(localToWorld));
+
+        expect(actualFixed.distance(fixedPoint)).to.be.lessThan(0.0001);
+        expect(actualDragged.distance(expectedDragged)).to.be.lessThan(0.0001);
+      }
+    });
+  }
 
   it('手柄在实际拖动时进入变换，Up 结束变换并把 hover 留给 cached Move', () => {
     const { gizmo, owner, emit } = createGizmo(TransformType.SCALE);
