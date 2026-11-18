@@ -4,6 +4,8 @@ import { shapeConfig } from '../../../../../../plugin-packages/editor-gizmo/src/
 import type { ShapeConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/types';
 import { DemoScene } from '../../../../../demo/src/gizmo-2d/scene';
 import type { DemoItem } from '../../../../../demo/src/gizmo-2d/scene';
+import { DemoEditor } from '../../../../../demo/src/gizmo-2d/editor';
+import type { ShapeDrawingActionEvent } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
 import { InspectorPanel } from '../../../../../demo/src/gizmo-2d/inspector';
 import { restoreTestState } from '../helpers/spies';
 
@@ -42,6 +44,41 @@ describe('plugin-editor-gizmo/demo-shape-size', () => {
     }).setVectorSize(item, axis, size);
 
     return { shape, definition, transform, scene, data, setSize };
+  }
+
+  for (const edited of [false, true]) {
+    it(`canceling a vector edit restores geometry and preserves the full transform (edited=${edited})`, () => {
+      const { scene, data, transform, shape } = createHarness(spec.ShapePrimitiveType.Polygon, { polygonRadius: 0.25 });
+
+      transform.setPosition(10, 20, 3);
+      transform.setScale(-2, 3, 1);
+      transform.setRotation(0, 0, 37);
+      transform.setSize(2, 4);
+      transform.setAnchor(0.25, -0.5);
+      const beforeShape = { ...shape };
+      const beforeMatrix = [...transform.getWorldMatrix().elements];
+      const beforeSize = transform.size.toArray();
+      const beforeAnchor = transform.anchor.toArray();
+
+      chai.spy.on(scene, 'getItemById', () => data);
+      const editor = Object.assign(Object.create(DemoEditor.prototype) as DemoEditor, {
+        scene, vectorEditSnapshots: new Map(), settingTool: true,
+      }) as unknown as { handleGeometryAction: (phase: string, event: Partial<ShapeDrawingActionEvent>) => void };
+      const path = { points: [{ x: 0, y: 0 }, { x: 30, y: 40 }], easingIns: [], easingOuts: [], shapes: [] };
+      const edit = { itemId: 'polygon', before: path, path, operations: [] };
+
+      editor.handleGeometryAction('actionstart', { sessionId: 1, phase: 'start', edit });
+      if (edited) {
+        editor.handleGeometryAction('actionupdate', { sessionId: 1, phase: 'update', edit: { ...edit, operations: [{ kind: 'point', index: 1 }] } });
+        expect(shape.type).to.equal(spec.ShapePrimitiveType.Custom);
+      }
+      editor.handleGeometryAction('actioncommit', { sessionId: 1, phase: 'cancel', canceled: true, edit });
+      expect(shape).to.include(beforeShape);
+      expect([...transform.getWorldMatrix().elements]).to.deep.equal(beforeMatrix);
+      expect(transform.scale.toArray()).to.deep.equal([-2, 3, 1]);
+      expect(transform.size.toArray()).to.deep.equal(beforeSize);
+      expect(transform.anchor.toArray()).to.deep.equal(beforeAnchor);
+    });
   }
 
   for (const type of [spec.ShapePrimitiveType.Rectangle, spec.ShapePrimitiveType.Ellipse]) {

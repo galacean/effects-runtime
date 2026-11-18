@@ -7,7 +7,7 @@ import type { PenConfig } from '../../configs/types';
 import { GestureCursorType } from '../../cursor';
 import { Vector2 } from '../../math';
 import { toColor } from '../../drawing';
-import { cloneGeometry, deletePenPoint, disconnectPenSegment, hitPenCurve, nextGeometrySession, openClosedShapeAt, penEditOperations, splitPenSegment,
+import { appendPenHandle, cloneGeometry, deletePenPoint, disconnectPenSegment, hitPenCurve, nextGeometrySession, openClosedShapeAt, penEditOperations, splitPenSegment,
   type GeometryGizmoHost, type HandleMirrorMode,
   type PenNodeSelection, type PenPathData, type PenToolState, type PathIndex, type PathPoint, type ShapeDrawingActionEvent } from './geometry';
 import { createPenEditContext, type PenEditContext, type PenHit } from './pen-edit-context';
@@ -270,8 +270,8 @@ export class PenGizmo extends Gizmo {
       this.editContext.dragPath = this.editContext.beforeDrag;
       this.editContext.undoDraft.push(this.editContext.beforeDrag); this.editContext.redoDraft = [];
       const index = this.editContext.path.points.push({ x: point.x, y: point.y }) - 1;
-      const easingIn = this.editContext.path.easingIns.push({ x: 0, y: 0 }) - 1;
-      const easingOut = this.editContext.path.easingOuts.push({ x: 0, y: 0 }) - 1;
+      const easingIn = appendPenHandle(this.editContext.path, 'easingIn', Vector2.ZERO);
+      const easingOut = appendPenHandle(this.editContext.path, 'easingOut', Vector2.ZERO);
 
       const pathIndex = { point: index, easingIn, easingOut };
       const shapeIndexes = this.editContext.path.shapes[this.editContext.activeShape].indexes;
@@ -980,8 +980,7 @@ export class PenGizmo extends Gizmo {
       const handles = field === 'easingIn' ? this.editContext.path.easingIns : this.editContext.path.easingOuts;
       const handle = handles[index[field]] ?? { x: 0, y: 0 };
 
-      index[field] = handles.length;
-      handles.push({ ...handle });
+      index[field] = appendPenHandle(this.editContext.path, field, handle);
     }
   }
 

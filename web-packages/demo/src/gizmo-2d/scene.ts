@@ -1,6 +1,6 @@
 import { CompositionComponent, EventEmitter, FrameComponent, PlayState, ShapeComponent, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
 import type { Composition, Player, VFXItem } from '@galacean/effects';
-import { DefaultVFXItems, VFXItemFactory, pauseVideoComponent, playVideoComponent, resizeSelectionConfig, shapeConfig, toColor } from '@galacean/effects-plugin-editor-gizmo';
+import { DefaultVFXItems, VFXItemFactory, cloneGeometry, pauseVideoComponent, playVideoComponent, resizeSelectionConfig, shapeConfig, toColor } from '@galacean/effects-plugin-editor-gizmo';
 import type { PenPathData, ShapeConfig, ShapeGeometry } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
@@ -387,6 +387,26 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     this.register(data);
 
     return data;
+  }
+
+  snapshotVectorShape (data: DemoItem): ShapeComponent['shape'] | undefined {
+    if (data.kind !== 'Vector') {
+      return undefined;
+    }
+
+    return cloneGeometry(data.item.getComponent(ShapeComponent).shape);
+  }
+
+  restoreVectorShape (data: DemoItem, snapshot: ShapeComponent['shape']): void {
+    if (data.kind !== 'Vector') {
+      return;
+    }
+    // 节点编辑只写形状属性；恢复原始属性，保留元素的镜像、旋转和位置。
+    data.item.getComponent(ShapeComponent).fromData({
+      ...shapeStyle(this.getShapeConfig(data)),
+      ...cloneGeometry(snapshot),
+    } as unknown as spec.ShapeComponentData);
+    this.emit('change');
   }
 
   readVectorGeometry (data: DemoItem): ShapeGeometry | undefined {

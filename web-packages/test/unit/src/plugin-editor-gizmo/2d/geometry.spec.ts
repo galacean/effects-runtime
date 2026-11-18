@@ -51,19 +51,18 @@ describe('plugin-editor-gizmo/geometry', () => {
       expect(restored.points[restored.shapes[0].indexes[2].point]).to.deep.equal({ x: 84.375, y: 56.25 });
     });
 
-    it('uses zero offsets for missing handles when splitting a plain path', () => {
+    it('splits a plain path with missing handles without changing the next segment', () => {
       const path: PenPathData = {
-        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+        points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
         easingIns: [],
         easingOuts: [],
-        shapes: [{ close: false, indexes: [
-          { point: 0, easingIn: 0, easingOut: 0 },
-          { point: 1, easingIn: 1, easingOut: 1 },
-        ] }],
+        shapes: [{ close: false, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],
       };
+      const nextStart = path.shapes[0].indexes[1];
 
       expect(splitPenSegment(path, 0, 0, 0.25)).to.equal(1);
       expect(path.points[path.shapes[0].indexes[1].point]).to.deep.equal({ x: 15.625, y: 0 });
+      expect(path.easingOuts[nextStart.easingOut] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
     });
 
     it('handles collapsed curves with the same pixel hit threshold', () => {

@@ -180,6 +180,50 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
     });
   }
 
+  it('appends a dragged node without occupying missing handles on existing nodes', () => {
+    const path: PenPathData = {
+      points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }],
+      easingIns: [], easingOuts: [],
+      shapes: [{ close: false, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],
+    };
+    const { gizmo, events } = createHarness({ path, mode: 'create', preserveTarget: true });
+
+    click(gizmo, 200, 0);
+    gizmo.onMouseDown(mouseButton(300, 0, true));
+    drag(gizmo, 300, 40);
+    gizmo.onMouseUp(mouseButton(300, 40, false));
+    const edited = events.at(-1)!.edit!.path;
+    const indexes = edited.shapes[0].indexes;
+
+    expect(indexes).to.have.lengthOf(4);
+    expect(edited.easingOuts[indexes[3].easingOut]).to.deep.equal({ x: 0, y: 40 });
+    for (const index of indexes.slice(0, 3)) {
+      expect(edited.easingIns[index.easingIn] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
+      expect(edited.easingOuts[index.easingOut] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
+    }
+  });
+
+  it('detaches shared handles without occupying another node\'s missing handles', () => {
+    const path: PenPathData = {
+      points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }],
+      easingIns: [{ x: -20, y: 0 }], easingOuts: [{ x: 20, y: 0 }],
+      shapes: [{ close: false, indexes: [0, 1, 2].map(point => ({ point, easingIn: point === 2 ? 1 : 0, easingOut: point === 2 ? 1 : 0 })) }],
+    };
+    const { gizmo, events } = createHarness({ path });
+
+    click(gizmo, 0, 0);
+    gizmo.onMouseDown(mouseButton(20, 0, true));
+    drag(gizmo, 0, 40);
+    gizmo.onMouseUp(mouseButton(0, 40, false));
+    const edited = events.at(-1)!.edit!.path;
+    const [first, second, third] = edited.shapes[0].indexes;
+
+    expect(edited.easingOuts[first.easingOut]).to.deep.equal({ x: 0, y: 40 });
+    expect(edited.easingOuts[second.easingOut]).to.deep.equal({ x: 20, y: 0 });
+    expect(edited.easingIns[third.easingIn] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
+    expect(edited.easingOuts[third.easingOut] ?? { x: 0, y: 0 }).to.deep.equal({ x: 0, y: 0 });
+  });
+
   it('continues from the same open endpoint and closes only on the other endpoint', () => {
     const path: PenPathData = {
       points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }],

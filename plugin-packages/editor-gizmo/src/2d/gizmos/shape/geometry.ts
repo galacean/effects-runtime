@@ -119,6 +119,25 @@ export function hitPenCurve (
   return hit;
 }
 
+/** 新手柄必须避开其他节点引用但尚未写入的索引。 */
+export function appendPenHandle (path: PenPathData, field: 'easingIn' | 'easingOut', point: PathPoint): number {
+  const handles = field === 'easingIn' ? path.easingIns : path.easingOuts;
+  let nextIndex = handles.length;
+
+  for (const shape of path.shapes) {
+    for (const index of shape.indexes) {
+      if (Number.isInteger(index[field])) {
+        nextIndex = Math.max(nextIndex, index[field] + 1);
+      }
+    }
+  }
+  while (handles.length < nextIndex) {
+    handles.push({ x: 0, y: 0 });
+  }
+
+  return handles.push({ x: point.x, y: point.y }) - 1;
+}
+
 export function splitPenSegment (path: PenPathData, shapeIndex: number, segment: number, t: number): number | undefined {
   if (!Number.isFinite(t) || t <= 0 || t >= 1) { return; }
   const shape = path.shapes[shapeIndex];
@@ -139,13 +158,13 @@ export function splitPenSegment (path: PenPathData, shapeIndex: number, segment:
   const r1 = new Vector2().lerpVectors(q1, q2, t);
   const point = new Vector2().lerpVectors(r0, r1, t);
 
-  a.easingOut = path.easingOuts.push({ ...q0.subtract(p0) }) - 1;
-  b.easingIn = path.easingIns.push({ ...q2.subtract(p3) }) - 1;
+  a.easingOut = appendPenHandle(path, 'easingOut', q0.subtract(p0));
+  b.easingIn = appendPenHandle(path, 'easingIn', q2.subtract(p3));
   const index = path.points.push({ ...point }) - 1;
 
   shape.indexes.splice(segment + 1, 0, { point: index,
-    easingIn: path.easingIns.push({ ...r0.subtract(point) }) - 1,
-    easingOut: path.easingOuts.push({ ...r1.subtract(point) }) - 1 });
+    easingIn: appendPenHandle(path, 'easingIn', r0.subtract(point)),
+    easingOut: appendPenHandle(path, 'easingOut', r1.subtract(point)) });
 
   return segment + 1;
 }

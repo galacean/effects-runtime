@@ -19,7 +19,6 @@ import {
   type HandleMirrorMode,
   type PenPathData,
   type ShapeDrawingActionEvent,
-  type ShapeGeometry,
   type ShapePrimitive,
 } from '@galacean/effects-plugin-editor-gizmo';
 import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo,
@@ -112,7 +111,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   private geometryMode?: PenEditMode | ShapeEditMode;
   private readonly geometryHost: GeometryGizmoHost;
   private draftGeometry?: DemoItem;
-  private readonly vectorEditSnapshots = new Map<string, ShapeGeometry>();
+  private readonly vectorEditSnapshots = new Map<string, ShapeComponent['shape']>();
   private penMirrorMode: HandleMirrorMode = 'angle-length';
   private penLassoMode = false;
   private settingTool = false;
@@ -469,7 +468,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         const snapshot = this.vectorEditSnapshots.get(event.edit.itemId);
 
         if (target?.kind === 'Vector' && snapshot) {
-          this.scene.updateVectorShape(target, snapshot);
+          this.scene.restoreVectorShape(target, snapshot);
         } else if (target?.kind === 'CustomShape' || (target?.kind === 'Vector' && event.edit.operations.length > 0)) {
           this.scene.updateCustomShape(target, event.edit.before);
         }
@@ -524,7 +523,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       const target = this.scene.getItemById(event.edit.itemId);
 
       if (phase === 'actionstart' && target?.kind === 'Vector') {
-        const snapshot = this.scene.readVectorGeometry(target);
+        const snapshot = this.scene.snapshotVectorShape(target);
 
         if (snapshot) { this.vectorEditSnapshots.set(event.edit.itemId, snapshot); }
       }

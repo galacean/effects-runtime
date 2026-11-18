@@ -100,6 +100,7 @@ type ShapeResizeAttributes = {
 type ShapeResizeSnapshot = {
   component: ShapeComponent,
   attributes: ShapeResizeAttributes,
+  localCenter: Vector3,
   localToWorld: Matrix4,
 };
 
@@ -167,6 +168,7 @@ function createShapeResizeSnapshot (component: ShapeComponent | undefined, itemM
     return undefined;
   }
   const attributes: ShapeResizeAttributes = { type: shape.type };
+  const localCenter = new Vector3();
 
   switch (shape.type) {
     case spec.ShapePrimitiveType.Rectangle:
@@ -195,13 +197,21 @@ function createShapeResizeSnapshot (component: ShapeComponent | undefined, itemM
       attributes.points = shape.points.map(point => ({ x: point.x, y: point.y }));
       attributes.easingIns = shape.easingIns.map(point => ({ x: point.x, y: point.y }));
       attributes.easingOuts = shape.easingOuts.map(point => ({ x: point.x, y: point.y }));
+      if (attributes.points.length) {
+        const bounds = new Box2();
+
+        attributes.points.forEach(point => bounds.expandByPoint(new Vector2(point.x, point.y)));
+        const center = bounds.getCenter(new Vector2());
+
+        localCenter.set(center.x, center.y, 0);
+      }
 
       break;
     default:
       return undefined;
   }
 
-  return { component, attributes, localToWorld: itemMatrix.clone().setPosition(new Vector3()) };
+  return { component, attributes, localCenter, localToWorld: itemMatrix.clone().setPosition(new Vector3()) };
 }
 
 function scaledShapeSize (value: number | undefined, scalar: number): number | undefined {
@@ -1274,9 +1284,12 @@ export class ResizeSelectionGizmo extends Gizmo {
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
     const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent), itemMatrix);
     const frame = isFramePlayerItem(item);
-    const resizeOrigin = textComponent || frame || shapeResize
-      ? initialHandle.clone().add(fixedPoint).multiply(0.5)
-      : transformOrigin.clone();
+    // 形状属性围绕局部几何中心变化；曲线或星形的选框中心可能不同。
+    const resizeOrigin = shapeResize
+      ? shapeResize.localCenter.clone().applyMatrix(itemMatrix)
+      : textComponent || frame
+        ? initialHandle.clone().add(fixedPoint).multiply(0.5)
+        : transformOrigin.clone();
     const text = textComponent
       ? {
         component: textComponent,
@@ -1860,19 +1873,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       case spec.ShapePrimitiveType.Custom:
         if (current.points && current.easingIns && current.easingOuts
           && attributes.points?.length && attributes.easingIns && attributes.easingOuts) {
-          const bounds = attributes.points.reduce((result, point) => ({
-            minX: Math.min(result.minX, point.x),
-            maxX: Math.max(result.maxX, point.x),
-            minY: Math.min(result.minY, point.y),
-            maxY: Math.max(result.maxY, point.y),
-          }), {
-            minX: Infinity,
-            maxX: -Infinity,
-            minY: Infinity,
-            maxY: -Infinity,
-          });
-          const centerX = (bounds.minX + bounds.maxX) / 2;
-          const centerY = (bounds.minY + bounds.maxY) / 2;
+          const { x: centerX, y: centerY } = shape.localCenter;
 
           // 点围绕几何中心缩放，transform 镜像围绕原点；补回中心的世界偏移。
           centerOffset.set(centerX * (1 - Math.sign(scalarX)), centerY * (1 - Math.sign(scalarY)), 0)
