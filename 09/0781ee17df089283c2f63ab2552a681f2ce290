@@ -1,0 +1,28 @@
+packages/effects-core/src/scene-objects-factory.ts
+  s_32ce5d4a71b8e1::t_e95c05f2d13dce 29,78
+packages/effects-core/src/precompositions/precomposition.ts
+  s_32ce5d4a71b8e1::t_6fcbbd8287bc9c 2,7,22-24,30-40
+  s_32ce5d4a71b8e1::t_1d88b089970275 16,25-29
+packages/effects-core/src/composition.ts
+  s_32ce5d4a71b8e1::t_1d88b089970275 19
+  s_32ce5d4a71b8e1::t_6fcbbd8287bc9c 213,721-722,734
+  s_32ce5d4a71b8e1::t_261ca3297f8ce0 264,727-733
+  s_32ce5d4a71b8e1::t_e95c05f2d13dce 359,362,861
+  s_32ce5d4a71b8e1::t_7877e4ffcebf42 724-725
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "090781ee17df089283c2f63ab2552a681f2ce290",
+  "prompts": {},
+  "sessions": {
+    "s_32ce5d4a71b8e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e3cd-84f8-7ac3-9c0b-96365b5d8128",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
