@@ -155,10 +155,10 @@ export class AssetServer extends EngineServer {
       const binaryBuffer = bins[i];
 
       if (binaryData.dataType === spec.DataType.BinaryAsset) {
-        //@ts-expect-error
-        binaryData.buffer = binaryBuffer;
         if (binaryData.id) {
-          this.addEffectsObjectData(binaryData);
+          const data = { ...binaryData, buffer: binaryBuffer };
+
+          this.addEffectsObjectData(data);
         }
       } else {
         const effectsPackage = new EffectsPackage();
