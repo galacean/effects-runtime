@@ -34,13 +34,10 @@ export function readShapeComponentData (component: ShapeComponent): Data {
     trackMatte: { isTrackMatte: component.maskManager.isTrackMatte, sourceVisible: component.maskManager.sourceVisible,
       alphaMaskEnabled: component.maskManager.alphaMaskEnabled,
       references: component.definition.trackMatte?.references
-        ?? component.definition.mask?.references?.map((ref: spec.MaskReferenceData) => ({ source: ref.mask, inverted: ref.inverted }))
         ?? component.maskManager.getMaskReferences()
           .filter(ref => ref.maskable instanceof EffectsObject)
           .map(ref => ({ source: { id: (ref.maskable as unknown as EffectsObject).getInstanceId() }, inverted: ref.inverted })) },
   };
-
-  delete data.mask;
 
   for (const key of ['fillTrimPath', 'strokeTrimPath'] as const) {
     const trim = component[key];

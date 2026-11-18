@@ -10,7 +10,6 @@ interface RendererComponentData extends spec.ComponentData {
   materials?: spec.DataPath[],
   _priority?: number,
   trackMatte?: spec.TrackMatteOptions,
-  mask?: spec.MaskOptions,
 }
 
 /**

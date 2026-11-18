@@ -59,7 +59,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
       graphic.fromData({
         id: graphic.getInstanceId(), item: { id: item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
-        renderer: { renderMode: spec.RenderMode.MESH }, mask: { isMask: false },
+        renderer: { renderMode: spec.RenderMode.MESH }, trackMatte: { isTrackMatte: false },
       });
       const renderer: ItemRenderer = graphic.renderer;
       const legacyReference: MaskReference = { maskable: graphic, inverted: false, compatibilityLabel: 'source' };

@@ -71,11 +71,9 @@ export class MaskProcessor {
     this.stencilClearAction = { stencilAction: TextureLoadAction.clear };
   }
 
-  fromData (engine: Engine, data: { trackMatte?: spec.TrackMatteOptions, mask?: spec.MaskOptions }): void {
+  fromData (engine: Engine, data: { trackMatte?: spec.TrackMatteOptions }): void {
     if (data.trackMatte !== undefined) {
       this.applyTrackMatteOptions(engine, data.trackMatte);
-    } else if (data.mask !== undefined) {
-      this.setMaskOptions(engine, data.mask);
     }
   }
 

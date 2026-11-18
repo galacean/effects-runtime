@@ -119,8 +119,11 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         source.fromData({
           id: source.getInstanceId(), item: { id: source.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
           renderer: { occlusion: true }, options: {},
-          ...(legacy ? { mask: { isMask: true } } : { trackMatte: { isTrackMatte: true, sourceVisible: true } }),
+          trackMatte: legacy ? undefined : { isTrackMatte: true, sourceVisible: true },
         } as spec.SpriteComponentData);
+        if (legacy) {
+          source.maskManager.setMaskOptions(engine, { isMask: true });
+        }
         source.transform.setPosition(0, 0, -0.5);
         source.setColor([1, 0, 0, 1]);
         source.onUpdate(0);
@@ -274,14 +277,12 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(target.maskManager.getMaskReferences().map(reference => reference.maskable)).deep.equals([runtimeSource, source]);
     });
 
-    for (const sourceMode of ['legacy-data', 'legacy-api', 'visible-fields', 'track-matte', 'visible-track-matte'] as const) {
+    for (const sourceMode of ['legacy-api', 'visible-fields', 'track-matte', 'visible-track-matte'] as const) {
       it(`preserves source visibility for ${sourceMode}`, () => {
         const source = sprite();
         const target = sprite();
 
-        if (sourceMode === 'legacy-data') {
-          source.maskManager.fromData(engine, { mask: { isMask: true } });
-        } else if (sourceMode === 'legacy-api') {
+        if (sourceMode === 'legacy-api') {
           source.maskManager.setMaskOptions(engine, { isMask: true });
         } else if (sourceMode === 'visible-fields') {
           source.maskManager.sourceVisible = true;
@@ -306,7 +307,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
         source.maskManager.fromData(engine, { trackMatte: { isTrackMatte: true } });
         expect(render([source]).filter(Boolean)).has.length(0);
-        source.maskManager.fromData(engine, { mask: { isMask: true } });
+        source.maskManager.setMaskOptions(engine, { isMask: true });
         expect(render([source]).filter(Boolean)).has.length(64);
       });
     }

@@ -348,6 +348,22 @@ describe('core/material//mask-ref-manager', () => {
     });
   });
 
+  describe('fromData', () => {
+    it('restores track matte references and preserves them during unrelated updates', () => {
+      const mp = new MaskProcessor();
+      const source = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
+
+      mp.fromData(engine, { trackMatte: { references: [{ source: dummyRef, inverted: true }] } });
+      expect(mp.getMaskReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
+
+      mp.fromData(engine, {});
+      expect(mp.getMaskReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
+
+      mp.fromData(engine, { trackMatte: { references: [] } });
+      expect(mp.getMaskReferences()).to.deep.equal([]);
+    });
+  });
+
   // ==================== setMaskOptions ====================
 
   describe('setMaskOptions', () => {
