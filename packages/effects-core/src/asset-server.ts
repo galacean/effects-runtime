@@ -2,15 +2,12 @@ import * as spec from '@galacean/effects-specification';
 import { EngineServer } from './engine-server';
 import { effectsClass, getClass } from './decorators';
 import type { Engine } from './engine';
-import type { SceneLoadOptions } from './scene';
-import { Scene } from './scene';
+import type { Scene, SceneLoadOptions } from './scene';
 import type { EffectsObject } from './effects-object';
 import { Asset } from './asset';
 import { Material } from './material';
-import { PluginSystem } from './plugin-system';
 import { AssetManager } from './asset-manager';
 import { EffectsPackage } from './effects-package';
-import { passRenderLevel } from './pass-render-level';
 import { SerializationHelper } from './serialization-helper';
 import { generateEmptyTexture, generateWhiteTexture, Texture } from './texture';
 import type { AbstractConstructor, Constructor } from './utils';
@@ -29,7 +26,7 @@ export class AssetServer extends EngineServer {
   /** Object definitions keyed by their serialized IDs. */
   objectsDataCache: Record<string, spec.EffectsObjectData> = {};
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
-  assetManagers: AssetManager[] = [];
+  private readonly _assetManagers: AssetManager[] = [];
   private readonly builtinObjects = new Map<string, EffectsObject>();
 
   constructor (engine: Engine) {
@@ -45,60 +42,13 @@ export class AssetServer extends EngineServer {
     this.builtinObjects.set(spec.BuiltinObjectGUID.EmptyTexture, this.transparentTexture);
   }
 
-  /**
-   * @param url
-   * @param options
-   * @returns
-   */
-  assembleSceneLoadOptions (
-    url: Scene.LoadType,
-    options: SceneLoadOptions = {},
-  ) {
-    let source: Scene.LoadType = url;
-
-    // 加载多个合成链接并各自设置可选参数
-    if (Scene.isURL(url)) {
-      if (!Scene.isJSONObject(url)) {
-        source = url.url;
-      }
-      if (Scene.isWithOptions(url)) {
-        options = {
-          ...options,
-          ...url.options,
-        };
-      }
-    }
-
-    return {
-      source,
-      options,
-    };
+  get assetManagers (): readonly AssetManager[] {
+    return this._assetManagers;
   }
 
-  /**
-   * 根据用户参数修改文本元素的原始数据
-   * @param scene
-   * @param variables
-   */
-  updateTextVariables (
-    scene: Scene,
-    variables: spec.TemplateVariables = {},
-  ) {
-    scene.jsonScene.items.forEach(item => {
-      const textVariable = variables[item.name] as string;
-
-      if (textVariable === undefined || textVariable === null) {
-        return;
-      }
-
-      item.components?.forEach(({ id }) => {
-        const componentData = this.findEffectsObjectData(id) as spec.TextComponentData;
-
-        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
-          componentData.options.text = textVariable;
-        }
-      });
-    });
+  /** @internal Reset definitions before registering another asset package. */
+  clearEffectsObjectData (): void {
+    this.objectsDataCache = {};
   }
 
   addEffectsObjectData (data: spec.EffectsObjectData) {
@@ -107,14 +57,6 @@ export class AssetServer extends EngineServer {
 
   findEffectsObjectData (uuid: string) {
     return this.objectsDataCache[uuid];
-  }
-
-  /** @internal Prepare the definitions and inputs for one scene load. */
-  prepareSceneAssets (scene: Scene, options: SceneLoadOptions): void {
-    this.objectsDataCache = {};
-    PluginSystem.notifyAssetsLoadFinish(scene, options, this.engine);
-    this.prepareAssets(scene);
-    this.updateTextVariables(scene, options.variables);
   }
 
   loadGUID<T> (dataPath: spec.DataPath, type?: AbstractConstructor): T {
@@ -163,9 +105,16 @@ export class AssetServer extends EngineServer {
   createAssetManager (options: SceneLoadOptions): AssetManager {
     const manager = new AssetManager(options);
 
-    this.assetManagers.push(manager);
+    this._assetManagers.push(manager);
 
     return manager;
+  }
+
+  /** Release the current batch of load sessions before starting another one. */
+  releaseAssetManagers (): void {
+    for (const manager of this._assetManagers.splice(0)) {
+      manager.dispose();
+    }
   }
 
   /** Register the scene definitions and loaded assets together. */
@@ -180,13 +129,6 @@ export class AssetServer extends EngineServer {
       this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
     }
     for (const vfxItemData of items) {
-      if (!passRenderLevel(vfxItemData.renderLevel, scene.renderLevel)) {
-        vfxItemData.components = [];
-        // type 仅作为降级标记保留给用户代码（isNull）使用，运行时行为由清空组件决定
-        vfxItemData.type = spec.ItemType.null;
-        // 清除预合成引用，降级元素不再实例化预合成（预合成由顶层 refId 结构判定）
-        delete (vfxItemData as { refId?: string }).refId;
-      }
       this.addEffectsObjectData(vfxItemData);
     }
     for (const materialData of materials) {
@@ -250,8 +192,7 @@ export class AssetServer extends EngineServer {
   }
 
   override onDispose (): void {
-    this.assetManagers.forEach(assetManager => assetManager.dispose());
-    this.assetManagers.length = 0;
+    this.releaseAssetManagers();
     this.builtinObjects.forEach(object => object.dispose());
     this.builtinObjects.clear();
   }

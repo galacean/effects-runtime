@@ -18,7 +18,7 @@ export class PrecompositionManager {
     const { engine } = composition;
     const { assetServer } = engine;
 
-    assetServer.prepareSceneAssets(scene, options);
+    engine.sceneServer.prepareScene(scene, options);
 
     const { compositionId } = scene.jsonScene;
     const compositionData = assetServer.findEffectsObjectData(compositionId!) as unknown as spec.CompositionData;

@@ -1,3 +1,4 @@
+import type { Scene } from '@galacean/effects';
 import {
   Asset, Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition,
   EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore, spec,
@@ -259,6 +260,91 @@ describe('core/engine/servers', () => {
     expect(engine.effectsObjectServer.findObject(whiteTexturePath)).to.equal(engine.assetServer.whiteTexture);
     expect(other.effectsObjectServer.findObject(whiteTexturePath)).to.equal(other.assetServer.whiteTexture);
     expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
+  });
+
+  it('prepares text overrides and degraded precompositions before creating scene objects', () => {
+    const engine = createPlayer().engine;
+    const text = { id: 'text', dataType: spec.DataType.TextComponent, options: { text: 'original' } };
+    const richText = { id: 'rich-text', dataType: spec.DataType.RichTextComponent, options: { text: 'original' } };
+    const degraded = {
+      id: 'degraded', name: 'degraded', dataType: spec.DataType.VFXItemData, type: spec.ItemType.composition,
+      renderLevel: spec.RenderLevel.S, refId: 'missing-template', components: [{ id: 'missing-component' }],
+    };
+    const scene: Scene = {
+      jsonScene: {
+        compositionId: 'scene',
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze,
+          children: [{ id: degraded.id }] }],
+        items: [degraded, { id: 'label', name: 'label', components: [{ id: text.id }, { id: richText.id }] }],
+        components: [text, richText],
+      } as unknown as spec.JSONScene,
+      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '', renderLevel: spec.RenderLevel.B,
+    };
+
+    engine.assetServer.prepareAssets(scene);
+    expect(degraded.refId).to.equal('missing-template');
+    expect(text.options.text).to.equal('original');
+
+    engine.sceneServer.prepareScene(scene, { variables: { label: 'replacement' } });
+    const composition = new Composition(engine, {}, scene);
+    const item = composition.getItemByName('degraded')!;
+
+    expect(text.options.text).to.equal('replacement');
+    expect(richText.options.text).to.equal('replacement');
+    expect(engine.assetServer.findEffectsObjectData(text.id)).to.equal(text);
+    expect(VFXItem.isNull(item)).to.equal(true);
+    expect(item.components).to.have.length(0);
+    expect(degraded).not.to.have.property('refId');
+  });
+
+  it('applies per-scene options and releases the previous batch through the asset server', async () => {
+    const player = createPlayer();
+    const createScene = (): Scene => ({
+      jsonScene: {
+        compositionId: 'scene', items: [],
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+      } as unknown as spec.JSONScene,
+      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+    });
+    const firstScene = Object.assign(createScene(), { options: { speed: 2, autoplay: false } });
+    const secondScene = Object.assign(createScene(), { options: { speed: 3, autoplay: true } });
+    const [first, second] = await player.loadScene([firstScene, secondScene], { speed: 1, autoplay: false });
+
+    expect(first.getSpeed()).to.equal(2);
+    expect(first.getPaused()).to.equal(true);
+    expect(second.getSpeed()).to.equal(3);
+    expect(second.getPaused()).to.equal(false);
+    expect(player.getAssetManager()).to.have.length(2);
+
+    let disposals = 0;
+
+    for (const manager of player.getAssetManager()) {
+      const dispose = manager.dispose.bind(manager);
+
+      manager.dispose = () => { disposals++; dispose(); };
+    }
+    await player.loadScene(createScene(), { autoplay: false });
+    expect(disposals).to.equal(2);
+    expect(player.getAssetManager()).to.have.length(1);
+    expect(first.getSpeed()).to.equal(2);
+  });
+
+  it('releases load sessions once and keeps other engines independent', () => {
+    const assets = createPlayer().engine.assetServer;
+    const other = createPlayer().engine.assetServer;
+    const first = assets.createAssetManager({});
+    const second = assets.createAssetManager({});
+    const otherManager = other.createAssetManager({});
+    const calls: string[] = [];
+
+    first.dispose = () => calls.push('first');
+    second.dispose = () => calls.push('second');
+    otherManager.dispose = () => calls.push('other');
+    assets.releaseAssetManagers();
+    assets.releaseAssetManagers();
+    expect(assets.assetManagers).to.have.length(0);
+    expect(other.assetManagers).to.deep.equal([otherManager]);
+    expect(calls).to.deep.equal(['first', 'second']);
   });
 
   it('owns object lookup per engine and falls back to asset loading for unregistered objects', () => {

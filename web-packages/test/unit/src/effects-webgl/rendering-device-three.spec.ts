@@ -1,8 +1,9 @@
-import type { TextureSourceOptions } from '@galacean/effects';
+import type { Scene, TextureSourceOptions } from '@galacean/effects';
 import {
   Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Texture, TextureSourceType, effectsClassStore, glContext, spec,
 } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
+import { ThreeDisplayObject } from '../../../../../packages/effects-threejs/src/three-display-object';
 import type { GPUBufferThree } from '../../../../../packages/effects-threejs/src/gpu-buffer-three';
 import { getThreeGeometry, disposeThreeGeometries } from '../../../../../packages/effects-threejs/src/three-geometry';
 import { GPUTextureThree } from '../../../../../packages/effects-threejs/src/gpu-texture-three';
@@ -63,6 +64,46 @@ describe('threejs/rendering-device', () => {
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
     expect(Array.from(pixel)).deep.equals([255, 0, 0, 255]);
     expect(gl.isContextLost()).equals(false);
+  });
+
+  it('tracks scene load sessions through the asset server and releases them with the display object', async () => {
+    // Reuse this suite's initialized host engine to exercise the loading facade.
+    const displayObject = Object.create(ThreeDisplayObject.prototype) as ThreeDisplayObject;
+
+    Object.assign(displayObject, {
+      engine, compositions: [], children: [], parent: null, baseCompositionIndex: 0, assetServer: engine.assetServer,
+    });
+    const createScene = (): Scene => ({
+      jsonScene: {
+        compositionId: 'scene', items: [],
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+      } as unknown as spec.JSONScene,
+      assets: {}, bins: [], textureOptions: [], images: [], storage: {}, timeInfos: {}, url: '',
+    });
+    const assets = displayObject.engine.assetServer;
+    let disposals = 0;
+
+    try {
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(assets.assetManagers).to.have.length(1);
+      const first = assets.assetManagers[0];
+      const disposeFirst = first.dispose.bind(first);
+
+      first.dispose = () => { disposals++; disposeFirst(); };
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(disposals).to.equal(1);
+      expect(assets.assetManagers).to.have.length(1);
+      expect(assets.assetManagers[0]).not.to.equal(first);
+      const second = assets.assetManagers[0];
+      const disposeSecond = second.dispose.bind(second);
+
+      second.dispose = () => { disposals++; disposeSecond(); };
+    } finally {
+      displayObject.dispose();
+    }
+    expect(disposals).to.equal(2);
+    expect(assets.assetManagers).to.have.length(0);
+    expect(gl.isContextLost()).to.equal(false);
   });
 
   it('composes a texture asset with a device-created Three texture resource', () => {
