@@ -1,0 +1,24 @@
+web-packages/test/unit/src/effects-core/mask-rendering-regressions.spec.ts
+  s_bbc8aa6e769fc1::t_261ae7139b4076 2,45-51,57-58
+packages/effects-core/src/render/scene-rendering.ts
+  s_bbc8aa6e769fc1::t_04b3c65c20411a 43,49
+  s_bbc8aa6e769fc1::t_261ae7139b4076 42,44-46
+packages/effects-core/src/render/renderer.ts
+  s_bbc8aa6e769fc1::t_261ae7139b4076 311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e32caae132d9579d364293b2324efaa8c6181c7a",
+  "prompts": {},
+  "sessions": {
+    "s_bbc8aa6e769fc1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f1bf-dff2-7092-ac91-2c6d15ebd1c5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
