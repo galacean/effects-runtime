@@ -27,9 +27,12 @@ export {
   resizeSelectionConfig,
   selectionPreviewConfig,
   selectionSnapConfig,
+  penConfig,
+  shapeConfig,
   spriteTextEditConfig,
   viewportNavigationConfig,
   viewportOverlayConfig,
+  rulerConfig,
 } from './configs';
 export type {
   AnyConfigChange,
@@ -49,9 +52,13 @@ export type {
   ResizeSelectionConfig,
   SelectionPreviewConfig,
   SnapConfig,
+  PenConfig,
+  ShapeConfig,
   SpriteTextEditConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
+  RulerConfig,
+  RulerGuideSelectionMode,
 } from './configs';
 export * from './items';
 export * from './drawing';
@@ -83,4 +90,9 @@ export * from './gizmos/leave-text-edit-gizmo';
 export * from './gizmos/leave-effects-edit-gizmo';
 export * from './gizmos/enter-edit-mode-gizmo';
 export * from './gizmos/rich-text-gizmo';
+export * from './gizmos/ruler-gizmo';
+export * from './gizmos/ruler-manager';
+export * from './gizmos/shape/geometry';
+export * from './gizmos/shape/pen-gizmo';
+export * from './gizmos/shape/shape-model-gizmo';
 export * from './rich-text';

@@ -36,4 +36,6 @@ export enum GizmoType {
   ICON = 'icon',
   /** 元素创建工具。 */
   ITEM_CREATE = 'item-create',
+  /** 标尺与参考线。 */
+  RULER = 'ruler',
 }

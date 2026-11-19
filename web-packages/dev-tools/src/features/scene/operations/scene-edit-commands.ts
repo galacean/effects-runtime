@@ -90,7 +90,7 @@ class SceneEditCommands {
       { label: 'Copy', icon: 'copy', shortcut: 'Ctrl+C', enabled: selected, action: () => this.copy() },
       { label: 'Paste', icon: 'paste', shortcut: 'Ctrl+V', enabled: this.enabled && !!this.clipboard, action: () => { void this.paste().catch(error => sceneWorkspace.report(error)); } },
       { label: 'Duplicate', shortcut: 'Ctrl+D', enabled: selected, action: () => this.duplicate() },
-      { label: 'Delete', shortcut: 'Delete', enabled: selected, action: () => this.remove() },
+      { label: 'Delete', shortcut: 'Delete / Backspace', enabled: selected, action: () => this.remove() },
     ];
   }
 

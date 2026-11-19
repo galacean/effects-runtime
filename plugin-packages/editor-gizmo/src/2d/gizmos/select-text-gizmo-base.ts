@@ -184,7 +184,7 @@ export abstract class SelectTextGizmoBase extends Gizmo {
     drawDashedCorners(
       control,
       getTransformedBoxCorners(transform),
-      toColor(TEXT_EDIT_BOX_LINE_COLOR, 1),
+      toColor(TEXT_EDIT_BOX_LINE_COLOR),
       SelectTextGizmoBase.HOVER_LINE_WIDTH,
       SelectTextGizmoBase.HOVER_DASH_LENGTH,
       SelectTextGizmoBase.HOVER_GAP_LENGTH,

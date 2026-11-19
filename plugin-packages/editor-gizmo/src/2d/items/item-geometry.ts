@@ -1,4 +1,4 @@
-import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
+import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { Matrix3 } from '../math';
 import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox } from '../math';
@@ -39,14 +39,25 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
     const compositionMatrix = new Matrix4()
       .copyFrom(composition?.transform.getWorldMatrix() ?? new Matrix4())
       .invert();
-    const itemWorldMatrix = compositionMatrix.multiply(transform.getWorldMatrix());
+    const shapeBox = item.type === spec.ItemType.shape
+      ? item.getComponent(ShapeComponent)?.getBoundingBox()
+      : undefined;
+    const shapePoints = getShapeBoundingBoxPoints(shapeBox);
 
-    viewTransform = getBoxTransform([
-      new Vector3(-x, y, 0),
-      new Vector3(x, y, 0),
-      new Vector3(x, -y, 0),
-      new Vector3(-x, -y, 0),
-    ].map(point => projectPoint(point.applyMatrix(itemWorldMatrix), item, containerSize)));
+    if (shapePoints) {
+      viewTransform = getBoxTransform(shapePoints.map(point =>
+        projectPoint(point.clone().applyMatrix(compositionMatrix), item, containerSize),
+      ));
+    } else {
+      const itemWorldMatrix = compositionMatrix.multiply(transform.getWorldMatrix());
+
+      viewTransform = getBoxTransform([
+        new Vector3(-x, y, 0),
+        new Vector3(x, y, 0),
+        new Vector3(x, -y, 0),
+        new Vector3(-x, -y, 0),
+      ].map(point => projectPoint(point.applyMatrix(itemWorldMatrix), item, containerSize)));
+    }
   }
 
   if (hasFrameComponent) {
@@ -66,6 +77,20 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
   }
 
   return hasChildBox ? getBoxTransformFromBox(box) : viewTransform;
+}
+
+function getShapeBoundingBoxPoints (box: ReturnType<ShapeComponent['getBoundingBox']> | undefined): Vector3[] | undefined {
+  if (!box?.area?.length || !box.area[0] || !box.area[1]) {
+    return undefined;
+  }
+
+  const points = [box.area[0].p0, box.area[0].p1, box.area[0].p2, box.area[1].p2];
+
+  if (points.some(point => !point || [point.x, point.y, point.z].some(value => !Number.isFinite(value)))) {
+    return undefined;
+  }
+
+  return points.map(point => new Vector3(point.x, point.y, point.z));
 }
 
 /** @returns 元素类型是否提供矩形编辑几何。 */

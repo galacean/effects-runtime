@@ -1,0 +1,30 @@
+import { RulerManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler-manager';
+
+const { expect } = chai;
+
+describe('plugin-editor-gizmo/ruler-manager', () => {
+  it('隔离快照并在 Gizmo 重建间保持数据', () => {
+    const manager = new RulerManager();
+    const guides = { horizontal: [20], vertical: [40] };
+
+    manager.setGuides(guides);
+    guides.horizontal[0] = 80;
+
+    expect(manager.snapshot()).to.deep.equal({ horizontal: [20], vertical: [40] });
+    manager.hydrate({ horizontal: [60], vertical: [] });
+    expect(manager.guides).to.deep.equal({ horizontal: [60], vertical: [] });
+  });
+
+  it('恢复损坏的持久化数据时只保留有限数字', () => {
+    const manager = new RulerManager();
+
+    expect(() => manager.hydrate({
+      horizontal: [20, '40', NaN, Infinity, -Infinity],
+      vertical: undefined,
+    })).not.to.throw();
+    expect(manager.guides).to.deep.equal({ horizontal: [20], vertical: [] });
+
+    expect(() => manager.hydrate({ horizontal: { value: 20 }, vertical: [40, null, '80'] })).not.to.throw();
+    expect(manager.guides).to.deep.equal({ horizontal: [], vertical: [40] });
+  });
+});

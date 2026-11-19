@@ -57,7 +57,7 @@ export class RichTextGizmo extends Gizmo {
 
   override draw (control?: Control): void {
     if (control && this.transform) {
-      drawCorners(control, getTransformedBoxCorners(this.transform), toColor(0x3b82f6, 1), 2);
+      drawCorners(control, getTransformedBoxCorners(this.transform), toColor(0x3b82f6ff), 2);
     }
     this.session.syncViewport(this.viewport);
   }

@@ -1,7 +1,7 @@
 import { restoreTestState } from '../helpers/spies';
 import { createPixelCamera, TEST_VIEW_SIZE } from '../helpers/items';
 
-import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
+import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
 import { Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, getTransformedBoxCorners, transformedBoxContainsPoint } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { getItemViewBox, getItemViewTransform } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-geometry';
 
@@ -18,6 +18,7 @@ describe('plugin-editor-gizmo/item-geometry', () => {
     rotation?: number,
     children?: VFXItem[],
     frameComponent?: boolean,
+    shapeBoundingBox?: { area: Array<{ p0: Vector3, p1: Vector3, p2: Vector3 }> },
     visible?: boolean,
   } = {}): VFXItem {
     const matrix = new Matrix4().compose(
@@ -32,7 +33,16 @@ describe('plugin-editor-gizmo/item-geometry', () => {
       name: options.name ?? '',
       isVisible: options.visible ?? true,
       children: options.children ?? [],
-      getComponent: (component: unknown) => component === FrameComponent && frameComponent ? {} : undefined,
+      getComponent: (component: unknown) => {
+        if (component === FrameComponent && frameComponent) {
+          return {};
+        }
+        if (component === ShapeComponent && options.shapeBoundingBox) {
+          return { getBoundingBox: () => options.shapeBoundingBox };
+        }
+
+        return undefined;
+      },
       transform: {
         size: options.size ?? new Vector2(100, 40),
         updateLocalMatrix: chai.spy(),
@@ -88,6 +98,25 @@ describe('plugin-editor-gizmo/item-geometry', () => {
 
       expect(bounds.min.x).to.be.closeTo(-50, 0.5 * 10 ** -(2));
       expect(bounds.max.x).to.be.closeTo(50, 0.5 * 10 ** -(2));
+    });
+
+    it('uses ShapeComponent bounds instead of transform.size for custom paths', () => {
+      const item = createItem({
+        type: spec.ItemType.shape,
+        size: new Vector2(20, 20),
+        shapeBoundingBox: {
+          area: [
+            { p0: new Vector3(-80, 40, 0), p1: new Vector3(40, 40, 0), p2: new Vector3(40, -20, 0) },
+            { p0: new Vector3(-80, 40, 0), p1: new Vector3(40, -20, 0), p2: new Vector3(-80, -20, 0) },
+          ],
+        },
+      });
+      const bounds = getItemViewBox(item, TEST_VIEW_SIZE.clone());
+
+      expect(bounds.min.x).to.be.closeTo(-80, 0.5 * 10 ** -(2));
+      expect(bounds.max.x).to.be.closeTo(40, 0.5 * 10 ** -(2));
+      expect(bounds.min.y).to.be.closeTo(-20, 0.5 * 10 ** -(2));
+      expect(bounds.max.y).to.be.closeTo(40, 0.5 * 10 ** -(2));
     });
   });
 });

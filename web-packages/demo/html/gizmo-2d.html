@@ -55,9 +55,9 @@
     .canvas-status { position: absolute; left: 20px; right: 20px; bottom: 8px; display: flex; justify-content: flex-end; color: #9c9c9c; font-size: 10px; pointer-events: none; }
     #status[data-error="true"] { color: #ba283d; }
     .toolbar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; padding: 7px; border: 1px solid #e3e3e3; border-radius: 13px; background: white; box-shadow: 0 2px 5px #0001, 0 8px 24px #0001; }
-    .toolbar > button, .text-tool > button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
-    .toolbar > button:hover, .text-tool > button:hover { background: #f4f4f4; }
-    .toolbar > button[aria-pressed="true"], .text-tool[data-active="true"] { background: var(--blue); color: white; }
+    .toolbar > button, .text-tool > button, .pen-tool > button, .shape-tools > button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar > button:hover, .text-tool > button:hover, .pen-tool > button:hover, .shape-tools > button:hover { background: #f4f4f4; }
+    .toolbar > button[aria-pressed="true"], .pen-tool > button[aria-pressed="true"], .shape-tools > button[aria-pressed="true"], .text-tool[data-active="true"] { background: var(--blue); color: white; }
     .text-tool { position: relative; display: flex; align-items: center; border-radius: 7px; }
     .text-tool > button { color: inherit; }
     .text-tool #create-text { border-radius: 7px 0 0 7px; }
@@ -67,6 +67,16 @@
     .text-tool[data-menu-open="true"] .tooltip { display: none; }
     #text-tool-menu { bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); }
     .tool-separator { height: 25px; width: 1px; background: var(--border); margin: 0 4px; }
+    .shape-tools { display: flex; align-items: center; gap: 2px; padding-left: 3px; border-left: 1px solid var(--border); }
+    .shape-tools button { width: 30px; height: 30px; }
+    .pen-tool { position: relative; display: flex; align-items: center; }
+    .pen-tool[data-active="true"] > button > .tooltip { display: none; }
+    .pen-tools { position: absolute; bottom: calc(100% + 18px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid #e3e3e3; border-radius: 12px; background: white; box-shadow: 0 2px 5px #0001, 0 8px 24px #0001; white-space: nowrap; }
+    .pen-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 11px; border-radius: 7px; font-size: 12px; }
+    .pen-tools button:hover { background: #f4f4f4; }
+    .pen-tools button[aria-pressed="true"] { background: #e5f4ff; color: #087cca; }
+    .pen-tools svg { width: 16px; height: 16px; }
+    .pen-tools kbd { color: var(--muted); font: inherit; font-size: 11px; }
     .zoom-controls { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: 3px; padding: 5px; border: 1px solid #e3e3e3; border-radius: 0 8px 0 0; background: white; box-shadow: 0 2px 5px #0001; }
     #zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
     .zoom-controls button { width: 24px; height: 24px; border-radius: 4px; font-size: 16px; color: #666; }
@@ -121,6 +131,13 @@
     <symbol id="icon-effects" viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM20 3v4M18 5h4"/></symbol>
     <symbol id="icon-move" viewBox="0 0 24 24"><path d="M5 3l14 9-7 1-3 7z"/></symbol>
     <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M7 12V7a1.5 1.5 0 0 1 3 0V5a1.5 1.5 0 0 1 3 0v1a1.5 1.5 0 0 1 3 0v2a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-1c-2 0-3-1-4-3l-4-5a1.5 1.5 0 0 1 2-2l3 3M10 7v5M13 6v6M16 8v4"/></symbol>
+    <symbol id="icon-pen" viewBox="0 0 24 24"><path d="M4 20l4.8-1.2L19 8.6a2.2 2.2 0 0 0-3.1-3.1L5.7 16.7zM14.5 7.5l2 2M4 20l1.2-4.8"/></symbol>
+    <symbol id="icon-lasso" viewBox="0 0 24 24"><path d="M6 18C2 15 2 8 6 5s12-2 14 3-2 11-8 11H8" stroke-dasharray="2 3"/><path d="M8 17c-3-2-5 1-3 3 2 2 5-1 3-3ZM5 20l-2 2"/></symbol>
+    <symbol id="icon-pen-edit" viewBox="0 0 24 24"><path d="M5 17L12 6l7 11"/><rect x="3" y="15" width="4" height="4"/><rect x="10" y="4" width="4" height="4"/><rect x="17" y="15" width="4" height="4"/></symbol>
+    <symbol id="icon-shape" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM5 12h14M12 5v14"/></symbol>
+    <symbol id="icon-ellipse" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></symbol>
+    <symbol id="icon-polygon" viewBox="0 0 24 24"><path d="M12 4l7.6 5.5-2.9 8.9H7.3l-2.9-8.9z"/></symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="icon-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"/></symbol>
     <symbol id="icon-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7M8 12h13"/></symbol>
@@ -138,6 +155,8 @@
           <button id="menu-frame" type="button"><svg aria-hidden="true"><use href="#icon-frame"/></svg>拖动创建 Frame<span class="shortcut">F</span></button>
           <button id="menu-text" type="button"><svg aria-hidden="true"><use href="#icon-text"/></svg>创建文本元素<span class="shortcut">T</span></button>
           <button id="menu-richtext" type="button"><svg aria-hidden="true"><use href="#icon-richtext"/></svg>创建富文本元素<span class="shortcut">⇧ T</span></button>
+          <button id="menu-pen" type="button"><svg aria-hidden="true"><use href="#icon-pen"/></svg>钢笔工具<span class="shortcut">P</span></button>
+          <button id="menu-shape" type="button"><svg aria-hidden="true"><use href="#icon-shape"/></svg>造型工具<span class="shortcut">S</span></button>
           <button id="menu-video" type="button"><svg aria-hidden="true"><use href="#icon-video"/></svg>添加 Video</button>
           <button id="menu-effects" type="button"><svg aria-hidden="true"><use href="#icon-effects"/></svg>添加 Effects</button>
         </div>
@@ -159,6 +178,20 @@
             <button id="text-tool-plain" type="button" role="menuitemradio" aria-checked="true" tabindex="-1"><svg aria-hidden="true"><use href="#icon-text"/></svg><span>创建文本元素</span><span class="shortcut">T</span><svg class="menu-check" aria-hidden="true"><use href="#icon-check"/></svg></button>
             <button id="text-tool-rich" type="button" role="menuitemradio" aria-checked="false" tabindex="-1"><svg aria-hidden="true"><use href="#icon-richtext"/></svg><span>创建富文本元素</span><span class="shortcut">⇧ T</span><svg class="menu-check" aria-hidden="true"><use href="#icon-check"/></svg></button>
           </div>
+        </div>
+        <div id="pen-tool" class="pen-tool">
+          <button id="create-pen" class="tooltip-trigger" type="button" aria-label="钢笔工具" aria-pressed="false" aria-controls="pen-tools"><svg aria-hidden="true"><use href="#icon-pen"/></svg><span class="tooltip" aria-hidden="true">钢笔工具<kbd>P</kbd></span></button>
+          <div id="pen-tools" class="pen-tools" role="group" hidden aria-label="钢笔节点编辑">
+            <button id="pen-lasso" type="button" aria-label="套索选择节点" aria-pressed="false" aria-keyshortcuts="Q"><svg aria-hidden="true"><use href="#icon-lasso"/></svg><span>套索</span><kbd>Q</kbd></button>
+            <button id="pen-edit-mode" type="button" aria-label="钢笔工具编辑态" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-pen-edit"/></svg><span>编辑节点</span></button>
+          </div>
+        </div>
+        <button id="create-shape" class="tooltip-trigger" type="button" aria-label="造型工具" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-shape"/></svg><span class="tooltip" aria-hidden="true">造型工具<kbd>S</kbd></span></button>
+        <div id="shape-tools" class="shape-tools" hidden aria-label="造型类型">
+          <button id="shape-rect" class="tooltip-trigger" type="button" aria-label="矩形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-frame"/></svg><span class="tooltip" aria-hidden="true">矩形</span></button>
+          <button id="shape-ellipse" class="tooltip-trigger" type="button" aria-label="椭圆" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-ellipse"/></svg><span class="tooltip" aria-hidden="true">椭圆</span></button>
+          <button id="shape-polygon" class="tooltip-trigger" type="button" aria-label="多边形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-polygon"/></svg><span class="tooltip" aria-hidden="true">多边形</span></button>
+          <button id="shape-star" class="tooltip-trigger" type="button" aria-label="星形" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-star"/></svg><span class="tooltip" aria-hidden="true">星形</span></button>
         </div>
         <button id="create-video" class="tooltip-trigger" type="button" aria-label="添加 Video"><svg aria-hidden="true"><use href="#icon-video"/></svg><span class="tooltip" aria-hidden="true">添加视频</span></button>
         <button id="create-effects" class="tooltip-trigger" type="button" aria-label="添加 Effects"><svg aria-hidden="true"><use href="#icon-effects"/></svg><span class="tooltip" aria-hidden="true">添加动效</span></button>

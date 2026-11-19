@@ -23,11 +23,19 @@ export class DemoView {
     [element<HTMLButtonElement>('text-tool-rich'), 'richtext'],
   ];
   private textToolType: 'text' | 'richtext' = 'text';
+  private readonly shapeTools = element('shape-tools');
+  private readonly penTool = element('pen-tool');
+  private readonly penTools = element('pen-tools');
+  private readonly penButton = element('create-pen');
+  private readonly penLassoButton = element('pen-lasso');
+  private readonly penEditButton = element('pen-edit-mode');
   private readonly layerButtons = new Map<VFXItem, HTMLButtonElement>();
   private readonly toolButtons: [HTMLElement, DemoTool][] = [
     [element('move'), 'move'],
     [element('hand'), 'hand'],
     [element('create-frame'), 'frame'],
+    [this.penButton, 'pen'],
+    [element('create-shape'), 'shape'],
   ];
   private readonly actions: { label: string, count: number }[] = [];
   private selectionSignature = '';
@@ -80,6 +88,13 @@ export class DemoView {
     this.events.on(element('menu-frame'), 'click', () => editor.setTool('frame'));
     this.events.on(element('menu-text'), 'click', () => editor.setTool('text'));
     this.events.on(element('menu-richtext'), 'click', () => editor.setTool('richtext'));
+    this.events.on(element('menu-pen'), 'click', () => editor.setTool('pen'));
+    this.events.on(element('menu-shape'), 'click', () => editor.setTool('shape'));
+    for (const primitive of ['rect', 'ellipse', 'polygon', 'star'] as const) {
+      this.events.on(element(`shape-${primitive}`), 'click', () => editor.setShapePrimitive(primitive));
+    }
+    this.events.on(this.penLassoButton, 'click', () => editor.setPenLassoMode(true));
+    this.events.on(this.penEditButton, 'click', () => editor.setPenEditMode(true));
     for (const [suffix, kind] of [['video', 'Video'], ['effects', 'Effects']] as const) {
       for (const prefix of ['menu', 'create']) {
         this.events.on(element(`${prefix}-${suffix}`), 'click', () => {
@@ -130,6 +145,7 @@ export class DemoView {
 
   refreshSelection (): void {
     this.inspector.refresh();
+    this.refreshPenState();
     const selected = this.editor.selectedItems;
     const signature = JSON.stringify(selected.map(item => item.getInstanceId()));
 
@@ -140,7 +156,16 @@ export class DemoView {
   }
 
   showTool (tool: DemoTool): void {
-    this.toolButtons.forEach(([button, value]) => button.setAttribute('aria-pressed', String(tool === value)));
+    this.toolButtons.forEach(([button, value]) => {
+      button.setAttribute('aria-pressed', String(tool === value));
+    });
+    this.shapeTools.hidden = tool !== 'shape';
+    this.penTools.hidden = tool !== 'pen';
+    this.penTool.dataset.active = String(tool === 'pen');
+    for (const primitive of ['rect', 'ellipse', 'polygon', 'star'] as const) {
+      element(`shape-${primitive}`).setAttribute('aria-pressed', String(tool === 'shape' && this.editor.primitive === primitive));
+    }
+    this.refreshPenState();
     const isTextTool = tool === 'text' || tool === 'richtext';
 
     if (isTextTool) { this.textToolType = tool; }
@@ -160,6 +185,25 @@ export class DemoView {
 
   showZoom (scale: number): void {
     this.zoom.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  private refreshPenState (): void {
+    const active = this.editor.tool === 'pen';
+    const lasso = this.editor.penLasso;
+    const edit = this.editor.penEditMode;
+    const states: [HTMLElement, boolean][] = [
+      [this.penButton, active && !lasso && !edit],
+      [this.penLassoButton, active && lasso],
+      [this.penEditButton, active && edit],
+    ];
+
+    states.forEach(([button, pressed]) => {
+      const value = String(pressed);
+
+      if (button.getAttribute('aria-pressed') !== value) {
+        button.setAttribute('aria-pressed', value);
+      }
+    });
   }
 
   recordAction (label: string): void {
@@ -240,7 +284,7 @@ export class DemoView {
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     const label = document.createElement('span');
 
-    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', RichText: 'richtext', Sprite: 'rectangle', Video: 'video', Effects: 'effects' };
+    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', RichText: 'richtext', Sprite: 'rectangle', Vector: 'shape', CustomShape: 'pen', Video: 'video', Effects: 'effects' };
 
     use.setAttribute('href', `#icon-${icons[data.kind]}`);
     icon.setAttribute('aria-hidden', 'true');

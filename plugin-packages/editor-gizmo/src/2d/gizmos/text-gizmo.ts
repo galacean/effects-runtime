@@ -17,7 +17,7 @@ export type {
 } from '../text/text-edit-session';
 
 /** 文本编辑态包围盒线色。 */
-export const TEXT_EDIT_BOX_LINE_COLOR = 0x3b82f6;
+export const TEXT_EDIT_BOX_LINE_COLOR = 0x3b82f6ff;
 /** 文本编辑态包围盒线宽。 */
 export const TEXT_EDIT_BOX_LINE_WIDTH = 2;
 
@@ -149,7 +149,7 @@ export class TextGizmo extends Gizmo {
     drawCorners(
       control,
       getTransformedBoxCorners(this.result.transform),
-      toColor(TEXT_EDIT_BOX_LINE_COLOR, 1),
+      toColor(TEXT_EDIT_BOX_LINE_COLOR),
       TEXT_EDIT_BOX_LINE_WIDTH,
     );
   }

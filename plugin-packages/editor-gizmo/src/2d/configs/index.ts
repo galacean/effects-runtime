@@ -26,9 +26,12 @@ export {
   resizeSelectionConfig,
   selectionPreviewConfig,
   selectionSnapConfig,
+  penConfig,
+  shapeConfig,
   spriteTextEditConfig,
   viewportNavigationConfig,
   viewportOverlayConfig,
+  rulerConfig,
 } from './builtin-configs';
 export type {
   EffectsEditModeConfig,
@@ -42,7 +45,11 @@ export type {
   ResizeSelectionConfig,
   SelectionPreviewConfig,
   SnapConfig,
+  PenConfig,
+  ShapeConfig,
   SpriteTextEditConfig,
   ViewportNavigationConfig,
   ViewportOverlayConfig,
+  RulerConfig,
+  RulerGuideSelectionMode,
 } from './types';
