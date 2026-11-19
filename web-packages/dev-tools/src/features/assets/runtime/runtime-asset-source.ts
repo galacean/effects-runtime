@@ -1,4 +1,4 @@
-import type { EffectsObject, Engine } from '@galacean/effects';
+import type { EffectsObject, EffectsObjectServer, Engine } from '@galacean/effects';
 import { AnimationClip, Geometry, Material, Shader, ShaderVariant, Texture } from '@galacean/effects';
 import { EditorRuntimeSession } from '../../../platform/effects-runtime/editor-runtime-session';
 import type { AssetViewItem } from '../../../ui/asset-view/asset-view';
@@ -20,8 +20,8 @@ function isRuntimeAsset (object: EffectsObject | undefined): object is RuntimeAs
 
 /** Index the current engine's asset descriptors; consume only queued IDs after the initial enumeration. */
 export class RuntimeAssetSource {
-  private registry?: Engine['effectsObjectServer'];
-  private objects?: Engine['effectsObjectServer']['objectInstance'];
+  private registry?: EffectsObjectServer;
+  private objects?: Record<string, EffectsObject>;
   private unsubscribe?: () => void;
   private pending = new Set<string>();
   private readonly watched = new Map<string, { object: RuntimeAsset, unsubscribe(): void }>();
@@ -31,7 +31,7 @@ export class RuntimeAssetSource {
   values (): IterableIterator<RuntimeAssetItem> { return this.index.values(); }
 
   update (engine: Engine): boolean {
-    const registry = engine.effectsObjectServer, objects = registry.objectInstance;
+    const registry = engine.effectsObjectServer, objects = registry.objectsCache;
     let changed = this.registry !== registry;
 
     if (changed) {

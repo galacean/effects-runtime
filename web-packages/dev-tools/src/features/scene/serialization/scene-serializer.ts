@@ -121,8 +121,7 @@ export class SceneSerializer {
     const cached = this.objects.get(id);
 
     if (cached?.isRegistered) { return cached; }
-    let live = Object.values(this.composition.engine.effectsObjectServer.objectInstance)
-      .find(object => object.getInstanceId() === id || object.definition.id === id);
+    let live: EffectsObject | undefined = this.composition.engine.effectsObjectServer.objectsCache[id];
 
     if (!live && resourceIdentity(this.composition.engine, id) && this.composition.engine.assetServer.findEffectsObjectData(id)) {
       live = this.composition.engine.effectsObjectServer.findObject<EffectsObject>({ id });
@@ -149,19 +148,31 @@ export class SceneSerializer {
 
   sceneObjects (): EffectsObject[] {
     const result: EffectsObject[] = [];
+    const timelineObjects = new Set<TimelineAsset | TrackAsset | TimelineClip>();
     const visit = (item: VFXItem): void => {
       if (item !== this.composition.sceneRoot && !item.definition.id) { return; }
       this.id(item); result.push(item);
       for (const component of item.components) {
         this.id(component); result.push(component);
         if (component instanceof RendererComponent) { this.rememberDefaultMaterials(component); }
+        const timeline = component instanceof CompositionComponent && component.timelineAsset;
+
+        if (timeline) {
+          timelineObjects.add(timeline);
+          for (const track of timeline.flattenedTracks) {
+            timelineObjects.add(track);
+            track.getClips().forEach(clip => timelineObjects.add(clip));
+          }
+        }
       }
       item.children.forEach(visit);
     };
 
     visit(this.composition.sceneRoot);
-    for (const object of Object.values(this.composition.engine.effectsObjectServer.objectInstance)) {
+    timelineObjects.forEach(object => { this.id(object); result.push(object); });
+    for (const object of Object.values(this.composition.engine.effectsObjectServer.objectsCache)) {
       if (object.definition.id && !(object instanceof VFXItem) && !(object instanceof Component) &&
+        !(object instanceof TimelineAsset) && !(object instanceof TrackAsset) && !(object instanceof TimelineClip) &&
         (!isResource(object) || isPersistentResource(object, this.composition.engine))) { this.id(object); result.push(object); }
     }
 
@@ -218,8 +229,8 @@ export class SceneSerializer {
     }
     if (object instanceof Component && object.item) { data.item = this.reference(object.item); }
     if (object instanceof CompositionComponent) {
-      data.items = object.items.filter(item => item.definition.id).map(item => this.reference(item));
-      const timeline = object.definition.timelineAsset ? object.findObject<TimelineAsset>(object.definition.timelineAsset) : undefined;
+      delete data.items;
+      const timeline = object.timelineAsset;
 
       if (timeline) {
         data.timelineAsset = this.reference(timeline);
@@ -278,7 +289,7 @@ export class SceneSerializer {
       extras.active = object.isActive; extras.renderOrder = object.renderOrder; extras.visible = object.isVisible;
     }
     if (object instanceof Component) {
-      if (object.definition.id) { data._enabled = object.enabled; }
+      if (object.definition.id) { data.enabled = object.enabled; }
       extras.enabled = object.enabled;
     }
     if (object instanceof PostProcessVolume) {
@@ -427,7 +438,7 @@ export class SceneSerializer {
 
       if (visited.has(id) || scene.compositions.some(entry => entry.id === id) || TABLES.some(table => (scene[table] as Data[] | undefined)?.some(entry => entry.id === id))) { return; }
       visited.add(id);
-      const object = this.objects.get(id) ?? this.composition.engine.effectsObjectServer.objectInstance[id];
+      const object = this.objects.get(id) ?? this.composition.engine.effectsObjectServer.objectsCache[id];
 
       if (object?.definition.id && object.definition.dataType && (!isResource(object) || isPersistentResource(object, this.composition.engine))) {
         const data = object instanceof Material ? this.read(object).data : this.normalize(object.definition);
@@ -465,10 +476,10 @@ export class SceneSerializer {
       const enabled = object.enabled;
 
       if (object instanceof RendererComponent && !data.materials) { this.restoreMaterials(object, extras.materials ?? []); }
-      object.definition = jsonData(data); object.fromData({ ...data, _enabled: enabled });
-      object.enabled = data._enabled;
+      object.definition = jsonData(state.data); object.fromData({ ...data, enabled });
+      object.enabled = data.enabled;
     } else if (data.dataType && !(object instanceof Material && !object.definition.id)) {
-      object.definition = jsonData(data); object.fromData(data);
+      object.definition = jsonData(state.data); object.fromData(data);
     }
     this.applyExtras(object, extras, other?.extras);
   }
@@ -535,12 +546,6 @@ export class SceneSerializer {
 
   restoreEditor (editor: SceneEditorData): void {
     this.removeTemporaryResourceState(editor);
-    // Item visibility is applied after component data by the loader; restore authored component switches afterward.
-    for (const object of this.objects.values()) {
-      if (object instanceof Component && object.item.isVisible && typeof object.definition._enabled === 'boolean') {
-        object.enabled = object.definition._enabled;
-      }
-    }
     for (const [id, extras] of Object.entries(editor.objects)) {
       const object = this.object(id);
 

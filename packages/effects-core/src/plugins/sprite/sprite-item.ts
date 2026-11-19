@@ -4,7 +4,7 @@ import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
+import type { Texture2DSourceOptionsVideo } from '../../texture';
 import type { FrameContext } from '../timeline';
 import { ClipPlayable, TimelineClip, TrackMixerPlayable, TrackAsset } from '../timeline';
 import { VFXItem } from '../../vfx-item';
@@ -196,17 +196,6 @@ export class SpriteComponent extends MaskableGraphic {
   override onDisable (): void {
     super.onDisable();
     this.time = 0;
-  }
-
-  override onDestroy (): void {
-    const texture = this.renderer.texture;
-    const source = texture.source;
-
-    if (source.sourceType === TextureSourceType.video && source?.video) {
-      source.video.pause();
-      source.video.src = '';
-      source.video.load();
-    }
   }
 
   protected updateGeometry (geometry: Geometry) {

@@ -1,5 +1,5 @@
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { VFXItem } from '../vfx-item';
+import { VFXItem } from '../vfx-item';
 import { Component } from './component';
 import { effectsClass } from '../decorators';
 import type { ComponentData } from '@galacean/effects-specification';
@@ -196,7 +196,7 @@ export class PositionConstraint extends Component {
     for (const targetData of data.targets) {
       const constraintTarget = new ConstraintTarget();
 
-      constraintTarget.target = this.findObject(targetData.target);
+      constraintTarget.target = this.findObject(targetData.target, VFXItem);
       constraintTarget.weight = targetData.weight;
       this.targets.push(constraintTarget);
     }

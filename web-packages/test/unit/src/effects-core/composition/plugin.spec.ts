@@ -42,7 +42,7 @@ describe('core/composition/plugin', () => {
         expect(composition.root.parent).equals(undefined);
         expect(composition.pluginRoot.parent).equals(composition.root);
         expect(composition.sceneRoot.parent).equals(composition.root);
-        expect(composition.sceneRoot.getInstanceId()).equals(sourceContent?.id);
+        expect(composition.sceneRoot.definition.id).equals(sourceContent?.id);
         expect(composition.items).deep.equals([]);
         expect(composition.sceneRoot.getComponent(CompositionComponent)).not.exist;
         creatingSpy();

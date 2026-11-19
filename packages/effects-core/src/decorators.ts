@@ -1,4 +1,4 @@
-import type { Constructor } from './utils';
+import type { AbstractConstructor, Constructor } from './utils';
 
 export const effectsClassStore: Record<string, any> = {};
 
@@ -10,7 +10,7 @@ export function getClass (className: string) {
  * Returns registered classes that directly or indirectly extend the constructor.
  * The constructor itself is excluded.
  */
-export function getClassesDerivedFrom<T> (constructor: abstract new (...args: any[]) => T): Constructor<T>[] {
+export function getClassesDerivedFrom<T> (constructor: AbstractConstructor<T>): Constructor<T>[] {
   const classes: Constructor<T>[] = [];
 
   for (const className of Object.keys(effectsClassStore)) {

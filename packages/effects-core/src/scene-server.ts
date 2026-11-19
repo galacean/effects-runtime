@@ -1,13 +1,14 @@
-import type * as spec from '@galacean/effects-specification';
-import { DataType } from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
-import type { Scene, SceneLoadOptions } from './scene';
+import type { SceneLoadOptions } from './scene';
+import { Scene } from './scene';
 import { addItem, removeItem, logger } from './utils';
-import { PluginSystem } from './plugin-system';
 import { EngineServer } from './engine-server';
 import { effectsClass } from './decorators';
+import { passRenderLevel } from './pass-render-level';
+import { PluginSystem } from './plugin-system';
 
 /** Schedules and unloads the compositions owned by an engine. */
 @effectsClass('SceneServer')
@@ -46,6 +47,57 @@ export class SceneServer extends EngineServer {
     removeItem(this._compositions, composition);
   }
 
+  /** Resolve per-scene options before loading the source. */
+  assembleSceneLoadOptions (url: Scene.LoadType, options: SceneLoadOptions = {}) {
+    let source: Scene.LoadType = url;
+
+    if (Scene.isURL(url)) {
+      if (!Scene.isJSONObject(url)) {
+        source = url.url;
+      }
+      if (Scene.isWithOptions(url)) {
+        options = { ...options, ...url.options };
+      }
+    }
+
+    return { source, options };
+  }
+
+  /** @internal Apply scene load policies before instantiating its objects. */
+  prepareScene (scene: Scene, options: SceneLoadOptions = {}): void {
+    const { assetServer } = this.engine;
+
+    assetServer.clearEffectsObjectData();
+    PluginSystem.notifyAssetsLoadFinish(scene, options, this.engine);
+    for (const item of scene.jsonScene.items) {
+      if (!passRenderLevel(item.renderLevel, scene.renderLevel)) {
+        item.components = [];
+        // Keep the legacy type marker while skipping components and precomposition contents.
+        item.type = spec.ItemType.null;
+        delete (item as { refId?: string }).refId;
+      }
+    }
+    assetServer.prepareAssets(scene);
+    this.updateTextVariables(scene, options.variables);
+  }
+
+  private updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}): void {
+    for (const item of scene.jsonScene.items) {
+      const textVariable = variables[item.name] as string;
+
+      if (textVariable === undefined || textVariable === null) {
+        continue;
+      }
+      for (const { id } of item.components ?? []) {
+        const componentData = this.engine.assetServer.findEffectsObjectData(id) as spec.TextComponentData;
+
+        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
+          componentData.options.text = textVariable;
+        }
+      }
+    }
+  }
+
   async loadScene (scene: Scene.LoadType, options: SceneLoadOptions = {}): Promise<Composition> {
     const { engine } = this;
     const last = performance.now();
@@ -53,20 +105,14 @@ export class SceneServer extends EngineServer {
     const compositionIndex = this.compositions.length;
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    const assetManager = engine.assetServer.createAssetManager(options);
+    const { source, options: sceneOptions } = this.assembleSceneLoadOptions(scene, options);
+    const assetManager = engine.assetServer.createAssetManager(sceneOptions);
 
-    const loadedScene = await assetManager.loadScene(scene, engine.renderer);
+    const loadedScene = await assetManager.loadScene(source, engine.renderer);
 
-    engine.effectsObjectServer.clearObjectInstances();
-    engine.assetServer.clearSceneData();
+    this.prepareScene(loadedScene, assetManager.options);
 
-    // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
-    PluginSystem.notifyAssetsLoadFinish(loadedScene, assetManager.options, engine);
-
-    engine.assetServer.prepareAssets(loadedScene, loadedScene.assets);
-    this.updateTextVariables(loadedScene, options.variables);
-
-    const composition = this.createComposition(loadedScene, options);
+    const composition = this.createComposition(loadedScene, sceneOptions);
 
     composition.setIndex(compositionIndex);
     const compileStart = performance.now();
@@ -102,32 +148,6 @@ export class SceneServer extends EngineServer {
     }
 
     return composition;
-  }
-
-  /**
-   * 根据用户参数修改文本元素的原始数据
-   * @param scene
-   * @param options
-   */
-  updateTextVariables (
-    scene: Scene,
-    variables: spec.TemplateVariables = {},
-  ) {
-    scene.jsonScene.items.forEach(item => {
-      const textVariable = variables[item.name] as string;
-
-      if (textVariable === undefined || textVariable === null) {
-        return;
-      }
-
-      item.components?.forEach(({ id }) => {
-        const componentData = this.engine.assetServer.findEffectsObjectData(id) as spec.TextComponentData;
-
-        if (componentData?.dataType === DataType.TextComponent || componentData?.dataType === DataType.RichTextComponent) {
-          componentData.options.text = textVariable;
-        }
-      });
-    });
   }
 
   override onUpdate (deltaTime: number): void {

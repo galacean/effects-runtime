@@ -8,3 +8,4 @@ import './on-end.spec';
 import './order.spec';
 import './plugin.spec';
 import './raycast.spec';
+import './runtime-instance-ids.spec';

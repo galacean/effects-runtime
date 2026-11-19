@@ -1465,26 +1465,28 @@ export class SequencerDocument {
   }
 
   exportData (): object {
+    const id = (object: EffectsObject) => this.sceneDocument?.serializer.id(object) ?? object.getInstanceId();
+
     return {
       version: '3.9',
-      timelineAsset: { id: this.timeline.getInstanceId() },
+      timelineAsset: { id: id(this.timeline) },
       miscs: [
-        { id: this.timeline.getInstanceId(), dataType: spec.DataType.TimelineAsset, tracks: this.timeline.tracks.map(track => ({ id: track.getInstanceId() })) },
-        ...this.tracks.map(track => ({ ...track.definition, id: track.getInstanceId(), name: track.name, dataType: this.assetType(track),
-          children: track.getChildTracks().map(child => ({ id: child.getInstanceId() })), clips: track.getClips().map(clip => ({ id: clip.getInstanceId() })) })),
-        ...this.allSections().map(section => this.exportSection(section)),
+        { id: id(this.timeline), dataType: spec.DataType.TimelineAsset, tracks: this.timeline.tracks.map(track => ({ id: id(track) })) },
+        ...this.tracks.map(track => ({ ...track.definition, id: id(track), name: track.name, dataType: this.assetType(track),
+          children: track.getChildTracks().map(child => ({ id: id(child) })), clips: track.getClips().map(clip => ({ id: id(clip) })) })),
+        ...this.allSections().map(section => this.exportSection(section, id(section.clip))),
       ],
       sceneBindings: this.tracks.flatMap(track => {
         const target = this.component.getBinding(track);
 
-        return target ? [{ key: { id: track.getInstanceId() }, value: { id: target.getInstanceId() } }] : [];
+        return target ? [{ key: { id: id(track) }, value: { id: id(target) } }] : [];
       }),
     };
   }
 
-  private exportSection (section: SequenceSection): spec.EffectsObjectData {
+  private exportSection (section: SequenceSection, id = section.clip.getInstanceId()): spec.EffectsObjectData {
     const { clip } = section;
-    const data = { ...copy(section.payload), id: clip.getInstanceId(), name: clip.name,
+    const data = { ...copy(section.payload), id, name: clip.name,
       dataType: this.assetType(clip) as spec.DataType, start: clip.start, duration: clip.duration, endBehavior: clip.endBehavior };
 
     return data;

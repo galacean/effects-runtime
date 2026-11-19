@@ -16,8 +16,8 @@ export interface Scene {
   renderLevel?: SceneRenderLevel,
   textureOptions: Record<string, any>[],
   images: ImageLike[],
-  assets: Record<string, ImageLike>,
-  consumed?: boolean,
+  videos: HTMLVideoElement[],
+  audios: (HTMLAudioElement | AudioBuffer)[],
   /**
    * 加载总耗时
    */

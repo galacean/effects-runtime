@@ -431,7 +431,9 @@ export function getTextureGPUInfo (texture, texOptions) {
       }
     });
   } else {
-    gpuInfo[3].push([texture.width, texture.height]);
+    const gpuTexture = texture.getGPUTexture();
+
+    gpuInfo[3].push([gpuTexture.width, gpuTexture.height]);
   }
 
   return gpuInfo;

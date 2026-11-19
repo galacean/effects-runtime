@@ -136,8 +136,8 @@ describe('webgl/gl-texture', () => {
     expect(texture.height).to.eql(128);
 
     texture.offloadData();
-    expect(texture.width).to.eql(1);
-    expect(texture.height).to.eql(1);
+    expect(texture.width).to.eql(128);
+    expect(texture.height).to.eql(128);
     expect(gl.getError()).to.eql(0);
     await getDefaultTextureFactory().reload(texture);
     expect(gl.getError()).to.eql(0);
@@ -353,8 +353,8 @@ describe('webgl/gl-texture', () => {
     expect(texOptions.image?.width).is.eql(128);
     expect(texOptions.image?.height).is.eql(128);
     expect(texture.source.target).to.eql(gl.TEXTURE_2D);
-    expect(texture.width).is.undefined;
-    expect(texture.height).is.undefined;
+    expect(texture.width).is.eql(128);
+    expect(texture.height).is.eql(128);
     texture.initialize();
     const gpuInfo = getTextureGPUInfo(texture, texOptions);
 
@@ -509,8 +509,8 @@ describe('webgl/gl-texture', () => {
     expect(image).is.instanceof(HTMLImageElement);
     expect(image.width).is.eql(1063);
     expect(image.height).is.eql(256);
-    expect(texture.width).is.undefined;
-    expect(texture.height).is.undefined;
+    expect(texture.width).is.eql(1063);
+    expect(texture.height).is.eql(256);
     expect(texture.source.minFilter).is.eql(gl.NEAREST);
     expect(texture.source.magFilter).is.eql(gl.NEAREST);
     expect(texture.source.wrapS).is.eql(gl.CLAMP_TO_EDGE);
@@ -555,8 +555,8 @@ describe('webgl/gl-texture', () => {
     expect(image).is.instanceof(HTMLImageElement);
     expect(image.width).is.eql(1063);
     expect(image.height).is.eql(256);
-    expect(texture.width).is.undefined;
-    expect(texture.height).is.undefined;
+    expect(texture.width).is.eql(1063);
+    expect(texture.height).is.eql(256);
     expect(texture.source.minFilter).is.eql(gl.LINEAR_MIPMAP_LINEAR);
     expect(texture.source.magFilter).is.eql(gl.LINEAR);
     expect(texture.source.wrapS).is.eql(gl.MIRRORED_REPEAT);
@@ -632,8 +632,8 @@ describe('webgl/gl-texture', () => {
     gpuInfo = getTextureGPUInfo(texture, texOptions);
 
     expect(getTextureMemory(texture, gpuInfo)).to.eql(1 ** 2 * 4);
-    expect(texture.width).to.eql(1);
-    expect(texture.height).to.eql(1);
+    expect(texture.width).to.eql(128);
+    expect(texture.height).to.eql(128);
     await texture.reloadData();
     gpuInfo = getTextureGPUInfo(texture, texOptions);
 

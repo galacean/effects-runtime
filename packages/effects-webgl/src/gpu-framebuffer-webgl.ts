@@ -1,6 +1,5 @@
 import type {
   FramebufferProps, RenderPassStoreAction,
-  Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
   isWebGL2, addItem, GPUFramebuffer, Texture, glContext, RenderPassAttachmentStorageType,
@@ -105,7 +104,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
       const data = { width, height, data: new Uint8Array(0) };
 
       tex.initialize();
-      tex.update({ data });
+      tex.updateSource({ data });
       addItem(this.attachmentTextures, (tex.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     });
 
@@ -114,7 +113,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
     }
 
     if (this.depthTexture) {
-      this.depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
+      this.depthTexture.updateSource({ data: { width, height, data: new Uint16Array(0) } });
       addItem(this.attachmentTextures, (this.depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer);
     }
   }
@@ -322,9 +321,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
       depthStencilRenderbuffer.setSize(width, height);
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, depthStencilRenderbuffer.attachment, gl.RENDERBUFFER, depthStencilRenderbuffer.buffer);
     } else if (depthTexture) {
-      // 解决RenderPass在Clone深度贴图时width和height丢失的问题
-      (depthTexture.source as Texture2DSourceOptionsFramebuffer).data = { width, height };
-      depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
+      depthTexture.updateSource({ data: { width, height, data: new Uint16Array(0) } });
       const attachment = depthTexture && stencilTexture ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
 
       gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, (depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0);

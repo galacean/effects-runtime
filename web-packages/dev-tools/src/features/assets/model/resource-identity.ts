@@ -43,7 +43,7 @@ export function isPersistentResource (value: unknown, engine: Engine, kind?: Res
 }
 
 export function resourceCandidates (engine: Engine, kind: ResourceKind): ResourceIdentity[] {
-  const ids = new Set([...assetLibrary.entries.map(entry => entry.id), ...Object.keys(engine.assetServer.jsonSceneData), ...Object.keys(BUILTIN_TEXTURES)]);
+  const ids = new Set([...assetLibrary.entries.map(entry => entry.id), ...Object.keys(engine.assetServer.objectsDataCache), ...Object.keys(BUILTIN_TEXTURES)]);
 
   return [...ids].map(id => resourceIdentity(engine, id)).filter((entry): entry is ResourceIdentity => entry?.kind === kind);
 }

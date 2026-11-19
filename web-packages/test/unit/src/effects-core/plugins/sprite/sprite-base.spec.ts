@@ -48,8 +48,7 @@ describe('core/plugins/sprite/item-base', () => {
     for (const sceneBinding of sceneBindings) {
       sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
     }
-    // @ts-expect-error
-    const spriteBindingTrack = compositionComponent.timelineAsset.tracks.find(track => sceneBindingMap[track.getInstanceId()] === sprite1);
+    const spriteBindingTrack = compositionComponent.timelineAsset?.tracks.find(track => sceneBindingMap[track.getInstanceId()] === sprite1);
 
     for (const subTrack of spriteBindingTrack?.getChildTracks() ?? []) {
       if (subTrack instanceof SpriteColorTrack) {

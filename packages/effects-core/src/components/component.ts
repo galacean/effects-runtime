@@ -1,10 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { VFXItem } from '../vfx-item';
+import { VFXItem } from '../vfx-item';
 
 interface ComponentData extends spec.ComponentData {
-  _enabled?: boolean,
+  enabled?: boolean,
 }
 
 /**
@@ -230,10 +230,18 @@ export abstract class Component extends EffectsObject {
   override fromData (data: ComponentData): void {
     super.fromData(data);
     if (data.item !== undefined) {
-      this.item = this.findObject<VFXItem>(data.item);
+      const item = this.findObject(data.item, VFXItem);
+
+      if (this.item && this.item !== item) {
+        removeItem(this.item.components, this);
+      }
+      this.item = item;
+      if (item && !item.components.includes(this)) {
+        item.components.push(this);
+      }
     }
-    if (data._enabled !== undefined) {
-      this._enabled = data._enabled;
+    if (data.enabled !== undefined) {
+      this._enabled = data.enabled;
     }
   }
 

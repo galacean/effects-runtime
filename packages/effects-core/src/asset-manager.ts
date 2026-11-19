@@ -28,10 +28,6 @@ export class AssetManager implements Disposable {
    */
   private baseUrl: string;
   /**
-   * 图像资源，用于创建和释放 GPU 纹理资源
-   */
-  private assets: Record<string, ImageLike> = {};
-  /**
    * TextureSource 来源
    */
   private sourceFrom: Record<string, { url: string, type: TextureSourceType }> = {};
@@ -205,7 +201,8 @@ export class AssetManager implements Disposable {
           bins: [],
           textureOptions: [],
           images: [],
-          assets: this.assets,
+          videos: [],
+          audios: [],
         };
 
         await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
@@ -217,11 +214,12 @@ export class AssetManager implements Disposable {
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedBins, jsonScene));
 
         scene.bins.push(...loadedBins);
-        scene.textureOptions.push(...loadedTextures);
         scene.images.push(...loadedImages);
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(scene));
+
+        scene.textureOptions.push(...loadedTextures);
 
         // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
         scene.renderLevel = this.options.renderLevel;
@@ -241,10 +239,6 @@ export class AssetManager implements Disposable {
     };
 
     return Promise.race([waitPromise, loadResourcePromise()]);
-  }
-
-  getAssets () {
-    return this.assets;
   }
 
   private async processJSON (json: JSONValue) {
@@ -375,29 +369,32 @@ export class AssetManager implements Disposable {
 
       return image;
     });
-    const loadedImages = await Promise.all(jobs);
 
-    this.assignImagesToAssets(images, loadedImages);
-
-    return loadedImages;
+    return Promise.all(jobs);
   }
 
   private async onPluginSceneLoadStart (scene: Scene) {
     await PluginSystem.notifyAssetsLoadStart(scene, this.options);
   }
 
-  private async processTextures (
-    bins: ArrayBuffer[],
-    jsonScene: spec.JSONScene,
-  ) {
-    const textures = jsonScene.textures ?? [];
+  private async processTextures (scene: Scene) {
+    const { bins, images, videos, jsonScene } = scene;
+    const { images: imageDefinitions, videos: videoDefinitions = [], textures = [] } = jsonScene;
+    const imageSources: Record<string, ImageLike> = Object.create(null);
+
+    for (let i = 0; i < videos.length; i++) {
+      imageSources[videoDefinitions[i].id] = videos[i];
+    }
+    for (let i = 0; i < images.length; i++) {
+      imageSources[imageDefinitions[i].id] = images[i];
+    }
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;
       }
       if ('mipmaps' in textureOptions) {
         try {
-          return await deserializeMipmapTexture(textureOptions, bins, this.assets, jsonScene.bins);
+          return await deserializeMipmapTexture(textureOptions, bins, imageSources, jsonScene.bins);
         } catch (e) {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
@@ -407,9 +404,9 @@ export class AssetManager implements Disposable {
       let image: ImageLike | undefined;
       let imageId = '';
 
-      if (isObject(source)) { // source 为 images 数组 id
-        image = this.assets[source.id as string];
+      if (isObject(source)) {
         imageId = source.id as string;
+        image = imageSources[imageId];
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }
@@ -447,12 +444,6 @@ export class AssetManager implements Disposable {
     });
   }
 
-  private assignImagesToAssets (images: spec.ImageSource[], loadedImages: ImageLike[]) {
-    for (let i = 0; i < images.length; i++) {
-      this.assets[images[i].id] = loadedImages[i];
-    }
-  }
-
   private removeTimer (id: number) {
     const index = this.timers.indexOf(id);
 
@@ -467,7 +458,6 @@ export class AssetManager implements Disposable {
     if (this.timers.length) {
       this.timers.map(id => window.clearTimeout(id));
     }
-    this.assets = {};
     this.sourceFrom = {};
     this.timers = [];
   }

@@ -1,6 +1,7 @@
 import type { RenderingDevice } from '../rendering-device';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { GPUBuffer, GPUBufferOptions, IndexData, IndicesArray } from './gpu-buffer';
 import {
@@ -68,6 +69,7 @@ interface VertexArrayObjectDevice {
 /**
  * 几何数据、属性布局和绘制范围的后端无关实现。
  */
+@effectsClass(spec.DataType.Geometry)
 export class Geometry extends Asset {
   static create = (engine: Engine, props?: GeometryProps): Geometry => new Geometry(engine, props);
 
@@ -372,13 +374,13 @@ export class Geometry extends Asset {
 
   override fromData (data: spec.GeometryData): void {
     super.fromData(data);
-    this.subMeshes = data.subMeshes;
+    this.subMeshes = data.subMeshes?.map(subMesh => ({ ...subMesh })) ?? [];
     let buffer: Uint8Array | undefined;
 
     if (data.buffer) {
       buffer = new Uint8Array(decodeBase64ToArrayBuffer(data.buffer));
     } else if (data.binaryData) {
-      buffer = data.binaryData;
+      buffer = data.binaryData.slice();
     }
     if (!buffer) {
       return;
@@ -422,9 +424,9 @@ export class Geometry extends Asset {
     }
     this.processProps(props);
     this.skin = {
-      boneNames: data.boneNames,
+      boneNames: data.boneNames?.slice(),
       rootBoneName: data.rootBoneName,
-      inverseBindMatrices: data.inverseBindMatrices,
+      inverseBindMatrices: data.inverseBindMatrices?.slice(),
     };
   }
 
