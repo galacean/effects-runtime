@@ -1,5 +1,5 @@
 import {
-  CompositionComponent, FrameComponent, MaskComponent, Engine, SpriteComponent, TextureLoadAction, VFXItem, math, spec,
+  CompositionComponent, FrameComponent, MaskComponent, Engine, RenderingData, SceneRendering, SpriteComponent, TextureLoadAction, VFXItem, math, spec,
 } from '@galacean/effects';
 import type { RendererComponent } from '@galacean/effects';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
@@ -42,12 +42,20 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     }
 
     function render (components: RendererComponent[]): boolean[] {
+      const scene = new SceneRendering();
+      const data = new RenderingData();
+
+      for (const component of components) {
+        scene.addRenderer(component);
+      }
+      scene.collect(data);
       engine.renderer.clear({
         colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0],
         depthAction: TextureLoadAction.clear, clearDepth: 1,
         stencilAction: TextureLoadAction.clear, clearStencil: 0,
       });
-      engine.renderer.renderMeshes(components);
+      engine.renderer.renderMeshes(data.renderList.objects);
+      data.frameData.dispose();
       const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
       const pixels = new Uint8Array(8 * 8 * 4);
 

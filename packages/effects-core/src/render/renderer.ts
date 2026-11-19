@@ -308,10 +308,7 @@ export class Renderer {
 
   renderMeshes (meshes: RendererComponent[]) {
     for (const mesh of meshes) {
-      // 仅作轨道遮罩的来源跳过颜色绘制，由 drawStencilMask 写入遮罩覆盖范围。
-      if (!mesh.maskManager.isTrackMatteOnly) {
-        mesh.render(this);
-      }
+      mesh.render(this);
     }
   }
 
