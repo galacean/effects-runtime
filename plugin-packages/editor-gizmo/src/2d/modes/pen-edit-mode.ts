@@ -14,7 +14,6 @@ export class PenEditMode implements EditMode {
   private gizmo?: PenGizmo;
   private editContext = createPenEditContext();
   private toolState: PenToolState;
-  private interactionMode: PenToolState;
   private preserveTarget: boolean;
 
   constructor (
@@ -25,7 +24,6 @@ export class PenEditMode implements EditMode {
     private readonly onModeExit?: () => void,
   ) {
     this.toolState = state;
-    this.interactionMode = state;
     this.preserveTarget = state === 'edit';
   }
 
@@ -35,36 +33,29 @@ export class PenEditMode implements EditMode {
 
   enterEdit (): void {
     if (this.toolState === 'edit') { return; }
-    this.gizmo?.onCancel('pen-edit');
-    this.toolState = 'edit';
-    this.interactionMode = 'edit';
-    this.preserveTarget = true;
-    this.owner.rebuildGizmos();
-    this.onStateChange?.();
+    this.setState('edit', true);
   }
 
   enterCreate (preserveTarget = false): void {
     if (this.toolState === 'create' && this.preserveTarget === preserveTarget) { return; }
-    this.gizmo?.onCancel('pen-create');
-    this.toolState = 'create';
-    this.interactionMode = 'create';
-    this.preserveTarget = preserveTarget;
-    if (!preserveTarget) {
-      this.editContext.selected = undefined;
-      this.editContext.selectedNodes.clear();
-      this.owner.getSelection().commitSelectedItems([]);
-    }
-    this.owner.rebuildGizmos();
-    this.onStateChange?.();
+    this.setState('create', preserveTarget);
   }
 
   restartCreate (): void {
-    this.gizmo?.onCancel('pen-close');
-    this.toolState = 'create';
-    this.interactionMode = 'create';
-    this.preserveTarget = true;
-    this.editContext.selected = undefined;
-    this.editContext.selectedNodes.clear();
+    this.setState('create', true, true);
+  }
+
+  private setState (state: PenToolState, preserveTarget: boolean, resetSelection = false): void {
+    this.gizmo?.onCancel(`pen-${state}`);
+    if (state === 'create') { this.setLassoMode(false); }
+    this.owner.getSnapManager().reset();
+    this.toolState = state;
+    this.preserveTarget = preserveTarget;
+    if (resetSelection || !preserveTarget) {
+      this.editContext.selected = undefined;
+      this.editContext.selectedNodes.clear();
+    }
+    if (!preserveTarget) { this.owner.getSelection().commitSelectedItems([]); }
     this.owner.rebuildGizmos();
     this.onStateChange?.();
   }
@@ -74,7 +65,7 @@ export class PenEditMode implements EditMode {
   }
 
   createGizmos (): PenGizmo[] {
-    this.gizmo = new PenGizmo(this.owner, this.host, this.interactionMode, state => {
+    this.gizmo = new PenGizmo(this.owner, this.host, this.toolState, state => {
       if (state === 'create') {
         this.enterEdit();
       } else {
@@ -90,7 +81,6 @@ export class PenEditMode implements EditMode {
     this.gizmo?.onCancel('mode-exit');
     this.editContext = createPenEditContext();
     this.toolState = 'create';
-    this.interactionMode = 'create';
     this.preserveTarget = false;
     this.onModeExit?.();
   }

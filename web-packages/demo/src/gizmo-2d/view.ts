@@ -1,6 +1,6 @@
 import type { VFXItem } from '@galacean/effects';
 import { DOMEvents, element } from './dom';
-import type { DemoEditor, DemoTool } from './editor';
+import type { DemoEditor, DemoPenMode, DemoTool } from './editor';
 import { InspectorPanel } from './inspector';
 import type { DemoItem, DemoScene } from './scene';
 
@@ -26,15 +26,16 @@ export class DemoView {
   private readonly shapeTools = element('shape-tools');
   private readonly penTool = element('pen-tool');
   private readonly penTools = element('pen-tools');
-  private readonly penButton = element('create-pen');
-  private readonly penLassoButton = element('pen-lasso');
-  private readonly penEditButton = element('pen-edit-mode');
+  private readonly penButtons: [HTMLElement, DemoPenMode][] = [
+    [element('create-pen'), 'create'],
+    [element('pen-lasso'), 'lasso'],
+    [element('pen-edit-mode'), 'edit'],
+  ];
   private readonly layerButtons = new Map<VFXItem, HTMLButtonElement>();
   private readonly toolButtons: [HTMLElement, DemoTool][] = [
     [element('move'), 'move'],
     [element('hand'), 'hand'],
     [element('create-frame'), 'frame'],
-    [this.penButton, 'pen'],
     [element('create-shape'), 'shape'],
   ];
   private readonly actions: { label: string, count: number }[] = [];
@@ -93,8 +94,9 @@ export class DemoView {
     for (const primitive of ['rect', 'ellipse', 'polygon', 'star'] as const) {
       this.events.on(element(`shape-${primitive}`), 'click', () => editor.setShapePrimitive(primitive));
     }
-    this.events.on(this.penLassoButton, 'click', () => editor.setPenLassoMode(true));
-    this.events.on(this.penEditButton, 'click', () => editor.setPenEditMode(true));
+    this.penButtons.forEach(([button, mode]) => {
+      this.events.on(button, 'click', () => mode === 'create' ? editor.setTool('pen') : editor.setPenMode(mode));
+    });
     for (const [suffix, kind] of [['video', 'Video'], ['effects', 'Effects']] as const) {
       for (const prefix of ['menu', 'create']) {
         this.events.on(element(`${prefix}-${suffix}`), 'click', () => {
@@ -188,17 +190,10 @@ export class DemoView {
   }
 
   private refreshPenState (): void {
-    const active = this.editor.tool === 'pen';
-    const lasso = this.editor.penLasso;
-    const edit = this.editor.penEditMode;
-    const states: [HTMLElement, boolean][] = [
-      [this.penButton, active && !lasso && !edit],
-      [this.penLassoButton, active && lasso],
-      [this.penEditButton, active && edit],
-    ];
+    const state = this.editor.penMode;
 
-    states.forEach(([button, pressed]) => {
-      const value = String(pressed);
+    this.penButtons.forEach(([button, mode]) => {
+      const value = String(state === mode);
 
       if (button.getAttribute('aria-pressed') !== value) {
         button.setAttribute('aria-pressed', value);

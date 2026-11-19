@@ -31,6 +31,7 @@ import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 
 export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'richtext' | 'pen' | 'shape';
+export type DemoPenMode = 'create' | 'edit' | 'lasso';
 
 type EditorEvents = {
   scenechange: [],
@@ -186,23 +187,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
   setTool (tool: DemoTool): void {
     if (tool === 'pen' && this.activeTool === 'pen' && this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit') {
-      const previousSetting = this.settingTool;
-
-      this.settingTool = true;
-      try {
-        this.geometryMode.setLassoMode(false);
-        this.geometryMode.enterCreate(true);
-        this.player.canvas.focus();
-      } finally {
-        this.settingTool = previousSetting;
-      }
+      this.setPenMode('create');
 
       return;
     }
-    const previousSetting = this.settingTool;
-
-    this.settingTool = true;
-    try {
+    this.updateTool(() => {
       this.handler.resetEditMode();
       this.discardDraft();
       this.geometryMode = undefined;
@@ -225,21 +214,14 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       } else {
         this.handler.setActiveTool(tool === 'move' ? new MoveGizmoTool(this.handler) : new HandGizmoTool(this.handler));
       }
-      this.emit('toolchange', tool);
-      this.player.canvas.focus();
-    } finally {
-      this.settingTool = previousSetting;
-    }
+    });
   }
 
   private enterSelectedShapeEdit (item = this.selectedItem): boolean {
     if (!item?.getComponent(ShapeComponent)) {
       return false;
     }
-    const previousSetting = this.settingTool;
-
-    this.settingTool = true;
-    try {
+    this.updateTool(() => {
       this.handler.resetEditMode();
       this.discardDraft();
       const mode = this.createPenMode('edit');
@@ -248,81 +230,59 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       this.activeTool = 'pen';
       this.handler.setActiveEditMode(mode);
       this.handler.setActiveTool(new MoveGizmoTool(this.handler));
-      this.emit('toolchange', 'pen');
+    });
 
-      return true;
-    } finally {
-      this.settingTool = previousSetting;
-    }
+    return true;
   }
 
   setShapePrimitive (primitive: ShapePrimitive): void {
     this.shapePrimitive = primitive;
-    if (this.activeTool === 'shape' && this.geometryMode instanceof ShapeEditMode) {
-      const previousSetting = this.settingTool;
+    const mode = this.geometryMode;
 
-      this.settingTool = true;
-      try {
-        this.geometryMode.setPrimitive(primitive);
-      } finally {
-        this.settingTool = previousSetting;
-      }
-      this.emit('toolchange', 'shape');
+    if (this.activeTool === 'shape' && mode instanceof ShapeEditMode) {
+      this.updateTool(() => mode.setPrimitive(primitive));
     } else {
       this.setTool('shape');
     }
     this.emit('action', `造型 · ${primitive}`);
   }
 
-  setPenLassoMode (enabled: boolean): void {
-    if (this.activeTool !== 'pen' || !(this.geometryMode instanceof PenEditMode)) {
-      return;
-    }
-    const previousSetting = this.settingTool;
+  setPenMode (state: DemoPenMode): void {
+    const mode = this.geometryMode;
 
-    this.settingTool = true;
-    try {
-      if (enabled) {
-        this.geometryMode.enterEdit();
-      }
-      this.geometryMode.setLassoMode(enabled);
-      this.emit('toolchange', 'pen');
-      this.emit('action', enabled ? '钢笔套索 · 开启' : '钢笔套索 · 关闭');
-      this.player.canvas.focus();
-    } finally {
-      this.settingTool = previousSetting;
-    }
-  }
-
-  setPenEditMode (enabled: boolean): void {
-    if (this.activeTool !== 'pen' || !(this.geometryMode instanceof PenEditMode)) {
-      return;
-    }
-
-    const previousSetting = this.settingTool;
-
-    this.settingTool = true;
-    try {
-      this.geometryMode.setLassoMode(false);
-      if (enabled) {
-        this.geometryMode.enterEdit();
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+    this.updateTool(() => {
+      if (state === 'create') {
+        mode.enterCreate(true);
       } else {
-        this.geometryMode.enterCreate();
+        mode.enterEdit();
       }
-      this.emit('toolchange', 'pen');
-      this.emit('action', enabled ? '钢笔编辑态 · 开启' : '钢笔创建态 · 开启');
-      this.player.canvas.focus();
+      mode.setLassoMode(state === 'lasso');
+    });
+    this.emit('action', `钢笔${state === 'create' ? '创建态' : state === 'edit' ? '编辑态' : '套索'} · 开启`);
+  }
+
+  get penMode (): DemoPenMode | undefined {
+    const mode = this.geometryMode;
+
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+
+    return mode.state === 'create' ? 'create' : mode.lassoMode ? 'lasso' : 'edit';
+  }
+
+  private updateTool (update: () => void): void {
+    const previousSetting = this.settingTool;
+
+    this.settingTool = true;
+    try {
+      update();
     } finally {
       this.settingTool = previousSetting;
     }
-  }
-
-  get penLasso (): boolean {
-    return this.geometryMode instanceof PenEditMode && this.geometryMode.lassoMode;
-  }
-
-  get penEditMode (): boolean {
-    return this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit' && !this.penLasso;
+    if (!previousSetting) {
+      this.emit('toolchange', this.activeTool);
+      this.player.canvas.focus();
+    }
   }
 
   select (item: VFXItem, append = false): void {
@@ -448,7 +408,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       return;
     }
     if (event.physicalKeycode === 'KeyQ' && this.activeTool === 'pen') {
-      this.setPenLassoMode(!this.penLasso);
+      this.setPenMode(this.penMode === 'lasso' ? 'edit' : 'lasso');
       event.accept();
 
       return;
@@ -788,7 +748,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
   private createPenMode (state: 'create' | 'edit' = 'create'): PenEditMode {
     const mode = new PenEditMode(this.handler, this.geometryHost, state, () => {
-      if (!this.disposed) {
+      if (!this.disposed && !this.settingTool) {
         this.emit('toolchange', 'pen');
       }
     }, () => {

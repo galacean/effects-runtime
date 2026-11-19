@@ -8,6 +8,7 @@ import { GestureCursorType } from '../../cursor';
 import { Vector2 } from '../../math';
 import { drawCorners, toColor } from '../../drawing';
 import { nextGeometrySession, type GeometryGizmoHost, type ShapeDrawingActionEvent, type ShapeGeometry, type ShapePrimitive } from './geometry';
+import { isDragThresholdReached } from '../../drag-threshold';
 
 /** primitive drawing in the local plane supplied by the host. */
 export class ShapeModelGizmo extends Gizmo {
@@ -98,7 +99,7 @@ export class ShapeModelGizmo extends Gizmo {
   onCancel (_reason: string): void { this.cancel(false); }
 
   override draw (control: Control): void {
-    if (!this.start || !this.current) { return; }
+    if (!this.creationStarted || !this.start || !this.current) { return; }
     const geometry = this.geometry();
     const { width, height, center } = geometry;
     const corners = [
@@ -134,9 +135,11 @@ export class ShapeModelGizmo extends Gizmo {
     const radial = this.createType === 'polygon' || this.createType === 'star';
 
     if (radial || clicked) {
-      return { shapeType: this.createType, center: { x: center.x, y: center.y },
+      return {
+        shapeType: this.createType, center: { x: center.x, y: center.y },
         width: 2 * (radial ? radius : this.shift ? Math.max(halfX, halfY) : halfX),
-        height: 2 * (radial ? radius : this.shift ? Math.max(halfX, halfY) : halfY) };
+        height: 2 * (radial ? radius : this.shift ? Math.max(halfX, halfY) : halfY),
+      };
     }
 
     const width = this.shift
@@ -147,18 +150,33 @@ export class ShapeModelGizmo extends Gizmo {
       ? center
       : { x: center.x + Math.sign(delta.x) * width / 2, y: center.y + Math.sign(delta.y) * height / 2 };
 
-    return { shapeType: this.createType, center: shapeCenter, width: this.centerOrigin ? width * 2 : width,
-      height: this.centerOrigin ? height * 2 : height };
+    return {
+      shapeType: this.createType, center: shapeCenter, width: this.centerOrigin ? width * 2 : width,
+      height: this.centerOrigin ? height * 2 : height,
+    };
   }
 
   private valid (): boolean { return this.host.canEdit() && this.context === this.host.contextKey?.(); }
 
   private update (event: InputEventMouseMotion): void {
-    if (!this.start) {
+    if (!this.start || !this.startView) {
       return;
     }
     if (!this.valid()) {
       this.onCancel('context');
+
+      return;
+    }
+    if (
+      !this.creationStarted
+      && !isDragThresholdReached(
+        this.startView.x,
+        this.startView.y,
+        event.position.x,
+        event.position.y,
+      )
+    ) {
+      event.accept();
 
       return;
     }

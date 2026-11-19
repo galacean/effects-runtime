@@ -5,8 +5,11 @@ import type { GeometryGizmoHost, GeometryPathTarget, PenPathData, PenToolState, 
 import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { PenEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
-import { selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
+import { penConfig, selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';
+import { createPenEditContext } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-edit-context';
+import { toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
+import type { Control } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -139,6 +142,210 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
     drag(gizmo, 100, 60);
     gizmo.onMouseUp(mouseButton(100, 60, false));
     expect(events.at(-1)!.edit!.path.easingOuts[1]).to.deep.equal({ x: 0, y: 60 });
+  });
+
+  it('selects and drags lassoed anchors even when a handle overlaps an anchor', () => {
+    const { gizmo, target, events } = createHarness();
+
+    target.value!.path.easingOuts[0] = { x: 100, y: 0 };
+    gizmo.setLassoMode(true);
+    gizmo.onMouseDown(mouseButton(-10, -10, true));
+    drag(gizmo, 110, -10);
+    drag(gizmo, 110, 10);
+    drag(gizmo, -10, 10);
+    gizmo.onMouseUp(mouseButton(-10, -10, false));
+    expect(gizmo.selectedPointsInfo).to.deep.equal([{ shape: 0, point: 0 }, { shape: 0, point: 1 }]);
+    gizmo.setLassoMode(false);
+    gizmo.onMouseDown(mouseButton(100, 0, true));
+    expect(gizmo.selectedInfo).to.deep.equal({ shape: 0, point: 1 });
+    drag(gizmo, 100, 20);
+    gizmo.onMouseUp(mouseButton(100, 20, false));
+    expect(events.at(-1)!.edit!.path.points).to.deep.equal([{ x: 0, y: 20 }, { x: 100, y: 20 }]);
+    expect(events.at(-1)!.edit!.path.easingOuts[0]).to.deep.equal({ x: 100, y: 0 });
+  });
+
+  it('keeps a nearby handle editable when it is closer than an anchor', () => {
+    const { gizmo, target, events } = createHarness();
+
+    target.value!.path.easingOuts[0] = { x: 97, y: 0 };
+    gizmo.setSelectedPoint({ shape: 0, point: 0 });
+    gizmo.onMouseDown(mouseButton(97, 0, true));
+    drag(gizmo, 90, 30);
+    gizmo.onMouseUp(mouseButton(90, 30, false));
+    expect(events.at(-1)!.edit!.path.easingOuts[0]).to.deep.equal({ x: 90, y: 30 });
+    expect(events.at(-1)!.edit!.path.points[1]).to.deep.equal({ x: 100, y: 0 });
+  });
+
+  it('draws selected anchors over overlapping handles and hides zero-length handles', () => {
+    const { gizmo, target, owner } = createHarness();
+    const fills: { x: number, y: number, color: unknown }[] = [];
+    const control = {
+      drawBezier: () => {}, drawLine: () => {}, drawPolyline: () => {}, drawCircle: () => {},
+      fillCircle: (x: number, y: number, _radius: number, color: unknown) => fills.push({ x, y, color }),
+    } as unknown as Control;
+
+    target.value!.path.easingOuts[0] = { x: 100, y: 0 };
+    gizmo.setSelectedPoints([{ shape: 0, point: 0 }, { shape: 0, point: 1 }]);
+    gizmo.draw(control);
+    const atAnchor = fills.filter(fill => fill.x === 100 && fill.y === 0);
+
+    expect(atAnchor).to.have.lengthOf(2);
+    expect(atAnchor.at(-1)!.color).to.equal(toColor(owner.getConfigManager().get(penConfig).selectedPointColor));
+    expect(fills.filter(fill => fill.x === 0 && fill.y === 0)).to.have.lengthOf(1);
+  });
+
+  function triangle (close = true): PenPathData {
+    return {
+      points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
+      easingIns: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
+      easingOuts: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
+      shapes: [{ close, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],
+    };
+  }
+
+  for (const selection of [[], [{ shape: 0, point: 0 }, { shape: 0, point: 2 }]]) {
+    it(`starts an independent subpath after edit-to-create with ${selection.length} selected anchors`, () => {
+      const path = triangle();
+      const { owner, host, events } = createHarness({ path });
+      const mode = new PenEditMode(owner, host, 'edit');
+      const editing = mode.createGizmos()[0];
+
+      editing.setSelectedPoints(selection);
+      mode.enterCreate(true);
+      const creating = mode.createGizmos()[0];
+
+      editing.dispose();
+      click(creating, 250, 150);
+      const edited = events.at(-1)!.edit!.path;
+      const first = edited.shapes[1].indexes;
+
+      expect(edited.shapes[0]).to.deep.equal(path.shapes[0]);
+      expect(first).to.have.lengthOf(1);
+      expect(first[0].point).to.equal(3);
+      expect(edited.points[first[0].point]).to.deep.equal({ x: 250, y: 150 });
+      expect(first[0].easingIn).to.be.greaterThan(2);
+      expect(first[0].easingOut).to.be.greaterThan(2);
+      creating.onCancel('pointer');
+      expect(events.at(-1)!.edit!.before).to.deep.equal(path);
+      expect(creating.selectedPointsInfo).to.deep.equal([]);
+    });
+  }
+
+  it('ignores an old primary anchor when there is no actual anchor selection', () => {
+    const { owner, host, events } = createHarness({ path: triangle() });
+    const context = createPenEditContext();
+
+    context.selected = { shape: 0, index: 0, part: 'point' };
+    context.target = 'shape';
+    const gizmo = new PenGizmo(owner, host, 'create', undefined, true, context);
+
+    click(gizmo, 250, 150);
+    expect(events.at(-1)!.edit!.path.shapes[1].indexes).to.have.lengthOf(1);
+  });
+
+  it('does not treat a selected control handle as an anchor for continuation', () => {
+    const path = triangle();
+
+    path.easingOuts[0] = { x: 20, y: 30 };
+    const { owner, host, events } = createHarness({ path });
+    const mode = new PenEditMode(owner, host, 'edit');
+    const editing = mode.createGizmos()[0];
+
+    editing.setSelectedPoint({ shape: 0, point: 0 });
+    click(editing, 20, 30);
+    mode.enterCreate(true);
+    const creating = mode.createGizmos()[0];
+
+    editing.dispose();
+    click(creating, 250, 150);
+    expect(events.at(-1)!.edit!.path.shapes[1].indexes).to.have.lengthOf(1);
+  });
+
+  it('leaves lasso mode when entering creation and starts an independent path', () => {
+    const { owner, host, events } = createHarness({ path: triangle() });
+    const mode = new PenEditMode(owner, host, 'edit');
+    const editing = mode.createGizmos()[0];
+
+    mode.setLassoMode(true);
+    editing.onMouseDown(mouseButton(200, 100, true));
+    drag(editing, 250, 150);
+    mode.enterCreate(true);
+    const creating = mode.createGizmos()[0];
+
+    editing.dispose();
+    expect(mode.lassoMode).to.equal(false);
+    click(creating, 250, 150);
+    expect(events.at(-1)!.edit!.path.shapes[1].indexes).to.have.lengthOf(1);
+  });
+
+  for (const source of [{ close: true, point: 0 }, { close: false, point: 1 }]) {
+    it(`branches from one selected ${source.close ? 'closed' : 'interior'} anchor with independent handles`, () => {
+      const path = triangle(source.close);
+      const { owner, host, events } = createHarness({ path });
+      const mode = new PenEditMode(owner, host, 'edit');
+      const editing = mode.createGizmos()[0];
+
+      editing.setSelectedPoint({ shape: 0, point: source.point });
+      mode.enterCreate(true);
+      const creating = mode.createGizmos()[0];
+
+      editing.dispose();
+      click(creating, 250, 150);
+      const edited = events.at(-1)!.edit!.path;
+      const start = edited.shapes[1].indexes[0];
+
+      expect(edited.shapes[0]).to.deep.equal(path.shapes[0]);
+      expect(edited.shapes[1].indexes).to.have.lengthOf(2);
+      expect(start.point).to.equal(source.point);
+      expect(start.easingIn).not.to.equal(path.shapes[0].indexes[source.point].easingIn);
+      expect(start.easingOut).not.to.equal(path.shapes[0].indexes[source.point].easingOut);
+      expect(edited.points[edited.shapes[1].indexes[1].point]).to.deep.equal({ x: 250, y: 150 });
+    });
+  }
+
+  for (const point of [0, 2]) {
+    it(`continues an open path from selected endpoint ${point} after edit-to-create`, () => {
+      const { owner, host, events } = createHarness({ path: triangle(false) });
+      const mode = new PenEditMode(owner, host, 'edit');
+      const editing = mode.createGizmos()[0];
+
+      editing.setSelectedPoint({ shape: 0, point });
+      mode.enterCreate(true);
+      const creating = mode.createGizmos()[0];
+
+      editing.dispose();
+      click(creating, 250, 150);
+      const edited = events.at(-1)!.edit!.path;
+
+      expect(edited.shapes).to.have.lengthOf(1);
+      expect(edited.shapes[0].indexes).to.have.lengthOf(4);
+      const added = point === 0 ? edited.shapes[0].indexes[0] : edited.shapes[0].indexes[3];
+
+      expect(edited.points[added.point]).to.deep.equal({ x: 250, y: 150 });
+    });
+  }
+
+  it('clears the previous creation origin after closing and switching modes again', () => {
+    const { owner, host, target, events } = createHarness({ path: triangle(false) });
+    const mode = new PenEditMode(owner, host, 'edit');
+    const editing = mode.createGizmos()[0];
+
+    editing.setSelectedPoint({ shape: 0, point: 0 });
+    mode.enterCreate(true);
+    const closing = mode.createGizmos()[0];
+
+    editing.dispose();
+    click(closing, 100, 100);
+    target.value!.path = events.at(-1)!.edit!.path;
+    mode.restartCreate();
+    mode.enterEdit();
+    mode.enterCreate(true);
+    const creating = mode.createGizmos()[0];
+
+    closing.dispose();
+    click(creating, 250, 150);
+    expect(events.at(-1)!.edit!.path.shapes[0].close).to.equal(true);
+    expect(events.at(-1)!.edit!.path.shapes[1].indexes).to.have.lengthOf(1);
   });
 
   it('snaps node edits to handles in the same element and ignores external targets and guides', () => {
