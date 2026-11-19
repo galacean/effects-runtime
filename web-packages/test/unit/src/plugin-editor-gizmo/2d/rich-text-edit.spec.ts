@@ -1,4 +1,4 @@
-import { InputEventMouseButton, MouseButton, spec, TextComponent, TextStyle, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, MaskableGraphic, MouseButton, spec, TextComponent, TextStyle, type VFXItem } from '@galacean/effects';
 import { RichTextComponent, richTextParser } from '@galacean/effects-plugin-rich-text';
 import { RichTextLayout } from '../../../../../../plugin-packages/rich-text/src/rich-text-layout';
 import { RichTextStrategyFactory } from '../../../../../../plugin-packages/rich-text/src/strategies/rich-text-factory';
@@ -15,6 +15,7 @@ import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/m
 import { ItemCreateGizmo, ItemCreateType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/item-create-gizmo';
 import { RichTextEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/rich-text-edit-mode';
 import { TextEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/text-edit-mode';
+import { getEditableTextComponent, isEditableTextItem } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-predicates';
 
 const { expect } = chai;
 
@@ -83,6 +84,25 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     return { rich, item, owner, session, textarea, events, sync, input, projection };
   }
 
+  it('marks restored content dirty before rebuilding its texture', () => {
+    const rich = Object.create(RichTextComponent.prototype) as RichTextComponent;
+    const updateTexture = chai.spy(() => {
+      expect(rich.isDirty).to.equal(true);
+      rich.isDirty = false;
+    });
+    const originalFromData = MaskableGraphic.prototype.fromData;
+
+    Object.assign(rich, { isDirty: false, updateTexture });
+    Object.defineProperty(rich, 'material', { value: { setColor: () => {} } });
+    try {
+      (MaskableGraphic.prototype as unknown as { fromData: () => void }).fromData = () => {};
+      rich.fromData({ options: { text: 'restored', fontSize: 20 } } as spec.RichTextComponentData);
+      expect(updateTexture).to.have.been.called.once;
+    } finally {
+      (MaskableGraphic.prototype as unknown as { fromData: typeof originalFromData }).fromData = originalFromData;
+    }
+  });
+
   it('replaces a selection across nested styles and preserves the remaining runs', () => {
     const doc = new RichTextDocument('<color=#ff0000><b>ABC</b>DE</color><i>FG</i>');
 
@@ -111,6 +131,13 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(doc.markup).to.equal('<b>aaa</b><i>aa</i>');
   });
 
+  it('uses the original selection to keep Backspace in the preceding styled run', () => {
+    const doc = new RichTextDocument('<b>aaa</b><i>a</i>');
+
+    doc.updateText('aaa', { start: 3, end: 3 });
+    expect(doc.markup).to.equal('<b>aa</b><i>a</i>');
+  });
+
   it('changes a partial style without losing unrelated attributes', () => {
     const doc = new RichTextDocument('<color=#ff0000>ABCD</color>');
 
@@ -123,56 +150,116 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(doc.getFormat(0, 4, 'color')).to.equal('#ff0000');
   });
 
-  it('clears legacy glyph pixels after deleting all text', () => {
+  it('preserves the legacy texture and dimensions when text becomes empty', () => {
     const rich = component('ABC');
 
     rich.textLayout.useLegacyRichText = true;
-    rich.getEditingLayout();
+    rich.ensureLayout();
+    const pixels = rich.canvas.toDataURL();
+    const dimensions = [rich.textLayout.width, rich.textLayout.height];
+
     rich.setText('');
-    rich.getEditingLayout();
-    const pixels = rich.context!.getImageData(0, 0, rich.canvas.width, rich.canvas.height).data;
+    rich.ensureLayout();
 
-    expect(pixels.some(value => value !== 0)).to.equal(false);
+    expect(rich.canvas.toDataURL()).to.equal(pixels);
+    expect([rich.textLayout.width, rich.textLayout.height]).to.deep.equal(dimensions);
   });
 
-  it('keeps legacy empty lines available for caret navigation', () => {
-    const rich = component('\n\n');
+  for (const [source, reference] of [['', ' '], ['\n\n', '\n \n '], ['<size=32.5>A</size>', '<size=32>A</size>']]) {
+    it(`preserves legacy rendering rules for ${JSON.stringify(source)}`, () => {
+      const render = (text: string) => {
+        const rich = component(text);
 
+        // 使用实际加载/更新选项路径，覆盖空字符串的旧版占位行为。
+        (rich as unknown as { updateWithOptions: (options: spec.RichTextContentOptions & { useLegacyRichText: boolean }) => void })
+          .updateWithOptions({ text, fontSize: 20, useLegacyRichText: true });
+        rich.ensureLayout();
+
+        return { pixels: rich.canvas.toDataURL(), width: rich.textLayout.width, height: rich.textLayout.height,
+          size: rich.item.transform.size.toArray() };
+      };
+
+      expect(render(source)).to.deep.equal(render(reference));
+    });
+  }
+
+  it('rejects legacy text editing and layout updates without changing the content or renderer', () => {
+    const { rich, item, session } = edit('<b>ABC</b>');
+
+    session.dispose();
     rich.textLayout.useLegacyRichText = true;
-    const boxes = rich.getEditingLayout().characters;
+    rich.isDirty = true;
+    rich.ensureLayout();
+    const pixels = rich.canvas.toDataURL();
+    const dimensions = [rich.textLayout.width, rich.textLayout.height];
+    const size = rich.item.transform.size.clone();
 
-    expect(boxes.map(box => [box.index, box.length])).to.deep.equal([[0, 0], [1, 0], [2, 0]]);
-    expect(boxes[2].y).to.be.greaterThan(boxes[1].y);
-    expect(boxes[1].y).to.be.greaterThan(boxes[0].y);
+    expect(getEditableTextComponent(item)).to.equal(rich);
+    expect(isEditableTextItem(item)).to.equal(false);
+    const next = new RichTextEditSession({ getEngine: () => ({ canvas: { parentElement: document.body } }) } as unknown as GizmoOwner);
+
+    sessions.push(next);
+    expect(next.retarget(item)).to.equal(false);
+    expect(rich.getEditingLayout().characters).to.deep.equal([]);
+    rich.setLayoutProperties({ text: 'Changed', fontSize: 40, maxTextWidth: 80 });
+    expect(() => rich.setFontSize(40)).not.to.throw();
+    rich.ensureLayout();
+    expect(rich.text).to.equal('<b>ABC</b>');
+    expect(rich.textStyle.fontSize).to.equal(20);
+    expect([rich.textLayout.width, rich.textLayout.height]).to.deep.equal(dimensions);
+    expect(rich.item.transform.size.toArray()).to.deep.equal(size.toArray());
+    expect(rich.canvas.toDataURL()).to.equal(pixels);
   });
 
-  for (const legacy of [false, true]) {
-    for (const wrap of [false, true]) {
-      for (const source of ['', '\n', '\n\n', 'A\n\nB', 'A\n']) {
-        it(`keeps rendering unchanged when editing starts and ends (${JSON.stringify(source)}, legacy=${legacy}, wrap=${wrap})`, () => {
-          const rich = component(source, wrap);
+  it('creates and releases a frozen final layout for the editor', () => {
+    const rich = component('A<size=40>B</size>\nC');
+    const renderTarget = rich as unknown as {
+      renderToTexture: (width: number, height: number, flipY: boolean, draw: (context: CanvasRenderingContext2D) => void) => void,
+    };
+    const renderer = renderTarget.renderToTexture;
+    let renderCount = 0;
 
-          rich.textLayout.useLegacyRichText = legacy;
+    renderTarget.renderToTexture = (width, height, flipY, draw) => {
+      renderCount++;
+      renderer(width, height, flipY, draw);
+    };
+    const layout = rich.getEditingLayout();
+
+    expect(renderCount).to.equal(1);
+    expect(layout.characters.map(box => [box.index, box.length])).to.deep.equal([[0, 1], [1, 1], [3, 1]]);
+    expect(Object.isFrozen(layout.characters)).to.equal(true);
+    expect(Object.isFrozen(layout.characters[0])).to.equal(true);
+    rich.releaseEditingLayout();
+    const rebuilt = rich.getEditingLayout();
+
+    expect(renderCount).to.equal(2);
+    expect(rebuilt.characters).not.to.equal(layout.characters);
+  });
+
+  for (const wrap of [false, true]) {
+    for (const source of ['', '\n', '\n\n', 'A\n\nB', 'A\n']) {
+      it(`keeps rendering unchanged when editing starts and ends (${JSON.stringify(source)}, wrap=${wrap})`, () => {
+        const rich = component(source, wrap);
+
+        rich.ensureLayout();
+        const size = rich.item.transform.size.clone();
+        const dimensions = [rich.textLayout.width, rich.textLayout.height];
+        const pixels = rich.canvas.toDataURL();
+
+        for (let i = 0; i < 2; i++) {
+          const editing = rich.getEditingLayout();
+
+          expect([editing.width, editing.height]).to.deep.equal(dimensions);
+          expect(rich.item.transform.size.toArray()).to.deep.equal(size.toArray());
+          expect(rich.canvas.toDataURL()).to.equal(pixels);
+          rich.releaseEditingLayout();
+          rich.isDirty = true;
           rich.ensureLayout();
-          const size = rich.item.transform.size.clone();
-          const dimensions = [rich.textLayout.width, rich.textLayout.height];
-          const pixels = rich.canvas.toDataURL();
-
-          for (let i = 0; i < 2; i++) {
-            const editing = rich.getEditingLayout();
-
-            expect([editing.width, editing.height]).to.deep.equal(dimensions);
-            expect(rich.item.transform.size.toArray()).to.deep.equal(size.toArray());
-            expect(rich.canvas.toDataURL()).to.equal(pixels);
-            rich.releaseEditingLayout();
-            rich.isDirty = true;
-            rich.ensureLayout();
-            expect([rich.textLayout.width, rich.textLayout.height]).to.deep.equal(dimensions);
-            expect(rich.canvas.toDataURL()).to.equal(pixels);
-          }
-          if (!legacy) { expect(dimensions[1]).to.equal(source.split('\n').length * 32); }
-        });
-      }
+          expect([rich.textLayout.width, rich.textLayout.height]).to.deep.equal(dimensions);
+          expect(rich.canvas.toDataURL()).to.equal(pixels);
+        }
+        expect(dimensions[1]).to.equal(source.split('\n').length * 32);
+      });
     }
   }
 
@@ -260,8 +347,9 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
       };
 
       session.syncViewport({ width, height, transform });
-      session.beginPointerSelection(point(1));
-      session.finishPointerSelection(point(3));
+      const handle = session.beginPointerSelection(point(1));
+
+      session.finishPointerSelection(handle, point(3));
       session.syncViewport({ width, height, transform });
       expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
       const overlay = document.querySelector<HTMLElement>('.text-gizmo-rich-selection')!;
@@ -332,33 +420,6 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, cancelable: true }));
     expect(textarea.value).to.equal('External');
     expect(rich.text).to.equal('<i>External</i>');
-  });
-
-  it('reuses legacy prefix metrics while preserving kerning advances', () => {
-    const rich = component('AV'.repeat(200));
-    const context = rich.context!;
-    const measure = context.measureText.bind(context);
-    let prefixMeasurements = 0;
-
-    rich.textLayout.useLegacyRichText = true;
-    rich.textStyle.fontScale = 1;
-    rich.textStyle.fontFamily = 'Arial';
-    context.measureText = (text: string) => {
-      if (context.font.includes('20px')) { prefixMeasurements++; }
-
-      return measure(text);
-    };
-    const boxes = rich.getEditingLayout().characters;
-    const firstMeasurements = prefixMeasurements;
-
-    expect(firstMeasurements).to.equal(400);
-    expect(boxes[1].x + boxes[1].width).to.be.closeTo(measure('AV').width, 1e-8);
-    expect(measure('AV').width).to.be.lessThan(measure('A').width + measure('V').width);
-    rich.getEditingLayout();
-    expect(prefixMeasurements).to.equal(firstMeasurements);
-    rich.setText(rich.text + 'A');
-    rich.getEditingLayout();
-    expect(prefixMeasurements - firstMeasurements).to.equal(1);
   });
 
   it('accepts the first input before the first projected frame without selecting it again', () => {
@@ -442,8 +503,9 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     const start = boxes[1];
     const end = boxes[2];
 
-    session.beginPointerSelection({ x: 10 + start.x, y: 10 + start.y + start.height / 2 });
-    session.finishPointerSelection({ x: 10 + end.x + end.width, y: 10 + end.y + end.height / 2 });
+    const handle = session.beginPointerSelection({ x: 10 + start.x, y: 10 + start.y + start.height / 2 });
+
+    session.finishPointerSelection(handle, { x: 10 + end.x + end.width, y: 10 + end.y + end.height / 2 });
     sync();
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
     const plain = { type: spec.ItemType.text, getComponent: (type: unknown) => type === TextComponent ? {} : undefined } as unknown as VFXItem;
@@ -467,6 +529,51 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
     input(1, 3, '中');
     expect(rich.text).to.equal('<b>A中D</b>');
+  });
+
+  it('saves the current selection for every hide and clears it after restoration', () => {
+    const { session, textarea, sync } = edit('<b>ABCD</b>');
+
+    textarea.setSelectionRange(1, 3);
+    session.syncViewport(undefined);
+    textarea.setSelectionRange(0, 0);
+    sync();
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
+
+    textarea.setSelectionRange(0, 1);
+    session.syncViewport(undefined);
+    sync();
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([0, 1]);
+  });
+
+  it('keeps a press-time caret anchor after the viewport moves', () => {
+    const { rich, session, textarea } = edit('ABCD');
+    const boxes = rich.getEditingLayout().characters;
+    const point = (offset: number, index: number) => ({
+      x: offset + boxes[index].x + boxes[index].width / 2,
+      y: 10 + boxes[index].y + boxes[index].height / 2,
+    });
+
+    const handle = session.beginPointerSelection(point(10, 1));
+
+    session.syncViewport({ width: rich.textLayout.width, height: rich.textLayout.height,
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 100, f: 10 } });
+    session.finishPointerSelection(handle, point(100, 3));
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
+  });
+
+  it('ignores stale drag handles after a newer pointer selection starts', () => {
+    const { rich, session, textarea } = edit('ABCD');
+    const boxes = rich.getEditingLayout().characters;
+    const point = (index: number) => ({ x: 10 + boxes[index].x, y: 10 + boxes[index].y + boxes[index].height / 2 });
+    const oldHandle = session.beginPointerSelection(point(0));
+    const activeHandle = session.beginPointerSelection(point(1));
+
+    session.updatePointerSelection(oldHandle, point(3));
+    session.finishPointerSelection(oldHandle, point(3));
+    session.cancelPointerSelection(oldHandle);
+    session.finishPointerSelection(activeHandle, point(3));
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
   });
 
   it('keeps plain selection unchanged and selects rich text through its own gizmo', () => {
@@ -552,11 +659,13 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     const point = (index: number) => ({ x: 10 + boxes[index].x, y: 10 + boxes[index].y + boxes[index].height / 2 });
 
     textarea.setSelectionRange(1, 3);
-    session.beginPointerSelection(point(8), { extend: true });
-    session.finishPointerSelection(point(8));
+    const extendHandle = session.beginPointerSelection(point(8), { extend: true });
+
+    session.finishPointerSelection(extendHandle, point(8));
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 8]);
-    session.beginPointerSelection(point(8), { word: true });
-    session.finishPointerSelection(point(8));
+    const wordHandle = session.beginPointerSelection(point(8), { word: true });
+
+    session.finishPointerSelection(wordHandle, point(8));
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([6, 11]);
   });
 });

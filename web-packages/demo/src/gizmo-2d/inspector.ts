@@ -85,7 +85,11 @@ export class InspectorPanel {
         if (fill) {
           fill.color.set(channel(1), channel(3), channel(5), fill.color.a);
         }
-        getEditableTextComponent(item)?.setTextColor([channel(1), channel(3), channel(5), 1]);
+        const text = getEditableTextComponent(item);
+
+        if (!(text instanceof RichTextComponent && text.textLayout.useLegacyRichText)) {
+          text?.setTextColor([channel(1), channel(3), channel(5), 1]);
+        }
       });
     });
     this.events.on(this.fillOpacity, 'change', () => {
@@ -150,6 +154,7 @@ export class InspectorPanel {
     const selected = this.editor.selectedItems;
     const item = this.editor.selectedItem;
     const text = getEditableTextComponent(item);
+    const legacyRichText = text instanceof RichTextComponent && text.textLayout.useLegacyRichText;
     const textFormats = this.editor.richTextSelectionFormats;
     const frame = item?.getComponent(FrameComponent);
     const fill = this.getSolidPaint(frame?.fills);
@@ -179,11 +184,12 @@ export class InspectorPanel {
     this.setInput(this.fields.y, item?.transform.position.y);
     this.setInput(this.fields.rotation, item?.transform.rotation.z);
     this.setInput(this.fields.width, vectorGeometry?.width ?? (text instanceof RichTextComponent ? getRichTextFrameWidth(text)
-      : item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined), text instanceof RichTextComponent && text.textLayout.useLegacyRichText);
+      : item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined), legacyRichText);
     this.setInput(this.fields.height, vectorGeometry?.height ?? (item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined), !!text);
     this.scale.textContent = item ? `${item.transform.scale.x.toFixed(2)} × ${item.transform.scale.y.toFixed(2)}` : '—';
     this.textSection.hidden = !text;
     element('rich-text-tools').hidden = item?.type !== spec.ItemType.richtext;
+    this.textValue.disabled = !text || legacyRichText;
     const textTargetChanged = this.textTarget !== item;
 
     this.textTarget = item;
@@ -193,12 +199,14 @@ export class InspectorPanel {
         this.beforeTextInput = undefined;
         this.textValue.value = item?.type === spec.ItemType.richtext ? new RichTextDocument(text.text).text : text.text;
       }
-      this.setInput(this.fields.fontSize, textFormats?.size == null ? text.textStyle.fontSize : Number(textFormats.size));
+      this.setInput(this.fields.fontSize, textFormats?.size == null ? text.textStyle.fontSize : Number(textFormats.size), legacyRichText);
       this.fields.fontSize.placeholder = textFormats?.size === null ? '混合' : '';
       if (textFormats?.size === null && document.activeElement !== this.fields.fontSize) { this.fields.fontSize.value = ''; }
       element('text-bold').setAttribute('aria-pressed', String(textFormats?.b === ''));
       element('text-italic').setAttribute('aria-pressed', String(textFormats?.i === ''));
     }
+    element<HTMLButtonElement>('text-bold').disabled = item?.type !== spec.ItemType.richtext || legacyRichText;
+    element<HTMLButtonElement>('text-italic').disabled = item?.type !== spec.ItemType.richtext || legacyRichText;
     this.fillSection.hidden = !color;
     this.frameSection.hidden = data?.kind !== 'Frame';
     this.fillOpacityField.hidden = !fill;
@@ -214,6 +222,7 @@ export class InspectorPanel {
       this.fill.value = color;
       this.fillValue.textContent = textFormats?.color === null ? '混合' : color.slice(1).toUpperCase();
     }
+    this.fill.disabled = !color || legacyRichText;
     this.mediaSection.hidden = data?.kind !== 'Video' && data?.kind !== 'Effects';
     this.mediaPlay.disabled = !media;
     this.mediaPlay.textContent = media?.playing ? '暂停' : '播放';
@@ -373,6 +382,7 @@ export class InspectorPanel {
         const text = getEditableTextComponent(item);
 
         if (!text) { return; }
+        if (text instanceof RichTextComponent && text.textLayout.useLegacyRichText) { return; }
         if (item.type === spec.ItemType.richtext) {
           const document = new RichTextDocument(text.text);
 
@@ -400,6 +410,7 @@ export class InspectorPanel {
           const text = getEditableTextComponent(item);
 
           if (text instanceof RichTextComponent) {
+            if (text.textLayout.useLegacyRichText) { return; }
             text.setLayoutProperties({ fontSize: fontSize.valueAsNumber, lineHeight: fontSize.valueAsNumber * 1.35 });
           } else {
             text?.setFontSize(fontSize.valueAsNumber);

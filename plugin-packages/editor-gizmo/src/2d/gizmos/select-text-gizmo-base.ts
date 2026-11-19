@@ -13,12 +13,18 @@ import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { getItemViewTransform, getPlayerItemById } from '../items';
 import { Vector2, getTransformedBoxCorners } from '../math';
-import type { TextEditSession } from '../text/text-edit-session';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { TEXT_EDIT_BOX_LINE_COLOR } from './text-gizmo';
 
-type TextSelectionSession = Pick<TextEditSession, 'editingItem' | 'retarget' | 'beginPointerSelection'
-| 'updatePointerSelection' | 'finishPointerSelection' | 'cancelPointerSelection'>;
+type PointerSelectionHandle = object;
+type TextSelectionSession = {
+  readonly editingItem: VFXItem | undefined,
+  retarget(item: VFXItem, activation?: 'select' | 'focus'): boolean,
+  beginPointerSelection(point: { x: number, y: number }, options?: { extend?: boolean, word?: boolean }): PointerSelectionHandle,
+  updatePointerSelection(handle: PointerSelectionHandle, point: { x: number, y: number }): void,
+  finishPointerSelection(handle: PointerSelectionHandle, point: { x: number, y: number }): void,
+  cancelPointerSelection(handle: PointerSelectionHandle): void,
+};
 
 /** 两类文本共享的命中、悬停和拖选流程；目标判定及选区语义由具体 Gizmo 决定。 */
 export abstract class SelectTextGizmoBase extends Gizmo {
@@ -28,6 +34,8 @@ export abstract class SelectTextGizmoBase extends Gizmo {
   private static readonly HOVER_GAP_LENGTH = 4;
   private _hoverTextId: string | undefined;
   private pointerSelecting = false;
+  /** 只代表本次拖选；会话以它过滤旧 Gizmo 的迟到事件。 */
+  private pointerSelectionHandle: PointerSelectionHandle | undefined;
 
   /**
    * 创建文本选择交互。
@@ -52,7 +60,10 @@ export abstract class SelectTextGizmoBase extends Gizmo {
    */
   override onMouseMove (event: InputEventMouseMotion): void {
     if (this.pointerSelecting && (event.buttonMask & MouseButtonMask.Left) !== 0) {
-      this.session.updatePointerSelection({
+      const handle = this.pointerSelectionHandle;
+
+      if (!handle) { return; }
+      this.session.updatePointerSelection(handle, {
         x: event.position.x,
         y: event.position.y,
       });
@@ -100,7 +111,7 @@ export abstract class SelectTextGizmoBase extends Gizmo {
 
     this._hoverTextId = undefined;
     this.pointerSelecting = true;
-    this.beginPointerSelection(event);
+    this.pointerSelectionHandle = this.beginPointerSelection(event);
     this._owner.getSelection().commitSelectedItems([target.getInstanceId()]);
     this.setTextCursor(event);
     event.accept();
@@ -114,7 +125,10 @@ export abstract class SelectTextGizmoBase extends Gizmo {
     if (!this.pointerSelecting) {
       return;
     }
-    this.session.updatePointerSelection({
+    const handle = this.pointerSelectionHandle;
+
+    if (!handle) { return; }
+    this.session.updatePointerSelection(handle, {
       x: event.position.x,
       y: event.position.y,
     });
@@ -130,11 +144,15 @@ export abstract class SelectTextGizmoBase extends Gizmo {
     if (!this.pointerSelecting) {
       return;
     }
-    this.session.finishPointerSelection({
+    const handle = this.pointerSelectionHandle;
+
+    this.pointerSelectionHandle = undefined;
+    this.pointerSelecting = false;
+    if (!handle) { return; }
+    this.session.finishPointerSelection(handle, {
       x: event.position.x,
       y: event.position.y,
     });
-    this.pointerSelecting = false;
     this._hoverTextId = undefined;
     this.setTextCursor(event);
     event.accept();
@@ -194,7 +212,10 @@ export abstract class SelectTextGizmoBase extends Gizmo {
   /** 释放文本选择交互状态。 */
   override dispose (): void {
     this.pointerSelecting = false;
-    this.session.cancelPointerSelection();
+    if (this.pointerSelectionHandle) {
+      this.session.cancelPointerSelection(this.pointerSelectionHandle);
+    }
+    this.pointerSelectionHandle = undefined;
     this.clearHover();
     super.dispose();
   }
@@ -260,8 +281,8 @@ export abstract class SelectTextGizmoBase extends Gizmo {
 
   protected abstract isTextItem (item: VFXItem): boolean;
 
-  protected beginPointerSelection (event: InputEventMouseButton): void {
-    this.session.beginPointerSelection({ x: event.position.x, y: event.position.y });
+  protected beginPointerSelection (event: InputEventMouseButton): PointerSelectionHandle {
+    return this.session.beginPointerSelection({ x: event.position.x, y: event.position.y });
   }
 
   /** 清除文本悬停目标。 */

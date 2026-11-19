@@ -17,6 +17,7 @@ export type RichTextInputPayload = {
 
 type RichTextSessionEvents = { richTextInput: [RichTextInputPayload] };
 type PointerSelection = RichTextSelectionOptions & {
+  handle: object,
   anchor: RichTextPoint,
   focus: RichTextPoint,
   anchorIndex?: number,
@@ -64,7 +65,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
   retarget (item: VFXItem, activation: RichTextEditActivation = 'focus'): boolean {
     const component = item.type === spec.ItemType.richtext ? item.getComponent(RichTextComponent) : undefined;
 
-    if (this.disposed || !component) { return false; }
+    if (this.disposed || !component || component.textLayout.useLegacyRichText) { return false; }
     if (this.target === item) { return true; }
     this.hide();
     this.editor?.dispose();
@@ -75,7 +76,9 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     this.pointerSelection = undefined;
     this.textAreaElement.setSelectionRange(0, 0);
     this.editor = new RichTextEditor(component, this.textAreaElement, () => {
-      this.emit('richTextInput', { itemId: item.getInstanceId(), markup: component.text, plainText: this.editor!.text });
+      const payload = { itemId: item.getInstanceId(), markup: component.text, plainText: this.editor!.text };
+
+      this.emit('richTextInput', payload);
     });
     if (activation === 'select') { this.openInput(); }
 
@@ -96,9 +99,6 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
 
   detachProjection (token: object): void {
     if (!this.projections.delete(token) || this.projections.size) { return; }
-    const { selectionStart: start, selectionEnd: end, selectionDirection: direction } = this.textAreaElement;
-
-    this.savedSelection = { start, end, direction };
     this.hide();
   }
 
@@ -139,28 +139,36 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     return true;
   }
 
-  beginPointerSelection (point: RichTextPoint, options: RichTextSelectionOptions = {}): void {
+  beginPointerSelection (point: RichTextPoint, options: RichTextSelectionOptions = {}): object {
     const textarea = this.textAreaElement;
+    const handle = {};
+    const anchorIndex = options.extend
+      ? textarea.selectionDirection === 'backward' ? textarea.selectionEnd : textarea.selectionStart
+      : this.layout ? resolveRichTextCaretPosition(this.layout, point) : undefined;
 
-    this.pointerSelection = { ...options, anchor: { ...point }, focus: { ...point }, active: true,
-      anchorIndex: options.extend ? textarea.selectionDirection === 'backward' ? textarea.selectionEnd : textarea.selectionStart : undefined };
+    this.pointerSelection = { ...options, handle, anchor: { ...point }, focus: { ...point }, active: true,
+      anchorIndex };
     this.applyPointerSelection();
+
+    return handle;
   }
 
-  updatePointerSelection (point: RichTextPoint): void {
-    if (!this.pointerSelection?.active) { return; }
+  updatePointerSelection (handle: object, point: RichTextPoint): void {
+    if (!this.pointerSelection?.active || this.pointerSelection.handle !== handle) { return; }
     this.pointerSelection.focus = { ...point };
     this.applyPointerSelection();
   }
 
-  finishPointerSelection (point: RichTextPoint): void {
-    if (!this.pointerSelection) { return; }
+  finishPointerSelection (handle: object, point: RichTextPoint): void {
+    if (!this.pointerSelection || this.pointerSelection.handle !== handle) { return; }
     this.pointerSelection.focus = { ...point };
     this.pointerSelection.active = false;
     if (this.applyPointerSelection()) { this.pointerSelection = undefined; }
   }
 
-  cancelPointerSelection (): void { this.pointerSelection = undefined; }
+  cancelPointerSelection (handle?: object): void {
+    if (!handle || this.pointerSelection?.handle === handle) { this.pointerSelection = undefined; }
+  }
 
   dispose (): void {
     if (this.disposed) { return; }
@@ -202,10 +210,16 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
 
       textarea.setSelectionRange(start, end, direction);
     }
+    this.savedSelection = undefined;
     this.activation = 'focus';
   }
 
   private hide (): void {
+    if (this.textAreaElement.style.display !== 'none') {
+      const { selectionStart: start, selectionEnd: end, selectionDirection: direction } = this.textAreaElement;
+
+      this.savedSelection = { start, end, direction };
+    }
     this.textAreaElement.style.display = 'none';
     this.editor?.hide();
   }

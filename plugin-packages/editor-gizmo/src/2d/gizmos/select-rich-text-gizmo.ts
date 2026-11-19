@@ -1,6 +1,6 @@
 import type { InputEventMouseButton, VFXItem } from '@galacean/effects';
 import type { GizmoOwner } from '../gizmo-owner';
-import { isRichTextPlayerItem } from '../items';
+import { isEditableTextItem, isRichTextPlayerItem } from '../items';
 import type { RichTextEditSession } from '../rich-text/rich-text-edit-session';
 import { SelectTextGizmoBase } from './select-text-gizmo-base';
 
@@ -12,10 +12,10 @@ export class SelectRichTextGizmo extends SelectTextGizmoBase {
     super(owner, richSession);
   }
 
-  protected isTextItem (item: VFXItem): boolean { return isRichTextPlayerItem(item); }
+  protected isTextItem (item: VFXItem): boolean { return isRichTextPlayerItem(item) && isEditableTextItem(item); }
 
-  protected override beginPointerSelection (event: InputEventMouseButton): void {
-    this.richSession.beginPointerSelection({ x: event.position.x, y: event.position.y },
+  protected override beginPointerSelection (event: InputEventMouseButton): object {
+    return this.richSession.beginPointerSelection({ x: event.position.x, y: event.position.y },
       { extend: event.shiftPressed, word: event.doubleClick });
   }
 }

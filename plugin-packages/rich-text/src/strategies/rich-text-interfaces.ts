@@ -9,7 +9,7 @@ export interface RichCharDetail {
   char: string,
   x: number,
   /** 可见文本 UTF-16 偏移。 */
-  index?: number,
+  index: number,
 }
 
 /**

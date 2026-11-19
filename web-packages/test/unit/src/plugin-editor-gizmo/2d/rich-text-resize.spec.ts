@@ -2,7 +2,7 @@ import { spec, TextStyle, Transform, type VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { RichTextLayout } from '../../../../../../plugin-packages/rich-text/src/rich-text-layout';
 import { RichTextStrategyFactory } from '../../../../../../plugin-packages/rich-text/src/strategies/rich-text-factory';
-import { applyRichTextResize, createRichTextResizeSnapshot, getRichTextFrameWidth } from '../../../../../../plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-resize';
+import { applyRichTextResize, createRichTextResizeSnapshot, getRichTextFrameRatio, getRichTextFrameWidth } from '../../../../../../plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-resize';
 import { RichTextDocument } from '../../../../../../plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-document';
 import { ResizeSelectionGizmo, TransformType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo';
 import { Matrix4, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
@@ -51,16 +51,19 @@ function resizeSession (component: RichTextComponent, mode: 'font' | 'width', fi
   const snapshot = createRichTextResizeSnapshot(component, mode);
   const initialMatrix = item.transform.getWorldMatrix().clone();
   const parentWorldToLocal = (item.transform.getParentMatrix()?.clone() ?? new Matrix4()).setPosition(new Vector3()).invert();
-  const fixedPoint = new Vector3(fixedPointRatio.x * item.transform.size.x, fixedPointRatio.y * item.transform.size.y, 0)
+  const frameRatio = mode === 'width' ? getRichTextFrameRatio(component) : { x: 1, y: 1 };
+  const localFixedPointRatio = new Vector3(fixedPointRatio.x * frameRatio.x, fixedPointRatio.y * frameRatio.y, 0);
+  const fixedPoint = new Vector3(localFixedPointRatio.x * item.transform.size.x, localFixedPointRatio.y * item.transform.size.y, 0)
     .applyMatrix(initialMatrix);
 
   return {
     item, initialScale: item.transform.scale.clone(), initialPosition: item.transform.position.clone(), parentWorldToLocal,
-    geometry: { fixedPoint }, richText: { ...snapshot, initialMatrix, fixedPointRatio },
+    geometry: { fixedPoint }, richText: { ...snapshot, initialMatrix, fixedPointRatio: localFixedPointRatio,
+      fixedPointFrameRatio: mode === 'width' ? fixedPointRatio : undefined },
   };
 }
 
-function applySession (session: ReturnType<typeof resizeSession>, x: number, y = x): void {
+function applySession (session: unknown, x: number, y = x): void {
   const gizmo = Object.create(ResizeSelectionGizmo.prototype) as {
     applyAnchoredResize: (session: unknown, resize: unknown) => void,
   };
@@ -70,9 +73,11 @@ function applySession (session: ReturnType<typeof resizeSession>, x: number, y =
 
 function expectFixedPoint (session: ReturnType<typeof resizeSession>, x: number, y = x): void {
   const { item, richText, geometry } = session;
+  const frameRatio = richText.mode === 'width' ? getRichTextFrameRatio(richText.component) : { x: 1, y: 1 };
+  const fixedPointRatio = richText.fixedPointFrameRatio ?? richText.fixedPointRatio;
   const point = new Vector3(
-    richText.fixedPointRatio.x * item.transform.size.x * (x < 0 ? -1 : 1),
-    richText.fixedPointRatio.y * item.transform.size.y * (y < 0 ? -1 : 1), 0,
+    fixedPointRatio.x * item.transform.size.x * frameRatio.x * (x < 0 ? -1 : 1),
+    fixedPointRatio.y * item.transform.size.y * frameRatio.y * (y < 0 ? -1 : 1), 0,
   ).applyMatrix(item.transform.getWorldMatrix());
 
   expect(point.distance(geometry.fixedPoint)).to.be.lessThan(1e-8);
@@ -177,6 +182,34 @@ describe('plugin-editor-gizmo/rich-text-resize', () => {
     }
   });
 
+  it('uses the layout frame, rather than the expanded canvas, for rich width handles', () => {
+    const component = createRichText('<size=100>W</size>');
+
+    component.textLayout.overflow = spec.TextOverflow.visible;
+    component.setLayoutProperties({ maxTextWidth: 40, maxTextHeight: 32, autoResize: spec.TextSizeMode.fixed });
+    component.ensureLayout();
+    const frameRatio = getRichTextFrameRatio(component);
+    const configs = new ConfigManager();
+    const owner = {
+      getSelection: () => ({ getSelectedPlayerItems: () => [component.item] }),
+      getConfigManager: () => configs, getLoadingManager: () => new LoadingManager(),
+      getEngine: () => ({ canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } } }),
+    } as unknown as GizmoOwner;
+    const gizmo = new ResizeSelectionGizmo(owner);
+
+    try {
+      gizmo.refreshWireframeBySelectedItems();
+      const [rightFrameEdge, leftFrameEdge] = gizmo.wireframe.widthScaleEdges;
+      const renderedWidth = gizmo.wireframe.edges[1].getCenter().distance(gizmo.wireframe.edges[3].getCenter());
+      const frameWidth = rightFrameEdge.getCenter().distance(leftFrameEdge.getCenter());
+
+      expect(frameRatio.x).to.be.lessThan(1);
+      expect(frameWidth).to.be.closeTo(renderedWidth * frameRatio.x, 1e-8);
+    } finally {
+      gizmo.dispose();
+    }
+  });
+
   for (const overflow of [spec.TextOverflow.clip, spec.TextOverflow.visible, spec.TextOverflow.display]) {
     it(`keeps the actual frame anchored for overflow=${overflow}`, () => {
       const component = createRichText('A<size=50>B</size>\n\nC');
@@ -219,31 +252,42 @@ describe('plugin-editor-gizmo/rich-text-resize', () => {
     }
   }
 
-  it('keeps legacy width reflow disabled without changing its renderer or layout', () => {
-    const component = createRichText('ABCDEFGHIJKLMN', true);
-    const snapshot = createRichTextResizeSnapshot(component, 'width');
-    const dimensions = [component.textLayout.width, component.textLayout.height];
+  for (const mode of ['font', 'width'] as const) {
+    it(`keeps legacy content, dimensions and pixels unchanged by ${mode} resizing`, () => {
+      const component = createRichText('A<size=32.5>B</size>', true);
+      const snapshot = createRichTextResizeSnapshot(component, mode);
+      const size = component.item.transform.size.clone();
+      const dimensions = [component.textLayout.width, component.textLayout.height];
+      const pixels = component.canvas.toDataURL();
 
-    applyRichTextResize(snapshot, 0.25);
-    expect(component.textLayout.useLegacyRichText).to.equal(true);
-    expect([component.textLayout.width, component.textLayout.height]).to.deep.equal(dimensions);
-  });
+      for (const ratio of [1.5, 0.5, 1]) {
+        applyRichTextResize(snapshot, ratio);
+        expect(component.text).to.equal(snapshot.properties.text);
+        expect(component.textStyle.fontSize).to.equal(20);
+        expect([component.textLayout.width, component.textLayout.height]).to.deep.equal(dimensions);
+        expect(component.item.transform.size.toArray()).to.deep.equal(size.toArray());
+        expect(component.item.transform.scale.toArray()).to.deep.equal([-2, 3, 1]);
+        expect(component.canvas.toDataURL()).to.equal(pixels);
+      }
+    });
+  }
 
-  it('refreshes the legacy canvas and item size on repeated resizes without compounding conversion factors', () => {
+  it('resizes legacy rich text through transform scale without changing its component data', () => {
     const component = createRichText('A<size=32.5>B</size>', true);
-    const snapshot = createRichTextResizeSnapshot(component, 'font');
-    const size = component.item.transform.size.clone();
-    const width = component.textLayout.width;
-    const height = component.textLayout.height;
+    const originalText = component.text;
+    const originalSize = component.item.transform.size.clone();
+    const originalDimensions = [component.textLayout.width, component.textLayout.height];
+    const originalPixels = component.canvas.toDataURL();
+    const session = { ...resizeSession(component, 'font'), richText: undefined };
 
-    for (const ratio of [1.5, 0.5, 1]) {
-      applyRichTextResize(snapshot, ratio);
-      expect(component.textLayout.width).to.be.closeTo(width * ratio, 1e-8);
-      expect(component.textLayout.height).to.be.closeTo(height * ratio, 1e-8);
-      expect(component.item.transform.size.x).to.be.closeTo(size.x * ratio, 1e-8);
-      expect(component.item.transform.size.y).to.be.closeTo(size.y * ratio, 1e-8);
-      expect(component.item.transform.scale.toArray()).to.deep.equal([-2, 3, 1]);
-    }
+    applySession(session, 1.5, 0.5);
+
+    expect(component.text).to.equal(originalText);
+    expect(component.textStyle.fontSize).to.equal(20);
+    expect(component.item.transform.size.toArray()).to.deep.equal(originalSize.toArray());
+    expect([component.textLayout.width, component.textLayout.height]).to.deep.equal(originalDimensions);
+    expect(component.item.transform.scale.toArray()).to.deep.equal([-3, 1.5, 1]);
+    expect(component.canvas.toDataURL()).to.equal(originalPixels);
   });
 
   for (const legacy of [false, true]) {

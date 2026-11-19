@@ -1,6 +1,6 @@
 import type { VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
-import { applyRichTextResize, createRichTextResizeSnapshot, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
+import { applyRichTextResize, createRichTextResizeSnapshot, getRichTextFrameRatio, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
 import { FrameComponent, MouseButton, MouseButtonMask, ShapeComponent, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
@@ -137,6 +137,8 @@ type AnchoredResizeSession = {
   richText?: RichTextResizeSnapshot & {
     initialMatrix: Matrix4,
     fixedPointRatio: Vector3,
+    /** 宽度回流时固定点相对布局帧的位置。 */
+    fixedPointFrameRatio?: Vector3,
   },
   shape?: ShapeResizeSnapshot,
   /** 画板已应用的累计位移。 */
@@ -355,6 +357,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       anchor: new Vector2(),
       scaleCorners: [],
       widthScaleAreas: [],
+      widthScaleEdges: [],
       interactive: true,
       cornerEnable: true,
       box: new Box2(),
@@ -680,7 +683,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const isSingleText = this.isSingleTextSelection();
     const transformEnabled = this.interactionEnabled && !this.hasLoadingSelection(selectedItems);
 
-    if (selectedItems.length === 1 && isRichTextPlayerItem(selectedItems[0])) {
+    if (isSingleText && isRichTextPlayerItem(selectedItems[0])) {
       selectedItems[0].getComponent(RichTextComponent).ensureLayout();
     }
     this.iconType = selectedItems.length === 1
@@ -694,6 +697,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     this.wireframe.transform = undefined;
     this.wireframe.scaleCorners = [];
     this.wireframe.widthScaleAreas = [];
+    this.wireframe.widthScaleEdges = [];
     this.wireframe.childrenTransforms = [];
 
     this.wireframe.cornerEnable = scaleEnabled && transformEnabled;
@@ -754,14 +758,27 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (selectedItems.length === 1 && transformEnabled) {
       const { scaleCircleSize } = this.config;
 
-      if (isSingleText && !selectedItems[0].getComponent(RichTextComponent)?.textLayout.useLegacyRichText) {
-        const boxCorners = points;
+      const richComponent = isSingleText ? selectedItems[0].getComponent(RichTextComponent) : undefined;
+
+      if (richComponent && !richComponent.textLayout.useLegacyRichText) {
+        const frameRatio = getRichTextFrameRatio(richComponent);
+        const frameBox = new Box2(
+          new Vector2((1 - frameRatio.x) / 2, (1 - frameRatio.y) / 2),
+          new Vector2((1 + frameRatio.x) / 2, (1 + frameRatio.y) / 2),
+        );
+        const boxCorners = transform ? getTransformedBoxCorners(transform, frameBox) : undefined;
 
         if (!boxCorners) {
           return;
         }
+        const widthEdges = [
+          new Line2(boxCorners[1], boxCorners[2]),
+          new Line2(boxCorners[3], boxCorners[0]),
+        ];
+
+        this.wireframe.widthScaleEdges = widthEdges;
         // 左右命中带沿竖边展开，长度应取文本框高度，不能取宽度。
-        const edgeLen = boxCorners[1].distance(boxCorners[2]);
+        const edgeLen = widthEdges[0].start.distance(widthEdges[0].end);
 
         if (edgeLen > SCALE_CORNER_HIT_SIZE) {
           const { xAxis, yAxis } = this.boxLocalAxes();
@@ -775,8 +792,8 @@ export class ResizeSelectionGizmo extends Gizmo {
             getBoxTransform(getRotatedBoxCorners(mid, xAxis, yAxis, 4, halfLen))
           );
           const areas = [
-            buildEdgeHit(new Line2(boxCorners[1], boxCorners[2]).at(0.5)),
-            buildEdgeHit(new Line2(boxCorners[3], boxCorners[0]).at(0.5)),
+            buildEdgeHit(widthEdges[0].at(0.5)),
+            buildEdgeHit(widthEdges[1].at(0.5)),
           ];
 
           this.wireframe.widthScaleAreas = areas.filter((area): area is Matrix3 => !!area);
@@ -858,7 +875,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         const selectedItem = selectedItems[0];
         const itemTransform = decomposeItemTransform(selectedItem);
         const anchor = new Vector3().copyFrom(selectedItem.transform.anchor).applyMatrix(itemTransform.matrix);
-        const edge = this.draggedWidthEdge(this.wireframe.box.getCenter(), this.wireframe.interactiveDirection);
+        const edge = this.draggedWidthEdge(this.widthScaleCenter(), this.wireframe.interactiveDirection);
 
         this.interactionPlane = createInteractionPlane(itemTransform.position, itemTransform.rotation);
         const fixedPointView = edge
@@ -1142,18 +1159,23 @@ export class ResizeSelectionGizmo extends Gizmo {
    * @param interactiveDirection 交互方向。
    * @returns 当前被拖动的边。
    */
-  private draggedWidthEdge (center: Vector2, interactiveDirection: Vector2): Line2 | undefined {
-    const points = this.wireframe.transform ? getTransformedBoxCorners(this.wireframe.transform) : undefined;
+  private draggedWidthEdge (center: Vector2 | undefined, interactiveDirection: Vector2): Line2 | undefined {
+    const [edgeA, edgeB] = this.wireframe.widthScaleEdges;
 
-    if (!points?.length) {
+    if (!center || !edgeA || !edgeB) {
       return undefined;
     }
-    const edgeA = new Line2(points[1], points[2]);
-    const edgeB = new Line2(points[3], points[0]);
     const dotA = new Vector2().subtractVectors(edgeA.getCenter(), center).dot(interactiveDirection);
     const dotB = new Vector2().subtractVectors(edgeB.getCenter(), center).dot(interactiveDirection);
 
     return dotA >= dotB ? edgeA : edgeB;
+  }
+
+  /** @returns 富文本布局帧两条宽度边的中点。 */
+  private widthScaleCenter (): Vector2 | undefined {
+    const [edgeA, edgeB] = this.wireframe.widthScaleEdges;
+
+    return edgeA && edgeB ? edgeA.getCenter().add(edgeB.getCenter()).multiply(0.5) : undefined;
   }
 
   /** 是否为单个文字元素选区。 */
@@ -1288,13 +1310,22 @@ export class ResizeSelectionGizmo extends Gizmo {
     parentWorldToLocal.setPosition(new Vector3()).invert();
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
     const richComponent = item.type === spec.ItemType.richtext ? item.getComponent(RichTextComponent) : undefined;
-    const fixedLocal = richComponent ? fixedPoint.clone().applyMatrix(itemMatrix.clone().invert()) : undefined;
+    const fixedLocal = richComponent && !richComponent.textLayout.useLegacyRichText
+      ? fixedPoint.clone().applyMatrix(itemMatrix.clone().invert()) : undefined;
+    const frameRatio = richComponent ? getRichTextFrameRatio(richComponent) : undefined;
     const richText = richComponent && fixedLocal
       ? {
         ...createRichTextResizeSnapshot(richComponent, textResizeMode),
         initialMatrix: itemMatrix.clone(),
         fixedPointRatio: new Vector3(fixedLocal.x / (item.transform.size.x || 1),
           fixedLocal.y / (item.transform.size.y || 1), 0),
+        fixedPointFrameRatio: textResizeMode === 'width' && frameRatio
+          ? new Vector3(
+            fixedLocal.x / (item.transform.size.x * frameRatio.x || 1),
+            fixedLocal.y / (item.transform.size.y * frameRatio.y || 1),
+            0,
+          )
+          : undefined,
       }
       : undefined;
     const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent), itemMatrix);
@@ -1742,12 +1773,16 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     if (richText) {
       applyRichTextResize(richText, resize.totalScalar.x, resize.totalScalar.y);
-      const { fixedPointRatio, initialMatrix } = richText;
+      const { fixedPointRatio, fixedPointFrameRatio, initialMatrix } = richText;
       const { size } = item.transform;
+      const frameRatio = richText.mode === 'width' ? getRichTextFrameRatio(richText.component) : undefined;
+      const fixedRatio = fixedPointFrameRatio ?? fixedPointRatio;
+      const fixedSizeX = size.x * (frameRatio?.x ?? 1);
+      const fixedSizeY = size.y * (frameRatio?.y ?? 1);
       // 重排、尺寸钳制以及越过固定点后，使用真实外框反算固定点，scale 始终不参与写入。
       const fixedAfterResize = new Vector3(
-        fixedPointRatio.x * size.x * (resize.totalScalar.x < 0 ? -1 : 1),
-        fixedPointRatio.y * size.y * (resize.totalScalar.y < 0 ? -1 : 1),
+        fixedRatio.x * fixedSizeX * (resize.totalScalar.x < 0 ? -1 : 1),
+        fixedRatio.y * fixedSizeY * (resize.totalScalar.y < 0 ? -1 : 1),
         0,
       ).applyMatrix(initialMatrix);
 
@@ -2024,6 +2059,8 @@ export type ResizeSelectionWireframe = {
   scaleCorners: Circle[],
   /** 单文本左右两侧的宽度调整手柄 */
   widthScaleAreas: Matrix3[],
+  /** 富文本布局帧的左右边，用于拖拽固定点和比例计算。 */
+  widthScaleEdges: Line2[],
   /** 线框是否可交互 */
   interactive: boolean,
   /** 角点是否可点 */

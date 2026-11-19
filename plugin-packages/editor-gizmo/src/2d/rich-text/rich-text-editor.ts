@@ -15,7 +15,7 @@ export class RichTextEditor {
   private beforeInput: Snapshot | undefined;
   private composition: Snapshot | undefined;
   private positions: RichTextCaretPosition[] = [];
-  private characters: RichTextCharacterBox[] = [];
+  private characters: readonly RichTextCharacterBox[] = [];
   private caretWidth = 1;
   private viewportWidth = 0;
   private paintKey = '';

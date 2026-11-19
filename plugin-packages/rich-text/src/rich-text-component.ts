@@ -5,18 +5,25 @@ import {
   TextComponentBase,
 } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
+import {
+  createRichTextLayoutResult,
+  type RichTextEditingLayout,
+  type RichTextLayoutResult,
+} from './rich-text-layout-result';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
-  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
+  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy,
+  RichVerticalAlignStrategy,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 
+export type { RichTextCharacterBox, RichTextEditingLayout } from './rich-text-layout-result';
+
 export interface RichTextOptions {
   text: string,
-  /** 在可见文本中的 UTF-16 偏移，供编辑器映射选区。 */
+  /** 在可见文本中的 UTF-16 起始偏移，供布局结果映射。 */
   textOffset?: number,
   fontSize: number,
   fontFamily?: string,
@@ -24,22 +31,6 @@ export interface RichTextOptions {
   fontStyle?: spec.FontStyle,
   fontColor?: spec.vec4,
   isNewLine: boolean,
-}
-
-/** 与画布渲染同源的文字位置，坐标单位为逻辑像素。 */
-export interface RichTextCharacterBox {
-  index: number,
-  length: number,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-}
-
-export interface RichTextEditingLayout {
-  width: number,
-  height: number,
-  characters: RichTextCharacterBox[],
 }
 
 /** 以逻辑像素更新富文本的内容和排版约束。 */
@@ -86,30 +77,37 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   textLayout: RichTextLayout;
 
   processedTextOptions: RichTextOptions[] = [];
-  private _editingCharacters: RichTextCharacterBox[] = [];
-  private _editingLayoutEnabled = false;
-  private _legacyMeasurements: { text: string, font: string, widths: number[] }[] = [];
+  /** 仅在编辑器消费期间保留的最终布局，避免播放期常驻逐字坐标。 */
+  private _resolvedLayout: RichTextLayoutResult | undefined;
+  private _retainEditingLayout = false;
 
-  /** 返回最近一次实际渲染的字符布局；内容变更时先完成排版。 */
+  /** 返回布局管线产出的字符坐标；Legacy 富文本不支持编辑布局。 */
   getEditingLayout (): RichTextEditingLayout {
-    if (!this._editingLayoutEnabled) {
-      this._editingLayoutEnabled = true;
-      this.isDirty = true;
+    if (this.textLayout.useLegacyRichText) {
+      return { width: this.textLayout.width, height: this.textLayout.height, characters: [] };
     }
-    this.updateTexture();
+    this._retainEditingLayout = true;
+    // 正常渲染后会释放逐字布局；进入编辑态时按需重建一次。
+    if (!this._resolvedLayout) { this.isDirty = true; }
+    this.ensureLayout();
+    const resolved = this._resolvedLayout;
 
-    return { width: this.textLayout.width, height: this.textLayout.height, characters: this._editingCharacters };
+    return {
+      width: resolved?.width ?? this.textLayout.width,
+      height: resolved?.height ?? this.textLayout.height,
+      characters: resolved?.characters ?? [],
+    };
   }
 
-  /** 编辑结束后停止收集字符几何，正常播放不承担编辑器的度量开销。 */
+  /** 编辑结束后释放逐字布局；下次进入编辑态再按需重建。 */
   releaseEditingLayout (): void {
-    this._editingLayoutEnabled = false;
-    this._editingCharacters = [];
-    this._legacyMeasurements = [];
+    this._retainEditingLayout = false;
+    this._resolvedLayout = undefined;
   }
 
   /** 批量更新基础属性；尺寸仍由排版回写，不改变元素的 scale。 */
   setLayoutProperties (properties: RichTextLayoutProperties): void {
+    if (this.textLayout.useLegacyRichText) { return; }
     const { text, fontSize, ...layoutProperties } = properties;
     const { maxTextWidth, maxTextHeight, lineHeight, letterSpace } = layoutProperties;
 
@@ -122,16 +120,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
-    // 旧版画布在首次排版后保持固定尺寸；编辑尺寸时同步刷新该缓存。
-    if (this.textLayout.useLegacyRichText && this.canvasSize
-      && (maxTextWidth !== undefined || maxTextHeight !== undefined)) {
-      const width = maxTextWidth ?? this.textLayout.width;
-      const height = maxTextHeight ?? this.textLayout.height;
-      const size = this.item.transform.size;
-
-      size.set(size.x * width / this.textLayout.width, size.y * height / this.textLayout.height);
-      this.canvasSize.set(width * this.textStyle.fontScale, height * this.textStyle.fontScale);
-    }
     if (text !== undefined) { this.text = text; }
     if (fontSize !== undefined) { this.textStyle.fontSize = fontSize; }
     Object.assign(this.textLayout, layoutProperties);
@@ -191,13 +179,17 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
-    this.text = options.text?.toString() ?? ' ';
+    this.text = this.textLayout.useLegacyRichText
+      ? (options.text ? options.text.toString() : ' ')
+      : (options.text?.toString() ?? ' ');
 
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
 
     this.updateStrategies();
+    // fromData 也可能用于历史恢复；此前已经渲染过的实例需要强制生成新纹理。
+    this.isDirty = true;
     this.updateTexture();
 
     // 设置默认颜色（math.Color）
@@ -218,19 +210,24 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   private generateTextProgram (text: string) {
     this.processedTextOptions = [];
+    const useLegacy = this.textLayout.useLegacyRichText;
     let textOffset = 0;
     const program = generateProgram((text, context) => {
+      // 旧数据保留原有占位空格及字号解析规则，避免改变播放尺寸和字形。
+      if (useLegacy && /^\n+$/.test(text)) {
+        text = text.replace(/\n/g, '\n ');
+      }
       const textArr = text.split('\n');
 
       textArr.forEach((text, index) => {
         if (index > 0) { textOffset++; }
         const options: RichTextOptions = {
           text,
-          textOffset,
           fontSize: this.textStyle.fontSize,
           isNewLine: false,
         };
 
+        if (!useLegacy) { options.textOffset = textOffset; }
         if (index > 0) {
           options.isNewLine = true;
         }
@@ -241,9 +238,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           options.fontStyle = spec.FontStyle.italic;
         }
         if ('size' in context && context.size) {
-          const size = parseFloat(context.size);
+          if (useLegacy) {
+            options.fontSize = parseInt(context.size, 10);
+          } else {
+            const size = parseFloat(context.size);
 
-          if (Number.isFinite(size) && size > 0) { options.fontSize = size; }
+            if (Number.isFinite(size) && size > 0) { options.fontSize = size; }
+          }
         }
         if ('color' in context && context.color) {
           options.fontColor = toRGBA(context.color);
@@ -254,7 +255,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     });
 
     program(text);
-    if (this.processedTextOptions.length === 0) {
+    if (!useLegacy && this.processedTextOptions.length === 0) {
       this.processedTextOptions.push({ text: '', textOffset: 0, fontSize: this.textStyle.fontSize, isNewLine: false });
     }
   }
@@ -264,7 +265,9 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   protected updateWithOptions (options: spec.RichTextContentOptions): void {
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
-    this.text = options.text?.toString() ?? ' ';
+    this.text = this.textLayout.useLegacyRichText
+      ? (options.text ? options.text.toString() : ' ')
+      : (options.text?.toString() ?? ' ');
     // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
@@ -285,12 +288,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const layout = this.textLayout;
     const useLegacy = layout.useLegacyRichText === true;
 
-    this._editingCharacters = [];
-
     this.singleLineHeight = useLegacy ? 1.571 : 1.0;
 
     // 根据useLegacyRichText字段来判断使用哪种渲染模式
     if (useLegacy) {
+      this._resolvedLayout = undefined;
       this.updateTextureLegacy(flipY);
     } else {
       this.updateTextureWithStrategies(flipY);
@@ -370,9 +372,12 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     width = Math.max(width, charInfo.width);
     height += charInfo.lineHeight;
 
-    // 空文本同样清除旧像素；编辑状态只控制几何采集。
-    width = Math.max(1, width);
-    height = Math.max(1, height);
+    // 存储最后一行的字符信息，并且更新最终的宽度和高度用于确定canvas尺寸
+    if (width === 0 || height === 0) {
+      this.isDirty = false;
+
+      return;
+    }
 
     if (this.size === undefined || this.size === null) {
       this.size = this.item.transform.size.clone();
@@ -397,9 +402,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.width = canvasWidth / textStyle.fontScale;
     layout.height = canvasHeight / textStyle.fontScale;
 
-    let measurementIndex = 0;
-
-    this._legacyMeasurements ??= [];
     this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
       if (charsInfo.length === 0) {
         return;
@@ -447,37 +449,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
 
           context.fillText(text, strOffsetX, charsLineHeight);
-          if (!this._editingLayoutEnabled) { return; }
-          const scale = textStyle.fontScale;
-          const top = (charsLineHeight - textSize * scale) / scale;
-
-          if (!text) {
-            this._editingCharacters.push({ index: options.textOffset ?? 0, length: 0,
-              x: strOffsetX / scale, y: top, width: 0, height: textSize });
-          }
-          const cached = this._legacyMeasurements[measurementIndex];
-          let prefix = 0;
-
-          if (cached?.font === context.font) {
-            while (prefix < text.length && text[prefix] === cached.text[prefix]) { prefix++; }
-          }
-          const widths = cached?.font === context.font ? cached.widths.slice(0, prefix + 1) : [0];
-
-          for (let i = 0; i < text.length; i++) {
-            const before = widths[i];
-            const after = widths[i + 1] ?? context.measureText(text.slice(0, i + 1)).width;
-
-            widths[i + 1] = after;
-
-            this._editingCharacters.push({ index: (options.textOffset ?? 0) + i, length: 1,
-              x: (strOffsetX + before) / scale, y: top, width: (after - before) / scale, height: textSize });
-          }
-          this._legacyMeasurements[measurementIndex++] = { text, font: context.font, widths };
         });
       });
     });
 
-    this._legacyMeasurements.length = measurementIndex;
     // 与 toDataURL() 两种方式都需要像素读取操作
     this.isDirty = false;
   }
@@ -590,6 +565,15 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.maxTextHeight = frameH;
     layout.width = overflowResult.canvasWidth;
     layout.height = overflowResult.canvasHeight;
+    const resolvedLayout = createRichTextLayoutResult(
+      wrapResult.lines,
+      horizontalAlignResult,
+      verticalAlignResult,
+      overflowResult,
+      this.textStyle,
+    );
+
+    this._resolvedLayout = this._retainEditingLayout ? resolvedLayout : undefined;
 
     // 排版结束后再确定绘制分辨率，fontScale 不参与布局计算。
     const maxCanvasSize = this.getMaxCanvasSize();
@@ -602,78 +586,25 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
       context.scale(fontScale, fontScale);
       // ── 步骤 6: 绘制 ──
-      this.drawTextWithStrategies(
-        context,
-        wrapResult.lines,
-        horizontalAlignResult,
-        verticalAlignResult,
-        overflowResult,
-        this.textStyle,
-      );
+      this.drawTextWithStrategies(context, resolvedLayout);
     });
 
     this.isDirty = false;
   }
 
   /**
-   * 使用策略结果绘制文本
-   * 坐标 = 帧坐标（对齐结果） + 渲染偏移（溢出结果）
+   * 仅消费布局管线生成的最终字形位置，不参与编辑器坐标收集。
    */
   private drawTextWithStrategies (
     context: CanvasRenderingContext2D,
-    lines: RichLine[],
-    horizontalAlignResult: HorizontalAlignResult,
-    verticalAlignResult: VerticalAlignResult,
-    overflowResult: OverflowResult,
-    textStyle: TextStyle
+    layoutResult: RichTextLayoutResult,
   ): void {
-    const { renderOffsetX, renderOffsetY } = overflowResult;
-    let currentBaselineY = verticalAlignResult.baselineY + renderOffsetY;
-    const { lineOffsets } = horizontalAlignResult;
+    layoutResult.drawRuns.forEach(run => {
+      context.font = `${run.fontStyle} ${run.fontWeight} ${run.fontSize}px ${run.fontFamily}`;
+      const [r, g, b, a] = run.fontColor;
 
-    lines.forEach((line, index) => {
-      const { richOptions, chars } = line;
-      const xOffset = lineOffsets[index] + renderOffsetX;
-      const yOffset = currentBaselineY;
-
-      richOptions.forEach((options, segIndex) => {
-        const { textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
-        const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
-
-        const textSize = fontSize;
-
-        context.font = `${fontStyle} ${fontWeight} ${textSize}px ${fontFamily}`;
-        const [r, g, b, a] = fontColor;
-
-        context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-
-        const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
-        const charArr = chars[segIndex];
-        const glyphHeight = (line.lineAscent ?? textSize) + (line.lineDescent ?? 0);
-        const selectionHeight = Math.max(line.lineHeight, glyphHeight);
-        const top = yOffset - (line.lineAscent ?? textSize) - Math.max(0, (line.lineHeight - glyphHeight) / 2);
-
-        if (this._editingLayoutEnabled && charArr.length === 0 && segIndex === 0 && chars.every(segment => segment.length === 0)) {
-          this._editingCharacters.push({ index: options.textOffset ?? 0, length: 0,
-            x: xOffset + segStartX, y: top, width: 0, height: selectionHeight });
-        }
-
-        charArr.forEach((charDetail, charIndex) => {
-          context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
-          if (!this._editingLayoutEnabled) { return; }
-          const nextX = charArr[charIndex + 1]?.x
-            ?? ((line.offsetX[segIndex + 1] ?? line.width) - segStartX);
-
-          this._editingCharacters.push({ index: charDetail.index ?? (options.textOffset ?? 0) + charIndex,
-            length: charDetail.char.length, x: xOffset + segStartX + charDetail.x, y: top,
-            width: nextX - charDetail.x, height: selectionHeight });
-        });
-      });
-
-      // 推进到下一行
-      if (index < lines.length - 1) {
-        currentBaselineY += lines[index + 1].lineHeight;
-      }
+      context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+      run.glyphs.forEach(glyph => context.fillText(glyph.char, glyph.x, glyph.baselineY));
     });
   }
 
@@ -733,6 +664,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   /** 设置默认字号；局部 size 标签保留自身字号。 */
   setFontSize (value: number): void {
+    if (this.textLayout.useLegacyRichText) { return; }
     this.setLayoutProperties({ fontSize: value });
   }
 

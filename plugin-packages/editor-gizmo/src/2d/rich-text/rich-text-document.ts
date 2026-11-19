@@ -83,14 +83,17 @@ export class RichTextDocument {
     let start = 0;
     let end = before.length;
     let nextEnd = text.length;
-    const prefixLimit = selection?.start ?? before.length;
     const suffixLimit = selection?.end ?? 0;
 
-    while (start < Math.min(prefixLimit, text.length) && before[start] === text[start]) { start++; }
-    while (end > Math.max(start, suffixLimit) && nextEnd > start && before[end - 1] === text[nextEnd - 1]) {
+    // 先锁定选区右侧未变的后缀，再限制前缀。否则 Backspace 遇到重复字符时，
+    // 公共前缀会跨过真实编辑点，把删除归属到下一个样式片段。
+    while (end > suffixLimit && nextEnd > 0 && before[end - 1] === text[nextEnd - 1]) {
       end--;
       nextEnd--;
     }
+    const prefixLimit = Math.min(selection?.start ?? before.length, nextEnd);
+
+    while (start < prefixLimit && before[start] === text[start]) { start++; }
     this.replace(start, end, text.slice(start, nextEnd));
   }
 

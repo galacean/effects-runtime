@@ -83,7 +83,7 @@ export function isGroupPlayerItem (item: VFXItem) {
   return item.type === spec.ItemType.null && !item.getComponent(FrameComponent);
 }
 
-/** 获取行内编辑支持的文本组件。 */
+/** 获取文本组件，供检查器和文本相关 Gizmo 读取。 */
 export function getEditableTextComponent (item: VFXItem | undefined): TextComponent | RichTextComponent | undefined {
   if (item?.type === spec.ItemType.text) {
     return item.getComponent(TextComponent);
@@ -93,7 +93,9 @@ export function getEditableTextComponent (item: VFXItem | undefined): TextCompon
   }
 }
 
-/** 普通文本和富文本共享编辑入口与选择交互。 */
-export function isEditableTextItem (item: VFXItem | undefined): item is VFXItem & { type: spec.ItemType.text | spec.ItemType.richtext } {
-  return !!getEditableTextComponent(item);
+/** 普通文本及使用新排版管线的富文本支持内联编辑。 */
+export function isEditableTextItem (item: VFXItem | undefined): boolean {
+  const component = getEditableTextComponent(item);
+
+  return !!component && (!(component instanceof RichTextComponent) || !component.textLayout.useLegacyRichText);
 }

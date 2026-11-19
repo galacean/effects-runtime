@@ -15,6 +15,17 @@ export type RichTextResizeSnapshot = {
   properties: Required<RichTextLayoutProperties>,
 };
 
+/** 布局帧在渲染画布中的归一化尺寸；visible 溢出时画布会更大。 */
+export function getRichTextFrameRatio (component: RichTextComponent): { x: number, y: number } {
+  component.ensureLayout();
+  const layout = component.textLayout;
+
+  return {
+    x: Math.min(1, Math.max(0, layout.maxTextWidth / Math.max(1, layout.width))),
+    y: Math.min(1, Math.max(0, layout.maxTextHeight / Math.max(1, layout.height))),
+  };
+}
+
 export function createRichTextResizeSnapshot (
   component: RichTextComponent,
   mode: RichTextResizeSnapshot['mode'],
@@ -26,13 +37,13 @@ export function createRichTextResizeSnapshot (
 
   return {
     component, mode, document, minimumFontSize: document.getMinimumFontSize(fontSize),
-    frameWidth: layout.useLegacyRichText ? layout.width : layout.maxTextWidth,
-    frameHeight: layout.useLegacyRichText ? layout.height : layout.maxTextHeight,
+    frameWidth: layout.maxTextWidth,
+    frameHeight: layout.maxTextHeight,
     renderedWidth: layout.width, renderedHeight: layout.height,
     properties: {
       text: component.text, fontSize, lineHeight: layout.lineHeight, letterSpace: layout.letterSpace,
-      maxTextWidth: layout.useLegacyRichText ? layout.width : layout.maxTextWidth,
-      maxTextHeight: layout.useLegacyRichText ? layout.height : layout.maxTextHeight,
+      maxTextWidth: layout.maxTextWidth,
+      maxTextHeight: layout.maxTextHeight,
       autoResize: layout.autoResize, wrapEnabled: layout.wrapEnabled,
     },
   };
@@ -42,8 +53,8 @@ export function createRichTextResizeSnapshot (
 export function applyRichTextResize (snapshot: RichTextResizeSnapshot, scalarX: number, scalarY = scalarX): void {
   const { component, properties, document, minimumFontSize, mode } = snapshot;
 
+  if (component.textLayout.useLegacyRichText) { return; }
   if (mode === 'width') {
-    if (component.textLayout.useLegacyRichText) { return; }
     component.setLayoutProperties({
       ...properties,
       maxTextWidth: Math.max(1, snapshot.frameWidth * Math.abs(scalarX)),
@@ -68,10 +79,8 @@ export function applyRichTextResize (snapshot: RichTextResizeSnapshot, scalarX: 
 
 /** 属性面板显示布局帧宽；溢出画布仍由 item.size 表达。 */
 export function getRichTextFrameWidth (component: RichTextComponent): number {
-  component.ensureLayout();
-  const layout = component.textLayout;
+  const frameRatio = getRichTextFrameRatio(component);
   const { size, scale } = component.item.transform;
-  const frameWidth = layout.useLegacyRichText ? layout.width : layout.maxTextWidth;
 
-  return Math.abs(size.x * scale.x) * frameWidth / Math.max(1, layout.width);
+  return Math.abs(size.x * scale.x) * frameRatio.x;
 }
