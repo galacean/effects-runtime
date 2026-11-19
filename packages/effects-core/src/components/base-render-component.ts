@@ -34,7 +34,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   protected defaultGeometry: Geometry;
 
   private _color = new Color(1, 1, 1, 1);
-  private pathMaskWorldMatrix?: Matrix4;
 
   /**
    *
@@ -302,30 +301,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  /**
-   * @internal
-   */
-  override getPathMaskWorldMatrix (renderer: Renderer): Matrix4 {
-    const worldMatrix = this.transform.getWorldMatrix();
-    const view = renderer.renderingData.globalUniforms.matrices.effects_MatrixV;
-
-    if (this.renderer.renderMode === spec.RenderMode.MESH || !view) {
-      return worldMatrix;
-    }
-    const matrix = this.pathMaskWorldMatrix ??= new Matrix4();
-    const v = view.elements;
-    const world = worldMatrix.elements;
-    const scale = this.material.getVector3('_Scale') ?? this.transform.scale;
-
-    // 与 item.vert.glsl 保持一致：朝向相机的坐标轴使用局部缩放，原点使用世界坐标。
-    // 路径已使用图层局部坐标，无需再乘以内容尺寸 _Size。
-    return matrix.set(
-      v[0] * scale.x, v[4] * scale.x, v[8] * scale.x, 0,
-      v[1] * scale.y, v[5] * scale.y, v[9] * scale.y, 0,
-      0, 0, 1, 0,
-      world[12], world[13], world[14], 1,
-    );
-  }
+  /** @internal */
+  override get supportPathMasks (): boolean { return this.renderer.renderMode === spec.RenderMode.MESH; }
 
   override fromData (data: spec.MaskableGraphicData): void {
     super.fromData(data);

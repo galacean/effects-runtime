@@ -150,7 +150,7 @@ export class MaskProcessor {
       // 来源未继承 RendererComponent 时，从同一图层的渲染组件读取 Frame 裁剪。
       const sourceRenderer = source instanceof RendererComponent ? source : source.item.getComponent(RendererComponent);
       const frames = sourceRenderer?.frameClipMasks ?? [];
-      const paths = new Set(this.getPathMasks(source.item));
+      const paths = new Set(this.getPathMasks(source.item, sourceRenderer?.supportPathMasks));
 
       for (const frame of frames) {
         for (const path of this.getPathMasks(frame.item)) {
@@ -169,7 +169,7 @@ export class MaskProcessor {
       expectedStencilValue = this.drawTrackMatteCounter(renderer, references);
     }
 
-    const pathMasks = this.getPathMasks(maskedComponent.item);
+    const pathMasks = this.getPathMasks(maskedComponent.item, maskedComponent.supportPathMasks);
 
     if (pathMasks.length > 0) {
       if (expectedStencilValue !== undefined) {
@@ -183,8 +183,7 @@ export class MaskProcessor {
         renderer.drawStencilInViewport(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
       }
       for (const pathMask of pathMasks) {
-        // 目标图层的 Billboard 变换仅作用于自有路径，预合成路径使用自身变换。
-        pathMask.drawPathMasksToStencil(renderer, pathMask.item === maskedComponent.item ? maskedComponent.getPathMaskWorldMatrix(renderer) : undefined);
+        pathMask.drawPathMasksToStencil(renderer);
         const intersection = MaskStencil.Target | MaskStencil.Path;
 
         renderer.drawStencilInViewport(intersection, intersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Target);
@@ -217,10 +216,7 @@ export class MaskProcessor {
 
       renderer.drawStencilInViewport(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE, glContext.KEEP, MaskStencil.Source | pathBits);
       for (const path of paths) {
-        const worldMatrix = path.item === maskable.item && maskable instanceof RendererComponent
-          ? maskable.getPathMaskWorldMatrix(renderer) : undefined;
-
-        path.drawPathMasksToStencil(renderer, worldMatrix);
+        path.drawPathMasksToStencil(renderer);
         renderer.drawStencilInViewport(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
       // 来源先经过 Frame 裁剪再反转，计算期间保留已有的目标覆盖结果。
@@ -259,7 +255,7 @@ export class MaskProcessor {
     return forwardCount;
   }
 
-  private getPathMasks (owner: VFXItem): MaskComponent[] {
+  private getPathMasks (owner: VFXItem, includeOwnMask = true): MaskComponent[] {
     const MaskClass: typeof MaskComponent = getClass('MaskComponent');
     const CompositionClass: typeof CompositionComponent = getClass('CompositionComponent');
     const masks: MaskComponent[] = [];
@@ -267,7 +263,7 @@ export class MaskProcessor {
     if (!MaskClass) {
       return masks;
     }
-    for (let item = owner; item; item = item.parent!) {
+    for (let item = includeOwnMask ? owner : owner.parent; item; item = item.parent) {
       // 仅继承上层预合成的路径裁剪，普通父子变换关系不传递裁剪。
       if (item !== owner && (!CompositionClass || !item.getComponent(CompositionClass))) {
         continue;

@@ -354,7 +354,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
     for (const mode of [spec.RenderMode.BILLBOARD, spec.RenderMode.VERTICAL_BILLBOARD, spec.RenderMode.HORIZONTAL_BILLBOARD]) {
       for (const mirrored of [false, true]) {
-        it(`keeps owned paths aligned with ${spec.RenderMode[mode]}, mirrored=${mirrored}`, () => {
+        it(`skips owned paths and preserves matte coverage for ${spec.RenderMode[mode]}, mirrored=${mirrored}`, () => {
           const target = item().addComponent(SpriteComponent);
 
           target.fromData({
@@ -379,17 +379,44 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
           expect(full.filter(Boolean)).has.length(mirrored ? 24 : 64);
           masks(target).setMasks([rectangle('left', -1, -1, 0, 1)]);
-          const clipped = full.map((visible, index) => visible && (mirrored ? index % 8 >= 4 : index % 8 < 4));
 
-          expect(render([target])).deep.equals(clipped);
+          expect(render([target])).deep.equals(full);
           target.maskProcessor.isTrackMatte = true;
           const consumer = sprite();
 
           consumer.maskProcessor.addTrackMatteReference(target);
-          expect(render([target, consumer])).deep.equals(clipped);
+          expect(render([target, consumer])).deep.equals(full);
         });
       }
     }
+
+    it('keeps Frame clipping and track mattes on a Billboard target', () => {
+      const parent = frame();
+      const target = item().addComponent(SpriteComponent);
+      const source = sprite();
+
+      parent.transform.setSize(1, 2);
+      parent.transform.setPosition(-0.5, 0, 0);
+      target.item.setParent(parent.item);
+      target.fromData({
+        id: target.getInstanceId(), item: { id: target.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
+        renderer: { renderMode: spec.RenderMode.BILLBOARD }, options: {},
+      } as spec.SpriteComponentData);
+      target.transform.setSize(2, 2);
+      target.onUpdate(0);
+      masks(target).setMasks([rectangle('right', 0, -1, 1, 1)]);
+      parent.onPreRender();
+
+      source.transform.setSize(2, 1);
+      source.transform.setPosition(0, 0.5, 0);
+      source.onUpdate(0);
+      source.maskProcessor.isTrackMatte = true;
+      target.maskProcessor.addTrackMatteReference(source);
+
+      const expected = Array.from({ length: 64 }, (_, index) => index >= 32 && index % 8 < 4);
+
+      expect(render([source, target])).deep.equals(expected);
+    });
 
     it('keeps enclosing precomposition paths in their own coordinates for a translated billboard', () => {
       const parent = item();
@@ -414,7 +441,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         const column = index % 8;
         const row = Math.floor(index / 8);
 
-        return column >= 4 && column < 6 && row >= 4 && row < 6;
+        return column >= 4 && row >= 4 && row < 6;
       });
 
       expect(render([target])).deep.equals(expected);

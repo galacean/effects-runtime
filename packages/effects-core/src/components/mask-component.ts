@@ -119,8 +119,9 @@ export class MaskComponent extends Component {
    * 将路径运算结果写入 stencil 第 0 位，第 1 位用于临时计算，其余位保持不变。
    * @internal
    */
-  drawPathMasksToStencil (renderer: Renderer, worldMatrix = this.transform.getWorldMatrix()): void {
+  drawPathMasksToStencil (renderer: Renderer): void {
     let first = true;
+    const worldMatrix = this.transform.getWorldMatrix();
     const scale = this.computeScreenScale(renderer, worldMatrix);
     const pathBits = MaskStencil.Path | MaskStencil.Scratch;
 

@@ -4,7 +4,6 @@ import { MaskProcessor } from '../material';
 import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
 interface RendererComponentData extends spec.ComponentData {
   materials?: spec.DataPath[],
@@ -68,13 +67,8 @@ export class RendererComponent extends Component {
     }
   }
 
-  /**
-   * 返回与图层内容绘制一致的路径蒙版变换矩阵。
-   * @internal
-   */
-  getPathMaskWorldMatrix (renderer: Renderer): Matrix4 {
-    return this.transform.getWorldMatrix();
-  }
+  /** @internal */
+  get supportPathMasks (): boolean { return true; }
 
   override onEnable (): void {
     this.item.composition?.sceneRendering.addRenderer(this);
