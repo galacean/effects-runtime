@@ -301,9 +301,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  /** @internal */
-  override get supportPathMasks (): boolean { return this.renderer.renderMode === spec.RenderMode.MESH; }
-
   override fromData (data: spec.MaskableGraphicData): void {
     super.fromData(data);
 

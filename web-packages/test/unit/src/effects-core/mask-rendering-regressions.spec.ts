@@ -354,7 +354,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
     for (const mode of [spec.RenderMode.BILLBOARD, spec.RenderMode.VERTICAL_BILLBOARD, spec.RenderMode.HORIZONTAL_BILLBOARD]) {
       for (const mirrored of [false, true]) {
-        it(`skips owned paths and preserves matte coverage for ${spec.RenderMode[mode]}, mirrored=${mirrored}`, () => {
+        it(`draws owned paths in layer world space for ${spec.RenderMode[mode]}, mirrored=${mirrored}`, () => {
           const target = item().addComponent(SpriteComponent);
 
           target.fromData({
@@ -362,35 +362,32 @@ for (const glType of ['webgl', 'webgl2'] as const) {
             renderer: { renderMode: mode }, options: {},
           } as spec.SpriteComponentData);
           target.transform.setSize(2, 2);
-          target.transform.setRotation(0, 90, 0);
+          target.transform.setRotation(0, 0, 90);
           if (mirrored) {
-            const parent = item();
-
-            parent.transform.setRotation(45, 30, 0);
-            target.item.setParent(parent);
             target.transform.setScale(-0.5, 0.75, 1);
-            const view = math.Matrix4.fromRotationZ(Math.PI / 2);
-
-            engine.renderer.setGlobalMatrix('effects_MatrixVP', view);
-            engine.renderer.setGlobalMatrix('effects_MatrixV', view);
           }
           target.onUpdate(0);
           const full = render([target]);
+          const clipped = full.map((visible, index) => {
+            const row = Math.floor(index / 8);
+
+            return visible && (mirrored ? row >= 2 && row < 4 : row >= 4);
+          });
 
           expect(full.filter(Boolean)).has.length(mirrored ? 24 : 64);
           masks(target).setMasks([rectangle('left', -1, -1, 0, 1)]);
 
-          expect(render([target])).deep.equals(full);
+          expect(render([target])).deep.equals(clipped);
           target.maskProcessor.isTrackMatte = true;
           const consumer = sprite();
 
           consumer.maskProcessor.addTrackMatteReference(target);
-          expect(render([target, consumer])).deep.equals(full);
+          expect(render([target, consumer])).deep.equals(clipped);
         });
       }
     }
 
-    it('keeps Frame clipping and track mattes on a Billboard target', () => {
+    it('intersects owned paths with Frame clipping and track mattes on a Billboard target', () => {
       const parent = frame();
       const target = item().addComponent(SpriteComponent);
       const source = sprite();
@@ -404,7 +401,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       } as spec.SpriteComponentData);
       target.transform.setSize(2, 2);
       target.onUpdate(0);
-      masks(target).setMasks([rectangle('right', 0, -1, 1, 1)]);
+      masks(target).setMasks([rectangle('left', -0.5, -1, 0, 1)]);
       parent.onPreRender();
 
       source.transform.setSize(2, 1);
@@ -413,7 +410,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       source.maskProcessor.isTrackMatte = true;
       target.maskProcessor.addTrackMatteReference(source);
 
-      const expected = Array.from({ length: 64 }, (_, index) => index >= 32 && index % 8 < 4);
+      const expected = Array.from({ length: 64 }, (_, index) => index >= 32 && index % 8 < 2);
 
       expect(render([source, target])).deep.equals(expected);
     });
@@ -435,7 +432,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       target.transform.setRotation(0, 90, 0);
       target.onUpdate(0);
       expect(render([target]).filter(Boolean)).has.length(16);
-      masks(target).setMasks([rectangle('left', -1, -1, 0, 1)]);
       masks(composition).setMasks([rectangle('parent-left', -2, -2, 0, 2)]);
       const expected = Array.from({ length: 64 }, (_, index) => {
         const column = index % 8;

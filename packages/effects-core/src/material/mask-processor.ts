@@ -150,7 +150,7 @@ export class MaskProcessor {
       // 来源未继承 RendererComponent 时，从同一图层的渲染组件读取 Frame 裁剪。
       const sourceRenderer = source instanceof RendererComponent ? source : source.item.getComponent(RendererComponent);
       const frames = sourceRenderer?.frameClipMasks ?? [];
-      const paths = new Set(this.getPathMasks(source.item, sourceRenderer?.supportPathMasks));
+      const paths = new Set(this.getPathMasks(source.item));
 
       for (const frame of frames) {
         for (const path of this.getPathMasks(frame.item)) {
@@ -169,7 +169,7 @@ export class MaskProcessor {
       expectedStencilValue = this.drawTrackMatteCounter(renderer, references);
     }
 
-    const pathMasks = this.getPathMasks(maskedComponent.item, maskedComponent.supportPathMasks);
+    const pathMasks = this.getPathMasks(maskedComponent.item);
 
     if (pathMasks.length > 0) {
       if (expectedStencilValue !== undefined) {
@@ -255,7 +255,7 @@ export class MaskProcessor {
     return forwardCount;
   }
 
-  private getPathMasks (owner: VFXItem, includeOwnMask = true): MaskComponent[] {
+  private getPathMasks (owner: VFXItem): MaskComponent[] {
     const MaskClass: typeof MaskComponent = getClass('MaskComponent');
     const CompositionClass: typeof CompositionComponent = getClass('CompositionComponent');
     const masks: MaskComponent[] = [];
@@ -263,7 +263,7 @@ export class MaskProcessor {
     if (!MaskClass) {
       return masks;
     }
-    for (let item = includeOwnMask ? owner : owner.parent; item; item = item.parent) {
+    for (let item: VFXItem | undefined = owner; item; item = item.parent) {
       // 仅继承上层预合成的路径裁剪，普通父子变换关系不传递裁剪。
       if (item !== owner && (!CompositionClass || !item.getComponent(CompositionClass))) {
         continue;

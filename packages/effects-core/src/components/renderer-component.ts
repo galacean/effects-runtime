@@ -67,9 +67,6 @@ export class RendererComponent extends Component {
     }
   }
 
-  /** @internal */
-  get supportPathMasks (): boolean { return true; }
-
   override onEnable (): void {
     this.item.composition?.sceneRendering.addRenderer(this);
   }
