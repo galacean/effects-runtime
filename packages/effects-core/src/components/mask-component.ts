@@ -136,7 +136,7 @@ export class MaskComponent extends Component {
       if (first) {
         const complement = inverted !== (operation === spec.MaskOperation.Subtract);
 
-        renderer.drawFullscreenStencil(pathBits, complement ? MaskStencil.Path : 0, gl.ALWAYS, gl.REPLACE);
+        renderer.drawFullscreenStencil(pathBits, complement ? MaskStencil.Path : 0, gl.ALWAYS, gl.REPLACE, gl.KEEP, pathBits);
         this.drawPath(renderer, id, scale, MaskStencil.Path, complement ? 0 : MaskStencil.Path, worldMatrix);
         first = false;
       } else if (operation === spec.MaskOperation.Add && !inverted) {
@@ -144,10 +144,10 @@ export class MaskComponent extends Component {
       } else if ((operation === spec.MaskOperation.Subtract && !inverted) || (operation === spec.MaskOperation.Intersect && inverted)) {
         this.drawPath(renderer, id, scale, MaskStencil.Path, 0, worldMatrix);
       } else {
-        renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.ZERO);
+        renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.ZERO, gl.KEEP, MaskStencil.Scratch);
         this.drawPath(renderer, id, scale, MaskStencil.Scratch, MaskStencil.Scratch, worldMatrix);
         if (operation === spec.MaskOperation.Add) {
-          renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.INVERT);
+          renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.INVERT, gl.KEEP, MaskStencil.Scratch);
           // LEQUAL 比较 reference <= stencil；Path 或 Scratch 任一位置位即属于并集。
           renderer.drawFullscreenStencil(pathBits, MaskStencil.Path, gl.LEQUAL, gl.REPLACE, gl.KEEP, MaskStencil.Path);
         } else {
@@ -225,7 +225,7 @@ void main() { gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos
       this.material.stencilFunc = [gl.ALWAYS, gl.ALWAYS];
       this.material.stencilOpZPass = [gl.REPLACE, gl.REPLACE];
     }
-    this.material.stencilMask = [writeMask, writeMask];
+    this.material.stencilWriteMask = [writeMask, writeMask];
     this.material.stencilRef = [reference, reference];
     renderer.drawGeometry(cached.geometry, worldMatrix, this.material);
   }

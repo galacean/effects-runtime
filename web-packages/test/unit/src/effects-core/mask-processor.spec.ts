@@ -236,7 +236,7 @@ describe('core/material//mask-ref-manager', () => {
 
       expect(material.stencilTest).to.eql(true);
       expect(material.stencilRef).to.deep.equals([1, 1]);
-      expect(material.stencilMask).to.deep.equals([0xFF, 0xFF]);
+      expect(material.stencilReadMask).to.deep.equals([0xFF, 0xFF]);
       expect(material.stencilFunc).to.deep.equals([glContext.EQUAL, glContext.EQUAL]);
       expect(material.stencilOpZPass).to.deep.equals([glContext.KEEP, glContext.KEEP]);
     });
@@ -329,7 +329,7 @@ describe('core/material//mask-ref-manager', () => {
       material.stencilOpZFail = [glContext.DECR, glContext.DECR];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
       material.stencilRef = [0, 0];
-      material.stencilMask = [0xFF, 0xFF];
+      material.stencilReadMask = [0xFF, 0xFF];
 
       const worldMatrix = new math.Matrix4();
 
@@ -342,7 +342,7 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.stencilOpZFail).to.deep.equals([glContext.DECR, glContext.DECR]);
       expect(material.stencilOpZPass).to.deep.equals([glContext.KEEP, glContext.KEEP]);
       expect(material.stencilRef).to.deep.equals([0, 0]);
-      expect(material.stencilMask).to.deep.equals([0xFF, 0xFF]);
+      expect(material.stencilReadMask).to.deep.equals([0xFF, 0xFF]);
 
       geometry.dispose();
     });

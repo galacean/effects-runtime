@@ -104,7 +104,7 @@ describe('webgl/gl-material', () => {
         depthRange: [0, 0.7],
         stencilTest: true,
         stencilOpBack: [glContext.INCR, glContext.INCR, glContext.INCR],
-        stencilMask: 0xff,
+        stencilReadMask: 0xff,
         stencilFuncFront: [glContext.NEVER, 0.5, 0x00],
       }, renderer);
 
@@ -130,7 +130,7 @@ describe('webgl/gl-material', () => {
 
     assert.equal(material.stencilTest, true);
     expect(material.stencilFunc).to.eql([glContext.ALWAYS, glContext.ALWAYS]);
-    expect(material.stencilMask).to.eql([0xff, 0xff]);
+    expect(material.stencilReadMask).to.eql([0xff, 0xff]);
 
     // expect(material.stencilOpFail).to.eql([glContext.INCR, glContext.KEEP]);
     // expect(material.stencilOpZFail).to.eql([glContext.INCR, glContext.KEEP]);
@@ -289,7 +289,8 @@ describe('webgl/gl-material', () => {
       shader,
       {
         stencilTest: true,
-        stencilMask: 0x00,
+        stencilReadMask: 0x00,
+        stencilWriteMask: 0x00,
         stencilRef: [0, 2],
         stencilFunc: [glContext.NEVER, glContext.NEVER],
         stencilOpFail: [glContext.ZERO, glContext.KEEP],
@@ -1716,7 +1717,8 @@ function generateMaterial (
   material.blendEquation = [states.blendEquationRGB ?? glContext.FUNC_ADD, states.blendEquationAlpha ?? glContext.FUNC_ADD];
 
   material.stencilTest = states.stencilTest;
-  material.stencilMask = [states.stencilMask ?? 0xff, states.stencilMask ?? 0xff];
+  material.stencilReadMask = [states.stencilReadMask ?? 0xff, states.stencilReadMask ?? 0xff];
+  material.stencilWriteMask = [states.stencilWriteMask ?? 0xff, states.stencilWriteMask ?? 0xff];
   material.stencilFunc = states.stencilFunc;
   material.stencilOpFail = states.stencilOpFail;
   material.stencilOpZFail = states.stencilOpZFail;

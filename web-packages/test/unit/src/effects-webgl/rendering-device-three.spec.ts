@@ -61,6 +61,25 @@ describe('threejs/rendering-device', () => {
     expect(gl.isContextLost()).equals(false);
   });
 
+  it('maps stencil read and write masks to separate Three material properties', () => {
+    const material = new ThreeMaterial(engine);
+
+    try {
+      expect(material.stencilReadMask).deep.equals([0xff, 0xff]);
+      expect(material.stencilWriteMask).deep.equals([0xff, 0xff]);
+      material.stencilReadMask = [1, 1];
+      expect(material.material.stencilFuncMask).equals(1);
+      expect(material.material.stencilWriteMask).equals(0xff);
+      material.stencilWriteMask = [0, 0];
+      expect(material.material.stencilFuncMask).equals(1);
+      expect(material.material.stencilWriteMask).equals(0);
+      expect(material.stencilReadMask).deep.equals([1, 1]);
+      expect(material.stencilWriteMask).deep.equals([0, 0]);
+    } finally {
+      material.dispose();
+    }
+  });
+
   it('composes a texture asset with a device-created Three texture resource', () => {
     const device = engine.displayServer.renderingDevice;
     const unallocated = device.createTexture() as GPUTextureThree;

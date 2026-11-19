@@ -48,7 +48,8 @@ export class MaskProcessor {
   private prevStencilOpZFail: [number, number] = [0, 0];
   private prevStencilOpZPass: [number, number] = [0, 0];
   private prevStencilRef: [number, number] = [0, 0];
-  private prevStencilMask: [number, number] = [0, 0];
+  private prevStencilReadMask: [number, number] = [0, 0];
+  private prevStencilWriteMask: [number, number] = [0, 0];
 
   /**
    * @deprecated 使用 getMaskReferences() 替代
@@ -261,7 +262,7 @@ export class MaskProcessor {
     for (const material of maskedComponent.materials) {
       if (hasSourceClipping || pathMasks.length > 0) {
         material.stencilTest = true;
-        material.stencilMask = [MaskStencil.Target, MaskStencil.Target];
+        material.stencilReadMask = [MaskStencil.Target, MaskStencil.Target];
         material.stencilRef = [MaskStencil.Target, MaskStencil.Target];
         material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
         material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
@@ -284,18 +285,18 @@ export class MaskProcessor {
 
     renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
     for (const { reference, paths, frames } of sources) {
-      renderer.drawFullscreenStencil(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE);
+      renderer.drawFullscreenStencil(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE, glContext.KEEP, MaskStencil.Source | pathBits);
       for (const path of paths) {
         path.drawStencilStack(renderer, path.item === reference.maskable.item ? reference.maskable.getPathMaskWorldMatrix?.(renderer) : undefined);
         renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
       // 来源先经过 Frame 裁剪再反转，计算期间保留已有的目标覆盖结果。
       for (const frame of frames) {
-        renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO);
+        renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
         frame.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
         renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
-      renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO);
+      renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
       // EQUAL/INCR 使来源仅在 Source 与 Target 的交集内置位 Path。
       reference.maskable.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
       if (reference.inverted) {
@@ -354,19 +355,18 @@ export class MaskProcessor {
     const prevColorMask = material.colorMask;
     const prevDepthMask = material.depthMask;
     const prevStencilTest = material.stencilTest;
-    const prevStencilWriteMask = material.stencilWriteMask;
 
     this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
     this.copyStencilArrayValue(this.prevStencilOpFail, material.stencilOpFail);
     this.copyStencilArrayValue(this.prevStencilOpZFail, material.stencilOpZFail);
     this.copyStencilArrayValue(this.prevStencilOpZPass, material.stencilOpZPass);
     this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
-    this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
+    this.copyStencilArrayValue(this.prevStencilReadMask, material.stencilReadMask);
+    this.copyStencilArrayValue(this.prevStencilWriteMask, material.stencilWriteMask);
 
     try {
       this.setupMaskMaterial(material, maskRef);
       material.depthMask = false;
-      material.stencilWriteMask = undefined;
       renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
     } finally {
       material.colorMask = prevColorMask;
@@ -377,8 +377,8 @@ export class MaskProcessor {
       material.stencilOpZFail = this.prevStencilOpZFail;
       material.stencilOpZPass = this.prevStencilOpZPass;
       material.stencilRef = this.prevStencilRef;
-      material.stencilMask = this.prevStencilMask;
-      material.stencilWriteMask = prevStencilWriteMask;
+      material.stencilReadMask = this.prevStencilReadMask;
+      material.stencilWriteMask = this.prevStencilWriteMask;
     }
   }
 
@@ -398,7 +398,8 @@ export class MaskProcessor {
     // 仅在 stencil 值等于 maskRef 时通过
     material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
     material.stencilRef = [maskRef, maskRef];
-    material.stencilMask = [0xFF, 0xFF];
+    material.stencilReadMask = [0xFF, 0xFF];
+    material.stencilWriteMask = [0xFF, 0xFF];
 
     // 通过时递增 stencil 值，不通过时保持不变
     material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
@@ -421,7 +422,7 @@ export class MaskProcessor {
     if (this.trackMatteReferences.length > 0) {
       material.stencilTest = true;
       material.stencilRef = [this.expectedStencilValue, this.expectedStencilValue];
-      material.stencilMask = [0xFF, 0xFF];
+      material.stencilReadMask = [0xFF, 0xFF];
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
     } else {

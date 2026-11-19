@@ -377,7 +377,7 @@ export class Renderer {
    */
   drawFullscreenStencil (
     readMask: number, reference: number, comparison: number, pass: number,
-    fail: number = glContext.KEEP, writeMask = readMask,
+    fail: number = glContext.KEEP, writeMask = 0xFF,
   ): void {
     if (!this.stencilMaterial) {
       this.stencilMaterial = Material.create(this.engine, {
@@ -395,7 +395,7 @@ export class Renderer {
     }
     const material = this.stencilMaterial;
 
-    material.stencilMask = [readMask, readMask];
+    material.stencilReadMask = [readMask, readMask];
     material.stencilWriteMask = [writeMask, writeMask];
     material.stencilRef = [reference, reference];
     material.stencilFunc = [comparison, comparison];

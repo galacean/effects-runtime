@@ -61,9 +61,15 @@ void main() { gl_FragColor = uColor; }`,
       return Array.from({ length: 64 }, (_, index) => Array.from(result.slice(index * 4, index * 4 + 4)));
     }
 
-    it('separates stencil write masks and retains shared masks when omitted', () => {
+    it('keeps stencil read and write masks independent', () => {
       material.stencilTest = true;
-      material.stencilMask = [1, 1];
+      material.stencilReadMask = [1, 1];
+      material.setupStates(engine);
+      expect(gl.getParameter(gl.STENCIL_VALUE_MASK)).equals(1);
+      expect(gl.getParameter(gl.STENCIL_BACK_VALUE_MASK)).equals(1);
+      expect(gl.getParameter(gl.STENCIL_WRITEMASK)).equals(0xff);
+      expect(gl.getParameter(gl.STENCIL_BACK_WRITEMASK)).equals(0xff);
+
       material.stencilWriteMask = [2, 4];
       material.setupStates(engine);
 
@@ -72,12 +78,32 @@ void main() { gl_FragColor = uColor; }`,
       expect(gl.getParameter(gl.STENCIL_WRITEMASK)).equals(2);
       expect(gl.getParameter(gl.STENCIL_BACK_WRITEMASK)).equals(4);
 
-      material.stencilWriteMask = undefined;
-      material.stencilMask = [8, 8];
+      material.stencilReadMask = [8, 8];
       material.setupStates(engine);
       expect(gl.getParameter(gl.STENCIL_VALUE_MASK)).equals(8);
-      expect(gl.getParameter(gl.STENCIL_WRITEMASK)).equals(8);
-      expect(gl.getParameter(gl.STENCIL_BACK_WRITEMASK)).equals(8);
+      expect(gl.getParameter(gl.STENCIL_BACK_VALUE_MASK)).equals(8);
+      expect(gl.getParameter(gl.STENCIL_WRITEMASK)).equals(2);
+      expect(gl.getParameter(gl.STENCIL_BACK_WRITEMASK)).equals(4);
+    });
+
+    it('compares selected stencil bits without writing when the write mask is zero', () => {
+      const renderer = engine.renderer;
+
+      renderer.drawFullscreenStencil(0, 5, glContext.ALWAYS, glContext.REPLACE);
+      material.stencilTest = true;
+      material.stencilReadMask = [1, 1];
+      material.stencilWriteMask = [0, 0];
+      material.stencilRef = [1, 1];
+      material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
+      material.stencilOpZPass = [glContext.ZERO, glContext.ZERO];
+      renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
+      expect(pixels()).deep.equals(Array.from({ length: 64 }, () => [255, 0, 0, 255]));
+
+      material.stencilReadMask = [0xff, 0xff];
+      material.stencilRef = [5, 5];
+      material.setVector4('uColor', new math.Vector4(0, 0, 1, 1));
+      renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
+      expect(pixels()).deep.equals(Array.from({ length: 64 }, () => [0, 0, 255, 255]));
     });
 
     it('updates only selected stencil bits in the viewport without changing color or depth', () => {
@@ -105,7 +131,7 @@ void main() { gl_FragColor = uColor; }`,
 
       material.depthTest = false;
       material.stencilTest = true;
-      material.stencilMask = [0xff, 0xff];
+      material.stencilReadMask = [0xff, 0xff];
       material.stencilRef = [5, 5];
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
       renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
@@ -118,7 +144,7 @@ void main() { gl_FragColor = uColor; }`,
         const processor = new MaskProcessor();
         const originalDraw = renderer.drawGeometry;
 
-        material.stencilMask = [2, 2];
+        material.stencilReadMask = [2, 2];
         material.stencilWriteMask = [4, 4];
         material.depthTest = true;
         material.depthMask = true;
@@ -139,12 +165,12 @@ void main() { gl_FragColor = uColor; }`,
 
         expect(material.colorMask).equals(true);
         expect(material.stencilTest).equals(false);
-        expect(material.stencilMask).deep.equals([2, 2]);
+        expect(material.stencilReadMask).deep.equals([2, 2]);
         expect(material.stencilWriteMask).deep.equals([4, 4]);
         expect(material.depthMask).equals(true);
         expect(material.depthTest).equals(true);
         material.stencilTest = true;
-        material.stencilMask = [0xff, 0xff];
+        material.stencilReadMask = [0xff, 0xff];
         material.stencilRef = [1, 1];
         material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
         renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
