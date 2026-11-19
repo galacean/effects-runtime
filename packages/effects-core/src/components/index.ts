@@ -8,4 +8,5 @@ export * from './post-process-volume';
 export * from './base-render-component';
 export * from './fake-3d-component';
 export * from './frame-component';
+export * from './mask-component';
 export * from './frame-title';

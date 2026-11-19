@@ -31,10 +31,12 @@ export function readShapeComponentData (component: ShapeComponent): Data {
     variableWidthPoints: stroke.variableWidthPoints ?? [],
     renderer: { side: renderer.side, occlusion: renderer.occlusion, transparentOcclusion: component.definition.renderer?.transparentOcclusion ?? false,
       blending: renderer.blending, texture: reference(renderer.texture) },
-    mask: { isMask: component.maskManager.isMask, alphaMaskEnabled: component.maskManager.alphaMaskEnabled,
-      references: component.definition.mask?.references ?? component.maskManager.getMaskReferences()
-        .filter(ref => ref.maskable instanceof EffectsObject)
-        .map(ref => ({ mask: { id: (ref.maskable as unknown as EffectsObject).getInstanceId() }, inverted: ref.inverted })) },
+    trackMatte: { isTrackMatte: component.maskManager.isTrackMatte, sourceVisible: component.maskManager.sourceVisible,
+      alphaMaskEnabled: component.maskManager.alphaMaskEnabled,
+      references: component.definition.trackMatte?.references
+        ?? component.maskManager.getMaskReferences()
+          .filter(ref => ref.maskable instanceof EffectsObject)
+          .map(ref => ({ source: { id: (ref.maskable as unknown as EffectsObject).getInstanceId() }, inverted: ref.inverted })) },
   };
 
   for (const key of ['fillTrimPath', 'strokeTrimPath'] as const) {

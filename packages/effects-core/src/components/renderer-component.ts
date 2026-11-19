@@ -4,10 +4,12 @@ import { MaskProcessor } from '../material';
 import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
 interface RendererComponentData extends spec.ComponentData {
   materials?: spec.DataPath[],
   _priority?: number,
+  trackMatte?: spec.TrackMatteOptions,
 }
 
 /**
@@ -57,12 +59,21 @@ export class RendererComponent extends Component {
 
   override fromData (data: RendererComponentData): void {
     super.fromData(data);
+    this.maskManager.fromData(this.engine, data);
     if (data.materials !== undefined) {
       this.materials = data.materials.map(material => this.findObject<Material>(material));
     }
     if (data._priority !== undefined) {
       this._priority = data._priority;
     }
+  }
+
+  /**
+   * 返回与图层内容绘制一致的路径蒙版变换矩阵。
+   * @internal
+   */
+  getPathMaskWorldMatrix (renderer: Renderer): Matrix4 {
+    return this.transform.getWorldMatrix();
   }
 
   override onEnable (): void {

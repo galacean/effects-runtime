@@ -28,6 +28,8 @@ import './utils.spec';
 import './event-emitter.spec';
 import './render-target-pool.spec';
 import './mask-processor.spec';
+import './owned-mask.spec';
+import './mask-rendering-regressions.spec';
 import './plugins/dom-content';
 
 import './post-processing-regressions.spec';

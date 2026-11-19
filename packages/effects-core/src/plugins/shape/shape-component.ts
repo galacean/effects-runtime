@@ -19,6 +19,7 @@ import { applyPaintRendererOptions, createPaint, createPaintMaterial, updatePain
 import { TrimPath } from './trim-path';
 import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
+import { appendBezierPath, buildPathGeometry } from './path-geometry';
 import { Transform } from '../../transform';
 import { makeStrokeContourPath } from './contour-path';
 import { expandStrokePath, flattenStrokePath } from '../../math/shape/stroke-expansion';
@@ -39,7 +40,7 @@ interface ShapeAttributes {
 /**
  * 自定义图形参数
  */
-interface CustomShapeAttribute extends ShapeAttributes {
+interface CustomShapeAttribute extends ShapeAttributes, spec.MaskPathData {
   type: spec.ShapePrimitiveType.Custom,
   /**
    * 路径点
@@ -53,10 +54,6 @@ interface CustomShapeAttribute extends ShapeAttributes {
    * 入射控制点
    */
   easingOuts: Vector2[],
-  /**
-   * 自定义形状
-   */
-  shapes: spec.CustomShape[],
 }
 
 /**
@@ -435,22 +432,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private buildGeometryFromPath (fillPath: GraphicsPath, strokeResult: TrimmedPathResult, screenScale: number) {
-    const vertices: number[] = [];
-    const indices: number[] = [];
+    const { vertices, indices } = this.fills.length > 0
+      ? buildPathGeometry(fillPath.shapePath, screenScale, 'separate')
+      : { vertices: [], indices: [] };
     const lineStyle = this.strokeAttributes;
-
-    // Triangulate shapePrimitives, build fill and stroke shape geometry
-    if (this.fills.length > 0) {
-      for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
-        const indexOffset = indices.length;
-        const vertOffset = vertices.length / 2;
-
-        shape.build(points, screenScale);
-        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-      }
-    }
 
     const fillIndexCount = indices.length;
 
@@ -607,43 +592,16 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
         const customShapeAtribute = this.shapeAttributes as CustomShapeAttribute;
-        const points = customShapeAtribute.points;
-        const easingIns = customShapeAtribute.easingIns;
-        const easingOuts = customShapeAtribute.easingOuts;
 
         for (const shape of customShapeAtribute.shapes) {
-          const indices = shape.indexes.filter(index => points[index.point]);
+          const indexes = shape.indexes.filter(index => customShapeAtribute.points[index.point]);
 
-          if (indices.length < 2) {
+          if (indexes.length < 2) {
             continue;
           }
-          const startPoint = points[indices[0].point];
           const path = shape.transform ? new GraphicsPath() : this.graphicsPath;
 
-          path.moveTo(startPoint.x, startPoint.y);
-
-          for (let i = 1; i < indices.length; i++) {
-            const pointIndex = indices[i];
-            const lastPointIndex = indices[i - 1];
-            const point = points[pointIndex.point];
-            const lastPoint = points[lastPointIndex.point];
-            const control1 = easingOuts[lastPointIndex.easingOut];
-            const control2 = easingIns[pointIndex.easingIn];
-
-            path.bezierCurveTo((control1?.x ?? 0) + lastPoint.x, (control1?.y ?? 0) + lastPoint.y, (control2?.x ?? 0) + point.x, (control2?.y ?? 0) + point.y, point.x, point.y, undefined, ppu);
-          }
-
-          if (shape.close) {
-            const pointIndex = indices[0];
-            const lastPointIndex = indices[indices.length - 1];
-            const point = points[pointIndex.point];
-            const lastPoint = points[lastPointIndex.point];
-            const control1 = easingOuts[lastPointIndex.easingOut];
-            const control2 = easingIns[pointIndex.easingIn];
-
-            path.bezierCurveTo((control1?.x ?? 0) + lastPoint.x, (control1?.y ?? 0) + lastPoint.y, (control2?.x ?? 0) + point.x, (control2?.y ?? 0) + point.y, point.x, point.y, undefined, ppu);
-            path.closePath();
-          }
+          appendBezierPath(path, customShapeAtribute, { ...shape, indexes }, ppu);
           if (shape.transform) {
             this.appendTransformedPath(path, shape.transform);
           }
@@ -746,8 +704,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     super.fromData(data);
     this.shapeDirty = true;
 
-    this.maskManager.setMaskOptions(this.engine, data.mask ?? {});
-
     const renderer = data.renderer ?? {};
 
     this.rendererOptions = {
@@ -755,7 +711,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isTrackMatte,
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: 1,
     };

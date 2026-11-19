@@ -3,6 +3,7 @@ import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effe
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
 import type { VFXItem } from '../vfx-item';
+import type { Renderer } from '../render/renderer';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -24,7 +25,8 @@ export interface MaterialBlendingStates {
 
 export interface MaterialStencilStates {
   stencilTest?: boolean,
-  stencilMask?: [front: GLenum, back: GLenum],
+  stencilReadMask?: [front: GLenum, back: GLenum],
+  stencilWriteMask?: [front: GLenum, back: GLenum],
   stencilRef?: [front: GLenum, back: GLenum],
   stencilFunc?: [front: GLenum, back: GLenum],
   stencilOpFail?: [front: GLenum, back: GLenum],
@@ -88,16 +90,20 @@ export enum ShaderType {
  *
  */
 export interface Maskable {
+  /**
+   * 路径蒙版的局部到世界变换，用于 Billboard 等特殊绘制模式。
+   */
+  getPathMaskWorldMatrix? (renderer: Renderer): Matrix4,
   item: VFXItem,
   drawStencilMask (maskRef: number): void,
 }
 
 /**
- * 蒙版引用信息，支持正面和反面蒙版
+ * 轨道遮罩引用信息，支持正向和反向裁剪
  */
 export interface MaskReference {
   /**
-   * 蒙版对象
+   * 轨道遮罩来源
    */
   maskable: Maskable,
   /**
@@ -105,6 +111,8 @@ export interface MaskReference {
    */
   inverted: boolean,
 }
+
+export type TrackMatteReference = MaskReference;
 
 /**
  * @deprecated 2.10 起蒙版模式不再通过单一枚举表达，runtime 内部已不再使用此枚举。
