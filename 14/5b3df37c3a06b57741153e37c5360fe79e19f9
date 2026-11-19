@@ -1,0 +1,94 @@
+plugin-packages/multimedia/src/video/video-component.ts
+  s_f733b02a892418::t_01037509743bd4 7
+packages/effects-core/src/render/scene-rendering.ts
+  s_f733b02a892418::t_84878f10848a07 43,49
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_f733b02a892418::t_6421740d1906bf 244-264
+  s_f733b02a892418::t_044a01d7281213 98,112,125,141,153,165,170,172,182,197,210,224,238,275,296,303,305,334,349,354,357,360,367,377,385,405,414,422,437-438
+  s_f733b02a892418::t_84878f10848a07 88,91,97,103,109-111,116,123-124,131,138-140,146,152,157,162-164,180-181,195-196,209,235,240-241,274,292-295,355,358,361,379,389,407,416,434-435
+  s_f733b02a892418::t_fc43f090e6831d 364,373,386,402,412
+  s_f733b02a892418::t_cd2a9e3b6653d1 44
+  s_f733b02a892418::t_5bec1762196ba7 242-243
+web-packages/dev-tools/src/ui/property-editor/default-object-details.ts
+  s_f733b02a892418::t_84878f10848a07 8
+packages/effects-core/src/plugins/shape/path-geometry.ts
+  s_f733b02a892418::t_b7d4a60290a44d 6,17,50,64
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_f733b02a892418::t_84878f10848a07 356,370,374,713,849,851
+packages/effects-core/src/material/index.ts
+  s_f733b02a892418::t_cd2a9e3b6653d1 6
+plugin-packages/spine/src/spine-component.ts
+  s_f733b02a892418::t_d93baee9e61cd9 4,100
+  s_f733b02a892418::t_84878f10848a07 215,235
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_f733b02a892418::t_84878f10848a07 41
+packages/effects-core/src/components/renderer-component.ts
+  s_f733b02a892418::t_cd2a9e3b6653d1 34
+  s_f733b02a892418::t_84878f10848a07 62
+packages/effects-core/src/material/types.ts
+  s_f733b02a892418::t_b7d4a60290a44d 110
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_f733b02a892418::t_84878f10848a07 34-35,37
+packages/effects-core/src/components/mask-component.ts
+  s_f733b02a892418::t_044a01d7281213 114,122,139,147,150,152,154
+packages/effects-core/src/plugins/particle/particle-system-renderer.ts
+  s_f733b02a892418::t_84878f10848a07 40
+web-packages/test/unit/src/effects-core/fallback/mask.spec.ts
+  s_f733b02a892418::t_d93baee9e61cd9 1,23-24
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-graphic.spec.ts
+  s_f733b02a892418::t_84878f10848a07 117
+web-packages/dev-tools/src/chrome-extension/bridge/runtime-agent.ts
+  s_f733b02a892418::t_84878f10848a07 13
+packages/effects-core/src/fallback/migration.ts
+  s_f733b02a892418::t_d93baee9e61cd9 1112
+  s_f733b02a892418::t_9a6c812a7c095a 1134-1144
+  s_f733b02a892418::t_1fe9a95d379212 1116
+web-packages/test/unit/src/effects-core/owned-mask.spec.ts
+  s_f733b02a892418::t_84878f10848a07 74,208,212,215,218,229-230,235,237-238,427
+packages/effects-core/src/components/base-render-component.ts
+  s_f733b02a892418::t_84878f10848a07 194,209,290,340
+  s_f733b02a892418::t_01037509743bd4 20
+packages/effects-core/src/plugins/particle/particle-system.ts
+  s_f733b02a892418::t_b7d4a60290a44d 134
+  s_f733b02a892418::t_cd2a9e3b6653d1 135,157
+  s_f733b02a892418::t_84878f10848a07 274,432,933
+packages/effects-core/src/plugins/text/text-item.ts
+  s_f733b02a892418::t_84878f10848a07 109
+packages/effects-core/src/components/frame-component.ts
+  s_f733b02a892418::t_84878f10848a07 194,231
+web-packages/test/unit/src/effects-webgl/stencil.spec.ts
+  s_f733b02a892418::t_044a01d7281213 92,121-122,158,160
+web-packages/test/unit/src/effects-core/components/maskable-graphic-compat.spec.ts
+  s_f733b02a892418::t_84878f10848a07 139
+packages/effects-core/src/material/mask-stencil.ts
+  s_f733b02a892418::t_b7d4a60290a44d 1-4
+packages/effects-core/src/render/renderer.ts
+  s_f733b02a892418::t_044a01d7281213 378
+packages/effects-core/src/components/mesh-component.ts
+  s_f733b02a892418::t_84878f10848a07 27,44
+packages/effects-core/src/material/mask-processor.ts
+  s_f733b02a892418::t_057c14dfd71e8e 216-217,220-223,234
+  s_f733b02a892418::t_cd2a9e3b6653d1 53,55-57,59,107,115,126,133,140,178-179,183,187,190,214,218,224,228,230,232,236,238,277,288,383,386,390
+  s_f733b02a892418::t_6421740d1906bf 108,142,145,148,164,168-169,175,177,204,243,248,253,258-259,354,356-357,359,379-382,384-385,387-389
+web-packages/test/unit/src/effects-core/mask-rendering-regressions.spec.ts
+  s_f733b02a892418::t_dc5c79d09d6a4e 122-124,126-134,136,138-139,141-144,283,288,293-294
+  s_f733b02a892418::t_84878f10848a07 107,113-114,135,164,168-169,203,209,211,237,245,247-248,250-251,261,277-278,280,289-290,292,299,303,305,309,311,340,385,388,421,424
+plugin-packages/model/src/plugin/model-item.ts
+  s_f733b02a892418::t_84878f10848a07 107,316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "145b3df37c3a06b57741153e37c5360fe79e19f9",
+  "prompts": {},
+  "sessions": {
+    "s_f733b02a892418": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f1eb-9633-7ca0-a7b2-1d6458d48ef7",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
