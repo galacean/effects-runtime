@@ -89,7 +89,7 @@ void main() { gl_FragColor = uColor; }`,
     it('compares selected stencil bits without writing when the write mask is zero', () => {
       const renderer = engine.renderer;
 
-      renderer.drawFullscreenStencil(0, 5, glContext.ALWAYS, glContext.REPLACE);
+      renderer.drawStencilInViewport(0, 5, glContext.ALWAYS, glContext.REPLACE);
       material.stencilTest = true;
       material.stencilReadMask = [1, 1];
       material.stencilWriteMask = [0, 0];
@@ -118,8 +118,8 @@ void main() { gl_FragColor = uColor; }`,
 
       expect(pixels()).deep.equals(red);
       renderer.setViewport(0, 0, 4, 8);
-      renderer.drawFullscreenStencil(0xff, 1, glContext.ALWAYS, glContext.REPLACE);
-      renderer.drawFullscreenStencil(1, 5, glContext.EQUAL, glContext.REPLACE, glContext.KEEP, 4);
+      renderer.drawStencilInViewport(0xff, 1, glContext.ALWAYS, glContext.REPLACE);
+      renderer.drawStencilInViewport(1, 5, glContext.EQUAL, glContext.REPLACE, glContext.KEEP, 4);
       expect(pixels()).deep.equals(red);
 
       renderer.setViewport(0, 0, 8, 8);
@@ -155,9 +155,9 @@ void main() { gl_FragColor = uColor; }`,
               expect(material.depthTest).equals(true);
               throw new Error('Drawing failed');
             };
-            expect(() => processor.drawGeometryMask(renderer, geometry, math.Matrix4.IDENTITY, material, 0)).throws('Drawing failed');
+            expect(() => processor.drawStencilGeometry(renderer, geometry, math.Matrix4.IDENTITY, material, 0)).throws('Drawing failed');
           } else {
-            processor.drawGeometryMask(renderer, geometry, math.Matrix4.IDENTITY, material, 0);
+            processor.drawStencilGeometry(renderer, geometry, math.Matrix4.IDENTITY, material, 0);
           }
         } finally {
           renderer.drawGeometry = originalDraw;

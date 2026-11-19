@@ -10,7 +10,7 @@ interface RuntimeObject { object: object, item?: VFXItem, composition?: Composit
 
 const HIDDEN = new Set(['engine', 'item', 'guid', 'definition', 'props', 'parent', 'children', 'components', 'transform', 'composition',
   'eventEmitter', 'eventProcessor', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isDuringPlay', 'isEndCalled',
-  'renderer', 'canvas', 'context', 'boundingBoxInfo', 'frameClipMasks', 'maskManager', 'gpuTexture', 'disposed', 'destroyed', 'offloaded']);
+  'renderer', 'canvas', 'context', 'boundingBoxInfo', 'frameClipMasks', 'maskProcessor', 'gpuTexture', 'disposed', 'destroyed', 'offloaded']);
 const BLOCKED_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
 function objectName (object: object): string {

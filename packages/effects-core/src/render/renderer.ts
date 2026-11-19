@@ -375,7 +375,7 @@ export class Renderer {
    * 更新当前视口内的 stencil，不写入颜色和深度。
    * @internal
    */
-  drawFullscreenStencil (
+  drawStencilInViewport (
     readMask: number, reference: number, comparison: number, pass: number,
     fail: number = glContext.KEEP, writeMask = 0xFF,
   ): void {

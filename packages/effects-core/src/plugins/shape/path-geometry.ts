@@ -3,6 +3,7 @@ import { triangulate } from '../../math/shape/triangulate';
 import type { GraphicsPath } from './graphics-path';
 import type { ShapePath } from './shape-path';
 
+/** @internal */
 export function appendBezierPaths (graphics: GraphicsPath, path: MaskPathData, screenScale = 1, closedOnly = false): void {
   for (const contour of path.shapes) {
     if (!closedOnly || contour.close) {
@@ -13,6 +14,7 @@ export function appendBezierPaths (graphics: GraphicsPath, path: MaskPathData, s
 
 /**
  * 按轮廓索引追加贝塞尔路径，控制柄使用相对顶点的偏移量。
+ * @internal
  */
 export function appendBezierPath (graphics: GraphicsPath, path: MaskPathData, contour: CustomShape, screenScale = 1): void {
   const { points, easingIns, easingOuts } = path;
@@ -45,6 +47,7 @@ export function appendBezierPath (graphics: GraphicsPath, path: MaskPathData, co
   }
 }
 
+/** @internal */
 export function buildPathContours (path: ShapePath, screenScale = 1) {
   return path.shapePrimitives.map(({ shape }) => {
     const points: number[] = [];
@@ -58,6 +61,7 @@ export function buildPathContours (path: ShapePath, screenScale = 1) {
 /**
  * separate 按各形状的算法独立三角化；compound 按奇偶规则处理多轮廓与孔洞。
  * compound 返回无索引三角形。
+ * @internal
  */
 export function buildPathGeometry (path: ShapePath, screenScale: number, fillMode: 'separate' | 'compound') {
   const contours = buildPathContours(path, screenScale);

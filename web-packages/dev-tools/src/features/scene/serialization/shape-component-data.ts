@@ -31,10 +31,10 @@ export function readShapeComponentData (component: ShapeComponent): Data {
     variableWidthPoints: stroke.variableWidthPoints ?? [],
     renderer: { side: renderer.side, occlusion: renderer.occlusion, transparentOcclusion: component.definition.renderer?.transparentOcclusion ?? false,
       blending: renderer.blending, texture: reference(renderer.texture) },
-    trackMatte: { isTrackMatte: component.maskManager.isTrackMatte, sourceVisible: component.maskManager.sourceVisible,
-      alphaMaskEnabled: component.maskManager.alphaMaskEnabled,
+    trackMatte: { isTrackMatte: component.maskProcessor.isTrackMatte, sourceVisible: component.maskProcessor.sourceVisible,
+      alphaMaskEnabled: component.maskProcessor.alphaMaskEnabled,
       references: component.definition.trackMatte?.references
-        ?? component.maskManager.getMaskReferences()
+        ?? component.maskProcessor.getTrackMatteReferences()
           .filter(ref => ref.maskable instanceof EffectsObject)
           .map(ref => ({ source: { id: (ref.maskable as unknown as EffectsObject).getInstanceId() }, inverted: ref.inverted })) },
   };

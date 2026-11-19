@@ -260,7 +260,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      mask: 0,
     };
 
     // Create Shape Attrributes
@@ -354,7 +353,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     this.draw(renderer);
   }
@@ -368,11 +367,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
 
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
     }
   }
 
@@ -711,9 +710,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isTrackMatte,
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskProcessor.isTrackMatte,
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: 1,
     };
 
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
@@ -848,9 +846,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
     for (let i = 0; i < count; i++) {
       if (!materials[i]) {
-        materials.push(createPaintMaterial(this.engine, this.rendererOptions, this.maskManager.alphaMaskEnabled));
+        materials.push(createPaintMaterial(this.engine, this.rendererOptions, this.maskProcessor.alphaMaskEnabled));
       } else {
-        applyPaintRendererOptions(materials[i], this.rendererOptions, this.maskManager.alphaMaskEnabled);
+        applyPaintRendererOptions(materials[i], this.rendererOptions, this.maskProcessor.alphaMaskEnabled);
       }
     }
   }

@@ -40,13 +40,13 @@ export class SceneRendering {
 
   collect (data: RenderingData): void {
     for (const renderer of this.renderers) {
-      if (!renderer.maskManager.isTrackMatteOnly) {
+      if (!renderer.maskProcessor.isTrackMatteSourceOnly) {
         data.renderList.objects.push(renderer);
       }
     }
     data.renderList.objects.sort((a, b) => a.priority - b.priority);
     for (const [name, renderers] of this.groups) {
-      data.renderList.groups.set(name, renderers.filter(renderer => !renderer.maskManager.isTrackMatteOnly).sort((a, b) => a.priority - b.priority));
+      data.renderList.groups.set(name, renderers.filter(renderer => !renderer.maskProcessor.isTrackMatteSourceOnly).sort((a, b) => a.priority - b.priority));
     }
   }
 

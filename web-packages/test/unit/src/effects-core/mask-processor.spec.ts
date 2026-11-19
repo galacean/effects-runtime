@@ -41,7 +41,7 @@ function createSpriteRendererComponent (engine: Engine, materials: Material[]): 
 
   return sprite;
 }
-describe('core/material//mask-ref-manager', () => {
+describe('core/material/mask-processor', () => {
   let canvas: HTMLCanvasElement;
   let engine: Engine;
   let renderer: Renderer;
@@ -85,116 +85,91 @@ describe('core/material//mask-ref-manager', () => {
 
   });
 
-  // ==================== addMaskReference / removeMaskReference / clearMaskReferences ====================
+  // ==================== addTrackMatteReference / removeTrackMatteReference / clearTrackMatteReferences ====================
 
   describe('mask reference management', () => {
-    it('should replace multiple references and clear clipping through legacy maskable', () => {
-      const mp = new MaskProcessor();
-      const first = createMaskableSprite(engine, 'first');
-      const second = createMaskableSprite(engine, 'second');
-      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
-      const component = createSpriteRendererComponent(engine, [material]);
-
-      expect(mp.maskable).to.equal(null);
-      mp.addMaskReference(first);
-      mp.addMaskReference(second, true);
-      expect(mp.maskable).to.equal(first);
-
-      mp.maskable = second;
-      expect(mp.getMaskReferences()).to.deep.equal([{ maskable: second, inverted: false }]);
-      mp.drawStencilMask(renderer, component);
-      expect(second.drawStencilMask).to.have.been.called.with(0);
-      expect(material.stencilRef).to.deep.equal([1, 1]);
-
-      mp.maskable = null;
-      expect(mp.maskable).to.equal(null);
-      expect(mp.getMaskReferences()).to.deep.equal([]);
-      mp.drawStencilMask(renderer, component);
-      expect(material.stencilTest).to.equal(false);
-    });
-
-    it('addMaskReference should add a mask reference', () => {
+    it('addTrackMatteReference should add a mask reference', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite);
+      mp.applyMasks(renderer, component);
       expect(sprite.drawStencilMask).to.have.been.called();
       expect(material.stencilTest).to.eql(true);
     });
 
-    it('addMaskReference should not add duplicate maskable', () => {
+    it('addTrackMatteReference should not add duplicate maskable', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite);
-      mp.addMaskReference(sprite);
-      mp.removeMaskReference(sprite);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite);
+      mp.addTrackMatteReference(sprite);
+      mp.removeTrackMatteReference(sprite);
+      mp.applyMasks(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
 
-    it('addMaskReference should support multiple different masks', () => {
+    it('addTrackMatteReference should support multiple different masks', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite1);
-      mp.addMaskReference(sprite2);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite1);
+      mp.addTrackMatteReference(sprite2);
+      mp.applyMasks(renderer, component);
       expect(sprite1.drawStencilMask).to.have.been.called();
       expect(sprite2.drawStencilMask).to.have.been.called();
       expect(material.stencilRef).to.deep.equals([2, 2]);
     });
 
-    it('removeMaskReference should remove a mask reference', () => {
+    it('removeTrackMatteReference should remove a mask reference', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite1);
-      mp.addMaskReference(sprite2);
-      mp.removeMaskReference(sprite1);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite1);
+      mp.addTrackMatteReference(sprite2);
+      mp.removeTrackMatteReference(sprite1);
+      mp.applyMasks(renderer, component);
       expect(sprite2.drawStencilMask).to.have.been.called();
       expect(material.stencilRef).to.deep.equals([1, 1]);
     });
 
-    it('removeMaskReference should do nothing for non-existent maskable', () => {
+    it('removeTrackMatteReference should do nothing for non-existent maskable', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.removeMaskReference(sprite);
-      mp.drawStencilMask(renderer, component);
+      mp.removeTrackMatteReference(sprite);
+      mp.applyMasks(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
 
-    it('clearMaskReferences should remove all references', () => {
+    it('clearTrackMatteReferences should remove all references', () => {
       const mp = new MaskProcessor();
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(createMaskableSprite(engine, 'm1'));
-      mp.addMaskReference(createMaskableSprite(engine, 'm2'));
-      mp.clearMaskReferences();
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(createMaskableSprite(engine, 'm1'));
+      mp.addTrackMatteReference(createMaskableSprite(engine, 'm2'));
+      mp.clearTrackMatteReferences();
+      mp.applyMasks(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
   });
 
-  // ==================== drawStencilMask ====================
+  // ==================== applyMasks ====================
 
-  describe('drawStencilMask', () => {
+  describe('applyMasks', () => {
     it('should call renderer.clear and drawStencilMask on forward masks in order', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
@@ -202,9 +177,9 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite1, false);
-      mp.addMaskReference(sprite2, false);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite1, false);
+      mp.addTrackMatteReference(sprite2, false);
+      mp.applyMasks(renderer, component);
 
       expect(sprite1.drawStencilMask).to.have.been.called.with(0);
       expect(sprite2.drawStencilMask).to.have.been.called.with(1);
@@ -217,9 +192,9 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(forward, false);
-      mp.addMaskReference(reverse, true);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(forward, false);
+      mp.addTrackMatteReference(reverse, true);
+      mp.applyMasks(renderer, component);
 
       expect(forward.drawStencilMask).to.have.been.called.with(0);
       expect(reverse.drawStencilMask).to.have.been.called.with(1);
@@ -231,8 +206,8 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite, false);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite, false);
+      mp.applyMasks(renderer, component);
 
       expect(material.stencilTest).to.eql(true);
       expect(material.stencilRef).to.deep.equals([1, 1]);
@@ -246,7 +221,7 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.drawStencilMask(renderer, component);
+      mp.applyMasks(renderer, component);
 
       expect(material.stencilTest).to.eql(false);
     });
@@ -257,13 +232,36 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite);
+      mp.addTrackMatteReference(sprite);
       component.frameClipMasks = [sprite];
 
-      mp.drawStencilMask(renderer, component);
+      mp.applyMasks(renderer, component);
 
-      expect(mp.getMaskReferences().length).to.eql(1);
-      expect(mp.getMaskReferences()[0].maskable).to.equal(sprite);
+      expect(mp.getTrackMatteReferences().length).to.eql(1);
+      expect(mp.getTrackMatteReferences()[0].maskable).to.equal(sprite);
+    });
+
+    it('keeps frame clips out of track matte references when stencil drawing throws', () => {
+      const mp = new MaskProcessor();
+      const source = createMaskableSprite(engine);
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
+      const component = createSpriteRendererComponent(engine, [material]);
+      const frameClip = {
+        item: source.item,
+        drawStencilMask (): void {
+          throw new Error('Frame stencil draw failed');
+        },
+      };
+
+      mp.addTrackMatteReference(source);
+      component.frameClipMasks = [frameClip];
+
+      expect(() => mp.applyMasks(renderer, component)).to.throw('Frame stencil draw failed');
+      expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: source, inverted: false }]);
+
+      component.frameClipMasks = [];
+      mp.applyMasks(renderer, component);
+      expect(material.stencilRef).to.deep.equal([1, 1]);
     });
 
     it('should setup multiple materials', () => {
@@ -273,8 +271,8 @@ describe('core/material//mask-ref-manager', () => {
       const mat2 = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [mat1, mat2]);
 
-      mp.addMaskReference(sprite, false);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(sprite, false);
+      mp.applyMasks(renderer, component);
 
       expect(mat1.stencilTest).to.eql(true);
       expect(mat2.stencilTest).to.eql(true);
@@ -291,20 +289,20 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(f1, false);
-      mp.addMaskReference(f2, false);
-      mp.addMaskReference(f3, false);
-      mp.addMaskReference(r1, true);
-      mp.drawStencilMask(renderer, component);
+      mp.addTrackMatteReference(f1, false);
+      mp.addTrackMatteReference(f2, false);
+      mp.addTrackMatteReference(f3, false);
+      mp.addTrackMatteReference(r1, true);
+      mp.applyMasks(renderer, component);
 
       expect(material.stencilRef).to.deep.equals([3, 3]);
       expect(r1.drawStencilMask).to.have.been.called.with(3);
     });
   });
 
-  // ==================== drawGeometryMask ====================
+  // ==================== drawStencilGeometry ====================
 
-  describe('drawGeometryMask', () => {
+  describe('drawStencilGeometry', () => {
     it('should restore material state after drawing', () => {
       const mp = new MaskProcessor();
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
@@ -333,7 +331,7 @@ describe('core/material//mask-ref-manager', () => {
 
       const worldMatrix = new math.Matrix4();
 
-      mp.drawGeometryMask(renderer, geometry, worldMatrix, material, 2);
+      mp.drawStencilGeometry(renderer, geometry, worldMatrix, material, 2);
 
       expect(material.colorMask).to.eql(true);
       expect(material.stencilTest).to.eql(false);
@@ -348,68 +346,47 @@ describe('core/material//mask-ref-manager', () => {
     });
   });
 
-  describe('fromData', () => {
+  describe('loadTrackMatte', () => {
     it('restores track matte references and preserves them during unrelated updates', () => {
       const mp = new MaskProcessor();
       const source = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
-      mp.fromData(engine, { trackMatte: { references: [{ source: dummyRef, inverted: true }] } });
-      expect(mp.getMaskReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
+      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: dummyRef, inverted: true }] } });
+      expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
 
-      mp.fromData(engine, {});
-      expect(mp.getMaskReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
+      mp.loadTrackMatte(engine, {});
+      expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
 
-      mp.fromData(engine, { trackMatte: { references: [] } });
-      expect(mp.getMaskReferences()).to.deep.equal([]);
+      mp.loadTrackMatte(engine, { trackMatte: { references: [] } });
+      expect(mp.getTrackMatteReferences()).to.deep.equal([]);
     });
-  });
 
-  // ==================== setMaskOptions ====================
-
-  describe('setMaskOptions', () => {
-    it('should preserve source color when isMask is passed', () => {
+    it('loads a visible track matte source', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { isMask: true });
+      mp.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true, sourceVisible: true } });
 
       expect(mp.isTrackMatte).to.eql(true);
       expect(mp.sourceVisible).to.eql(true);
     });
 
-    it('should handle references array with single forward mask', () => {
+    it('defaults references to forward clipping', () => {
       const mp = new MaskProcessor();
       const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
-      mp.setMaskOptions(engine, {
-        isMask: false,
-        references: [{ mask: dummyRef, inverted: false }],
-      });
+      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: dummyRef }] } });
 
-      expect(mp.getMaskReferences().length).to.eql(1);
-      expect(mp.getMaskReferences()[0].inverted).to.eql(false);
-    });
-
-    it('should handle references array with single reverse mask', () => {
-      const mp = new MaskProcessor();
-      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
-
-      mp.setMaskOptions(engine, {
-        isMask: false,
-        references: [{ mask: dummyRef, inverted: true }],
-      });
-
-      expect(mp.getMaskReferences().length).to.eql(1);
-      expect(mp.getMaskReferences()[0].inverted).to.eql(true);
+      expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: existingMask, inverted: false }]);
     });
 
     it('should skip unresolved entries while loading valid mask paths', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, {
-        references: [{ mask: { id: 'missing-mask' } }, { mask: dummyRef, inverted: true }],
+      mp.loadTrackMatte(engine, {
+        trackMatte: { references: [{ source: { id: 'missing-mask' } }, { source: dummyRef, inverted: true }] },
       });
 
-      expect(mp.getMaskReferences()).to.deep.equal([
+      expect(mp.getTrackMatteReferences()).to.deep.equal([
         { maskable: engine.effectsObjectServer.findObject(dummyRef), inverted: true },
       ]);
     });
@@ -422,33 +399,27 @@ describe('core/material//mask-ref-manager', () => {
 
         sprite.setInstanceId(id);
 
-        return { mask: { id }, inverted: false };
+        return { source: { id }, inverted: false };
       });
 
-      mp.setMaskOptions(engine, {
-        isMask: false,
-        references,
-      });
+      mp.loadTrackMatte(engine, { trackMatte: { references } });
 
-      expect(mp.getMaskReferences().length).to.eql(254);
+      expect(mp.getTrackMatteReferences().length).to.eql(254);
     });
 
     it('should deduplicate references pointing to the same maskable', () => {
       const mp = new MaskProcessor();
-      const references = Array.from({ length: 5 }, () => ({ mask: dummyRef, inverted: false }));
+      const references = Array.from({ length: 5 }, () => ({ source: dummyRef, inverted: false }));
 
-      mp.setMaskOptions(engine, {
-        isMask: false,
-        references,
-      });
+      mp.loadTrackMatte(engine, { trackMatte: { references } });
 
-      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getTrackMatteReferences().length).to.eql(1);
     });
 
     it('should set alphaMaskEnabled', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { alphaMaskEnabled: true });
+      mp.loadTrackMatte(engine, { trackMatte: { alphaMaskEnabled: true } });
 
       expect(mp.alphaMaskEnabled).to.eql(true);
     });
@@ -460,11 +431,11 @@ describe('core/material//mask-ref-manager', () => {
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
-      mp.addMaskReference(sprite1);
-      mp.addMaskReference(sprite2);
+      mp.addTrackMatteReference(sprite1);
+      mp.addTrackMatteReference(sprite2);
 
-      mp.setMaskOptions(engine, { isMask: true });
-      mp.drawStencilMask(renderer, component);
+      mp.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true } });
+      mp.applyMasks(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
   });

@@ -104,7 +104,7 @@ export class ModelMeshComponent extends RendererComponent {
       return;
     }
 
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     this.content.render(this.sceneManager, renderer);
   }
@@ -313,7 +313,7 @@ export class ModelSkyboxComponent extends RendererComponent {
       return;
     }
 
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     this.content.render(this.sceneManager, renderer);
   }

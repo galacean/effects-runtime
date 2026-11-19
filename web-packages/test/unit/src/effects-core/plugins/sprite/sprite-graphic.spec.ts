@@ -114,7 +114,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           masks.setMasks([]);
           targetItem.transform.setSize(2, 2);
           target.onUpdate(0);
-          target.maskManager.addMaskReference(component);
+          target.maskProcessor.addTrackMatteReference(component);
           expect(render(target)).deep.equals(coverage);
           expect(engine.renderErrors.size).equals(0);
         } finally {

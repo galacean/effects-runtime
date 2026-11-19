@@ -19,9 +19,6 @@ import { MaskStencil } from './mask-stencil';
 // 否则当正向轨道遮罩填满到 255 时，反向 INCR 会饱和、无法排除任何像素。
 const MAX_TRACK_MATTE_REFERENCE_COUNT = 254;
 
-/**
- * @internal
- */
 export class MaskProcessor {
   /**
    * 丢弃来源中 alpha 低于阈值的像素。
@@ -36,11 +33,6 @@ export class MaskProcessor {
    */
   private trackMatteReferences: MaskReference[] = [];
 
-  /**
-   * 计数裁剪的目标 stencil 值，等于正向轨道遮罩的数量
-   */
-  private expectedStencilValue = 0;
-
   private stencilClearAction: RenderPassClearAction;
 
   private prevStencilFunc: [number, number] = [0, 0];
@@ -51,66 +43,20 @@ export class MaskProcessor {
   private prevStencilReadMask: [number, number] = [0, 0];
   private prevStencilWriteMask: [number, number] = [0, 0];
 
-  /**
-   * @deprecated 使用 getMaskReferences() 替代
-   */
-  get maskable (): Maskable | null {
-    return this.trackMatteReferences.length > 0 ? this.trackMatteReferences[0].maskable : null;
-  }
-
-  /**
-   * @deprecated 使用 clearMaskReferences() 和 addMaskReference() 替代
-   */
-  set maskable (value: Maskable | null) {
-    this.trackMatteReferences = [];
-    if (value) {
-      this.trackMatteReferences.push({ maskable: value, inverted: false });
-    }
-  }
-
   constructor () {
     this.stencilClearAction = { stencilAction: TextureLoadAction.clear };
-  }
-
-  fromData (engine: Engine, data: { trackMatte?: spec.TrackMatteOptions }): void {
-    if (data.trackMatte !== undefined) {
-      this.applyTrackMatteOptions(engine, data.trackMatte);
-    }
   }
 
   /**
    * @internal
    */
-  get isTrackMatteOnly (): boolean { return this.isTrackMatte && !this.sourceVisible; }
+  get isTrackMatteSourceOnly (): boolean { return this.isTrackMatte && !this.sourceVisible; }
 
-  /**
-   * 读取旧 mask 选项，保留轨道遮罩来源的颜色绘制。
-   */
-  setMaskOptions (engine: Engine, data: spec.MaskOptions): void {
-    const references: spec.TrackMatteReferenceData[] = [];
-
-    for (const reference of data.references ?? []) {
-      if (reference.mask) {
-        references.push({ source: reference.mask, inverted: reference.inverted });
-      }
+  loadTrackMatte (engine: Engine, data: { trackMatte?: spec.TrackMatteOptions }): void {
+    if (data.trackMatte === undefined) {
+      return;
     }
-    this.applyTrackMatteOptions(engine, {
-      isTrackMatte: data.isMask,
-      sourceVisible: true,
-      alphaMaskEnabled: data.alphaMaskEnabled,
-      references,
-    });
-  }
-
-  /**
-   * 设置轨道遮罩选项。
-   *
-   * @param data.references - 轨道遮罩引用列表。
-   *   传入空数组表示不引用轨道遮罩。
-   *   超过 254 个引用时，多余部分将被忽略并打印警告。
-   */
-  private applyTrackMatteOptions (engine: Engine, data: spec.TrackMatteOptions): void {
-    const { isTrackMatte = false, sourceVisible = false, references = [], alphaMaskEnabled = false } = data;
+    const { isTrackMatte = false, sourceVisible = false, references = [], alphaMaskEnabled = false } = data.trackMatte;
 
     this.alphaMaskEnabled = alphaMaskEnabled;
     this.isTrackMatte = isTrackMatte;
@@ -158,24 +104,15 @@ export class MaskProcessor {
    * @param maskable - 轨道遮罩来源
    * @param inverted - 是否反向裁剪
    */
-  addMaskReference (maskable: Maskable, inverted = false): void {
-    const exists = this.trackMatteReferences.some(ref => ref.maskable === maskable);
-
-    if (!exists) {
-      if (this.trackMatteReferences.length >= MAX_TRACK_MATTE_REFERENCE_COUNT) {
-        console.warn(`Maximum of ${MAX_TRACK_MATTE_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
-
-        return;
-      }
-      this.trackMatteReferences.push({ maskable, inverted });
-    }
+  addTrackMatteReference (maskable: Maskable, inverted = false): void {
+    appendMaskReference(this.trackMatteReferences, maskable, inverted);
   }
 
   /**
    * 移除轨道遮罩引用
    * @param maskable - 要移除的轨道遮罩来源
    */
-  removeMaskReference (maskable: Maskable): void {
+  removeTrackMatteReference (maskable: Maskable): void {
     const index = this.trackMatteReferences.findIndex(ref => ref.maskable === maskable);
 
     if (index !== -1) {
@@ -186,35 +123,29 @@ export class MaskProcessor {
   /**
    * 清空所有轨道遮罩引用
    */
-  clearMaskReferences (): void {
+  clearTrackMatteReferences (): void {
     this.trackMatteReferences = [];
   }
 
   /**
    * 获取当前轨道遮罩引用列表的浅拷贝。
    */
-  getMaskReferences (): ReadonlyArray<MaskReference> {
+  getTrackMatteReferences (): ReadonlyArray<MaskReference> {
     return this.trackMatteReferences.slice();
   }
 
   /**
    * 对轨道遮罩、Frame 裁剪和图层自有路径蒙版取交集。
    */
-  drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
+  applyMasks (renderer: Renderer, maskedComponent: RendererComponent): void {
     const frameClipMasks = maskedComponent.frameClipMasks;
-    const addedFrameClipMasks: Maskable[] = [];
+    const references = frameClipMasks.length > 0 ? this.trackMatteReferences.slice() : this.trackMatteReferences;
 
     for (const frameClipMask of frameClipMasks) {
-      const referenceCount = this.trackMatteReferences.length;
-
-      this.addMaskReference(frameClipMask, false);
-
-      if (this.trackMatteReferences.length > referenceCount) {
-        addedFrameClipMasks.push(frameClipMask);
-      }
+      appendMaskReference(references, frameClipMask, false);
     }
 
-    const sources = this.trackMatteReferences.map(reference => {
+    const sources = references.map(reference => {
       const source = reference.maskable;
       // 来源未继承 RendererComponent 时，从同一图层的渲染组件读取 Frame 裁剪。
       const sourceRenderer = source instanceof RendererComponent ? source : source.item.getComponent(RendererComponent);
@@ -230,32 +161,33 @@ export class MaskProcessor {
       return { reference, paths: Array.from(paths), frames };
     });
     const hasSourceClipping = sources.some(source => source.paths.length > 0 || source.frames.length > 0);
+    let expectedStencilValue: number | undefined;
 
     if (hasSourceClipping) {
       this.drawTrackMattesWithClipping(renderer, sources);
-    } else if (this.trackMatteReferences.length > 0) {
-      this.drawTrackMatteCounter(renderer);
+    } else if (references.length > 0) {
+      expectedStencilValue = this.drawTrackMatteCounter(renderer, references);
     }
 
     const pathMasks = this.getPathMasks(maskedComponent.item);
 
     if (pathMasks.length > 0) {
-      if (!hasSourceClipping && this.trackMatteReferences.length > 0) {
+      if (expectedStencilValue !== undefined) {
         // 将计数结果转为覆盖标记；正向遮罩数量为 0 时也需保留匹配区域。
-        renderer.drawFullscreenStencil(MaskStencil.All, this.expectedStencilValue, glContext.EQUAL, glContext.ZERO, glContext.INCR);
-        renderer.drawFullscreenStencil(MaskStencil.All, 0, glContext.EQUAL, glContext.INCR, glContext.ZERO);
-        renderer.drawFullscreenStencil(
+        renderer.drawStencilInViewport(MaskStencil.All, expectedStencilValue, glContext.EQUAL, glContext.ZERO, glContext.INCR);
+        renderer.drawStencilInViewport(MaskStencil.All, 0, glContext.EQUAL, glContext.INCR, glContext.ZERO);
+        renderer.drawStencilInViewport(
           MaskStencil.Path, MaskStencil.Target | MaskStencil.Path, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target,
         );
       } else if (!hasSourceClipping) {
-        renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
+        renderer.drawStencilInViewport(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
       }
       for (const pathMask of pathMasks) {
         // 目标图层的 Billboard 变换仅作用于自有路径，预合成路径使用自身变换。
-        pathMask.drawStencilStack(renderer, pathMask.item === maskedComponent.item ? maskedComponent.getPathMaskWorldMatrix(renderer) : undefined);
+        pathMask.drawPathMasksToStencil(renderer, pathMask.item === maskedComponent.item ? maskedComponent.getPathMaskWorldMatrix(renderer) : undefined);
         const intersection = MaskStencil.Target | MaskStencil.Path;
 
-        renderer.drawFullscreenStencil(intersection, intersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Target);
+        renderer.drawStencilInViewport(intersection, intersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Target);
       }
     }
 
@@ -269,12 +201,8 @@ export class MaskProcessor {
         material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
         material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
       } else {
-        this.setupMaskedMaterial(material);
+        this.setupMaskedMaterial(material, expectedStencilValue);
       }
-    }
-
-    for (const frameClipMask of addedFrameClipMasks) {
-      this.removeMaskReference(frameClipMask);
     }
   }
 
@@ -283,46 +211,52 @@ export class MaskProcessor {
     const sourceIntersection = MaskStencil.Source | MaskStencil.Path;
     const targetIntersection = MaskStencil.Target | MaskStencil.Path;
 
-    renderer.drawFullscreenStencil(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
+    renderer.drawStencilInViewport(MaskStencil.All, MaskStencil.Target, glContext.ALWAYS, glContext.REPLACE);
     for (const { reference, paths, frames } of sources) {
-      renderer.drawFullscreenStencil(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE, glContext.KEEP, MaskStencil.Source | pathBits);
+      const { maskable } = reference;
+
+      renderer.drawStencilInViewport(MaskStencil.Source | pathBits, MaskStencil.Source, glContext.ALWAYS, glContext.REPLACE, glContext.KEEP, MaskStencil.Source | pathBits);
       for (const path of paths) {
-        path.drawStencilStack(renderer, path.item === reference.maskable.item ? reference.maskable.getPathMaskWorldMatrix?.(renderer) : undefined);
-        renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
+        const worldMatrix = path.item === maskable.item && maskable instanceof RendererComponent
+          ? maskable.getPathMaskWorldMatrix(renderer) : undefined;
+
+        path.drawPathMasksToStencil(renderer, worldMatrix);
+        renderer.drawStencilInViewport(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
       // 来源先经过 Frame 裁剪再反转，计算期间保留已有的目标覆盖结果。
       for (const frame of frames) {
-        renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
+        renderer.drawStencilInViewport(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
         frame.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
-        renderer.drawFullscreenStencil(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
+        renderer.drawStencilInViewport(sourceIntersection, sourceIntersection, glContext.EQUAL, glContext.KEEP, glContext.ZERO, MaskStencil.Source);
       }
-      renderer.drawFullscreenStencil(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
+      renderer.drawStencilInViewport(pathBits, 0, glContext.ALWAYS, glContext.ZERO, glContext.KEEP, pathBits);
       // EQUAL/INCR 使来源仅在 Source 与 Target 的交集内置位 Path。
-      reference.maskable.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
+      maskable.drawStencilMask(MaskStencil.Source | MaskStencil.Target);
       if (reference.inverted) {
-        renderer.drawFullscreenStencil(MaskStencil.Path, MaskStencil.Path, glContext.EQUAL, glContext.ZERO, glContext.KEEP, MaskStencil.Target);
+        renderer.drawStencilInViewport(MaskStencil.Path, MaskStencil.Path, glContext.EQUAL, glContext.ZERO, glContext.KEEP, MaskStencil.Target);
       } else {
-        renderer.drawFullscreenStencil(MaskStencil.Path, targetIntersection, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target);
+        renderer.drawStencilInViewport(MaskStencil.Path, targetIntersection, glContext.EQUAL, glContext.REPLACE, glContext.ZERO, MaskStencil.Target);
       }
     }
   }
 
-  private drawTrackMatteCounter (renderer: Renderer): void {
+  private drawTrackMatteCounter (renderer: Renderer, references: readonly MaskReference[]): number {
     renderer.clear(this.stencilClearAction);
     let forwardCount = 0;
 
     // 先累计正向来源的交集，再排除反向来源，结果不受引用顺序影响。
-    for (const reference of this.trackMatteReferences) {
+    for (const reference of references) {
       if (!reference.inverted) {
         reference.maskable.drawStencilMask(forwardCount++);
       }
     }
-    for (const reference of this.trackMatteReferences) {
+    for (const reference of references) {
       if (reference.inverted) {
         reference.maskable.drawStencilMask(forwardCount);
       }
     }
-    this.expectedStencilValue = forwardCount;
+
+    return forwardCount;
   }
 
   private getPathMasks (owner: VFXItem): MaskComponent[] {
@@ -340,7 +274,7 @@ export class MaskProcessor {
       }
       const mask = item.getComponent(MaskClass);
 
-      if (mask?.hasActivePaths()) {
+      if (mask?.hasActiveMasks()) {
         masks.push(mask);
       }
     }
@@ -351,7 +285,7 @@ export class MaskProcessor {
   /**
    * 绘制轨道遮罩来源的几何体，仅写入 stencil，不写入颜色和深度。
    */
-  drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
+  drawStencilGeometry (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
     const prevColorMask = material.colorMask;
     const prevDepthMask = material.depthMask;
     const prevStencilTest = material.stencilTest;
@@ -417,11 +351,12 @@ export class MaskProcessor {
    * - 未被任何反向来源覆盖（否则会被进一步递增，值 > expectedStencilValue）
    *
    * @param material - 要设置的材质
+   * @param expectedStencilValue - 计数裁剪的匹配值，undefined 表示无裁剪来源
    */
-  private setupMaskedMaterial (material: Material): void {
-    if (this.trackMatteReferences.length > 0) {
+  private setupMaskedMaterial (material: Material, expectedStencilValue: number | undefined): void {
+    if (expectedStencilValue !== undefined) {
       material.stencilTest = true;
-      material.stencilRef = [this.expectedStencilValue, this.expectedStencilValue];
+      material.stencilRef = [expectedStencilValue, expectedStencilValue];
       material.stencilReadMask = [0xFF, 0xFF];
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
@@ -440,4 +375,16 @@ export class MaskProcessor {
     target[1] = source[1];
   }
 
+}
+
+function appendMaskReference (references: MaskReference[], maskable: Maskable, inverted: boolean): void {
+  if (references.some(reference => reference.maskable === maskable)) {
+    return;
+  }
+  if (references.length >= MAX_TRACK_MATTE_REFERENCE_COUNT) {
+    console.warn(`Maximum of ${MAX_TRACK_MATTE_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+
+    return;
+  }
+  references.push({ maskable, inverted });
 }

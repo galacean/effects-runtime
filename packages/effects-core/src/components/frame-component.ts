@@ -191,7 +191,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer): void {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     // 直接按列缩放矩阵元素以实现右乘 size 矩阵（column-major）
     this.worldMatrix.copyFrom(this.transform.getWorldMatrix());
@@ -228,7 +228,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
     multiplyMatrixByScale(this.worldMatrix, this.transform.size.x, this.transform.size.y);
 
-    this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.clipMaterial, maskRef);
+    this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.clipMaterial, maskRef);
   }
 
   override fromData (data: FrameComponentData): void {

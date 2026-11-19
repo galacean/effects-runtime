@@ -1,4 +1,7 @@
-// 路径蒙版与轨道遮罩组合运算共用的 stencil 位分配。
+/**
+ * 路径蒙版与轨道遮罩组合运算共用的 stencil 位分配。
+ * @internal
+ */
 export const MaskStencil = {
   Path: 0b0001,
   Scratch: 0b0010,

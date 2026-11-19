@@ -37,7 +37,7 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   override render (renderer: Renderer): void {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     for (const mesh of this.meshes) {
       mesh.render(renderer);

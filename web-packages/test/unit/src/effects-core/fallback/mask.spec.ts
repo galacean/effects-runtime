@@ -1,4 +1,4 @@
-import { getStandardJSON, MaskMode, spec } from '@galacean/effects';
+import { getStandardJSON, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -20,8 +20,8 @@ describe('core/fallback/mask', () => {
   for (const version of ['3.0', '3.2']) {
     it(`migrates renderer mask modes from ${version} to track mattes without hiding the source`, () => {
       const components = [
-        { id: 'mask-component', dataType: spec.DataType.SpriteComponent, renderer: { maskMode: MaskMode.MASK } },
-        { id: 'masked-component', dataType: spec.DataType.SpriteComponent, renderer: { maskMode: MaskMode.REVERSE_OBSCURED } },
+        { id: 'mask-component', dataType: spec.DataType.SpriteComponent, renderer: { maskMode: 1 } },
+        { id: 'masked-component', dataType: spec.DataType.SpriteComponent, renderer: { maskMode: 3 } },
       ];
       const items = components.map(component => ({
         id: `${component.id}-item`,

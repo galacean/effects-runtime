@@ -127,7 +127,6 @@ export function createPaintMaterial (engine: Engine, rendererOptions?: ItemRende
     occlusion: false,
     transparentOcclusion: false,
     side: spec.SideMode.DOUBLE,
-    mask: 0,
   };
   const material = Material.create(engine, {
     shader: { vertex: vert, fragment: frag, glslVersion: GLSLVersion.GLSL1 },

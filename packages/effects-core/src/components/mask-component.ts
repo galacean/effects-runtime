@@ -111,7 +111,7 @@ export class MaskComponent extends Component {
   /**
    * @internal
    */
-  hasActivePaths (): boolean {
+  hasActiveMasks (): boolean {
     return this.isActiveAndEnabled && this.order.some(id => this.isPathActive(this.masks[id]));
   }
 
@@ -119,7 +119,7 @@ export class MaskComponent extends Component {
    * 将路径运算结果写入 stencil 第 0 位，第 1 位用于临时计算，其余位保持不变。
    * @internal
    */
-  drawStencilStack (renderer: Renderer, worldMatrix = this.transform.getWorldMatrix()): void {
+  drawPathMasksToStencil (renderer: Renderer, worldMatrix = this.transform.getWorldMatrix()): void {
     let first = true;
     const scale = this.computeScreenScale(renderer, worldMatrix);
     const pathBits = MaskStencil.Path | MaskStencil.Scratch;
@@ -136,7 +136,7 @@ export class MaskComponent extends Component {
       if (first) {
         const complement = inverted !== (operation === spec.MaskOperation.Subtract);
 
-        renderer.drawFullscreenStencil(pathBits, complement ? MaskStencil.Path : 0, gl.ALWAYS, gl.REPLACE, gl.KEEP, pathBits);
+        renderer.drawStencilInViewport(pathBits, complement ? MaskStencil.Path : 0, gl.ALWAYS, gl.REPLACE, gl.KEEP, pathBits);
         this.drawPath(renderer, id, scale, MaskStencil.Path, complement ? 0 : MaskStencil.Path, worldMatrix);
         first = false;
       } else if (operation === spec.MaskOperation.Add && !inverted) {
@@ -144,14 +144,14 @@ export class MaskComponent extends Component {
       } else if ((operation === spec.MaskOperation.Subtract && !inverted) || (operation === spec.MaskOperation.Intersect && inverted)) {
         this.drawPath(renderer, id, scale, MaskStencil.Path, 0, worldMatrix);
       } else {
-        renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.ZERO, gl.KEEP, MaskStencil.Scratch);
+        renderer.drawStencilInViewport(MaskStencil.Scratch, 0, gl.ALWAYS, gl.ZERO, gl.KEEP, MaskStencil.Scratch);
         this.drawPath(renderer, id, scale, MaskStencil.Scratch, MaskStencil.Scratch, worldMatrix);
         if (operation === spec.MaskOperation.Add) {
-          renderer.drawFullscreenStencil(MaskStencil.Scratch, 0, gl.ALWAYS, gl.INVERT, gl.KEEP, MaskStencil.Scratch);
+          renderer.drawStencilInViewport(MaskStencil.Scratch, 0, gl.ALWAYS, gl.INVERT, gl.KEEP, MaskStencil.Scratch);
           // LEQUAL 比较 reference <= stencil；Path 或 Scratch 任一位置位即属于并集。
-          renderer.drawFullscreenStencil(pathBits, MaskStencil.Path, gl.LEQUAL, gl.REPLACE, gl.KEEP, MaskStencil.Path);
+          renderer.drawStencilInViewport(pathBits, MaskStencil.Path, gl.LEQUAL, gl.REPLACE, gl.KEEP, MaskStencil.Path);
         } else {
-          renderer.drawFullscreenStencil(pathBits, pathBits, gl.EQUAL, gl.KEEP, gl.ZERO, MaskStencil.Path);
+          renderer.drawStencilInViewport(pathBits, pathBits, gl.EQUAL, gl.KEEP, gl.ZERO, MaskStencil.Path);
         }
       }
     }

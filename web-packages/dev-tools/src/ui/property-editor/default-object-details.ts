@@ -5,7 +5,7 @@ import { PropertyTree } from './property-tree';
 
 const HIDDEN_PROPERTIES = new Set([
   'engine', 'item', 'guid', 'definition', 'name', 'id', 'isRegistered', 'isAwakeCalled', 'isStartCalled',
-  'isEnableCalled', 'isDuringPlay', 'enabled', 'materials', 'material', 'frameClipMasks', 'maskManager',
+  'isEnableCalled', 'isDuringPlay', 'enabled', 'materials', 'material', 'frameClipMasks', 'maskProcessor',
   'boundingBoxInfo', 'geometry', 'defaultGeometry', 'canvas', 'context', 'isDirty', 'maxLineWidth',
   'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'disposed', 'visible', 'renderer',
   'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty', 'isEndCalled',

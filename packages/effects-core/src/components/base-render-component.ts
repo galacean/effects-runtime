@@ -17,13 +17,8 @@ import { extractMinAndMax } from '../math';
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
  */
-export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
+export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin'>> {
   texture: Texture,
-  /**
-   * @deprecated 2.10 起此字段无实际意义，仅为兼容老版本读取保留；
-   * 请使用 `MaskProcessor.getMaskReferences()` 获取当前蒙版引用列表
-   */
-  mask: number,
 }
 
 /**
@@ -55,7 +50,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      mask: 0,
     };
 
     this.defaultGeometry = Geometry.create(this.engine, {
@@ -197,7 +191,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     if (!this.getVisible()) {
       return;
     }
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     this.draw(renderer);
 
@@ -212,7 +206,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
 
     for (let i = 0; i < this.materials.length; i++) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.materials[i], maskRef, i);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.materials[i], maskRef, i);
     }
   }
 
@@ -293,7 +287,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     texParams.z = renderer.renderMode;
     material.setVector4('_TexParams', texParams);
 
-    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
+    if (texParams.x === 0 || (this.maskProcessor.alphaMaskEnabled)) {
       material.enableMacro('ALPHA_CLIP');
     } else {
       material.disableMacro('ALPHA_CLIP');
@@ -343,9 +337,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.findObject<Texture>(renderer.texture) : this.engine.assetServer.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isTrackMatte,
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskProcessor.isTrackMatte,
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: 1,
     };
 
     this.configureMaterial(this.renderer);

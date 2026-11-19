@@ -71,7 +71,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       const renderer = engine.renderer;
 
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
-      target.maskManager.drawStencilMask(renderer, target);
+      target.maskProcessor.applyMasks(renderer, target);
       renderer.drawGeometry(geometry, item.transform.getWorldMatrix(), material);
       const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
       const pixels = new Uint8Array(8 * 8 * 4);
@@ -205,17 +205,17 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           mode: glContext.TRIANGLE_STRIP, drawCount: 4,
         });
         const source = { item: sourceItem, drawStencilMask: (ref: number) => {
-          target.maskManager.drawGeometryMask(engine.renderer, sourceGeometry, math.Matrix4.IDENTITY, material, ref);
+          target.maskProcessor.drawStencilGeometry(engine.renderer, sourceGeometry, math.Matrix4.IDENTITY, material, ref);
         } };
 
         resources.push(sourceItem, sourceGeometry);
-        target.maskManager.addMaskReference(source, inverted);
+        target.maskProcessor.addTrackMatteReference(source, inverted);
         mask.setMasks([entry('a', rectangle(-1, -1, 0, 1))]);
         expect(render()).deep.equals(expected((x, y) => x < 0 && ((y < 0) !== inverted)));
-        target.maskManager.clearMaskReferences();
+        target.maskProcessor.clearTrackMatteReferences();
         target.frameClipMasks.push(source);
         expect(render()).deep.equals(expected((x, y) => x < 0 && y < 0));
-        expect(target.maskManager.getMaskReferences()).has.length(0);
+        expect(target.maskProcessor.getTrackMatteReferences()).has.length(0);
       });
     }
 
@@ -226,16 +226,16 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
     it('preserves saturated legacy counters when combining a path stack', () => {
       for (let i = 0; i < 254; i++) {
-        target.maskManager.addMaskReference({ item, drawStencilMask: ref => {
-          target.maskManager.drawGeometryMask(engine.renderer, geometry, math.Matrix4.IDENTITY, material, ref);
+        target.maskProcessor.addTrackMatteReference({ item, drawStencilMask: ref => {
+          target.maskProcessor.drawStencilGeometry(engine.renderer, geometry, math.Matrix4.IDENTITY, material, ref);
         } }, i === 253);
       }
       mask.setMasks([entry('a', rectangle(-1, -1, 0, 1))]);
       expect(render()).deep.equals(expected(() => false));
-      const last = target.maskManager.getMaskReferences()[253];
+      const last = target.maskProcessor.getTrackMatteReferences()[253];
 
-      target.maskManager.removeMaskReference(last.maskable);
-      target.maskManager.addMaskReference(last.maskable, false);
+      target.maskProcessor.removeTrackMatteReference(last.maskable);
+      target.maskProcessor.addTrackMatteReference(last.maskable, false);
       expect(render()).deep.equals(expected(x => x < 0));
     });
 
@@ -424,7 +424,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       const system = item.addComponent(ParticleSystem);
       const renderer = item.addComponent(ParticleSystemRenderer);
 
-      renderer.maskManager = system.maskManager;
+      renderer.maskProcessor = system.maskProcessor;
       target = renderer;
       target.materials = [material];
       mask.setMasks([entry('left', rectangle(-1, -1, 0, 1))]);

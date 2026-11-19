@@ -3,7 +3,6 @@ import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effe
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
 import type { VFXItem } from '../vfx-item';
-import type { Renderer } from '../render/renderer';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -90,10 +89,6 @@ export enum ShaderType {
  *
  */
 export interface Maskable {
-  /**
-   * 路径蒙版的局部到世界变换，用于 Billboard 等特殊绘制模式。
-   */
-  getPathMaskWorldMatrix? (renderer: Renderer): Matrix4,
   item: VFXItem,
   drawStencilMask (maskRef: number): void,
 }
@@ -112,28 +107,6 @@ export interface MaskReference {
   inverted: boolean,
 }
 
+/** @internal */
 export type TrackMatteReference = MaskReference;
-
-/**
- * @deprecated 2.10 起蒙版模式不再通过单一枚举表达，runtime 内部已不再使用此枚举。
- * 仅为兼容旧版本对外导出的接口而保留，请改用 `MaskProcessor` 的多蒙版 API。
- */
-export enum MaskMode {
-  /**
-   * 无
-   */
-  NONE = 0,
-  /**
-   * 蒙版
-   */
-  MASK = 1,
-  /**
-   * 被遮挡
-   */
-  OBSCURED = 2,
-  /**
-   * 被反向遮挡
-   */
-  REVERSE_OBSCURED = 3,
-}
 

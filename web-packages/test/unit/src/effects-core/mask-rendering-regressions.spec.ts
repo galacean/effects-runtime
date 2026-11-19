@@ -104,14 +104,14 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         } as spec.SpriteComponentData);
         source.transform.setPosition(0, 0, -0.5);
         source.onUpdate(0);
-        other.maskManager.isTrackMatte = true;
+        other.maskProcessor.isTrackMatte = true;
         other.transform.setPosition(0, 0, -0.25);
         other.material.depthMask = true;
         if (withPaths) {
           masks(source).setMasks([rectangle('left', -1, -1, 0, 1)]);
         }
-        target.maskManager.addMaskReference(source);
-        target.maskManager.addMaskReference(other);
+        target.maskProcessor.addTrackMatteReference(source);
+        target.maskProcessor.addTrackMatteReference(other);
 
         expect(render([source, other, target])).deep.equals(Array.from({ length: 64 }, (_, index) => !withPaths || index % 8 < 4));
         expect(source.material.depthMask).equals(true);
@@ -119,34 +119,29 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       });
     }
 
-    for (const legacy of [false, true]) {
-      it(`preserves visible matte depth occlusion, legacy=${legacy}`, () => {
-        const source = sprite();
-        const target = sprite();
+    it('preserves visible matte depth occlusion', () => {
+      const source = sprite();
+      const target = sprite();
 
-        source.fromData({
-          id: source.getInstanceId(), item: { id: source.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
-          renderer: { occlusion: true }, options: {},
-          trackMatte: legacy ? undefined : { isTrackMatte: true, sourceVisible: true },
-        } as spec.SpriteComponentData);
-        if (legacy) {
-          source.maskManager.setMaskOptions(engine, { isMask: true });
-        }
-        source.transform.setPosition(0, 0, -0.5);
-        source.setColor([1, 0, 0, 1]);
-        source.onUpdate(0);
-        target.setColor([0, 1, 0, 1]);
-        target.maskManager.addMaskReference(source);
-        expect(render([source, target]).filter(Boolean)).has.length(64);
+      source.fromData({
+        id: source.getInstanceId(), item: { id: source.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
+        renderer: { occlusion: true }, options: {},
+        trackMatte: { isTrackMatte: true, sourceVisible: true },
+      } as spec.SpriteComponentData);
+      source.transform.setPosition(0, 0, -0.5);
+      source.setColor([1, 0, 0, 1]);
+      source.onUpdate(0);
+      target.setColor([0, 1, 0, 1]);
+      target.maskProcessor.addTrackMatteReference(source);
+      expect(render([source, target]).filter(Boolean)).has.length(64);
 
-        const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
-        const pixel = new Uint8Array(4);
+      const gl = (engine.displayServer.renderingDevice as RenderingDeviceWebGL).gl;
+      const pixel = new Uint8Array(4);
 
-        gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-        expect(Array.from(pixel)).deep.equals([255, 0, 0, 255]);
-        expect(source.material.depthMask).equals(true);
-      });
-    }
+      gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      expect(Array.from(pixel)).deep.equals([255, 0, 0, 255]);
+      expect(source.material.depthMask).equals(true);
+    });
 
     for (const withPaths of [false, true]) {
       for (const inverted of [false, true]) {
@@ -166,12 +161,12 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           const coverage = Array.from({ length: 64 }, (_, index) => index % 8 < 4);
 
           expect(render([source])).deep.equals(coverage);
-          source.maskManager.isTrackMatte = true;
+          source.maskProcessor.isTrackMatte = true;
           const runtimeSource = { item: source.item, drawStencilMask: source.drawStencilMask.bind(source) };
 
           for (const reference of [source, runtimeSource]) {
-            target.maskManager.clearMaskReferences();
-            target.maskManager.addMaskReference(reference, inverted);
+            target.maskProcessor.clearTrackMatteReferences();
+            target.maskProcessor.addTrackMatteReference(reference, inverted);
             expect(render([source, target])).deep.equals(coverage.map(value => inverted ? !value : value));
           }
           if (withPaths) {
@@ -205,15 +200,15 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         const coverage = Array.from({ length: 64 }, (_, index) => index % 8 >= 2 && index % 8 < 4 && index >= 16 && index < 48);
 
         expect(render([source])).deep.equals(coverage);
-        source.maskManager.isTrackMatte = other.maskManager.isTrackMatte = true;
+        source.maskProcessor.isTrackMatte = other.maskProcessor.isTrackMatte = true;
         masks(other).setMasks([rectangle('other', -1, -1, 1, 0)]);
         masks(target).setMasks([rectangle('target', -1, -1, 0.5, 1)]);
         const expected = coverage.map((value, index) => (inverted ? !value : value) && index < 32 && index % 8 < 6);
 
         for (const references of [[source, other], [other, source]]) {
-          target.maskManager.clearMaskReferences();
+          target.maskProcessor.clearTrackMatteReferences();
           for (const reference of references) {
-            target.maskManager.addMaskReference(reference, reference === source && inverted);
+            target.maskProcessor.addTrackMatteReference(reference, reference === source && inverted);
           }
           expect(render([source, other, target])).deep.equals(expected);
         }
@@ -239,7 +234,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         });
 
         expect(render([source])).deep.equals(sourceCoverage);
-        source.maskManager.isTrackMatte = other.maskManager.isTrackMatte = true;
+        source.maskProcessor.isTrackMatte = other.maskProcessor.isTrackMatte = true;
         other.transform.setSize(1.5, 2);
         other.transform.setPosition(0.25, 0, 0);
         other.onUpdate(0);
@@ -247,13 +242,13 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         const expected = sourceCoverage.map((covered, index) => (inverted ? !covered : covered) && index % 8 >= 2 && index >= 16);
 
         for (const sourceFirst of [true, false]) {
-          target.maskManager.clearMaskReferences();
+          target.maskProcessor.clearTrackMatteReferences();
           if (sourceFirst) {
-            target.maskManager.addMaskReference(source, inverted);
-            target.maskManager.addMaskReference(other);
+            target.maskProcessor.addTrackMatteReference(source, inverted);
+            target.maskProcessor.addTrackMatteReference(other);
           } else {
-            target.maskManager.addMaskReference(other);
-            target.maskManager.addMaskReference(source, inverted);
+            target.maskProcessor.addTrackMatteReference(other);
+            target.maskProcessor.addTrackMatteReference(source, inverted);
           }
           expect(render([source, other, target])).deep.equals(expected);
         }
@@ -263,7 +258,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         masks(source).enabled = false;
         expect(render([source, other, target])).deep.equals(sourceCoverage.map((_, index) => !inverted && index % 8 >= 2 && index >= 16));
         masks(target).enabled = false;
-        target.maskManager.clearMaskReferences();
+        target.maskProcessor.clearTrackMatteReferences();
         expect(render([target]).filter(Boolean)).has.length(64);
       });
     }
@@ -279,43 +274,41 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       source.transform.setSize(1, 2);
       source.transform.setPosition(-0.5, 0, 0);
       source.onUpdate(0);
-      target.maskManager.addMaskReference(runtimeSource);
-      target.maskManager.addMaskReference(source);
+      target.maskProcessor.addTrackMatteReference(runtimeSource);
+      target.maskProcessor.addTrackMatteReference(source);
       expect(render([target]).filter(Boolean)).has.length(32);
-      expect(target.maskManager.getMaskReferences().map(reference => reference.maskable)).deep.equals([runtimeSource, source]);
+      expect(target.maskProcessor.getTrackMatteReferences().map(reference => reference.maskable)).deep.equals([runtimeSource, source]);
     });
 
-    for (const sourceMode of ['legacy-api', 'visible-fields', 'track-matte', 'visible-track-matte'] as const) {
+    for (const sourceMode of ['visible-fields', 'track-matte', 'visible-track-matte'] as const) {
       it(`preserves source visibility for ${sourceMode}`, () => {
         const source = sprite();
         const target = sprite();
 
-        if (sourceMode === 'legacy-api') {
-          source.maskManager.setMaskOptions(engine, { isMask: true });
-        } else if (sourceMode === 'visible-fields') {
-          source.maskManager.sourceVisible = true;
-          source.maskManager.isTrackMatte = true;
-        } else if (sourceMode === 'visible-track-matte') {
-          source.maskManager.fromData(engine, { trackMatte: { isTrackMatte: true, sourceVisible: true } });
+        if (sourceMode === 'visible-fields') {
+          source.maskProcessor.sourceVisible = true;
+          source.maskProcessor.isTrackMatte = true;
         } else {
-          source.maskManager.isTrackMatte = true;
+          source.maskProcessor.loadTrackMatte(engine, {
+            trackMatte: { isTrackMatte: true, sourceVisible: sourceMode === 'visible-track-matte' },
+          });
         }
         source.setColor([1, 0, 0, 1]);
         target.transform.setSize(1, 1);
         target.onUpdate(0);
-        target.maskManager.addMaskReference(source);
+        target.maskProcessor.addTrackMatteReference(source);
         const visible = sourceMode !== 'track-matte';
 
         expect(render([source]).filter(Boolean)).has.length(visible ? 64 : 0);
-        source.maskManager.isTrackMatte = false;
+        source.maskProcessor.isTrackMatte = false;
         expect(render([source]).filter(Boolean)).has.length(64);
-        source.maskManager.isTrackMatte = true;
+        source.maskProcessor.isTrackMatte = true;
         expect(render([source]).filter(Boolean)).has.length(visible ? 64 : 0);
         expect(render([source, target]).filter(Boolean)).has.length(visible ? 64 : 16);
 
-        source.maskManager.fromData(engine, { trackMatte: { isTrackMatte: true } });
+        source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true } });
         expect(render([source]).filter(Boolean)).has.length(0);
-        source.maskManager.setMaskOptions(engine, { isMask: true });
+        source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true, sourceVisible: true } });
         expect(render([source]).filter(Boolean)).has.length(64);
       });
     }
@@ -344,7 +337,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
       target.transform.setSize(2, 2);
       target.onUpdate(0);
-      target.maskManager.addMaskReference(source);
+      target.maskProcessor.addTrackMatteReference(source);
       let colorDraws = 0;
       const draw = source.render.bind(source);
 
@@ -389,10 +382,10 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           const clipped = full.map((visible, index) => visible && (mirrored ? index % 8 >= 4 : index % 8 < 4));
 
           expect(render([target])).deep.equals(clipped);
-          target.maskManager.isTrackMatte = true;
+          target.maskProcessor.isTrackMatte = true;
           const consumer = sprite();
 
-          consumer.maskManager.addMaskReference(target);
+          consumer.maskProcessor.addTrackMatteReference(target);
           expect(render([target, consumer])).deep.equals(clipped);
         });
       }
@@ -425,10 +418,10 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       });
 
       expect(render([target])).deep.equals(expected);
-      target.maskManager.isTrackMatte = true;
+      target.maskProcessor.isTrackMatte = true;
       const consumer = sprite();
 
-      consumer.maskManager.addMaskReference(target);
+      consumer.maskProcessor.addTrackMatteReference(target);
       expect(render([target, consumer])).deep.equals(expected);
     });
   });

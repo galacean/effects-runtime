@@ -7,7 +7,6 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
-import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
@@ -1110,12 +1109,11 @@ export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer?.maskMode;
 
-  if (!maskMode || maskMode === MaskMode.NONE) {
-
+  if (!maskMode) {
     return;
   }
 
-  if (maskMode === MaskMode.MASK) {
+  if (maskMode === 1) {
     renderContent.mask = {
       isMask: true,
     };
@@ -1133,11 +1131,19 @@ export function processMask (renderContent: any) {
   }
 }
 
-function processTrackMatte (renderContent: any) {
-  if (renderContent.dataType === DataType.MaskComponent || renderContent.mask === undefined) {
+function processTrackMatte (renderContent: spec.ComponentData & {
+  mask?: {
+    isMask?: boolean,
+    alphaMaskEnabled?: boolean,
+    references?: { mask: spec.DataPath, inverted?: boolean }[],
+  },
+  trackMatte?: spec.TrackMatteOptions,
+}) {
+  const { mask } = renderContent;
+
+  if (renderContent.dataType === DataType.MaskComponent || mask === undefined) {
     return;
   }
-  const mask = renderContent.mask as spec.MaskOptions;
 
   if (renderContent.trackMatte === undefined) {
     const references: spec.TrackMatteReferenceData[] = [];

@@ -106,7 +106,7 @@ export class TextComponent extends MaskableGraphic {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
   }

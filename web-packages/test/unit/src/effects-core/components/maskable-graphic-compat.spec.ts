@@ -136,7 +136,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       });
       expect(particle.materials).deep.equals([]);
       expect(particle.priority).equals(3);
-      expect(particle.maskManager.getMaskReferences()).deep.equals([{ maskable: graphic, inverted: false }]);
+      expect(particle.maskProcessor.getTrackMatteReferences()).deep.equals([{ maskable: graphic, inverted: false }]);
     });
 
     it('preserves text single-material drawing and legacy visibility behavior with clipping', () => {

@@ -24,7 +24,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
@@ -41,7 +41,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);
     }
   }
 
