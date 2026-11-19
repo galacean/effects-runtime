@@ -1,0 +1,48 @@
+packages/effects-threejs/src/material/three-material.ts
+  s_1959265e50472a::t_17b16972851825 292,295
+  s_1959265e50472a::t_cca09f9f5af432 290,293-294,296-304,307
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_1959265e50472a::t_17b16972851825 239,332,345
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_1959265e50472a::t_68fe3f46e22669 64-82
+packages/effects-core/src/render/renderer.ts
+  s_1959265e50472a::t_cca09f9f5af432 380
+  s_1959265e50472a::t_17b16972851825 398
+packages/effects-core/src/material/material-state.ts
+  s_1959265e50472a::t_17b16972851825 23,161-162,166-167,255,280-281
+  s_1959265e50472a::t_cca09f9f5af432 24,170-172,256,278-279
+packages/effects-core/src/material/mask-ref-manager.ts
+  s_1959265e50472a::t_a892248c551dca 288,295,299
+  s_1959265e50472a::t_cca09f9f5af432 52,365,381,402
+  s_1959265e50472a::t_17b16972851825 51,265,364,380,401,425
+packages/effects-core/src/material/types.ts
+  s_1959265e50472a::t_17b16972851825 28
+packages/effects-core/src/material/material.ts
+  s_1959265e50472a::t_17b16972851825 265-266,268-269
+  s_1959265e50472a::t_cca09f9f5af432 262-264,273,279
+web-packages/test/unit/src/effects-webgl/stencil.spec.ts
+  s_1959265e50472a::t_17b16972851825 66,81,134,147,168,173
+  s_1959265e50472a::t_68fe3f46e22669 64,67-72,84-106
+packages/effects-core/src/components/mask-component.ts
+  s_1959265e50472a::t_cca09f9f5af432 228
+  s_1959265e50472a::t_a892248c551dca 139,147,150
+web-packages/test/unit/src/effects-webgl/gl-material.spec.ts
+  s_1959265e50472a::t_17b16972851825 107,133,292,1720
+  s_1959265e50472a::t_68fe3f46e22669 293,1721
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42db5edfbfe0b20d5b23fd5d8462f9d70bf00540",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
