@@ -2,7 +2,7 @@ import type { Scene, SceneLoadOptions } from '../scene';
 import type { Disposable } from '../utils';
 
 /**
- * 预合成数据类，包含预合成 Json 数据和加载选项。
+ * 预合成数据类，包含准备好的场景数据和加载选项。
  */
 export class Precomposition implements Disposable {
   /**

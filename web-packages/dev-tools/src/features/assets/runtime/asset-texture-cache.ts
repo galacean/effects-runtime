@@ -1,5 +1,6 @@
 import type { Engine } from '@galacean/effects';
 import { glContext, loadImage, spec, Texture, TextureSourceType } from '@galacean/effects';
+import type { EditorAssetDatabase } from '../../../platform/effects-runtime/asset-database';
 import { blobDataURL } from '../../../platform/browser-files/blob-data-url';
 import type { AssetEntry, AssetImage } from '../model/asset-types';
 import { notifyRuntimeAssetChanged } from './runtime-asset-changes';
@@ -97,6 +98,9 @@ export class AssetTextureCache {
 
         return this.load(engine, id);
       }
+      const database: Partial<EditorAssetDatabase> | undefined = engine.assetServer.database;
+
+      if (!database?.addEffectsObjectData) { throw new Error('An editor asset database must be registered before loading editor assets.'); }
       const existing = engine.effectsObjectServer.objectsCache[id];
       const texture = existing instanceof Texture && !existing.isDestroyed ? existing : Texture.create(engine);
       const data = { id, name: entry.name, dataType: spec.DataType.Texture as const, source: dataURL, sourceType: TextureSourceType.image as const,
@@ -105,7 +109,7 @@ export class AssetTextureCache {
       texture.setData(data);
       if (texture === existing) { texture.updateSource(data); }
       texture.initialize();
-      engine.assetServer.addEffectsObjectData(data);
+      database.addEffectsObjectData(data);
       let textures = this.textures.get(engine);
 
       if (!textures) { textures = new Map(); this.textures.set(engine, textures); }

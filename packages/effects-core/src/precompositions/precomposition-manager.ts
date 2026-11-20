@@ -1,7 +1,7 @@
-import type * as spec from '@galacean/effects-specification';
 import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
 import { SceneObjectsFactory } from '../scene-objects-factory';
+import { assertExist } from '../utils';
 import { VFXItem } from '../vfx-item';
 import type { Precomposition } from './precomposition';
 
@@ -16,16 +16,13 @@ export class PrecompositionManager {
   static instantiate (precomposition: Precomposition, composition: Composition): VFXItem {
     const { scene, options } = precomposition;
     const { engine } = composition;
-    const { assetServer } = engine;
+    const { compositionId, compositions } = scene.jsonScene;
+    const compositionData = compositions.find(data => data.id === compositionId);
 
-    engine.sceneServer.prepareScene(scene, options);
-
-    const { compositionId } = scene.jsonScene;
-    const compositionData = assetServer.findEffectsObjectData(compositionId!) as unknown as spec.CompositionData;
-
+    assertExist(compositionData);
     const rootItem = new VFXItem(engine);
 
-    SceneObjectsFactory.instantiateComposition(compositionData, rootItem, scene.textureOptions);
+    SceneObjectsFactory.instantiateComposition(compositionData, rootItem, scene);
     rootItem.getComponent(CompositionComponent).playOnStart = options.autoplay ?? true;
     rootItem.getComponent(CompositionComponent).endBehavior = rootItem.endBehavior;
 

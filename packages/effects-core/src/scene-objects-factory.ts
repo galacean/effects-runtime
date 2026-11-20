@@ -4,21 +4,25 @@ import { getClass } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { DeserializationContext } from './effects-object-server';
 import type { Engine } from './engine';
+import type { Scene } from './scene';
 import { Texture } from './texture';
 import { VFXItem } from './vfx-item';
 
 /** @internal Creates hierarchy objects before deserializing their references. */
 export class SceneObjectsFactory {
   private readonly objects = new Map<EffectsObject, DeserializationContext>();
+  private readonly suppliedTextures: readonly Texture[];
 
-  private constructor (private readonly engine: Engine, private readonly suppliedTextures: readonly Texture[] = []) { }
+  private constructor (private readonly engine: Engine, private readonly scene?: Scene) {
+    this.suppliedTextures = scene?.textureOptions?.filter((texture): texture is Texture => texture instanceof Texture) ?? [];
+  }
 
   static instantiateComposition (
     data: spec.CompositionData,
     root: VFXItem,
-    textureOptions: readonly Record<string, any>[] = [],
+    scene?: Scene,
   ): void {
-    const factory = new SceneObjectsFactory(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
+    const factory = new SceneObjectsFactory(root.engine, scene);
 
     root.name = data.name;
     root.duration = data.duration;
@@ -28,9 +32,9 @@ export class SceneObjectsFactory {
     factory.finish(context);
   }
 
-  static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem): VFXItem {
+  static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem, scene = assetRoot?.sourceScene): VFXItem {
     const item = new VFXItem(engine);
-    const factory = new SceneObjectsFactory(engine);
+    const factory = new SceneObjectsFactory(engine, scene);
     const context = factory.createContext(item);
 
     factory.spawnItem(data, item, context);
@@ -42,6 +46,7 @@ export class SceneObjectsFactory {
   private spawnComposition (data: spec.CompositionData, item: VFXItem) {
     const context = this.createContext(item);
 
+    item.sourceScene = this.scene;
     context.idsMapping.set(String(data.id), item.getInstanceId());
     // The composition and its placement can both refer to the same root.
     if (item.definition.id !== undefined) {
@@ -57,6 +62,7 @@ export class SceneObjectsFactory {
     item: VFXItem,
     context: DeserializationContext,
   ): void {
+    item.sourceScene = this.scene;
     context.idsMapping.set(String(data.id), item.getInstanceId());
     item.definition = { ...data };
     this.objects.set(item, context);
@@ -65,7 +71,7 @@ export class SceneObjectsFactory {
     let template: spec.CompositionData | undefined;
 
     if (refId !== undefined) {
-      template = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData | undefined;
+      template = this.engine.assetServer.findEffectsObjectData(refId, this.scene) as unknown as spec.CompositionData | undefined;
       if (!template) {
         throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
       }
@@ -100,7 +106,7 @@ export class SceneObjectsFactory {
   private createContext (root: VFXItem): DeserializationContext {
     const idsMapping = new Map(this.suppliedTextures.map(texture => [texture.id, texture.getInstanceId()]));
 
-    return { root, idsMapping, sceneAssets: new Set<Asset>() };
+    return { root, scene: this.scene, idsMapping, sceneAssets: new Set<Asset>() };
   }
 
   private spawnContents (
@@ -124,7 +130,7 @@ export class SceneObjectsFactory {
     if (idsMapping.has(String(id))) {
       return;
     }
-    const entry = this.engine.assetServer.findEffectsObjectData(id);
+    const entry = this.engine.assetServer.findEffectsObjectData(id, this.scene);
 
     if (!entry) {
       return;

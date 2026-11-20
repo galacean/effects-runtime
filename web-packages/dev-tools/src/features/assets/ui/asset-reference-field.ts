@@ -101,10 +101,11 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
   }
   private assignAsset (id: string): void {
     const engine = EditorRuntimeSession.player.engine;
+    const document = sceneWorkspace.current;
 
-    if (this.options.readOnly || !this.kind || resourceIdentity(engine, id)?.kind !== this.kind) { return; }
+    if (this.options.readOnly || !this.kind || resourceIdentity(engine, id, document?.composition.sceneRoot.sourceScene)?.kind !== this.kind) { return; }
     if (!assetLibrary.entry(id)) {
-      this.assign(engine.effectsObjectServer.findObject<object>({ id }));
+      this.assign(document?.serializer.object(id) ?? engine.effectsObjectServer.findObject<object>({ id }));
 
       return;
     }
@@ -115,7 +116,7 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
 
       return;
     }
-    const selection = EditorSelection.getSelectedObjects(), document = sceneWorkspace.current, project = assetLibrary.projectId;
+    const selection = EditorSelection.getSelectedObjects(), project = assetLibrary.projectId;
 
     void assetLibrary.loadAsset(engine, id).then(loaded => {
       const current = EditorSelection.getSelectedObjects();
@@ -129,11 +130,12 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     if (assetReferenceClipboard.project !== assetLibrary.projectId || !this.kind) { return false; }
     const engine = EditorRuntimeSession.player.engine;
 
-    return assetReferenceClipboard.id ? resourceIdentity(engine, assetReferenceClipboard.id)?.kind === this.kind : isPersistentResource(assetReferenceClipboard.asset, engine, this.kind);
+    return assetReferenceClipboard.id ? resourceIdentity(engine, assetReferenceClipboard.id, sceneWorkspace.current?.composition.sceneRoot.sourceScene)?.kind === this.kind : isPersistentResource(assetReferenceClipboard.asset, engine, this.kind);
   }
   protected override refreshCandidates (): void {
     const engine = EditorRuntimeSession.player.engine;
-    const entries = this.kind ? resourceCandidates(engine, this.kind).map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectsCache[entry.id] })) : [];
+    const entries = this.kind ? resourceCandidates(engine, this.kind, sceneWorkspace.current?.composition.sceneRoot.sourceScene)
+      .map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectsCache[entry.id] })) : [];
     const reference = this.binding.read();
 
     this.browser.setCandidates(entries, this.kind, reference instanceof EffectsObject ? reference.getInstanceId() : '');

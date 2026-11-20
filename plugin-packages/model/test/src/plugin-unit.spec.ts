@@ -1,6 +1,6 @@
 /* eslint-disable padding-line-between-statements */
 import type { Geometry, VertexBuffer } from '@galacean/effects';
-import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
+import { AssetManager, Player, Texture, spec, math, Engine, Material, SceneObjectsFactory } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
   PEntity, PObject, PLightType, PMaterialType, PObjectType, PTransform, PCamera, PLight,
@@ -771,13 +771,14 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    engine.assetServer.prepareAssets({
+    const preparedScene = await new AssetManager().loadScene({
       jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
     });
 
-    const animComp = new AnimationComponent(engine);
+    const animationItem = itemList.find(item => item.id === jsonScene.components[1].item?.id)!;
+    const animatedRoot = SceneObjectsFactory.instantiateItem(animationItem, engine, undefined, preparedScene);
+    const animComp = animatedRoot.getComponent(AnimationComponent);
 
-    SerializationHelper.deserialize(jsonScene.components[1], animComp);
     expect(animComp.clips.length).to.eql(1);
     const animClip = animComp.clips[0];
     expect(animClip.duration).to.eql(2);
@@ -998,8 +999,7 @@ describe('渲染插件单测', function () {
       expect(scale17_7.getElement(i)).closeTo(v, 1e-5);
     });
     expect(itemList[22].type).to.eql('mesh');
-    const itemMesh = new VFXItem(engine);
-    SerializationHelper.deserialize(itemList[22], itemMesh);
+    const itemMesh = SceneObjectsFactory.instantiateItem(itemList[22], engine, undefined, preparedScene);
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
@@ -1119,13 +1119,12 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      engine.assetServer.prepareAssets({
+      const preparedScene = await new AssetManager().loadScene({
         jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
       });
       //
       expect(itemList[1].type).to.eql('mesh');
-      const itemMesh = new VFXItem(engine);
-      SerializationHelper.deserialize(itemList[1], itemMesh);
+      const itemMesh = SceneObjectsFactory.instantiateItem(itemList[1], engine, undefined, preparedScene);
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');

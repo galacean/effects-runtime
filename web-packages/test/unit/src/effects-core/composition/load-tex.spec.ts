@@ -264,7 +264,7 @@ describe('core/composition/load-textures', () => {
     });
 
     registerPlugin('test-load-tex-4', class TestPlugin extends Plugin {
-      onAssetsLoadFinish (scene, options, data) {
+      onAssetsLoadFinish (scene, options) {
         scene.textures[1].magFilter = glContext.LINEAR;
         expect(scene.textures[1].name).to.eql('abc');
         spy(1);

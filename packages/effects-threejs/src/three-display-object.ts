@@ -111,9 +111,6 @@ export class ThreeDisplayObject extends THREE.Group {
         const assetManager = this.assetServer.createAssetManager(opts);
 
         const scene = await assetManager.loadScene(source, this.renderer);
-
-        this.engine.sceneServer.prepareScene(scene, assetManager.options);
-
         const composition = this.createComposition(scene, opts);
 
         this.baseCompositionIndex += 1;

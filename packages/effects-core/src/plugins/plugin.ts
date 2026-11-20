@@ -29,9 +29,8 @@ export abstract class Plugin {
    * 此时 JSON 中的图片和二进制已加载完成，可对资源做进一步处理。
    * @param scene - 场景对象
    * @param options - 场景加载选项
-   * @param engine - 引擎实例
    */
-  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
+  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions): void { }
 
   /**
    * 合成内容开始创建前触发。

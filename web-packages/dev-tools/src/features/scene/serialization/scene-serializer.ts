@@ -1,4 +1,4 @@
-import type { Composition, TextComponentBase, spec } from '@galacean/effects';
+import type { Asset, Composition, TextComponentBase, spec } from '@galacean/effects';
 import {
   Component, CompositionComponent, EffectsObject, InteractComponent, MaskableGraphic, Material, ParticleSystem, ParticleSystemRenderer, PostProcessVolume, RendererComponent, ShapeComponent,
   SpriteComponent, TimelineAsset, TimelineClip, TrackAsset, VFXItem, effectsClassStore, math,
@@ -35,7 +35,7 @@ export function isTextComponent (object: EffectsObject): object is Component & T
 
 const TABLES = ['items', 'components', 'materials', 'shaders', 'geometries', 'textures', 'animations', 'miscs'] as const;
 const TRANSIENT = new Set(['engine', 'item', 'guid', 'definition', 'id', 'name', 'type', 'duration', 'endBehavior', 'transform',
-  'parent', 'parentId', 'children', 'components', 'composition', 'items', 'sceneBindings', 'timelineAsset', 'time', 'visible', 'enabled', 'isActive', 'active',
+  'parent', 'parentId', 'children', 'components', 'composition', 'items', 'sceneBindings', 'sourceScene', 'timelineAsset', 'time', 'visible', 'enabled', 'isActive', 'active',
   'disposed', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isEnabled', 'isDuringPlay', 'isEnded', 'isEndCalled',
   'isDirty', 'renderer', 'geometry', 'defaultGeometry', 'boundingBoxInfo', 'material', 'materials', 'canvas', 'context',
   'text', 'textStyle', 'textLayout', 'maxLineWidth', 'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'maskManager',
@@ -121,10 +121,21 @@ export class SceneSerializer {
     const cached = this.objects.get(id);
 
     if (cached?.isRegistered) { return cached; }
-    let live: EffectsObject | undefined = this.composition.engine.effectsObjectServer.objectsCache[id];
+    const { engine, sceneRoot } = this.composition;
+    const { effectsObjectServer, assetServer } = engine;
+    const scene = sceneRoot.sourceScene;
+    let live: EffectsObject | undefined = effectsObjectServer.objectsCache[id];
 
-    if (!live && resourceIdentity(this.composition.engine, id) && this.composition.engine.assetServer.findEffectsObjectData(id)) {
-      live = this.composition.engine.effectsObjectServer.findObject<EffectsObject>({ id });
+    if (!live && resourceIdentity(engine, id, scene) && assetServer.findEffectsObjectData(id, scene)) {
+      if (scene?.objectsDataCache?.has(id)) {
+        const sceneAssets = new Set<Asset>();
+
+        live = effectsObjectServer.withDeserializationContext({ root: sceneRoot, scene, idsMapping: new Map(), sceneAssets },
+          () => effectsObjectServer.findObject<EffectsObject>({ id }));
+        sceneRoot.addSceneAssets(sceneAssets);
+      } else {
+        live = effectsObjectServer.findObject<EffectsObject>({ id });
+      }
     }
     if (live) { this.ids.set(live, id); this.objects.set(id, live); }
 
@@ -556,14 +567,16 @@ export class SceneSerializer {
 
   /** Discard legacy snapshots of resources that are recreated by their components. */
   private removeTemporaryResourceState (editor: SceneEditorData): void {
+    const { engine, sceneRoot } = this.composition;
+
     for (const [id, extras] of Object.entries(editor.objects)) {
       const component = this.object(id);
 
-      if (extras.material && resourceIdentity(this.composition.engine, id)?.kind !== 'material') { delete editor.objects[id]; continue; }
+      if (extras.material && resourceIdentity(engine, id, sceneRoot.sourceScene)?.kind !== 'material') { delete editor.objects[id]; continue; }
       if (!(component instanceof RendererComponent) || !extras.materials) { continue; }
       const legacy = extras.materials.every(Boolean);
       const materials = extras.materials.map((reference: { id: string } | null, index: number) => {
-        if (!reference || !legacy || resourceIdentity(this.composition.engine, reference.id) || component.definition.materials?.[index]) { return reference; }
+        if (!reference || !legacy || resourceIdentity(engine, reference.id, sceneRoot.sourceScene) || component.definition.materials?.[index]) { return reference; }
         delete editor.objects[reference.id];
 
         return null;

@@ -258,7 +258,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     PluginSystem.notifyCompositionCreating(this, scene);
 
     if (sourceContent) {
-      SceneObjectsFactory.instantiateComposition(sourceContent, this.sceneRoot, scene?.textureOptions);
+      SceneObjectsFactory.instantiateComposition(sourceContent, this.sceneRoot, scene);
     }
 
     // 在实例化后设置 rootItem 的 name，避免 name 被覆盖

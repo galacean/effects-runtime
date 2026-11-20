@@ -15,6 +15,7 @@ import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
 import { Precomposition } from './precompositions/precomposition';
+import { EffectsPackage } from './effects-package';
 
 let seed = 1;
 
@@ -121,9 +122,8 @@ export class AssetManager implements Disposable {
   /**
    * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
-   * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
-   * @param options - 扩展参数
-   * @returns
+   * @param renderer - 可选的 renderer 对象，用于判断压缩纹理支持情况
+   * @returns 准备好的场景数据
    */
   async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
     let rawJSON: Scene.LoadType;
@@ -186,9 +186,7 @@ export class AssetManager implements Disposable {
       }
 
       if (Scene.isJSONObject(rawJSON)) {
-        scene = {
-          ...rawJSON,
-        };
+        scene = rawJSON;
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
@@ -205,7 +203,7 @@ export class AssetManager implements Disposable {
           audios: [],
         };
 
-        await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => PluginSystem.notifyAssetsLoadStart(scene, this.options));
 
         const { bins = [], images, fonts } = jsonScene;
 
@@ -223,7 +221,13 @@ export class AssetManager implements Disposable {
 
         // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
         scene.renderLevel = this.options.renderLevel;
+
+        await hookTimeInfo('plugin:onAssetsLoadFinish', async () => {
+          PluginSystem.notifyAssetsLoadFinish(scene, this.options);
+        });
       }
+
+      scene = this.prepareScene(scene);
 
       const totalTime = performance.now() - startTime;
 
@@ -239,6 +243,119 @@ export class AssetManager implements Disposable {
     };
 
     return Promise.race([waitPromise, loadResourcePromise()]);
+  }
+
+  /** Apply scene load policies before instantiating its objects. */
+  private prepareScene (source: Scene): Scene {
+    const objectsDataCache = new Map<string, spec.EffectsObjectData>(source.objectsDataCache);
+    const scene: Scene = {
+      ...source,
+      objectsDataCache,
+    };
+    const variables = this.options.variables ?? {};
+
+    this.prepareAssets(scene);
+    for (const item of scene.jsonScene.items) {
+      if (!passRenderLevel(item.renderLevel, scene.renderLevel)) {
+        const degraded = { ...item, components: [], type: spec.ItemType.null };
+
+        delete (degraded as { refId?: string }).refId;
+        objectsDataCache.set(String(item.id), degraded);
+        continue;
+      }
+      const textVariable = variables[item.name] as string;
+
+      if (textVariable === undefined || textVariable === null) {
+        continue;
+      }
+      for (const { id } of item.components ?? []) {
+        const componentData = objectsDataCache.get(String(id)) as spec.TextComponentData | undefined;
+
+        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
+          const overridden = { ...componentData, options: { ...componentData.options, text: textVariable } };
+
+          objectsDataCache.set(String(id), overridden);
+        }
+      }
+    }
+
+    return scene;
+  }
+
+  /** Register the scene definitions and loaded assets together. */
+  private prepareAssets (scene: Scene): void {
+    const { jsonScene, images, videos, audios, bins, textureOptions = [] } = scene;
+    const {
+      items = [], materials = [], shaders = [], geometries = [], components = [],
+      animations = [], bins: binaryDatas = [], miscs = [], compositions,
+      videos: videoDefinitions = [], audios: audioDefinitions = [], images: imageDefinitions,
+    } = jsonScene;
+    const definitions = scene.objectsDataCache ??= new Map();
+    const add = (data: spec.EffectsObjectData) => definitions.set(data.id, data);
+
+    for (const compositionData of compositions) {
+      add(compositionData as unknown as spec.EffectsObjectData);
+    }
+    for (const vfxItemData of items) {
+      add(vfxItemData);
+    }
+    for (const materialData of materials) {
+      add(materialData);
+    }
+    for (const shaderData of shaders) {
+      add(shaderData);
+    }
+    for (const geometryData of geometries) {
+      add(geometryData);
+    }
+    for (const componentData of components) {
+      add(componentData);
+    }
+    for (const animationData of animations) {
+      add(animationData);
+    }
+    for (const miscData of miscs) {
+      add(miscData);
+    }
+    for (let i = 0; i < binaryDatas.length; i++) {
+      const binaryData = binaryDatas[i];
+      const binaryBuffer = bins[i];
+
+      if (binaryData.dataType === spec.DataType.BinaryAsset) {
+        if (binaryData.id) {
+          const data = { ...binaryData, buffer: binaryBuffer };
+
+          add(data);
+        }
+      } else {
+        const effectsPackage = new EffectsPackage();
+
+        effectsPackage.deserializeFromBinary(new Uint8Array(binaryBuffer));
+        for (const effectsObjectData of effectsPackage.exportObjectDatas) {
+          add(effectsObjectData);
+        }
+      }
+    }
+    for (const textureData of textureOptions) {
+      if (!(textureData instanceof Texture)) {
+        add(textureData as spec.EffectsObjectData);
+      }
+    }
+    for (let i = 0; i < videos.length; i++) {
+      const input = { id: videoDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: videos[i] };
+
+      add(input);
+    }
+    for (let i = 0; i < audios.length; i++) {
+      const input = { id: audioDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: audios[i] };
+
+      add(input);
+    }
+    for (let i = 0; i < images.length; i++) {
+      const input = { id: imageDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: images[i] };
+
+      add(input);
+    }
   }
 
   private async processJSON (json: JSONValue) {
@@ -371,10 +488,6 @@ export class AssetManager implements Disposable {
     });
 
     return Promise.all(jobs);
-  }
-
-  private async onPluginSceneLoadStart (scene: Scene) {
-    await PluginSystem.notifyAssetsLoadStart(scene, this.options);
   }
 
   private async processTextures (scene: Scene) {

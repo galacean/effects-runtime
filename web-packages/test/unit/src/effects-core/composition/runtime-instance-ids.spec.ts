@@ -1,4 +1,4 @@
-import type { Scene, VFXItem } from '@galacean/effects';
+import type { Asset, Scene, VFXItem } from '@galacean/effects';
 import {
   AssetManager, CompositionComponent, Fake3DComponent, Player, PrecompositionManager, Sprite, SpriteComponent, TextureSourceType, spec,
 } from '@galacean/effects';
@@ -169,8 +169,13 @@ describe('core/composition/runtime instance IDs', () => {
     const spritesIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponents(SpriteComponent).map(component => component.sprite);
     const [left, leftAgain] = spritesIn('left');
     const [right] = spritesIn('right');
-    const standalone = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
-    const another = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
+    const { effectsObjectServer } = player.engine;
+    const { sceneRoot } = composition;
+    const findStandaloneSprite = () => effectsObjectServer.withDeserializationContext({
+      root: sceneRoot, scene: sceneRoot.sourceScene, idsMapping: new Map(), sceneAssets: new Set<Asset>(),
+    }, () => effectsObjectServer.findObject(ref(spriteId), Sprite));
+    const standalone = findStandaloneSprite();
+    const another = findStandaloneSprite();
 
     expect(left).to.equal(leftAgain);
     expect(new Set([rootSprite, left, right, standalone, another]).size).to.equal(5);

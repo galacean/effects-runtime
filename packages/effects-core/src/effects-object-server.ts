@@ -6,6 +6,7 @@ import type { Engine } from './engine';
 import { EngineServer } from './engine-server';
 import type { Material } from './material';
 import type { Geometry } from './render/geometry';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import type { AbstractConstructor, RestoreHandler } from './utils';
 import { addItem, isPlainObject, logger, removeItem } from './utils';
@@ -14,6 +15,7 @@ import type { VFXItem } from './vfx-item';
 /** @internal Object lookup and asset ownership while instantiating a hierarchy. */
 export interface DeserializationContext {
   root: VFXItem,
+  scene?: Scene,
   idsMapping: Map<string, string>,
   sceneAssets: Set<Asset>,
 }

@@ -6,7 +6,7 @@ export function instantiateItems (paths: readonly spec.DataPath[], sceneRoot: VF
   const group = SceneObjectsFactory.instantiateItem({
     id: generateGUID(), dataType: spec.DataType.VFXItemData, name: '', type: spec.ItemType.null,
     duration: 0, endBehavior: spec.EndBehavior.freeze, components: [], children: [...paths], content: {},
-  }, sceneRoot.engine);
+  }, sceneRoot.engine, undefined, sceneRoot.sourceScene);
   const objectsById = new Map<string, EffectsObject>();
   const index = (object: EffectsObject) => {
     const { id } = object.definition;
