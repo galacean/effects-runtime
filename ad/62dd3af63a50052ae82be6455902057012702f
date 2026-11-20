@@ -1,0 +1,83 @@
+packages/effects-core/src/scene-loader.ts
+  s_bf6085b935a894::t_60fafe82995716 25,52,54
+  s_81d9008a549f95::t_5d6735ebab7114 47
+  s_bf6085b935a894::t_22458163f378bf 49,56-64
+  s_81d9008a549f95::t_a95d69d7a6bc70 28,41,46
+  s_81d9008a549f95::t_bc1ee4288f0000 1,6-7,16,20,50-51,65,67-68,70
+  s_81d9008a549f95::t_68ce4694ff64ac 21,26,48
+  s_81d9008a549f95::t_70b41bd1ae2ea8 15,53,55,66,71
+  s_81d9008a549f95::t_c888249bb3beac 22-24,27
+  s_81d9008a549f95::t_a2ae40347f1678 5,69
+  s_bf6085b935a894::t_2419fe42b5042b 29-40,42-45
+packages/effects-core/src/precompositions/precomposition.ts
+  s_7e16bb48d9b5ae::t_9e6c31e29fd7ed 1-2,4,6
+  s_81d9008a549f95::t_c888249bb3beac 7
+  s_bf6085b935a894::t_082817db9cf826 28-29
+  s_bf6085b935a894::t_e342bd410e9667 30-32
+packages/effects-core/src/composition.ts
+  s_81d9008a549f95::t_bc1ee4288f0000 9,252
+  s_81d9008a549f95::t_c888249bb3beac 254,256
+  s_bf6085b935a894::t_22458163f378bf 247
+  s_81d9008a549f95::t_d6734181f47f17 250-251
+packages/effects-core/src/scene-instantiation-context.ts
+  s_bf6085b935a894::t_22458163f378bf 43,81
+  s_81d9008a549f95::t_a2ae40347f1678 1-4,6-16,19-42,44-61,67-69,71-80,82-89
+  s_bf6085b935a894::t_60fafe82995716 5,17-18,62-66,70
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_81d9008a549f95::t_9615f7dd866dc0 3
+  s_7e16bb48d9b5ae::t_9e6c31e29fd7ed 79
+packages/effects-core/src/scene-objects-factory.ts
+  s_81d9008a549f95::t_bc1ee4288f0000 9,21,23-24,26-28,35,42-43
+  s_81d9008a549f95::t_5d6735ebab7114 12
+  s_81d9008a549f95::t_a2ae40347f1678 4,11,15,17,20,32,38-39,41,46,55,68,75-76,89
+  s_bf6085b935a894::t_60fafe82995716 47,56
+  s_81d9008a549f95::t_70b41bd1ae2ea8 7,16,18,30-31,33,44,48-52,62,66,70-71,74,81,85,90,93,95-96
+web-packages/dev-tools/src/features/scene/operations/instantiate-items.ts
+  s_81d9008a549f95::t_bc1ee4288f0000 2,6
+packages/effects-core/src/plugins/plugin.ts
+  s_81d9008a549f95::t_5d6735ebab7114 37-38,45
+plugin-packages/editor-gizmo/src/3d/gizmo-loader.ts
+  s_81d9008a549f95::t_5d6735ebab7114 24,31-32,34
+packages/effects-core/src/vfx-item.ts
+  s_81d9008a549f95::t_bc1ee4288f0000 17
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_bf6085b935a894::t_752e6c875b764a 3
+packages/effects-core/src/index.ts
+  s_81d9008a549f95::t_a2ae40347f1678 15
+web-packages/dev-tools/src/features/hierarchy/hierarchy-panel.ts
+  s_81d9008a549f95::t_bc1ee4288f0000 331
+plugin-packages/editor-gizmo/src/2d/items/default-vfx-items.ts
+  s_7e16bb48d9b5ae::t_9e6c31e29fd7ed 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad62dd3af63a50052ae82be6455902057012702f",
+  "prompts": {},
+  "sessions": {
+    "s_7e16bb48d9b5ae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f6ef-b9a6-7fe2-919a-78c9bb28f9be",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_81d9008a549f95": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f2b1-5bd0-7a62-aa4f-fdb3e19c5d9a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_bf6085b935a894": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f32c-7189-7742-b178-18551a76ea41",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
