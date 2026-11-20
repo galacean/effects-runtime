@@ -1,0 +1,97 @@
+packages/effects-core/src/scene-instantiation-context.ts
+  s_ca27485c737bfd::t_aceb043e19840a 35,39,43
+packages/effects-core/src/scene-server.ts
+  s_ca27485c737bfd::t_f57f2d2018973c 47,56
+  s_ca27485c737bfd::t_2bc837faa2f0a0 51,53
+web-packages/test/unit/src/effects-core/composition/texture-options.spec.ts
+  s_51c439f7af958a::t_8503ecd9ed4631 1-35,37-63
+  s_51c439f7af958a::t_1ae39f41be54b0 36
+web-packages/dev-tools/src/features/inspector/inspector-panel.ts
+  s_51c439f7af958a::t_3cd7754d40e2af 191,247
+web-packages/test/unit/src/effects-core/composition/index.ts
+  s_51c439f7af958a::t_11fa06bc2c615e 12
+web-packages/dev-tools/src/features/assets/editors/runtime-asset-editor.ts
+  s_51c439f7af958a::t_3cd7754d40e2af 67
+web-packages/test/unit/src/effects/scene-load.spec.ts
+  s_ca27485c737bfd::t_e221e5164e6559 273,287
+web-packages/test/unit/src/index.ts
+  s_51c439f7af958a::t_a748898404a393 7
+plugin-packages/model/src/gltf/loader-impl.ts
+  s_51c439f7af958a::t_a4fe4b54c77a8e 565-566
+packages/effects-core/src/scene.ts
+  s_ca27485c737bfd::t_aceb043e19840a 79,90,94,150,155,169
+  s_ca27485c737bfd::t_08f08e24a3d8c8 18,39,42,50
+  s_ca27485c737bfd::t_80e38b3b80684a 67
+  s_ca27485c737bfd::t_2bc837faa2f0a0 246
+  s_ca27485c737bfd::t_f57f2d2018973c 21,46-49,51-66,82-84,86,88-89,92-93,96-97,143-149,151-152,158
+  s_ca27485c737bfd::t_9d6efe22509c93 156-157
+  s_ca27485c737bfd::t_b218b11fbf901b 45
+  s_ca27485c737bfd::t_36d4fcd85e41dd 153-154
+  s_ca27485c737bfd::t_0a83ab54a01efd 68,87
+  s_ca27485c737bfd::t_d6e90c4f3f269d 159
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_ca27485c737bfd::t_056fe5b2e6a7f1 278,282
+  s_ca27485c737bfd::t_0a83ab54a01efd 280
+  s_ca27485c737bfd::t_03ae0f87f20e9d 319,323,325-326
+web-packages/dev-tools/src/features/assets/editors/material-details.ts
+  s_51c439f7af958a::t_3cd7754d40e2af 1,43-44,50-52
+packages/effects-threejs/src/three-display-object.ts
+  s_ca27485c737bfd::t_e2eb405dc6cbfd 98,116,124
+web-packages/test/unit/src/dev-tools/scene-resources.spec.ts
+  s_51c439f7af958a::t_1ae39f41be54b0 16,139-140
+  s_51c439f7af958a::t_a748898404a393 1,3-5,7-15,17-21,27,29-46,48-78,80-81,83-88,91-92,94-128,130-138,157-158
+  s_51c439f7af958a::t_dbf735cec4540a 6,129,141-153,155-156
+  s_51c439f7af958a::t_80555edafe8231 2,22-25,47,79,82,89-90,93,154
+  s_ca27485c737bfd::t_056fe5b2e6a7f1 26
+  s_ca27485c737bfd::t_0a83ab54a01efd 28
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_51c439f7af958a::t_181dd9698a5b54 1,7,51,55,62-63,78-81,102,118,194,291,297,320,329,377,461,529
+web-packages/test/case/src/common/player/test-player.ts
+  s_ca27485c737bfd::t_e221e5164e6559 59
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_51c439f7af958a::t_0aeb80cb49877d 774,1126
+  s_51c439f7af958a::t_80555edafe8231 1103-1108
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_ca27485c737bfd::t_0a83ab54a01efd 82
+  s_ca27485c737bfd::t_056fe5b2e6a7f1 76-81,83-85
+web-packages/dev-tools/src/features/assets/ui/asset-reference-field.ts
+  s_51c439f7af958a::t_0aeb80cb49877d 24-27,33-36,64-68,74,76,101-105,109,145-147,155-157,162-163,165,175
+packages/effects/src/player.ts
+  s_ca27485c737bfd::t_e2eb405dc6cbfd 416-419
+web-packages/dev-tools/src/features/assets/model/resource-identity.ts
+  s_ca27485c737bfd::t_aceb043e19840a 25
+  s_51c439f7af958a::t_0aeb80cb49877d 24,41,45
+web-packages/dev-tools/src/features/sequencer/sequencer-properties.ts
+  s_51c439f7af958a::t_3cd7754d40e2af 146
+packages/effects-core/src/asset-manager.ts
+  s_ca27485c737bfd::t_08f08e24a3d8c8 161-162,164-183,214,216,218,220
+  s_ca27485c737bfd::t_63ac86a083639f 213,215
+  s_ca27485c737bfd::t_0a83ab54a01efd 217,219
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_ca27485c737bfd::t_056fe5b2e6a7f1 161,166
+  s_ca27485c737bfd::t_0a83ab54a01efd 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d24dd43c66e7bf392572bfc694657f7d8b6e1320",
+  "prompts": {},
+  "sessions": {
+    "s_51c439f7af958a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f806-09bf-7983-8d0e-3c4ccbfdd801",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_ca27485c737bfd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f288-de65-7c23-a28c-b017a1053d6f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
