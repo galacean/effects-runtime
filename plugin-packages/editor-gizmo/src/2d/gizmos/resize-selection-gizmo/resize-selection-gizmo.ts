@@ -1,6 +1,6 @@
 import type { VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
-import { applyRichTextResize, createRichTextResizeSnapshot, getRichTextFrameRatio, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
+import { applyRichTextResize, createRichTextResizeSnapshot, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
 import { FrameComponent, MouseButton, MouseButtonMask, ShapeComponent, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
@@ -135,7 +135,8 @@ type AnchoredResizeSession = {
   /** 富文本基础属性和固定点。调宽取布局帧，字号缩放取选框。 */
   richText?: RichTextResizeSnapshot & {
     initialMatrix: Matrix4,
-    fixedPointRatio: Vector3,
+    /** 固定点在拖拽框内的归一化位置，原点在左上角。 */
+    fixedPointInBox: Vector2,
   },
   shape?: ShapeResizeSnapshot,
   /** 画板已应用的累计位移。 */
@@ -159,6 +160,18 @@ const INFO_TEXT_BOTTOM = 1;
 
 /** 图标相对选框顶边的底部偏移。 */
 const INFO_ICON_BOTTOM = 5.5;
+
+/** 将排版给出的逻辑像素矩形映射到元素的单位选框。 */
+function getRichTextFrameBox (component: RichTextComponent): Box2 | undefined {
+  const { frame, width, height } = component.textLayout;
+
+  if (!frame) { return; }
+
+  return new Box2(
+    new Vector2(frame.x / width, frame.y / height),
+    new Vector2((frame.x + frame.width) / width, (frame.y + frame.height) / height),
+  );
+}
 
 /** 将公开的缩放行为转换为几何计算使用的可变轴。 */
 function getResizeAxis (behavior: ResizeSelectionBehavior): 'both' | 'x' | 'y' {
@@ -759,17 +772,8 @@ export class ResizeSelectionGizmo extends Gizmo {
         ? selectedItems[0].getComponent(RichTextComponent) : undefined;
 
       if (isSingleText && !richComponent?.textLayout.useLegacyRichText && points && transform) {
-        let boxCorners = points;
-
-        if (richComponent) {
-          const frameRatio = getRichTextFrameRatio(richComponent);
-          const frameBox = new Box2(
-            new Vector2((1 - frameRatio.x) / 2, (1 - frameRatio.y) / 2),
-            new Vector2((1 + frameRatio.x) / 2, (1 + frameRatio.y) / 2),
-          );
-
-          boxCorners = getTransformedBoxCorners(transform, frameBox);
-        }
+        const frameBox = richComponent && getRichTextFrameBox(richComponent);
+        const boxCorners = frameBox ? getTransformedBoxCorners(transform, frameBox) : points;
         const widthEdges = [
           new Line2(boxCorners[1], boxCorners[2]),
           new Line2(boxCorners[3], boxCorners[0]),
@@ -937,10 +941,10 @@ export class ResizeSelectionGizmo extends Gizmo {
     });
 
     // 溢出画布扩大后，标出布局帧上仍可拖动的宽度边。
-    const [widthEdge] = this.wireframe.widthScaleEdges;
-    const outerEdge = this.wireframe.edges[1];
+    const [rightEdge, leftEdge] = this.wireframe.widthScaleEdges;
 
-    if (widthEdge && outerEdge && !widthEdge.equals(outerEdge)) {
+    if (rightEdge && leftEdge
+      && (!this.wireframe.edges[1].equals(rightEdge) || !this.wireframe.edges[3].equals(leftEdge))) {
       for (const area of this.wireframe.widthScaleAreas) {
         const start = transformBoxPoint(area, new Vector2(0.5, 0));
         const end = transformBoxPoint(area, new Vector2(0.5, 1));
@@ -1307,18 +1311,19 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (richComponent && !richComponent.textLayout.useLegacyRichText) {
       const snapshot = createRichTextResizeSnapshot(richComponent, textResizeMode);
       const fixedLocal = fixedPoint.clone().applyMatrix(itemMatrix.clone().invert());
-      const frameRatio = textResizeMode === 'width' ? getRichTextFrameRatio(richComponent) : undefined;
       const { size } = item.transform;
+      const fixedPointInBox = new Vector2(0.5 + fixedLocal.x / (size.x || 1), 0.5 - fixedLocal.y / (size.y || 1));
+      const frameBox = textResizeMode === 'width' ? getRichTextFrameBox(richComponent) : undefined;
 
-      richText = {
-        ...snapshot,
-        initialMatrix: itemMatrix.clone(),
-        fixedPointRatio: new Vector3(
-          fixedLocal.x / (size.x * (frameRatio?.x ?? 1) || 1),
-          fixedLocal.y / (size.y * (frameRatio?.y ?? 1) || 1),
-          0,
-        ),
-      };
+      if (frameBox) {
+        const extent = frameBox.getSize();
+
+        fixedPointInBox.set(
+          (fixedPointInBox.x - frameBox.min.x) / (extent.x || 1),
+          (fixedPointInBox.y - frameBox.min.y) / (extent.y || 1),
+        );
+      }
+      richText = { ...snapshot, initialMatrix: itemMatrix.clone(), fixedPointInBox };
     }
     const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent), itemMatrix);
     const frame = isFramePlayerItem(item);
@@ -1765,16 +1770,18 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     if (richText) {
       applyRichTextResize(richText, resize.totalScalar.x, resize.totalScalar.y);
-      const { fixedPointRatio, initialMatrix } = richText;
+      const { fixedPointInBox, initialMatrix } = richText;
       const { size } = item.transform;
-      const frameRatio = richText.mode === 'width' ? getRichTextFrameRatio(richText.component) : undefined;
-      const fixedSizeX = size.x * (frameRatio?.x ?? 1);
-      const fixedSizeY = size.y * (frameRatio?.y ?? 1);
-      // 重排、尺寸钳制以及越过固定点后，使用真实外框反算固定点，scale 始终不参与写入。
+      const point = new Vector2(
+        resize.totalScalar.x < 0 ? 1 - fixedPointInBox.x : fixedPointInBox.x,
+        resize.totalScalar.y < 0 ? 1 - fixedPointInBox.y : fixedPointInBox.y,
+      );
+      const frameBox = richText.mode === 'width' ? getRichTextFrameBox(richText.component) : undefined;
+
+      if (frameBox) { point.multiply(frameBox.getSize()).add(frameBox.min); }
+      // 将重排后的固定点从左上角画布坐标转回元素的局部坐标。
       const fixedAfterResize = new Vector3(
-        fixedPointRatio.x * fixedSizeX * (resize.totalScalar.x < 0 ? -1 : 1),
-        fixedPointRatio.y * fixedSizeY * (resize.totalScalar.y < 0 ? -1 : 1),
-        0,
+        (point.x - 0.5) * size.x, (0.5 - point.y) * size.y, 0,
       ).applyMatrix(initialMatrix);
 
       this.setResizePosition(session, session.geometry.fixedPoint.clone().subtract(fixedAfterResize));

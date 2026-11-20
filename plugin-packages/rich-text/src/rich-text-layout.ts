@@ -6,9 +6,11 @@ export class RichTextLayout implements BaseLayout {
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
-  // TODO: width 和 height 新版富文本计算没有地方用到
+  /** 最终画布的逻辑像素尺寸。 */
   width = 0;
   height = 0;
+  /** 文本框在画布中的逻辑像素坐标，原点在左上角。 */
+  frame?: Readonly<{ x: number, y: number, width: number, height: number }>;
 
   /**
    * 是否使用旧版富文本渲染

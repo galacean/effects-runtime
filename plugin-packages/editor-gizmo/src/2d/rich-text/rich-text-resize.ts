@@ -37,8 +37,8 @@ export function createRichTextResizeSnapshot (
 
   return {
     component, mode, document, minimumFontSize: document.getMinimumFontSize(fontSize),
-    frameWidth: layout.maxTextWidth,
-    frameHeight: layout.maxTextHeight,
+    frameWidth: layout.useLegacyRichText ? layout.width : layout.maxTextWidth,
+    frameHeight: layout.useLegacyRichText ? layout.height : layout.maxTextHeight,
     renderedWidth: layout.width, renderedHeight: layout.height,
     properties: {
       text: component.text, fontSize, lineHeight: layout.lineHeight, letterSpace: layout.letterSpace,

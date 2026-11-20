@@ -293,6 +293,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     // 根据useLegacyRichText字段来判断使用哪种渲染模式
     if (useLegacy) {
+      layout.frame = undefined;
       this._resolvedLayout = undefined;
       this.updateTextureLegacy(flipY);
     } else {
@@ -573,6 +574,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.maxTextHeight = frameH;
     layout.width = overflowResult.canvasWidth;
     layout.height = overflowResult.canvasHeight;
+    layout.frame = {
+      x: overflowResult.renderOffsetX, y: overflowResult.renderOffsetY,
+      width: frameW, height: frameH,
+    };
     const resolvedLayout = createRichTextLayoutResult(
       wrapResult.lines,
       horizontalAlignResult,
