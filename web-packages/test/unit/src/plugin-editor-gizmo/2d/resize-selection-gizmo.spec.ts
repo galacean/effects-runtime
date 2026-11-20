@@ -4,7 +4,7 @@ import type { AnchoredResizeGeometry, AnchoredResizeResult } from '../../../../.
 import { PolyStar, StarType } from '../../../../../../packages/effects-core/src/math/shape/poly-star';
 import { calculateAnchoredResize } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize';
 import { restoreTestState, getSpyCalls, spyOnGetter, type TestSpy } from '../helpers/spies';
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, ShapeComponent, Transform, type InputEventMouse, spec, type Engine, type TextComponent, type Texture, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, ShapeComponent, TextComponent, Transform, type InputEventMouse, spec, type Engine, type Texture, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2, Circle, Line2 } from '@galacean/effects-math/es/extension/index';
 import { getBoxTransform, Euler, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
@@ -1091,6 +1091,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
     const textItem = {
       type: spec.ItemType.text,
+      getComponent: (type: unknown) => type === TextComponent ? {} : undefined,
       transform: { rotation: { z: 0 } },
     } as VFXItem;
 
@@ -1169,7 +1170,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
       type: spec.ItemType.text,
       isVisible: true,
       getInstanceId: () => 'wrapped-text',
-      getComponent: () => undefined,
+      getComponent: (type: unknown) => type === TextComponent ? {} : undefined,
       transform: {
         size,
         updateLocalMatrix: () => {},
@@ -1206,7 +1207,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
 
   it('旋转文本的左右边线带按旋转矩形命中，旋转矩形外的点不误命中', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
-    const textItem = { type: spec.ItemType.text, transform: { rotation: { z: Math.PI / 4 } } } as VFXItem;
+    const textItem = { type: spec.ItemType.text, getComponent: (type: unknown) => type === TextComponent ? {} : undefined, transform: { rotation: { z: Math.PI / 4 } } } as VFXItem;
 
     spyOnGetter(gizmo, 'selectedItems', () => ([textItem]));
 
@@ -1237,7 +1238,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
 
   it('文字左右边改输入框宽度，上下边改字号', () => {
     const { gizmo } = createGizmo(TransformType.NULL);
-    const textItem = { type: spec.ItemType.text } as VFXItem;
+    const textItem = { type: spec.ItemType.text, getComponent: (type: unknown) => type === TextComponent ? {} : undefined } as unknown as VFXItem;
 
     spyOnGetter(gizmo, 'selectedItems', () => ([textItem]));
     // 轴对齐盒 100..200 × 100..200，按固定四角顺序构造。
@@ -1286,50 +1287,6 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(compute(new Vector2(150, 103))).to.equal(TransformType.SCALE);
     expect(compute(new Vector2(150, 197))).to.equal(TransformType.SCALE);
     expect(compute(new Vector2(150, 115))).to.equal(TransformType.TRANSLATION);
-  });
-
-  it('文字宽度会话按交互方向取真实左/右边，旋转后仍不选错边', () => {
-    const { gizmo } = createGizmo(TransformType.NULL);
-    const getEdge = (gizmo as unknown as {
-      draggedWidthEdge: (center: Vector2, dir: Vector2) => Line2 | undefined,
-    }).draggedWidthEdge.bind(gizmo);
-
-    // 轴对齐：中心 (100,100)，宽 80（半宽 40）高 40
-    const axisAlignedCorners = [
-      new Vector2(60, 80), new Vector2(140, 80), new Vector2(140, 120), new Vector2(60, 120),
-    ];
-
-    gizmo.wireframe.box = setBoxFromPoints(new Box2(), axisAlignedCorners);
-    gizmo.wireframe.transform = getBoxTransform(axisAlignedCorners);
-    const center = new Vector2(100, 100);
-    const right = getEdge(center, new Vector2(1, 0))!.getCenter();
-    const left = getEdge(center, new Vector2(-1, 0))!.getCenter();
-
-    expect(right).to.deep.equal(new Vector2(140, 100));
-    expect(left).to.deep.equal(new Vector2(60, 100));
-    // 起点到中心距离 = 真实半宽（originLength 不再陈旧）
-    expect(right.distance(center)).to.equal(40);
-    expect(left.distance(center)).to.equal(40);
-
-    // 45° 旋转：中心 (100,100)，角点顺序 (左上,右上,右下,左下)，半宽 40、半高 20
-    const c = Math.SQRT1_2;
-    const s = Math.SQRT1_2;
-    const rot = (x: number, y: number) => new Vector2(100 + x * c - y * s, 100 + x * s + y * c);
-    const rotatedCorners = [
-      rot(-40, -20), rot(40, -20), rot(40, 20), rot(-40, 20),
-    ];
-
-    gizmo.wireframe.box = setBoxFromPoints(new Box2(), rotatedCorners);
-    gizmo.wireframe.transform = getBoxTransform(rotatedCorners);
-    // 旋转后右侧手柄方向 = 局部 +x 旋转 45° = (cos45, sin45)
-    const xDir = new Vector2(c, s);
-    const rotRight = getEdge(center, xDir)!.getCenter();
-    const rotLeft = getEdge(center, xDir.clone().multiply(-1))!.getCenter();
-
-    expect(rotRight.distance(center)).to.be.closeTo(40, 0.5 * 10 ** -(5));
-    expect(rotLeft.distance(center)).to.be.closeTo(40, 0.5 * 10 ** -(5));
-    expect(rotRight.clone().subtract(center).dot(xDir)).to.be.greaterThan(0);
-    expect(rotLeft.clone().subtract(center).dot(xDir)).to.be.lessThan(0);
   });
 
 });

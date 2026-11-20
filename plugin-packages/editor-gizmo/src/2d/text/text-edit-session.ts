@@ -52,6 +52,8 @@ type TextEditSessionEvents = {
 
 /** 指针拖拽选择文本的状态。 */
 type PointerSelection = {
+  /** 本次拖选的唯一句柄。 */
+  handle: object,
   /** 选择起点。 */
   anchor: ViewPoint,
   /** 选择终点。 */
@@ -364,23 +366,30 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
   /**
    * 开始使用画布指针拖拽选择文本。
    * @param point 选择起点
+   * @returns 本次拖选的句柄。
    */
-  beginPointerSelection (point: ViewPoint): void {
+  beginPointerSelection (point: ViewPoint): object {
+    const handle = {};
+
     this.textAreaElement.style.pointerEvents = 'none';
     this.pointerSelection = {
+      handle,
       anchor: { ...point },
       focus: { ...point },
       active: true,
     };
     this.applyPointerSelection();
+
+    return handle;
   }
 
   /**
    * 更新指针拖拽选择终点。
+   * @param handle 本次拖选的句柄。
    * @param point 当前指针位置
    */
-  updatePointerSelection (point: ViewPoint): void {
-    if (!this.pointerSelection?.active) {
+  updatePointerSelection (handle: object, point: ViewPoint): void {
+    if (!this.pointerSelection?.active || this.pointerSelection.handle !== handle) {
       return;
     }
     this.pointerSelection.focus = { ...point };
@@ -389,10 +398,11 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
 
   /**
    * 完成指针拖拽选择。
+   * @param handle 本次拖选的句柄。
    * @param point 最终指针位置
    */
-  finishPointerSelection (point: ViewPoint): void {
-    if (!this.pointerSelection) {
+  finishPointerSelection (handle: object, point: ViewPoint): void {
+    if (!this.pointerSelection || this.pointerSelection.handle !== handle) {
       return;
     }
     this.pointerSelection.focus = { ...point };
@@ -404,7 +414,8 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
   }
 
   /** 取消指针拖拽选择。 */
-  cancelPointerSelection (): void {
+  cancelPointerSelection (handle?: object): void {
+    if (handle && this.pointerSelection?.handle !== handle) { return; }
     this.textAreaElement.style.pointerEvents = '';
     this.pointerSelection = undefined;
     this.hidePointerSelectionPreview();

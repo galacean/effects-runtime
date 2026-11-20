@@ -36,5 +36,6 @@ import './2d/snap-manager.spec';
 import './2d/sprite-text-edit-gizmo.spec';
 import './2d/text-caret-mapper.spec';
 import './2d/text-gizmo.spec';
+import './2d/rich-text-edit.spec';
 import './2d/viewport-navigation-controller.spec';
 import './2d/viewport-overlay-gizmo.spec';

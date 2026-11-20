@@ -1,3 +1,4 @@
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { EventEmitter, ShapeComponent, TextComponent, math, spec } from '@galacean/effects';
 import type { InputEventKey, Player, VFXItem } from '@galacean/effects';
 import {
@@ -5,28 +6,32 @@ import {
   HandGizmoTool,
   ItemCreateGizmoTool,
   ItemCreateType,
+  type RichTextFormat,
+  type RichTextSelectionFormats,
   MoveGizmoTool,
+  TextEditMode,
+  createTextEditMode,
+  RichTextEditMode,
   PenEditMode,
   ShapeEditMode,
   shapeConfig,
   createInteractionPlane,
   getBoxCorners,
-  TextEditMode,
   getItemViewBox,
   ndcSizeToViewSize,
   viewPositionToWorld,
   type GeometryGizmoHost,
-  type HandleMirrorMode,
   type PenPathData,
   type ShapeDrawingActionEvent,
   type ShapePrimitive,
 } from '@galacean/effects-plugin-editor-gizmo';
-import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo,
+import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo, GizmoRichTextItemCreateInfo,
   GestureHandler } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 
-export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'pen' | 'shape';
+export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'richtext' | 'pen' | 'shape';
+export type DemoPenMode = 'create' | 'edit' | 'lasso';
 
 type EditorEvents = {
   scenechange: [],
@@ -112,8 +117,6 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   private readonly geometryHost: GeometryGizmoHost;
   private draftGeometry?: DemoItem;
   private readonly vectorEditSnapshots = new Map<string, ShapeComponent['shape']>();
-  private penMirrorMode: HandleMirrorMode = 'angle-length';
-  private penLassoMode = false;
   private settingTool = false;
 
   constructor (
@@ -125,7 +128,13 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     super();
     this.geometryHost = this.createGeometryHost();
     this.unsubscribes.push(
-      handler.getSelection().on('selectionchange', () => this.emit('selectionchange')),
+      handler.getSelection().on('selectionchange', () => {
+        if (this.isTextEditing() && (this.activeTool === 'text' || this.activeTool === 'richtext')) {
+          this.activeTool = 'move';
+          this.emit('toolchange', 'move');
+        }
+        this.emit('selectionchange');
+      }),
       handler.on('keyDown', event => this.handleKeyDown(event)),
       handler.on('shapeinput', item => {
         if (this.enterSelectedShapeEdit(item)) {
@@ -133,6 +142,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         }
       }),
       handler.on('textinput', event => this.emit('action', `textinput · ${event.itemId}`)),
+      handler.on('richtextinput', event => this.emit('action', `richtextinput · ${event.itemId}`)),
       handler.getViewportNavigation().on('change', event => {
         if (!this.fittingViewport) {
           this.autoFitViewport = false;
@@ -177,22 +187,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
   setTool (tool: DemoTool): void {
     if (tool === 'pen' && this.activeTool === 'pen' && this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit') {
-      const previousSetting = this.settingTool;
-
-      this.settingTool = true;
-      try {
-        this.geometryMode.enterCreate(true);
-        this.player.canvas.focus();
-      } finally {
-        this.settingTool = previousSetting;
-      }
+      this.setPenMode('create');
 
       return;
     }
-    const previousSetting = this.settingTool;
-
-    this.settingTool = true;
-    try {
+    this.updateTool(() => {
       this.handler.resetEditMode();
       this.discardDraft();
       this.geometryMode = undefined;
@@ -206,30 +205,23 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         this.geometryMode = mode;
         this.handler.setActiveEditMode(mode);
         this.handler.setActiveTool(new MoveGizmoTool(this.handler));
-      } else if (tool === 'frame' || tool === 'text') {
+      } else if (tool === 'frame' || tool === 'text' || tool === 'richtext') {
         const createTool = new ItemCreateGizmoTool(this.handler);
 
-        createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : ItemCreateType.TEXT;
+        createTool.createType = tool === 'frame' ? ItemCreateType.FRAME : tool === 'richtext' ? ItemCreateType.RICH_TEXT : ItemCreateType.TEXT;
         this.handler.setActiveTool(createTool);
         this.setSelection([]);
       } else {
         this.handler.setActiveTool(tool === 'move' ? new MoveGizmoTool(this.handler) : new HandGizmoTool(this.handler));
       }
-      this.emit('toolchange', tool);
-      this.player.canvas.focus();
-    } finally {
-      this.settingTool = previousSetting;
-    }
+    });
   }
 
   private enterSelectedShapeEdit (item = this.selectedItem): boolean {
     if (!item?.getComponent(ShapeComponent)) {
       return false;
     }
-    const previousSetting = this.settingTool;
-
-    this.settingTool = true;
-    try {
+    this.updateTool(() => {
       this.handler.resetEditMode();
       this.discardDraft();
       const mode = this.createPenMode('edit');
@@ -238,76 +230,59 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       this.activeTool = 'pen';
       this.handler.setActiveEditMode(mode);
       this.handler.setActiveTool(new MoveGizmoTool(this.handler));
-      this.emit('toolchange', 'pen');
+    });
 
-      return true;
-    } finally {
-      this.settingTool = previousSetting;
-    }
+    return true;
   }
 
   setShapePrimitive (primitive: ShapePrimitive): void {
     this.shapePrimitive = primitive;
-    if (this.activeTool === 'shape' && this.geometryMode instanceof ShapeEditMode) {
-      const previousSetting = this.settingTool;
+    const mode = this.geometryMode;
 
-      this.settingTool = true;
-      try {
-        this.geometryMode.setPrimitive(primitive);
-      } finally {
-        this.settingTool = previousSetting;
-      }
-      this.emit('toolchange', 'shape');
+    if (this.activeTool === 'shape' && mode instanceof ShapeEditMode) {
+      this.updateTool(() => mode.setPrimitive(primitive));
     } else {
       this.setTool('shape');
     }
     this.emit('action', `造型 · ${primitive}`);
   }
 
-  setPenMirrorMode (mode: HandleMirrorMode): void {
-    this.penMirrorMode = mode;
-    if (this.geometryMode instanceof PenEditMode) {
-      this.geometryMode.setHandleMirrorMode(mode);
-      this.emit('toolchange', 'pen');
-      this.emit('action', `钢笔控制柄 · ${mode}`);
-    }
+  setPenMode (state: DemoPenMode): void {
+    const mode = this.geometryMode;
+
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+    this.updateTool(() => {
+      if (state === 'create') {
+        mode.enterCreate(true);
+      } else {
+        mode.enterEdit();
+      }
+      mode.setLassoMode(state === 'lasso');
+    });
+    this.emit('action', `钢笔${state === 'create' ? '创建态' : state === 'edit' ? '编辑态' : '套索'} · 开启`);
   }
 
-  setPenLassoMode (enabled: boolean): void {
-    this.penLassoMode = enabled;
-    if (this.geometryMode instanceof PenEditMode) {
-      this.geometryMode.setLassoMode(enabled);
-      this.emit('toolchange', 'pen');
-      this.emit('action', enabled ? '钢笔套索 · 开启' : '钢笔套索 · 关闭');
-    }
+  get penMode (): DemoPenMode | undefined {
+    const mode = this.geometryMode;
+
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+
+    return mode.state === 'create' ? 'create' : mode.lassoMode ? 'lasso' : 'edit';
   }
 
-  setPenEditMode (enabled: boolean): void {
-    if (this.activeTool !== 'pen' || !(this.geometryMode instanceof PenEditMode)) {
-      return;
-    }
-
+  private updateTool (update: () => void): void {
     const previousSetting = this.settingTool;
 
     this.settingTool = true;
     try {
-      if (enabled) {
-        this.geometryMode.enterEdit();
-      } else {
-        this.geometryMode.enterCreate();
-      }
-      this.emit('action', enabled ? '钢笔编辑态 · 开启' : '钢笔创建态 · 开启');
+      update();
     } finally {
       this.settingTool = previousSetting;
     }
-  }
-
-  get penMirror (): HandleMirrorMode { return this.penMirrorMode; }
-
-  get penLasso (): boolean { return this.penLassoMode; }
-
-  get penEditMode (): boolean {
-    return this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit';
+    if (!previousSetting) {
+      this.emit('toolchange', this.activeTool);
+      this.player.canvas.focus();
+    }
   }
 
   select (item: VFXItem, append = false): void {
@@ -316,6 +291,25 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     const ids = this.handler.getSelection().getSelectedIds();
 
     this.setSelection(append ? ids.includes(id) ? ids.filter(selectedId => selectedId !== id) : [...ids, id] : [id]);
+  }
+
+  /** 属性面板对当前文字选区修改样式，并保留编辑会话。 */
+  formatRichTextSelection (attribute: RichTextFormat, value?: string | null): boolean {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode && mode.formatSelection(attribute, value);
+  }
+
+  get hasRichTextSelection (): boolean {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode && mode.hasSelection;
+  }
+
+  get richTextSelectionFormats (): RichTextSelectionFormats | undefined {
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof RichTextEditMode ? mode.selectionFormats : undefined;
   }
 
   editSelected (label: string, edit: (item: VFXItem) => void): void {
@@ -404,17 +398,25 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   private isTextEditing (): boolean {
-    return this.handler.getActiveEditMode() instanceof TextEditMode;
+    const mode = this.handler.getActiveEditMode();
+
+    return mode instanceof TextEditMode || mode instanceof RichTextEditMode;
   }
 
   private handleKeyDown (event: InputEventKey): void {
     if (event.ctrlPressed || event.metaPressed || event.altPressed) {
       return;
     }
+    if (event.physicalKeycode === 'KeyQ' && this.activeTool === 'pen') {
+      this.setPenMode(this.penMode === 'lasso' ? 'edit' : 'lasso');
+      event.accept();
+
+      return;
+    }
     if (event.physicalKeycode === 'Escape') {
       if (this.isTextEditing()) {
         this.handler.resetEditMode();
-      } else if (this.activeTool === 'frame' || this.activeTool === 'text') {
+      } else if (this.activeTool === 'frame' || this.activeTool === 'text' || this.activeTool === 'richtext') {
         this.setTool('move');
       } else if (this.activeTool === 'pen' || this.activeTool === 'shape') {
         return;
@@ -433,8 +435,14 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
         return;
       }
+      if (this.selectedItem?.type === spec.ItemType.richtext) {
+        this.handler.setActiveEditMode(createTextEditMode(this.handler, this.selectedItem, 'select'));
+        event.accept();
+
+        return;
+      }
     }
-    const tool = SHORTCUTS[event.physicalKeycode];
+    const tool = event.physicalKeycode === 'KeyT' && event.shiftPressed ? 'richtext' : SHORTCUTS[event.physicalKeycode];
 
     if (tool) {
       this.setTool(tool);
@@ -453,6 +461,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         this.draftText = this.createItem(event.createInfo);
       } else if (phase === 'actionupdate' && this.draftText && event.createInfo.type === ItemCreateType.TEXT) {
         this.updateCreatedText(this.draftText, event.createInfo);
+      } else if (phase === 'actionupdate' && this.draftText && event.createInfo.type === ItemCreateType.RICH_TEXT) {
+        this.updateCreatedRichText(this.draftText, event.createInfo);
       } else if (phase === 'actioncommit') {
         this.finishCreation(event.createInfo);
       }
@@ -577,6 +587,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     } else if (info.type === ItemCreateType.TEXT) {
       data = this.scene.createText([position.x, position.y]);
       this.updateCreatedText(data, info);
+    } else if (info.type === ItemCreateType.RICH_TEXT) {
+      data = this.scene.createRichText([position.x, position.y], {
+        autoResize: info.info ? spec.TextSizeMode.autoHeight : spec.TextSizeMode.autoWidth,
+      });
+      this.updateCreatedRichText(data, info);
     } else {
       return;
     }
@@ -600,14 +615,36 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
   }
 
+  private updateCreatedRichText (data: DemoItem, info: GizmoRichTextItemCreateInfo): void {
+    const position = this.pixelToWorld(info.position);
+    const rich = data.item.getComponent(RichTextComponent);
+
+    data.item.setPosition(position.x, position.y, 0);
+    if (info.info) {
+      const right = this.pixelToWorld([info.position[0] + info.info.width, info.position[1]]);
+      const width = Math.abs(right.x - position.x);
+
+      rich.setLayoutProperties({
+        maxTextWidth: width * rich.textLayout.width / data.item.transform.size.x,
+        autoResize: spec.TextSizeMode.autoHeight,
+        wrapEnabled: true,
+      });
+      rich.ensureLayout();
+    }
+  }
+
   private finishCreation (info: GizmoItemCreateInfo): void {
     const data = this.draftText ?? this.createItem(info);
 
     if (!data) {
       return;
     }
-    if (info.type === ItemCreateType.TEXT) {
-      this.updateCreatedText(data, info);
+    if (info.type === ItemCreateType.TEXT || info.type === ItemCreateType.RICH_TEXT) {
+      if (info.type === ItemCreateType.RICH_TEXT) {
+        this.updateCreatedRichText(data, info);
+      } else {
+        this.updateCreatedText(data, info);
+      }
       const frame = this.scene.findFrameAt(data.item.transform.getWorldPosition());
 
       if (frame) {
@@ -618,8 +655,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.setTool('move');
     this.emit('scenechange');
     this.setSelection([data.item.getInstanceId()]);
-    if (data.kind === 'Text') {
-      this.handler.setActiveEditMode(new TextEditMode(this.handler, data.item, 'select'));
+    if (data.kind === 'Text' || data.kind === 'RichText') {
+      this.handler.setActiveEditMode(createTextEditMode(this.handler, data.item, 'select'));
     }
     this.emit('action', `创建 ${data.name}`);
   }
@@ -711,7 +748,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
   private createPenMode (state: 'create' | 'edit' = 'create'): PenEditMode {
     const mode = new PenEditMode(this.handler, this.geometryHost, state, () => {
-      if (!this.disposed) {
+      if (!this.disposed && !this.settingTool) {
         this.emit('toolchange', 'pen');
       }
     }, () => {
@@ -721,9 +758,6 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         this.emit('toolchange', 'move');
       }
     });
-
-    mode.setHandleMirrorMode(this.penMirrorMode);
-    mode.setLassoMode(this.penLassoMode);
 
     return mode;
   }
