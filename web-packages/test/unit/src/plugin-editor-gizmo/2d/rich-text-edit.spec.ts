@@ -1,4 +1,4 @@
-import { InputEventMouseButton, MaskableGraphic, MouseButton, spec, TextComponent, TextStyle, type VFXItem } from '@galacean/effects';
+import { generateGUID, InputEventMouseButton, MouseButton, Player, spec, TextComponent, TextStyle, Transform, type VFXItem } from '@galacean/effects';
 import { RichTextComponent, richTextParser } from '@galacean/effects-plugin-rich-text';
 import { RichTextLayout } from '../../../../../../plugin-packages/rich-text/src/rich-text-layout';
 import { RichTextStrategyFactory } from '../../../../../../plugin-packages/rich-text/src/strategies/rich-text-factory';
@@ -11,11 +11,16 @@ import { SelectRichTextGizmo } from '../../../../../../plugin-packages/editor-gi
 import { SelectTextGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/select-text-gizmo';
 import type { RichTextInputPayload } from '../../../../../../plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-edit-session';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { ItemCreateGizmo, ItemCreateType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/item-create-gizmo';
 import { RichTextEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/rich-text-edit-mode';
 import { TextEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/text-edit-mode';
 import { getEditableTextComponent, isEditableTextItem } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-predicates';
+import { DOMEvents } from '../../../../../demo/src/gizmo-2d/dom';
+import { InspectorPanel } from '../../../../../demo/src/gizmo-2d/inspector';
+import { createEmptyScene } from '../../../../../dev-tools/src/features/scene/factories/scene-template';
+import { SceneDocument } from '../../../../../dev-tools/src/features/scene/document/scene-document';
+import { SceneWorkspace } from '../../../../../dev-tools/src/features/scene/scene-workspace';
 
 const { expect } = chai;
 
@@ -84,22 +89,49 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     return { rich, item, owner, session, textarea, events, sync, input, projection };
   }
 
-  it('marks restored content dirty before rebuilding its texture', () => {
-    const rich = Object.create(RichTextComponent.prototype) as RichTextComponent;
-    const updateTexture = chai.spy(() => {
-      expect(rich.isDirty).to.equal(true);
-      rich.isDirty = false;
-    });
-    const originalFromData = MaskableGraphic.prototype.fromData;
+  it('restores rich text, layout and rendered pixels through scene undo and redo', async () => {
+    const source = createEmptyScene();
+    const itemId = generateGUID();
+    const componentId = generateGUID();
+    const data: spec.RichTextComponentData = {
+      id: componentId, dataType: spec.DataType.RichTextComponent, item: { id: itemId }, renderer: {},
+      options: { text: '<b>A</b>', fontFamily: 'sans-serif', fontSize: 20, lineHeight: 32,
+        textColor: [1, 1, 1, 1], autoResize: spec.TextSizeMode.autoWidth },
+    };
 
-    Object.assign(rich, { isDirty: false, updateTexture });
-    Object.defineProperty(rich, 'material', { value: { setColor: () => {} } });
+    source.items.push({ id: itemId, name: 'Text', dataType: spec.DataType.VFXItemData,
+      type: spec.ItemType.richtext, duration: 5, endBehavior: spec.EndBehavior.freeze,
+      components: [{ id: componentId }], content: {} });
+    source.compositions[0].children = [{ id: itemId }];
+    (source.components[0] as spec.CompositionComponentData).items = [{ id: itemId }];
+    source.components.push(data);
+    const player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+    const workspace = new SceneWorkspace();
+
     try {
-      (MaskableGraphic.prototype as unknown as { fromData: () => void }).fromData = () => {};
-      rich.fromData({ options: { text: 'restored', fontSize: 20 } } as spec.RichTextComponentData);
-      expect(updateTexture).to.have.been.called.once;
+      const composition = await player.loadScene(source);
+      const item = composition.sceneRoot.children[0];
+      const rich = item.getComponent(RichTextComponent);
+      const scene = new SceneDocument(composition, source);
+      const rendered = () => ({ text: rich.text, width: rich.textLayout.width, pixels: rich.canvas.toDataURL() });
+
+      workspace.current = scene;
+      rich.ensureLayout();
+      const before = rendered();
+
+      rich.setText('<i>Wider text</i>');
+      workspace.recordText(item);
+      const after = rendered();
+
+      expect(after.width).to.be.greaterThan(before.width);
+      expect(after.pixels).not.to.equal(before.pixels);
+      scene.undo();
+      expect(rendered()).to.deep.equal(before);
+      scene.redo();
+      expect(rendered()).to.deep.equal(after);
     } finally {
-      (MaskableGraphic.prototype as unknown as { fromData: typeof originalFromData }).fromData = originalFromData;
+      workspace.current?.dispose();
+      player.dispose();
     }
   });
 
@@ -135,6 +167,15 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     const doc = new RichTextDocument('<b>aaa</b><i>a</i>');
 
     doc.updateText('aaa', { start: 3, end: 3 });
+    expect(doc.markup).to.equal('<b>aa</b><i>a</i>');
+  });
+
+  it('inserts and deletes repeated characters after the common prefix without a selection', () => {
+    const doc = new RichTextDocument('<b>aa</b><i>aa</i>');
+
+    doc.updateText('aaaaa');
+    expect(doc.markup).to.equal('<b>aa</b><i>aaa</i>');
+    doc.updateText('aaa');
     expect(doc.markup).to.equal('<b>aa</b><i>a</i>');
   });
 
@@ -237,6 +278,33 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
   });
 
   for (const wrap of [false, true]) {
+    it(`preserves the playback width of empty text and the editable blank lines (wrap=${wrap})`, () => {
+      const render = (text: string) => {
+        const rich = component(text, wrap);
+
+        rich.setLayoutProperties({ autoResize: spec.TextSizeMode.autoWidth });
+        rich.ensureLayout();
+
+        return rich;
+      };
+
+      for (const [text, reference] of [['', ' '], ['\n\n', '\n \n '], ['<size=40>\n</size>', '<size=40>\n </size>']]) {
+        const rich = render(text);
+        const width = render(reference).textLayout.width;
+
+        expect(width).to.be.greaterThan(1);
+        expect(rich.textLayout.width).to.equal(width);
+        const layout = rich.getEditingLayout();
+        const lineCount = new RichTextDocument(text).text.split('\n').length;
+
+        expect(layout.width).to.equal(width);
+        expect(layout.height).to.equal(32 * lineCount);
+        expect(layout.characters.map(box => [box.index, box.length]))
+          .to.deep.equal(Array.from({ length: lineCount }, (_, index) => [index, 0]));
+        expect(rich.text).to.equal(text);
+      }
+    });
+
     for (const source of ['', '\n', '\n\n', 'A\n\nB', 'A\n']) {
       it(`keeps rendering unchanged when editing starts and ends (${JSON.stringify(source)}, wrap=${wrap})`, () => {
         const rich = component(source, wrap);
@@ -277,7 +345,7 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
         const switchTool = chai.spy();
         const owner = {
           getEngine: () => ({ canvas: { parentElement: document.body }, sceneServer: { compositions: [{
-            engine: { effectsObjectServer: { objectInstance: {} } }, sceneRoot: { children: [item] },
+            engine: { effectsObjectServer: { objectsCache: {} } }, sceneRoot: { children: [item] },
           }] } }),
           getSelection: () => ({ hitTest: () => ['existing'], commitSelectedItems: select }),
           setActiveTool: switchTool,
@@ -400,6 +468,36 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(left).to.be.lessThan(right);
   });
 
+  it('keeps keyboard and pointer carets on the chosen side of a soft wrap', () => {
+    const { rich, session, textarea, sync } = edit('WWWW');
+    const charWidth = rich.getEditingLayout().characters[0].width;
+
+    rich.setLayoutProperties({ wrapEnabled: true, maxTextWidth: charWidth * 2 + 1 });
+    sync();
+    const boxes = rich.getEditingLayout().characters;
+    const expectCaret = (row: number) => {
+      sync();
+      const caret = document.querySelector<HTMLElement>('.text-gizmo-rich-selection span')!;
+
+      expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([2, 2]);
+      expect(parseFloat(caret.style.top)).to.be.closeTo(row, 0.01);
+    };
+
+    expect(boxes[2].y).to.be.greaterThan(boxes[1].y);
+    textarea.setSelectionRange(0, 0);
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'End', cancelable: true }));
+    expectCaret(boxes[1].y);
+    textarea.setSelectionRange(4, 4);
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'Home', cancelable: true }));
+    expectCaret(boxes[2].y);
+
+    const lineEnd = { x: 10 + boxes[1].x + boxes[1].width, y: 10 + boxes[1].y + boxes[1].height / 2 };
+    const handle = session.beginPointerSelection(lineEnd);
+
+    session.finishPointerSelection(handle, lineEnd);
+    expectCaret(boxes[1].y);
+  });
+
   it('merges a continuous row selection and reuses it on unchanged frames', () => {
     const { sync } = edit('ABCDEFGHIJKL');
     const overlay = document.querySelector<HTMLElement>('.text-gizmo-rich-selection')!;
@@ -456,11 +554,40 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(rich.text).to.equal('<b>a</b><i>aa</i>');
   });
 
+  it('uses the inspector textarea deletion direction at a style boundary', () => {
+    const { item, rich } = edit('<b>a</b><i>aaa</i>');
+    const textarea = document.createElement('textarea');
+    const controls = document.createElement('div');
+
+    controls.innerHTML = '<button id="text-bold"></button><button id="text-italic"></button>';
+    document.body.appendChild(controls);
+    const panel = Object.create(InspectorPanel.prototype) as InspectorPanel;
+
+    Object.assign(panel, {
+      textValue: textarea, fields: { fontSize: document.createElement('input') }, events: new DOMEvents(),
+      editor: { selectedItem: item, editSelected: (_label: string, apply: (target: VFXItem) => void) => apply(item) },
+    });
+
+    try {
+      (panel as unknown as { bindTextFields: () => void }).bindTextFields();
+      textarea.value = 'aaaa';
+      textarea.setSelectionRange(1, 1);
+      textarea.dispatchEvent(new InputEvent('beforeinput', { inputType: 'deleteContentForward' }));
+      textarea.setRangeText('', 1, 2, 'start');
+      textarea.dispatchEvent(new InputEvent('input', { inputType: 'deleteContentForward' }));
+      expect(rich.text).to.equal('<b>a</b><i>aa</i>');
+    } finally {
+      panel.dispose();
+      controls.remove();
+    }
+  });
+
   it('routes rich changes through richtextinput without changing the plain event contract', () => {
     const { owner, session, item, input, rich } = edit('<b>ABC</b>');
     const emit = chai.spy();
 
     owner.emit = emit;
+    const retired = new RichTextGizmo(owner, session);
     const gizmo = new RichTextGizmo(owner, session);
     const plain = new TextEditSession(owner);
 
@@ -473,6 +600,7 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
         source: gizmo, itemId: 'rich', markup: rich.text, plainText: 'A中C',
       });
     } finally {
+      retired.dispose();
       gizmo.dispose();
     }
   });
@@ -507,6 +635,39 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(rich.text).to.equal('<b>A中C</b>');
     textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, cancelable: true }));
     expect(rich.text).to.equal('<b>ABC</b>');
+  });
+
+  for (const inputType of ['insertCompositionText', 'insertText']) {
+    it(`groups a final ${inputType} after compositionend without consuming the following edit`, () => {
+      const { rich, textarea, input } = edit('<b>ABC</b>');
+      const undo = () => textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, cancelable: true }));
+
+      textarea.setSelectionRange(1, 2);
+      textarea.dispatchEvent(new CompositionEvent('compositionstart'));
+      input(1, 2, 'z', 'insertCompositionText');
+      textarea.dispatchEvent(new CompositionEvent('compositionend', { data: '中' }));
+      input(1, 2, '中', inputType);
+      input(2, 2, '!');
+      undo();
+      expect(rich.text).to.equal('<b>A中C</b>');
+      undo();
+      expect(rich.text).to.equal('<b>ABC</b>');
+      expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 2]);
+    });
+  }
+
+  it('restores the pre-composition selection when only the final input is delivered', () => {
+    const { rich, textarea } = edit('<b>ABC</b>');
+
+    textarea.setSelectionRange(1, 2);
+    textarea.dispatchEvent(new CompositionEvent('compositionstart'));
+    textarea.dispatchEvent(new CompositionEvent('compositionend', { data: '中' }));
+    textarea.setRangeText('中', 1, 2, 'end');
+    textarea.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: '中' }));
+    expect(rich.text).to.equal('<b>A中C</b>');
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, cancelable: true }));
+    expect(rich.text).to.equal('<b>ABC</b>');
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 2]);
   });
 
   it('uses rich glyph positions and keeps plain text outside the rich session', () => {
@@ -588,6 +749,56 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 3]);
   });
 
+  it('resolves a new target at press time and the release after a selection listener pans the camera', () => {
+    const { owner, session, textarea } = edit('old');
+    const container = document.createElement('div');
+    const view = new Matrix4();
+    const rich = component('ABCD');
+    const target = {
+      type: spec.ItemType.richtext, isVisible: true, children: [], getInstanceId: () => 'new',
+      transform: new Transform({ scale: [0.01, 0.01, 1] }),
+      getComponent: (type: unknown) => type === RichTextComponent ? rich : undefined,
+      composition: { transform: new Transform(), camera: { getProjectionMatrix: () => new Matrix4(), getViewMatrix: () => view } },
+    };
+
+    Object.assign(rich, { item: target, SCALE_FACTOR: 1 });
+    Object.assign(container.style, { width: '200px', height: '200px' });
+    document.body.appendChild(container);
+    Object.assign(owner, {
+      getEngine: () => ({ canvas: { parentElement: container }, sceneServer: { compositions: [{
+        engine: { effectsObjectServer: { objectsCache: {} } }, sceneRoot: { children: [target] },
+      }] } }),
+      getSelection: () => ({ hitTest: () => ['new'], commitSelectedItems: () => { view.elements[12] = 1; } }),
+      setCursor: () => {},
+    });
+    const projection = new RichTextGizmo(owner, session);
+    const select = new SelectRichTextGizmo(owner, session);
+
+    try {
+      const layout = rich.getEditingLayout();
+      const button = (index: number, pan: number) => {
+        const box = layout.characters[index];
+        const event = new InputEventMouseButton();
+
+        event.buttonIndex = MouseButton.Left;
+        event.position.set((200 - layout.width) / 2 + box.x + pan, (200 - layout.height) / 2 + box.y + box.height / 2);
+
+        return event;
+      };
+      const down = button(2, 0);
+
+      select.onMouseDown(down);
+      expect(down.isAccepted()).to.equal(true);
+      expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([2, 2]);
+      select.onMouseUp(button(3, 100));
+      expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([2, 3]);
+    } finally {
+      select.dispose();
+      projection.dispose();
+      container.remove();
+    }
+  });
+
   it('keeps plain selection unchanged and selects rich text through its own gizmo', () => {
     const rich = component('<b>ABCD</b>');
     const richItem = { type: spec.ItemType.richtext, isVisible: true, children: [], getInstanceId: () => 'rich',
@@ -598,7 +809,7 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     let selected = plainItem;
     const owner = {
       getEngine: () => ({ canvas: { parentElement: document.body }, sceneServer: { compositions: [{
-        engine: { effectsObjectServer: { objectInstance: {} } }, sceneRoot: { children: [plainItem, richItem] },
+        engine: { effectsObjectServer: { objectsCache: {} } }, sceneRoot: { children: [plainItem, richItem] },
       }] } }),
       getSelection: () => ({ hitTest: () => [hit], filterSelectedItems: (ids: string[]) => ids,
         getSelectedPlayerItems: () => [selected], commitSelectedItems: () => {} }),

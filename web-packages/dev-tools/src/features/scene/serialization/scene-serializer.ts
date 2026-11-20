@@ -132,7 +132,7 @@ export class SceneSerializer {
   }
 
   normalize<T> (value: T): T {
-    const ids = new Map([...this.ids].map(([object, id]) => [object.getInstanceId(), id]));
+    const ids = new Map(Array.from(this.ids, ([object, id]) => [object.getInstanceId(), id] as const));
     const result = jsonData(value);
     const visit = (entry: any): void => {
       if (!entry || typeof entry !== 'object') { return; }
@@ -586,7 +586,7 @@ export class SceneSerializer {
         group.push(component); groups.set(component.priority, group);
       }
     }
-    const priorities = [...groups.keys()].sort((a, b) => a - b);
+    const priorities = Array.from(groups.keys()).sort((a, b) => a - b);
 
     for (let index = 0; index < priorities.length; index++) {
       const priority = priorities[index], group = groups.get(priority)!;

@@ -1,5 +1,5 @@
 import type { RichTextComponent, RichTextCharacterBox } from '@galacean/effects-plugin-rich-text';
-import { RichTextDocument } from './rich-text-document';
+import { getRichTextInputSelection, RichTextDocument } from './rich-text-document';
 import { richTextViewportTransform, type RichTextCaretPosition, type RichTextViewport } from './rich-text-geometry';
 
 type Snapshot = { source: string, start: number, end: number };
@@ -13,8 +13,10 @@ export class RichTextEditor {
   private readonly undoStack: Snapshot[] = [];
   private readonly redoStack: Snapshot[] = [];
   private beforeInput: (Snapshot & { forwardDelete: boolean }) | undefined;
-  private composition: Snapshot | undefined;
+  private composition: { before: Snapshot, text: string } | undefined;
+  private pendingCommit: { before: Snapshot, text: string } | undefined;
   private positions: RichTextCaretPosition[] = [];
+  private upstreamCaretIndex: number | undefined;
   private characters: readonly RichTextCharacterBox[] = [];
   private caretWidth = 1;
   private viewportWidth = 0;
@@ -51,12 +53,16 @@ export class RichTextEditor {
   }
 
   /** 将纯文本输入合并到富文本片段，不把标签暴露在输入框中。 */
-  input (): void {
+  input (inputType = ''): void {
     const before = this.beforeInput ?? this.snapshot();
+    const pending = this.pendingCommit;
+    const value = this.textarea.value;
+    const commitsComposition = pending && (value === pending.text || inputType.includes('Composition'));
 
-    this.document.updateText(this.textarea.value, this.beforeInput);
+    this.document.updateText(value, this.beforeInput);
     if (before.source !== this.document.markup) {
-      if (!this.composition) { this.remember(before); }
+      if (!this.composition) { this.remember(commitsComposition ? pending.before : before); }
+      if (!commitsComposition || value === pending.text) { this.pendingCommit = undefined; }
       this.publish();
     }
     this.beforeInput = undefined;
@@ -70,6 +76,7 @@ export class RichTextEditor {
 
     this.document.format(before.start, before.end, attribute, value);
     if (before.source !== this.document.markup) {
+      this.pendingCommit = undefined;
       this.remember(before);
       this.publish();
     }
@@ -81,6 +88,7 @@ export class RichTextEditor {
     if (event.isComposing || this.composition) { return; }
     const command = event.metaKey || event.ctrlKey;
 
+    if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') { this.upstreamCaretIndex = undefined; }
     if (command && !event.altKey && (event.code === 'KeyZ' || event.code === 'KeyY')) {
       event.preventDefault();
       this.restore(event.code === 'KeyY' || event.shiftKey);
@@ -102,6 +110,8 @@ export class RichTextEditor {
       this.textarea.setSelectionRange(selectionStart, selectionEnd);
       this.undoStack.length = 0;
       this.redoStack.length = 0;
+      this.pendingCommit = undefined;
+      this.upstreamCaretIndex = undefined;
     }
     const layout = this.component.getEditingLayout();
 
@@ -131,7 +141,7 @@ export class RichTextEditor {
     const start = this.textarea.selectionStart;
     const end = this.textarea.selectionEnd;
     const active = pointerSelecting || start !== end || window.document.activeElement === this.textarea;
-    const key = JSON.stringify([start, end, active, this.caretWidth]);
+    const key = JSON.stringify([start, end, active, this.caretWidth, this.upstreamCaretIndex]);
 
     this.overlay.style.display = active ? 'block' : 'none';
     if (key === this.paintKey) { return; }
@@ -191,17 +201,26 @@ export class RichTextEditor {
       this.restore(inputType === 'historyRedo');
     } else {
       this.beforeInput = {
-        ...this.snapshot(),
-        forwardDelete: inputType.startsWith('delete') && inputType.endsWith('Forward'),
+        source: this.document.markup,
+        ...getRichTextInputSelection(this.textarea, inputType),
       };
     }
   };
 
-  private readonly handleCompositionStart = (): void => { this.composition = this.snapshot(); };
-  private readonly handleCompositionEnd = (): void => {
-    if (this.composition && this.composition.source !== this.document.markup) { this.remember(this.composition); }
+  private readonly handleCompositionStart = (): void => {
+    this.pendingCommit = undefined;
+    this.composition = { before: this.snapshot(), text: this.text };
+  };
+  private readonly handleCompositionEnd = (event: CompositionEvent): void => {
+    if (!this.composition) { return; }
+    const { before, text: original } = this.composition;
+
+    if (before.source !== this.document.markup) { this.remember(before); }
+    // 有些浏览器在 compositionend 之后才把最终文字写入 textarea。
+    const text = original.slice(0, before.start) + event.data + original.slice(before.end);
+
+    this.pendingCommit = text !== this.text ? { before, text } : undefined;
     this.composition = undefined;
-    this.beforeInput = undefined;
   };
 
   private snapshot (): Snapshot {
@@ -215,6 +234,7 @@ export class RichTextEditor {
   }
 
   private restore (redo: boolean): void {
+    this.pendingCommit = undefined;
     const source = redo ? this.redoStack : this.undoStack;
     const target = redo ? this.undoStack : this.redoStack;
     const snapshot = source.pop();
@@ -230,11 +250,23 @@ export class RichTextEditor {
 
   private publish (): void {
     this.component.setText(this.document.markup);
+    this.upstreamCaretIndex = undefined;
     this.paintKey = '';
     this.onChange();
   }
 
+  /** 软换行两侧共享文本偏移。保留用户选中的上一行末端。 */
+  preferCaret (caret: RichTextCaretPosition | undefined): void {
+    this.upstreamCaretIndex = caret && this.positions.find(position => position.index === caret.index) === caret
+      ? caret.index : undefined;
+  }
+
   private caretAt (index: number): RichTextCaretPosition | undefined {
+    if (index === this.upstreamCaretIndex) {
+      const upstream = this.positions.find(position => position.index === index);
+
+      if (upstream) { return upstream; }
+    }
     for (let i = this.positions.length - 1; i >= 0; i--) {
       if (this.positions[i].index === index) { return this.positions[i]; }
     }
@@ -261,6 +293,7 @@ export class RichTextEditor {
     } else {
       candidates.sort((a, b) => event.code === 'Home' ? a.x - b.x : b.x - a.x);
     }
+    this.preferCaret(candidates[0]);
     const next = candidates[0]?.index ?? (event.code === 'ArrowUp' ? 0 : this.text.length);
     const selectionAnchor = event.shiftKey ? anchor : next;
 

@@ -1,5 +1,15 @@
 import { escape, richTextParser, type Attribute, type RichTextAST } from '@galacean/effects-plugin-rich-text';
 
+type InputSelection = { start: number, end: number, forwardDelete?: boolean };
+
+/** 在浏览器修改 textarea 前记录选区和删除方向。 */
+export function getRichTextInputSelection (textarea: HTMLTextAreaElement, inputType = '') {
+  return {
+    start: textarea.selectionStart, end: textarea.selectionEnd,
+    forwardDelete: inputType.startsWith('delete') && inputType.endsWith('Forward'),
+  };
+}
+
 /** 使用可见文字的 UTF-16 偏移编辑富文本，保留未修改片段的属性。 */
 export class RichTextDocument {
   private runs: RichTextAST[];
@@ -21,12 +31,9 @@ export class RichTextDocument {
     let minimum = defaultFontSize;
 
     for (const run of this.runs) {
-      for (const attribute of run.attributes) {
-        if (attribute.attributeName !== 'size') { continue; }
-        const size = parseFloat(attribute.attributeParam ?? '');
+      const size = parseFloat(effectiveAttribute(run, 'size') ?? '');
 
-        if (Number.isFinite(size) && size > 0) { minimum = Math.min(minimum, size); }
-      }
+      if (Number.isFinite(size) && size > 0) { minimum = Math.min(minimum, size); }
     }
 
     return minimum;
@@ -53,8 +60,7 @@ export class RichTextDocument {
 
   /** undefined 表示继承默认样式，null 表示选区包含混合样式。 */
   getFormat (start: number, end: number, attributeName: string): string | null | undefined {
-    const values = this.slice(start, end).map(run => [...run.attributes].reverse()
-      .find(attribute => attribute.attributeName === attributeName)?.attributeParam);
+    const values = this.slice(start, end).map(run => effectiveAttribute(run, attributeName));
 
     return values.every(value => value === values[0]) ? values[0] : null;
   }
@@ -76,7 +82,7 @@ export class RichTextDocument {
   }
 
   /** 根据原始选区限定差异范围，避免重复字符导致样式归属错误。 */
-  updateText (text: string, selection?: { start: number, end: number, forwardDelete?: boolean }): void {
+  updateText (text: string, selection?: InputSelection): void {
     const before = this.text;
 
     if (before === text) { return; }
@@ -94,17 +100,17 @@ export class RichTextDocument {
     let start = 0;
     let end = before.length;
     let nextEnd = text.length;
-    const suffixLimit = selection?.end ?? 0;
+    // Backspace 时给选区后的原文留出空间；无选区时优先保留公共前缀。
+    const suffixLength = selection ? Math.max(0, end - selection.end) : 0;
+    const prefixLimit = Math.min(selection?.start ?? end, end, nextEnd - suffixLength);
 
-    // 先锁定选区右侧未变的后缀，再限制前缀。否则 Backspace 遇到重复字符时，
-    // 公共前缀会跨过真实编辑点，把删除归属到下一个样式片段。
-    while (end > suffixLimit && nextEnd > 0 && before[end - 1] === text[nextEnd - 1]) {
+    while (start < prefixLimit && before[start] === text[start]) { start++; }
+    const suffixLimit = Math.max(start, selection?.end ?? 0);
+
+    while (end > suffixLimit && nextEnd > start && before[end - 1] === text[nextEnd - 1]) {
       end--;
       nextEnd--;
     }
-    const prefixLimit = Math.min(selection?.start ?? before.length, nextEnd);
-
-    while (start < prefixLimit && before[start] === text[start]) { start++; }
     this.replace(start, end, text.slice(start, nextEnd));
   }
 
@@ -168,6 +174,14 @@ export class RichTextDocument {
     }
     this.runs = merged;
     this.source = serializeRuns(merged);
+  }
+}
+
+function effectiveAttribute (run: RichTextAST, name: string): string | undefined {
+  for (let i = run.attributes.length - 1; i >= 0; i--) {
+    const attribute = run.attributes[i];
+
+    if (attribute.attributeName === name) { return attribute.attributeParam; }
   }
 }
 

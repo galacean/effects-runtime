@@ -1,5 +1,5 @@
 import { FrameComponent, ShapeComponent, math, spec } from '@galacean/effects';
-import { applyRichTextResize, createRichTextResizeSnapshot, getEditableTextComponent, getRichTextFrameWidth, RichTextDocument } from '@galacean/effects-plugin-editor-gizmo';
+import { applyRichTextResize, createRichTextResizeSnapshot, getEditableTextComponent, getRichTextFrameWidth, getRichTextInputSelection, RichTextDocument } from '@galacean/effects-plugin-editor-gizmo';
 import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DOMEvents, element } from './dom';
@@ -49,7 +49,7 @@ export class InspectorPanel {
   private readonly mediaStatus = element('media-status');
   private signature = '';
   private textTarget?: VFXItem;
-  private beforeTextInput?: { item: VFXItem, source: string, start: number, end: number };
+  private beforeTextInput?: { item: VFXItem, source: string } & ReturnType<typeof getRichTextInputSelection>;
   private refreshFrame?: number;
 
   constructor (private readonly scene: DemoScene, private readonly editor: DemoEditor) {
@@ -367,12 +367,13 @@ export class InspectorPanel {
   }
 
   private bindTextFields (): void {
-    this.events.on(this.textValue, 'beforeinput', () => {
+    this.events.on(this.textValue, 'beforeinput', event => {
       const item = this.editor.selectedItem;
       const text = getEditableTextComponent(item);
 
-      this.beforeTextInput = item && text ? { item, source: text.text,
-        start: this.textValue.selectionStart, end: this.textValue.selectionEnd } : undefined;
+      this.beforeTextInput = item && text
+        ? { item, source: text.text, ...getRichTextInputSelection(this.textValue, event.inputType) }
+        : undefined;
     });
     this.events.on(this.textValue, 'input', () => {
       const selection = this.beforeTextInput;

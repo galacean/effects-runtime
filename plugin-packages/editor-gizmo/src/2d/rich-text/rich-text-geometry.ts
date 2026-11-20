@@ -31,7 +31,7 @@ export type RichTextCaretPosition = {
 export function resolveRichTextCaretPosition (
   layout: RichTextViewport & { caretPositions: RichTextCaretPosition[] },
   point: RichTextPoint,
-): number | undefined {
+): RichTextCaretPosition | undefined {
   if (!layout.caretPositions.length) { return; }
   const { a, b, c, d, e, f } = layout.transform;
   const determinant = a * d - b * c;
@@ -68,5 +68,5 @@ export function resolveRichTextCaretPosition (
     }
   }
 
-  return closest.index;
+  return closest;
 }

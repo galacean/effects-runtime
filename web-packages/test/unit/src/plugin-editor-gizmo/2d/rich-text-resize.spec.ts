@@ -99,6 +99,23 @@ describe('plugin-editor-gizmo/rich-text-resize', () => {
     expect(document.scaleFontSizes(1)).to.equal(source);
   });
 
+  it('clamps font resizing only for effective inline sizes and the default size', () => {
+    const source = '<size=0.5><size=20>A</size></size>';
+    const rich = createRichText(source);
+    const snapshot = createRichTextResizeSnapshot(rich, 'font');
+
+    expect(snapshot.minimumFontSize).to.equal(20);
+    applyRichTextResize(snapshot, 1);
+    expect(rich.text).to.equal(source);
+    expect(rich.textStyle.fontSize).to.equal(20);
+    expect(new RichTextDocument(source).getMinimumFontSize(12)).to.equal(12);
+    expect(new RichTextDocument('<size=0.5><size=invalid>A</size></size>').getMinimumFontSize(20)).to.equal(20);
+
+    rich.setText('<size=0.5>A<size=20>B</size></size>');
+    applyRichTextResize(createRichTextResizeSnapshot(rich, 'font'), 1);
+    expect(new RichTextDocument(rich.text).getFormat(0, 1, 'size')).to.equal('1');
+  });
+
   for (const mode of [spec.TextSizeMode.autoWidth, spec.TextSizeMode.autoHeight, spec.TextSizeMode.fixed]) {
     it(`scales all base properties from the original snapshot (size mode=${mode})`, () => {
       const component = createRichText();

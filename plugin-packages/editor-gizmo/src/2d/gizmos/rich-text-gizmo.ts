@@ -7,21 +7,26 @@ import { GizmoType } from '../gizmo-type';
 import { getItemViewTransform } from '../items';
 import { getTransformedBoxCorners, type Matrix3 } from '../math';
 import { drawCorners, toColor } from '../drawing';
-import type { RichTextEditSession, RichTextInputPayload } from '../rich-text/rich-text-edit-session';
+import type { RichTextEditSession } from '../rich-text/rich-text-edit-session';
 import type { RichTextViewport } from '../rich-text/rich-text-geometry';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 
 /** 富文本专用的排版同步、编辑框和事件投影。 */
 export class RichTextGizmo extends Gizmo {
   readonly type = GizmoType.RICH_TEXT;
-  private readonly projectionToken = {};
   private transform: Matrix3 | undefined;
   private viewport: RichTextViewport | undefined;
 
   constructor (owner: GizmoOwner, private readonly session: RichTextEditSession) {
     super(owner);
-    session.attachProjection(this.projectionToken);
-    session.on('richTextInput', this.forwardInput);
+    session.attachProjection(this, {
+      readViewport: () => {
+        this.onUpdate();
+
+        return this.viewport;
+      },
+      forwardInput: payload => owner.emit('richtextinput', { source: this, ...payload }),
+    });
   }
 
   get textAreaElement (): HTMLTextAreaElement { return this.session.textAreaElement; }
@@ -69,12 +74,7 @@ export class RichTextGizmo extends Gizmo {
   selectAllText (): boolean { return this.session.selectAllText(); }
 
   override dispose (): void {
-    this.session.off('richTextInput', this.forwardInput);
-    this.session.detachProjection(this.projectionToken);
+    this.session.detachProjection(this);
     super.dispose();
   }
-
-  private readonly forwardInput = (payload: RichTextInputPayload): void => {
-    this._owner.emit('richtextinput', { source: this, ...payload });
-  };
 }

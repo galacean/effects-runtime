@@ -16,11 +16,16 @@ export type RichTextInputPayload = {
 };
 
 type RichTextSessionEvents = { richTextInput: [RichTextInputPayload] };
+type RichTextProjection = {
+  readViewport(): RichTextViewport | undefined,
+  forwardInput(payload: RichTextInputPayload): void,
+};
 type PointerSelection = RichTextSelectionOptions & {
   handle: object,
   anchor: RichTextPoint,
   focus: RichTextPoint,
   anchorIndex?: number,
+  focusCaret?: RichTextCaretPosition,
   active: boolean,
 };
 
@@ -30,7 +35,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
   private target: VFXItem | undefined;
   private editor: RichTextEditor | undefined;
   private activation: RichTextEditActivation = 'focus';
-  private readonly projections = new Set<object>();
+  private readonly projections = new Map<object, RichTextProjection | undefined>();
   private layout: (RichTextViewport & { caretPositions: RichTextCaretPosition[] }) | undefined;
   private pointerSelection: PointerSelection | undefined;
   private savedSelection: { start: number, end: number, direction: 'forward' | 'backward' | 'none' } | undefined;
@@ -79,6 +84,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
       const payload = { itemId: item.getInstanceId(), markup: component.text, plainText: this.editor!.text };
 
       this.emit('richTextInput', payload);
+      this.activeProjection?.forwardInput(payload);
     });
     if (activation === 'select') { this.openInput(); }
 
@@ -88,9 +94,13 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
   /** 在读取元素尺寸前完成富文本排版。 */
   prepareLayout (): void { this.editor?.component.getEditingLayout(); }
 
-  attachProjection (token: object): void {
+  private get activeProjection (): RichTextProjection | undefined {
+    return Array.from(this.projections.values()).pop();
+  }
+
+  attachProjection (token: object, projection?: RichTextProjection): void {
     if (!this.disposed) {
-      this.projections.add(token);
+      this.projections.set(token, projection);
       if (this.activation === 'select') {
         this.openInput();
       }
@@ -107,6 +117,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     const editor = this.editor;
 
     if (!editor || !viewport || !this.projections.size) {
+      this.layout = undefined;
       this.hide();
 
       return;
@@ -120,7 +131,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     });
     this.openInput();
     this.layout = { ...viewport, caretPositions: editor.sync(viewport) };
-    if (this.pointerSelection) {
+    if (this.pointerSelection && !this.pointerSelection.focusCaret) {
       if (this.applyPointerSelection() && !this.pointerSelection.active) { this.pointerSelection = undefined; }
     }
     textarea.scrollTop = 0;
@@ -140,11 +151,12 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
   }
 
   beginPointerSelection (point: RichTextPoint, options: RichTextSelectionOptions = {}): object {
+    this.refreshPointerViewport();
     const textarea = this.textAreaElement;
     const handle = {};
     const anchorIndex = options.extend
       ? textarea.selectionDirection === 'backward' ? textarea.selectionEnd : textarea.selectionStart
-      : this.layout ? resolveRichTextCaretPosition(this.layout, point) : undefined;
+      : this.layout ? resolveRichTextCaretPosition(this.layout, point)?.index : undefined;
 
     this.pointerSelection = { ...options, handle, anchor: { ...point }, focus: { ...point }, active: true,
       anchorIndex };
@@ -155,13 +167,17 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
 
   updatePointerSelection (handle: object, point: RichTextPoint): void {
     if (!this.pointerSelection?.active || this.pointerSelection.handle !== handle) { return; }
+    this.refreshPointerViewport();
     this.pointerSelection.focus = { ...point };
+    this.pointerSelection.focusCaret = undefined;
     this.applyPointerSelection();
   }
 
   finishPointerSelection (handle: object, point: RichTextPoint): void {
     if (!this.pointerSelection || this.pointerSelection.handle !== handle) { return; }
+    this.refreshPointerViewport();
     this.pointerSelection.focus = { ...point };
+    this.pointerSelection.focusCaret = undefined;
     this.pointerSelection.active = false;
     if (this.applyPointerSelection()) { this.pointerSelection = undefined; }
   }
@@ -184,7 +200,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     this.textAreaElement.remove();
   }
 
-  private readonly handleInput = (): void => { this.editor?.input(); };
+  private readonly handleInput = (event: Event): void => { this.editor?.input((event as InputEvent).inputType); };
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Escape' && !event.isComposing) {
       event.preventDefault();
@@ -224,13 +240,20 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     this.editor?.hide();
   }
 
+  private refreshPointerViewport (): void {
+    const projection = this.activeProjection;
+
+    if (projection) { this.syncViewport(projection.readViewport()); }
+  }
+
   private applyPointerSelection (): boolean {
     const selection = this.pointerSelection;
     const layout = this.layout;
 
     if (!selection || !layout) { return false; }
-    selection.anchorIndex ??= resolveRichTextCaretPosition(layout, selection.anchor);
-    const focus = resolveRichTextCaretPosition(layout, selection.focus);
+    selection.anchorIndex ??= resolveRichTextCaretPosition(layout, selection.anchor)?.index;
+    selection.focusCaret ??= resolveRichTextCaretPosition(layout, selection.focus);
+    const focus = selection.focusCaret?.index;
 
     if (selection.anchorIndex === undefined || focus === undefined) { return false; }
     let start = Math.min(selection.anchorIndex, focus);
@@ -252,6 +275,7 @@ export class RichTextEditSession extends EventEmitter<RichTextSessionEvents> {
     }
     if (!selection.active) { this.textAreaElement.focus(); }
     this.textAreaElement.setSelectionRange(start, end, focus < selection.anchorIndex ? 'backward' : 'forward');
+    this.editor?.preferCaret(selection.focusCaret);
     this.textAreaElement.scrollTop = 0;
     this.editor?.paint(selection.active);
 

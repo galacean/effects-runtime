@@ -492,13 +492,9 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
 
     // ── 步骤 1: 换行策略（逻辑坐标系，fontScale 不参与排版）──
-    const wrapResult = this.richWrapStrategy.computeLines(
-      this.processedTextOptions,
-      context,
-      this.textStyle,
-      layout,
-      letterSpace,
-    );
+    const wrap = (options: RichTextOptions[]) =>
+      this.richWrapStrategy.computeLines(options, context, this.textStyle, layout, letterSpace);
+    const wrapResult = wrap(this.processedTextOptions);
 
     // ── 步骤 2: SizeMode → 帧尺寸（逻辑单位）──
     // fontScale 不参与排版，全部在逻辑坐标系中完成。
@@ -506,11 +502,22 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     let frameH: number;
 
     switch (layout.autoResize) {
-      case spec.TextSizeMode.autoWidth:
-        frameW = Math.max(1, wrapResult.maxLineWidth || 0);
+      case spec.TextSizeMode.autoWidth: {
+        let width = wrapResult.maxLineWidth;
+
+        // 空文本和纯换行沿用占位空格的自动宽度，实际行和插入点仍使用原文。
+        if (!width && this.processedTextOptions.every(run => !run.text)) {
+          const placeholders = this.processedTextOptions.map(run => ({
+            ...run, text: !this.text || run.isNewLine ? ' ' : '',
+          }));
+
+          width = wrap(placeholders).maxLineWidth;
+        }
+        frameW = Math.max(1, width || 0);
         frameH = Math.max(1, wrapResult.totalHeight || 0);
 
         break;
+      }
       case spec.TextSizeMode.autoHeight:
         frameW = layout.maxTextWidth;
         frameH = Math.max(1, wrapResult.totalHeight || 0);
