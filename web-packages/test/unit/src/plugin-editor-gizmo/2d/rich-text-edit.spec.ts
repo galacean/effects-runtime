@@ -444,6 +444,18 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect(events[0]).to.include({ markup: rich.text, plainText: 'Hello 世界', itemId: 'rich' });
   });
 
+  it('preserves the style before the caret when Delete removes a repeated character', () => {
+    const { rich, textarea } = edit('<b>a</b><i>aaa</i>');
+    const inputType = 'deleteContentForward';
+
+    textarea.setSelectionRange(1, 1);
+    textarea.dispatchEvent(new InputEvent('beforeinput', { inputType, cancelable: true }));
+    textarea.setRangeText('', 1, 2, 'start');
+    textarea.dispatchEvent(new InputEvent('input', { inputType }));
+
+    expect(rich.text).to.equal('<b>a</b><i>aa</i>');
+  });
+
   it('routes rich changes through richtextinput without changing the plain event contract', () => {
     const { owner, session, item, input, rich } = edit('<b>ABC</b>');
     const emit = chai.spy();

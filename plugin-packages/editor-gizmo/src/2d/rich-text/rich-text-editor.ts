@@ -12,7 +12,7 @@ export class RichTextEditor {
   private readonly overlay = window.document.createElement('div');
   private readonly undoStack: Snapshot[] = [];
   private readonly redoStack: Snapshot[] = [];
-  private beforeInput: Snapshot | undefined;
+  private beforeInput: (Snapshot & { forwardDelete: boolean }) | undefined;
   private composition: Snapshot | undefined;
   private positions: RichTextCaretPosition[] = [];
   private characters: readonly RichTextCharacterBox[] = [];
@@ -184,11 +184,16 @@ export class RichTextEditor {
   }
 
   private readonly handleBeforeInput = (event: InputEvent): void => {
-    if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') {
+    const { inputType } = event;
+
+    if (inputType === 'historyUndo' || inputType === 'historyRedo') {
       event.preventDefault();
-      this.restore(event.inputType === 'historyRedo');
+      this.restore(inputType === 'historyRedo');
     } else {
-      this.beforeInput = this.snapshot();
+      this.beforeInput = {
+        ...this.snapshot(),
+        forwardDelete: inputType.startsWith('delete') && inputType.endsWith('Forward'),
+      };
     }
   };
 

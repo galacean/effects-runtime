@@ -1289,48 +1289,58 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(compute(new Vector2(150, 115))).to.equal(TransformType.TRANSLATION);
   });
 
-  it('文字宽度会话按交互方向取真实左/右边，旋转后仍不选错边', () => {
-    const { gizmo } = createGizmo(TransformType.NULL);
-    const getEdge = (gizmo as unknown as {
-      draggedWidthEdge: (center: Vector2, dir: Vector2) => Line2 | undefined,
-    }).draggedWidthEdge.bind(gizmo);
+  it('拖动普通文本的左右手柄可调整文本框宽度，旋转后也能使用', () => {
+    const { gizmo, owner } = createGizmo(TransformType.NULL);
 
-    // 轴对齐：中心 (100,100)，宽 80（半宽 40）高 40
-    const axisAlignedCorners = [
-      new Vector2(60, 80), new Vector2(140, 80), new Vector2(140, 120), new Vector2(60, 120),
-    ];
+    gizmo.refreshWireframeBySelectedItems = ResizeSelectionGizmo.prototype.refreshWireframeBySelectedItems;
+    gizmo.refreshTransformType = ResizeSelectionGizmo.prototype.refreshTransformType;
+    spyOnGetter(owner.getSnapManager(), 'enabled', () => false);
+    chai.spy.on(GizmoViewportUtils, 'getCameraInfo', () => ({
+      position: new Vector3(0, 0, 1), matrix: new Matrix4().setPosition(new Vector3(0, 0, -0.5)),
+    }));
+    const component = {
+      text: 'text',
+      textStyle: { fontSize: 20, fontOffset: 0 },
+      textLayout: { width: 100, height: 24, lineHeight: 24, autoResize: spec.TextSizeMode.fixed },
+      getLineCount: () => 2,
+      setTextWidth: TextComponent.prototype.setTextWidth,
+      setTextHeight: TextComponent.prototype.setTextHeight,
+    };
+    const item = {
+      type: spec.ItemType.text, isVisible: true,
+      getInstanceId: () => 'text',
+      getComponent: (type: unknown) => type === TextComponent ? component : undefined,
+      transform: new Transform({ size: new Vector2(1, 0.7) }),
+      composition: { transform: new Transform(),
+        camera: { getProjectionMatrix: () => new Matrix4(), getViewMatrix: () => new Matrix4() } },
+    } as unknown as VFXItem;
 
-    gizmo.wireframe.box = setBoxFromPoints(new Box2(), axisAlignedCorners);
-    gizmo.wireframe.transform = getBoxTransform(axisAlignedCorners);
-    const center = new Vector2(100, 100);
-    const right = getEdge(center, new Vector2(1, 0))!.getCenter();
-    const left = getEdge(center, new Vector2(-1, 0))!.getCenter();
+    spyOnGetter(gizmo, 'selectedItems', () => [item]);
+    for (const rotation of [0, 45]) {
+      item.transform.setRotation(0, 0, rotation);
+      for (const edgeIndex of [1, 3]) {
+        item.transform.setPosition(0, 0, 0);
+        component.setTextWidth(100);
+        gizmo.refreshWireframeBySelectedItems();
+        const handle = gizmo.wireframe.edges[edgeIndex].getCenter();
+        const fixed = gizmo.wireframe.edges[(edgeIndex + 2) % 4].getCenter();
+        const width = handle.clone().subtract(fixed);
+        const target = new Vector2();
+        const down = mouseButton(handle.x, handle.y);
 
-    expect(right).to.deep.equal(new Vector2(140, 100));
-    expect(left).to.deep.equal(new Vector2(60, 100));
-    // 起点到中心距离 = 真实半宽（originLength 不再陈旧）
-    expect(right.distance(center)).to.equal(40);
-    expect(left.distance(center)).to.equal(40);
+        expect(accepted(down, () => gizmo.onMouseDown(down))).to.equal(true);
+        expect(gizmo.activeType).to.equal(TransformType.WIDTH_SCALE);
+        for (const ratio of [0.7, 1.2]) {
+          target.copyFrom(width).multiply(ratio).add(fixed);
+          gizmo.onMouseDrag(mouseMotion(target.x, target.y));
+          expect(component.textLayout.width).to.be.closeTo(100 * ratio, 1e-8);
+        }
+        const up = mouseButton(target.x, target.y, false, MouseButtonMask.None);
 
-    // 45° 旋转：中心 (100,100)，角点顺序 (左上,右上,右下,左下)，半宽 40、半高 20
-    const c = Math.SQRT1_2;
-    const s = Math.SQRT1_2;
-    const rot = (x: number, y: number) => new Vector2(100 + x * c - y * s, 100 + x * s + y * c);
-    const rotatedCorners = [
-      rot(-40, -20), rot(40, -20), rot(40, 20), rot(-40, 20),
-    ];
-
-    gizmo.wireframe.box = setBoxFromPoints(new Box2(), rotatedCorners);
-    gizmo.wireframe.transform = getBoxTransform(rotatedCorners);
-    // 旋转后右侧手柄方向 = 局部 +x 旋转 45° = (cos45, sin45)
-    const xDir = new Vector2(c, s);
-    const rotRight = getEdge(center, xDir)!.getCenter();
-    const rotLeft = getEdge(center, xDir.clone().multiply(-1))!.getCenter();
-
-    expect(rotRight.distance(center)).to.be.closeTo(40, 0.5 * 10 ** -(5));
-    expect(rotLeft.distance(center)).to.be.closeTo(40, 0.5 * 10 ** -(5));
-    expect(rotRight.clone().subtract(center).dot(xDir)).to.be.greaterThan(0);
-    expect(rotLeft.clone().subtract(center).dot(xDir)).to.be.lessThan(0);
+        expect(accepted(up, () => gizmo.onMouseUp(up))).to.equal(true);
+        expect(component.textLayout.width).to.be.closeTo(120, 1e-8);
+      }
+    }
   });
 
 });

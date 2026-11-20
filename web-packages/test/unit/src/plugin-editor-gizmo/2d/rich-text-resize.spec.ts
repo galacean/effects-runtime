@@ -1,4 +1,5 @@
-import { spec, TextStyle, Transform, type VFXItem } from '@galacean/effects';
+import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, spec, TextStyle, Transform, type VFXItem } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { RichTextLayout } from '../../../../../../plugin-packages/rich-text/src/rich-text-layout';
 import { RichTextStrategyFactory } from '../../../../../../plugin-packages/rich-text/src/strategies/rich-text-factory';
@@ -58,8 +59,7 @@ function resizeSession (component: RichTextComponent, mode: 'font' | 'width', fi
 
   return {
     item, initialScale: item.transform.scale.clone(), initialPosition: item.transform.position.clone(), parentWorldToLocal,
-    geometry: { fixedPoint }, richText: { ...snapshot, initialMatrix, fixedPointRatio: localFixedPointRatio,
-      fixedPointFrameRatio: mode === 'width' ? fixedPointRatio : undefined },
+    geometry: { fixedPoint }, richText: { ...snapshot, initialMatrix, fixedPointRatio },
   };
 }
 
@@ -74,7 +74,7 @@ function applySession (session: unknown, x: number, y = x): void {
 function expectFixedPoint (session: ReturnType<typeof resizeSession>, x: number, y = x): void {
   const { item, richText, geometry } = session;
   const frameRatio = richText.mode === 'width' ? getRichTextFrameRatio(richText.component) : { x: 1, y: 1 };
-  const fixedPointRatio = richText.fixedPointFrameRatio ?? richText.fixedPointRatio;
+  const { fixedPointRatio } = richText;
   const point = new Vector3(
     fixedPointRatio.x * item.transform.size.x * frameRatio.x * (x < 0 ? -1 : 1),
     fixedPointRatio.y * item.transform.size.y * frameRatio.y * (y < 0 ? -1 : 1), 0,
@@ -182,33 +182,96 @@ describe('plugin-editor-gizmo/rich-text-resize', () => {
     }
   });
 
-  it('uses the layout frame, rather than the expanded canvas, for rich width handles', () => {
-    const component = createRichText('<size=100>W</size>');
+  for (const { name, overflow, width } of [
+    { name: 'horizontal and vertical overflow', overflow: spec.TextOverflow.visible, width: 40 },
+    { name: 'vertical overflow', overflow: spec.TextOverflow.visible, width: 180 },
+    { name: 'matching frame and canvas', overflow: spec.TextOverflow.clip, width: 40 },
+  ]) {
+    it(`drags either layout frame edge with ${name}`, () => {
+      for (const draggedIndex of [0, 1]) {
+        const source = '<size=100>W</size>';
+        const component = createRichText(source);
+        const { transform } = component.item;
+        const configs = new ConfigManager();
+        const loading = new LoadingManager();
+        const camera = { position: new Vector3(0, 0, 1),
+          getInverseViewProjectionMatrix: () => new Matrix4().setPosition(new Vector3(0, 0, -0.5)) };
+        const snap = { enabled: false, reset () {}, clearSnappingVisualizations () {} };
+        const engine = { canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } },
+          sceneServer: { compositions: [{ camera }] } };
+        const owner = {
+          getSelection: () => ({ getSelectedPlayerItems: () => [component.item] }),
+          getConfigManager: () => configs, getLoadingManager: () => loading, getEngine: () => engine,
+          getSnapManager: () => snap, getSelectionTransformKind: () => 'idle',
+          setSelectionTransformKind () {}, setCursor () {}, emit () {},
+        } as unknown as GizmoOwner;
+        const gizmo = new ResizeSelectionGizmo(owner);
 
-    component.textLayout.overflow = spec.TextOverflow.visible;
-    component.setLayoutProperties({ maxTextWidth: 40, maxTextHeight: 32, autoResize: spec.TextSizeMode.fixed });
-    component.ensureLayout();
-    const frameRatio = getRichTextFrameRatio(component);
-    const configs = new ConfigManager();
-    const owner = {
-      getSelection: () => ({ getSelectedPlayerItems: () => [component.item] }),
-      getConfigManager: () => configs, getLoadingManager: () => new LoadingManager(),
-      getEngine: () => ({ canvas: { parentElement: { offsetWidth: 800, offsetHeight: 600 } } }),
-    } as unknown as GizmoOwner;
-    const gizmo = new ResizeSelectionGizmo(owner);
+        transform.setPosition(0, 0, 0);
+        transform.setScale(-0.35, 0.45, 1);
+        transform.setRotation(0, 0, 25);
+        component.textLayout.overflow = overflow;
+        component.setLayoutProperties({ maxTextWidth: width, maxTextHeight: 32, autoResize: spec.TextSizeMode.fixed });
+        try {
+          gizmo.refreshWireframeBySelectedItems();
+          const frameRatio = getRichTextFrameRatio(component);
+          const fixedIndex = 1 - draggedIndex;
+          const handle = gizmo.wireframe.widthScaleEdges[draggedIndex].getCenter();
+          const fixed = gizmo.wireframe.widthScaleEdges[fixedIndex].getCenter();
+          const offset = handle.clone().subtract(fixed);
+          const canvasWidth = gizmo.wireframe.edges[1].getCenter().distance(gizmo.wireframe.edges[3].getCenter());
+          const drawLine = chai.spy();
 
-    try {
-      gizmo.refreshWireframeBySelectedItems();
-      const [rightFrameEdge, leftFrameEdge] = gizmo.wireframe.widthScaleEdges;
-      const renderedWidth = gizmo.wireframe.edges[1].getCenter().distance(gizmo.wireframe.edges[3].getCenter());
-      const frameWidth = rightFrameEdge.getCenter().distance(leftFrameEdge.getCenter());
+          expect(frameRatio.x < 1).to.equal(overflow === spec.TextOverflow.visible && width === 40);
+          expect(frameRatio.y < 1).to.equal(overflow === spec.TextOverflow.visible);
+          expect(offset.length()).to.be.closeTo(canvasWidth * frameRatio.x, 1e-8);
+          gizmo.wireframe.cornerEnable = false;
+          gizmo.draw({ drawLine } as unknown as Control);
+          expect(drawLine).to.have.been.called.exactly(overflow === spec.TextOverflow.visible ? 6 : 4);
 
-      expect(frameRatio.x).to.be.lessThan(1);
-      expect(frameWidth).to.be.closeTo(renderedWidth * frameRatio.x, 1e-8);
-    } finally {
-      gizmo.dispose();
-    }
-  });
+          const down = new InputEventMouseButton();
+
+          down.position.copyFrom(handle);
+          down.buttonIndex = MouseButton.Left;
+          down.buttonMask = MouseButtonMask.Left;
+          down.pressed = true;
+          gizmo.onMouseDown(down);
+          expect(down.isAccepted()).to.equal(true);
+          expect(gizmo.activeType).to.equal(TransformType.WIDTH_SCALE);
+
+          const target = new Vector2();
+
+          for (const ratio of [0.7, 1.2, -0.5, 1]) {
+            target.copyFrom(offset).multiply(ratio).add(fixed);
+            const motion = new InputEventMouseMotion();
+
+            motion.position.copyFrom(target);
+            motion.buttonMask = MouseButtonMask.Left;
+            motion.pressed = true;
+            gizmo.onMouseDrag(motion);
+            gizmo.refreshWireframeBySelectedItems();
+            const currentDraggedIndex = ratio < 0 ? fixedIndex : draggedIndex;
+            const moved = gizmo.wireframe.widthScaleEdges[currentDraggedIndex].getCenter();
+            const stationary = gizmo.wireframe.widthScaleEdges[1 - currentDraggedIndex].getCenter();
+
+            expect(component.textLayout.maxTextWidth).to.be.closeTo(width * Math.abs(ratio), 1e-8);
+            expect(moved.distance(target)).to.be.lessThan(1e-6);
+            expect(stationary.distance(fixed)).to.be.lessThan(1e-6);
+            expect(component.text).to.equal(source);
+            expect(transform.scale.toArray()).to.deep.equal([-0.35, 0.45, 1]);
+          }
+          const up = new InputEventMouseButton();
+
+          up.position.copyFrom(target);
+          up.buttonIndex = MouseButton.Left;
+          gizmo.onMouseUp(up);
+          expect(up.isAccepted()).to.equal(true);
+        } finally {
+          gizmo.dispose();
+        }
+      }
+    });
+  }
 
   for (const overflow of [spec.TextOverflow.clip, spec.TextOverflow.visible, spec.TextOverflow.display]) {
     it(`keeps the actual frame anchored for overflow=${overflow}`, () => {

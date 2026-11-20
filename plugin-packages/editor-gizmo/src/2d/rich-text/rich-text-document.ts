@@ -76,10 +76,21 @@ export class RichTextDocument {
   }
 
   /** 根据原始选区限定差异范围，避免重复字符导致样式归属错误。 */
-  updateText (text: string, selection?: { start: number, end: number }): void {
+  updateText (text: string, selection?: { start: number, end: number, forwardDelete?: boolean }): void {
     const before = this.text;
 
     if (before === text) { return; }
+    if (selection?.forwardDelete && selection.start === selection.end && text.length < before.length) {
+      // 向前删除从光标开始，实际长度由输入前后的文本决定。
+      const start = selection.start;
+      const end = start + (before.length - text.length);
+
+      if (before.slice(0, start) + before.slice(end) === text) {
+        this.replace(start, end, '');
+
+        return;
+      }
+    }
     let start = 0;
     let end = before.length;
     let nextEnd = text.length;
