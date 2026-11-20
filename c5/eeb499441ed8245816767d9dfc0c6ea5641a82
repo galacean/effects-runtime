@@ -1,0 +1,111 @@
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_778d0ea61733b7::t_98af49e9fd5741 289,292-293,296,404-406
+  s_ca27485c737bfd::t_cc21603df9a7d6 4,265,284-285
+  s_4b3a20149b1713::t_48f80e98ce9f4a 254
+web-packages/dev-tools/src/features/assets/runtime/asset-texture-cache.ts
+  s_4b3a20149b1713::t_397ceee09c5735 3,101,103
+  s_4b3a20149b1713::t_c9c18584ced350 112
+  s_4b3a20149b1713::t_405c8757d1689d 102
+plugin-packages/editor-gizmo/src/2d/configs/types.ts
+  s_778d0ea61733b7::t_706eba866c3626 328,342,344
+plugin-packages/model/src/plugin/model-plugin.ts
+  s_4b3a20149b1713::t_881f8800538e40 74-75
+  s_ca27485c737bfd::t_76ef4e60d98e46 4,31
+  s_4b3a20149b1713::t_5fdddd5ed6c068 72-73
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-asset.spec.ts
+  s_4b3a20149b1713::t_48f80e98ce9f4a 246-248
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_778d0ea61733b7::t_706eba866c3626 68-69
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/shape-model-gizmo.ts
+  s_778d0ea61733b7::t_706eba866c3626 113
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_ca27485c737bfd::t_cc21603df9a7d6 3,774,778-780,1002,1122
+packages/effects-core/src/precompositions/precomposition.ts
+  s_ca27485c737bfd::t_76ef4e60d98e46 5
+web-packages/dev-tools/src/platform/effects-runtime/editor-runtime-session.ts
+  s_4b3a20149b1713::t_397ceee09c5735 1,3,9,14
+  s_4b3a20149b1713::t_739f717927128d 5,27-28
+web-packages/test/unit/src/effects-core/composition/load-tex.spec.ts
+  s_ca27485c737bfd::t_76ef4e60d98e46 267
+web-packages/dev-tools/src/platform/effects-runtime/file-system-asset-database.ts
+  s_4b3a20149b1713::t_397ceee09c5735 4,8,25,33
+  s_4b3a20149b1713::t_881f8800538e40 26
+  s_4b3a20149b1713::t_739f717927128d 17,27,29-31,70
+  s_4b3a20149b1713::t_7efe2efecb8fca 34
+packages/effects-core/src/plugins/plugin.ts
+  s_ca27485c737bfd::t_76ef4e60d98e46 33
+web-packages/dev-tools/src/platform/effects-runtime/asset-database.ts
+  s_4b3a20149b1713::t_397ceee09c5735 1-7
+packages/effects-core/src/plugin-system.ts
+  s_ca27485c737bfd::t_76ef4e60d98e46 76-77
+packages/effects-core/src/asset-server.ts
+  s_ca27485c737bfd::t_76ef4e60d98e46 11-12,20
+  s_4b3a20149b1713::t_739f717927128d 15-17
+  s_4b3a20149b1713::t_881f8800538e40 47
+  s_4b3a20149b1713::t_e510c01c92f46a 46
+web-packages/dev-tools/src/features/assets/runtime/asset-object-cache.ts
+  s_4b3a20149b1713::t_397ceee09c5735 3,97,101-102
+  s_4b3a20149b1713::t_c9c18584ced350 96
+packages/effects-core/src/scene.ts
+  s_82928e33a45973::t_2280b28d91ba78 18
+  s_82928e33a45973::t_a3cbc66b9cbd20 15-17
+plugin-packages/editor-gizmo/src/2d/configs/builtin-configs.ts
+  s_778d0ea61733b7::t_706eba866c3626 251
+packages/effects-core/src/asset-manager.ts
+  s_ca27485c737bfd::t_cc21603df9a7d6 18,230-231,248-359
+  s_ca27485c737bfd::t_433cf553dadd3e 206,224-227
+  s_ca27485c737bfd::t_c74661a9dd6f64 125-126,189
+  s_ca27485c737bfd::t_f45666661ab453 360
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_4b3a20149b1713::t_6e73cdc264ddb4 128-134
+  s_4b3a20149b1713::t_f46e513885c848 125-127
+  s_4b3a20149b1713::t_e4a24ac96cf654 135-137
+web-packages/dev-tools/src/features/assets/model/resource-identity.ts
+  s_4b3a20149b1713::t_6e73cdc264ddb4 29
+  s_4b3a20149b1713::t_397ceee09c5735 3,47-48
+  s_82928e33a45973::t_2280b28d91ba78 49
+  s_4b3a20149b1713::t_38b4d329157ece 46
+web-packages/dev-tools/src/features/scene/operations/scene-item-operations.ts
+  s_4b3a20149b1713::t_881f8800538e40 41,225
+  s_4b3a20149b1713::t_5fdddd5ed6c068 30-33,200-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c5eeb499441ed8245816767d9dfc0c6ea5641a82",
+  "prompts": {},
+  "sessions": {
+    "s_4b3a20149b1713": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f2a0-90de-73e2-8a90-b52d2bb9caa6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    },
+    "s_778d0ea61733b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f310-6ac2-74a3-a558-ca9dd564e603",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_82928e33a45973": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edde-4d54-7272-869f-b47a2afcc4ce",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": null
+    },
+    "s_ca27485c737bfd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f288-de65-7c23-a28c-b017a1053d6f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}
