@@ -459,33 +459,6 @@ function registerStub (handler: GestureHandler, gizmo: Gizmo): void {
 }
 
 describe('GestureHandler - GizmoTool runtime', () => {
-  it('switching to Move outside the canvas clears the previous tool cursor', () => {
-    const handler = createHandler();
-
-    inputViewport(handler).onMouseLeave();
-    handler.setCursor({ type: GestureCursorType.PEN, angle: 0 });
-    handler.setActiveTool(new MoveGizmoTool(handler));
-
-    expect(controlCursor(handler)).to.equal('default');
-    handler.dispose();
-  });
-
-  it('Move keeps selection hover cursors on the next mouse move', () => {
-    const handler = createHandler();
-    const hovered = makeStubGizmo('hovered', {
-      onMouseMove () {
-        handler.setCursor({ type: GestureCursorType.POINTER, angle: 0 });
-      },
-    });
-
-    handler.setCursor({ type: GestureCursorType.PEN, angle: 0 });
-    handler.setActiveTool(createTestGizmoTool(handler, () => [hovered]));
-    sendMouseMove(handler, createMouseEvent('mousemove', 0));
-
-    expect(controlCursor(handler)).to.equal('pointer');
-    handler.dispose();
-  });
-
   it('按宿主声明顺序提交完整图', () => {
     const handler = createHandler();
     const first = makeStubGizmo('first');

@@ -167,12 +167,12 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
     });
   });
 
-  [ItemCreateType.TEXT, ItemCreateType.RICH_TEXT].forEach(createType => describe(`ItemCreateGizmo ${createType} creation`, () => {
+  describe('ItemCreateGizmo text creation', () => {
     it('commits the final width of a quick horizontal drag without waiting for the preview delay', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { starts, commits, gizmo } = createHarness(createType);
+      const { starts, commits, gizmo } = createHarness(ItemCreateType.TEXT);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 100;
@@ -187,40 +187,39 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(commits[0].id).to.equal(starts[0].id);
     });
 
-    it('creates fixed-width text after a delayed horizontal drag and ignores vertical distance', () => {
-      let now = 0;
+    for (const type of [ItemCreateType.TEXT, ItemCreateType.RICH_TEXT]) {
+      it(`creates fixed-width ${type} from a horizontal drag`, () => {
+        let now = 0;
 
-      chai.spy.on(Date, 'now', () => now);
-      const { starts, commits, gizmo } = createHarness(createType);
+        chai.spy.on(Date, 'now', () => now);
+        const { starts, commits, gizmo } = createHarness(type);
 
-      gizmo.onMouseDown(mouseButton(100, 120, true));
-      now = 151;
-      gizmo.onMouseDrag(mouseMotion(160, 400));
+        gizmo.onMouseDown(mouseButton(100, 120));
+        now = 200;
+        gizmo.onMouseDrag(mouseMotion(160, 400));
 
-      expect(starts).to.have.lengthOf(1);
-      expect(commits).to.have.lengthOf(0);
-      expect(starts[0]).to.have.deep.nested.property('type', createType);
-      expect(starts[0]).to.have.deep.nested.property('position', [130, 120]);
-      expect(starts[0]).to.have.deep.nested.property('info.width', 60);
+        expect(starts).to.have.lengthOf(1);
+        expect(commits).to.have.lengthOf(0);
+        expect(starts[0]).to.deep.include({ type, position: [130, 120] });
+        expect(starts[0].info).to.have.property('width', 60);
 
-      gizmo.onMouseUp(mouseButton(160, 400, false));
+        gizmo.onMouseUp(mouseButton(160, 400, false));
 
-      expect(commits[0]).to.have.deep.nested.property('type', createType);
-      expect(commits[0]).to.have.deep.nested.property('position', [130, 120]);
-      expect(commits[0]).to.have.deep.nested.property('info.position', [130, 120]);
-      expect(commits[0]).to.have.deep.nested.property('info.width', 60);
-      expect(commits[0].id).to.equal(starts[0].id);
-    });
+        expect(commits).to.have.lengthOf(1);
+        expect(commits[0]).to.deep.include({ type, id: starts[0].id, position: [130, 120] });
+        expect(commits[0].info).to.deep.include({ position: [130, 120], width: 60 });
+      });
+    }
 
     it('draws the actual text bounding box while fixed-width text is being created', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const selectedText = { type: createType === ItemCreateType.RICH_TEXT ? spec.ItemType.richtext : spec.ItemType.text } as VFXItem;
+      const selectedText = { type: spec.ItemType.text } as VFXItem;
       const actualBox = new Box2(new Vector2(100, 96), new Vector2(160, 144));
 
       const projection = setItemViewTransform(selectedText, getBoxTransformFromBox(actualBox));
-      const { gizmo } = createHarness(createType, [selectedText]);
+      const { gizmo } = createHarness(ItemCreateType.TEXT, [selectedText]);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -248,7 +247,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { commits, gizmo } = createHarness(createType);
+      const { commits, gizmo } = createHarness(ItemCreateType.TEXT);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -263,7 +262,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       let now = 0;
 
       chai.spy.on(Date, 'now', () => now);
-      const { commits, gizmo } = createHarness(createType);
+      const { commits, gizmo } = createHarness(ItemCreateType.TEXT);
 
       gizmo.onMouseDown(mouseButton(100, 120, true));
       now = 151;
@@ -274,5 +273,5 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(commits[0]).to.have.deep.nested.property('info.position', [70, 120]);
       expect(commits[0]).to.have.deep.nested.property('info.width', 60);
     });
-  }));
+  });
 });

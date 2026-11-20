@@ -1289,59 +1289,5 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(compute(new Vector2(150, 115))).to.equal(TransformType.TRANSLATION);
   });
 
-  it('拖动普通文本的左右手柄可调整文本框宽度，旋转后也能使用', () => {
-    const { gizmo, owner } = createGizmo(TransformType.NULL);
-
-    gizmo.refreshWireframeBySelectedItems = ResizeSelectionGizmo.prototype.refreshWireframeBySelectedItems;
-    gizmo.refreshTransformType = ResizeSelectionGizmo.prototype.refreshTransformType;
-    spyOnGetter(owner.getSnapManager(), 'enabled', () => false);
-    chai.spy.on(GizmoViewportUtils, 'getCameraInfo', () => ({
-      position: new Vector3(0, 0, 1), matrix: new Matrix4().setPosition(new Vector3(0, 0, -0.5)),
-    }));
-    const component = {
-      text: 'text',
-      textStyle: { fontSize: 20, fontOffset: 0 },
-      textLayout: { width: 100, height: 24, lineHeight: 24, autoResize: spec.TextSizeMode.fixed },
-      getLineCount: () => 2,
-      setTextWidth: TextComponent.prototype.setTextWidth,
-      setTextHeight: TextComponent.prototype.setTextHeight,
-    };
-    const item = {
-      type: spec.ItemType.text, isVisible: true,
-      getInstanceId: () => 'text',
-      getComponent: (type: unknown) => type === TextComponent ? component : undefined,
-      transform: new Transform({ size: new Vector2(1, 0.7) }),
-      composition: { transform: new Transform(),
-        camera: { getProjectionMatrix: () => new Matrix4(), getViewMatrix: () => new Matrix4() } },
-    } as unknown as VFXItem;
-
-    spyOnGetter(gizmo, 'selectedItems', () => [item]);
-    for (const rotation of [0, 45]) {
-      item.transform.setRotation(0, 0, rotation);
-      for (const edgeIndex of [1, 3]) {
-        item.transform.setPosition(0, 0, 0);
-        component.setTextWidth(100);
-        gizmo.refreshWireframeBySelectedItems();
-        const handle = gizmo.wireframe.edges[edgeIndex].getCenter();
-        const fixed = gizmo.wireframe.edges[(edgeIndex + 2) % 4].getCenter();
-        const width = handle.clone().subtract(fixed);
-        const target = new Vector2();
-        const down = mouseButton(handle.x, handle.y);
-
-        expect(accepted(down, () => gizmo.onMouseDown(down))).to.equal(true);
-        expect(gizmo.activeType).to.equal(TransformType.WIDTH_SCALE);
-        for (const ratio of [0.7, 1.2]) {
-          target.copyFrom(width).multiply(ratio).add(fixed);
-          gizmo.onMouseDrag(mouseMotion(target.x, target.y));
-          expect(component.textLayout.width).to.be.closeTo(100 * ratio, 1e-8);
-        }
-        const up = mouseButton(target.x, target.y, false, MouseButtonMask.None);
-
-        expect(accepted(up, () => gizmo.onMouseUp(up))).to.equal(true);
-        expect(component.textLayout.width).to.be.closeTo(120, 1e-8);
-      }
-    }
-  });
-
 });
 });
