@@ -8,10 +8,6 @@ describe('core/asset-manager', () => {
   before(() => {
   });
 
-  after(() => {
-    assetManager?.dispose();
-  });
-
   it('default use compressed texture and hevc video', () => {
     assetManager = new AssetManager();
 

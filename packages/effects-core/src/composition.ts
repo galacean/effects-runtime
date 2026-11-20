@@ -6,7 +6,6 @@ import type { Asset } from './asset';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
-import { SceneObjectsFactory } from './scene-objects-factory';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { InputServer } from './input-server';
@@ -16,7 +15,7 @@ import { SceneRendering } from './render';
 import type { Scene } from './scene';
 import { TextureLoadAction, Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, generateGUID } from './utils';
+import { assertExist } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
@@ -140,10 +139,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   reusable: boolean;
   /**
-   * 合成id
-   */
-  readonly id: string;
-  /**
    * 鼠标和触屏处理系统
    */
   readonly event?: InputServer;
@@ -160,9 +155,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly statistic: CompositionStatistic;
   /**
-   * 合成对应的 url 或者 JSON
+   * 合成对应的 URL，无来源地址时为空字符串
    */
-  readonly url: Scene.LoadType;
+  readonly url: string;
   /**
    * @internal
    * 合成根元素
@@ -205,7 +200,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * Composition 构造函数
    * @param engine - 引擎实例
    * @param props - composition 的创建参数
-   * @param scene
+   * @param scene - 场景资源
    */
   constructor (
     public engine: Engine,
@@ -223,7 +218,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.engine.sceneServer.addComposition(this);
 
-    let sourceContent: spec.CompositionData | null = null;
+    let sourceContent: spec.CompositionData | undefined;
 
     if (scene) {
       this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
@@ -247,19 +242,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.pluginRoot.name = 'pluginRoot';
     this.pluginRoot.setParent(this.root);
 
-    // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
-    this.sceneRoot.setParent(this.root);
-
+    this.sceneRoot.sourceScene = scene;
     if (sourceContent) {
       this.sceneRoot.definition.id = sourceContent.id;
+      this.sceneRoot.name = sourceContent.name;
+      this.sceneRoot.duration = sourceContent.duration;
+      this.sceneRoot.endBehavior = sourceContent.endBehavior;
     }
-
+    this.sceneRoot.setParent(this.root);
     PluginSystem.notifyCompositionCreating(this, scene);
-
-    if (sourceContent) {
-      SceneObjectsFactory.instantiateComposition(sourceContent, this.sceneRoot, scene?.textureOptions);
-    }
+    scene?.instantiate(this, this.sceneRoot);
 
     // 在实例化后设置 rootItem 的 name，避免 name 被覆盖
     this.sceneRoot.name = 'sceneRoot';
@@ -279,10 +272,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.emit('animationevent', eventData);
     });
 
-    this.sceneRoot.setParent(this.root);
-
     this.renderOrder = baseRenderOrder;
-    this.id = sourceContent?.id ?? generateGUID();
     this.rootComposition.startTime = sourceContent?.startTime ?? 0;
     this.event = engine.inputServer;
     this.statistic = {
@@ -308,9 +298,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.onItemMessage = onItemMessage;
     }
 
-    PluginSystem.notifyCompositionCreated(this, scene);
     this.root.initializeHierarchy();
     this.root.beginPlay();
+    PluginSystem.notifyCompositionCreated(this, scene);
+  }
+
+  /**
+   * 合成运行时实例 ID，与 sceneRoot 的实例 ID 一致。
+   */
+  get id (): string {
+    return this.sceneRoot.getInstanceId();
   }
 
   /**
@@ -715,20 +712,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     this.sceneTicking.clear();
 
-    if (this.scene) {
-      for (const video of this.scene.videos) {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-      }
-      for (const image of this.scene.images) {
-        if (image instanceof HTMLVideoElement) {
-          image.pause();
-          image.removeAttribute('src');
-          image.load();
-        }
-      }
-    }
+    this.scene?.dispose();
     this.scene = undefined;
 
     this.sceneRendering.clear();

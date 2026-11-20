@@ -7,7 +7,8 @@ export function deserializeAssets<T> (engine: Engine, idsMapping: Map<string, st
   const context = { root, idsMapping, sceneAssets: new Set<Asset>() };
 
   try {
-    return engine.effectsObjectServer.withDeserializationContext(context, deserialize);
+    return engine.assetServer.withSceneData(undefined, () =>
+      engine.effectsObjectServer.withDeserializationContext(context, deserialize));
   } finally {
     root.dispose();
   }

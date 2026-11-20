@@ -2,7 +2,6 @@
 import {
   AssetManager,
   type Composition,
-  PrecompositionManager,
   ShapeComponent,
   SpriteComponent,
   spec,
@@ -97,8 +96,8 @@ export class DefaultVFXItems {
     parent = null,
     urlname = 'NewEffects',
   ): Promise<VFXItem> {
-    const preComposition = await AssetManager.loadPrecomposition(effects, { autoplay: false });
-    const vfxItem = PrecompositionManager.instantiate(preComposition, composition);
+    const scene = await AssetManager.loadScene(effects, { autoplay: false });
+    const vfxItem = scene.instantiate(composition);
 
     vfxItem.name = urlname;
     vfxItem.type = spec.ItemType.composition;

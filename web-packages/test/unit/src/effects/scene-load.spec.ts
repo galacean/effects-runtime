@@ -270,6 +270,7 @@ describe('player/scene-load', () => {
     ]);
     const data = JSON.parse(json);
     const assetManager = new AssetManager({
+      speed: 2,
       renderLevel: spec.RenderLevel.S,
       variables: {
         image,
@@ -283,9 +284,7 @@ describe('player/scene-load', () => {
     expect(scene2.renderLevel).to.eql(spec.RenderLevel.S);
 
     try {
-      const [composition1, composition2] = await player.loadScene([scene1, { url: scene2 }], {
-        speed: 2,
-      });
+      const [composition1, composition2] = await player.loadScene([scene1, { url: scene2 }]);
       const item = composition2.getItemByName('sprite_1');
       const spriteComponent = item?.getComponent(SpriteComponent);
 

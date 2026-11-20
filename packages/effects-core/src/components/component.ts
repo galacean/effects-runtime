@@ -16,9 +16,13 @@ export abstract class Component extends EffectsObject {
    * 附加到的 VFXItem 对象
    */
   item: VFXItem;
+  /** @internal */
   isAwakeCalled = false;
+  /** @internal */
   isStartCalled = false;
+  /** @internal */
   isEnableCalled = false;
+  /** @internal */
   isDuringPlay = false;
 
   private _enabled = true;

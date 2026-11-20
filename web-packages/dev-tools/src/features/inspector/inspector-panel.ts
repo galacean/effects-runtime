@@ -188,7 +188,7 @@ export class InspectorPanel extends EditorWindow {
               const group = materials.group(renderer.getInstanceId() + ':' + index, withMaterials.length > 1 ? propertyLabel(renderer.constructor.name) : 'Element ' + index);
 
               group.reference('Material', { read: () => renderer.materials[index], write: value => { if (value instanceof Material) { renderer.materials[index] = value; } } }, 'Material', false, false);
-              if (material) { buildMaterialProperties(group, material, renderer instanceof MaskableGraphic); }
+              if (material) { buildMaterialProperties(group, material, renderer instanceof MaskableGraphic, renderer.item.sourceScene ?? renderer.item.composition?.sceneRoot.sourceScene); }
             });
           }
         }
@@ -244,7 +244,7 @@ export class InspectorPanel extends EditorWindow {
         write: enabled => document.setPostProcessingEnabled(enabled),
       });
     }
-    if (object instanceof Material) { buildMaterialProperties(this.sheet!.section('Material', 'Material', true, 'material'), object); } else if (object instanceof Texture || object instanceof Sprite) {
+    if (object instanceof Material) { buildMaterialProperties(this.sheet!.section('Material', 'Material', true, 'material'), object, false, document?.composition.sceneRoot.sourceScene); } else if (object instanceof Texture || object instanceof Sprite) {
       const group = this.sheet!.section('Image', object instanceof Sprite ? 'Sprite' : 'Texture', true, inspectedObjectIcon(object));
 
       group.add('Preview', engine => new AssetPreviewControl(engine, () => object, 144), { height: 149 });

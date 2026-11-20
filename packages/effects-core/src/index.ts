@@ -12,6 +12,7 @@ export * from './asset-manager';
 export * from './asset-server';
 export * from './effects-object-server';
 export * from './scene-objects-factory';
+export * from './scene-instantiation-context';
 export * from './camera';
 export * from './canvas-pool';
 export * from './components';
@@ -54,7 +55,6 @@ export * from './effects-object';
 export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
-export * from './precompositions';
 export * from './rendering-server';
 export * from './rendering-device';
 

@@ -325,7 +325,7 @@ export type PenConfig = {
 
 /** 造型工具预览与新形状初始化配置。 */
 export type ShapeConfig = {
-  /** 造型拖动预览颜色。 */
+  /** 造型拖动预览颜色，格式为 0xRRGGBBAA。 */
   previewColor: number,
   /** 造型拖动预览线宽。 */
   previewLineWidth: number,
@@ -339,9 +339,9 @@ export type ShapeConfig = {
   minHeight: number,
   /** 多边形和星形的最小半径。 */
   minRadius: number,
-  /** 新元素填充颜色。 */
+  /** 新元素填充颜色，格式为 0xRRGGBBAA。 */
   initialFillColor: number,
-  /** 新元素描边颜色。 */
+  /** 新元素描边颜色，格式为 0xRRGGBBAA。 */
   initialStrokeColor: number,
   /** 新元素描边宽度。 */
   initialStrokeWidth: number,

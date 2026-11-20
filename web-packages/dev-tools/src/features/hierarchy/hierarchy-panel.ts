@@ -328,7 +328,7 @@ export class HierarchyPanel extends EditorWindow {
       { label: '', separator: true }, toggle('showVisibility', 'Visibility Column'), toggle('showType', 'Type Column'),
     ];
   }
-  private expansionKey (): string { return 'effects-editor.outliner.expanded.' + projectWorkspace.current?.id + ':' + this.document?.composition.id; }
+  private expansionKey (): string { return 'effects-editor.outliner.expanded.' + projectWorkspace.current?.id + ':' + this.document?.scene.compositionId; }
   private saveExpanded (): void {
     if (!this.document) { return; }
     try { window.localStorage.setItem(this.expansionKey(), JSON.stringify([...this.expanded])); } catch (error) { console.warn('Unable to save hierarchy expansion.', error); }

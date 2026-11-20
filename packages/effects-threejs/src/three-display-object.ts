@@ -95,6 +95,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const last = performance.now();
     const scenes: Scene.LoadType[] = [];
     const compositions: Composition[] = [];
+    const autoplayFlags: boolean[] = [];
     const autoplay = options?.autoplay ?? true;
     const baseOrder = this.baseCompositionIndex;
 
@@ -104,18 +105,15 @@ export class ThreeDisplayObject extends THREE.Group {
       scenes.push(scene);
     }
 
-    this.assetServer.releaseAssetManagers();
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.engine.sceneServer.assembleSceneLoadOptions(url, { autoplay, ...options });
         const assetManager = this.assetServer.createAssetManager(opts);
 
         const scene = await assetManager.loadScene(source, this.renderer);
-
-        this.engine.sceneServer.prepareScene(scene, assetManager.options);
-
         const composition = this.createComposition(scene, opts);
 
+        autoplayFlags[index] = opts.autoplay ?? true;
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
@@ -123,7 +121,7 @@ export class ThreeDisplayObject extends THREE.Group {
     );
 
     for (let i = 0; i < compositions.length; i++) {
-      if (autoplay) {
+      if (autoplayFlags[i]) {
         compositions[i].play();
       } else {
         compositions[i].pause();

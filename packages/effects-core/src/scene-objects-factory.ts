@@ -1,149 +1,99 @@
 import type * as spec from '@galacean/effects-specification';
-import type { Asset } from './asset';
 import { getClass } from './decorators';
 import type { EffectsObject } from './effects-object';
-import type { DeserializationContext } from './effects-object-server';
-import type { Engine } from './engine';
-import { Texture } from './texture';
+import type { SceneInstantiationContext } from './scene-instantiation-context';
 import { VFXItem } from './vfx-item';
 
-/** @internal Creates hierarchy objects before deserializing their references. */
+/** @internal Creates scene objects and resolves precomposition definitions and instance mappings. */
 export class SceneObjectsFactory {
-  private readonly objects = new Map<EffectsObject, DeserializationContext>();
+  private constructor () { }
 
-  private constructor (private readonly engine: Engine, private readonly suppliedTextures: readonly Texture[] = []) { }
-
-  static instantiateComposition (
-    data: spec.CompositionData,
-    root: VFXItem,
-    textureOptions: readonly Record<string, any>[] = [],
-  ): void {
-    const factory = new SceneObjectsFactory(root.engine, textureOptions.filter((texture): texture is Texture => texture instanceof Texture));
-
-    root.name = data.name;
-    root.duration = data.duration;
-    root.endBehavior = data.endBehavior;
-    const context = factory.spawnComposition(data, root);
-
-    factory.finish(context);
+  static spawnComposition (context: SceneInstantiationContext, data: spec.CompositionData): void {
+    this.spawnCompositionContents(context, data, context.root);
   }
 
-  static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem): VFXItem {
-    const item = new VFXItem(engine);
-    const factory = new SceneObjectsFactory(engine);
-    const context = factory.createContext(item);
-
-    factory.spawnItem(data, item, context);
-    factory.finish(context, assetRoot);
-
-    return item;
+  static spawnItem (context: SceneInstantiationContext, data: spec.VFXItemData): void {
+    context.addObject(context.root, data);
+    this.spawnItemContents(context, data, context.root);
   }
 
-  private spawnComposition (data: spec.CompositionData, item: VFXItem) {
-    const context = this.createContext(item);
+  static spawn (context: SceneInstantiationContext, data: spec.EffectsObjectData): EffectsObject | undefined {
+    const Constructor = getClass(data.dataType);
 
-    context.idsMapping.set(String(data.id), item.getInstanceId());
-    // The composition and its placement can both refer to the same root.
-    if (item.definition.id !== undefined) {
-      context.idsMapping.set(String(item.definition.id), item.getInstanceId());
+    if (!Constructor) {
+      console.warn(`Constructor for DataType: ${data.dataType} not found.`);
+
+      return;
     }
-    this.spawnContents(data, context);
+    const object: EffectsObject = new Constructor(context.root.engine);
 
-    return context;
+    context.addObject(object, data);
+    if (object instanceof VFXItem) {
+      this.spawnItemContents(context, data as spec.VFXItemData, object);
+    }
+
+    return object;
   }
 
-  private spawnItem (
-    data: spec.VFXItemData,
-    item: VFXItem,
-    context: DeserializationContext,
-  ): void {
-    context.idsMapping.set(String(data.id), item.getInstanceId());
-    item.definition = { ...data };
-    this.objects.set(item, context);
+  static deserialize (context: SceneInstantiationContext, object: EffectsObject, data: spec.EffectsObjectData): void {
+    const deserializationContext = context.selectDeserializationContext(object);
+
+    object.engine.effectsObjectServer.withDeserializationContext(deserializationContext, () => {
+      object.fromData(data);
+    });
+  }
+
+  private static spawnCompositionContents (context: SceneInstantiationContext, data: spec.CompositionData, root: VFXItem): void {
+    root.sourceScene = context.scene;
+    root.definition.id ??= data.id;
+    context.bindId(data.id, root);
+    // The template and its placement can both refer to the same root.
+    context.bindId(root.definition.id, root);
+    this.spawnContents(context, data);
+  }
+
+  private static spawnItemContents (context: SceneInstantiationContext, data: spec.VFXItemData, item: VFXItem): void {
+    item.sourceScene = context.scene;
 
     const { refId } = data as { refId?: string };
     let template: spec.CompositionData | undefined;
 
     if (refId !== undefined) {
-      template = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData | undefined;
+      template = context.findData(refId) as unknown as spec.CompositionData | undefined;
       if (!template) {
         throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
       }
-      this.spawnComposition(template, item);
+      const compositionData = template;
+
+      context.withNewContext(item, () => this.spawnCompositionContents(context, compositionData, item));
     }
-    this.spawnContents(data, context, template?.components);
+    // Placement additions belong to the containing instance, after the template scope is restored.
+    this.spawnContents(context, data, template?.components);
   }
 
-  private finish (outerContext: DeserializationContext, assetRoot = outerContext.root): void {
-    this.deserialize();
-    const contexts = new Set(this.objects.values());
-
-    contexts.add(outerContext);
-
-    for (const context of contexts) {
-      const root = context === outerContext ? assetRoot : context.root;
-
-      root.addSceneAssets(context.sceneAssets);
-    }
-  }
-
-  private deserialize (): void {
-    const objectServer = this.engine.effectsObjectServer;
-
-    for (const [object, context] of this.objects) {
-      objectServer.withDeserializationContext(context, () => {
-        object.fromData(object.definition as spec.EffectsObjectData);
-      });
-    }
-  }
-
-  private createContext (root: VFXItem): DeserializationContext {
-    const idsMapping = new Map(this.suppliedTextures.map(texture => [texture.id, texture.getInstanceId()]));
-
-    return { root, idsMapping, sceneAssets: new Set<Asset>() };
-  }
-
-  private spawnContents (
-    data: Pick<spec.CompositionData, 'components' | 'children'>,
-    context: DeserializationContext,
+  private static spawnContents (
+    context: SceneInstantiationContext,
+    data: spec.CompositionData | spec.VFXItemData,
     templateComponents?: spec.DataPath[],
   ): void {
     for (const path of data.components ?? []) {
       if (!templateComponents?.some(component => component.id === path.id)) {
-        this.spawn(path, context);
+        this.spawnReference(context, path);
       }
     }
     for (const path of data.children ?? []) {
-      this.spawn(path, context);
+      this.spawnReference(context, path);
     }
   }
 
-  private spawn ({ id }: spec.DataPath, context: DeserializationContext): void {
-    const { idsMapping } = context;
-
-    if (idsMapping.has(String(id))) {
+  private static spawnReference (context: SceneInstantiationContext, { id }: spec.DataPath): void {
+    if (context.hasId(id)) {
       return;
     }
-    const entry = this.engine.assetServer.findEffectsObjectData(id);
+    const data = context.findData(id);
 
-    if (!entry) {
-      return;
-    }
-    const Constructor = getClass(entry.dataType);
-
-    if (!Constructor) {
-      console.warn(`Constructor for DataType: ${entry.dataType} not found.`);
-
-      return;
-    }
-    const object: EffectsObject = new Constructor(this.engine);
-
-    if (object instanceof VFXItem) {
-      this.spawnItem(entry as spec.VFXItemData, object, context);
-    } else {
-      idsMapping.set(String(id), object.getInstanceId());
-      object.definition = { ...entry };
-      this.objects.set(object, context);
+    if (data) {
+      this.spawn(context, data);
     }
   }
 }

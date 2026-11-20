@@ -1,12 +1,12 @@
 import type { EffectsObject, VFXItem } from '@galacean/effects';
-import { SceneObjectsFactory, generateGUID, spec } from '@galacean/effects';
+import { SceneLoader, generateGUID, spec } from '@galacean/effects';
 
 /** Build editor roots together to resolve references among them, then detach them for placement. */
 export function instantiateItems (paths: readonly spec.DataPath[], sceneRoot: VFXItem): ReadonlyMap<string, EffectsObject> {
-  const group = SceneObjectsFactory.instantiateItem({
+  const group = SceneLoader.instantiateItem({
     id: generateGUID(), dataType: spec.DataType.VFXItemData, name: '', type: spec.ItemType.null,
     duration: 0, endBehavior: spec.EndBehavior.freeze, components: [], children: [...paths], content: {},
-  }, sceneRoot.engine);
+  }, sceneRoot.engine, undefined, sceneRoot.sourceScene);
   const objectsById = new Map<string, EffectsObject>();
   const index = (object: EffectsObject) => {
     const { id } = object.definition;

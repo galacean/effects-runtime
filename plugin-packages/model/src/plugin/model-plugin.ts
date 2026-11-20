@@ -1,7 +1,7 @@
 import type { Scene, SceneLoadOptions, Composition, Engine, Component } from '@galacean/effects';
 import {
   VFXItem, Plugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
-  GLSLVersion, Geometry,
+  Geometry,
 } from '@galacean/effects';
 import {
   CompositionCache, PTransform, PSceneManager, PCoordinate, PBRShaderGUID,
@@ -28,7 +28,7 @@ export class ModelPlugin extends Plugin {
    * @param scene - 场景
    * @param options - 加载选项
    */
-  override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
+  override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions): void {
     if (options.pluginData !== undefined) {
       const keyList = [
         'compatibleMode',
@@ -52,7 +52,6 @@ export class ModelPlugin extends Plugin {
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode);
     // Add PBR and Unlit shader data
-    const isWebGL2 = engine.displayServer.renderingDevice.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();
     const unlitShaderCode = fetchUnlitShaderCode();
     const pbrShaderData: spec.ShaderData = {
@@ -61,8 +60,6 @@ export class ModelPlugin extends Plugin {
       dataType: spec.DataType.Shader,
       fragment: pbrShaderCode.fragmentShaderCode,
       vertex: pbrShaderCode.vertexShaderCode,
-      // @ts-expect-error
-      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
     const unlitShaderData: spec.ShaderData = {
       id: UnlitShaderGUID,
@@ -70,12 +67,12 @@ export class ModelPlugin extends Plugin {
       dataType: spec.DataType.Shader,
       fragment: unlitShaderCode.fragmentShaderCode,
       vertex: unlitShaderCode.vertexShaderCode,
-      // @ts-expect-error
-      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
 
-    engine.assetServer.addEffectsObjectData(pbrShaderData);
-    engine.assetServer.addEffectsObjectData(unlitShaderData);
+    const objectsDataCache = scene.objectsDataCache ??= new Map();
+
+    objectsDataCache.set(pbrShaderData.id, pbrShaderData);
+    objectsDataCache.set(unlitShaderData.id, unlitShaderData);
   }
 
   /**
@@ -83,7 +80,7 @@ export class ModelPlugin extends Plugin {
    * @param composition - 合成
    * @param scene - 场景
    */
-  override onCompositionCreated (composition: Composition, scene?: Scene): void {
+  override onCompositionCreating (composition: Composition, scene?: Scene): void {
     const props = {
       id: 'ModelPluginItem',
       name: 'ModelPluginItem',
@@ -92,10 +89,10 @@ export class ModelPlugin extends Plugin {
     } as unknown as spec.Item;
     const item = new VFXItem(composition.engine, props);
 
-    composition.addItem(item);
     const modelPluginComponent = item.addComponent(ModelPluginComponent);
 
     modelPluginComponent.sceneParams = scene?.storage ?? {};
+    composition.addItem(item);
   }
 }
 
