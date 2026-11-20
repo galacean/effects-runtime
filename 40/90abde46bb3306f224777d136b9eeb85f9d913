@@ -1,0 +1,35 @@
+web-packages/dev-tools/src/features/scene/operations/scene-item-operations.ts
+  s_c33f53f3864453::t_5e52ca8703084e 152-153,169-170
+web-packages/dev-tools/src/features/assets/model/resource-identity.ts
+  s_c33f53f3864453::t_5e52ca8703084e 29-30
+packages/effects-core/src/scene-objects-factory.ts
+  s_c33f53f3864453::t_5c08048ec02e76 25,27-28,30-36,40-43,45-46,48-49,80,115,139
+packages/effects-core/src/asset-server.ts
+  s_c33f53f3864453::t_5c08048ec02e76 28,47-51,53,58,75
+  s_c33f53f3864453::t_5e52ca8703084e 5,52,54-57,59-60
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_c33f53f3864453::t_5c08048ec02e76 172,174-177
+web-packages/dev-tools/src/platform/effects-runtime/deserialize-assets.ts
+  s_c33f53f3864453::t_5c08048ec02e76 10-11
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_c33f53f3864453::t_5e52ca8703084e 292-295
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_c33f53f3864453::t_5e52ca8703084e 127,130-131,134,138
+  s_c33f53f3864453::t_5c08048ec02e76 135-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4090abde46bb3306f224777d136b9eeb85f9d913",
+  "prompts": {},
+  "sessions": {
+    "s_c33f53f3864453": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f6c9-4eb6-7ce1-b050-bebdd1fa4323",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
