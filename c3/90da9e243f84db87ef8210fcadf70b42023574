@@ -1,0 +1,21 @@
+packages/effects-core/src/scene-server.ts
+  s_a83295b1936da7::t_9016700e16340a 51
+packages/effects-core/src/asset-manager.ts
+  s_a83295b1936da7::t_9016700e16340a 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c390da9e243f84db87ef8210fcadf70b42023574",
+  "prompts": {},
+  "sessions": {
+    "s_a83295b1936da7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f7f1-fe9b-70f1-91d0-9c59a3de9758",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
