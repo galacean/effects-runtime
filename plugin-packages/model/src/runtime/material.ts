@@ -869,7 +869,7 @@ export type PMaterial = PMaterialUnlit | PMaterialPBR;
  * @returns 材质对象
  */
 export function createPluginMaterial (material: Material): PMaterial {
-  if (material.shader.getInstanceId() === PBRShaderGUID) {
+  if (material.shader.shaderData?.id === PBRShaderGUID) {
     const materialPBR = new PMaterialPBR();
 
     materialPBR.create(material);

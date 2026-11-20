@@ -4,6 +4,7 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
+import type { Asset } from './asset';
 import type { Component } from './components';
 import { CompositionComponent, EffectComponent, RendererComponent } from './components';
 import type { Composition, CompositionHitTestOptions } from './composition';
@@ -13,15 +14,22 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
+import { SceneObjectsFactory } from './scene-objects-factory';
 import type { Maskable } from './material';
 import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, Region,
 } from './plugins';
 import { HitTestType } from './plugins';
+import { Texture } from './texture';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
-import { generateGUID, removeItem } from './utils';
+import { removeItem } from './utils';
+
+export type VFXItemData = spec.Item & {
+  dataType: spec.DataType,
+  components: spec.DataPath[],
+};
 
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
@@ -61,7 +69,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   name: string;
   /**
-   * 元素 id 唯一
+   * 元素在文件中的 ID
    * @deprecated 2.7.0 Please use `getInstanceId` instead
    */
   id: string;
@@ -86,6 +94,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   isManuallySetRenderOrder = false;
+  /** @internal Assets owned by this item hierarchy. */
+  sceneAssets?: Set<Asset>;
   /**
    * 元素是否激活
    */
@@ -781,21 +791,30 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @returns 复制的新 VFXItem
    */
   duplicate () {
-    const previousObjectIDMap: Map<EffectsObject, string> = new Map();
+    const definition = this.definition as spec.VFXItemData;
 
-    this.gatherPreviousObjectID(previousObjectIDMap);
-    // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
-    this.refreshGUIDRecursive();
-    const newItem = this.findObject<VFXItem>({ id: this.definition.id });
+    if (definition.id == null) {
+      throw new Error('Cannot duplicate an item without serialized data.');
+    }
+    const sceneRoot = this.composition?.sceneRoot;
+    const newItem = SceneObjectsFactory.instantiateItem(definition, this.engine, sceneRoot);
 
-    newItem.refreshGUIDRecursive();
-    this.refreshGUIDRecursive(previousObjectIDMap);
-
-    if (this.composition) {
-      newItem.setParent(this.composition.sceneRoot);
+    if (sceneRoot) {
+      newItem.setParent(sceneRoot);
     }
 
     return newItem;
+  }
+
+  /** @internal Finish loading the assets this item will dispose with its hierarchy. */
+  addSceneAssets (assets: Iterable<Asset>): void {
+    for (const asset of assets) {
+      if (asset instanceof Texture) {
+        asset.initialize();
+      }
+      this.sceneAssets ??= new Set<Asset>();
+      this.sceneAssets.add(asset);
+    }
   }
 
   /**
@@ -961,7 +980,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     super.fromData(data);
     const {
       id, name, parentId, endBehavior, transform,
-      duration = 0, visible = true,
+      duration = 0,
     } = data;
 
     // type 仅作为元数据赋给实例属性，保留给编辑器和用户代码使用，运行时不再读取
@@ -969,23 +988,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.props = data;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.parentId = parentId;
-    this.components.length = 0;
 
-    // 预合成元素由结构特征判定（顶层 refId），不依赖 type 字段
-    // 存量数据由 version38Migration 将 content.options.refId 提升到顶层
-    const refId = (data as spec.VFXItemData & { refId?: string }).refId;
-
-    if (refId !== undefined) {
-      const compositionData = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData;
-
-      if (!compositionData) {
-        throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
-      }
-
-      this.instantiatePreComposition(compositionData);
-    }
-
-    // 在预合成实例化后赋值，覆盖预合成的属性值
     this.name = name;
     this.duration = duration;
     this.endBehavior = endBehavior;
@@ -1001,29 +1004,31 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    if (data.components) {
-      for (const componentPath of data.components) {
-        const component = this.findObject<Component>(componentPath);
+    const root = this.engine.effectsObjectServer.deserializationContext?.root;
 
-        this.components.push(component);
+    // The caller mounts the hierarchy root after its data has been read.
+    if (root && root !== this && this.findObject({ id }, VFXItem) === this) {
+      const parent = parentId === undefined ? root : this.findObject({ id: parentId }, VFXItem);
+
+      if (parent && parent !== this && this.parent !== parent) {
+        if (this.parent) {
+          removeItem(this.parent.children, this);
+        }
+        this.parent = parent;
+        parent.children.push(this);
+        this._composition = parent.composition ?? null;
+        this.transform.parentTransform = parent.transform;
+        this.onParentChanged();
       }
     }
-
-    for (const child of data.children ?? []) {
-      const childItem = this.findObject<VFXItem>(child);
-
-      childItem.setParent(this);
-    }
-
-    this.setVisible(visible);
   }
 
   override toData (): void {
-    this.definition.id = this.guid;
+    this.definition.id ??= this.id ?? this.guid;
     this.definition.transform = this.transform.toData();
     this.definition.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'sceneRoot') {
-      this.definition.parentId = this.parent?.guid;
+      this.definition.parentId = this.parent?.definition.id ?? this.parent?.getInstanceId();
     }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
@@ -1058,6 +1063,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     for (const component of this.components.slice()) {
       component.dispose();
     }
+    this.sceneAssets?.forEach(asset => asset.dispose());
+    this.sceneAssets = undefined;
     this.children = [];
     this.components = [];
     this._composition = null;
@@ -1068,74 +1075,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parent = undefined;
     this.transform.parentTransform = null;
     super.dispose();
-  }
-
-  /**
-   * @internal
-   */
-  instantiatePreComposition (compositionData: spec.CompositionData, refreshId = true) {
-    this.name = compositionData.name;
-    this.duration = compositionData.duration;
-    this.endBehavior = compositionData.endBehavior;
-
-    const prevInstanceId = this.getInstanceId();
-
-    // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
-    this.setInstanceId(compositionData.id);
-
-    for (const componentPath of compositionData.components) {
-      const component = this.findObject<Component>(componentPath);
-
-      component.item = this;
-      this.components.push(component);
-    }
-
-    for (const child of compositionData.children ?? []) {
-      const childItem = this.findObject<VFXItem>(child);
-
-      childItem.setParent(this);
-    }
-
-    if (refreshId) {
-      for (const component of this.components) {
-        component.setInstanceId(generateGUID());
-      }
-
-      for (const child of this.children) {
-        child.refreshGUIDRecursive();
-      }
-    }
-
-    this.setInstanceId(prevInstanceId);
-  }
-
-  /**
-   * @internal
-   */
-  refreshGUIDRecursive (previousObjectIDMap?: Map<EffectsObject, string>) {
-    const itemGUID = previousObjectIDMap?.get(this) ?? generateGUID();
-
-    this.setInstanceId(itemGUID);
-    for (const component of this.components) {
-      const componentGUID = previousObjectIDMap?.get(component) ?? generateGUID();
-
-      component.setInstanceId(componentGUID);
-    }
-
-    for (const child of this.children) {
-      child.refreshGUIDRecursive(previousObjectIDMap);
-    }
-  }
-
-  private gatherPreviousObjectID (previousObjectIDMap: Map<EffectsObject, string>) {
-    previousObjectIDMap.set(this, this.getInstanceId());
-    for (const component of this.components) {
-      previousObjectIDMap.set(component, component.getInstanceId());
-    }
-
-    for (const child of this.children) {
-      child.gatherPreviousObjectID(previousObjectIDMap);
-    }
   }
 
   private getDescendantsInternal (

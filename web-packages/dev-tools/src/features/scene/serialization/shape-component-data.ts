@@ -24,7 +24,7 @@ export function readShapeComponentData (component: ShapeComponent): Data {
   const renderer = Reflect.get(component, 'rendererOptions') as ItemRenderer;
   const stroke = Reflect.get(component, 'strokeAttributes') as StrokeAttributes;
   const paints = (key: 'fills' | 'strokes'): Data[] => (Reflect.get(component, key) as (SolidPaint | GradientPaint | TexturePaint)[]).map(paintData);
-  const data: Data = { ...component.definition, ...component.shape, id: component.getInstanceId(), dataType: spec.DataType.ShapeComponent, _enabled: component.enabled,
+  const data: Data = { ...component.definition, ...component.shape, id: component.getInstanceId(), dataType: spec.DataType.ShapeComponent, enabled: component.enabled,
     item: component.item ? { id: component.item.getInstanceId() } : component.definition.item,
     strokeWidth: component.strokeWidth, strokeCap: component.strokeCap, strokeJoin: component.strokeJoin,
     strokeAlignment: component.strokeAlignment, strokeMiterLimit: component.strokeMiterLimit, fills: paints('fills'), strokes: paints('strokes'),
@@ -32,7 +32,7 @@ export function readShapeComponentData (component: ShapeComponent): Data {
     renderer: { side: renderer.side, occlusion: renderer.occlusion, transparentOcclusion: component.definition.renderer?.transparentOcclusion ?? false,
       blending: renderer.blending, texture: reference(renderer.texture) },
     mask: { isMask: component.maskManager.isMask, alphaMaskEnabled: component.maskManager.alphaMaskEnabled,
-      references: component.definition.mask?.references ?? component.maskManager.getMaskReferences()
+      references: component.maskManager.getMaskReferences()
         .filter(ref => ref.maskable instanceof EffectsObject)
         .map(ref => ({ mask: { id: (ref.maskable as unknown as EffectsObject).getInstanceId() }, inverted: ref.inverted })) },
   };
@@ -48,8 +48,8 @@ export function readShapeComponentData (component: ShapeComponent): Data {
 
 /** Apply a complete shape edit through the component's existing data-loading entry point. */
 export function applyShapeComponentData (component: ShapeComponent, data: Data): void {
-  component.definition = jsonData(data);
-  const next: Data = { ...data, _enabled: component.enabled };
+  component.definition = { ...jsonData(data), id: component.definition.id ?? data.id };
+  const next: Data = { ...data, enabled: component.enabled };
 
   component.fromData(next as spec.ShapeComponentData);
 }

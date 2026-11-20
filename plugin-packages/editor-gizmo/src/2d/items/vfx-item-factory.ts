@@ -25,8 +25,6 @@ export class VFXItemFactory {
     }
 
     composition.addItem(vfxItem);
-    // @ts-expect-error rootComposition.items 的类型未公开受支持的写入操作。
-    composition.rootComposition.items.push(vfxItem);
 
     if (parent) {
       vfxItem.setParent(parent);

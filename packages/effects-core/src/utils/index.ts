@@ -22,6 +22,8 @@ export interface Constructor<T = unknown> {
   new(...args: any[]): T,
 }
 
+export type AbstractConstructor<T = unknown> = abstract new (...args: any[]) => T;
+
 export type Nullable<T> = T | null;
 
 export enum DestroyOptions {

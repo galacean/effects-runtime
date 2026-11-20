@@ -37,7 +37,6 @@ interface TextOptions {
   fontSize?: number,
   width?: number,
   parent?: VFXItem,
-  id?: string,
 }
 
 /** 富文本创建参数，源码、默认样式与布局约束单独表达。 */
@@ -48,7 +47,6 @@ interface RichTextOptions {
   autoResize?: spec.TextSizeMode,
   name?: string,
   parent?: VFXItem,
-  id?: string,
 }
 
 type VectorShapeAttributes = {
@@ -178,7 +176,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     ]);
   }
 
-  createFrame (position: Point2D, size: Point2D, id?: string): DemoItem {
+  createFrame (position: Point2D, size: Point2D): DemoItem {
     const data = this.createContainer(position, size, 'Frame', `Frame ${++this.frameCount}`);
 
     const frame = data.item.getComponent(FrameComponent);
@@ -187,9 +185,6 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     frame.titleRenderer.visible = true;
     frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
     frame.strokeWidth = 1;
-    if (id) {
-      data.item.setInstanceId(id);
-    }
     void this.setFrameTitleIcon(data, frame);
 
     return data;
@@ -343,8 +338,9 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     });
     const data: DemoItem = { item, name, kind: 'RichText' };
 
-    if (options.parent) { item.setParent(options.parent); }
-    if (options.id) { item.setInstanceId(options.id); }
+    if (options.parent) {
+      item.setParent(options.parent);
+    }
     item.setPosition(...position, 0);
     rich.setFontScale(4);
     rich.priority = this.items.length;
@@ -364,9 +360,6 @@ export class DemoScene extends EventEmitter<SceneEvents> {
 
     if (options.parent) {
       item.setParent(options.parent);
-    }
-    if (options.id) {
-      item.setInstanceId(options.id);
     }
     item.setPosition(...position, 0);
     text.setText(value);

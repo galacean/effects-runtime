@@ -115,9 +115,7 @@ export class DefaultVFXItems {
 
     vfxItem.getComponent(CompositionComponent).endBehavior = vfxItem.endBehavior;
 
-    if (parent) {
-      vfxItem.setParent(parent);
-    }
+    vfxItem.setParent(parent ?? composition.sceneRoot);
 
     return vfxItem;
   }

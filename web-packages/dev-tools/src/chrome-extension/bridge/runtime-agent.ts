@@ -151,7 +151,7 @@ export class RuntimeAgent {
       nodes.push({ id, name: composition.name, type: 'Scene', composition: id, active: true, visible: composition.sceneRoot.isVisible });
       addItem(composition.sceneRoot, composition, id);
     }
-    for (const object of Object.values(player.engine.effectsObjectServer.objectInstance)) {
+    for (const object of Object.values(player.engine.effectsObjectServer.objectsCache)) {
       if (this.objects.has(this.id(object)) || 'item' in object || 'children' in object) { continue; }
       this.objects.set(this.id(object), { object });
       const texture = object as Texture;

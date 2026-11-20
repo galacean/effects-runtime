@@ -133,7 +133,7 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
   }
   protected override refreshCandidates (): void {
     const engine = EditorRuntimeSession.player.engine;
-    const entries = this.kind ? resourceCandidates(engine, this.kind).map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectInstance[entry.id] })) : [];
+    const entries = this.kind ? resourceCandidates(engine, this.kind).map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectsCache[entry.id] })) : [];
     const reference = this.binding.read();
 
     this.browser.setCandidates(entries, this.kind, reference instanceof EffectsObject ? reference.getInstanceId() : '');

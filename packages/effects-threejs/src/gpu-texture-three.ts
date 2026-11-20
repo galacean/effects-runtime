@@ -176,7 +176,7 @@ export class GPUTextureThree extends GPUTexture {
       this.width = maxWidth;
       this.height = maxHeight;
     } else if (sourceType === TextureSourceType.video) {
-      const video = (options as Texture2DSourceOptionsVideo).video;
+      const { video } = options as Texture2DSourceOptionsVideo;
 
       texture = new THREE.VideoTexture(
         video,

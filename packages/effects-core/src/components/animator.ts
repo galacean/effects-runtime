@@ -149,6 +149,7 @@ export class Animator extends Component {
   }
 
   override fromData (data: spec.AnimatorData): void {
+    super.fromData(data);
     this.graphAsset = this.findObject<AnimationGraphAsset>(data.graphAsset);
   }
 }

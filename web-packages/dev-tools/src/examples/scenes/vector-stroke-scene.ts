@@ -50,7 +50,6 @@ export function createVectorStrokeScene (): spec.JSONScene {
     composition.children!.push({ id: item.id });
     scene.items.push(item as unknown as spec.VFXItemData);
     scene.components.push(shape);
-    root.items.push({ id: item.id });
     root.sceneBindings.push({ key: { id: bindingId }, value: { id: item.id } });
     timeline.tracks.push({ id: bindingId });
     scene.miscs.push(...tracks);

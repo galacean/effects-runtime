@@ -576,7 +576,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     if (info.type === ItemCreateType.FRAME) {
       const corner = this.pixelToWorld([info.position[0] + info.info.size[0], info.position[1] + info.info.size[1]]);
 
-      data = this.scene.createFrame([position.x, position.y], [Math.abs(corner.x - position.x), Math.abs(corner.y - position.y)], info.id);
+      data = this.scene.createFrame([position.x, position.y], [Math.abs(corner.x - position.x), Math.abs(corner.y - position.y)]);
       info.info.children.forEach(id => {
         const child = this.scene.getItemById(id);
 
@@ -585,11 +585,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
         }
       });
     } else if (info.type === ItemCreateType.TEXT) {
-      data = this.scene.createText([position.x, position.y], { id: info.id });
+      data = this.scene.createText([position.x, position.y]);
       this.updateCreatedText(data, info);
     } else if (info.type === ItemCreateType.RICH_TEXT) {
       data = this.scene.createRichText([position.x, position.y], {
-        id: info.id, autoResize: info.info ? spec.TextSizeMode.autoHeight : spec.TextSizeMode.autoWidth,
+        autoResize: info.info ? spec.TextSizeMode.autoHeight : spec.TextSizeMode.autoWidth,
       });
       this.updateCreatedRichText(data, info);
     } else {

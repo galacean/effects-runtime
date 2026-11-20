@@ -106,7 +106,7 @@ export class RuntimeAssetEditor extends EditorWindow {
       return;
     }
     if (this.asset instanceof EffectsObject) {
-      this.asset = EditorRuntimeSession.player.engine.effectsObjectServer.objectInstance[this.asset.getInstanceId()];
+      this.asset = EditorRuntimeSession.player.engine.effectsObjectServer.objectsCache[this.asset.getInstanceId()];
       if (!this.asset) { this.close(); }
     }
     this.rebuild();

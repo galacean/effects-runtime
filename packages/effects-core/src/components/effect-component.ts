@@ -4,6 +4,14 @@ import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { MeshComponent } from './mesh-component';
 
+// TODO: 待统一
+export interface EffectComponentData extends spec.EffectsObjectData {
+  _priority: number,
+  item: spec.DataPath,
+  materials: spec.DataPath[],
+  geometry: spec.DataPath,
+}
+
 /**
  * @since 2.0.0
  */
