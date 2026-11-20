@@ -1,0 +1,21 @@
+packages/effects-core/src/scene-instantiation-context.ts
+  s_33d74e2608d4ad::t_864b06c211f899 82
+packages/effects-core/src/scene.ts
+  s_33d74e2608d4ad::t_864b06c211f899 7,54,89,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1dd5e0f52e44319574a088bfdc3aab664423c9ed",
+  "prompts": {},
+  "sessions": {
+    "s_33d74e2608d4ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f84e-4f94-7ef2-a613-bc820acb1f43",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
