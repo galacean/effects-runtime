@@ -21,6 +21,7 @@ import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 
 export type { RichTextCharacterBox, RichTextEditingLayout } from './rich-text-layout-result';
 
+/** 富文本标记解析后，供换行和绘制使用的单个样式片段。 */
 export interface RichTextOptions {
   text: string,
   /** 在可见文本中的 UTF-16 起始偏移，供布局结果映射。 */

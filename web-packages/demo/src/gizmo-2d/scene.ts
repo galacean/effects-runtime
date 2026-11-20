@@ -39,12 +39,10 @@ interface TextOptions {
   parent?: VFXItem,
 }
 
-/** 富文本创建参数，源码、默认样式与布局约束单独表达。 */
-interface RichTextOptions {
+/** 在 Demo 场景中创建富文本元素的参数。 */
+interface CreateRichTextOptions extends Pick<spec.RichTextContentOptions, 'maxTextWidth' | 'autoResize'> {
   markup?: string,
   defaultFontSize?: number,
-  maxTextWidth?: number,
-  autoResize?: spec.TextSizeMode,
   name?: string,
   parent?: VFXItem,
 }
@@ -314,7 +312,7 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     item.children[0]?.transform.setScale(scale, scale, 1);
   }
 
-  createRichText (position: Point2D, options: RichTextOptions = {}): DemoItem {
+  createRichText (position: Point2D, options: CreateRichTextOptions = {}): DemoItem {
     const name = options.name ?? `RichText ${++this.richTextCount}`;
     const fontSize = options.defaultFontSize ?? 24;
     const item = DefaultVFXItems.createRichText(this.composition, null, name);
