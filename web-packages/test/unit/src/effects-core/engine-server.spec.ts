@@ -275,11 +275,11 @@ describe('core/engine/servers', () => {
         children: [{ id: degraded.id }] }],
       items: [degraded, { id: 'label', name: 'label', components: [{ id: text.id }, { id: richText.id }] }],
       components: [text, richText],
-    } as unknown as spec.JSONScene);
+    } as unknown as spec.JSONScene, { renderLevel: spec.RenderLevel.B, variables: { label: 'replacement' } });
 
-    scene.renderLevel = spec.RenderLevel.B;
+    scene.prepareDefinitions();
 
-    const preparedScene = await new AssetManager({ variables: { label: 'replacement' } }).loadScene(scene);
+    const preparedScene = await new AssetManager().loadScene(scene);
 
     expect(degraded.refId).to.equal('missing-template');
     expect(text.options.text).to.equal('original');
@@ -316,12 +316,14 @@ describe('core/engine/servers', () => {
     const previousManagers = [...player.getAssetManager()];
 
     const preloadedScene = await AssetManager.loadScene(url, { speed: 4, autoplay: true });
-    const third = await player.loadScene(preloadedScene, { autoplay: false });
+    const third = await player.loadScene(preloadedScene, { speed: 5, autoplay: false, reusable: true });
 
     expect(player.getAssetManager()).to.have.length(3);
     expect(player.getAssetManager().slice(0, 2)).to.deep.equal(previousManagers);
-    expect(third.getSpeed()).to.equal(1);
+    expect(third.getSpeed()).to.equal(5);
     expect(third.getPaused()).to.equal(true);
+    expect(third.reusable).to.equal(true);
+    expect(preloadedScene.options).to.include({ speed: 4, autoplay: true });
     expect(first.getSpeed()).to.equal(2);
     expect(second.getSpeed()).to.equal(3);
   });

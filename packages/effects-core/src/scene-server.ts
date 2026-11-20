@@ -44,18 +44,16 @@ export class SceneServer extends EngineServer {
     removeItem(this._compositions, composition);
   }
 
-  /** Resolve options from a URL descriptor before loading the source. */
+  /** Resolve source options and apply the options supplied for this composition. */
   assembleSceneLoadOptions (url: Scene.LoadType, options: SceneLoadOptions = {}) {
     let source: Scene.LoadType = url;
 
-    if (Scene.isURL(url) && !(url instanceof Scene)) {
+    if (Scene.isURL(url)) {
       source = url.url;
-      if (Scene.isWithOptions(url)) {
-        options = { ...options, ...url.options };
-      }
+      options = { ...options, ...url.options };
     }
 
-    return { source, options };
+    return { source, options: source instanceof Scene ? { ...source.options, ...options } : options };
   }
 
   async loadScene (scene: Scene.LoadType, options: SceneLoadOptions = {}): Promise<Composition> {

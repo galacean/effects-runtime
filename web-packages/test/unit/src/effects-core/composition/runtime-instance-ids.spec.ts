@@ -158,11 +158,12 @@ describe('core/composition/runtime instance IDs', () => {
       components: [...jsonScene.components, ...components.map(id => ({ id, dataType: spec.DataType.SpriteComponent,
         item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }))],
       miscs: [...jsonScene.miscs, { id: spriteId, dataType: 'Sprite', texture: ref(textureId) }],
-    } as unknown as spec.JSONScene);
+    } as unknown as spec.JSONScene, { autoplay: false });
 
     scene.textureOptions.push({ id: textureId, dataType: spec.DataType.Texture, sourceType: TextureSourceType.data,
       data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) } });
-    const composition = await player.loadScene(scene, { autoplay: false });
+    scene.prepareDefinitions();
+    const composition = await player.loadScene(scene);
     const rootSprite = composition.sceneRoot.find('inside')!.getComponent(SpriteComponent).sprite;
     const spritesIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponents(SpriteComponent).map(component => component.sprite);
     const [left, leftAgain] = spritesIn('left');

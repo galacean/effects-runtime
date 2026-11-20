@@ -21,7 +21,8 @@ export function isContentResource (id: string, kind: ResourceKind): boolean {
 }
 
 /** Resource identity comes from authored definitions and explicit built-ins, never the live object table. */
-export function resourceIdentity (engine: Engine, id: string, scene?: Scene): ResourceIdentity | undefined {
+export function resourceIdentity (engine: Engine, resource: string | Resource, scene?: Scene): ResourceIdentity | undefined {
+  const id = typeof resource === 'string' ? resource : resource.definition.id || (resource instanceof Texture && resource.source?.id) || resource.getInstanceId();
   const entry = assetLibrary.entry(id);
 
   if (entry) { return entry.kind !== 'folder' && entry.kind !== 'scene' && isContentResource(id, entry.kind) ? { id, kind: entry.kind, name: entry.name } : undefined; }
@@ -37,11 +38,11 @@ export function isResource (value: unknown): value is Resource {
   return value instanceof Material || value instanceof Shader || value instanceof Sprite || value instanceof Texture;
 }
 
-export function isPersistentResource (value: unknown, engine: Engine, kind?: ResourceKind): value is Resource {
+export function isPersistentResource (value: unknown, engine: Engine, kind?: ResourceKind, scene?: Scene): value is Resource {
   if (!isResource(value) || value.engine !== engine || !value.isRegistered || value instanceof Texture && value.isDestroyed) { return false; }
   const actual = value instanceof Material ? 'material' : value instanceof Shader ? 'shader' : value instanceof Sprite ? 'sprite' : 'texture';
 
-  return (!kind || kind === actual) && resourceIdentity(engine, value.getInstanceId())?.kind === actual;
+  return (!kind || kind === actual) && resourceIdentity(engine, value, scene)?.kind === actual;
 }
 
 export function resourceCandidates (engine: Engine, kind: ResourceKind, scene?: Scene): ResourceIdentity[] {

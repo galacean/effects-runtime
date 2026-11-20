@@ -771,9 +771,7 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    const preparedScene = await new AssetManager().loadScene({
-      jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
-    });
+    const preparedScene = await AssetManager.loadScene(jsonScene);
 
     const animationItem = itemList.find(item => item.id === jsonScene.components[1].item?.id)!;
     const animatedRoot = SceneLoader.instantiateItem(animationItem, engine, undefined, preparedScene);
@@ -1102,6 +1100,12 @@ describe('渲染插件单测', function () {
     expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
     expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
 
+    engine.dispose();
+  });
+
+  it('WaterBottle Mesh 测试', async () => {
+    const engine = new Engine(document.createElement('canvas'));
+    const loader = new LoaderImplEx();
     const scene = await loader.loadScene({
       gltf: {
         resource: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/WaterBottle.glb',
@@ -1119,9 +1123,7 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      const preparedScene = await new AssetManager().loadScene({
-        jsonScene, bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
-      });
+      const preparedScene = await AssetManager.loadScene(jsonScene);
       //
       expect(itemList[1].type).to.eql('mesh');
       const itemMesh = SceneLoader.instantiateItem(itemList[1], engine, undefined, preparedScene);

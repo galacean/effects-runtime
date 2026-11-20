@@ -143,7 +143,7 @@ export function sequenceProperties (item: VFXItem): SequenceProperty[] {
     }
     if (component instanceof RendererComponent) {
       component.materials.forEach((material, materialIndex) => {
-        if (!isPersistentResource(material, component.engine, 'material')) { return; }
+        if (!isPersistentResource(material, component.engine, 'material', component.item.sourceScene ?? component.item.composition?.sceneRoot.sourceScene)) { return; }
         const properties = materialProperties(material.shader?.shaderData.properties, material.definition);
         const groups = ['Materials', material.name || 'Element ' + (materialIndex + 1)];
 

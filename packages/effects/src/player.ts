@@ -399,11 +399,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   ): Promise<Composition | Composition[]> {
     assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
     const autoplay = options?.autoplay ?? true;
-
-    if (autoplay) {
-      this.autoPlaying = true;
-    }
-
     const sceneUrls: Scene.LoadType[] = [];
     const autoplayFlags: boolean[] = [];
 
@@ -418,6 +413,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       const renderOrder = baseOrder + index;
       const { source, options: compositionOptions } = this.engine.sceneServer.assembleSceneLoadOptions(url, { autoplay, ...options });
       const compositionAutoplay = compositionOptions?.autoplay ?? true;
+
+      if (compositionAutoplay) {
+        this.autoPlaying = true;
+      }
       const composition = await SceneLoader.load(source, this.engine, compositionOptions);
 
       composition.setIndex(renderOrder);

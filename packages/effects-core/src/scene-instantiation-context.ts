@@ -32,15 +32,15 @@ export class SceneInstantiationContext {
   }
 
   bindId (id: string, object: EffectsObject): void {
-    this.deserializationContexts[this.currentContextIndex].idsMapping.set(String(id), object.getInstanceId());
+    this.deserializationContexts[this.currentContextIndex].idsMapping.set(id, object.getInstanceId());
   }
 
   hasId (id: string): boolean {
-    return this.deserializationContexts[this.currentContextIndex].idsMapping.has(String(id));
+    return this.deserializationContexts[this.currentContextIndex].idsMapping.has(id);
   }
 
   findData (id: string): spec.EffectsObjectData | undefined {
-    return this.scene?.objectsDataCache?.get(String(id)) ?? this.root.engine.assetServer.database?.findEffectsObjectData(String(id));
+    return this.scene?.objectsDataCache?.get(id) ?? this.root.engine.assetServer.database?.findEffectsObjectData(id);
   }
 
   selectDeserializationContext (object: EffectsObject): DeserializationContext {

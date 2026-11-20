@@ -118,7 +118,6 @@ export class AssetManager {
    * @returns 准备好的场景数据
    */
   async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
-    let rawJSON: Scene.LoadType;
     const options = { ...this.options };
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
@@ -158,34 +157,36 @@ export class AssetManager {
     };
     const loadResourcePromise = async () => {
       let scene: Scene;
-      let sourceUrl = '';
 
-      if (isString(url)) {
-        // 兼容相对路径
-        const link = new URL(url, location.href).href;
+      if (url instanceof Scene) {
+        scene = url.withOptions(options);
+      } else {
+        let rawJSON: Scene.LoadType;
+        let sourceUrl = '';
 
-        sourceUrl = url;
-        this.baseUrl = link;
-        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+        if (isString(url)) {
+          // 兼容相对路径
+          const link = new URL(url, location.href).href;
 
-        // 小程序环境下，如果产物是相对路径，adapter 返回的是字符串，需要兼容
-        if (isString(rawJSON)) {
-          rawJSON = JSON.parse(rawJSON);
+          sourceUrl = url;
+          this.baseUrl = link;
+          rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+
+          // 小程序环境下，如果产物是相对路径，adapter 返回的是字符串，需要兼容
+          if (isString(rawJSON)) {
+            rawJSON = JSON.parse(rawJSON);
+          }
+        } else {
+          // url 为原始场景 JSON 对象
+          rawJSON = url;
+          this.baseUrl = location.href;
         }
-      } else {
-        // url 为 spec.JSONScene 或 Scene 对象
-        rawJSON = url;
-        this.baseUrl = location.href;
-      }
 
-      if (rawJSON instanceof Scene) {
-        scene = rawJSON;
-        scene.options = options;
-      } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
 
         scene = new Scene(jsonScene, options);
+
         scene.timeInfos = timeInfos;
         scene.url = sourceUrl;
 
@@ -207,13 +208,16 @@ export class AssetManager {
 
         // 加载结束钩子需要看到降级插件计算出的渲染等级。
         scene.renderLevel = options.renderLevel;
-
-        await hookTimeInfo('plugin:onAssetsLoadFinish', async () => {
-          PluginSystem.notifyAssetsLoadFinish(scene, options);
-        });
       }
 
-      scene.prepare();
+      await hookTimeInfo('plugin:onAssetsLoadFinish', async () => {
+        PluginSystem.notifyAssetsLoadFinish(scene, scene.options);
+      });
+      if (url instanceof Scene) {
+        scene.applyInstanceOverrides();
+      } else {
+        scene.prepareDefinitions();
+      }
 
       const totalTime = performance.now() - startTime;
 

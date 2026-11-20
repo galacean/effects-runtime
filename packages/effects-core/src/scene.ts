@@ -15,9 +15,10 @@ export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | s
 /** Loaded scene resources and prepared definitions that can be instantiated repeatedly. */
 export class Scene implements Disposable {
   readonly jsonScene: spec.JSONScene;
-  readonly storage: Record<string, any> = {};
+  readonly storage: Record<string, any>;
   /** @internal Prepared definitions shared by instances of this scene. */
   objectsDataCache = new Map<string, spec.EffectsObjectData>();
+  /** Base configuration inherited when this prepared scene is loaded again. */
   options: SceneLoadOptions;
   renderLevel?: SceneRenderLevel;
   textureOptions: Record<string, any>[] = [];
@@ -35,13 +36,36 @@ export class Scene implements Disposable {
   url: string = '';
   private disposed = false;
 
-  constructor (jsonScene: spec.JSONScene, options: SceneLoadOptions = {}) {
+  constructor (jsonScene: spec.JSONScene, options: SceneLoadOptions = {}, storage: Record<string, any> = {}) {
     this.jsonScene = jsonScene;
     this.options = options;
+    this.storage = storage;
   }
 
-  /** Apply scene load policies before instantiating its objects. */
-  prepare (): void {
+  /** @internal Create independent composition overrides while reusing the loaded resources. */
+  withOptions (options: SceneLoadOptions): Scene {
+    if (this.disposed) {
+      throw new Error('Cannot load a disposed scene.');
+    }
+    const scene = new Scene(this.jsonScene, { ...this.options, ...options }, { ...this.storage });
+
+    scene.objectsDataCache = new Map(this.objectsDataCache);
+    scene.renderLevel = this.renderLevel;
+    scene.textureOptions = this.textureOptions.map(texture => texture instanceof Texture ? texture : { ...texture });
+    scene.images = this.images.slice();
+    scene.videos = this.videos.slice();
+    scene.audios = this.audios.slice();
+    scene.bins = this.bins.slice();
+    scene.totalTime = this.totalTime;
+    scene.startTime = this.startTime;
+    scene.timeInfos = { ...this.timeInfos };
+    scene.url = this.url;
+
+    return scene;
+  }
+
+  /** @internal Register loaded definitions and apply render-level and text policies. */
+  prepareDefinitions (): void {
     this.renderLevel = this.options.renderLevel ?? this.renderLevel;
     const { objectsDataCache } = this;
     const variables = this.options.variables ?? {};
@@ -52,22 +76,25 @@ export class Scene implements Disposable {
         const degraded = { ...item, components: [], type: spec.ItemType.null };
 
         delete (degraded as { refId?: string }).refId;
-        objectsDataCache.set(String(item.id), degraded);
+        objectsDataCache.set(item.id, degraded);
         continue;
       }
-      const textVariable = variables[item.name] as string;
+      this.applyTextVariable(item, variables);
+    }
+  }
 
-      if (textVariable === undefined || textVariable === null) {
-        continue;
+  /** @internal Apply per-composition overrides without changing prepared resource or render-level choices. */
+  applyInstanceOverrides (): void {
+    for (const texture of this.textureOptions) {
+      if (!(texture instanceof Texture)) {
+        this.objectsDataCache.set(texture.id, texture as spec.EffectsObjectData);
       }
-      for (const { id } of item.components ?? []) {
-        const componentData = objectsDataCache.get(String(id)) as spec.TextComponentData | undefined;
+    }
+    for (const source of this.jsonScene.items) {
+      const item = this.objectsDataCache.get(source.id) as spec.VFXItemData | undefined;
 
-        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
-          const overridden = { ...componentData, options: { ...componentData.options, text: textVariable } };
-
-          objectsDataCache.set(String(id), overridden);
-        }
+      if (item) {
+        this.applyTextVariable(item, this.options.variables ?? {});
       }
     }
   }
@@ -113,6 +140,23 @@ export class Scene implements Disposable {
     }
   }
 
+  private applyTextVariable (item: spec.VFXItemData, variables: spec.TemplateVariables): void {
+    const textVariable = variables[item.name] as string;
+
+    if (textVariable === undefined || textVariable === null) {
+      return;
+    }
+    for (const { id } of item.components ?? []) {
+      const data = this.objectsDataCache.get(id) as spec.TextComponentData | undefined;
+
+      if (data?.dataType === spec.DataType.TextComponent || data?.dataType === spec.DataType.RichTextComponent) {
+        const overridden = { ...data, options: { ...data.options, text: textVariable } };
+
+        this.objectsDataCache.set(id, overridden);
+      }
+    }
+  }
+
   /** Register the scene definitions and loaded assets together. */
   private prepareAssets (): void {
     const { jsonScene, images, videos, audios, bins, textureOptions = [] } = this;
@@ -122,7 +166,7 @@ export class Scene implements Disposable {
       videos: videoDefinitions = [], audios: audioDefinitions = [], images: imageDefinitions,
     } = jsonScene;
     const definitions = this.objectsDataCache;
-    const add = (data: spec.EffectsObjectData) => definitions.set(String(data.id), data);
+    const add = (data: spec.EffectsObjectData) => definitions.set(data.id, data);
 
     for (const compositionData of compositions) {
       add(compositionData as unknown as spec.EffectsObjectData);
@@ -199,7 +243,7 @@ export namespace Scene {
   export type LoadType = string | Scene | URLType | spec.JSONScene | Record<string, unknown>;
 
   export function isURL (scene: any): scene is URLType {
-    return isObject(scene) && 'url' in scene;
+    return isObject(scene) && !(scene instanceof Scene) && 'url' in scene;
   }
 
   export function isWithOptions (scene: any): scene is URLType {

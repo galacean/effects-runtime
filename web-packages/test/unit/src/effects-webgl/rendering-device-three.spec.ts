@@ -73,10 +73,16 @@ describe('threejs/rendering-device', () => {
     Object.assign(displayObject, {
       engine, compositions: [], children: [], parent: null, baseCompositionIndex: 0, assetServer: engine.assetServer,
     });
-    const createScene = () => new Scene({
-      compositionId: 'scene', items: [],
-      compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
-    } as unknown as spec.JSONScene);
+    const createScene = () => {
+      const scene = new Scene({
+        compositionId: 'scene', items: [],
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+      } as unknown as spec.JSONScene, { autoplay: false });
+
+      scene.prepareDefinitions();
+
+      return scene;
+    };
     const assets = displayObject.engine.assetServer;
 
     try {
