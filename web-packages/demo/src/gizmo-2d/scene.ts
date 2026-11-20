@@ -65,8 +65,8 @@ function vectorShapeData (type: ShapeGeometry['shapeType'], width: number, heigh
 
 function shapeStyle (config: Readonly<ShapeConfig>) {
   return {
-    fills: [{ type: spec.FillType.Solid, color: toColor(config.initialFillColor, config.initialFillAlpha) }],
-    strokes: [{ type: spec.FillType.Solid, color: toColor(config.initialStrokeColor, config.initialStrokeAlpha) }],
+    fills: [{ type: spec.FillType.Solid, color: toColor(config.initialFillColor) }],
+    strokes: [{ type: spec.FillType.Solid, color: toColor(config.initialStrokeColor) }],
     strokeWidth: config.initialStrokeWidth,
     strokeCap: config.initialStrokeCap,
     strokeJoin: config.initialStrokeJoin,

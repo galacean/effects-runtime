@@ -110,7 +110,7 @@ export class ShapeModelGizmo extends Gizmo {
 
     const config = this.config;
 
-    drawCorners(control, corners, toColor(config.previewColor, config.previewAlpha), config.previewLineWidth);
+    drawCorners(control, corners, toColor(config.previewColor), config.previewLineWidth);
   }
 
   override dispose (): void {
