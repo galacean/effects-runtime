@@ -670,6 +670,20 @@ describe('plugin-editor-gizmo/rich-text-edit', () => {
     expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 2]);
   });
 
+  it('uses the original caret to style repeated text when only the final composition input is delivered', () => {
+    const { rich, textarea } = edit('<b>aa</b><i>aa</i>');
+
+    textarea.setSelectionRange(1, 1);
+    textarea.dispatchEvent(new CompositionEvent('compositionstart'));
+    textarea.dispatchEvent(new CompositionEvent('compositionend', { data: 'a' }));
+    textarea.setRangeText('a', 1, 1, 'end');
+    textarea.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: 'a' }));
+    expect(rich.text).to.equal('<b>aaa</b><i>aa</i>');
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, cancelable: true }));
+    expect(rich.text).to.equal('<b>aa</b><i>aa</i>');
+    expect([textarea.selectionStart, textarea.selectionEnd]).to.deep.equal([1, 1]);
+  });
+
   it('uses rich glyph positions and keeps plain text outside the rich session', () => {
     const { rich, session, textarea, sync } = edit('A<size=40>BC</size>D');
     const boxes = rich.getEditingLayout().characters;

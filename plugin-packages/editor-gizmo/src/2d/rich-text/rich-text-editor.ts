@@ -58,8 +58,10 @@ export class RichTextEditor {
     const pending = this.pendingCommit;
     const value = this.textarea.value;
     const commitsComposition = pending && (value === pending.text || inputType.includes('Composition'));
+    const compositionSelection = commitsComposition && pending.before.source === this.document.markup
+      ? pending.before : undefined;
 
-    this.document.updateText(value, this.beforeInput);
+    this.document.updateText(value, this.beforeInput ?? compositionSelection);
     if (before.source !== this.document.markup) {
       if (!this.composition) { this.remember(commitsComposition ? pending.before : before); }
       if (!commitsComposition || value === pending.text) { this.pendingCommit = undefined; }
