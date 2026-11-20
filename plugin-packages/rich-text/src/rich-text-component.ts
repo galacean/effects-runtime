@@ -214,7 +214,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const useLegacy = this.textLayout.useLegacyRichText;
     let textOffset = 0;
     const program = generateProgram((text, context) => {
-      // 旧数据保留原有占位空格及字号解析规则，避免改变播放尺寸和字形。
+      // 旧版布局保留换行占位空格。
       if (useLegacy && /^\n+$/.test(text)) {
         text = text.replace(/\n/g, '\n ');
       }
@@ -239,12 +239,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           options.fontStyle = spec.FontStyle.italic;
         }
         if ('size' in context && context.size) {
-          if (useLegacy) {
-            options.fontSize = parseInt(context.size, 10);
-          } else {
-            const size = parseFloat(context.size);
+          // 沿用已导出场景的字号解析规则，保持原有排版。
+          const size = parseInt(context.size, 10);
 
-            if (Number.isFinite(size) && size > 0) { options.fontSize = size; }
+          if (useLegacy || (Number.isFinite(size) && size > 0)) {
+            options.fontSize = size;
           }
         }
         if ('color' in context && context.color) {
