@@ -178,7 +178,7 @@ export class AssetManager {
         this.baseUrl = location.href;
       }
 
-      if (Scene.isJSONObject(rawJSON)) {
+      if (rawJSON instanceof Scene) {
         scene = rawJSON;
         scene.options = options;
       } else {

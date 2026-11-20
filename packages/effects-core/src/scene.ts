@@ -198,11 +198,6 @@ export namespace Scene {
    */
   export type LoadType = string | Scene | URLType | spec.JSONScene | Record<string, unknown>;
 
-  // JSON 对象
-  export function isJSONObject (scene: any): scene is Scene {
-    return scene instanceof Scene;
-  }
-
   export function isURL (scene: any): scene is URLType {
     return isObject(scene) && 'url' in scene;
   }

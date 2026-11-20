@@ -48,7 +48,7 @@ export class SceneServer extends EngineServer {
   assembleSceneLoadOptions (url: Scene.LoadType, options: SceneLoadOptions = {}) {
     let source: Scene.LoadType = url;
 
-    if (Scene.isURL(url) && !Scene.isJSONObject(url)) {
+    if (Scene.isURL(url) && !(url instanceof Scene)) {
       source = url.url;
       if (Scene.isWithOptions(url)) {
         options = { ...options, ...url.options };
