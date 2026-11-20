@@ -14,7 +14,7 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
-import { SceneObjectsFactory } from './scene-objects-factory';
+import { SceneLoader } from './scene-loader';
 import type { Scene } from './scene';
 import type { Maskable } from './material';
 import type {
@@ -799,7 +799,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error('Cannot duplicate an item without serialized data.');
     }
     const sceneRoot = this.composition?.sceneRoot;
-    const newItem = SceneObjectsFactory.instantiateItem(definition, this.engine, sceneRoot, this.sourceScene);
+    const newItem = SceneLoader.instantiateItem(definition, this.engine, sceneRoot, this.sourceScene);
 
     if (sceneRoot) {
       newItem.setParent(sceneRoot);

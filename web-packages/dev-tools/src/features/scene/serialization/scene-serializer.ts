@@ -220,7 +220,7 @@ export class SceneSerializer {
       }
       if (data.dataType || object instanceof Component || object instanceof VFXItem) { this.put(scene, data, object); }
     }
-    const root = scene.compositions.find(entry => entry.id === this.composition.id) ?? scene.compositions[0];
+    const root = scene.compositions.find(entry => entry.id === this.composition.sceneRoot.definition.id) ?? scene.compositions[0];
 
     root.children = this.composition.sceneRoot.children.filter(item => item.definition.id).map(item => this.reference(item));
     root.components = this.composition.sceneRoot.components.filter(component => component.definition.id).map(component => this.reference(component));

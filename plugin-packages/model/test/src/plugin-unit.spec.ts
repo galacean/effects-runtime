@@ -1,6 +1,6 @@
 /* eslint-disable padding-line-between-statements */
 import type { Geometry, VertexBuffer } from '@galacean/effects';
-import { AssetManager, Player, Texture, spec, math, Engine, Material, SceneObjectsFactory } from '@galacean/effects';
+import { AssetManager, Player, Texture, spec, math, Engine, Material, SceneLoader } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
   PEntity, PObject, PLightType, PMaterialType, PObjectType, PTransform, PCamera, PLight,
@@ -776,7 +776,7 @@ describe('渲染插件单测', function () {
     });
 
     const animationItem = itemList.find(item => item.id === jsonScene.components[1].item?.id)!;
-    const animatedRoot = SceneObjectsFactory.instantiateItem(animationItem, engine, undefined, preparedScene);
+    const animatedRoot = SceneLoader.instantiateItem(animationItem, engine, undefined, preparedScene);
     const animComp = animatedRoot.getComponent(AnimationComponent);
 
     expect(animComp.clips.length).to.eql(1);
@@ -999,7 +999,7 @@ describe('渲染插件单测', function () {
       expect(scale17_7.getElement(i)).closeTo(v, 1e-5);
     });
     expect(itemList[22].type).to.eql('mesh');
-    const itemMesh = SceneObjectsFactory.instantiateItem(itemList[22], engine, undefined, preparedScene);
+    const itemMesh = SceneLoader.instantiateItem(itemList[22], engine, undefined, preparedScene);
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
@@ -1124,7 +1124,7 @@ describe('渲染插件单测', function () {
       });
       //
       expect(itemList[1].type).to.eql('mesh');
-      const itemMesh = SceneObjectsFactory.instantiateItem(itemList[1], engine, undefined, preparedScene);
+      const itemMesh = SceneLoader.instantiateItem(itemList[1], engine, undefined, preparedScene);
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');

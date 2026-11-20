@@ -1,6 +1,6 @@
 import type { Asset, Scene, VFXItem } from '@galacean/effects';
 import {
-  AssetManager, CompositionComponent, Fake3DComponent, Player, PrecompositionManager, Sprite, SpriteComponent, TextureSourceType, spec,
+  AssetManager, CompositionComponent, Fake3DComponent, Player, Sprite, SpriteComponent, TextureSourceType, spec,
 } from '@galacean/effects';
 
 const { expect } = chai;
@@ -76,7 +76,7 @@ describe('core/composition/runtime instance IDs', () => {
     const composition = await player.loadScene(createScene(), { autoplay: false });
     const scene = { ...createScene(), compositionId: 'template' } as unknown as spec.JSONScene;
     const prefab = await AssetManager.loadPrecomposition(scene, { autoplay: false });
-    const root = PrecompositionManager.instantiate(prefab, composition);
+    const root = prefab.instantiate(composition);
     const parent = composition.getItemByName('right')!;
     const { local } = bindings(root);
 
