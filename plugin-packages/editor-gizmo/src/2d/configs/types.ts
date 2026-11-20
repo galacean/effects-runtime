@@ -327,8 +327,6 @@ export type PenConfig = {
 export type ShapeConfig = {
   /** 造型拖动预览颜色。 */
   previewColor: number,
-  /** 造型拖动预览透明度。 */
-  previewAlpha: number,
   /** 造型拖动预览线宽。 */
   previewLineWidth: number,
   /** 点击创建时的默认宽度。 */
@@ -343,12 +341,8 @@ export type ShapeConfig = {
   minRadius: number,
   /** 新元素填充颜色。 */
   initialFillColor: number,
-  /** 新元素填充透明度。 */
-  initialFillAlpha: number,
   /** 新元素描边颜色。 */
   initialStrokeColor: number,
-  /** 新元素描边透明度。 */
-  initialStrokeAlpha: number,
   /** 新元素描边宽度。 */
   initialStrokeWidth: number,
   /** 新元素描边端点样式。 */

@@ -248,8 +248,7 @@ export const penConfig = defineConfig<'tool.pen', PenConfig>({
 export const shapeConfig = defineConfig<'tool.shape', ShapeConfig>({
   id: 'tool.shape',
   defaults: {
-    previewColor: 0x80c8ffff,
-    previewAlpha: 0.8,
+    previewColor: 0x80c8ffcc,
     previewLineWidth: 1,
     defaultWidth: 2.4,
     defaultHeight: 1.6,
@@ -257,9 +256,7 @@ export const shapeConfig = defineConfig<'tool.shape', ShapeConfig>({
     minHeight: 0.0016,
     minRadius: 0.0024,
     initialFillColor: 0xffffffff,
-    initialFillAlpha: 1,
     initialStrokeColor: 0x000000ff,
-    initialStrokeAlpha: 1,
     initialStrokeWidth: 0,
     initialStrokeCap: spec.LineCap.Round,
     initialStrokeJoin: spec.LineJoin.Round,
