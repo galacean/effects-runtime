@@ -55,7 +55,6 @@ export * from './effects-object';
 export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
-export * from './precompositions';
 export * from './rendering-server';
 export * from './rendering-device';
 

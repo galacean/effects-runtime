@@ -104,7 +104,6 @@ export class ThreeDisplayObject extends THREE.Group {
       scenes.push(scene);
     }
 
-    this.assetServer.releaseAssetManagers();
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.engine.sceneServer.assembleSceneLoadOptions(url, { autoplay, ...options });

@@ -6,7 +6,6 @@ import type { Asset } from './asset';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
-import { SceneLoader } from './scene-loader';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { InputServer } from './input-server';
@@ -156,9 +155,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly statistic: CompositionStatistic;
   /**
-   * 合成对应的 url 或者 JSON
+   * 合成对应的 URL，无来源地址时为空字符串
    */
-  readonly url: Scene.LoadType;
+  readonly url: string;
   /**
    * @internal
    * 合成根元素
@@ -201,7 +200,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * Composition 构造函数
    * @param engine - 引擎实例
    * @param props - composition 的创建参数
-   * @param scene
+   * @param scene - 场景资源
    */
   constructor (
     public engine: Engine,
@@ -253,7 +252,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.sceneRoot.setParent(this.root);
     PluginSystem.notifyCompositionCreating(this, scene);
-    SceneLoader.instantiateComposition(sourceContent, this.engine, scene, this.sceneRoot);
+    scene?.instantiate(this, this.sceneRoot);
 
     // 在实例化后设置 rootItem 的 name，避免 name 被覆盖
     this.sceneRoot.name = 'sceneRoot';
@@ -713,20 +712,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     this.sceneTicking.clear();
 
-    if (this.scene) {
-      for (const video of this.scene.videos) {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-      }
-      for (const image of this.scene.images) {
-        if (image instanceof HTMLVideoElement) {
-          image.pause();
-          image.removeAttribute('src');
-          image.load();
-        }
-      }
-    }
+    this.scene?.dispose();
     this.scene = undefined;
 
     this.sceneRendering.clear();

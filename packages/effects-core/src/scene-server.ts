@@ -44,14 +44,12 @@ export class SceneServer extends EngineServer {
     removeItem(this._compositions, composition);
   }
 
-  /** Resolve per-scene options before loading the source. */
+  /** Resolve options from a URL descriptor before loading the source. */
   assembleSceneLoadOptions (url: Scene.LoadType, options: SceneLoadOptions = {}) {
     let source: Scene.LoadType = url;
 
-    if (Scene.isURL(url)) {
-      if (!Scene.isJSONObject(url)) {
-        source = url.url;
-      }
+    if (Scene.isURL(url) && !Scene.isJSONObject(url)) {
+      source = url.url;
       if (Scene.isWithOptions(url)) {
         options = { ...options, ...url.options };
       }

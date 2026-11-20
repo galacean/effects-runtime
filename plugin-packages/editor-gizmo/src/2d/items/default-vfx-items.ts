@@ -96,8 +96,8 @@ export class DefaultVFXItems {
     parent = null,
     urlname = 'NewEffects',
   ): Promise<VFXItem> {
-    const precomposition = await AssetManager.loadPrecomposition(effects, { autoplay: false });
-    const vfxItem = precomposition.instantiate(composition);
+    const scene = await AssetManager.loadScene(effects, { autoplay: false });
+    const vfxItem = scene.instantiate(composition);
 
     vfxItem.name = urlname;
     vfxItem.type = spec.ItemType.composition;

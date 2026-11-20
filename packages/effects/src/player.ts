@@ -413,7 +413,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       sceneUrls.push(scene);
     }
 
-    this.engine.assetServer.releaseAssetManagers();
     const baseOrder = this.engine.sceneServer.compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;

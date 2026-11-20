@@ -110,13 +110,6 @@ export class AssetServer extends EngineServer {
     return manager;
   }
 
-  /** Release the current batch of load sessions before starting another one. */
-  releaseAssetManagers (): void {
-    for (const manager of this._assetManagers.splice(0)) {
-      manager.dispose();
-    }
-  }
-
   // TODO Material 单独存表, 加速查询
   createShaderVariant () {
     for (const guid of Object.keys(this.engine.effectsObjectServer.objectsCache)) {
@@ -129,7 +122,7 @@ export class AssetServer extends EngineServer {
   }
 
   override onDispose (): void {
-    this.releaseAssetManagers();
+    this._assetManagers.length = 0;
     this.builtinObjects.forEach(object => object.dispose());
     this.builtinObjects.clear();
   }

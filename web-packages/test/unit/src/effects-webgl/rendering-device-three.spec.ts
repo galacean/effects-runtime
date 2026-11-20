@@ -1,6 +1,6 @@
-import type { Scene, TextureSourceOptions } from '@galacean/effects';
+import type { TextureSourceOptions } from '@galacean/effects';
 import {
-  Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Texture, TextureSourceType, effectsClassStore, glContext, spec,
+  Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Scene, Texture, TextureSourceType, effectsClassStore, glContext, spec,
 } from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 import { ThreeDisplayObject } from '../../../../../packages/effects-threejs/src/three-display-object';
@@ -66,42 +66,31 @@ describe('threejs/rendering-device', () => {
     expect(gl.isContextLost()).equals(false);
   });
 
-  it('tracks scene load sessions through the asset server and releases them with the display object', async () => {
+  it('tracks scene load managers and clears references with the display object', async () => {
     // Reuse this suite's initialized host engine to exercise the loading facade.
     const displayObject = Object.create(ThreeDisplayObject.prototype) as ThreeDisplayObject;
 
     Object.assign(displayObject, {
       engine, compositions: [], children: [], parent: null, baseCompositionIndex: 0, assetServer: engine.assetServer,
     });
-    const createScene = (): Scene => ({
-      jsonScene: {
-        compositionId: 'scene', items: [],
-        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
-      } as unknown as spec.JSONScene,
-      bins: [], textureOptions: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
-    });
+    const createScene = () => new Scene({
+      compositionId: 'scene', items: [],
+      compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+    } as unknown as spec.JSONScene);
     const assets = displayObject.engine.assetServer;
-    let disposals = 0;
 
     try {
       await displayObject.loadScene(createScene(), { autoplay: false });
       expect(assets.assetManagers).to.have.length(1);
       const first = assets.assetManagers[0];
-      const disposeFirst = first.dispose.bind(first);
 
-      first.dispose = () => { disposals++; disposeFirst(); };
       await displayObject.loadScene(createScene(), { autoplay: false });
-      expect(disposals).to.equal(1);
-      expect(assets.assetManagers).to.have.length(1);
-      expect(assets.assetManagers[0]).not.to.equal(first);
-      const second = assets.assetManagers[0];
-      const disposeSecond = second.dispose.bind(second);
-
-      second.dispose = () => { disposals++; disposeSecond(); };
+      expect(assets.assetManagers).to.have.length(2);
+      expect(assets.assetManagers[0]).to.equal(first);
+      expect(assets.assetManagers[1]).not.to.equal(first);
     } finally {
       displayObject.dispose();
     }
-    expect(disposals).to.equal(2);
     expect(assets.assetManagers).to.have.length(0);
     expect(gl.isContextLost()).to.equal(false);
   });

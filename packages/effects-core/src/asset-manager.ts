@@ -7,15 +7,12 @@ import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
-import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
-import { Precomposition } from './precompositions/precomposition';
-import { EffectsPackage } from './effects-package';
 
 let seed = 1;
 
@@ -23,7 +20,7 @@ let seed = 1;
  * 资源管理器
  * 用于加载和动效中所有的资源文件，包括图片、插件、图层粒子数据等
  */
-export class AssetManager implements Disposable {
+export class AssetManager {
   /**
    * 相对 url 的基本路径
    */
@@ -43,10 +40,6 @@ export class AssetManager implements Disposable {
    * @default 10
    */
   private timeout: number;
-  /**
-   * 场景加载的超时定时器
-   */
-  private timers: number[] = [];
 
   /**
    * 字体加载方法
@@ -86,11 +79,10 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  static async loadPrecomposition (jsonScene: spec.JSONScene | string, options?: SceneLoadOptions): Promise<Precomposition> {
+  static async loadScene (jsonScene: spec.JSONScene | string, options?: SceneLoadOptions): Promise<Scene> {
     const assetManager = new AssetManager(options);
-    const scene = await assetManager.loadScene(jsonScene);
 
-    return new Precomposition(scene, options);
+    return assetManager.loadScene(jsonScene);
   }
 
   /**
@@ -127,6 +119,7 @@ export class AssetManager implements Disposable {
    */
   async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
     let rawJSON: Scene.LoadType;
+    const options = { ...this.options };
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
@@ -139,12 +132,10 @@ export class AssetManager implements Disposable {
     const waitPromise = new Promise<Scene>((resolve, reject) => {
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
-        this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
         reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`));
       }, this.timeout * 1000);
-      this.timers.push(loadTimer);
     });
 
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
@@ -167,11 +158,13 @@ export class AssetManager implements Disposable {
     };
     const loadResourcePromise = async () => {
       let scene: Scene;
+      let sourceUrl = '';
 
       if (isString(url)) {
         // 兼容相对路径
         const link = new URL(url, location.href).href;
 
+        sourceUrl = url;
         this.baseUrl = link;
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
 
@@ -187,29 +180,22 @@ export class AssetManager implements Disposable {
 
       if (Scene.isJSONObject(rawJSON)) {
         scene = rawJSON;
+        scene.options = options;
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
 
-        scene = {
-          timeInfos,
-          url,
-          storage: {},
-          jsonScene,
-          bins: [],
-          textureOptions: [],
-          images: [],
-          videos: [],
-          audios: [],
-        };
+        scene = new Scene(jsonScene, options);
+        scene.timeInfos = timeInfos;
+        scene.url = sourceUrl;
 
-        await hookTimeInfo('plugin:onAssetsLoadStart', () => PluginSystem.notifyAssetsLoadStart(scene, this.options));
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => PluginSystem.notifyAssetsLoadStart(scene, options));
 
         const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
-          hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
+          hookTimeInfo('processBins', () => this.processBins(bins, options)),
+          hookTimeInfo('processImages', () => this.processImages(images, options, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
 
@@ -219,21 +205,20 @@ export class AssetManager implements Disposable {
 
         scene.textureOptions.push(...loadedTextures);
 
-        // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
-        scene.renderLevel = this.options.renderLevel;
+        // 加载结束钩子需要看到降级插件计算出的渲染等级。
+        scene.renderLevel = options.renderLevel;
 
         await hookTimeInfo('plugin:onAssetsLoadFinish', async () => {
-          PluginSystem.notifyAssetsLoadFinish(scene, this.options);
+          PluginSystem.notifyAssetsLoadFinish(scene, options);
         });
       }
 
-      scene = this.prepareScene(scene);
+      scene.prepare();
 
       const totalTime = performance.now() - startTime;
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`);
       window.clearTimeout(loadTimer);
-      this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
       // 各部分分段时长
@@ -243,119 +228,6 @@ export class AssetManager implements Disposable {
     };
 
     return Promise.race([waitPromise, loadResourcePromise()]);
-  }
-
-  /** Apply scene load policies before instantiating its objects. */
-  private prepareScene (source: Scene): Scene {
-    const objectsDataCache = new Map<string, spec.EffectsObjectData>(source.objectsDataCache);
-    const scene: Scene = {
-      ...source,
-      objectsDataCache,
-    };
-    const variables = this.options.variables ?? {};
-
-    this.prepareAssets(scene);
-    for (const item of scene.jsonScene.items) {
-      if (!passRenderLevel(item.renderLevel, scene.renderLevel)) {
-        const degraded = { ...item, components: [], type: spec.ItemType.null };
-
-        delete (degraded as { refId?: string }).refId;
-        objectsDataCache.set(String(item.id), degraded);
-        continue;
-      }
-      const textVariable = variables[item.name] as string;
-
-      if (textVariable === undefined || textVariable === null) {
-        continue;
-      }
-      for (const { id } of item.components ?? []) {
-        const componentData = objectsDataCache.get(String(id)) as spec.TextComponentData | undefined;
-
-        if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
-          const overridden = { ...componentData, options: { ...componentData.options, text: textVariable } };
-
-          objectsDataCache.set(String(id), overridden);
-        }
-      }
-    }
-
-    return scene;
-  }
-
-  /** Register the scene definitions and loaded assets together. */
-  private prepareAssets (scene: Scene): void {
-    const { jsonScene, images, videos, audios, bins, textureOptions = [] } = scene;
-    const {
-      items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins: binaryDatas = [], miscs = [], compositions,
-      videos: videoDefinitions = [], audios: audioDefinitions = [], images: imageDefinitions,
-    } = jsonScene;
-    const definitions = scene.objectsDataCache ??= new Map();
-    const add = (data: spec.EffectsObjectData) => definitions.set(data.id, data);
-
-    for (const compositionData of compositions) {
-      add(compositionData as unknown as spec.EffectsObjectData);
-    }
-    for (const vfxItemData of items) {
-      add(vfxItemData);
-    }
-    for (const materialData of materials) {
-      add(materialData);
-    }
-    for (const shaderData of shaders) {
-      add(shaderData);
-    }
-    for (const geometryData of geometries) {
-      add(geometryData);
-    }
-    for (const componentData of components) {
-      add(componentData);
-    }
-    for (const animationData of animations) {
-      add(animationData);
-    }
-    for (const miscData of miscs) {
-      add(miscData);
-    }
-    for (let i = 0; i < binaryDatas.length; i++) {
-      const binaryData = binaryDatas[i];
-      const binaryBuffer = bins[i];
-
-      if (binaryData.dataType === spec.DataType.BinaryAsset) {
-        if (binaryData.id) {
-          const data = { ...binaryData, buffer: binaryBuffer };
-
-          add(data);
-        }
-      } else {
-        const effectsPackage = new EffectsPackage();
-
-        effectsPackage.deserializeFromBinary(new Uint8Array(binaryBuffer));
-        for (const effectsObjectData of effectsPackage.exportObjectDatas) {
-          add(effectsObjectData);
-        }
-      }
-    }
-    for (const textureData of textureOptions) {
-      if (!(textureData instanceof Texture)) {
-        add(textureData as spec.EffectsObjectData);
-      }
-    }
-    for (let i = 0; i < videos.length; i++) {
-      const input = { id: videoDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: videos[i] };
-
-      add(input);
-    }
-    for (let i = 0; i < audios.length; i++) {
-      const input = { id: audioDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: audios[i] };
-
-      add(input);
-    }
-    for (let i = 0; i < images.length; i++) {
-      const input = { id: imageDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: images[i] };
-
-      add(input);
-    }
   }
 
   private async processJSON (json: JSONValue) {
@@ -373,8 +245,8 @@ export class AssetManager implements Disposable {
     };
   }
 
-  private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[]) {
-    const { renderLevel } = this.options;
+  private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[], options: SceneLoadOptions) {
+    const { renderLevel } = options;
     const baseUrl = this.baseUrl;
     const jobs = bins.map(bin => {
       if (bin instanceof ArrayBuffer) {
@@ -396,9 +268,10 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
+    options: SceneLoadOptions,
     canUseKTX2 = false,
   ): Promise<ImageLike[]> {
-    const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
+    const { useCompressedTexture, variables, disableWebP, disableAVIF } = options;
     const isKTX2PluginRegistered = !!pluginLoaderMap.ktx2;
     const canUseCompressedTexture = useCompressedTexture && canUseKTX2 && isKTX2PluginRegistered;
     const baseUrl = this.baseUrl;
@@ -555,24 +428,6 @@ export class AssetManager implements Disposable {
           reject(`Couldn't load bins ${JSON.stringify(url)}: status ${status}, ${responseText}`);
         });
     });
-  }
-
-  private removeTimer (id: number) {
-    const index = this.timers.indexOf(id);
-
-    if (index !== -1) {
-      this.timers.splice(index, 1);
-    }
-  }
-  /**
-   * 销毁方法
-   */
-  dispose (): void {
-    if (this.timers.length) {
-      this.timers.map(id => window.clearTimeout(id));
-    }
-    this.sourceFrom = {};
-    this.timers = [];
   }
 }
 
