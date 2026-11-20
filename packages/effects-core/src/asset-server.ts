@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { EngineServer } from './engine-server';
 import { effectsClass, getClass } from './decorators';
 import type { Engine } from './engine';
-import type { Scene, SceneLoadOptions } from './scene';
+import type { SceneLoadOptions } from './scene';
 import type { EffectsObject } from './effects-object';
 import { Asset } from './asset';
 import { Material } from './material';
@@ -25,6 +25,7 @@ export class AssetServer extends EngineServer {
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
   private readonly _assetManagers: AssetManager[] = [];
   private readonly builtinObjects = new Map<string, EffectsObject>();
+  private sceneData?: ReadonlyMap<string, spec.EffectsObjectData>;
 
   constructor (engine: Engine) {
     super(engine, -600);
@@ -43,8 +44,20 @@ export class AssetServer extends EngineServer {
     return this._assetManagers;
   }
 
-  findEffectsObjectData (uuid: string, scene?: Scene) {
-    return scene?.objectsDataCache?.get(uuid) ?? this.database?.findEffectsObjectData(uuid);
+  /** @internal */
+  withSceneData<T> (sceneData: ReadonlyMap<string, spec.EffectsObjectData> | undefined, load: () => T): T {
+    const previousSceneData = this.sceneData;
+
+    this.sceneData = sceneData;
+    const result = load();
+
+    this.sceneData = previousSceneData;
+
+    return result;
+  }
+
+  findEffectsObjectData (uuid: string) {
+    return this.sceneData?.get(uuid) ?? this.database?.findEffectsObjectData(uuid);
   }
 
   loadGUID<T> (dataPath: spec.DataPath, type?: AbstractConstructor): T {
@@ -59,7 +72,7 @@ export class AssetServer extends EngineServer {
       return builtin as T;
     }
     const context = this.engine.effectsObjectServer.deserializationContext;
-    const data = this.findEffectsObjectData(id, context?.scene);
+    const data = this.findEffectsObjectData(id);
 
     if (!data) {
       console.warn(`Object data with uuid: ${id} not found.`);
@@ -82,7 +95,6 @@ export class AssetServer extends EngineServer {
 
     const instance = new objectClass(this.engine);
 
-    // References read in fromData can already resolve this instance.
     context?.idsMapping.set(id, instance.getInstanceId());
     context?.sceneAssets.add(instance);
     SerializationHelper.deserialize({ ...data }, instance);

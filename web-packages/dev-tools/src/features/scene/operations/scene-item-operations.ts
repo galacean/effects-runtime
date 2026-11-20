@@ -149,6 +149,8 @@ export class SceneItemOperations {
 
   copy (items: VFXItem[]): SceneItemCopy {
     const { composition, serializer } = this.document;
+    const { assetServer } = composition.engine;
+    const sceneData = composition.sceneRoot.sourceScene?.objectsDataCache;
     const selected = rootItems(items);
     const copiedItems = new Set(selected.flatMap(item => [item, ...item.getDescendants()]));
     const definitions = new Map<string, any>();
@@ -164,7 +166,8 @@ export class SceneItemOperations {
 
           if ((object instanceof VFXItem && !copiedItems.has(object)) ||
             (object instanceof Component && !copiedItems.has(object.item))) { return; }
-          const source = object ? serializer.read(object).data : composition.engine.assetServer.findEffectsObjectData(value.id, composition.sceneRoot.sourceScene);
+          const source = object ? serializer.read(object).data :
+            assetServer.withSceneData(sceneData, () => assetServer.findEffectsObjectData(value.id));
 
           if (object) { extras.set(value.id, this.document.serializer.read(object).extras); }
           if (source) { collect(source); }

@@ -26,7 +26,8 @@ export function resourceIdentity (engine: Engine, id: string, scene?: Scene): Re
 
   if (entry) { return entry.kind !== 'folder' && entry.kind !== 'scene' && isContentResource(id, entry.kind) ? { id, kind: entry.kind, name: entry.name } : undefined; }
   if (BUILTIN_TEXTURES[id]) { return { id, kind: 'texture', name: BUILTIN_TEXTURES[id] }; }
-  const data = engine.assetServer.findEffectsObjectData(id, scene);
+  const { assetServer } = engine;
+  const data = scene ? assetServer.withSceneData(scene.objectsDataCache, () => assetServer.findEffectsObjectData(id)) : assetServer.findEffectsObjectData(id);
   const kind = data && DATA_KINDS[data.dataType];
 
   return kind ? { id, kind, name: (data as { name?: string }).name || data.dataType + ' ' + id.slice(0, 8) } : undefined;

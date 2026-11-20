@@ -22,25 +22,31 @@ export class SceneObjectsFactory {
     root: VFXItem,
     scene?: Scene,
   ): void {
-    const factory = new SceneObjectsFactory(root.engine, scene);
+    const { engine } = root;
 
-    root.name = data.name;
-    root.duration = data.duration;
-    root.endBehavior = data.endBehavior;
-    const context = factory.spawnComposition(data, root);
+    engine.assetServer.withSceneData(scene?.objectsDataCache, () => {
+      const factory = new SceneObjectsFactory(engine, scene);
 
-    factory.finish(context);
+      root.name = data.name;
+      root.duration = data.duration;
+      root.endBehavior = data.endBehavior;
+      const context = factory.spawnComposition(data, root);
+
+      factory.finish(context);
+    });
   }
 
   static instantiateItem (data: spec.VFXItemData, engine: Engine, assetRoot?: VFXItem, scene = assetRoot?.sourceScene): VFXItem {
-    const item = new VFXItem(engine);
-    const factory = new SceneObjectsFactory(engine, scene);
-    const context = factory.createContext(item);
+    return engine.assetServer.withSceneData(scene?.objectsDataCache, () => {
+      const item = new VFXItem(engine);
+      const factory = new SceneObjectsFactory(engine, scene);
+      const context = factory.createContext(item);
 
-    factory.spawnItem(data, item, context);
-    factory.finish(context, assetRoot);
+      factory.spawnItem(data, item, context);
+      factory.finish(context, assetRoot);
 
-    return item;
+      return item;
+    });
   }
 
   private spawnComposition (data: spec.CompositionData, item: VFXItem) {
@@ -71,7 +77,7 @@ export class SceneObjectsFactory {
     let template: spec.CompositionData | undefined;
 
     if (refId !== undefined) {
-      template = this.engine.assetServer.findEffectsObjectData(refId, this.scene) as unknown as spec.CompositionData | undefined;
+      template = this.engine.assetServer.findEffectsObjectData(refId) as unknown as spec.CompositionData | undefined;
       if (!template) {
         throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
       }
@@ -106,7 +112,7 @@ export class SceneObjectsFactory {
   private createContext (root: VFXItem): DeserializationContext {
     const idsMapping = new Map(this.suppliedTextures.map(texture => [texture.id, texture.getInstanceId()]));
 
-    return { root, scene: this.scene, idsMapping, sceneAssets: new Set<Asset>() };
+    return { root, idsMapping, sceneAssets: new Set<Asset>() };
   }
 
   private spawnContents (
@@ -130,7 +136,7 @@ export class SceneObjectsFactory {
     if (idsMapping.has(String(id))) {
       return;
     }
-    const entry = this.engine.assetServer.findEffectsObjectData(id, this.scene);
+    const entry = this.engine.assetServer.findEffectsObjectData(id);
 
     if (!entry) {
       return;

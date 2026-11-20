@@ -124,16 +124,18 @@ export class SceneSerializer {
     const { engine, sceneRoot } = this.composition;
     const { effectsObjectServer, assetServer } = engine;
     const scene = sceneRoot.sourceScene;
+    const sceneData = scene?.objectsDataCache;
     let live: EffectsObject | undefined = effectsObjectServer.objectsCache[id];
 
-    if (!live && resourceIdentity(engine, id, scene) && assetServer.findEffectsObjectData(id, scene)) {
-      if (scene?.objectsDataCache?.has(id)) {
+    if (!live && resourceIdentity(engine, id, scene)) {
+      if (sceneData?.has(id)) {
         const sceneAssets = new Set<Asset>();
 
-        live = effectsObjectServer.withDeserializationContext({ root: sceneRoot, scene, idsMapping: new Map(), sceneAssets },
-          () => effectsObjectServer.findObject<EffectsObject>({ id }));
+        live = assetServer.withSceneData(sceneData, () =>
+          effectsObjectServer.withDeserializationContext({ root: sceneRoot, idsMapping: new Map(), sceneAssets },
+            () => effectsObjectServer.findObject<EffectsObject>({ id })));
         sceneRoot.addSceneAssets(sceneAssets);
-      } else {
+      } else if (assetServer.findEffectsObjectData(id)) {
         live = effectsObjectServer.findObject<EffectsObject>({ id });
       }
     }

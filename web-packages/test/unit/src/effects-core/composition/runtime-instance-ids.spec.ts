@@ -169,11 +169,12 @@ describe('core/composition/runtime instance IDs', () => {
     const spritesIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponents(SpriteComponent).map(component => component.sprite);
     const [left, leftAgain] = spritesIn('left');
     const [right] = spritesIn('right');
-    const { effectsObjectServer } = player.engine;
+    const { assetServer, effectsObjectServer } = player.engine;
     const { sceneRoot } = composition;
-    const findStandaloneSprite = () => effectsObjectServer.withDeserializationContext({
-      root: sceneRoot, scene: sceneRoot.sourceScene, idsMapping: new Map(), sceneAssets: new Set<Asset>(),
-    }, () => effectsObjectServer.findObject(ref(spriteId), Sprite));
+    const findStandaloneSprite = () => assetServer.withSceneData(sceneRoot.sourceScene?.objectsDataCache, () =>
+      effectsObjectServer.withDeserializationContext({
+        root: sceneRoot, idsMapping: new Map(), sceneAssets: new Set<Asset>(),
+      }, () => effectsObjectServer.findObject(ref(spriteId), Sprite)));
     const standalone = findStandaloneSprite();
     const another = findStandaloneSprite();
 

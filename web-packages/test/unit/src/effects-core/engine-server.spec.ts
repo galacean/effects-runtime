@@ -289,8 +289,10 @@ describe('core/engine/servers', () => {
     const composition = new Composition(engine, {}, preparedScene);
     const item = composition.getItemByName('degraded')!;
 
-    expect(engine.assetServer.findEffectsObjectData(text.id, preparedScene)).to.deep.equal({ ...text, options: { text: 'replacement' } });
-    expect(engine.assetServer.findEffectsObjectData(richText.id, preparedScene)).to.deep.equal({ ...richText, options: { text: 'replacement' } });
+    engine.assetServer.withSceneData(preparedScene.objectsDataCache, () => {
+      expect(engine.assetServer.findEffectsObjectData(text.id)).to.deep.equal({ ...text, options: { text: 'replacement' } });
+      expect(engine.assetServer.findEffectsObjectData(richText.id)).to.deep.equal({ ...richText, options: { text: 'replacement' } });
+    });
     expect(VFXItem.isNull(item)).to.equal(true);
     expect(item.components).to.have.length(0);
     expect(item.definition).not.to.have.property('refId');
