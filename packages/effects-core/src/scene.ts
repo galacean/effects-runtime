@@ -4,7 +4,7 @@ import type { Composition } from './composition';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import { SceneLoader } from './scene-loader';
-import { Texture } from './texture';
+import type { Texture } from './texture';
 import type { VFXItem } from './vfx-item';
 import type { Disposable, PickEnum } from './utils';
 import { assertExist, isObject } from './utils';
@@ -51,7 +51,7 @@ export class Scene implements Disposable {
 
     scene.objectsDataCache = new Map(this.objectsDataCache);
     scene.renderLevel = this.renderLevel;
-    scene.textureOptions = this.textureOptions.map(texture => texture instanceof Texture ? texture : { ...texture });
+    scene.textureOptions = this.textureOptions.map(texture => ({ ...texture }));
     scene.images = this.images.slice();
     scene.videos = this.videos.slice();
     scene.audios = this.audios.slice();
@@ -86,9 +86,7 @@ export class Scene implements Disposable {
   /** @internal Apply per-composition overrides without changing prepared resource or render-level choices. */
   applyInstanceOverrides (): void {
     for (const texture of this.textureOptions) {
-      if (!(texture instanceof Texture)) {
-        this.objectsDataCache.set(texture.id, texture as spec.EffectsObjectData);
-      }
+      this.objectsDataCache.set(texture.id, texture as spec.EffectsObjectData);
     }
     for (const source of this.jsonScene.items) {
       const item = this.objectsDataCache.get(source.id) as spec.VFXItemData | undefined;
@@ -212,9 +210,7 @@ export class Scene implements Disposable {
       }
     }
     for (const textureData of textureOptions) {
-      if (!(textureData instanceof Texture)) {
-        add(textureData as spec.EffectsObjectData);
-      }
+      add(textureData as spec.EffectsObjectData);
     }
     for (let i = 0; i < videos.length; i++) {
       const input = { id: videoDefinitions[i].id, dataType: 'DataAsset' as spec.DataType, data: videos[i] };

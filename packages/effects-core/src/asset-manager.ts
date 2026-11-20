@@ -379,9 +379,6 @@ export class AssetManager {
       imageSources[imageDefinitions[i].id] = images[i];
     }
     const jobs = textures.map(async (textureOptions, idx) => {
-      if (textureOptions instanceof Texture) {
-        return textureOptions;
-      }
       if ('mipmaps' in textureOptions) {
         try {
           return await deserializeMipmapTexture(textureOptions, bins, imageSources, jsonScene.bins);

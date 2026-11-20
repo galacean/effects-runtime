@@ -3,7 +3,6 @@ import type { Asset } from './asset';
 import type { EffectsObject } from './effects-object';
 import type { DeserializationContext } from './effects-object-server';
 import type { Scene } from './scene';
-import { Texture } from './texture';
 import type { VFXItem } from './vfx-item';
 
 /** @internal Tracks scene objects and selects their deserialization contexts. */
@@ -11,11 +10,9 @@ export class SceneInstantiationContext {
   private readonly deserializationContexts: DeserializationContext[] = [];
   private readonly contextIndexByObjectId = new Map<string, number>();
   private readonly sceneObjects: EffectsObject[] = [];
-  private readonly suppliedTextures: readonly Texture[];
   private currentContextIndex = 0;
 
   constructor (readonly root: VFXItem, readonly scene?: Scene) {
-    this.suppliedTextures = scene?.textureOptions?.filter((texture): texture is Texture => texture instanceof Texture) ?? [];
     this.deserializationContexts.push(this.createDeserializationContext(root));
     this.contextIndexByObjectId.set(root.getInstanceId(), this.currentContextIndex);
   }
@@ -82,8 +79,6 @@ export class SceneInstantiationContext {
   }
 
   private createDeserializationContext (root: VFXItem): DeserializationContext {
-    const idsMapping = new Map(this.suppliedTextures.map(texture => [texture.id, texture.getInstanceId()]));
-
-    return { root, idsMapping, sceneAssets: new Set<Asset>() };
+    return { root, idsMapping: new Map(), sceneAssets: new Set<Asset>() };
   }
 }
