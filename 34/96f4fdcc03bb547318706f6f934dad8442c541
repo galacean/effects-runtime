@@ -1,0 +1,19 @@
+packages/effects-core/src/components/component.ts
+  s_173fe96578a9bb::t_837c6a13162d4d 19,21,23,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3496f4fdcc03bb547318706f6f934dad8442c541",
+  "prompts": {},
+  "sessions": {
+    "s_173fe96578a9bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f6c7-771e-75a1-8027-78f11f288776",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
