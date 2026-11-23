@@ -1,0 +1,25 @@
+web-packages/test/unit/src/effects-core/composition/plugin.spec.ts
+  s_0c51331fc2ba97::t_3433f453556c7f 24,32-34,45,57,66,72
+plugin-packages/model/src/plugin/model-plugin.ts
+  s_0c51331fc2ba97::t_3433f453556c7f 77-80
+web-packages/test/unit/src/effects-core/composition/load-tex.spec.ts
+  s_0c51331fc2ba97::t_3433f453556c7f 267
+packages/effects-core/src/scene.ts
+  s_0c51331fc2ba97::t_3433f453556c7f 38,48,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "214373fd0e3239c9a92da9a3547011c1fae82fbc",
+  "prompts": {},
+  "sessions": {
+    "s_0c51331fc2ba97": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f852-a08f-78d1-a75a-6e294b393259",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
