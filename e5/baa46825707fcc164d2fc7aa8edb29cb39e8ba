@@ -1,0 +1,38 @@
+packages/effects-core/src/texture/texture.ts
+  s_5c3db35e5af276::t_dcd80e1bec1b43 403-404
+  s_5c3db35e5af276::t_423142d09b90de 370
+  s_5c3db35e5af276::t_c666fb2e26dd42 351,371-374
+packages/effects/src/index.ts
+  s_5c3db35e5af276::t_423142d09b90de 24
+  s_5c3db35e5af276::t_1717460a7b7755 26-35
+packages/effects-core/src/plugins/particle/trail-mesh.ts
+  s_5c3db35e5af276::t_484a978ea6fa8c 95,101-103,108-110
+packages/effects-webgl/src/gpu-framebuffer-webgl.ts
+  s_5c3db35e5af276::t_dcd80e1bec1b43 211-212,227-228
+web-packages/test/unit/src/effects-webgl/gl-texture.spec.ts
+  s_5c3db35e5af276::t_dcd80e1bec1b43 514-515
+packages/effects-core/src/plugins/particle/particle-mesh.ts
+  s_5c3db35e5af276::t_484a978ea6fa8c 12,197
+packages/effects-threejs/src/gpu-texture-three.ts
+  s_5c3db35e5af276::t_d8c0ee663b86c7 126,170,173,193
+  s_5c3db35e5af276::t_dcd80e1bec1b43 23
+  s_5c3db35e5af276::t_bd7e438625d08b 83,194-195,200-203
+packages/effects-webgl/src/gpu-texture-webgl.ts
+  s_5c3db35e5af276::t_dcd80e1bec1b43 250-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e5baa46825707fcc164d2fc7aa8edb29cb39e8ba",
+  "prompts": {},
+  "sessions": {
+    "s_5c3db35e5af276": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a2068e-b99e-7100-a15b-d1871ccf6543",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
