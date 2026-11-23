@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { RendererComponent } from './renderer-component';
 import type { VFXItem } from '../vfx-item';
 import { Material, type Maskable } from '../material';
@@ -207,6 +208,34 @@ export class FrameComponent extends RendererComponent implements Maskable {
       }
     }
     this.titleRenderer.render(renderer);
+  }
+
+  override getBoundingBox (out = new Box3()): Box3 {
+    const halfWidth = Math.abs(this.transform.size.x) / 2;
+    const halfHeight = Math.abs(this.transform.size.y) / 2;
+
+    out.min.set(-halfWidth, -halfHeight, 0);
+    out.max.set(halfWidth, halfHeight, 0);
+
+    return out;
+  }
+
+  override getRenderBounds (out = new Box3()): Box3 {
+    if (this.fills.length) {
+      this.getBoundingBox(out);
+    } else {
+      out.makeEmpty();
+    }
+    const decoration = this.updateDecorationGeometry();
+
+    if (decoration && this.strokes.length && this.strokeWidth > 0 && this.strokeGeometry) {
+      const { size } = this.transform;
+
+      out.union(this.strokeGeometry.getBoundingBox().applyMatrix4(Matrix4.fromScale(size.x, size.y, 1)));
+    }
+    this.titleRenderer.expandRenderBounds(this, out);
+
+    return out;
   }
 
   override onDestroy (): void {

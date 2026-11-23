@@ -1,7 +1,9 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Box2 } from '@galacean/effects-math/es/extension/box2';
 import type { GraphicsPath } from './graphics-path';
+import { cubicPointAt } from './contour-path-utils';
 import { PolyStar } from '../../math/shape/poly-star';
 
 export type ContourPathCommand =
@@ -9,6 +11,77 @@ export type ContourPathCommand =
   | { action: 'lineTo', data: [Vector2] }
   | { action: 'bezierCurveTo', data: [Vector2, Vector2, Vector2], smoothness?: number, scale?: number }
   | { action: 'closePath', data: [] };
+
+function expandCubicExtrema (bounds: Box2, points: Vector2[], axis: 'x' | 'y'): void {
+  const d0 = points[1][axis] - points[0][axis];
+  const d1 = points[2][axis] - points[1][axis];
+  const d2 = points[3][axis] - points[2][axis];
+  const a = d0 - 2 * d1 + d2;
+  const b = d1 - d0;
+  const expandAt = (t: number) => {
+    if (t > 0 && t < 1) {
+      const value = cubicPointAt(points, t)[axis];
+
+      bounds.min[axis] = Math.min(bounds.min[axis], value);
+      bounds.max[axis] = Math.max(bounds.max[axis], value);
+    }
+  };
+
+  // The derivative divided by three is a*t² + 2*b*t + d0.
+  if (a === 0) {
+    if (b !== 0) { expandAt(-d0 / (2 * b)); }
+
+    return;
+  }
+  const discriminant = b * b - a * d0;
+
+  if (discriminant > 0) {
+    // Use the product of the roots to avoid cancellation near a linear derivative.
+    const root = Math.sqrt(discriminant);
+    const q = b < 0 ? -b + root : -b - root;
+
+    expandAt(q / a);
+    expandAt(d0 / q);
+  }
+}
+
+/** Bounds of the original contours in path space, before trimming and stroke expansion. */
+export function getContourPathBounds (commands: ContourPathCommand[]): Box2 {
+  const bounds = new Box2();
+  let start = Vector2.ZERO;
+  let current = start;
+
+  for (const command of commands) {
+    switch (command.action) {
+      case 'moveTo':
+        start = current = command.data[0];
+
+        break;
+      case 'lineTo':
+        bounds.expandByPoint(current);
+        current = command.data[0];
+
+        break;
+      case 'bezierCurveTo': {
+        const points = [current, ...command.data];
+
+        bounds.expandByPoint(current);
+        expandCubicExtrema(bounds, points, 'x');
+        expandCubicExtrema(bounds, points, 'y');
+        current = command.data[2];
+
+        break;
+      }
+      case 'closePath':
+        current = start;
+
+        break;
+    }
+    bounds.expandByPoint(current);
+  }
+
+  return bounds;
+}
 
 function addMove (path: ContourPathCommand[], point: Vector2): void {
   path.push({ action: 'moveTo', data: [point] });
@@ -51,7 +124,7 @@ function appendPolyline (path: ContourPathCommand[], points: number[], closePath
   }
 }
 
-/** Preserve cubic segments for stroke expansion, including the built-in shape primitives. */
+/** Represent each contour as lines and cubic segments, including built-in shape primitives. */
 export function makeStrokeContourPath (source: GraphicsPath): ContourPathCommand[] {
   const path: ContourPathCommand[] = [];
   const k = 0.5522847498307933;

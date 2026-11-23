@@ -1117,8 +1117,10 @@ export class ResizeSelectionGizmo extends Gizmo {
     }
     const xVec = new Vector2().subtractVectors(points[1], points[0]);
     const yVec = new Vector2().subtractVectors(points[3], points[0]);
-    const xAxis = xVec.length() > 0 ? xVec.normalize() : new Vector2(1, 0);
-    const yAxis = yVec.length() > 0 ? yVec.normalize() : new Vector2(0, 1);
+    // A straight path only supplies one axis. Keep its end handles square after rotation.
+    const xAxis = xVec.length() > 0 ? xVec.normalize()
+      : yVec.length() > 0 ? new Vector2(yVec.y, -yVec.x).normalize() : new Vector2(1, 0);
+    const yAxis = yVec.length() > 0 ? yVec.normalize() : new Vector2(-xAxis.y, xAxis.x);
 
     return { xAxis, yAxis };
   }

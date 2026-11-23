@@ -1,4 +1,4 @@
-import { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Box3, Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
@@ -111,6 +111,10 @@ export class Mesh extends RendererComponent implements Disposable {
    */
   firstGeometry (): Geometry {
     return this.geometry;
+  }
+
+  override getBoundingBox (out = new Box3()): Box3 {
+    return this.geometry?.getBoundingBox(out) ?? out.makeEmpty();
   }
 
   /**

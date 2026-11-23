@@ -1,4 +1,5 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import type { Box3 } from '@galacean/effects-math/es/core/box3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
@@ -480,6 +481,15 @@ export class FrameTitle {
   render (renderer: Renderer): void {
     if (this.titleVisible && this.geometry) {
       this.drawMaterials.forEach((material, index) => renderer.drawGeometry(this.geometry!, this.worldMatrix, material, index));
+    }
+  }
+
+  /** 将可见标题的绘制范围并入画板局部边界。 */
+  expandRenderBounds (frame: FrameComponent, out: Box3): void {
+    if (this.titleVisible && this.geometry) {
+      const titleToFrame = frame.transform.getWorldMatrix().clone().invert().multiply(this.worldMatrix);
+
+      out.union(this.geometry.getBoundingBox().applyMatrix4(titleToFrame));
     }
   }
 

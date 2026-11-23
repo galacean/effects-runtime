@@ -1,3 +1,4 @@
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
@@ -6,13 +7,13 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
 import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
+import type { HitTestTriangleParams } from '../plugins/interact/click-handler';
+import { HitTestType } from '../plugins/interact/click-handler';
 import type { Renderer } from '../render';
-import { Geometry, VertexElementType } from '../render';
+import { Geometry, VertexElementType, getWorldTriangles } from '../render';
 import { itemFrag, itemVert } from '../shader';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
-import { extractMinAndMax } from '../math';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -227,52 +228,26 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
   // TODO 点击测试后续抽象一个 Collider 组件
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
+    if (!force && !this.interaction) {
+      return;
+    }
+
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
-    const ui = this.interaction;
 
-    if (force || ui) {
-      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
-
-      if (area) {
-        return {
-          behavior: this.interaction?.behavior || 0,
-          type: area.type,
-          triangles: area.area,
-          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
-          clipMasks:this.frameClipMasks,
-        };
-      }
-    }
+    return {
+      behavior: this.interaction?.behavior || 0,
+      type: HitTestType.triangle,
+      triangles: getWorldTriangles(this.geometry, worldMatrix),
+      backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+      clipMasks: this.frameClipMasks,
+    };
   };
 
-  /**
-   * @deprecated 2.9.0 Please use getBoundingBoxInfo
-   */
-  getBoundingBox (): BoundingBoxTriangle {
-    const worldMatrix = this.transform.getWorldMatrix();
+  override getBoundingBox (out = new Box3()): Box3 {
+    const { size } = this.transform;
 
-    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle(this.transform.size);
-
-    return boundingBox;
-  }
-
-  override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData(VertexElementType.Position) as Float32Array;
-
-    if (positionArray) {
-      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
-
-      minMaxResult.minimum.x *= this.transform.size.x;
-      minMaxResult.minimum.y *= this.transform.size.y;
-      minMaxResult.maximum.x *= this.transform.size.x;
-      minMaxResult.maximum.y *= this.transform.size.y;
-      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
-    }
-
-    return this.boundingBoxInfo;
+    return this.geometry.getBoundingBox(out).applyMatrix4(Matrix4.fromScale(size.x, size.y, 1));
   }
 
   private configureMaterial (renderer: ItemRenderer): Material {
