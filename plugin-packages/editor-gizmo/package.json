@@ -40,13 +40,13 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects-math": "1.2.1",
-    "@galacean/effects-plugin-rich-text": "workspace:*"
+    "@galacean/effects-math": "1.2.1"
   },
   "devDependencies": {
     "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-gui": "workspace:*",
     "@galacean/effects-plugin-model": "workspace:*",
+    "@galacean/effects-plugin-rich-text": "workspace:*",
     "@galacean/effects-plugin-multimedia": "workspace:*"
   }
 }
