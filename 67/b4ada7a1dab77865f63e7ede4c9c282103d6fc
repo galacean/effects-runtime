@@ -1,0 +1,96 @@
+packages/effects-core/src/render/geometry.ts
+  s_45aa39c6bfd6f4::t_84dc107b9aef3c 218-223
+  s_45aa39c6bfd6f4::t_35478f005b32c2 3-4,192-217,224-237,664-680
+  s_45aa39c6bfd6f4::t_8c2facfbf98fcb 681-682
+web-packages/dev-tools/src/chrome-extension/bridge/runtime-agent.ts
+  s_45aa39c6bfd6f4::t_7b3e3fe7fb64bd 359-360
+  s_45aa39c6bfd6f4::t_8c888dc2239324 356-357
+plugin-packages/model/src/plugin/model-item.ts
+  s_45aa39c6bfd6f4::t_384c631a01a82e 5,235-240,244
+  s_45aa39c6bfd6f4::t_84dc107b9aef3c 241
+packages/effects-core/src/index.ts
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 23
+packages/effects-core/src/components/base-render-component.ts
+  s_45aa39c6bfd6f4::t_7b3e3fe7fb64bd 1,247-248,250
+  s_45aa39c6bfd6f4::t_4b7bb193d23aa5 10-11,231-232,235-236,238-240,242-244
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 13,241
+  s_45aa39c6bfd6f4::t_33715d655cb333 245
+packages/effects-core/src/render/mesh.ts
+  s_45aa39c6bfd6f4::t_7b3e3fe7fb64bd 1,116-117
+  s_45aa39c6bfd6f4::t_572d27d987e554 118-119
+packages/effects-core/src/plugins/shape/contour-path.ts
+  s_8f29277e85a108::t_b1910938d4c706 127
+packages/effects-core/src/components/mesh-component.ts
+  s_45aa39c6bfd6f4::t_7b3e3fe7fb64bd 2,7,58-59
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 8,54
+  s_45aa39c6bfd6f4::t_4b7bb193d23aa5 5-6,52-53,55-56
+  s_45aa39c6bfd6f4::t_7f7c0fc352307b 57
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_45aa39c6bfd6f4::t_5dbb1f579653f2 1,156,402,411,413-415,417,421,506,519,733,735
+  s_45aa39c6bfd6f4::t_6b23779ad964a2 14,25,28,155,344,401,403-406,408,420,422,424-425,427-429,431-437,439-441,504-505,523-524,530-531,748,887
+  s_45aa39c6bfd6f4::t_04c1d3219dfd17 339-340,564
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 12,395
+  s_45aa39c6bfd6f4::t_4b7bb193d23aa5 29,385-388,392-394,396-398
+  s_45aa39c6bfd6f4::t_147540cc70770f 399-400
+packages/effects-core/src/plugins/text/text-item.ts
+  s_45aa39c6bfd6f4::t_384c631a01a82e 2,114-117
+  s_45aa39c6bfd6f4::t_f4379070d64a9b 118-119
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_8f29277e85a108::t_e5b5aacf8d2544 1120-1123
+plugin-packages/spine/src/spine-component.ts
+  s_45aa39c6bfd6f4::t_8c888dc2239324 4,17,309,311,313-314,317-321,325-327,330,333-337,339-345
+plugin-packages/editor-gizmo/src/2d/math/geometry.ts
+  s_8f29277e85a108::t_c8a0ebfc402d0e 25-26,40,49-55,149-152
+  s_8f29277e85a108::t_04f03534202888 39,146
+  s_8f29277e85a108::t_8232505f80f06f 42-48,56,148
+  s_8f29277e85a108::t_04516e68a0c7bc 41
+packages/effects-core/src/components/frame-title.ts
+  s_45aa39c6bfd6f4::t_384c631a01a82e 2,487-492
+  s_45aa39c6bfd6f4::t_0e5123b16092df 493-495
+packages/effects-core/src/render/index.ts
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 12
+packages/effects-core/src/plugins/interact/interact-item.ts
+  s_45aa39c6bfd6f4::t_8c888dc2239324 333-335,337-346
+  s_45aa39c6bfd6f4::t_7b3e3fe7fb64bd 2,7
+packages/effects-core/src/render/geometry-triangles.ts
+  s_45aa39c6bfd6f4::t_f060e7f7db20ad 1-47
+plugin-packages/editor-gizmo/src/2d/items/item-geometry.ts
+  s_8f29277e85a108::t_b1910938d4c706 38,44-50
+  s_8f29277e85a108::t_04f03534202888 41-43
+  s_8f29277e85a108::t_8232505f80f06f 4,51-58
+packages/effects-core/src/components/renderer-component.ts
+  s_45aa39c6bfd6f4::t_5dbb1f579653f2 1,77-83
+  s_45aa39c6bfd6f4::t_e3fcce086aef8f 76
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-geometry.spec.ts
+  s_45aa39c6bfd6f4::t_6b23779ad964a2 42
+  s_45aa39c6bfd6f4::t_5dbb1f579653f2 5,22,108
+  s_8f29277e85a108::t_ae70f3922a0dea 41
+packages/effects-core/src/components/frame-component.ts
+  s_45aa39c6bfd6f4::t_384c631a01a82e 2,213-223,229-239
+  s_45aa39c6bfd6f4::t_84dc107b9aef3c 224-228
+  s_45aa39c6bfd6f4::t_06220eb33e1670 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "67b4ada7a1dab77865f63e7ede4c9c282103d6fc",
+  "prompts": {},
+  "sessions": {
+    "s_45aa39c6bfd6f4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20668-71f6-7ef2-a63d-ee147d952e30",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": null
+    },
+    "s_8f29277e85a108": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a2062a-bc36-7d21-af14-30f7c1828853",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": null
+    }
+  }
+}
