@@ -423,9 +423,9 @@ function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap:
   };
   const length = (axisSize.width + planeSize.width) / 2;
   const depthTest = true;
-  const posXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('posX'));
-  const posYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('posY'));
-  const posZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('posZ'));
+  const posXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posX' }, texture.get('posX'));
+  const posYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posY' }, texture.get('posY'));
+  const posZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posZ' }, texture.get('posZ'));
   const posXSphereTransform = new Transform({
     valid: true,
   });
@@ -439,9 +439,9 @@ function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap:
   posXSphereTransform.translate(length, 0, 0);
   posYSphereTransform.translate(0, length, 0);
   posZSphereTransform.translate(0, 0, length);
-  const negXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('negX'));
-  const negYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('negY'));
-  const negZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest }, texture.get('negZ'));
+  const negXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negX' }, texture.get('negX'));
+  const negYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negY' }, texture.get('negY'));
+  const negZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negZ' }, texture.get('negZ'));
   const negXSphereTransform = new Transform({
     valid: true,
   });

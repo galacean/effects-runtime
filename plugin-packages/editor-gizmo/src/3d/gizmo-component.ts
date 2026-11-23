@@ -320,7 +320,17 @@ export class GizmoComponent extends RendererComponent {
 
             if (gizmoSubType === GizmoSubType.viewHelper) {
               // 正交投影只需要计算物体在XY平面上的投影与中心点的距离
-              if (mesh.name === 'sprite') {
+              const isViewHelperSprite = ['posX', 'negX', 'posY', 'negY', 'posZ', 'negZ'].includes(mesh.name);
+
+              if (isViewHelperSprite) {
+                // Reset the value every frame so a previous occlusion result
+                // cannot leave an axis face permanently transparent.
+                mesh.material.setVector2('u_alpha', new Vector2(1, 0));
+              }
+              // Z faces lie on the camera-helper's local Z axis. Their XY
+              // distance from the center is zero by design, so applying the
+              // 2D overlap fade would hide both posZ and negZ every frame.
+              if (isViewHelperSprite && !mesh.name.endsWith('Z')) {
                 distanceToCneter = position.toVector2().distance(center.toVector2());
                 theta = (this.boundingMap.get('posX') as GizmoItemBoundingSphere).radius;
               }

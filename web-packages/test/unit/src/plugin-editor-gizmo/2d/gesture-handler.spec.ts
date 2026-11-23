@@ -19,6 +19,7 @@ import { GizmoTool } from '../../../../../../plugin-packages/editor-gizmo/src/2d
 import { HandGizmoTool, ImageCutGizmoTool, MoveGizmoTool } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-tools';
 import type { EditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';
 import { DefaultSelectionMode, EffectsEditMode, TextEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';
+import { Transform3DEditMode, Viewport3DEditMode, type SpatialEditHost, type SpatialEditEvent, type CameraEditData } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';
 import type { GizmoViewport } from '../../../../../../plugin-packages/editor-gizmo/src/2d/viewport/gizmo-viewport';
 
 const { expect } = chai;
@@ -1224,6 +1225,106 @@ describe('GestureHandler - media hover preview', () => {
     expect(video.play).to.have.been.called.once;
     expect(video.pause).to.have.been.called.once;
   });
+});
+
+describe('GestureHandler - spatial edit modes', () => {
+  function createSpatialHandler (kind: 'transform-3d' | 'viewport-3d') {
+    const handler = createHandler();
+    const events: SpatialEditEvent[] = [];
+    const camera: CameraEditData = {
+      position: { x: 0, y: 0, z: 20 },
+      target: { x: 0, y: 0, z: 0 },
+      up: { x: 0, y: 1, z: 0 },
+      fov: 60,
+    };
+    const target = { id: 'editor-camera', revision: '1', data: camera };
+    const host = {
+      contextKey: () => 'scene',
+      read: (mode: string) => mode === 'viewport-3d' ? target : undefined,
+      canEdit: () => true,
+      dispatch: (event: SpatialEditEvent) => events.push(event),
+      project: (point: { x: number, y: number }) => new Vector2(point.x, point.y),
+      ray: () => undefined,
+      localToWorld: (point: { x: number, y: number, z: number }) => point,
+      worldToLocal: (point: { x: number, y: number, z: number }) => point,
+      viewportSize: () => ({ x: 400, y: 300 }),
+      focusBounds: () => [{ x: -8, y: -2, z: -10 }, { x: 12, y: 2, z: 30 }],
+    } as unknown as SpatialEditHost;
+    const mode = kind === 'transform-3d'
+      ? new Transform3DEditMode(handler, host)
+      : new Viewport3DEditMode(handler, host);
+
+    handler.setActiveTool(new MoveGizmoTool(handler));
+    handler.setActiveEditMode(mode);
+
+    return { handler, host, mode, events };
+  }
+
+  for (const kind of ['transform-3d', 'viewport-3d'] as const) {
+    it(`${kind}: wheel updates the spatial camera without running 2D navigation`, () => {
+      const { handler, events } = createSpatialHandler(kind);
+      const navigate2D = chai.spy.on(handler.getViewportNavigation(), 'handleWheel', () => false);
+
+      sendWheel(handler, new WheelEvent('wheel', { deltaY: 100 }));
+
+      expect(navigate2D).not.to.have.been.called();
+      expect(events.map(event => event.phase)).to.deep.equal(['start', 'update', 'commit']);
+      expect((events[2].after as CameraEditData).position.z).to.be.greaterThan(20);
+      handler.dispose();
+    });
+
+    it(`${kind}: exiting the mode cancels its preview before the captured pointer is released`, () => {
+      const { handler, events } = createSpatialHandler(kind);
+      const event = mouseButton(true);
+
+      event.buttonIndex = MouseButton.Right;
+      event.buttonMask = MouseButtonMask.Right;
+      inputViewport(handler).onMouseDown(event);
+      expect(events.map(value => value.phase)).to.deep.equal(['start']);
+
+      handler.resetEditMode();
+      inputViewport(handler).onMouseUp(mouseButton(false));
+
+      expect(events.map(value => value.phase)).to.deep.equal(['start', 'cancel']);
+      expect(events[1].reason).to.equal('mode-exit');
+      handler.dispose();
+    });
+
+    it(`${kind}: switching to the hand tool cancels the old preview and keeps spatial navigation`, () => {
+      const { handler, mode, events } = createSpatialHandler(kind);
+      const event = mouseButton(true);
+
+      event.buttonIndex = MouseButton.Right;
+      event.buttonMask = MouseButtonMask.Right;
+      inputViewport(handler).onMouseDown(event);
+      handler.setActiveTool(new HandGizmoTool(handler));
+      inputViewport(handler).onMouseUp(mouseButton(false));
+
+      expect(handler.getActiveEditMode()).to.equal(mode);
+      expect(events.map(value => value.phase)).to.deep.equal(['start', 'cancel']);
+      expect(events[1].reason).to.equal('rebuild');
+      sendWheel(handler, new WheelEvent('wheel', { deltaY: 100 }));
+      expect(events.map(value => value.phase)).to.deep.equal(['start', 'cancel', 'start', 'update', 'commit']);
+      handler.dispose();
+    });
+
+    it(`${kind}: F frames the full selected bounds through the spatial mode`, () => {
+      const { handler, host, events } = createSpatialHandler(kind);
+      const selected = { getInstanceId: () => 'selected' } as VFXItem;
+      const bounds = chai.spy.on(host, 'focusBounds');
+
+      chai.spy.on(handler.getSelection(), 'getSelectedPlayerItems', () => [selected]);
+      inputViewport(handler).onKeyDown(createKeyboardInput('f'));
+
+      expect(bounds).to.have.been.called.with.exactly(['selected']);
+      expect(events.map(value => value.phase)).to.deep.equal(['start', 'update', 'commit']);
+      const after = events[2].after as CameraEditData;
+
+      expect(after.target).to.deep.equal({ x: 2, y: 0, z: 10 });
+      expect(after.position.z).to.be.closeTo(10 + Math.sqrt(504) / Math.sin(Math.PI / 6) * 1.3, 1e-6);
+      handler.dispose();
+    });
+  }
 });
 
 describe('GestureHandler - mouse lifecycle and captured owner', () => {

@@ -1,3 +1,4 @@
+import { isSpatialEditMode } from './modes/spatial-edit-mode';
 import { type Engine, type InputEvent, type InputEventKey, type InputEventMouse, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import { Control, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import { cursorMap, loadCursorIcons } from './cursor-icons';
@@ -489,6 +490,11 @@ export class GestureHandler extends Control implements GizmoOwner {
       // 步骤 2：将滚轮、鼠标和键盘事件路由到对应处理器。
       switch (phase) {
         case ControlInputPhase.MouseWheel: {
+          if (isSpatialEditMode(this.editMode)) {
+            this.editMode.onMouseWheel(input as InputEventMouseButton);
+
+            break;
+          }
           const viewportChanged = this.viewportNavigation.handleWheel(
             input as InputEventMouseButton,
             Boolean(this.capturedGizmo),
@@ -538,7 +544,7 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** @returns 所有工具共享的视口 Gizmo。 */
   private createCommonBeforeToolSwitch (): Gizmo[] {
     return [
-      new HandGizmo(this),
+      ...(isSpatialEditMode(this.editMode) ? [] : [new HandGizmo(this)]),
       new IconGizmo(this),
       new LoadingGizmo(this, this.loadingManager),
     ];
@@ -826,6 +832,9 @@ export class GestureHandler extends Control implements GizmoOwner {
    * @param gizmoControl 绘制控制器。
    */
   private drawHoverOverlay (gizmoControl: GizmoViewport): void {
+    if (isSpatialEditMode(this.editMode)) {
+      return;
+    }
     if (this.isPanning()) {
       return;
     }
