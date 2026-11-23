@@ -456,8 +456,6 @@ async function createTextureOptionsBySource (
       sourceType: TextureSourceType.image,
       sourceFrom,
       keepImageSource: true,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
       ...options,
     };
   } else if (image instanceof HTMLVideoElement) {
@@ -465,8 +463,6 @@ async function createTextureOptionsBySource (
     return {
       sourceType: TextureSourceType.video,
       video: image,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
       ...options,
     };
   } else if (image instanceof ArrayBuffer) {
@@ -486,8 +482,6 @@ async function createTextureOptionsBySource (
           internalFormat: textureData.internalFormat,
           format: textureData.format,
           mipmaps: textureData.mipmaps,
-          minFilter: glContext.LINEAR,
-          magFilter: glContext.LINEAR,
           sourceFrom,
           ...options,
         };
@@ -507,8 +501,6 @@ async function createTextureOptionsBySource (
       data: image,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
       ...options,
     };
   }

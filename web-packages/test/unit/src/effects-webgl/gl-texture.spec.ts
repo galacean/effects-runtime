@@ -511,8 +511,8 @@ describe('webgl/gl-texture', () => {
     expect(image.height).is.eql(256);
     expect(texture.width).is.eql(1063);
     expect(texture.height).is.eql(256);
-    expect(texture.source.minFilter).is.eql(gl.NEAREST);
-    expect(texture.source.magFilter).is.eql(gl.NEAREST);
+    expect(texture.source.minFilter).is.eql(gl.LINEAR);
+    expect(texture.source.magFilter).is.eql(gl.LINEAR);
     expect(texture.source.wrapS).is.eql(gl.CLAMP_TO_EDGE);
     expect(texture.source.wrapT).is.eql(gl.CLAMP_TO_EDGE);
     texture.initialize();

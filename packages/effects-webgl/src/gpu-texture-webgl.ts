@@ -247,8 +247,8 @@ export class GPUTextureWebGL extends GPUTexture {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
     }
     const isPot = isWebGL2(gl) || (isPowerOfTwo(this.width) && isPowerOfTwo(this.height));
-    const magFilter = options.magFilter ? options.magFilter : gl.NEAREST;
-    let minFilter = options.minFilter ? options.minFilter : gl.NEAREST;
+    const magFilter = options.magFilter ?? gl.LINEAR;
+    let minFilter = options.minFilter ?? gl.LINEAR;
 
     if (!isPot) {
       if (

@@ -121,8 +121,6 @@ export class TextureFactory {
               internalFormat: textureData.internalFormat,
               format: textureData.format,
               mipmaps: textureData.mipmaps,
-              minFilter: glContext.LINEAR,
-              magFilter: glContext.LINEAR,
               sourceFrom,
               ...config,
             };
