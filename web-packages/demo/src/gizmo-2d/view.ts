@@ -14,12 +14,16 @@ export class DemoView {
   private readonly actionList = element('events');
   private readonly createMenu = element('create-menu');
   private readonly createToggle = element('create-toggle');
+  private readonly shapeTools = element('shape-tools');
+  private readonly penTools = element('pen-tools');
   private readonly layerButtons = new Map<VFXItem, HTMLButtonElement>();
   private readonly toolButtons: [HTMLElement, DemoTool][] = [
     [element('move'), 'move'],
     [element('hand'), 'hand'],
     [element('create-frame'), 'frame'],
     [element('create-text'), 'text'],
+    [element('create-pen'), 'pen'],
+    [element('create-shape'), 'shape'],
   ];
   private readonly actions: { label: string, count: number }[] = [];
   private selectionSignature = '';
@@ -31,8 +35,27 @@ export class DemoView {
     });
     this.events.on(element('menu-frame'), 'click', () => editor.setTool('frame'));
     this.events.on(element('menu-text'), 'click', () => editor.setTool('text'));
+    this.events.on(element('menu-pen'), 'click', () => editor.setTool('pen'));
+    this.events.on(element('menu-shape'), 'click', () => editor.setTool('shape'));
+    for (const primitive of ['rect', 'ellipse', 'polygon', 'star'] as const) {
+      this.events.on(element(`shape-${primitive}`), 'click', () => editor.setShapePrimitive(primitive));
+    }
+    for (const [id, mode] of [['pen-mirror-angle-length', 'angle-length'], ['pen-mirror-angle', 'angle'], ['pen-mirror-none', 'none']] as const) {
+      this.events.on(element(id), 'click', () => editor.setPenMirrorMode(mode));
+    }
+    this.events.on(element('pen-lasso'), 'click', () => editor.setPenLassoMode(!editor.penLasso));
+    this.events.on(element('pen-edit-mode'), 'click', () => editor.setPenEditMode(!editor.penEditMode));
+    for (const [suffix, kind] of [['video', 'Video'], ['effects', 'Effects']] as const) {
+      for (const prefix of ['menu', 'create']) {
+        this.events.on(element(`${prefix}-${suffix}`), 'click', () => {
+          this.setCreateMenuOpen(false);
+          void editor.addMedia(kind);
+        });
+      }
+    }
     this.events.on(element('zoom-out'), 'click', () => editor.zoom(1 / 1.2));
     this.events.on(element('zoom-in'), 'click', () => editor.zoom(1.2));
+    this.events.on(element('fit-view'), 'click', () => editor.fitToView());
     this.events.on(this.createToggle, 'click', () => this.setCreateMenuOpen(this.createMenu.hidden));
     this.events.on(document, 'pointerdown', event => {
       if (event.target instanceof Node && !this.createMenu.contains(event.target) && !this.createToggle.contains(event.target)) {
@@ -71,7 +94,23 @@ export class DemoView {
   }
 
   showTool (tool: DemoTool): void {
-    this.toolButtons.forEach(([button, value]) => button.setAttribute('aria-pressed', String(tool === value)));
+    this.toolButtons.forEach(([button, value]) => {
+      const pressed = value === 'pen'
+        ? tool === 'pen' && !this.editor.penEditMode
+        : tool === value;
+
+      button.setAttribute('aria-pressed', String(pressed));
+    });
+    this.shapeTools.hidden = tool !== 'shape';
+    this.penTools.hidden = tool !== 'pen';
+    for (const primitive of ['rect', 'ellipse', 'polygon', 'star'] as const) {
+      element(`shape-${primitive}`).setAttribute('aria-pressed', String(tool === 'shape' && this.editor.primitive === primitive));
+    }
+    for (const mode of ['angle-length', 'angle', 'none'] as const) {
+      element(`pen-mirror-${mode}`).setAttribute('aria-pressed', String(tool === 'pen' && this.editor.penMirror === mode));
+    }
+    element('pen-lasso').setAttribute('aria-pressed', String(tool === 'pen' && this.editor.penLasso));
+    element('pen-edit-mode').setAttribute('aria-pressed', String(tool === 'pen' && this.editor.penEditMode));
     this.setCreateMenuOpen(false);
   }
 
@@ -146,11 +185,13 @@ export class DemoView {
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     const label = document.createElement('span');
 
-    use.setAttribute('href', `#icon-${data.kind === 'Frame' ? 'frame' : data.kind === 'Text' ? 'text' : 'rectangle'}`);
+    const icons: Record<DemoItem['kind'], string> = { Frame: 'frame', Text: 'text', Sprite: 'rectangle', Vector: 'shape', CustomShape: 'pen', Video: 'video', Effects: 'effects' };
+
+    use.setAttribute('href', `#icon-${icons[data.kind]}`);
     icon.setAttribute('aria-hidden', 'true');
     icon.appendChild(use);
     label.className = 'layer-name';
-    label.textContent = data.name;
+    label.textContent = data.name + (data.status === 'loading' ? ' · 加载中' : data.status === 'error' ? ' · 加载失败' : '');
     button.type = 'button';
     button.dataset.itemId = data.item.getInstanceId();
     button.style.paddingLeft = `${12 + depth * 18}px`;

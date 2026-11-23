@@ -56,7 +56,7 @@ export class TestPlayer {
     this.clearResource();
     this.lastTime = 0;
 
-    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100 });
+    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false });
     let json: spec.JSONScene | string = url;
 
     if (this.is3DCase) {

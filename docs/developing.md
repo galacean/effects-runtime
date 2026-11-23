@@ -2,12 +2,9 @@
 
 ## Prerequisites
 
-- Node.js `>= 16.0.0`
-- [Pnpm](https://pnpm.io/)  `latest`
-  - Install:
-    - `npm install -g pnpm`
-  - Upgrade：
-    - `pnpm install -g pnpm`
+- Node.js `24.x`
+- [Pnpm](https://pnpm.io/) `10.33.2` (pinned by `package.json`)
+  - Enable Corepack with `corepack enable`; pnpm will use the project-pinned version.
 
 ## Quick Start
 

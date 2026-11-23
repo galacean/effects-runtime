@@ -1,5 +1,7 @@
-import type { Scene } from '@galacean/effects';
-import { Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition, EngineServer, Player, Renderer, SceneServer, VFXItem, effectsClass, effectsClassStore } from '@galacean/effects';
+import {
+  Asset, Component, Texture, Geometry, Engine, RenderingDevice, EffectsObjectServer, AssetServer, Composition,
+  AssetManager, EngineServer, Player, Renderer, Scene, SceneServer, VFXItem, effectsClass, effectsClassStore, spec,
+} from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
 
 const { expect } = chai;
@@ -238,33 +240,109 @@ describe('core/engine/servers', () => {
     expect(other.sceneServer.compositions).to.have.length(0);
   });
 
-  it('initializes registered asset servers per engine and restores built-in object lookup', () => {
+  it('initializes registered asset servers per engine with built-in object lookup', () => {
     expect(effectsClassStore.AssetServer).to.equal(AssetServer);
     register('asset-alias', AssetServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
     const assets = engine.assetServer;
-    const scene = { jsonScene: { compositions: [] }, bins: [] } as unknown as Scene;
 
     expect(assets).to.be.instanceOf(AssetServer);
     expect(engine.assetServer).to.equal(engine.getServer(AssetServer));
     expect(assets).not.to.equal(other.assetServer);
-    const previousData = assets.jsonSceneData;
+    expect(assets.database).to.be.undefined;
+    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(true);
+    expect(engine.effectsObjectServer.objectsCache[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
+    expect(engine.effectsObjectServer.objectsCache[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
+    const whiteTexturePath = { id: spec.BuiltinObjectGUID.WhiteTexture };
 
-    engine.effectsObjectServer.clearObjectInstances();
-    expect(assets.jsonSceneData).to.equal(previousData);
-    assets.clearSceneData();
-    expect(assets.jsonSceneData).not.to.equal(previousData);
-    expect(assets.jsonSceneData).to.deep.equal({});
-    expect(engine.assetServer.whiteTexture.isRegistered).to.equal(false);
-    assets.prepareAssets(scene, {});
-    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(engine.assetServer.whiteTexture);
-    expect(engine.effectsObjectServer.objectInstance[engine.assetServer.transparentTexture.getInstanceId()]).to.equal(engine.assetServer.transparentTexture);
-    expect(other.effectsObjectServer.objectInstance[engine.assetServer.whiteTexture.getInstanceId()]).to.equal(other.assetServer.whiteTexture);
+    expect(engine.effectsObjectServer.findObject(whiteTexturePath)).to.equal(engine.assetServer.whiteTexture);
+    expect(other.effectsObjectServer.findObject(whiteTexturePath)).to.equal(other.assetServer.whiteTexture);
     expect(other.assetServer.whiteTexture).not.to.equal(engine.assetServer.whiteTexture);
   });
 
-  it('owns object lookup per engine and preserves lookup behavior after clearing', () => {
+  it('prepares text overrides and degraded precompositions before creating scene objects', async () => {
+    const engine = createPlayer().engine;
+    const text = { id: 'text', dataType: spec.DataType.TextComponent, options: { text: 'original' } };
+    const richText = { id: 'rich-text', dataType: spec.DataType.RichTextComponent, options: { text: 'original' } };
+    const degraded = {
+      id: 'degraded', name: 'degraded', dataType: spec.DataType.VFXItemData, type: spec.ItemType.composition,
+      renderLevel: spec.RenderLevel.S, refId: 'missing-template', components: [{ id: 'missing-component' }],
+    };
+    const scene = new Scene({
+      compositionId: 'scene',
+      compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze,
+        children: [{ id: degraded.id }] }],
+      items: [degraded, { id: 'label', name: 'label', components: [{ id: text.id }, { id: richText.id }] }],
+      components: [text, richText],
+    } as unknown as spec.JSONScene, { renderLevel: spec.RenderLevel.B, variables: { label: 'replacement' } });
+
+    scene.prepareDefinitions();
+
+    const preparedScene = await new AssetManager().loadScene(scene);
+
+    expect(degraded.refId).to.equal('missing-template');
+    expect(text.options.text).to.equal('original');
+
+    const composition = new Composition(engine, {}, preparedScene);
+    const item = composition.getItemByName('degraded')!;
+
+    engine.assetServer.withSceneData(preparedScene.objectsDataCache, () => {
+      expect(engine.assetServer.findEffectsObjectData(text.id)).to.deep.equal({ ...text, options: { text: 'replacement' } });
+      expect(engine.assetServer.findEffectsObjectData(richText.id)).to.deep.equal({ ...richText, options: { text: 'replacement' } });
+    });
+    expect(VFXItem.isNull(item)).to.equal(true);
+    expect(item.components).to.have.length(0);
+    expect(item.definition).not.to.have.property('refId');
+  });
+
+  it('applies per-scene options across multiple batches', async () => {
+    const player = createPlayer();
+    const json = {
+      version: '3.9', compositionId: 'scene', items: [], images: [], textures: [],
+      compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+    };
+    const url = `data:application/json,${encodeURIComponent(JSON.stringify(json))}`;
+    const firstScene = { url, options: { speed: 2, autoplay: false } };
+    const secondScene = { url, options: { speed: 3, autoplay: true } };
+    const [first, second] = await player.loadScene([firstScene, secondScene], { speed: 1, autoplay: false });
+
+    expect(first.getSpeed()).to.equal(2);
+    expect(first.getPaused()).to.equal(true);
+    expect(second.getSpeed()).to.equal(3);
+    expect(second.getPaused()).to.equal(false);
+    expect(player.getAssetManager()).to.have.length(2);
+
+    const previousManagers = [...player.getAssetManager()];
+
+    const preloadedScene = await AssetManager.loadScene(url, { speed: 4, autoplay: true });
+    const third = await player.loadScene(preloadedScene, { speed: 5, autoplay: false, reusable: true });
+
+    expect(player.getAssetManager()).to.have.length(3);
+    expect(player.getAssetManager().slice(0, 2)).to.deep.equal(previousManagers);
+    expect(third.getSpeed()).to.equal(5);
+    expect(third.getPaused()).to.equal(true);
+    expect(third.reusable).to.equal(true);
+    expect(preloadedScene.options).to.include({ speed: 4, autoplay: true });
+    expect(first.getSpeed()).to.equal(2);
+    expect(second.getSpeed()).to.equal(3);
+  });
+
+  it('keeps manager lists independent between engines', () => {
+    const player = createPlayer();
+    const assets = player.engine.assetServer;
+    const other = createPlayer().engine.assetServer;
+    const first = assets.createAssetManager({});
+    const second = assets.createAssetManager({});
+    const otherManager = other.createAssetManager({});
+
+    expect(assets.assetManagers).to.deep.equal([first, second]);
+    player.dispose();
+    expect(assets.assetManagers).to.have.length(0);
+    expect(other.assetManagers).to.deep.equal([otherManager]);
+  });
+
+  it('owns object lookup per engine and falls back to asset loading for unregistered objects', () => {
     register('objects-alias', EffectsObjectServer);
     const engine = createPlayer().engine;
     const other = createPlayer().engine;
@@ -272,6 +350,7 @@ describe('core/engine/servers', () => {
     const assets = engine.assetServer;
     const texture = engine.assetServer.whiteTexture;
     const path = { id: texture.getInstanceId() };
+    const otherPath = { id: other.assetServer.whiteTexture.getInstanceId() };
     let loads = 0;
 
     expect(server).to.equal(engine.effectsObjectServer);
@@ -285,19 +364,49 @@ describe('core/engine/servers', () => {
     expect(server.findObject(texture as unknown as typeof path)).to.equal(texture);
     expect(texture.findObject<Texture>(path)).to.equal(texture);
     expect(texture.findObject<Texture>(texture as unknown as typeof path)).to.equal(texture);
-    expect(other.assetServer.whiteTexture.findObject<Texture>(path)).to.equal(other.assetServer.whiteTexture);
+    expect(other.assetServer.whiteTexture.findObject<Texture>(otherPath)).to.equal(other.assetServer.whiteTexture);
     expect(loads).to.equal(0);
 
-    server.clearObjectInstances();
+    texture.unregisterObject();
     expect(texture.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
-    expect(other.effectsObjectServer.findObject(path)).to.equal(other.assetServer.whiteTexture);
+    expect(other.effectsObjectServer.findObject(otherPath)).to.equal(other.assetServer.whiteTexture);
     expect(texture.findObject<Texture>(path)).to.equal(texture);
     expect(loads).to.equal(1);
 
     texture.registerObject();
     expect(server.findObject(path)).to.equal(texture);
     expect(loads).to.equal(1);
+  });
+
+  it('resolves assets that refer back to each other in the same context', () => {
+    const { engine } = createPlayer();
+    const { assetServer, effectsObjectServer } = engine;
+    const { sceneRoot } = new Composition(engine);
+    const dataType = 'test-linked-asset' as spec.DataType;
+    const first = { id: 'first' }, second = { id: 'second' };
+    const definitions = [{ ...first, dataType, peer: second }, { ...second, dataType, peer: first }];
+
+    class LinkedAsset extends Asset {
+      peer: LinkedAsset;
+
+      override fromData (data: spec.EffectsObjectData & { peer: spec.DataPath }): void {
+        this.peer = this.findObject(data.peer, LinkedAsset);
+      }
+    }
+
+    registrations.push(dataType);
+    effectsClass(dataType)(LinkedAsset);
+    assetServer.database = {
+      findEffectsObjectData: id => definitions.find(data => data.id === id),
+    };
+
+    const sceneAssets = new Set<Asset>();
+    const instance = effectsObjectServer.withDeserializationContext({ root: sceneRoot, idsMapping: new Map(), sceneAssets }, () =>
+      effectsObjectServer.findObject(first, LinkedAsset));
+
+    sceneRoot.addSceneAssets(sceneAssets);
+    expect(instance.peer.peer).to.equal(instance);
   });
 
   it('preserves item name searches alongside inherited object reference lookup', () => {
@@ -318,7 +427,7 @@ describe('core/engine/servers', () => {
     child.dispose();
   });
 
-  it('preserves live resources across lookup resets until their owners or the server dispose them', () => {
+  it('tracks unregistered GPU resources until their owners or the server dispose them', () => {
     const player = createPlayer(false);
     const engine = player.engine;
     const server = engine.effectsObjectServer;
@@ -330,7 +439,8 @@ describe('core/engine/servers', () => {
 
     texture.initialize();
     geometry.initialize();
-    server.clearObjectInstances();
+    texture.unregisterObject();
+    geometry.unregisterObject();
     expect(texture.isRegistered).to.equal(false);
     expect(geometry.isRegistered).to.equal(false);
     expect(texture.isDestroyed).to.equal(false);
@@ -357,7 +467,7 @@ describe('core/engine/servers', () => {
     engine.dispose();
     expect(texture.isDestroyed).to.equal(true);
     expect(disposals).to.equal(1);
-    expect(server.objectInstance).to.deep.equal({});
+    expect(server.objectsCache).to.deep.equal({});
   });
 
   it('keeps built-in textures alive until scenes unload and disposes the asset server once', () => {
@@ -366,17 +476,11 @@ describe('core/engine/servers', () => {
     const other = createPlayer().engine;
     const assets = engine.assetServer;
     const composition = new Composition(engine);
-    const manager = assets.createAssetManager({});
-    const disposeManager = manager.dispose.bind(manager);
     const disposeComposition = composition.dispose.bind(composition);
     const disposeAssets = assets.onDispose.bind(assets);
     const calls: string[] = [];
 
-    manager.dispose = () => {
-      expect(engine.sceneServer.compositions).to.have.length(0);
-      calls.push('manager');
-      disposeManager();
-    };
+    assets.createAssetManager({});
     composition.dispose = () => {
       expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(false);
       expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(false);
@@ -390,7 +494,7 @@ describe('core/engine/servers', () => {
     };
     player.dispose();
     engine.dispose();
-    expect(calls).to.deep.equal(['scene', 'assets', 'manager']);
+    expect(calls).to.deep.equal(['scene', 'assets']);
     expect(assets.assetManagers).to.have.length(0);
     expect(engine.assetServer.whiteTexture.isDestroyed).to.equal(true);
     expect(engine.assetServer.transparentTexture.isDestroyed).to.equal(true);

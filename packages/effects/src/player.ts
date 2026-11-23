@@ -76,14 +76,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return this.engine.sceneServer.compositions;
   }
 
-  private get assetManagers () {
-    return this.engine.assetServer.assetManagers;
-  }
-
-  private get assetServer () {
-    return this.engine.assetServer;
-  }
-
   private get event () {
     return this.engine.inputServer;
   }
@@ -300,7 +292,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @returns
    */
   getAssetManager (): ReadonlyArray<AssetManager> {
-    return this.assetManagers;
+    return this.engine.assetServer.assetManagers;
   }
 
   /**
@@ -407,11 +399,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   ): Promise<Composition | Composition[]> {
     assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
     const autoplay = options?.autoplay ?? true;
-
-    if (autoplay) {
-      this.autoPlaying = true;
-    }
-
     const sceneUrls: Scene.LoadType[] = [];
     const autoplayFlags: boolean[] = [];
 
@@ -421,16 +408,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       sceneUrls.push(scene);
     }
 
-    for (const assetManager of this.assetManagers) {
-      assetManager.dispose();
-    }
-
-    this.engine.assetServer.assetManagers = [];
     const baseOrder = this.engine.sceneServer.compositions.length;
     const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
       const renderOrder = baseOrder + index;
-      const { source, options: compositionOptions } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });
+      const { source, options: compositionOptions } = this.engine.sceneServer.assembleSceneLoadOptions(url, { autoplay, ...options });
       const compositionAutoplay = compositionOptions?.autoplay ?? true;
+
+      if (compositionAutoplay) {
+        this.autoPlaying = true;
+      }
       const composition = await SceneLoader.load(source, this.engine, compositionOptions);
 
       composition.setIndex(renderOrder);

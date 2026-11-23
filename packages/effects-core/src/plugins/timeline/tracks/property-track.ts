@@ -1,4 +1,4 @@
-import type { TrackAssetData } from '@galacean/effects-specification';
+import type { TrackAssetData } from '../track';
 import { TrackAsset } from '../track';
 
 interface PropertyTrackData extends TrackAssetData {
@@ -7,8 +7,6 @@ interface PropertyTrackData extends TrackAssetData {
 
 export abstract class PropertyTrack extends TrackAsset {
 
-  protected propertyNames: string[] = [];
-
   protected path = '';
 
   override fromData (data: PropertyTrackData): void {
@@ -16,8 +14,5 @@ export abstract class PropertyTrack extends TrackAsset {
     if (data.path !== undefined) {
       this.path = data.path;
     }
-    const propertyNames = this.path.split('.');
-
-    this.propertyNames = propertyNames;
   }
 }

@@ -19,7 +19,7 @@ import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { GizmoType } from '../gizmo-type';
 import { GestureCursorType, type GestureCursorResult } from '../cursor';
 import { getItemViewTransform } from '../items';
-import { toColor, drawCorners, drawWithBoxTransform } from '../drawing';
+import { toCanvasColor, toColor, drawCorners, drawWithBoxTransform } from '../drawing';
 
 /**
  * 图片蒙版工具结果
@@ -258,7 +258,7 @@ export class MaskGizmo extends Gizmo {
       return;
     }
 
-    const { brushAlpha, boxLineWidth, boxLineColor, boxLineAlpha } = this.config;
+    const { boxLineWidth, boxLineColor } = this.config;
     const corners = getTransformedBoxCorners(transform);
     const [leftTop, rightTop, , leftBottom] = corners;
     const width = Math.ceil(leftTop.distance(rightTop));
@@ -290,7 +290,7 @@ export class MaskGizmo extends Gizmo {
         this.maskTexture.width = width;
         this.maskTexture.height = height;
         drawWithBoxTransform(control, leftTop, xAxis, yAxis, () => {
-          control.drawTexture(0, 0, width, height, this.maskTexture!, undefined, toColor(0xFFFFFF, brushAlpha));
+          control.drawTexture(0, 0, width, height, this.maskTexture!, undefined, toColor(0xFFFFFFFF));
         });
       }
 
@@ -317,14 +317,14 @@ export class MaskGizmo extends Gizmo {
           this.maskTexture.width = width;
           this.maskTexture.height = height;
           drawWithBoxTransform(control, leftTop, xAxis, yAxis, () => {
-            control.drawTexture(0, 0, width, height, this.maskTexture!, undefined, toColor(0xFFFFFF, brushAlpha));
+            control.drawTexture(0, 0, width, height, this.maskTexture!, undefined, toColor(0xFFFFFFFF));
           });
         }
       }
     }
 
     // 步骤 3：绘制元素轮廓与正在拖动的矩形。
-    drawCorners(control, corners, toColor(boxLineColor, boxLineAlpha), boxLineWidth);
+    drawCorners(control, corners, toColor(boxLineColor), boxLineWidth);
 
     if (this.mouseGrabbed) {
       const lastLine = this.result.lines[this.result.lines.length - 1];
@@ -341,7 +341,7 @@ export class MaskGizmo extends Gizmo {
             ),
           );
 
-          drawCorners(control, selCorners, toColor(boxLineColor, boxLineAlpha), boxLineWidth);
+          drawCorners(control, selCorners, toColor(boxLineColor), boxLineWidth);
         }
       }
     }
@@ -421,8 +421,8 @@ export class MaskGizmo extends Gizmo {
       return null;
     }
 
-    const maskHexColor = '#' + maskColor.toString(16).padStart(6, '0');
-    const maskBackgroundHexColor = '#' + maskBackgroundColor.toString(16).padStart(6, '0');
+    const maskHexColor = toCanvasColor(maskColor);
+    const maskBackgroundHexColor = toCanvasColor(maskBackgroundColor);
 
     ctx.fillStyle = maskBackgroundHexColor;
     ctx.fillRect(0, 0, width, height);
@@ -435,13 +435,13 @@ export class MaskGizmo extends Gizmo {
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        const mcR = (maskColor >> 16) & 0xFF;
-        const mcG = (maskColor >> 8) & 0xFF;
-        const mcB = maskColor & 0xFF;
+        const mcR = (maskColor >>> 24) & 0xFF;
+        const mcG = (maskColor >>> 16) & 0xFF;
+        const mcB = (maskColor >>> 8) & 0xFF;
 
-        const mbcR = (maskBackgroundColor >> 16) & 0xFF;
-        const mbcG = (maskBackgroundColor >> 8) & 0xFF;
-        const mbcB = maskBackgroundColor & 0xFF;
+        const mbcR = (maskBackgroundColor >>> 24) & 0xFF;
+        const mbcG = (maskBackgroundColor >>> 16) & 0xFF;
+        const mbcB = (maskBackgroundColor >>> 8) & 0xFF;
 
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
@@ -659,7 +659,7 @@ export class MaskGizmo extends Gizmo {
     }
 
     const { brushColor } = this.config;
-    const brushHex = '#' + brushColor.toString(16).padStart(6, '0');
+    const brushHex = toCanvasColor(brushColor);
     const scale = GizmoViewportUtils.getViewScale(this._owner.getEngine());
 
     ctx.clearRect(0, 0, width, height);

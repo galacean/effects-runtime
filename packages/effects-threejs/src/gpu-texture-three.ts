@@ -20,7 +20,7 @@ export class GPUTextureThree extends GPUTexture {
    * @param filter - WebGL 纹理过滤器枚举类型
    * @returns THREE 纹理过滤器枚举类型
   */
-  static toThreeJsTextureFilter (filter?: GLenum): THREE.TextureFilter {
+  static toThreeJsTextureFilter (filter: GLenum = glContext.LINEAR): THREE.TextureFilter {
     switch (filter) {
       case glContext.LINEAR:
         return THREE.LinearFilter;
@@ -56,8 +56,12 @@ export class GPUTextureThree extends GPUTexture {
 
       return;
     }
-    // VideoTexture already refreshes its image through the host renderer.
+    // The host renderer performs the upload, including forced refreshes after a seek.
     if (source.sourceType === TextureSourceType.video && options !== source) {
+      this.texture.needsUpdate = true;
+      this.width = source.video.videoWidth;
+      this.height = source.video.videoHeight;
+
       return;
     }
     this.initialize({ ...source, ...options } as TextureSourceOptions);
@@ -76,7 +80,7 @@ export class GPUTextureThree extends GPUTexture {
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
    */
-  private assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
+  private assembleOptions (options: TextureSourceOptions) {
     const { target = glContext.TEXTURE_2D } = options;
 
     if (!options.sourceType) {
@@ -91,7 +95,6 @@ export class GPUTextureThree extends GPUTexture {
       }
     }
 
-    // @ts-expect-error
     return {
       ...options,
       target,
@@ -120,6 +123,7 @@ export class GPUTextureThree extends GPUTexture {
     // TODO renderer.getMaxAnisotropy() 查询最大各向异性
     const {
       flipY,
+      format,
       type,
       wrapS,
       wrapT,
@@ -128,7 +132,6 @@ export class GPUTextureThree extends GPUTexture {
       sourceType,
     } = assembleOptions;
     const mapping = THREE.UVMapping;
-    let { format } = assembleOptions;
     let texture: THREE.Texture | undefined = undefined;
 
     if (sourceType === TextureSourceType.data) {
@@ -164,18 +167,22 @@ export class GPUTextureThree extends GPUTexture {
       });
 
       // FIXME
-      format = THREE.RGBA_ASTC_4x4_Format;
+      const compressedFormat = THREE.RGBA_ASTC_4x4_Format;
 
       texture = new THREE.CompressedTexture(
-        mipmaps as unknown as ImageData[], maxWidth, maxHeight, format, type, mapping, wrapS, wrapT, magFilter, minFilter
+        mipmaps as unknown as ImageData[], maxWidth, maxHeight, compressedFormat, type, mapping, wrapS, wrapT, magFilter, minFilter
       );
       this.width = maxWidth;
       this.height = maxHeight;
     } else if (sourceType === TextureSourceType.video) {
+      const { video } = options as Texture2DSourceOptionsVideo;
+
       texture = new THREE.VideoTexture(
-        (options as Texture2DSourceOptionsVideo).video,
+        video,
         mapping, wrapS, wrapT, magFilter, minFilter, format, type
       );
+      this.width = video.videoWidth;
+      this.height = video.videoHeight;
     } else if (sourceType === TextureSourceType.framebuffer) {
       const { data } = options as Texture2DSourceOptionsFramebuffer;
 
@@ -183,14 +190,17 @@ export class GPUTextureThree extends GPUTexture {
         const width = data.width ?? 0;
         const height = data.height ?? 0;
 
-        texture = new THREE.FramebufferTexture(width, height, format as THREE.PixelFormat);
+        texture = new THREE.FramebufferTexture(width, height, format);
+        texture.minFilter = minFilter;
+        texture.magFilter = magFilter;
         this.width = width;
         this.height = height;
       }
     } else if (sourceType === TextureSourceType.none) {
-      texture = new THREE.DataTexture(new Uint8Array(4).fill(255), 1, 1);
-      texture.wrapS = THREE.MirroredRepeatWrapping;
-      texture.wrapT = THREE.MirroredRepeatWrapping;
+      texture = new THREE.DataTexture(
+        new Uint8Array(4).fill(255), 1, 1, format, type, mapping,
+        THREE.MirroredRepeatWrapping, THREE.MirroredRepeatWrapping, magFilter, minFilter
+      );
       this.width = this.height = 1;
     }
     if (texture) {

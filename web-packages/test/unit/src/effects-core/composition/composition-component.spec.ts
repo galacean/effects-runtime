@@ -1,6 +1,6 @@
 import type { Region } from '@galacean/effects';
 import {
-  CompositionComponent, generateGUID, HitTestType, math, Player, PlayState,
+  CompositionComponent, generateGUID, HitTestType, math, ObjectBindingTrack, Player, PlayState,
   RendererComponent, spec, TimelineAsset, VFXItem,
 } from '@galacean/effects';
 
@@ -58,26 +58,19 @@ describe('core/composition/composition-component', () => {
     expect(regions.map(region => region.name)).to.deep.equal(['child']);
   });
 
-  it('收集渲染顺序时不递归进入带 CompositionComponent 的子元素内部（不依赖 type）', async () => {
+  it('仅按主轨道顺序分配渲染顺序，未绑定的元素保持原优先级且不占位', async () => {
     const composition = await loadEmptyScene();
-    const { parent } = createHitTree(composition.sceneRoot);
     const rootComponent = composition.sceneRoot.getComponent(CompositionComponent);
-    const collected: VFXItem[] = [];
+    const first = createRenderer(composition.sceneRoot, 'first');
+    const unbound = createRenderer(composition.sceneRoot, 'unbound');
+    const last = createRenderer(unbound.item, 'last');
 
-    parent.addComponent(CompositionComponent);
+    unbound.priority = 42;
+    bindItem(rootComponent, last.item);
+    bindItem(rootComponent, first.item);
 
-    collectChildren(rootComponent, composition.sceneRoot, collected);
-    expect(collected.map(item => item.name)).to.deep.equal(['parent']);
-  });
-
-  it('收集渲染顺序时递归进入普通子元素内部', async () => {
-    const composition = await loadEmptyScene();
-    const { parent } = createHitTree(composition.sceneRoot);
-    const rootComponent = composition.sceneRoot.getComponent(CompositionComponent);
-    const collected: VFXItem[] = [];
-
-    collectChildren(rootComponent, composition.sceneRoot, collected);
-    expect(collected.map(item => item.name)).to.deep.equal(['parent', 'child']);
+    expect(rootComponent.setChildrenRenderOrder(5)).to.equal(7);
+    expect([last.priority, first.priority, unbound.priority]).to.deep.equal([5, 6, 42]);
   });
 
   for (const imageCount of [1, 3]) {
@@ -102,7 +95,7 @@ describe('core/composition/composition-component', () => {
     });
   }
 
-  it('暂停的子合成 seek 立即刷新全场景顺序，包括新增的前置元素', async () => {
+  it('暂停的子合成 seek 立即刷新全场景顺序，包括新增的前置轨道', async () => {
     const composition = await loadEmptyScene();
     const tree = createRenderTree(composition.sceneRoot);
     const rootComponent = composition.sceneRoot.getComponent(CompositionComponent);
@@ -110,7 +103,7 @@ describe('core/composition/composition-component', () => {
     rootComponent.setTime(0);
     const inserted = createRenderer(composition.sceneRoot, 'inserted');
 
-    inserted.item.orderInParent = 0;
+    bindItem(rootComponent, inserted.item, 0);
     tree.component.pause();
     tree.component.setTime(0.5);
 
@@ -192,9 +185,10 @@ describe('core/composition/composition-component', () => {
     return { parent, child };
   }
 
-  /** 创建含前后兄弟元素的画板层级，子合成使用真实的空时间轴。 */
+  /** 创建含前后兄弟元素的画板层级，并绑定各合成的主轨道。 */
   function createRenderTree (parent: VFXItem, imageCount = 1) {
-    createRenderer(parent, 'before');
+    const parentComponent = parent.getComponent(CompositionComponent);
+    const before = createRenderer(parent, 'before');
     const background = createRenderer(parent, 'frame');
     const compositionItem = new VFXItem(player.engine);
 
@@ -208,12 +202,18 @@ describe('core/composition/composition-component', () => {
       id: component.getInstanceId(),
       dataType: spec.DataType.CompositionComponent,
       item: { id: compositionItem.getInstanceId() },
-      items: [],
       sceneBindings: [],
       timelineAsset: { id: timeline.getInstanceId() },
     });
     const images = Array.from({ length: imageCount }, (_, i) => createRenderer(compositionItem, `image-${i}`));
     const after = createRenderer(parent, 'after');
+
+    for (const item of [before.item, background.item, compositionItem, after.item]) {
+      bindItem(parentComponent, item);
+    }
+    for (const image of images) {
+      bindItem(component, image.item);
+    }
 
     return { component, background, images, after };
   }
@@ -227,16 +227,12 @@ describe('core/composition/composition-component', () => {
     return item.addComponent(RendererComponent);
   }
 
-  /**
-   * collectChildren 为私有方法，通过结构断言直接调用以验证递归行为
-   */
-  function collectChildren (
-    component: CompositionComponent,
-    item: VFXItem,
-    result: VFXItem[],
-  ) {
-    (component as unknown as {
-      collectChildren (item: VFXItem, result: VFXItem[]): void,
-    }).collectChildren(item, result);
+  function bindItem (component: CompositionComponent, item: VFXItem, index?: number) {
+    const timeline = component.timelineAsset!;
+    const track = new ObjectBindingTrack(player.engine);
+
+    timeline.tracks.splice(index ?? timeline.tracks.length, 0, track);
+    timeline.markAsChanged();
+    component.setBinding(track, item);
   }
 });

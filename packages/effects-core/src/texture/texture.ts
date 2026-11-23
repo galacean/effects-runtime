@@ -2,19 +2,23 @@ import type { GPUTexture } from './gpu-texture';
 import { getDefaultTextureFactory } from './texture-factory';
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import { TextureSourceType } from './types';
+import { getTextureSourceSize } from './utils';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { loadImage, loadVideo } from '../downloader';
 import { generateGUID, throwDestroyedError } from '../utils';
 import { logger } from '../utils/logger';
+import { VideoFrameTracker } from './video-frame-tracker';
 
 let seed = 1;
 
 /**
  * Texture 资产，组合后端 GPUTexture。
  */
+@effectsClass(spec.DataType.Texture)
 export class Texture extends Asset {
   /**
    * Texture 名称
@@ -25,11 +29,11 @@ export class Texture extends Asset {
   source: TextureSourceOptions;
 
   /**
-   * Texture 高度
+   * Texture 源数据宽度，不随 GPU 缩放或卸载改变。
    */
   width: number;
   /**
-   * Texture 宽度
+   * Texture 源数据高度，不随 GPU 缩放或卸载改变。
    */
   height: number;
   /**
@@ -40,6 +44,11 @@ export class Texture extends Asset {
   protected destroyed = false;
   protected offloaded: boolean;
   private gpuTexture?: GPUTexture;
+  /**
+   * 仅持有 fromVideo 创建的视频源，外部传入和克隆的视频源由原所有者释放。
+   */
+  private ownedVideo?: HTMLVideoElement;
+  private videoFrameTracker?: VideoFrameTracker;
 
   /**
    * 创建一个新的 Texture 对象。
@@ -74,6 +83,7 @@ export class Texture extends Asset {
 
   /**
    * 通过视频 URL 创建 Texture 对象。
+   * 创建的视频源在纹理换源或销毁时释放。
    * @param url - 要创建的 Texture URL
    * @param engine - 引擎对象
    * @param options - 可选的 Texture 选项
@@ -86,6 +96,7 @@ export class Texture extends Asset {
     options?: TextureOptionsBase,
   ): Promise<Texture> {
     const video = await loadVideo(url);
+
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.video,
       video,
@@ -94,6 +105,7 @@ export class Texture extends Asset {
       ...options,
     });
 
+    texture.ownedVideo = video;
     texture.initialize();
 
     return texture;
@@ -136,10 +148,51 @@ export class Texture extends Asset {
     return this.height || 0;
   }
 
-  uploadCurrentVideoFrame (): void {
-    if (this.source.sourceType === TextureSourceType.video && this.source.video && this.gpuTexture?.isInitialized) {
-      this.update({ video: this.source.video });
+  /**
+   * Refreshes the current video frame through the texture backend.
+   * @param force - Bypass new-frame detection for seeks and other immediate refreshes.
+   * @returns Whether a ready frame was submitted to the backend.
+   */
+  uploadCurrentVideoFrame (force = false): boolean {
+    if (this.destroyed || this.source.sourceType !== TextureSourceType.video || !this.source.video || !this.gpuTexture?.isInitialized) {
+      return false;
     }
+    const video = this.source.video;
+    const tracker = this.getVideoFrameTracker(video);
+
+    if (video.readyState < 2 || video.seeking) {
+      return false;
+    }
+    if (!force && this.width === video.videoWidth && this.height === video.videoHeight && !tracker.shouldUpload()) {
+      return false;
+    }
+    this.update({ video });
+
+    return true;
+  }
+
+  private getVideoFrameTracker (video: HTMLVideoElement): VideoFrameTracker {
+    if (this.videoFrameTracker?.video !== video) {
+      this.disposeVideoFrameTracker();
+      this.videoFrameTracker = new VideoFrameTracker(video);
+    }
+
+    return this.videoFrameTracker;
+  }
+
+  private markVideoFrameUploaded (): void {
+    if (this.source.sourceType === TextureSourceType.video && this.source.video) {
+      const { video } = this.source;
+
+      this.width = video.videoWidth;
+      this.height = video.videoHeight;
+      this.getVideoFrameTracker(video).markUploaded();
+    }
+  }
+
+  private disposeVideoFrameTracker (): void {
+    this.videoFrameTracker?.dispose();
+    this.videoFrameTracker = undefined;
   }
 
   /**
@@ -152,7 +205,6 @@ export class Texture extends Asset {
       return;
     }
     this.gpuTexture?.offloadData();
-    this.syncSize();
     this.offloaded = true;
   }
 
@@ -171,20 +223,21 @@ export class Texture extends Asset {
    * @param options - 创建 Texture 选项
    */
   updateSource (options: TextureSourceOptions): void {
+    this.disposeVideoFrameTracker();
     this.source = this.assembleOptions({ ...this.source, ...options } as TextureSourceOptions);
+    this.disposeOwnedVideo(this.source);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
+    [this.width, this.height] = getTextureSourceSize(this.source);
     this.update(this.source);
   }
 
   update (options: TextureSourceOptions): void {
-    if (!this.gpuTexture) {
-      this.width = this.height = 0;
-
+    if (!this.gpuTexture?.isInitialized) {
       return;
     }
     this.gpuTexture.update(this.source, options);
-    this.syncSize();
+    this.markVideoFrameUploaded();
   }
 
   /**
@@ -199,40 +252,49 @@ export class Texture extends Asset {
     const gpuTexture = this.getGPUTexture();
 
     gpuTexture.initialize(this.source);
-    this.syncSize();
+    this.markVideoFrameUploaded();
     this.release();
   }
 
   getGPUTexture (): GPUTexture {
     if (!this.gpuTexture) {
       this.gpuTexture = this.engine.displayServer.renderingDevice.createTexture();
-      this.gpuTexture.width = this.width;
-      this.gpuTexture.height = this.height;
     }
 
     return this.gpuTexture;
   }
 
-  private syncSize (): void {
-    if (this.gpuTexture) {
-      this.width = this.gpuTexture.width;
-      this.height = this.gpuTexture.height;
-    }
-  }
-
   restore (): void {
     this.getGPUTexture().restore(this.source);
-    this.syncSize();
+    this.markVideoFrameUploaded();
   }
 
   override fromData (data: spec.EffectsObjectData): void {
+    this.disposeVideoFrameTracker();
     super.fromData(data);
     this.source = this.assembleOptions(data as unknown as TextureSourceOptions);
+    this.disposeOwnedVideo(this.source);
     this.sourceType = this.source.sourceType;
     this.sourceFrom = this.source.sourceFrom;
     this.name = this.source.name ?? '';
+    [this.width, this.height] = getTextureSourceSize(this.source);
   }
 
+  private disposeOwnedVideo (nextSource?: TextureSourceOptions): void {
+    const video = this.ownedVideo;
+
+    if (!video || (nextSource?.sourceType === TextureSourceType.video && nextSource.video === video)) {
+      return;
+    }
+    this.ownedVideo = undefined;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+
+  /**
+   * 克隆纹理并共享源数据。视频源仍由原所有者管理，克隆纹理须在其释放或换源前停止使用。
+   */
   clone (): Texture {
     const texture = new Texture(this.engine, this.source);
 
@@ -270,7 +332,9 @@ export class Texture extends Asset {
   }
 
   override dispose (): void {
+    this.disposeVideoFrameTracker();
     this.gpuTexture?.dispose();
+    this.disposeOwnedVideo();
     this.width = this.height = 0;
     this.destroyed = true;
     this.update = () => {
@@ -284,7 +348,7 @@ export class Texture extends Asset {
   }
 
   protected assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
-    const { target = glContext.TEXTURE_2D, format: internalFormat = glContext.RGBA } = options;
+    const { target = glContext.TEXTURE_2D, format = glContext.RGBA } = options;
 
     if (!options.sourceType) {
       if ('image' in options) {
@@ -299,15 +363,15 @@ export class Texture extends Asset {
     }
 
     return {
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
       target: target as WebGLRenderingContext['TEXTURE_2D'],
-      format: glContext.RGBA,
-      internalFormat,
-      type: glContext.UNSIGNED_BYTE,
       ...options,
+      format,
+      internalFormat: options.internalFormat || format,
+      type: options.type ?? glContext.UNSIGNED_BYTE,
+      minFilter: options.minFilter ?? glContext.LINEAR,
+      magFilter: options.magFilter ?? glContext.LINEAR,
     };
   }
 }
@@ -336,6 +400,8 @@ export function generateHalfFloatTexture (engine: Engine, data: Uint16Array, wid
       type: glContext.HALF_FLOAT,
       format,
       internalFormat,
+      minFilter: glContext.NEAREST,
+      magFilter: glContext.NEAREST,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
     });

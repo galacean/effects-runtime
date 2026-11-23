@@ -18,6 +18,7 @@ import {
   Theme,
   UICanvas,
 } from '@galacean/effects-plugin-gui';
+import type { TextMeasurement } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -354,21 +355,31 @@ class UnitWidthLineEdit extends LineEdit {
     return (this as unknown as { measurePrefix(column: number): number }).measurePrefix(column);
   }
 
-  override measureText (text: string): { width: number, lineHeight: number, advances: number[] } {
-    const length = Array.from(text).length;
-
-    return { width: length, lineHeight: 1, advances: Array.from({ length }, () => 1) };
+  override measureText (text: string): TextMeasurement {
+    return textMeasurement(text, Array.from(text, () => 1));
   }
 }
 
 class SecretWidthLineEdit extends LineEdit {
-  override measureText (text: string): { width: number, lineHeight: number, advances: number[] } {
-    const advances = Array.from(text, character => character === '•' ? 2 : character === 'x' ? 3 : 1);
-
-    return {
-      width: advances.reduce((total, advance) => total + advance, 0),
-      lineHeight: 1,
-      advances,
-    };
+  override measureText (text: string): TextMeasurement {
+    return textMeasurement(text, Array.from(text, character => character === '•' ? 2 : character === 'x' ? 3 : 1));
   }
+}
+
+function textMeasurement (text: string, advances: number[]): TextMeasurement {
+  const characters = Array.from(text);
+  const boundaries = [0];
+  const positions = [0];
+
+  for (let i = 0; i < characters.length; i++) {
+    boundaries.push(boundaries[i] + characters[i].length);
+    positions.push(positions[i] + advances[i]);
+  }
+  const width = positions[positions.length - 1];
+
+  return {
+    width, advances, lineHeight: 1,
+    lines: [{ characters, boundaries, positions, width, lineHeight: 1 }],
+    inkTop: 0, inkHeight: 1,
+  };
 }

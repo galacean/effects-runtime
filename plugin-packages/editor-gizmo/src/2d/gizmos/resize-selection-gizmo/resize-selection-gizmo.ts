@@ -1,10 +1,10 @@
 import type { VFXItem } from '@galacean/effects';
-import { MouseButton, MouseButtonMask, spec, TextComponent, Texture, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { FrameComponent, MouseButton, MouseButtonMask, ShapeComponent, spec, TextComponent, Texture, type FrameTitle, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
 import type { Matrix3 } from '../../math';
-import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../math';
+import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../math';
 import { Gizmo } from '../../gizmo';
 import { GizmoViewportUtils } from '../../viewport/viewport-utils';
 import type { GizmoOwner } from '../../gizmo-owner';
@@ -26,7 +26,6 @@ import { resizeFrameItem } from '../../frame/frame-resize';
 import {
   decomposeItemTransform,
   getItemViewAnchor,
-  getItemViewBox,
   getItemViewTransform,
   getItemWorldSize,
   isEffectsPlayerItem,
@@ -39,8 +38,6 @@ import {
   INFO_TEXT_FONT_SIZE,
   INFO_TEXT_FONT_FAMILY,
   toColor,
-  measureControlTextCellHeight,
-  measureTextWidth,
   truncateText,
   drawCorners,
   drawWithBoxTransform,
@@ -85,6 +82,27 @@ type TextResizeSnapshot = {
   height: number,
 };
 
+type ShapeResizeAttributes = {
+  type: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  outerRadius?: number,
+  innerRadius?: number,
+  points?: Array<{ x: number, y: number }>,
+  easingIns?: Array<{ x: number, y: number }>,
+  easingOuts?: Array<{ x: number, y: number }>,
+};
+
+type ShapeResizeSnapshot = {
+  component: ShapeComponent,
+  attributes: ShapeResizeAttributes,
+  localCenter: Vector3,
+  localToWorld: Matrix4,
+};
+
 /** 按下时冻结、用于计算绝对缩放结果的会话。 */
 type AnchoredResizeSession = {
   /** 被缩放元素。 */
@@ -111,6 +129,7 @@ type AnchoredResizeSession = {
   initialLocalSize?: Vector2,
   /** 文本排版快照。 */
   text?: TextResizeSnapshot,
+  shape?: ShapeResizeSnapshot,
   /** 画板已应用的累计位移。 */
   frameAppliedTranslation: Vector3,
   /** 本次元素采用整体缩放或排版尺寸调整。 */
@@ -127,7 +146,7 @@ export const SCALE_CORNER_HIT_SIZE = 14;
 /** 单选信息标签中的类型图标尺寸。 */
 const INFO_ICON_SIZE = 15;
 
-/** 信息文字的字形视觉位置高于字号框，单独下移以对齐图标。 */
+/** 无可见字形时使用的文本 cell 底部偏移。 */
 const INFO_TEXT_BOTTOM = 1;
 
 /** 图标相对选框顶边的底部偏移。 */
@@ -136,6 +155,110 @@ const INFO_ICON_BOTTOM = 5.5;
 /** 将公开的缩放行为转换为几何计算使用的可变轴。 */
 function getResizeAxis (behavior: ResizeSelectionBehavior): 'both' | 'x' | 'y' {
   return behavior === 'resize-x' ? 'x' : behavior === 'resize-y' ? 'y' : 'both';
+}
+
+function createShapeResizeSnapshot (component: ShapeComponent | undefined, itemMatrix: Matrix4): ShapeResizeSnapshot | undefined {
+  if (!component) {
+    return undefined;
+  }
+  const shape = component.shape as ShapeResizeAttributes;
+
+  if (!shape) {
+    return undefined;
+  }
+  const attributes: ShapeResizeAttributes = { type: shape.type };
+  const localCenter = new Vector3();
+
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      attributes.width = shape.width;
+      attributes.height = shape.height;
+
+      break;
+    case spec.ShapePrimitiveType.Ellipse:
+      attributes.xRadius = shape.xRadius;
+      attributes.yRadius = shape.yRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Polygon:
+      attributes.radius = shape.radius;
+
+      break;
+    case spec.ShapePrimitiveType.Star:
+      attributes.outerRadius = shape.outerRadius;
+      attributes.innerRadius = shape.innerRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Custom:
+      if (!shape.points || !shape.easingIns || !shape.easingOuts) {
+        return undefined;
+      }
+      attributes.points = shape.points.map(point => ({ x: point.x, y: point.y }));
+      attributes.easingIns = shape.easingIns.map(point => ({ x: point.x, y: point.y }));
+      attributes.easingOuts = shape.easingOuts.map(point => ({ x: point.x, y: point.y }));
+      if (attributes.points.length) {
+        const bounds = new Box2();
+
+        attributes.points.forEach(point => bounds.expandByPoint(new Vector2(point.x, point.y)));
+        const center = bounds.getCenter(new Vector2());
+
+        localCenter.set(center.x, center.y, 0);
+      }
+
+      break;
+    default:
+      return undefined;
+  }
+
+  return { component, attributes, localCenter, localToWorld: itemMatrix.clone().setPosition(new Vector3()) };
+}
+
+function scaledShapeSize (value: number | undefined, scalar: number): number | undefined {
+  return value === undefined ? undefined : Math.abs(value) * Math.abs(scalar);
+}
+
+function signedScale (initial: number, scalar: number): number {
+  if (scalar === 0) {
+    return 0;
+  }
+
+  return Math.abs(initial) * (initial < 0 ? -1 : 1) * (scalar < 0 ? -1 : 1);
+}
+
+function syncShapeDefinition (component: ShapeComponent, shape: ShapeResizeAttributes): void {
+  const definition = component.definition as Record<string, unknown> | undefined;
+
+  if (!definition) {
+    return;
+  }
+
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      definition.width = shape.width;
+      definition.height = shape.height;
+
+      break;
+    case spec.ShapePrimitiveType.Ellipse:
+      definition.xRadius = shape.xRadius;
+      definition.yRadius = shape.yRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Polygon:
+      definition.radius = shape.radius;
+
+      break;
+    case spec.ShapePrimitiveType.Star:
+      definition.outerRadius = shape.outerRadius;
+      definition.innerRadius = shape.innerRadius;
+
+      break;
+    case spec.ShapePrimitiveType.Custom:
+      definition.points = shape.points?.map(point => ({ x: point.x, y: point.y }));
+      definition.easingIns = shape.easingIns?.map(point => ({ x: point.x, y: point.y }));
+      definition.easingOuts = shape.easingOuts?.map(point => ({ x: point.x, y: point.y }));
+
+      break;
+  }
 }
 
 /** 缩放选区 Gizmo 的交互配置。 */
@@ -175,6 +298,8 @@ export class ResizeSelectionGizmo extends Gizmo {
   /** 当前交互平面，initInteractionPlane 写入。 */
   interactionPlane: Plane;
   private configOff?: () => void;
+  private frameTitleRenderer?: FrameTitle;
+  private savedTitleMaxWidth = Infinity;
 
   /** 边与角点共用一次绝对缩放快照。 */
   private resizeSession: AnchoredResizeSession | undefined;
@@ -477,6 +602,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     const lastActiveType = this.wireframe.activeType;
 
     this.refreshWireframeBySelectedItems();
+    this.updateFrameTitleWidth();
     if (lastActiveType !== this.wireframe.activeType) {
       this.refreshCursorResult(this.wireframe.activeType);
     }
@@ -571,13 +697,10 @@ export class ResizeSelectionGizmo extends Gizmo {
     if (selectedItems.length > 1) {
       selectedItems.forEach(item => {
         if (item.isVisible) {
-          const itemBox = getItemViewBox(item, containerSize);
           const itemTransform = getItemViewTransform(item, containerSize);
 
-          if (!itemBox.isEmpty()) {
-            box.union(itemBox);
-          }
           if (itemTransform) {
+            box.union(getTransformedBox(itemTransform));
             this.wireframe.childrenTransforms.push(itemTransform);
           }
         }
@@ -591,7 +714,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
       if (item.isVisible) {
         transform = getItemViewTransform(item, containerSize);
-        box.copyFrom(getItemViewBox(item, containerSize));
+        if (transform) { box.copyFrom(getTransformedBox(transform)); }
 
         this.wireframe.anchor = isSingleText
           ? box.getCenter()
@@ -764,19 +887,17 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     // 步骤 2：读取绘制配置并绘制主线框与子元素轮廓。
     const {
-      wireframeAlpha,
       wireframeColor,
       wireframeWidth,
       cornerFillColor,
       cornerLineWidth,
       cornerLineColor,
-      cornerLineAlpha,
       infoShowEnabled,
       sizeTextColor,
       nameTextColor,
     } = this.config;
 
-    const wireColor = toColor(wireframeColor, wireframeAlpha);
+    const wireColor = toColor(wireframeColor);
 
     this.wireframe.edges.forEach(edge => {
       control.drawLine(edge.start.x, edge.start.y, edge.end.x, edge.end.y, wireColor, wireframeWidth);
@@ -788,8 +909,8 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     // 步骤 3：沿选框局部轴绘制方形缩放手柄。
     if (this.wireframe.cornerEnable) {
-      const fillColor = toColor(cornerFillColor, 1);
-      const strokeColor = toColor(cornerLineColor, cornerLineAlpha);
+      const fillColor = toColor(cornerFillColor);
+      const strokeColor = toColor(cornerLineColor);
       const { xAxis, yAxis } = this.boxLocalAxes();
 
       this.wireframe.scaleCorners.forEach(corner => {
@@ -801,16 +922,18 @@ export class ResizeSelectionGizmo extends Gizmo {
     }
 
     // 步骤 4：为非文本单选元素绘制信息标签。
-    const isSingleTextSelection = this.selectedItems.length === 1
-      && this.selectedItems[0].type === spec.ItemType.text;
+    const selectedItems = this.selectedItems;
+    const item = selectedItems.length === 1 ? selectedItems[0] : undefined;
+    const hasOwnTitle = item?.type === spec.ItemType.null && !!item.name && !!item.getComponent(FrameComponent)?.titleRenderer?.visible;
 
-    if (this.selectedItems.length === 1 && infoShowEnabled && !isSingleTextSelection) {
-      this.renderItemInfo(control, sizeTextColor, nameTextColor);
+    if (infoShowEnabled && item && item.type !== spec.ItemType.text) {
+      this.renderItemInfo(control, sizeTextColor, nameTextColor, !hasOwnTitle);
     }
   }
 
   /** 释放配置监听器。 */
   override dispose (): void {
+    this.releaseFrameTitleWidth();
     this.configOff?.();
     this.configOff = undefined;
     super.dispose();
@@ -1150,10 +1273,14 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     parentWorldToLocal.setPosition(new Vector3()).invert();
     const textComponent = item.type === spec.ItemType.text ? item.getComponent(TextComponent) : undefined;
+    const shapeResize = createShapeResizeSnapshot(item.getComponent(ShapeComponent), itemMatrix);
     const frame = isFramePlayerItem(item);
-    const resizeOrigin = textComponent || frame
-      ? initialHandle.clone().add(fixedPoint).multiply(0.5)
-      : transformOrigin.clone();
+    // 形状属性围绕局部几何中心变化；曲线或星形的选框中心可能不同。
+    const resizeOrigin = shapeResize
+      ? shapeResize.localCenter.clone().applyMatrix(itemMatrix)
+      : textComponent || frame
+        ? initialHandle.clone().add(fixedPoint).multiply(0.5)
+        : transformOrigin.clone();
     const text = textComponent
       ? {
         component: textComponent,
@@ -1185,6 +1312,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       initialWorldSize: frame ? getItemWorldSize(item) : undefined,
       initialLocalSize: frame ? new Vector2().copyFrom(item.transform.size) : undefined,
       text,
+      shape: shapeResize,
       frameAppliedTranslation: new Vector3(),
       resizeBehavior: this.config.resolveResizeBehavior?.(item.getInstanceId()) ?? 'scale',
       externalTranslation: new Vector3(),
@@ -1285,22 +1413,12 @@ export class ResizeSelectionGizmo extends Gizmo {
     return undefined;
   }
 
-  /**
-   * 绘制单选元素的名称、尺寸与类型图标。
-   * @param control 绘制控制器。
-   * @param sizeTextColor 尺寸文本颜色。
-   * @param nameTextColor 名称文本颜色。
-   */
-  private renderItemInfo (control: Control, sizeTextColor: number, nameTextColor: number): void {
-    // 步骤 1：计算元素名称、像素尺寸与图标纹理。
-    const item = this.selectedItems[0];
-    const name = this.getItemInfoName(item);
+  /** 共用同一份顶边与尺寸排版，避免 Frame 标题占用尺寸标签的区域。 */
+  private getItemInfoLayout (measure: (text: string) => { width: number }) {
     const corners = this.wireframe.transform ? getTransformedBoxCorners(this.wireframe.transform) : getBoxCorners(this.wireframe.box);
     const boxWidth = Math.round(corners[0].distance(corners[1]) / this.viewScale * this.config.contentRatio / this.config.pixelRatio);
     const boxHeight = Math.round(corners[1].distance(corners[2]) / this.viewScale * this.config.contentRatio / this.config.pixelRatio);
     const size = [boxWidth, boxHeight];
-
-    const iconTexture = this.getIconTexture(this.iconType, control.engine);
 
     // 步骤 2：查找屏幕最上方的选框边并计算旋转角。
     const topCorner = corners[0].clone();
@@ -1332,25 +1450,71 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     const viewBoxWidth = leftCorner.distance(rightCorner);
 
-    // 步骤 3：根据顶边可用宽度裁剪名称与尺寸文本。
     let sizeStr = size.map(s => roundNumber(s, 0)).join(' * ');
-    const sizeTextWidth = measureTextWidth(sizeStr);
+    const sizeTextWidth = measure(sizeStr).width;
 
     if (viewBoxWidth < sizeTextWidth * 2) {
       sizeStr = '';
     }
 
-    let nameStr = ` ${name}`;
-    const nameTextWidth = measureTextWidth(nameStr);
+    return { leftCorner, rightCorner, rotation, viewBoxWidth, sizeStr, sizeTextWidth };
+  }
+
+  /** 在 Frame 自绘标题之前，为 Gizmo 的尺寸标签预留宽度。 */
+  private updateFrameTitleWidth (): void {
+    const item = this.selectedItems.length === 1 ? this.selectedItems[0] : undefined;
+    const frame = this.config.infoShowEnabled && item?.type === spec.ItemType.null
+      ? item.getComponent(FrameComponent) : undefined;
+    const title = frame?.titleRenderer;
+    const next = title?.visible && item?.name && !this.wireframe.box.isEmpty() ? title : undefined;
+
+    if (this.frameTitleRenderer !== next) {
+      this.releaseFrameTitleWidth();
+      this.frameTitleRenderer = next;
+      this.savedTitleMaxWidth = next?.maxWidth ?? Infinity;
+    }
+    if (next) {
+      const graphics = this._owner.getEngine().renderingServer.graphics;
+      const layout = this.getItemInfoLayout(text => graphics.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY));
+      const reservedWidth = layout.sizeStr ? layout.sizeTextWidth + 5 : 0;
+
+      next.maxWidth = Math.max(0, Math.min(this.savedTitleMaxWidth, layout.viewBoxWidth - reservedWidth));
+    }
+  }
+
+  private releaseFrameTitleWidth (): void {
+    if (this.frameTitleRenderer) {
+      this.frameTitleRenderer.maxWidth = this.savedTitleMaxWidth;
+      this.frameTitleRenderer = undefined;
+    }
+  }
+
+  /**
+   * 绘制单选元素的名称、尺寸与类型图标。
+   * @param control 绘制控制器。
+   * @param sizeTextColor 尺寸文本颜色。
+   * @param nameTextColor 名称文本颜色。
+   * @param showTitle 是否绘制名称与类型图标，Frame 自绘标题时仅绘制尺寸。
+   */
+  private renderItemInfo (control: Control, sizeTextColor: number, nameTextColor: number, showTitle = true): void {
+    const item = this.selectedItems[0];
+    const name = this.getItemInfoName(item);
+    const measure = (text: string) => control.measureText(text, INFO_TEXT_FONT_SIZE, INFO_TEXT_FONT_FAMILY);
+    const layout = this.getItemInfoLayout(measure);
+    const { leftCorner, rightCorner, rotation, viewBoxWidth, sizeTextWidth } = layout;
+    let { sizeStr } = layout;
+    const iconTexture = showTitle ? this.getIconTexture(this.iconType, control.engine) : undefined;
+    let nameStr = showTitle ? ` ${name}` : '';
+    const nameTextWidth = measure(nameStr).width;
 
     if ((20 + nameTextWidth + sizeTextWidth) > viewBoxWidth) {
       if (viewBoxWidth < sizeTextWidth * 2) {
         sizeStr = '';
-        nameStr = truncateText(nameStr, viewBoxWidth - 20);
+        nameStr = truncateText(nameStr, viewBoxWidth - 20, measure);
       } else {
         const availableNameWidth = viewBoxWidth - 20 - sizeTextWidth - 5;
 
-        nameStr = truncateText(nameStr, availableNameWidth);
+        nameStr = truncateText(nameStr, availableNameWidth, measure);
       }
     }
 
@@ -1360,13 +1524,15 @@ export class ResizeSelectionGizmo extends Gizmo {
     const ex = new Vector2(cos, sin);
     const ey = new Vector2(-sin, cos);
 
-    const textCellTop = -INFO_TEXT_BOTTOM - measureControlTextCellHeight(
-      INFO_TEXT_FONT_SIZE,
-      INFO_TEXT_FONT_FAMILY,
-      undefined,
-      undefined,
-      control.engine.displayServer.pixelRatio,
-    );
+    const iconCenter = -INFO_ICON_BOTTOM - INFO_ICON_SIZE / 2;
+    const textCellTop = (text: string): number => {
+      const metrics = measure(text);
+
+      // 图集行高包含排版留白，使用可见字形中心与图标中心对齐。
+      return metrics.inkHeight > 0
+        ? iconCenter - metrics.inkTop - metrics.inkHeight / 2
+        : -INFO_TEXT_BOTTOM - metrics.lineHeight;
+    };
 
     // 步骤 5：依次绘制图标、尺寸和名称。
     if (iconTexture && !iconTexture.isDestroyed) {
@@ -1385,7 +1551,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
     if (sizeStr) {
       const anchor = rightCorner.clone();
-      const textWidth = measureTextWidth(sizeStr);
+      const textWidth = measure(sizeStr).width;
 
       drawWithBoxTransform(
         control,
@@ -1393,7 +1559,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(-textWidth, textCellTop, sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(-textWidth, textCellTop(sizeStr), sizeStr, INFO_TEXT_FONT_SIZE, toColor(sizeTextColor), INFO_TEXT_FONT_FAMILY);
         },
       );
     }
@@ -1407,7 +1573,7 @@ export class ResizeSelectionGizmo extends Gizmo {
         ex,
         ey,
         () => {
-          control.drawText(0, textCellTop, nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor, 1), INFO_TEXT_FONT_FAMILY);
+          control.drawText(0, textCellTop(nameStr), nameStr, INFO_TEXT_FONT_SIZE, toColor(nameTextColor), INFO_TEXT_FONT_FAMILY);
         },
       );
     }
@@ -1546,7 +1712,7 @@ export class ResizeSelectionGizmo extends Gizmo {
    */
   private applyAnchoredResize (session: AnchoredResizeSession, resize: AnchoredResizeResult): void {
     // 步骤 1：读取按下时冻结的元素属性。
-    const { item, initialScale, initialWorldSize, initialLocalSize, text } = session;
+    const { item, initialScale, initialWorldSize, initialLocalSize, text, shape } = session;
 
     if (text) {
       // 步骤 2：文本宽度模式更新排版宽度并补齐剩余缩放。
@@ -1573,10 +1739,6 @@ export class ResizeSelectionGizmo extends Gizmo {
         );
         this.setResizePosition(session, resize.totalTranslation);
 
-        const composition = this._owner.getEngine().sceneServer.compositions[0];
-
-        composition?.gotoAndStop(composition.time);
-
         return;
       }
 
@@ -1601,14 +1763,15 @@ export class ResizeSelectionGizmo extends Gizmo {
       );
       this.setResizePosition(session, resize.totalTranslation);
 
-      const composition = this._owner.getEngine().sceneServer.compositions[0];
+      return;
+    }
 
-      composition?.gotoAndStop(composition.time);
+    if (shape) {
+      this.applyShapeResize(session, resize);
 
       return;
     }
 
-    // 步骤 4：画板按绝对尺寸与增量位移更新。
     if (isFramePlayerItem(item) && initialWorldSize && initialLocalSize) {
       const translationDelta = resize.totalTranslation.clone().subtract(session.frameAppliedTranslation);
 
@@ -1626,13 +1789,129 @@ export class ResizeSelectionGizmo extends Gizmo {
       return;
     }
 
-    // 步骤 5：普通元素直接应用绝对缩放与位移。
     item.transform.setScale(
       initialScale.x * resize.totalScalar.x,
       initialScale.y * resize.totalScalar.y,
       initialScale.z * resize.totalScalar.z,
     );
     this.setResizePosition(session, resize.totalTranslation);
+  }
+
+  private applyShapeResize (session: AnchoredResizeSession, resize: AnchoredResizeResult): void {
+    const shape = session.shape;
+
+    if (!shape) {
+      return;
+    }
+    const attributes = shape.attributes;
+    const current = shape.component.shape as ShapeResizeAttributes | undefined;
+
+    if (!current) {
+      return;
+    }
+    const scalarX = resize.totalScalar.x;
+    const scalarY = resize.totalScalar.y;
+    const magnitudeX = Math.abs(scalarX);
+    const magnitudeY = Math.abs(scalarY);
+    let residualX = 1;
+    let residualY = 1;
+    const centerOffset = new Vector3();
+
+    switch (attributes.type) {
+      case spec.ShapePrimitiveType.Rectangle:
+        if (attributes.width !== undefined) {
+          current.width = scaledShapeSize(attributes.width, scalarX);
+        }
+        if (attributes.height !== undefined) {
+          current.height = scaledShapeSize(attributes.height, scalarY);
+        }
+
+        break;
+      case spec.ShapePrimitiveType.Ellipse:
+        if (attributes.xRadius !== undefined) {
+          current.xRadius = scaledShapeSize(attributes.xRadius, scalarX);
+        }
+        if (attributes.yRadius !== undefined) {
+          current.yRadius = scaledShapeSize(attributes.yRadius, scalarY);
+        }
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: {
+        const radialScalar = Math.max(magnitudeX, magnitudeY);
+
+        if (attributes.radius !== undefined) {
+          current.radius = scaledShapeSize(attributes.radius, radialScalar);
+        }
+        residualX = radialScalar === 0 ? 0 : magnitudeX / radialScalar;
+        residualY = radialScalar === 0 ? 0 : magnitudeY / radialScalar;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Star: {
+        const radialScalar = Math.max(magnitudeX, magnitudeY);
+
+        if (attributes.outerRadius !== undefined) {
+          current.outerRadius = scaledShapeSize(attributes.outerRadius, radialScalar);
+        }
+        if (attributes.innerRadius !== undefined) {
+          current.innerRadius = scaledShapeSize(attributes.innerRadius, radialScalar);
+        }
+        residualX = radialScalar === 0 ? 0 : magnitudeX / radialScalar;
+        residualY = radialScalar === 0 ? 0 : magnitudeY / radialScalar;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Custom:
+        if (current.points && current.easingIns && current.easingOuts
+          && attributes.points?.length && attributes.easingIns && attributes.easingOuts) {
+          const { x: centerX, y: centerY } = shape.localCenter;
+
+          // 点围绕几何中心缩放，transform 镜像围绕原点；补回中心的世界偏移。
+          centerOffset.set(centerX * (1 - Math.sign(scalarX)), centerY * (1 - Math.sign(scalarY)), 0)
+            .applyMatrix(shape.localToWorld);
+          current.points.forEach((point, index) => {
+            const source = attributes.points![index];
+
+            if (source) {
+              point.x = centerX + (source.x - centerX) * magnitudeX;
+              point.y = centerY + (source.y - centerY) * magnitudeY;
+            }
+          });
+          current.easingIns.forEach((point, index) => {
+            const source = attributes.easingIns![index];
+
+            if (source) {
+              point.x = source.x * magnitudeX;
+              point.y = source.y * magnitudeY;
+            }
+          });
+          current.easingOuts.forEach((point, index) => {
+            const source = attributes.easingOuts![index];
+
+            if (source) {
+              point.x = source.x * magnitudeX;
+              point.y = source.y * magnitudeY;
+            }
+          });
+        }
+
+        break;
+      default:
+        return;
+    }
+
+    syncShapeDefinition(shape.component, current);
+    shape.component.onApplyAnimationProperties?.();
+
+    const targetScaleX = signedScale(session.initialScale.x, scalarX) * residualX;
+    const targetScaleY = signedScale(session.initialScale.y, scalarY) * residualY;
+    const targetScaleZ = session.initialScale.z;
+    const currentScale = session.item.transform.scale;
+
+    if (currentScale.x !== targetScaleX || currentScale.y !== targetScaleY || currentScale.z !== targetScaleZ) {
+      session.item.transform.setScale(targetScaleX, targetScaleY, targetScaleZ);
+    }
+    this.setResizePosition(session, resize.totalTranslation.clone().add(centerOffset));
   }
 
   /**

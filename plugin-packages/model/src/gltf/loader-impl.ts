@@ -562,7 +562,8 @@ export class LoaderImpl implements Loader {
         {
           id: this.timelineAssetId,
           dataType: spec.DataType.TimelineAsset,
-        },
+          tracks: [],
+        } as spec.TimelineAssetData,
       ],
     };
 

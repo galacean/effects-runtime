@@ -2,7 +2,7 @@
 import {
   AssetManager,
   type Composition,
-  PrecompositionManager,
+  ShapeComponent,
   SpriteComponent,
   spec,
   TextComponent,
@@ -25,6 +25,14 @@ export class DefaultVFXItems {
     const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name);
 
     vfxItem.type = spec.ItemType.null;
+
+    return vfxItem;
+  }
+
+  static createShapeItem (composition: Composition, parent = null, name = 'NewShape'): VFXItem {
+    const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name, ShapeComponent);
+
+    vfxItem.type = spec.ItemType.shape;
 
     return vfxItem;
   }
@@ -88,17 +96,15 @@ export class DefaultVFXItems {
     parent = null,
     urlname = 'NewEffects',
   ): Promise<VFXItem> {
-    const preComposition = await AssetManager.loadPrecomposition(effects, { autoplay: false });
-    const vfxItem = PrecompositionManager.instantiate(preComposition, composition);
+    const scene = await AssetManager.loadScene(effects, { autoplay: false });
+    const vfxItem = scene.instantiate(composition);
 
     vfxItem.name = urlname;
     vfxItem.type = spec.ItemType.composition;
 
     vfxItem.getComponent(CompositionComponent).endBehavior = vfxItem.endBehavior;
 
-    if (parent) {
-      vfxItem.setParent(parent);
-    }
+    vfxItem.setParent(parent ?? composition.sceneRoot);
 
     return vfxItem;
   }

@@ -1,8 +1,19 @@
-import { FrameComponent, TextComponent, math } from '@galacean/effects';
-import type { VFXItem } from '@galacean/effects';
+import { FrameComponent, ShapeComponent, TextComponent, math, spec } from '@galacean/effects';
+import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { DOMEvents, element } from './dom';
 import type { DemoEditor } from './editor';
 import type { DemoScene } from './scene';
+
+type InspectorShapeAttributes = {
+  type?: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  innerRadius?: number,
+  outerRadius?: number,
+};
 
 /** 负责属性表单的读取、校验与显示，所有修改交给编辑器执行。 */
 export class InspectorPanel {
@@ -23,6 +34,17 @@ export class InspectorPanel {
   private readonly fillSection = element('fill-properties');
   private readonly fill = element<HTMLInputElement>('fill');
   private readonly fillValue = element('fill-value');
+  private readonly fillOpacity = element<HTMLInputElement>('fill-opacity');
+  private readonly frameSection = element('frame-properties');
+  private readonly frameTitle = element<HTMLInputElement>('frame-title');
+  private readonly frameStroke = element<HTMLInputElement>('frame-stroke');
+  private readonly frameStrokeWidth = element<HTMLInputElement>('frame-stroke-width');
+  private readonly fillOpacityField = element('fill-opacity-field');
+  private readonly mediaSection = element('media-properties');
+  private readonly mediaPlay = element<HTMLButtonElement>('media-play');
+  private readonly mediaSeek = element<HTMLInputElement>('media-seek');
+  private readonly mediaTime = element('media-time');
+  private readonly mediaStatus = element('media-status');
   private signature = '';
   private refreshFrame?: number;
 
@@ -30,14 +52,84 @@ export class InspectorPanel {
     this.bindPositionFields();
     this.bindSizeFields();
     this.bindTextFields();
+    this.events.on(this.mediaPlay, 'click', () => {
+      this.editor.editSelected('切换媒体播放', item => {
+        const media = this.scene.getMediaState(item);
+
+        if (media) {
+          this.scene.setMediaPlaying(item, !media.playing);
+        }
+      });
+    });
+    this.events.on(this.mediaSeek, 'input', () => {
+      this.editor.editSelected('调整媒体进度', item => this.scene.seekMedia(item, this.mediaSeek.valueAsNumber));
+    });
     this.events.on(this.fill, 'input', () => {
       const hex = this.fill.value;
       const channel = (index: number) => parseInt(hex.slice(index, index + 2), 16) / 255;
 
       this.editor.editSelected('修改填充', item => {
-        item.getComponent(FrameComponent)?.color.copyFrom(new math.Color(channel(1), channel(3), channel(5), 1));
+        const frame = item.getComponent(FrameComponent);
+        const fill = this.getSolidPaint(frame?.fills);
+
+        if (fill) {
+          fill.color.set(channel(1), channel(3), channel(5), fill.color.a);
+        }
         item.getComponent(TextComponent)?.setTextColor([channel(1), channel(3), channel(5), 1]);
       });
+    });
+    this.events.on(this.fillOpacity, 'change', () => {
+      const alpha = this.fillOpacity.valueAsNumber / 100;
+
+      if (Number.isFinite(alpha) && alpha >= 0 && alpha <= 1) {
+        this.editor.editSelected('修改填充透明度', item => {
+          const fill = this.getSolidPaint(item.getComponent(FrameComponent)?.fills);
+
+          if (fill) {
+            fill.color.a = alpha;
+          }
+        });
+      }
+    });
+    this.events.on(this.frameTitle, 'input', () => {
+      this.editor.editSelected('修改画板标题', item => {
+        const frame = item.getComponent(FrameComponent);
+
+        if (frame) {
+          item.name = this.frameTitle.value;
+          const data = this.scene.getItem(item);
+
+          if (data) {
+            data.name = item.name;
+          }
+        }
+      });
+    });
+    this.events.on(this.frameStroke, 'input', () => {
+      const color = this.frameStroke.value;
+
+      this.editor.editSelected('修改画板描边颜色', item => {
+        const frame = item.getComponent(FrameComponent);
+
+        if (frame) {
+          const channel = (index: number) => parseInt(color.slice(index, index + 2), 16) / 255;
+
+          frame.strokes[0] = { type: spec.FillType.Solid, color: new math.Color(channel(1), channel(3), channel(5), 1) };
+        }
+      });
+    });
+    this.events.on(this.frameStrokeWidth, 'change', () => {
+      const width = this.frameStrokeWidth.valueAsNumber;
+
+      if (Number.isFinite(width) && width >= 0) {
+        this.editor.editSelected('修改画板描边宽度', item => {
+          const frame = item.getComponent(FrameComponent);
+
+          if (frame) {
+            frame.strokeWidth = width;
+          }
+        });
+      }
     });
     Object.values(this.fields).forEach(input => {
       this.events.on(input, 'blur', () => this.scheduleRefresh());
@@ -48,11 +140,20 @@ export class InspectorPanel {
     const selected = this.editor.selectedItems;
     const item = this.editor.selectedItem;
     const text = item?.getComponent(TextComponent);
+    const frame = item?.getComponent(FrameComponent);
+    const fill = this.getSolidPaint(frame?.fills);
+    const stroke = this.getSolidPaint(frame?.strokes);
     const color = this.getFillColor(item);
+    const data = item ? this.scene.getItem(item) : undefined;
+    const vectorGeometry = data?.kind === 'Vector' ? this.scene.readVectorGeometry(data) : undefined;
+    const media = item ? this.scene.getMediaState(item) : undefined;
     const signature = JSON.stringify([
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
       item?.transform.rotation.z, text?.text, text?.textStyle.fontSize, color,
+      item?.name, frame?.strokeWidth, fill?.color.toArray(), stroke?.color.toArray(),
+      frame?.fills[0]?.type, frame?.strokes[0]?.type,
+      vectorGeometry, data?.status, media,
     ]);
 
     if (!force && signature === this.signature) {
@@ -64,8 +165,8 @@ export class InspectorPanel {
     this.setInput(this.fields.x, item?.transform.position.x);
     this.setInput(this.fields.y, item?.transform.position.y);
     this.setInput(this.fields.rotation, item?.transform.rotation.z);
-    this.setInput(this.fields.width, item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined);
-    this.setInput(this.fields.height, item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined, !!text);
+    this.setInput(this.fields.width, vectorGeometry?.width ?? (item ? Math.abs(item.transform.size.x * item.transform.scale.x) : undefined));
+    this.setInput(this.fields.height, vectorGeometry?.height ?? (item ? Math.abs(item.transform.size.y * item.transform.scale.y) : undefined), !!text);
     this.scale.textContent = item ? `${item.transform.scale.x.toFixed(2)} × ${item.transform.scale.y.toFixed(2)}` : '—';
     this.textSection.hidden = !text;
     if (text) {
@@ -75,10 +176,30 @@ export class InspectorPanel {
       this.setInput(this.fields.fontSize, text.textStyle.fontSize);
     }
     this.fillSection.hidden = !color;
+    this.frameSection.hidden = data?.kind !== 'Frame';
+    this.fillOpacityField.hidden = !fill;
+    if (document.activeElement !== this.frameTitle) {
+      this.frameTitle.value = item?.name ?? '';
+    }
+    this.setInput(this.fillOpacity, fill ? fill.color.a * 100 : undefined);
+    this.setInput(this.frameStrokeWidth, frame?.strokeWidth);
+    if (stroke) {
+      this.frameStroke.value = this.toHexColor(stroke.color);
+    }
     if (color) {
       this.fill.value = color;
       this.fillValue.textContent = color.slice(1).toUpperCase();
     }
+    this.mediaSection.hidden = data?.kind !== 'Video' && data?.kind !== 'Effects';
+    this.mediaPlay.disabled = !media;
+    this.mediaPlay.textContent = media?.playing ? '暂停' : '播放';
+    this.mediaSeek.disabled = !media || media.duration <= 0;
+    this.mediaSeek.max = String(media?.duration ?? 0);
+    if (document.activeElement !== this.mediaSeek) {
+      this.mediaSeek.value = String(media?.time ?? 0);
+    }
+    this.mediaTime.textContent = `${(media?.time ?? 0).toFixed(2)} / ${(media?.duration ?? 0).toFixed(2)} s`;
+    this.mediaStatus.textContent = data?.status === 'loading' ? '素材加载中…' : data?.status === 'error' ? '素材加载失败' : media?.playing ? '播放中' : '已暂停';
   }
 
   dispose (): void {
@@ -123,15 +244,86 @@ export class InspectorPanel {
 
           if (text) {
             text.setTextWidth(text.textLayout.width * input.valueAsNumber / Math.max(current, 0.01));
-          } else {
+          } else if (!this.setVectorSize(item, axis, input.valueAsNumber)) {
             item.transform.setSize(
               axis === 'x' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.x), 0.01) : item.transform.size.x,
               axis === 'y' ? input.valueAsNumber / Math.max(Math.abs(item.transform.scale.y), 0.01) : item.transform.size.y,
             );
+            this.scene.fitEffects(item);
           }
         });
       });
     }
+  }
+
+  private setVectorSize (item: VFXItem, axis: 'x' | 'y', size: number): boolean {
+    const data = this.scene.getItem(item);
+    const component = item.getComponent(ShapeComponent);
+    const shape = component?.shape as InspectorShapeAttributes | undefined;
+
+    if (data?.kind !== 'Vector' || !shape) {
+      return false;
+    }
+    const scale = Math.abs(item.transform.scale[axis]);
+
+    // 零缩放保持折叠；非零缩放按真实值换算尺寸。
+    if (scale === 0) {
+      return true;
+    }
+    const value = size / scale;
+
+    if (!Number.isFinite(value)) {
+      return true;
+    }
+    const definitionUpdates: Record<string, unknown> = {};
+
+    switch (shape.type) {
+      case spec.ShapePrimitiveType.Rectangle:
+        shape[axis === 'x' ? 'width' : 'height'] = value;
+        definitionUpdates[axis === 'x' ? 'width' : 'height'] = value;
+
+        break;
+      case spec.ShapePrimitiveType.Ellipse:
+        shape[axis === 'x' ? 'xRadius' : 'yRadius'] = value / 2;
+        definitionUpdates[axis === 'x' ? 'xRadius' : 'yRadius'] = value / 2;
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: {
+        const previousRadius = shape.radius ?? 0;
+
+        shape.radius = value / 2;
+        definitionUpdates.radius = value / 2;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousRadius) / shape.radius;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Star: {
+        const previousOuter = shape.outerRadius ?? 0;
+        const nextOuter = value / 2;
+
+        shape.outerRadius = nextOuter;
+        shape.innerRadius = previousOuter === 0 ? shape.innerRadius : (shape.innerRadius ?? 0) * nextOuter / previousOuter;
+        definitionUpdates.outerRadius = shape.outerRadius;
+        definitionUpdates.innerRadius = shape.innerRadius;
+        const other = axis === 'x' ? 'y' : 'x';
+        const otherScale = item.transform.scale[other] * Math.abs(previousOuter) / nextOuter;
+
+        item.transform.setScale(axis === 'x' ? item.transform.scale.x : otherScale,
+          axis === 'y' ? item.transform.scale.y : otherScale, item.transform.scale.z);
+
+        break;
+      }
+      default:
+        return false;
+    }
+    Object.assign(component.definition, definitionUpdates);
+    component.onApplyAnimationProperties();
+
+    return true;
   }
 
   private bindTextFields (): void {
@@ -176,9 +368,20 @@ export class InspectorPanel {
 
   private getFillColor (item: VFXItem | undefined): string | undefined {
     const frame = item?.getComponent(FrameComponent);
+    const fill = this.getSolidPaint(frame?.fills);
     const text = item?.getComponent(TextComponent);
-    const channels = frame ? [frame.color.r, frame.color.g, frame.color.b] : text?.textStyle.textColor.slice(0, 3);
+    const channels = fill ? [fill.color.r, fill.color.g, fill.color.b] : text?.textStyle.textColor.slice(0, 3);
 
     return channels ? `#${channels.map(value => Math.round(value * 255).toString(16).padStart(2, '0')).join('')}` : undefined;
+  }
+
+  private getSolidPaint (paints?: Paint[]): SolidPaint | undefined {
+    const paint = paints?.[0];
+
+    return paint?.type === spec.FillType.Solid ? paint : undefined;
+  }
+
+  private toHexColor (color: spec.ColorData): string {
+    return `#${[color.r, color.g, color.b].map(value => Math.round(value * 255).toString(16).padStart(2, '0')).join('')}`;
   }
 }

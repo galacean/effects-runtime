@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Effects DevTools",
+  "version": "0.1.0",
+  "description": "Inspect and edit the existing Effects players in the current page.",
+  "minimum_chrome_version": "120",
+  "devtools_page": "devtools.html",
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*", "file:///*"],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
+}

@@ -1,6 +1,6 @@
 /* eslint-disable padding-line-between-statements */
-import type { Geometry, Scene, VertexElement } from '@galacean/effects';
-import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
+import type { Geometry, VertexBuffer } from '@galacean/effects';
+import { AssetManager, Player, Texture, spec, math, Engine, Material, SceneLoader } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
   PEntity, PObject, PLightType, PMaterialType, PObjectType, PTransform, PCamera, PLight,
@@ -13,7 +13,7 @@ import { generateComposition } from './utilities';
 const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 const { expect } = chai;
 
-function getVertexBufferLayout (kind: string, buffer: VertexElement) {
+function getVertexBufferLayout (kind: string, buffer: VertexBuffer) {
   return {
     kind,
     normalized: buffer.normalized,
@@ -771,11 +771,12 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    engine.assetServer.addPackageDatas({ jsonScene } as Scene);
+    const preparedScene = await AssetManager.loadScene(jsonScene);
 
-    const animComp = new AnimationComponent(engine);
+    const animationItem = itemList.find(item => item.id === jsonScene.components[1].item?.id)!;
+    const animatedRoot = SceneLoader.instantiateItem(animationItem, engine, undefined, preparedScene);
+    const animComp = animatedRoot.getComponent(AnimationComponent);
 
-    SerializationHelper.deserialize(jsonScene.components[1], animComp);
     expect(animComp.clips.length).to.eql(1);
     const animClip = animComp.clips[0];
     expect(animClip.duration).to.eql(2);
@@ -996,8 +997,7 @@ describe('渲染插件单测', function () {
       expect(scale17_7.getElement(i)).closeTo(v, 1e-5);
     });
     expect(itemList[22].type).to.eql('mesh');
-    const itemMesh = new VFXItem(engine);
-    SerializationHelper.deserialize(itemList[22], itemMesh);
+    const itemMesh = SceneLoader.instantiateItem(itemList[22], engine, undefined, preparedScene);
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
@@ -1051,7 +1051,7 @@ describe('渲染插件单测', function () {
     expect(geometry.getAttributeData('aUV')?.length).to.eql(6546);
     expect(geometry.getAttributeData('aJoints')?.length).to.eql(13092);
     expect(geometry.getAttributeData('aWeights')?.length).to.eql(13092);
-    const vertexBuffers = Object.fromEntries(geometry.getVertexLayout()!.elements.map(element => [element.name, element]));
+    const vertexBuffers = geometry.getVertexBuffers();
 
     expect(vertexBuffers).not.to.eql(undefined);
     if (vertexBuffers !== undefined) {
@@ -1100,6 +1100,12 @@ describe('渲染插件单测', function () {
     expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
     expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
 
+    engine.dispose();
+  });
+
+  it('WaterBottle Mesh 测试', async () => {
+    const engine = new Engine(document.createElement('canvas'));
+    const loader = new LoaderImplEx();
     const scene = await loader.loadScene({
       gltf: {
         resource: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/WaterBottle.glb',
@@ -1117,11 +1123,10 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      engine.assetServer.addPackageDatas({ jsonScene } as Scene);
+      const preparedScene = await AssetManager.loadScene(jsonScene);
       //
       expect(itemList[1].type).to.eql('mesh');
-      const itemMesh = new VFXItem(engine);
-      SerializationHelper.deserialize(itemList[1], itemMesh);
+      const itemMesh = SceneLoader.instantiateItem(itemList[1], engine, undefined, preparedScene);
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');
@@ -1143,7 +1148,7 @@ describe('渲染插件单测', function () {
       expect(geometry2.getAttributeData('aNormal')?.length).to.eql(7647);
       expect(geometry2.getAttributeData('aUV')?.length).to.eql(5098);
       expect(geometry2.getAttributeData('aTangent')?.length).to.eql(10196);
-      const vertexBuffers = Object.fromEntries(geometry2.getVertexLayout()!.elements.map(element => [element.name, element]));
+      const vertexBuffers = geometry2.getVertexBuffers();
 
       expect(vertexBuffers).not.to.eql(undefined);
       if (vertexBuffers !== undefined) {
@@ -1507,7 +1512,7 @@ describe('渲染插件单测', function () {
     geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
     });
-    const vertexBuffers = Object.fromEntries(geometry.getVertexLayout()!.elements.map(element => [element.name, element]));
+    const vertexBuffers = geometry.getVertexBuffers();
     const position = vertexBuffers.aPos;
     const normal = vertexBuffers.aNormal;
     const uv1 = vertexBuffers.aUV;

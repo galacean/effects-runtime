@@ -1,7 +1,8 @@
 import type { Engine, ValueGetter } from '@galacean/effects';
 import {
   ColorPropertyMixerPlayable, ColorPropertyPlayableAsset, FloatPropertyPlayableAsset,
-  PlayableOutput, PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec,
+  PropertyClipPlayable, RandomValue, ReferenceCurve, SerializationHelper, Sprite, spec, TrackAsset,
+  CacheDataManager,
   Vector2PropertyMixerPlayable, Vector2PropertyPlayableAsset,
   Vector3PropertyMixerPlayable, Vector3ropertyPlayableAsset,
   Vector4PropertyMixerPlayable, Vector4PropertyPlayableAsset,
@@ -19,7 +20,14 @@ describe('core/plugins/timeline/property-clip-playable', () => {
       unregisterObject: () => {},
     },
   } as unknown as Engine;
-  const context = new PlayableOutput().context;
+  const context = { time: 0, deltaTime: 0 };
+  let cache: CacheDataManager;
+
+  beforeEach(() => {
+    cache = new CacheDataManager({ trackData: new Map(), clipData: new Map(), sharedData: new Map() });
+    cache.setTrackKey(0);
+  });
+
   const cases = [
     {
       name: 'Color', Asset: ColorPropertyPlayableAsset, Mixer: ColorPropertyMixerPlayable,
@@ -40,9 +48,8 @@ describe('core/plugins/timeline/property-clip-playable', () => {
   ];
 
   function sample<T> (playable: PropertyClipPlayable<T>, time: number) {
-    playable.setDuration(1);
-    playable.setTime(time);
-    playable.processFrame(context);
+    playable.duration = 1;
+    playable.evaluate({}, { time, deltaTime: 0 });
   }
 
   function expectComponents (value: SampleValue, offset: number) {
@@ -104,26 +111,61 @@ describe('core/plugins/timeline/property-clip-playable', () => {
 
     it(`${testCase.name} mixes different sample times from a shared curve`, () => {
       const asset = createAsset();
-      const first = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
-      const second = asset.createPlayable() as PropertyClipPlayable<SampleValue>;
+      const track = new TrackAsset(engine);
       const mixer = new testCase.Mixer();
-      const output = new PlayableOutput();
-      const target = { value: first.value.clone() };
+      const clips = [-0.25, -0.75].map(start => {
+        const clip = new testCase.Asset(engine);
 
-      first.setDuration(1);
-      first.setTime(0.25);
-      second.setDuration(1);
-      second.setTime(0.75);
+        clip.curve = asset.curve;
+        clip.start = start;
+        clip.duration = 1;
+        clip.endBehavior = spec.EndBehavior.destroy;
+
+        return clip;
+      });
+
+      track.createTrackMixer = () => mixer;
+      track.compileClips(clips);
+      const segmentId = mixer.getSegments().findIndex(segment => context.time >= segment.start && context.time < segment.end);
+      const first = mixer.getClipPlayable(0) as PropertyClipPlayable<SampleValue>;
+      const second = mixer.getClipPlayable(1) as PropertyClipPlayable<SampleValue>;
+      const target = { value: first.value.clone() };
+      const evaluate = (time: number) => {
+        sample(first, time - clips[0].start);
+        sample(second, time - clips[1].start);
+      };
+
       mixer.propertyPath = 'value';
-      mixer.clipPlayables.push(first, second);
       mixer.setClipWeight(first, 0.5);
       mixer.setClipWeight(second, 0.5);
-      output.setUserData(target);
-      mixer.processFrame(output.context);
+      evaluate(0.1);
+      mixer.evaluate(segmentId, undefined, { time: 0.1, deltaTime: 0 }, cache);
+      expectComponents(first.value, 3.5);
+      expectComponents(second.value, 8.5);
+      expectComponents(target.value, 0);
+      evaluate(context.time);
+      expectComponents(target.value, 0);
+      mixer.evaluate(segmentId, target, context, cache);
 
       expectComponents(target.value, 5);
       expectComponents(first.value, 2.5);
       expectComponents(second.value, 7.5);
+
+      mixer.setClipWeight(0, 0);
+      mixer.setClipWeight(1, 0);
+      evaluate(0.1);
+      mixer.evaluate(segmentId, target, { time: 0.1, deltaTime: 0.1 }, cache);
+      expectComponents(target.value, 5);
+      expectComponents(first.value, 3.5);
+      expectComponents(second.value, 8.5);
+
+      mixer.setClipWeight(0, 0.5);
+      mixer.setClipWeight(1, 0.5);
+      evaluate(0.2);
+      mixer.evaluate(segmentId, undefined, { time: 0.2, deltaTime: 0.1 }, cache);
+      expectComponents(first.value, 4.5);
+      expectComponents(second.value, 9.5);
+      expectComponents(target.value, 5);
     });
 
     it(`${testCase.name} writes into the supplied result and preserves getValue behavior`, () => {

@@ -8,5 +8,5 @@ export * from './particle-track';
 export * from './property-track';
 export * from './vector-property-track';
 export * from './color-property-track';
-export * from './sprite-property-track';
+export * from './object-reference-property-track';
 export * from './object-binding-track';

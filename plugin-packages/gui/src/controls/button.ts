@@ -1,6 +1,7 @@
 import { effectsClass, math } from '@galacean/effects';
 import type { Engine, Texture, spec } from '@galacean/effects';
 import { BaseButton } from './base-button';
+import { ellipsizeText } from '../core/text-layout';
 import { ButtonDrawMode, HorizontalAlignment, VerticalAlignment } from './enums';
 
 export type ContentInsets = {
@@ -170,21 +171,18 @@ export class Button extends BaseButton {
     if (this.clipText) {
       this.engine.renderingServer.graphics.pushClipRect(left, top, width, height);
     }
-    try {
-      if (this.icon) {
-        const iconY = this.getAlignedY(top, height, iconSize.y, this.iconVerticalAlignment);
+    if (this.icon) {
+      const iconY = this.getAlignedY(top, height, iconSize.y, this.iconVerticalAlignment);
 
-        this.drawTexture(iconX, iconY, iconSize.x, iconSize.y, this.icon, undefined, this.getIconTint(mode));
-      }
-      this.drawText(
-        textX, textY, sourceText, fontSize,
-        this.getFontColor(mode),
-        font.family, font.weight, font.style,
-      );
-    } finally {
-      if (this.clipText) {
-        this.engine.renderingServer.graphics.popClipRect();
-      }
+      this.drawTexture(iconX, iconY, iconSize.x, iconSize.y, this.icon, undefined, this.getIconTint(mode));
+    }
+    this.drawText(
+      textX, textY, sourceText, fontSize,
+      this.getFontColor(mode),
+      font.family, font.weight, font.style,
+    );
+    if (this.clipText) {
+      this.engine.renderingServer.graphics.popClipRect();
     }
   }
 
@@ -269,26 +267,8 @@ export class Button extends BaseButton {
   private ellipsizeText (text: string, width: number): string {
     const font = this.getThemeFont('font');
     const fontSize = this.getThemeFontSize('fontSize');
-    const measurement = this.measureText(text, fontSize, font.family, font.weight, font.style);
 
-    if (measurement.width <= width) {
-      return text;
-    }
-    const ellipsis = '…';
-    const ellipsisWidth = this.measureText(ellipsis, fontSize, font.family, font.weight, font.style).width;
-    const characters = Array.from(text);
-    let used = ellipsisWidth;
-    let count = 0;
-
-    if (ellipsisWidth > width) {
-      return '';
-    }
-    while (count < characters.length && used + (measurement.advances[count] ?? 0) <= width) {
-      used += measurement.advances[count] ?? 0;
-      count++;
-    }
-
-    return characters.slice(0, count).join('') + ellipsis;
+    return ellipsizeText(text, width, value => this.measureText(value, fontSize, font.family, font.weight, font.style));
   }
 
   override fromData (data: spec.ButtonData): void {

@@ -228,9 +228,9 @@ export class Viewport3DGizmo extends Gizmo {
     const size = this.host.viewportSize(), center = new Vector2(size.x - 64, 96);
     const points = this.helperPoints(this.session?.after ?? target.data).sort((a, b) => a.depth - b.depth);
 
-    control.fillCircle(center.x, center.y, 49, toColor(0x252832, 0.65));
+    control.fillCircle(center.x, center.y, 49, toColor(0x252832a6));
     for (const p of points) {
-      const color = toColor([0xe05252, 0x55bf69, 0x549cfa][p.axis], p.sign > 0 ? 1 : 0.5);
+      const color = toColor(([0xe05252, 0x55bf69, 0x549cfa][p.axis] << 8) | (p.sign > 0 ? 0xff : 0x80));
 
       control.drawLine(center.x, center.y, p.position.x, p.position.y, color, 2);
       control.fillCircle(p.position.x, p.position.y, p.sign > 0 ? 7 : 5, color);
@@ -254,7 +254,7 @@ export class FloorGridGizmo extends Gizmo {
         if (!clipped) { continue; }
         const a = this.host.project(clipped[0]), b = this.host.project(clipped[1]);
 
-        if (a && b) { control.drawLine(a.x, a.y, b.x, b.y, toColor(i ? 0x888888 : 0xaaaaaa, i ? 0.2 : 0.5), 1); }
+        if (a && b) { control.drawLine(a.x, a.y, b.x, b.y, toColor(i ? 0x88888833 : 0xaaaaaa80), 1); }
       }
     }
   }

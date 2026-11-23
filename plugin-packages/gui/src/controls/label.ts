@@ -1,10 +1,12 @@
 import {
   effectsClass,
   math,
+  TextCache,
 } from '@galacean/effects';
 import type { Engine, TextMeasurement, spec } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
+import { ellipsizeText } from '../core/text-layout';
 import { AutowrapMode, HorizontalAlignment, TextOverflow, VerticalAlignment } from './enums';
 
 type TextLine = {
@@ -105,7 +107,7 @@ export class Label extends Control {
     }
 
     const width = this.getMinimumLineWidth();
-    const paragraphCount = Math.max(1, this._text.split('\n').length);
+    const paragraphCount = Math.max(1, this._text.split(/\r\n|\r|\n/).length);
 
     return new math.Vector2(
       width,
@@ -128,25 +130,22 @@ export class Label extends Control {
     if (clipped) {
       this.engine.renderingServer.graphics.pushClipRect(0, 0, this.width, this.height);
     }
-    try {
-      for (let i = 0; i < layout.lines.length; i++) {
-        const source = layout.lines[i];
-        const line = this.textOverflow === TextOverflow.Ellipsis
-          ? this.ellipsize(source, this.width)
-          : source;
-        const fill = this.horizontalAlignment === HorizontalAlignment.Fill && i < layout.lines.length - 1;
+    for (let i = 0; i < layout.lines.length; i++) {
+      const source = layout.lines[i];
+      const line = this.textOverflow === TextOverflow.Ellipsis
+        ? this.ellipsize(source, this.width)
+        : source;
+      const fill = this.horizontalAlignment === HorizontalAlignment.Fill && i < layout.lines.length - 1;
 
-        if (fill && countFillSpaces(line.text) > 0 && line.measurement.width < this.width) {
-          this.drawFilledLine(line, y);
-        } else {
-          this.drawThemedText(this.getTextStartX(line.measurement.width), y, line.text);
-        }
-        y += layout.lineHeight + this.getThemeConstant('lineSpacing') + gap;
+      if (fill && countFillSpaces(line.text) > 0 && line.measurement.width < this.width) {
+        this.drawFilledLine(line, y);
+      } else {
+        this.drawThemedText(this.getTextStartX(line.measurement.width), y, line.text);
       }
-    } finally {
-      if (clipped) {
-        this.engine.renderingServer.graphics.popClipRect();
-      }
+      y += layout.lineHeight + this.getThemeConstant('lineSpacing') + gap;
+    }
+    if (clipped) {
+      this.engine.renderingServer.graphics.popClipRect();
     }
   }
 
@@ -185,7 +184,7 @@ export class Label extends Control {
 
   private createLayout (width: number): TextLayout {
     const lines: TextLine[] = [];
-    const paragraphs = this.text.split('\n');
+    const paragraphs = this.text.split(/\r\n|\r|\n/);
     const emptyMeasurement = this.measure('');
 
     for (const paragraph of paragraphs) {
@@ -207,7 +206,7 @@ export class Label extends Control {
   }
 
   private wrapParagraph (paragraph: string, width: number): TextLine[] {
-    const characters = Array.from(paragraph);
+    const characters = TextCache.graphemeSegmenter(paragraph);
 
     if (characters.length === 0) {
       return [{ text: '', measurement: this.measure('') }];
@@ -216,7 +215,6 @@ export class Label extends Control {
       return characters.map(text => ({ text, measurement: this.measure(text) }));
     }
 
-    const measurement = this.measure(paragraph);
     const lines: TextLine[] = [];
     let start = 0;
 
@@ -228,12 +226,12 @@ export class Label extends Control {
 
       for (; index < characters.length; index++) {
         const character = characters[index];
-        const advance = measurement.advances[index] ?? 0;
+        const candidateWidth = this.measure(characters.slice(start, index + 1).join('')).width;
 
-        if (cursorWidth + advance > width && index > start) {
+        if (candidateWidth > width && index > start) {
           break;
         }
-        cursorWidth += advance;
+        cursorWidth = candidateWidth;
         if (isBreakSpace(character)) {
           breakEnd = index;
           breakNext = index + 1;
@@ -290,12 +288,12 @@ export class Label extends Control {
   }
 
   private getMinimumLineWidth (): number {
-    const paragraphs = this.text.split('\n');
+    const paragraphs = this.text.split(/\r\n|\r|\n/);
     let width = 0;
 
     if (this.autowrapMode === AutowrapMode.Arbitrary || this.autowrapMode === AutowrapMode.WordSmart) {
       for (const paragraph of paragraphs) {
-        for (const character of Array.from(paragraph)) {
+        for (const character of TextCache.graphemeSegmenter(paragraph)) {
           width = Math.max(width, this.measure(character).width);
         }
       }
@@ -306,7 +304,7 @@ export class Label extends Control {
     for (const paragraph of paragraphs) {
       let segment = '';
 
-      for (const character of Array.from(paragraph)) {
+      for (const character of TextCache.graphemeSegmenter(paragraph)) {
         if (isBreakSpace(character) || isCJKLike(character)) {
           width = Math.max(width, this.measure(segment).width, this.measure(character).width);
           segment = '';
@@ -357,44 +355,25 @@ export class Label extends Control {
       return line;
     }
 
-    const ellipsis = '…';
-    const ellipsisMeasurement = this.measure(ellipsis);
-
-    if (ellipsisMeasurement.width > width) {
-      return { text: '', measurement: this.measure('') };
-    }
-
-    const characters = Array.from(line.text);
-    let used = ellipsisMeasurement.width;
-    let count = 0;
-
-    for (; count < characters.length; count++) {
-      const advance = line.measurement.advances[count] ?? 0;
-
-      if (used + advance > width) {
-        break;
-      }
-      used += advance;
-    }
-
-    const text = characters.slice(0, count).join('') + ellipsis;
+    const text = ellipsizeText(line.text, width, value => this.measure(value));
 
     return { text, measurement: this.measure(text) };
   }
 
   private drawFilledLine (line: TextLine, y: number): void {
-    const characters = Array.from(line.text);
-    const spaces = countFillSpaces(line.text);
+    const font = this.getThemeFont('font');
+    const text = line.text.replace(/[\t ]+$/, '');
+    const layout = this.measureText(text, this.getThemeFontSize('fontSize'), font.family, font.weight, font.style).lines[0];
+    const spaces = countFillSpaces(text);
     const extra = spaces > 0 ? (this.width - line.measurement.width) / spaces : 0;
-    let x = 0;
+    let shift = 0;
 
-    for (let i = 0; i < characters.length; i++) {
-      const character = characters[i];
+    for (let i = 0; i < layout.characters.length; i++) {
+      const character = layout.characters[i];
 
-      this.drawThemedText(x, y, character);
-      x += line.measurement.advances[i] ?? 0;
+      this.drawThemedText(layout.positions[i] + shift, y, character);
       if (isBreakSpace(character)) {
-        x += extra;
+        shift += extra;
       }
     }
   }
@@ -460,5 +439,5 @@ function skipBreakSpaces (characters: string[], start: number): number {
 }
 
 function countFillSpaces (text: string): number {
-  return Array.from(text).reduce((count, character) => count + (isBreakSpace(character) ? 1 : 0), 0);
+  return TextCache.graphemeSegmenter(text).reduce((count, character) => count + (isBreakSpace(character) ? 1 : 0), 0);
 }

@@ -1,20 +1,31 @@
 import type * as spec from '@galacean/effects-specification';
+import { Asset } from './asset';
 import { effectsClass } from './decorators';
-import type { EffectsObject } from './effects-object';
+import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { EngineServer } from './engine-server';
 import type { Material } from './material';
 import type { Geometry } from './render/geometry';
 import type { Texture } from './texture';
-import type { RestoreHandler } from './utils';
+import type { AbstractConstructor, RestoreHandler } from './utils';
 import { addItem, isPlainObject, logger, removeItem } from './utils';
+import type { VFXItem } from './vfx-item';
+
+/** @internal Object lookup and asset ownership while instantiating a hierarchy. */
+export interface DeserializationContext {
+  root: VFXItem,
+  idsMapping: Map<string, string>,
+  sceneAssets: Set<Asset>,
+}
 
 /** Owns live resource tracking and the separate serialized object lookup context. */
 @effectsClass('EffectsObjectServer')
 export class EffectsObjectServer extends EngineServer {
-  objectInstance: Record<string, EffectsObject> = {};
+  objectsCache: Record<string, EffectsObject> = {};
 
-  // These lists survive lookup resets and track resources until their owners dispose them.
+  private _deserializationContext?: DeserializationContext;
+
+  // Track GPU resources until their owners dispose them.
   private textures: Texture[] = [];
   private materials: Material[] = [];
   private geometries: Geometry[] = [];
@@ -86,40 +97,68 @@ export class EffectsObjectServer extends EngineServer {
     this.materials = [];
     this.geometries = [];
 
-    for (const id of Object.keys(this.objectInstance)) {
-      this.objectInstance[id].unregisterObject();
+    for (const id of Object.keys(this.objectsCache)) {
+      this.objectsCache[id].unregisterObject();
     }
-    this.objectInstance = {};
+    this.objectsCache = {};
   }
 
   /** @internal Called by EffectsObject to keep its registration state in sync. */
   registerObject (object: EffectsObject): void {
-    this.objectInstance[object.getInstanceId()] = object;
+    this.objectsCache[object.getInstanceId()] = object;
   }
 
   /** @internal Called by EffectsObject to keep its registration state in sync. */
   unregisterObject (object: EffectsObject): void {
-    delete this.objectInstance[object.getInstanceId()];
+    delete this.objectsCache[object.getInstanceId()];
   }
 
-  /** Reset the current lookup context without disposing the objects or GPU resources. */
-  clearObjectInstances (): void {
-    for (const id of Object.keys(this.objectInstance)) {
-      this.objectInstance[id].unregisterObject();
-    }
-    this.objectInstance = {};
+  /** @internal */
+  get deserializationContext (): DeserializationContext | undefined {
+    return this._deserializationContext;
   }
 
-  findObject<T> (guid: spec.DataPath): T {
-    // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
-    if (!isPlainObject(guid)) {
-      return guid as T;
+  /** @internal */
+  withDeserializationContext<T> (context: DeserializationContext, deserialize: () => T): T {
+    const previousContext = this._deserializationContext;
+
+    this._deserializationContext = context;
+    const result = deserialize();
+
+    this._deserializationContext = previousContext;
+
+    return result;
+  }
+
+  findObject<T> (dataPath: spec.DataPath, type?: AbstractConstructor<T>): T {
+    // The editor may pass the object directly.
+    if (!isPlainObject(dataPath)) {
+      return (!type || dataPath instanceof type ? dataPath : undefined) as T;
     }
 
-    if (this.objectInstance[guid.id]) {
-      return this.objectInstance[guid.id] as T;
+    const id = String(dataPath.id);
+    const instanceId = this._deserializationContext?.idsMapping.get(id) ?? id;
+    const object = this.objectsCache[instanceId];
+
+    if (object) {
+      return (!type || object instanceof type ? object : undefined) as T;
     }
 
-    return this.engine.assetServer.loadGUID<T>(guid);
+    const { assetServer } = this.engine;
+
+    if (!type) {
+      return assetServer.loadGUID<T>(dataPath);
+    }
+    const prototype = type.prototype;
+
+    if (prototype === EffectsObject.prototype || prototype === Asset.prototype || prototype instanceof Asset) {
+      const asset = assetServer.loadGUID<T>(dataPath, type);
+
+      if (asset instanceof type) {
+        return asset;
+      }
+    }
+
+    return undefined as T;
   }
 }

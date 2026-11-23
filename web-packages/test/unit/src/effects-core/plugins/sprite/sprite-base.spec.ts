@@ -1,4 +1,4 @@
-import type { TimelineClip, VFXItem } from '@galacean/effects';
+import type { EffectsObject, TimelineClip } from '@galacean/effects';
 import { CompositionComponent, Player, SpriteColorPlayableAsset, SpriteColorTrack, SpriteComponent, math } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
 
@@ -43,13 +43,12 @@ describe('core/plugins/sprite/item-base', () => {
     const compositionComponent = comp.rootItem.getComponent(CompositionComponent);
     //@ts-expect-error
     const sceneBindings = compositionComponent.sceneBindings;
-    const sceneBindingMap: Record<string, VFXItem> = {};
+    const sceneBindingMap: Record<string, EffectsObject> = {};
 
     for (const sceneBinding of sceneBindings) {
       sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
     }
-    // @ts-expect-error
-    const spriteBindingTrack = compositionComponent.timelineAsset.tracks.find(track => sceneBindingMap[track.getInstanceId()] === sprite1);
+    const spriteBindingTrack = compositionComponent.timelineAsset?.tracks.find(track => sceneBindingMap[track.getInstanceId()] === sprite1);
 
     for (const subTrack of spriteBindingTrack?.getChildTracks() ?? []) {
       if (subTrack instanceof SpriteColorTrack) {
@@ -62,8 +61,8 @@ describe('core/plugins/sprite/item-base', () => {
     let spriteColorClip;
 
     for (const track of tracks) {
-      if (track.asset instanceof SpriteColorPlayableAsset) {
-        spriteColorClip = track.asset;
+      if (track instanceof SpriteColorPlayableAsset) {
+        spriteColorClip = track;
       }
     }
     const color = spriteItem?.material.getColor('_Color')?.toArray();

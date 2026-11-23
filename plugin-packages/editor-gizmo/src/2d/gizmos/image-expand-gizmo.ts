@@ -242,28 +242,24 @@ export class ImageExpandGizmo extends Gizmo {
 
     const {
       maskColor,
-      maskAlpha,
       expandBoxLineWidth,
       expandBoxLineColor,
-      expandBoxLineAlpha,
       expandBoxCornerRadius,
       expandBoxCornerFillColor,
       expandBoxCornerLineWidth,
       expandBoxCornerLineColor,
-      expandBoxCornerLineAlpha,
       gridLineWidth,
       gridLineColor,
-      gridLineAlpha,
       gridCount,
     } = this.config;
 
     const expandCorners = getTransformedBoxCorners(geometry.boxTransform, this.result.normalizeExpandBox);
 
     // 步骤 2：绘制扩边蒙版。
-    fillBoxByCorners(control, expandCorners, toColor(maskColor, maskAlpha));
+    fillBoxByCorners(control, expandCorners, toColor(maskColor));
 
     // 步骤 3：绘制扩边辅助网格。
-    const gridColor = toColor(gridLineColor, gridLineAlpha);
+    const gridColor = toColor(gridLineColor);
 
     for (let i = 1; i <= gridCount; i++) {
       const ratio = i / (gridCount + 1);
@@ -277,9 +273,9 @@ export class ImageExpandGizmo extends Gizmo {
     }
 
     // 步骤 4：绘制扩边框和角点。
-    drawCorners(control, expandCorners, toColor(expandBoxLineColor, expandBoxLineAlpha), expandBoxLineWidth);
-    const cornerFill = toColor(expandBoxCornerFillColor, 1);
-    const cornerStroke = toColor(expandBoxCornerLineColor, expandBoxCornerLineAlpha);
+    drawCorners(control, expandCorners, toColor(expandBoxLineColor), expandBoxLineWidth);
+    const cornerFill = toColor(expandBoxCornerFillColor);
+    const cornerStroke = toColor(expandBoxCornerLineColor);
 
     expandCorners.forEach(corner => {
       control.fillCircle(corner.x, corner.y, expandBoxCornerRadius, cornerFill);

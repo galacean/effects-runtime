@@ -1,15 +1,34 @@
-import { FrameComponent, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, spec } from '@galacean/effects';
-import type { Composition, Player, VFXItem, math } from '@galacean/effects';
-import { DefaultVFXItems, VFXItemFactory } from '@galacean/effects-plugin-editor-gizmo';
+import { CompositionComponent, EventEmitter, FrameComponent, PlayState, ShapeComponent, SpriteComponent, TextComponent, Texture, TextureSourceType, glContext, math, spec } from '@galacean/effects';
+import type { Composition, Player, VFXItem } from '@galacean/effects';
+import { DefaultVFXItems, VFXItemFactory, cloneGeometry, pauseVideoComponent, playVideoComponent, resizeSelectionConfig, shapeConfig, toColor } from '@galacean/effects-plugin-editor-gizmo';
+import type { PenPathData, ShapeConfig, ShapeGeometry } from '@galacean/effects-plugin-editor-gizmo';
+import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 export type Point2D = [number, number];
+export type MediaKind = 'Video' | 'Effects';
+export type GeometryKind = 'Vector' | 'CustomShape';
+
+const VIDEO_URL = 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/fYhsTZMNQ00AAAAAgIAAABgAenV5AQBr';
+const EFFECTS_URL = 'https://mdn.alipayobjects.com/mars/afts/file/A*sq53SZTqNQkAAAAAR7AAAAgAelB4AQ';
 
 /** 图层只保存展示信息；变换和文本内容以运行时元素为准。 */
 export interface DemoItem {
   item: VFXItem,
   name: string,
-  kind: 'Frame' | 'Text' | 'Sprite',
+  kind: 'Frame' | 'Text' | 'Sprite' | GeometryKind | MediaKind,
+  status?: 'loading' | 'ready' | 'error',
 }
+
+export interface MediaState {
+  playing: boolean,
+  time: number,
+  duration: number,
+}
+
+type SceneEvents = {
+  change: [],
+  resourceerror: [string, unknown],
+};
 
 interface TextOptions {
   name?: string,
@@ -17,16 +36,77 @@ interface TextOptions {
   fontSize?: number,
   width?: number,
   parent?: VFXItem,
-  id?: string,
+}
+
+type VectorShapeAttributes = {
+  type?: spec.ShapePrimitiveType,
+  width?: number,
+  height?: number,
+  xRadius?: number,
+  yRadius?: number,
+  radius?: number,
+  outerRadius?: number,
+};
+
+function vectorShapeData (type: ShapeGeometry['shapeType'], width: number, height: number, config: Readonly<ShapeConfig>): { type: spec.ShapePrimitiveType, [key: string]: number } {
+  switch (type) {
+    case 'ellipse':
+      return { type: spec.ShapePrimitiveType.Ellipse, xRadius: width / 2, yRadius: height / 2 };
+    case 'polygon':
+      return { type: spec.ShapePrimitiveType.Polygon, pointCount: config.polygonPointCount, radius: config.polygonRadius, roundness: config.polygonRoundness };
+    case 'star':
+      return { type: spec.ShapePrimitiveType.Star, pointCount: config.starPointCount, innerRadius: config.starInnerRadius, outerRadius: config.starOuterRadius,
+        innerRoundness: config.starInnerRoundness, outerRoundness: config.starOuterRoundness };
+    case 'rect':
+    default:
+      return { type: spec.ShapePrimitiveType.Rectangle, width, height, roundness: config.rectangleRoundness };
+  }
+}
+
+function shapeStyle (config: Readonly<ShapeConfig>) {
+  return {
+    fills: [{ type: spec.FillType.Solid, color: toColor(config.initialFillColor) }],
+    strokes: [{ type: spec.FillType.Solid, color: toColor(config.initialStrokeColor) }],
+    strokeWidth: config.initialStrokeWidth,
+    strokeCap: config.initialStrokeCap,
+    strokeJoin: config.initialStrokeJoin,
+    renderer: { renderMode: config.initialRenderMode },
+  };
+}
+
+function vectorShapeBaseSize (shape: VectorShapeAttributes): Point2D | undefined {
+  switch (shape.type) {
+    case spec.ShapePrimitiveType.Rectangle:
+      return [Math.abs(shape.width ?? 0), Math.abs(shape.height ?? 0)];
+    case spec.ShapePrimitiveType.Ellipse:
+      return [Math.abs(shape.xRadius ?? 0) * 2, Math.abs(shape.yRadius ?? 0) * 2];
+    case spec.ShapePrimitiveType.Polygon:
+      return [Math.abs(shape.radius ?? 0) * 2, Math.abs(shape.radius ?? 0) * 2];
+    case spec.ShapePrimitiveType.Star:
+      return [Math.abs(shape.outerRadius ?? 0) * 2, Math.abs(shape.outerRadius ?? 0) * 2];
+    default:
+      return undefined;
+  }
 }
 
 /** 管理示例场景、元素工厂和图层登记，不依赖编辑器 DOM 或工具状态。 */
-export class DemoScene {
+export class DemoScene extends EventEmitter<SceneEvents> {
   private readonly items: DemoItem[] = [];
+  private readonly shapeConfigs = new WeakMap<DemoItem, Readonly<ShapeConfig>>();
   private frameCount = 0;
   private textCount = 0;
+  private videoCount = 0;
+  private effectsCount = 0;
+  private vectorCount = 0;
+  private customShapeCount = 0;
+  private defaultFrame?: VFXItem;
+  private frameIcon?: Promise<Texture>;
+  private frameIconTexture?: Texture;
+  private disposed = false;
 
-  constructor (private readonly player: Player, private readonly composition: Composition) {}
+  constructor (private readonly player: Player, private readonly composition: Composition) {
+    super();
+  }
 
   getItems (): readonly DemoItem[] {
     return this.items;
@@ -46,50 +126,180 @@ export class DemoScene {
 
   /** 创建初始展示内容，并返回默认选中的卡片。 */
   createDefaultItems (): VFXItem {
-    const frame = this.createFrame([0, 0.45], [6.8, 4.6]);
-    const cards: { name: string, color: string, position: Point2D, size: Point2D, rotation: number, inFrame: boolean }[] = [
-      { name: '移动与缩放', color: '#3478e5', position: [-1.45, 0.05], size: [2.45, 1.72], rotation: 0, inFrame: true },
-      { name: '对齐与吸附', color: '#8861d8', position: [1.45, 0.05], size: [2.45, 1.72], rotation: 0, inFrame: true },
-      { name: '旋转卡片', color: '#218c7b', position: [2.25, -3.15], size: [2, 1.4], rotation: -12, inFrame: false },
+    const frame = this.createFrame([0, 0], [8.6, 6.3]);
+
+    this.defaultFrame = frame.item;
+    const cards: { name: string, color: string, position: Point2D, size: Point2D }[] = [
+      { name: '移动与缩放', color: '#3478e5', position: [-1.95, 1.1], size: [2.15, 1.25] },
+      { name: '对齐与吸附', color: '#8861d8', position: [1.95, 1.1], size: [2.15, 1.25] },
     ];
     const sprites = cards.map((card, index) => {
       const item = DefaultVFXItems.createSprite(this.composition, null, card.name);
       const sprite = item.getComponent(SpriteComponent);
 
-      if (card.inFrame) {
-        item.setParent(frame.item);
-      }
+      item.setParent(frame.item);
       item.setPosition(...card.position, 0);
-      item.setRotation(0, 0, card.rotation);
       item.transform.setSize(...card.size);
       sprite.setTexture(this.createCardTexture(card.name, card.color));
       sprite.priority = index;
-      this.items.push({ item, name: card.name, kind: 'Sprite' });
+      this.register({ item, name: card.name, kind: 'Sprite' });
 
       return item;
     });
 
-    this.createText([0, 1.6], { name: 'Text 1 · 标题', value: '2D Gizmo Playground', fontSize: 30, width: 430, parent: frame.item });
-    this.createText([0, -1.55], { name: 'Text 2 · 可编辑说明', value: '拖动、缩放、旋转；双击修改这段文字。', fontSize: 18, width: 430, parent: frame.item });
+    this.createText([0, 2.45], { name: 'Text 1 · 标题', value: '2D Gizmo Playground', fontSize: 28, width: 640, parent: frame.item });
+    this.createText([0, -2.65], { name: 'Text 2 · 可编辑说明', value: '拖动、缩放、旋转；双击修改文字。', fontSize: 16, width: 600, parent: frame.item });
+    this.createText([-1.95, 0.05], { name: 'Video · 说明', value: 'Video · 视频', fontSize: 14, width: 300, parent: frame.item });
+    this.createText([1.95, 0.05], { name: 'Effects · 说明', value: 'Effects · 动效', fontSize: 14, width: 300, parent: frame.item });
+    this.createFrameExamples();
 
     return sprites[0];
   }
 
-  createFrame (position: Point2D, size: Point2D, id?: string): DemoItem {
-    // Frame Gizmo 通过“画板”名称识别画板，图层列表使用独立的展示名称。
-    const item = VFXItemFactory.createVFXItem(this.composition, null, '画板', FrameComponent);
-    const data: DemoItem = { item, name: `Frame ${++this.frameCount}`, kind: 'Frame' };
+  /** 异步加载媒体，保留已就绪的画板和基础交互。 */
+  async createDefaultMediaItems (): Promise<void> {
+    await Promise.allSettled([
+      this.createVideo([-1.95, -1.2], [3.2, 1.8], this.defaultFrame),
+      this.createEffects([1.95, -1.2], [3.2, 1.8], this.defaultFrame),
+    ]);
+  }
 
-    item.type = spec.ItemType.null;
-    item.setPosition(...position, 0);
-    item.transform.setSize(...size);
-    item.getComponent(FrameComponent).priority = -100;
-    if (id) {
-      item.setInstanceId(id);
-    }
-    this.items.push(data);
+  createFrame (position: Point2D, size: Point2D): DemoItem {
+    const data = this.createContainer(position, size, 'Frame', `Frame ${++this.frameCount}`);
+
+    const frame = data.item.getComponent(FrameComponent);
+
+    frame.priority = -100;
+    frame.titleRenderer.visible = true;
+    frame.strokes = [{ type: spec.FillType.Solid, color: new math.Color(0.65, 0.68, 0.72, 1) }];
+    frame.strokeWidth = 1;
+    void this.setFrameTitleIcon(data, frame);
 
     return data;
+  }
+
+  async createVideo (position: Point2D, size: Point2D, parent?: VFXItem): Promise<DemoItem> {
+    const name = `Video ${++this.videoCount}`;
+    const item = DefaultVFXItems.createVideo(this.composition, null, name);
+    const video = item.getComponent(VideoComponent);
+    const placeholder = this.createCardTexture('视频加载中', '#25354d');
+    const data: DemoItem = { item, name, kind: 'Video', status: 'loading' };
+
+    if (parent) {
+      item.setParent(parent);
+    }
+    item.setPosition(...position, 0);
+    item.transform.setSize(...size);
+    item.duration = 999;
+    item.endBehavior = spec.EndBehavior.restart;
+    video.setTexture(placeholder);
+    this.register(data);
+
+    try {
+      const texture = await Texture.fromVideo(VIDEO_URL, this.player.engine);
+
+      if (this.disposed || !this.items.includes(data)) {
+        texture.dispose();
+
+        return data;
+      }
+      video.setTexture(texture);
+      placeholder.dispose();
+      const scale = Math.min(size[0] / texture.width, size[1] / texture.height);
+
+      item.transform.setSize(texture.width * scale, texture.height * scale);
+      video.setMuted(true);
+      video.setLoop(true);
+      video.pauseVideo();
+      data.status = 'ready';
+      this.emit('change');
+    } catch (error) {
+      this.reportResourceError(data, error);
+    }
+
+    return data;
+  }
+
+  async createEffects (position: Point2D, size: Point2D, parent?: VFXItem): Promise<DemoItem> {
+    const data = this.createContainer(position, size, 'Effects', `Effects ${++this.effectsCount}`, parent);
+
+    data.status = 'loading';
+    this.emit('change');
+    try {
+      const effects = await DefaultVFXItems.createEffects(this.composition, EFFECTS_URL, null, data.name);
+
+      if (this.disposed || !this.items.includes(data)) {
+        effects.dispose();
+
+        return data;
+      }
+      effects.setParent(data.item);
+      effects.transform.setPosition(0, 0, 0);
+      const component = effects.getComponent(CompositionComponent);
+
+      component.endBehavior = spec.EndBehavior.restart;
+      component.setTime(0);
+      component.pause();
+      this.fitEffects(data.item);
+      data.status = 'ready';
+      this.emit('change');
+    } catch (error) {
+      this.reportResourceError(data, error);
+    }
+
+    return data;
+  }
+
+  getMediaState (item: VFXItem): MediaState | undefined {
+    const video = item.getComponent(VideoComponent)?.video;
+
+    if (video) {
+      return { playing: !video.paused && !video.ended, time: video.currentTime, duration: Number.isFinite(video.duration) ? video.duration : 0 };
+    }
+    const child = this.getItem(item)?.kind === 'Effects' ? item.children[0] : undefined;
+    const effects = child?.getComponent(CompositionComponent);
+
+    return effects ? { playing: effects.state === PlayState.Playing, time: effects.getTime(), duration: child!.duration } : undefined;
+  }
+
+  setMediaPlaying (item: VFXItem, playing: boolean): void {
+    const video = item.getComponent(VideoComponent);
+
+    if (video) {
+      if (playing) {
+        playVideoComponent(video);
+      } else {
+        pauseVideoComponent(video);
+      }
+    } else {
+      const effects = item.children[0]?.getComponent(CompositionComponent);
+
+      if (playing) {
+        effects?.play();
+      } else {
+        effects?.pause();
+      }
+    }
+  }
+
+  seekMedia (item: VFXItem, time: number): void {
+    const video = item.getComponent(VideoComponent);
+
+    if (video) {
+      video.setCurrentTime(time);
+    } else {
+      item.children[0]?.getComponent(CompositionComponent)?.setTime(time);
+    }
+  }
+
+  fitEffects (item: VFXItem): void {
+    if (this.getItem(item)?.kind !== 'Effects') {
+      return;
+    }
+    const viewSize = this.composition.camera.getInverseVPRatio(0).multiply(2);
+    const scale = item.transform.size.x / viewSize.x;
+
+    item.children[0]?.transform.setScale(scale, scale, 1);
   }
 
   createText (position: Point2D, options: TextOptions = {}): DemoItem {
@@ -104,22 +314,151 @@ export class DemoScene {
     if (options.parent) {
       item.setParent(options.parent);
     }
-    if (options.id) {
-      item.setInstanceId(options.id);
-    }
     item.setPosition(...position, 0);
     text.setText(value);
     text.setFontFamily('sans-serif');
     text.setFontSize(fontSize);
+    text.setFontScale(4);
     text.setLineHeight(Math.round(fontSize * 1.35));
     text.setTextWidth(options.width ?? 200);
     text.setAutoResize(spec.TextSizeMode.autoHeight);
     text.setTextColor([0.12, 0.12, 0.12, 1]);
     text.priority = this.items.length;
     text.renderText({ text: value, fontSize });
-    this.items.push(data);
+    this.register(data);
 
     return data;
+  }
+
+  createCustomShape (path: PenPathData, name = `钢笔形状 ${++this.customShapeCount}`, config: Readonly<ShapeConfig> = shapeConfig.defaults): DemoItem {
+    const item = DefaultVFXItems.createShapeItem(this.composition, null, name);
+    const data = { item, name, kind: 'CustomShape' as const };
+
+    this.shapeConfigs.set(data, config);
+    item.setPosition(0, 0, 0);
+    item.transform.setSize(1, 1);
+    item.transform.setScale(1, 1, 1);
+    this.applyCustomShape(data, path);
+    this.register(data);
+
+    return data;
+  }
+
+  updateCustomShape (data: DemoItem, path: PenPathData): void {
+    if (data.kind !== 'CustomShape' && data.kind !== 'Vector') {
+      return;
+    }
+    this.applyCustomShape(data, path);
+    this.emit('change');
+  }
+
+  fitCustomShape (data: DemoItem, path: PenPathData): void {
+    if (data.kind !== 'CustomShape') {
+      return;
+    }
+    const origin = path.points[0] ?? { x: 0, y: 0 };
+    const normalized: PenPathData = {
+      points: path.points.map(point => ({ x: point.x - origin.x, y: point.y - origin.y })),
+      easingIns: path.easingIns.map(point => ({ ...point })),
+      easingOuts: path.easingOuts.map(point => ({ ...point })),
+      shapes: path.shapes.map(shape => ({ close: shape.close, indexes: shape.indexes.map(index => ({ ...index })) })),
+    };
+
+    data.item.setPosition(origin.x, origin.y, 0);
+    data.item.transform.setSize(1, 1);
+    data.item.transform.setScale(1, 1, 1);
+    this.applyCustomShape(data, normalized);
+    this.emit('change');
+  }
+
+  createVectorShape (geometry: ShapeGeometry, name = `矢量形状 ${++this.vectorCount}`, config: Readonly<ShapeConfig> = shapeConfig.defaults): DemoItem {
+    const item = DefaultVFXItems.createShapeItem(this.composition, null, name);
+    const data = { item, name, kind: 'Vector' as const };
+
+    this.shapeConfigs.set(data, config);
+    this.updateVectorShape(data, geometry, false);
+    this.register(data);
+
+    return data;
+  }
+
+  snapshotVectorShape (data: DemoItem): ShapeComponent['shape'] | undefined {
+    if (data.kind !== 'Vector') {
+      return undefined;
+    }
+
+    return cloneGeometry(data.item.getComponent(ShapeComponent).shape);
+  }
+
+  restoreVectorShape (data: DemoItem, snapshot: ShapeComponent['shape']): void {
+    if (data.kind !== 'Vector') {
+      return;
+    }
+    // 节点编辑只写形状属性；恢复原始属性，保留元素的镜像、旋转和位置。
+    data.item.getComponent(ShapeComponent).fromData({
+      ...shapeStyle(this.getShapeConfig(data)),
+      ...cloneGeometry(snapshot),
+    } as unknown as spec.ShapeComponentData);
+    this.emit('change');
+  }
+
+  readVectorGeometry (data: DemoItem): ShapeGeometry | undefined {
+    if (data.kind !== 'Vector') {
+      return undefined;
+    }
+    const shape = data.item.getComponent(ShapeComponent).shape as VectorShapeAttributes;
+    const center = data.item.transform.position;
+    const baseSize = vectorShapeBaseSize(shape);
+
+    if (!baseSize) {
+      return undefined;
+    }
+    const width = baseSize[0] * Math.abs(data.item.transform.scale.x);
+    const height = baseSize[1] * Math.abs(data.item.transform.scale.y);
+    let shapeType: ShapeGeometry['shapeType'];
+
+    switch (shape.type) {
+      case spec.ShapePrimitiveType.Ellipse: shapeType = 'ellipse';
+
+        break;
+      case spec.ShapePrimitiveType.Polygon: shapeType = 'polygon';
+
+        break;
+      case spec.ShapePrimitiveType.Star: shapeType = 'star';
+
+        break;
+      case spec.ShapePrimitiveType.Rectangle: shapeType = 'rect';
+
+        break;
+      default: return undefined;
+    }
+
+    return { shapeType, center: { x: center.x, y: center.y }, width, height };
+  }
+
+  updateVectorShape (data: DemoItem, geometry: ShapeGeometry, notify = true): void {
+    if (data.kind !== 'Vector') {
+      return;
+    }
+    const config = this.getShapeConfig(data);
+    const width = Math.max(Math.abs(geometry.width), config.minWidth);
+    const height = Math.max(Math.abs(geometry.height), config.minHeight);
+    const shapeData = vectorShapeData(geometry.shapeType, width, height, config);
+    const shape = data.item.getComponent(ShapeComponent);
+    const independentSize = geometry.shapeType === 'rect' || geometry.shapeType === 'ellipse';
+
+    data.item.setPosition(geometry.center.x, geometry.center.y, 0);
+    data.item.transform.setSize(1, 1);
+    const base = independentSize ? undefined : vectorShapeBaseSize(shapeData);
+
+    data.item.transform.setScale(base?.[0] ? width / base[0] : 1, base?.[1] ? height / base[1] : 1, 1);
+    shape.fromData({
+      ...shapeData,
+      ...shapeStyle(config),
+    } as unknown as spec.ShapeComponentData);
+    if (notify) {
+      this.emit('change');
+    }
   }
 
   removeItem (data: DemoItem): void {
@@ -128,6 +467,108 @@ export class DemoScene {
     if (index !== -1) {
       this.items.splice(index, 1);
       data.item.dispose();
+      this.emit('change');
+    }
+  }
+
+  dispose (): void {
+    this.disposed = true;
+    this.frameIconTexture?.dispose();
+  }
+
+  private async setFrameTitleIcon (data: DemoItem, frame: FrameComponent): Promise<void> {
+    try {
+      this.frameIcon ??= Texture.fromImage(resizeSelectionConfig.defaults.frameLogoUrl, this.player.engine).then(texture => {
+        if (this.disposed) {
+          texture.dispose();
+        } else {
+          this.frameIconTexture = texture;
+        }
+
+        return texture;
+      });
+      const texture = await this.frameIcon;
+
+      if (!this.disposed && this.items.includes(data)) {
+        frame.titleRenderer.icon = texture;
+      }
+    } catch (error) {
+      if (!this.disposed) {
+        this.emit('resourceerror', 'Frame 标题图标加载失败', error);
+      }
+    }
+  }
+
+  private register (data: DemoItem): DemoItem {
+    this.items.push(data);
+    this.emit('change');
+
+    return data;
+  }
+
+  private applyCustomShape (data: DemoItem, path: PenPathData): void {
+    const shape = data.item.getComponent(ShapeComponent);
+    const config = this.getShapeConfig(data);
+
+    shape.fromData({
+      type: spec.ShapePrimitiveType.Custom,
+      points: path.points.map(point => ({ x: point.x, y: point.y })),
+      easingIns: path.easingIns.map(point => ({ x: point.x, y: point.y })),
+      easingOuts: path.easingOuts.map(point => ({ x: point.x, y: point.y })),
+      shapes: path.shapes.map(current => ({ close: current.close, indexes: current.indexes.map(index => ({ ...index })) })),
+      ...shapeStyle(config),
+    } as unknown as spec.CustomShapeData);
+  }
+
+  private getShapeConfig (data: DemoItem): Readonly<ShapeConfig> {
+    return this.shapeConfigs.get(data) ?? shapeConfig.defaults;
+  }
+
+  private createContainer (position: Point2D, size: Point2D, kind: 'Frame' | 'Effects', name: string, parent?: VFXItem): DemoItem {
+    const item = VFXItemFactory.createVFXItem(this.composition, null, kind === 'Frame' ? name : '动效', FrameComponent);
+
+    item.type = spec.ItemType.null;
+    if (parent) {
+      item.setParent(parent);
+    }
+    item.setPosition(...position, 0);
+    item.transform.setSize(...size);
+    if (kind === 'Effects') {
+      item.getComponent(FrameComponent).fills = [];
+    }
+
+    return this.register({ item, name, kind });
+  }
+
+  /** 用同一张底图对照透明与半透明画板，标题和线框始终可见。 */
+  private createFrameExamples (): void {
+    for (const [y, alpha, label] of [[1.55, 0, '透明填充'], [-1.55, 0.5, '半透明填充']] as const) {
+      const background = DefaultVFXItems.createSprite(this.composition, null, `${label} · 底图`);
+      const sprite = background.getComponent(SpriteComponent);
+
+      background.setPosition(6.65, y, 0);
+      background.transform.setSize(3.6, 2.45);
+      sprite.setTexture(this.createCardTexture('下层颜色', '#3478e5'));
+      sprite.priority = -101;
+      this.register({ item: background, name: background.name, kind: 'Sprite' });
+      const data = this.createFrame([6.65, y], [3.2, 2.1]);
+      const component = data.item.getComponent(FrameComponent);
+
+      data.name += ` · ${label}`;
+      data.item.name = data.name;
+      component.fills = [{ type: spec.FillType.Solid, color: new math.Color(1, 1, 1, alpha) }];
+      component.strokeWidth = 2;
+      if (alpha > 0) {
+        data.item.setRotation(0, 0, -8);
+      }
+    }
+  }
+
+  private reportResourceError (data: DemoItem, error: unknown): void {
+    if (!this.disposed && this.items.includes(data)) {
+      data.status = 'error';
+      this.emit('change');
+      this.emit('resourceerror', `${data.name} 加载失败：${String(error)}`, error);
     }
   }
 

@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { EventEmitterListener } from './events';
 import { EventEmitter } from './events';
@@ -9,7 +10,7 @@ export type AssetEvent = {
 };
 
 export class Asset extends EffectsObject {
-  private readonly eventEmitter = new EventEmitter<AssetEvent>();
+  protected readonly eventEmitter = new EventEmitter<AssetEvent>();
 
   /** Updates the asset data and runtime fields, then emits changed. */
   setData<T extends spec.EffectsObjectData> (data: T): void {
@@ -32,6 +33,11 @@ export class Asset extends EffectsObject {
   }
 }
 
+@effectsClass('DataAsset')
 export class DataAsset<T> extends Asset {
   data: T;
+
+  override fromData (data: spec.EffectsObjectData & { data: T }): void {
+    this.data = data.data;
+  }
 }

@@ -10,7 +10,7 @@ import './gpu-buffer.spec';
 import './gpu-program.spec';
 import './gpu-renderbuffer.spec';
 import './gpu-framebuffer.spec';
-import './gpu-vertex-layout.spec';
+import './vertex-buffer.spec';
 import './gl-material.spec';
 import './gl-mesh.spec';
 import './gl-program.spec';

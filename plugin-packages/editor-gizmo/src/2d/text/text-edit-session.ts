@@ -177,9 +177,8 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
   private readonly handleInput = (event: Event): void => {
     const editingItem = this._editingItem;
     const textComponent = editingItem?.getComponent(TextComponent);
-    const composition = this.owner.getEngine()?.sceneServer.compositions[0];
 
-    if (!editingItem || !textComponent || !composition) {
+    if (!editingItem || !textComponent) {
       return;
     }
 
@@ -191,7 +190,6 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
     const textHeight = Math.ceil(textComponent.textLayout.lineHeight * lineCount);
 
     textComponent.setTextHeight(textHeight);
-    composition.gotoAndStop(composition.time);
 
     this.emit('textInput', {
       itemId: editingItem.getInstanceId(),
@@ -205,7 +203,7 @@ export class TextEditSession extends EventEmitter<TextEditSessionEvents> {
    * @param event DOM 键盘事件。
    */
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.code.toLocaleLowerCase() === 'escape') {
+    if (event.code === 'Escape' && !event.isComposing) {
       event.preventDefault();
 
       return;

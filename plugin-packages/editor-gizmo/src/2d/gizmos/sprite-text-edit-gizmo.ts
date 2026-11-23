@@ -14,7 +14,7 @@ import { Vector2, getNormalizeBoxByBoxes, getTransformedBoxCorners, setBoxFromPo
 import type { SpriteTextEditConfig } from '../configs/types';
 import { spriteTextEditConfig } from '../configs/builtin-configs';
 import { getPlayerItemById, getItemViewBox, getItemViewTransform } from '../items';
-import { toColor, drawCorners, drawWithBoxTransform, fillBoxByCorners, wrapText, measureTextWidth } from '../drawing';
+import { toColor, drawCorners, drawWithBoxTransform, fillBoxByCorners, wrapText } from '../drawing';
 
 /**
  * 图层文字信息
@@ -270,21 +270,13 @@ export class SpriteTextEditGizmo extends Gizmo {
     const scale = GizmoViewportUtils.getViewScale(this._owner.getEngine());
     const {
       editBoxColor,
-      editBoxAlpha,
       editBoxPreSelectedColor,
-      editBoxPreSelectedAlpha,
       hasChangedEditBoxColor,
-      hasChangedEditBoxAlpha,
       hasChangedEditBoxPreSelectedColor,
-      hasChangedEditBoxPreSelectedAlpha,
       editBoxLineColor,
-      editBoxLineAlpha,
-      editBoxLinePreSelectedAlpha,
       editBoxLinePreSelectedColor,
       hasChangedEditBoxLineColor,
-      hasChangedEditBoxLineAlpha,
       hasChangedEditBoxLinePreSelectedColor,
-      hasChangedEditBoxLinePreSelectedAlpha,
       textColor,
     } = this.config;
 
@@ -312,14 +304,12 @@ export class SpriteTextEditGizmo extends Gizmo {
     /**
      * 绘制单个文本框。
      * @param viewCorners 文本框视口四角。
-     * @param fill 填充色。
-     * @param fillAlpha 填充透明度。
-     * @param line 线框色。
-     * @param lineAlpha 线框透明度。
+     * @param fill 填充色（RGBA 十六进制）。
+     * @param line 线框色（RGBA 十六进制）。
      */
-    const drawEntryBox = (viewCorners: Vector2[], fill: number, fillAlpha: number, line: number, lineAlpha: number) => {
-      fillBoxByCorners(control, viewCorners, toColor(fill, fillAlpha));
-      drawCorners(control, viewCorners, toColor(line, lineAlpha), 1);
+    const drawEntryBox = (viewCorners: Vector2[], fill: number, line: number) => {
+      fillBoxByCorners(control, viewCorners, toColor(fill));
+      drawCorners(control, viewCorners, toColor(line), 1);
     };
 
     // 步骤 3：按未修改、已修改的顺序绘制文本框。
@@ -331,24 +321,20 @@ export class SpriteTextEditGizmo extends Gizmo {
             drawEntryBox(
               viewCorners,
               isPreSelected ? hasChangedEditBoxPreSelectedColor : hasChangedEditBoxColor,
-              isPreSelected ? hasChangedEditBoxPreSelectedAlpha : hasChangedEditBoxAlpha,
               isPreSelected ? hasChangedEditBoxLinePreSelectedColor : hasChangedEditBoxLineColor,
-              isPreSelected ? hasChangedEditBoxLinePreSelectedAlpha : hasChangedEditBoxLineAlpha,
             );
           } else {
             drawEntryBox(
               viewCorners,
               isPreSelected ? editBoxPreSelectedColor : editBoxColor,
-              isPreSelected ? editBoxPreSelectedAlpha : editBoxAlpha,
               isPreSelected ? editBoxLinePreSelectedColor : editBoxLineColor,
-              isPreSelected ? editBoxLinePreSelectedAlpha : editBoxLineAlpha,
             );
           }
         });
     }
 
     // 步骤 4：在最上层绘制编辑态文本。
-    const textFill = toColor(textColor, 1);
+    const textFill = toColor(textColor);
     const fontSize = EDIT_TEXT_FONT_SIZE * scale;
     const lineHeight = EDIT_TEXT_LINE_HEIGHT * scale;
 
@@ -360,7 +346,8 @@ export class SpriteTextEditGizmo extends Gizmo {
       const width = leftTop.distance(rightTop);
       const height = leftTop.distance(leftBottom);
       const maxLines = Math.max(1, Math.floor(height / lineHeight));
-      const lines = wrapText(value.text, width / scale, maxLines, EDIT_TEXT_FONT_SIZE, EDIT_TEXT_FONT_FAMILY);
+      const measure = (text: string) => control.measureText(text, fontSize, EDIT_TEXT_FONT_FAMILY);
+      const lines = wrapText(value.text, width, maxLines, measure);
 
       if (lines.length === 0) {
         return;
@@ -373,9 +360,10 @@ export class SpriteTextEditGizmo extends Gizmo {
         const topY = (height - blockHeight) / 2;
 
         lines.forEach((line, li) => {
-          const lineWidth = measureTextWidth(line, fontSize, EDIT_TEXT_FONT_FAMILY);
+          const measurement = measure(line);
+          const y = topY + li * lineHeight + (lineHeight - measurement.lineHeight) / 2;
 
-          control.drawText((width - lineWidth) / 2, topY + li * lineHeight, line, fontSize, textFill, EDIT_TEXT_FONT_FAMILY);
+          control.drawText((width - measurement.width) / 2, y, line, fontSize, textFill, EDIT_TEXT_FONT_FAMILY);
         });
       });
     });

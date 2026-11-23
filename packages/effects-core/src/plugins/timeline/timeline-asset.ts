@@ -1,13 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
-import type { VFXItem } from '../../vfx-item';
-import type { RuntimeClip, TrackAsset } from './track';
-import { ObjectBindingTrack } from './tracks';
-import { PlayState } from './playable';
+import type { TrackAsset } from './track';
 import type { Constructor } from '../../utils';
-import { TrackInstance } from './track-instance';
-import type { SceneBinding } from '../../components';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends Asset {
@@ -15,11 +10,18 @@ export class TimelineAsset extends Asset {
 
   private cacheFlattenedTracks: TrackAsset[] | null = null;
 
+  /** Invalidates asset caches and notifies timeline instances after an edit. */
+  markAsChanged (): void {
+    this.cacheFlattenedTracks = null;
+    this.eventEmitter.emit('changed', this);
+  }
+
   override fromData (data: spec.TimelineAssetData): void {
     super.fromData(data);
     if (data.tracks !== undefined) {
       this.tracks = data.tracks.map(track => this.findObject<TrackAsset>(track));
-      this.invalidate();
+      // setData emits changed after deserialization.
+      this.cacheFlattenedTracks = null;
     }
   }
 
@@ -42,16 +44,9 @@ export class TimelineAsset extends Asset {
     newTrack.name = name ? name : classConstructor.name;
     parent.addChild(newTrack);
 
-    this.invalidate();
+    this.markAsChanged();
 
     return newTrack;
-  }
-
-  /**
-   * Invalidates the asset, called when tracks data changed
-   */
-  private invalidate () {
-    this.cacheFlattenedTracks = null;
   }
 
   private addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
@@ -60,119 +55,6 @@ export class TimelineAsset extends Asset {
     }
     for (const subTrack of track.getChildTracks()) {
       this.addSubTracksRecursive(subTrack, allTracks);
-    }
-  }
-}
-
-export class TimelineInstance {
-  /**
-   * @internal
-   */
-  masterTrackInstances: TrackInstance[] = [];
-
-  private clips: RuntimeClip[] = [];
-
-  constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
-    const sceneBindingMap: Record<string, VFXItem> = {};
-
-    for (const sceneBinding of sceneBindings) {
-      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
-    }
-
-    // TODO: Hack 临时生成轨道, 待移除
-    for (const track of timelineAsset.tracks) {
-      if (track instanceof ObjectBindingTrack) {
-        track.create(timelineAsset, sceneBindingMap);
-      }
-    }
-
-    this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
-  }
-
-  evaluate (time: number, deltaTime: number) {
-    // TODO search active clips
-
-    for (const clip of this.clips) {
-      clip.evaluateAt(time);
-    }
-
-    for (const track of this.masterTrackInstances) {
-      this.tickTrack(track, deltaTime);
-    }
-  }
-
-  compileTracks (tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
-
-    const outputTrack: TrackAsset[] = tracks;
-
-    // Map for searching track instance with track asset guid
-    const trackInstanceMap: Record<string, TrackInstance> = {};
-
-    for (const track of outputTrack) {
-      // Create track mixer and track output
-      const trackMixPlayable = track.createPlayableGraph(this.clips);
-
-      const trackOutput = track.createOutput();
-
-      // Create track instance
-      const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
-
-      trackInstanceMap[track.getInstanceId()] = trackInstance;
-
-      if (!track.parent) {
-        this.masterTrackInstances.push(trackInstance);
-      }
-    }
-
-    // Build trackInstance tree
-    for (const track of outputTrack) {
-      const trackInstance = trackInstanceMap[track.getInstanceId()];
-
-      for (const child of track.getChildTracks()) {
-        const childTrackInstance = trackInstanceMap[child.getInstanceId()];
-
-        trackInstance.addChild(childTrackInstance);
-      }
-    }
-
-    for (const sceneBinding of sceneBindings) {
-      trackInstanceMap[sceneBinding.key.getInstanceId()].boundObject = sceneBinding.value;
-    }
-
-    for (const trackInstance of this.masterTrackInstances) {
-      this.updateTrackAnimatedObject(trackInstance);
-    }
-  }
-
-  private tickTrack (track: TrackInstance, deltaTime: number) {
-
-    const context = track.output.context;
-
-    context.deltaTime = deltaTime;
-
-    track.output.setUserData(track.boundObject);
-
-    for (const clip of track.mixer.clipPlayables) {
-      if (clip.getPlayState() === PlayState.Playing) {
-        clip.processFrame(context);
-      }
-    }
-
-    track.mixer.evaluate(context);
-
-    for (const child of track.children) {
-      this.tickTrack(child, deltaTime);
-    }
-  }
-
-  private updateTrackAnimatedObject (trackInstance: TrackInstance) {
-    for (const subTrack of trackInstance.children) {
-      if (!subTrack.boundObject) {
-        const boundObject = subTrack.trackAsset.updateAnimatedObject(trackInstance.boundObject);
-
-        subTrack.boundObject = boundObject;
-      }
-      this.updateTrackAnimatedObject(subTrack);
     }
   }
 }

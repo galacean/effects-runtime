@@ -48,7 +48,10 @@ export class MoveSelectionGizmo extends Gizmo {
 
     const viewportPoint = new Vector2(event.position.x, event.position.y);
 
-    if (!this._owner.getSelection().isPointInSelectedViewBox(viewportPoint)) {
+    const selection = this._owner.getSelection();
+
+    // 组件提供的包围盒外命中区域也可作为移动起点。
+    if (!selection.isPointInSelectedViewBox(viewportPoint) && selection.createHitSnapshot(viewportPoint).selectedScopeHitIds.length === 0) {
       return;
     }
 

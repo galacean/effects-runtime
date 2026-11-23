@@ -1,11 +1,16 @@
-import type { TextureSourceOptions, spec } from '@galacean/effects';
-import { Asset, Engine, Geometry, Renderer, RenderingDevice, Texture, TextureSourceType, glContext } from '@galacean/effects';
+import type { TextureSourceOptions } from '@galacean/effects';
+import {
+  Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Scene, Texture, TextureSourceType, effectsClassStore, glContext, spec,
+} from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
+import { ThreeDisplayObject } from '../../../../../packages/effects-threejs/src/three-display-object';
 import type { GPUBufferThree } from '../../../../../packages/effects-threejs/src/gpu-buffer-three';
 import { getThreeGeometry, disposeThreeGeometries } from '../../../../../packages/effects-threejs/src/three-geometry';
-
 import { GPUTextureThree } from '../../../../../packages/effects-threejs/src/gpu-texture-three';
 import { ThreeMaterial } from '../../../../../packages/effects-threejs/src/material/three-material';
+
+// This suite uses ThreeMaterial directly and shares the WebGL registry.
+effectsClassStore[spec.DataType.Material] = Material;
 
 const { expect } = chai;
 
@@ -59,6 +64,41 @@ describe('threejs/rendering-device', () => {
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
     expect(Array.from(pixel)).deep.equals([255, 0, 0, 255]);
     expect(gl.isContextLost()).equals(false);
+  });
+
+  it('tracks scene load managers and clears references with the display object', async () => {
+    // Reuse this suite's initialized host engine to exercise the loading facade.
+    const displayObject = Object.create(ThreeDisplayObject.prototype) as ThreeDisplayObject;
+
+    Object.assign(displayObject, {
+      engine, compositions: [], children: [], parent: null, baseCompositionIndex: 0, assetServer: engine.assetServer,
+    });
+    const createScene = () => {
+      const scene = new Scene({
+        compositionId: 'scene', items: [],
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+      } as unknown as spec.JSONScene, { autoplay: false });
+
+      scene.prepareDefinitions();
+
+      return scene;
+    };
+    const assets = displayObject.engine.assetServer;
+
+    try {
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(assets.assetManagers).to.have.length(1);
+      const first = assets.assetManagers[0];
+
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(assets.assetManagers).to.have.length(2);
+      expect(assets.assetManagers[0]).to.equal(first);
+      expect(assets.assetManagers[1]).not.to.equal(first);
+    } finally {
+      displayObject.dispose();
+    }
+    expect(assets.assetManagers).to.have.length(0);
+    expect(gl.isContextLost()).to.equal(false);
   });
 
   it('composes a texture asset with a device-created Three texture resource', () => {
@@ -194,6 +234,7 @@ describe('threejs/rendering-device', () => {
 
   it('initializes a deserialized texture through the material entry point', () => {
     const texture = new Texture(engine);
+    const instanceId = texture.getInstanceId();
     const canvas = document.createElement('canvas');
 
     canvas.width = 3;
@@ -205,7 +246,7 @@ describe('threejs/rendering-device', () => {
     const native = (texture.getGPUTexture() as GPUTextureThree).texture!;
 
     expect(material.material.uniforms._MainTex.value).equals(native);
-    expect(texture.getInstanceId()).equals('three-texture-asset');
+    expect(texture.getInstanceId()).equals(instanceId);
     expect(native.image).equals(canvas);
     expect(texture.width).equals(3);
     expect(texture.height).equals(2);
@@ -300,7 +341,7 @@ describe('threejs/rendering-device', () => {
     });
     const device = engine.displayServer.renderingDevice;
     const native = getThreeGeometry(geometry);
-    const gpu = geometry.getAttributeBuffer('aPosition')!;
+    const gpu = geometry.getVertexBuffer('aPosition')!.buffer;
     const index = geometry.getIndexBuffer()!;
     const baseline = device['resources'].length;
     let disposals = 0;
@@ -317,7 +358,7 @@ describe('threejs/rendering-device', () => {
     expect(rebuilt).not.equals(native);
     expect(rebuilt.getAttribute('aPosition').count).equals(3);
     expect(rebuilt.index!.array).deep.equals(new Uint32Array([0, 1, 2]));
-    expect(geometry.getAttributeBuffer('aPosition')!).equals(gpu);
+    expect(geometry.getVertexBuffer('aPosition')!.buffer).equals(gpu);
     expect(geometry.getIndexBuffer()).equals(index);
     expect(device['resources'].length).equals(baseline);
     geometry.dispose();
@@ -333,12 +374,10 @@ describe('threejs/rendering-device', () => {
     buffer.initialize(description);
     const geometries = [new Geometry(engine), new Geometry(engine)];
 
-    const layout = engine.displayServer.renderingDevice.getVertexLayout([
-      { name: 'aPosition', slot: 0, type: glContext.FLOAT, size: 2, byteOffset: 0, normalized: false, divisor: 0 },
-    ], [8]);
+    const view = { kind: 'aPosition', buffer, type: glContext.FLOAT, size: 2, byteStride: 8, byteOffset: 0, normalized: false, divisor: 0 };
 
     for (const geometry of geometries) {
-      geometry.setVertexBuffers([buffer], layout);
+      geometry.setVerticesBuffer(view);
     }
     const originals = geometries.map(getThreeGeometry);
     const gpu = buffer;
@@ -349,7 +388,7 @@ describe('threejs/rendering-device', () => {
     }
     expect(gpu.getListeners('releasing').length).equals(0);
     buffer.initialize(description);
-    expect(geometries[0].getAttributeBuffer('aPosition')).equals(gpu);
+    expect(geometries[0].getVertexBuffer('aPosition')?.buffer).equals(gpu);
     expect(disposals).equals(0);
     for (let i = 0; i < geometries.length; i++) {
       const rebuilt = getThreeGeometry(geometries[i]);
@@ -373,7 +412,7 @@ describe('threejs/rendering-device', () => {
     expect(disposals).equals(2);
   });
 
-  it('rebuilds Three geometry when buffer slots or the separate layout change', () => {
+  it('rebuilds Three geometry when attribute buffers or formats change', () => {
     const geometry = new Geometry(engine, {
       attributes: {
         aPosition: { data: new Float32Array([1, 2, 3, 4]), size: 2, stride: 16 },
@@ -382,11 +421,11 @@ describe('threejs/rendering-device', () => {
     });
     const initial = getThreeGeometry(geometry);
     const buffers = geometry.getVertexBuffers();
-    const layout = geometry.getVertexLayout()!;
     let disposals = 0;
 
     initial.addEventListener('dispose', () => disposals++);
-    geometry.setVertexBuffers([buffers[1], buffers[0]], layout);
+    geometry.setVerticesBuffer({ ...buffers.aPosition, buffer: buffers.aUV.buffer }, false);
+    geometry.setVerticesBuffer({ ...buffers.aUV, buffer: buffers.aPosition.buffer });
     const swapped = getThreeGeometry(geometry);
 
     expect(swapped).not.equals(initial);
@@ -397,12 +436,9 @@ describe('threejs/rendering-device', () => {
     expect('getX' in swappedPosition && swappedPosition.getX(0)).equals(5);
     expect('getX' in swappedUV && swappedUV.getX(0)).equals(1);
     swapped.addEventListener('dispose', () => disposals++);
-    const changedLayout = engine.displayServer.renderingDevice.getVertexLayout(
-      layout.elements.map(element => element.name === 'aPosition' ? { ...element, byteOffset: 8 } : element),
-      [16, 8],
-    );
+    const swappedBuffers = geometry.getVertexBuffers();
 
-    geometry.setVertexBuffers(geometry.getVertexBuffers(), changedLayout);
+    geometry.setVerticesBuffer({ ...swappedBuffers.aPosition, byteOffset: 8 });
     const changed = getThreeGeometry(geometry);
 
     expect(changed).not.equals(swapped);
@@ -468,7 +504,7 @@ describe('threejs/rendering-device', () => {
     const geometry = new Geometry(engine);
     const positions = new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0]);
 
-    geometry.setAttribute('aPos', { data: positions, size: 3 });
+    geometry.setVerticesData('aPos', positions, { size: 3 });
     const attribute = getThreeGeometry(geometry).getAttribute('aPos');
 
     if (!('getX' in attribute)) {

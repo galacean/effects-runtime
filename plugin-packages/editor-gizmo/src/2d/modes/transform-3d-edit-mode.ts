@@ -283,11 +283,11 @@ export class Transform3DGizmo extends Gizmo {
       for (let j = 1; j < points.length; j++) {
         const a = points[j - 1], b = points[j];
 
-        if (a && b) { control.drawLine(a.x, a.y, b.x, b.y, toColor(colors[i], 1), 2); }
+        if (a && b) { control.drawLine(a.x, a.y, b.x, b.y, toColor((colors[i] << 8) | 0xff), 2); }
       }
       const end = points[points.length - 1];
 
-      if (this.operation !== 'rotate' && end) { control.fillCircle(end.x, end.y, this.operation === 'scale' ? 6 : 4, toColor(colors[i], 1)); }
+      if (this.operation !== 'rotate' && end) { control.fillCircle(end.x, end.y, this.operation === 'scale' ? 6 : 4, toColor((colors[i] << 8) | 0xff)); }
     }
     if (this.operation === 'translate') {
       for (const plane of ['xy', 'xz', 'yz']) {
@@ -296,14 +296,14 @@ export class Transform3DGizmo extends Gizmo {
         for (let i = 1; i < points.length; i++) {
           const p = points[i - 1], q = points[i];
 
-          if (p && q) { control.drawLine(p.x, p.y, q.x, q.y, toColor(colors[a], 0.8), 1); }
+          if (p && q) { control.drawLine(p.x, p.y, q.x, q.y, toColor((colors[a] << 8) | 0xcc), 1); }
         }
       }
     }
     const p = this.host.project(frame.pivot);
 
-    if (p && this.operation === 'translate') { control.drawRect(p.x - 6, p.y - 6, 12, 12, toColor(0xffffff, 1), 2); }
-    if (p && this.operation === 'scale') { control.drawRect(p.x - 6, p.y - 6, 12, 12, toColor(0xffffff, 1), 2); }
+    if (p && this.operation === 'translate') { control.drawRect(p.x - 6, p.y - 6, 12, 12, toColor(0xffffffff), 2); }
+    if (p && this.operation === 'scale') { control.drawRect(p.x - 6, p.y - 6, 12, 12, toColor(0xffffffff), 2); }
   }
 }
 function around (pivot: Point3, matrix: Matrix4): Matrix4 {

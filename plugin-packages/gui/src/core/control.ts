@@ -1231,8 +1231,9 @@ export class Control {
   measureText (
     text: string, fontSize: number,
     fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
+    trimEnd = true,
   ): TextMeasurement {
-    return this.engine.renderingServer.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
+    return this.engine.renderingServer.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle, trimEnd);
   }
 
   onMouseEnter (location: Vector2): void {}

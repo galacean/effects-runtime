@@ -271,32 +271,30 @@ export class ScrollContainer extends Container {
     const horizontalEnabled = this.horizontalScrollMode !== ScrollMode.Disabled;
     const verticalEnabled = this.verticalScrollMode !== ScrollMode.Disabled;
     const swapAxes = this.scrollHorizontalByDefault !== event.shiftPressed;
-    const verticalHidden = !this.verticalBar.visible && this.verticalScrollMode !== ScrollMode.ShowNever;
-    const horizontalHidden = !this.horizontalBar.visible && this.horizontalScrollMode !== ScrollMode.ShowNever;
     const horizontalAmount = this.horizontalBar.page / ScrollBar.pageDivisor * event.factor;
     const verticalAmount = this.verticalBar.page / ScrollBar.pageDivisor * event.factor;
 
     if (event.buttonIndex === MouseButton.WheelUp) {
-      if ((horizontalEnabled && swapAxes) || verticalHidden) {
-        this.horizontalBar.scroll(-horizontalAmount);
+      if (swapAxes) {
+        if (horizontalEnabled) { this.horizontalBar.scroll(-horizontalAmount); }
       } else if (verticalEnabled) {
         this.verticalBar.scroll(-verticalAmount);
       }
     } else if (event.buttonIndex === MouseButton.WheelDown) {
-      if ((horizontalEnabled && swapAxes) || verticalHidden) {
-        this.horizontalBar.scroll(horizontalAmount);
+      if (swapAxes) {
+        if (horizontalEnabled) { this.horizontalBar.scroll(horizontalAmount); }
       } else if (verticalEnabled) {
         this.verticalBar.scroll(verticalAmount);
       }
     } else if (event.buttonIndex === MouseButton.WheelLeft) {
-      if ((verticalEnabled && swapAxes) || horizontalHidden) {
-        this.verticalBar.scroll(-verticalAmount);
+      if (swapAxes) {
+        if (verticalEnabled) { this.verticalBar.scroll(-verticalAmount); }
       } else if (horizontalEnabled) {
         this.horizontalBar.scroll(-horizontalAmount);
       }
     } else if (event.buttonIndex === MouseButton.WheelRight) {
-      if ((verticalEnabled && swapAxes) || horizontalHidden) {
-        this.verticalBar.scroll(verticalAmount);
+      if (swapAxes) {
+        if (verticalEnabled) { this.verticalBar.scroll(verticalAmount); }
       } else if (horizontalEnabled) {
         this.horizontalBar.scroll(horizontalAmount);
       }
@@ -402,16 +400,13 @@ export class ScrollContainer extends Container {
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.viewportWidth, this.viewportHeight);
     }
-    try {
-      for (const child of this.children) {
-        if (child !== this.horizontalBar && child !== this.verticalBar) {
-          child.drawInternal();
-        }
+    for (const child of this.children) {
+      if (child !== this.horizontalBar && child !== this.verticalBar) {
+        child.drawInternal();
       }
-    } finally {
-      if (this.clipContents) {
-        graphics.popClipRect();
-      }
+    }
+    if (this.clipContents) {
+      graphics.popClipRect();
     }
     this.verticalBar.drawInternal();
     this.horizontalBar.drawInternal();

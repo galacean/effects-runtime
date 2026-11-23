@@ -2,8 +2,7 @@ import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { GraphicsPath } from './graphics-path';
-import { Polygon } from '../../math';
-import type { ShapePath } from './shape-path';
+import { PolyStar } from '../../math/shape/poly-star';
 
 export type ContourPathCommand =
   | { action: 'moveTo', data: [Vector2] }
@@ -36,24 +35,6 @@ function addClose (path: ContourPathCommand[]): void {
 
 const tempPoint = new Vector3();
 
-function transformPoints (points: number[], transform?: Matrix4): number[] {
-  if (!transform) {
-    return points.slice();
-  }
-
-  const transformed = new Array<number>(points.length);
-
-  for (let index = 0; index < points.length; index += 2) {
-    tempPoint.set(points[index], points[index + 1], 0);
-    const out = transform.transformPoint(tempPoint, tempPoint);
-
-    transformed[index] = out.x;
-    transformed[index + 1] = out.y;
-  }
-
-  return transformed;
-}
-
 function appendPolyline (path: ContourPathCommand[], points: number[], closePath: boolean): void {
   if (points.length < 2) {
     return;
@@ -70,60 +51,110 @@ function appendPolyline (path: ContourPathCommand[], points: number[], closePath
   }
 }
 
-export function tryMakeContourPathFromGraphicsPath (source: GraphicsPath): ContourPathCommand[] | null {
-  const contourPath: ContourPathCommand[] = [];
+/** Preserve cubic segments for stroke expansion, including the built-in shape primitives. */
+export function makeStrokeContourPath (source: GraphicsPath): ContourPathCommand[] {
+  const path: ContourPathCommand[] = [];
+  const k = 0.5522847498307933;
 
   for (const instruction of source.instructions) {
     const data = instruction.data;
+    const begin = path.length;
+    let transform: Matrix4 | undefined;
 
     switch (instruction.action) {
       case 'moveTo':
-        addMove(contourPath, new Vector2(data[0], data[1]));
+        addMove(path, new Vector2(data[0], data[1]));
 
         break;
       case 'lineTo':
-        addLine(contourPath, new Vector2(data[0], data[1]));
+        addLine(path, new Vector2(data[0], data[1]));
 
         break;
       case 'bezierCurveTo':
-        addCubic(
-          contourPath,
-          new Vector2(data[0], data[1]),
-          new Vector2(data[2], data[3]),
-          new Vector2(data[4], data[5]),
-          data[6] as number | undefined,
-          data[7] as number | undefined,
-        );
+        addCubic(path, new Vector2(data[0], data[1]), new Vector2(data[2], data[3]), new Vector2(data[4], data[5]), data[6], data[7]);
 
         break;
       case 'closePath':
-        addClose(contourPath);
+        addClose(path);
 
         break;
-      default:
-        return null;
+      case 'circle':
+      case 'ellipse': {
+        const [x, y, rx] = data as number[];
+        const ry = instruction.action === 'circle' ? rx : data[3] as number;
+
+        transform = data[instruction.action === 'circle' ? 3 : 4] as Matrix4 | undefined;
+        if (!(rx >= 0 && ry >= 0) || rx + ry === 0) {
+          continue;
+        }
+        addMove(path, new Vector2(x + rx, y));
+        addCubic(path, new Vector2(x + rx, y + k * ry), new Vector2(x + k * rx, y + ry), new Vector2(x, y + ry));
+        addCubic(path, new Vector2(x - k * rx, y + ry), new Vector2(x - rx, y + k * ry), new Vector2(x - rx, y));
+        addCubic(path, new Vector2(x - rx, y - k * ry), new Vector2(x - k * rx, y - ry), new Vector2(x, y - ry));
+        addCubic(path, new Vector2(x + k * rx, y - ry), new Vector2(x + rx, y - k * ry), new Vector2(x + rx, y));
+        addClose(path);
+
+        break;
+      }
+      case 'rect': {
+        const [x, y, width, height, roundness] = data as number[];
+        const r = Math.max(0, Math.min(roundness / 100, 1) * Math.min(width, height) * 0.5);
+
+        transform = data[5] as Matrix4 | undefined;
+        if (!(width >= 0 && height >= 0)) {
+          continue;
+        }
+        if (r === 0) {
+          appendPolyline(path, [x, y, x + width, y, x + width, y + height, x, y + height], true);
+        } else {
+          addMove(path, new Vector2(x + r, y));
+          addLine(path, new Vector2(x + width - r, y));
+          addCubic(path, new Vector2(x + width - r + k * r, y), new Vector2(x + width, y + r - k * r), new Vector2(x + width, y + r));
+          addLine(path, new Vector2(x + width, y + height - r));
+          addCubic(path, new Vector2(x + width, y + height - r + k * r), new Vector2(x + width - r + k * r, y + height), new Vector2(x + width - r, y + height));
+          addLine(path, new Vector2(x + r, y + height));
+          addCubic(path, new Vector2(x + r - k * r, y + height), new Vector2(x, y + height - r + k * r), new Vector2(x, y + height - r));
+          addLine(path, new Vector2(x, y + r));
+          addCubic(path, new Vector2(x, y + r - k * r), new Vector2(x + r - k * r, y), new Vector2(x + r, y));
+          addClose(path);
+        }
+
+        break;
+      }
+      case 'triangle':
+        appendPolyline(path, data.slice(0, 6) as number[], true);
+        transform = data[6] as Matrix4 | undefined;
+
+        break;
+      case 'polyStar': {
+        const shape = new PolyStar(data[0], data[1], data[2], data[3], data[4], data[5]);
+        const { vertices, inTangents, outTangents } = shape.getBezierPath();
+
+        transform = data[6] as Matrix4 | undefined;
+        if (vertices.length < 4) {
+          continue;
+        }
+        addMove(path, new Vector2(vertices[0], vertices[1]));
+        for (let i = 0; i < vertices.length; i += 2) {
+          const next = (i + 2) % vertices.length;
+
+          addCubic(path, new Vector2(outTangents[i], outTangents[i + 1]), new Vector2(inTangents[next], inTangents[next + 1]), new Vector2(vertices[next], vertices[next + 1]));
+        }
+        addClose(path);
+
+        break;
+      }
+    }
+    if (transform) {
+      for (let i = begin; i < path.length; i++) {
+        for (const point of path[i].data) {
+          tempPoint.set(point.x, point.y, 0);
+          transform.transformPoint(tempPoint, tempPoint);
+          point.set(tempPoint.x, tempPoint.y);
+        }
+      }
     }
   }
 
-  return contourPath;
-}
-
-export function makeContourPathFromShapePath (shapePath: ShapePath, screenScale: number): ContourPathCommand[] {
-  const contourPath: ContourPathCommand[] = [];
-
-  for (const { shape, transform } of shapePath.shapePrimitives) {
-    const points = shape instanceof Polygon
-      ? shape.points.slice()
-      : (() => {
-        const builtPoints: number[] = [];
-
-        shape.build(builtPoints, screenScale);
-
-        return builtPoints;
-      })();
-
-    appendPolyline(contourPath, transformPoints(points, transform), shape instanceof Polygon ? shape.closePath : true);
-  }
-
-  return contourPath;
+  return path;
 }

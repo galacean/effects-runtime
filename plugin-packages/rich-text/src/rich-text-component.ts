@@ -388,8 +388,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
-    const fontScale = this.textStyle.fontScale;
-
     // autoWidth 模式下先去掉宽度约束，避免内容被提前换行
     if (layout.autoResize === spec.TextSizeMode.autoWidth) {
       layout.maxTextWidth = Number.MAX_SAFE_INTEGER;
@@ -459,11 +457,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       verticalAlignResult,
     );
 
-    // 排版结果（逻辑单位）→ 物理像素画布
-    const physicalW = Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale));
-    const physicalH = Math.max(1, Math.ceil(overflowResult.canvasHeight * fontScale));
-
-    // 渲染尺寸不随 fontScale 改变
+    // 组件显示尺寸使用逻辑单位。
     this.item.transform.size.set(
       overflowResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
       overflowResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
@@ -474,6 +468,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.maxTextHeight = frameH;
     layout.width = overflowResult.canvasWidth;
     layout.height = overflowResult.canvasHeight;
+
+    // 排版结束后再确定绘制分辨率，fontScale 不参与布局计算。
+    const maxCanvasSize = this.getMaxCanvasSize();
+    const maxLogical = Math.max(overflowResult.canvasWidth, overflowResult.canvasHeight, 1);
+    const fontScale = Math.min(this.textStyle.fontScale, maxCanvasSize / maxLogical);
+    const physicalW = Math.min(maxCanvasSize, Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale)));
+    const physicalH = Math.min(maxCanvasSize, Math.max(1, Math.ceil(overflowResult.canvasHeight * fontScale)));
 
     this.renderToTexture(physicalW, physicalH, flipY, context => {
       // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
