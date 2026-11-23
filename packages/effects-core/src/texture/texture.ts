@@ -348,7 +348,7 @@ export class Texture extends Asset {
   }
 
   protected assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
-    const { target = glContext.TEXTURE_2D, format: internalFormat = glContext.RGBA } = options;
+    const { target = glContext.TEXTURE_2D, format = glContext.RGBA } = options;
 
     if (!options.sourceType) {
       if ('image' in options) {
@@ -363,15 +363,15 @@ export class Texture extends Asset {
     }
 
     return {
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
       target: target as WebGLRenderingContext['TEXTURE_2D'],
-      format: glContext.RGBA,
-      internalFormat,
-      type: glContext.UNSIGNED_BYTE,
       ...options,
+      format,
+      internalFormat: options.internalFormat || format,
+      type: options.type ?? glContext.UNSIGNED_BYTE,
+      minFilter: options.minFilter ?? glContext.LINEAR,
+      magFilter: options.magFilter ?? glContext.LINEAR,
     };
   }
 }
@@ -400,6 +400,8 @@ export function generateHalfFloatTexture (engine: Engine, data: Uint16Array, wid
       type: glContext.HALF_FLOAT,
       format,
       internalFormat,
+      minFilter: glContext.NEAREST,
+      magFilter: glContext.NEAREST,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
     });

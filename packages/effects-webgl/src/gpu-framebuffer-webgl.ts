@@ -208,6 +208,8 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
           format: glContext.DEPTH_COMPONENT,
           internalFormat: gpuCapability.internalFormatDepth16,
           type: glContext.UNSIGNED_SHORT,
+          minFilter: glContext.NEAREST,
+          magFilter: glContext.NEAREST,
           name: `${this.name}##depthTex`,
         });
         this.depthTexture.initialize();
@@ -222,6 +224,8 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
           format: glContext.DEPTH_STENCIL,
           internalFormat: gpuCapability.internalFormatDepth24_stencil8,
           type: gpuCapability.UNSIGNED_INT_24_8,
+          minFilter: glContext.NEAREST,
+          magFilter: glContext.NEAREST,
           name: `${this.name}##dpthStclTex`,
         });
         this.depthTexture.initialize();
