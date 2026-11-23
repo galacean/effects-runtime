@@ -21,6 +21,7 @@ describe('core/composition/plugin', () => {
     const lifecycle: string[] = [];
     const creatingSpy = chai.spy();
     const constructSpy = chai.spy();
+    const pluginData = { xx: 1 };
 
     function ipp () {
       return i++;
@@ -28,7 +29,9 @@ describe('core/composition/plugin', () => {
 
     class TestPlugin extends Plugin {
       override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions) {
-        scene.storage.xx = 1;
+        lifecycle.push('assetsLoaded');
+        expect(scene.options).equals(options);
+        expect(options.pluginData).equals(pluginData);
         // @ts-expect-error
         expect(options.player).not.exist;
       }
@@ -39,6 +42,7 @@ describe('core/composition/plugin', () => {
         ) ?? scene?.jsonScene.compositions[0];
 
         lifecycle.push('creating');
+        expect(scene?.options.pluginData).equals(pluginData);
         expect(composition.root.parent).equals(undefined);
         expect(composition.pluginRoot.parent).equals(composition.root);
         expect(composition.sceneRoot.parent).equals(composition.root);
@@ -50,7 +54,7 @@ describe('core/composition/plugin', () => {
 
       override onCompositionCreated (composition: Composition, scene: Scene) {
         lifecycle.push('created');
-        expect(scene.storage.xx).to.eql(1);
+        expect(scene.options.pluginData).equals(pluginData);
         expect(composition.items.length).to.eql(1);
         expect(composition.sceneRoot.getComponent(CompositionComponent)).instanceOf(CompositionComponent);
         // @ts-expect-error
@@ -59,13 +63,13 @@ describe('core/composition/plugin', () => {
     }
 
     registerPlugin('test-plugin', TestPlugin);
-    await player.loadScene(generateScene());
+    await player.loadScene(generateScene(), { pluginData });
 
     player.gotoAndStop(0.1);
 
     expect(creatingSpy).to.have.been.called.once;
     expect(constructSpy).to.have.been.called.with(0);
-    expect(lifecycle).deep.equals(['creating', 'created']);
+    expect(lifecycle).deep.equals(['assetsLoaded', 'creating', 'created']);
 
     unregisterPlugin('test-plugin');
   });

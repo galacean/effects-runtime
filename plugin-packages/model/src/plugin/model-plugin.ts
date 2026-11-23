@@ -29,24 +29,7 @@ export class ModelPlugin extends Plugin {
    * @param options - 加载选项
    */
   override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions): void {
-    if (options.pluginData !== undefined) {
-      const keyList = [
-        'compatibleMode',
-        'renderSkybox',
-        'visBoundingBox',
-        'autoAdjustScene',
-        'enableDynamicSort',
-        'renderMode3D',
-        'renderMode3DUVGridSize',
-      ];
-      const pluginData = options.pluginData;
-
-      keyList.forEach(key => scene.storage[key] = pluginData[key]);
-    }
-    //
     const runtimeEnv = options.env ?? '';
-
-    scene.storage['runtimeEnv'] = runtimeEnv;
     const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
 
     //
@@ -91,7 +74,10 @@ export class ModelPlugin extends Plugin {
 
     const modelPluginComponent = item.addComponent(ModelPluginComponent);
 
-    modelPluginComponent.sceneParams = scene?.storage ?? {};
+    modelPluginComponent.sceneParams = scene ? {
+      ...scene.options.pluginData,
+      runtimeEnv: scene.options.env ?? '',
+    } : {};
     composition.addItem(item);
   }
 }

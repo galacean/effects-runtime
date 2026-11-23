@@ -15,7 +15,6 @@ export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | s
 /** Loaded scene resources and prepared definitions that can be instantiated repeatedly. */
 export class Scene implements Disposable {
   readonly jsonScene: spec.JSONScene;
-  readonly storage: Record<string, any>;
   /** @internal Prepared definitions shared by instances of this scene. */
   objectsDataCache = new Map<string, spec.EffectsObjectData>();
   /** Base configuration inherited when this prepared scene is loaded again. */
@@ -36,10 +35,9 @@ export class Scene implements Disposable {
   url: string = '';
   private disposed = false;
 
-  constructor (jsonScene: spec.JSONScene, options: SceneLoadOptions = {}, storage: Record<string, any> = {}) {
+  constructor (jsonScene: spec.JSONScene, options: SceneLoadOptions = {}) {
     this.jsonScene = jsonScene;
     this.options = options;
-    this.storage = storage;
   }
 
   /** @internal Create independent composition overrides while reusing the loaded resources. */
@@ -47,7 +45,7 @@ export class Scene implements Disposable {
     if (this.disposed) {
       throw new Error('Cannot load a disposed scene.');
     }
-    const scene = new Scene(this.jsonScene, { ...this.options, ...options }, { ...this.storage });
+    const scene = new Scene(this.jsonScene, { ...this.options, ...options });
 
     scene.objectsDataCache = new Map(this.objectsDataCache);
     scene.renderLevel = this.renderLevel;
@@ -306,7 +304,7 @@ export interface SceneLoadOptions {
   pluginData?: Record<string, any>,
 
   /**
-   * 场景加载时的环境（加载后把 env 结果写入 scene）
+   * 场景加载和插件初始化时使用的环境
    * @default '' - 编辑器中为 'editor'
    */
   env?: string,

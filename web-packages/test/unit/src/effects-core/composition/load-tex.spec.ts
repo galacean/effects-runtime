@@ -261,11 +261,10 @@ describe('core/composition/load-textures', () => {
         expect(scene.bins.length).to.eql(2);
         expect(scene.bins[0]).to.be.an.instanceof(ArrayBuffer);
         expect(scene.bins[1]).to.eql(data);
-        scene.storage.key = 1;
       }
 
       onCompositionCreated (composition, scene) {
-        expect(scene.storage.key).to.eql(1);
+        expect(scene.bins[1]).to.eql(data);
         spy();
       }
     });
