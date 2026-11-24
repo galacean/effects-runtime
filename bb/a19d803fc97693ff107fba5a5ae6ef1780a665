@@ -1,0 +1,19 @@
+packages/effects-core/package.json
+  s_f0b3a8dc344777::t_877fa94954a7ff 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bba19d803fc97693ff107fba5a5ae6ef1780a665",
+  "prompts": {},
+  "sessions": {
+    "s_f0b3a8dc344777": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20850-119c-7810-920c-fc09bd550f45",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
