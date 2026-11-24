@@ -2,12 +2,13 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
-import type { Engine, InputEventKey, InputEventMouseButton, spec } from '@galacean/effects';
+import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
 import { TextInput } from './text-input';
 import { getTextIndexAtPosition, getTextPosition } from '../core/text-layout';
 
-@effectsClass('TextEdit')
+@effectsClass(spec.DataType.TextEdit)
 export class TextEdit extends TextInput {
   static override readonly themeType: string = 'TextEdit';
   protected readonly multiline = true;

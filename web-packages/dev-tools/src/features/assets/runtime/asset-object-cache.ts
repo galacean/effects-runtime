@@ -1,5 +1,6 @@
 import type { EffectsObject, Engine, Texture } from '@galacean/effects';
 import { Material, SerializationHelper, Shader, Sprite, SpriteComponent, spec } from '@galacean/effects';
+import type { EditorAssetDatabase } from '../../../platform/effects-runtime/asset-database';
 import { deserializeAssets } from '../../../platform/effects-runtime/deserialize-assets';
 import type { AssetEntry, AssetPayload } from '../model/asset-types';
 import { isObjectAsset } from '../model/asset-types';
@@ -92,11 +93,13 @@ export class AssetObjectCache {
 
         return this.load(engine, id, ancestors);
       }
-      const { assetServer, effectsObjectServer } = engine;
+      const { effectsObjectServer } = engine;
+      const database: Partial<EditorAssetDatabase> | undefined = engine.assetServer.database;
       const previousObjects = this.loaded.get(engine)?.get(id)?.objects;
       const objects = new Map<string, EffectsObject>();
 
-      data.forEach(object => assetServer.addEffectsObjectData(object));
+      if (!database?.addEffectsObjectData) { throw new Error('An editor asset database must be registered before loading editor assets.'); }
+      for (const object of data) { database.addEffectsObjectData(object); }
       const order = [...data].sort((a, b) => Number(a.dataType === spec.DataType.Material) - Number(b.dataType === spec.DataType.Material));
 
       deserializeAssets(engine, idsMapping, () => {

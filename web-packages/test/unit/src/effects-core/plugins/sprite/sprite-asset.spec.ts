@@ -243,7 +243,9 @@ describe('core/plugins/sprite/sprite-asset', () => {
       rotation: SpriteRotation.Rotate90,
     };
 
-    engine.assetServer.addEffectsObjectData(data as spec.EffectsObjectData);
+    engine.assetServer.database = {
+      findEffectsObjectData: id => id === data.id ? data : undefined,
+    };
 
     const sprite = engine.effectsObjectServer.findObject<Sprite>({ id: spriteID });
 

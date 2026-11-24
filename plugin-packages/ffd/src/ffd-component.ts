@@ -3,7 +3,7 @@ import { spec, math, effectsClass, Component, SpriteComponent, Shader, generateG
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
 
-@effectsClass('FFDComponent')
+@effectsClass(spec.DataType.FFDComponent)
 export class FFDComponent extends Component {
   private data: spec.FFDComponentData;
 
@@ -100,8 +100,8 @@ export class FFDComponent extends Component {
     if (!this.data || !this.data.controlPoints) {
       return;
     }
-    this.boundMax = this.data.boundMax;
-    this.boundMin = this.data.boundMin;
+    this.boundMax = this.data.boundMax as math.Vector3;
+    this.boundMin = this.data.boundMin as math.Vector3;
     this.rowNum = this.data.rowNum;
     this.colNum = this.data.colNum;
 

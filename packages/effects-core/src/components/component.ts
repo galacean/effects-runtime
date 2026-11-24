@@ -3,10 +3,6 @@ import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
 import { VFXItem } from '../vfx-item';
 
-interface ComponentData extends spec.ComponentData {
-  enabled?: boolean,
-}
-
 /**
  * @since 2.0.0
  */
@@ -16,9 +12,13 @@ export abstract class Component extends EffectsObject {
    * 附加到的 VFXItem 对象
    */
   item: VFXItem;
+  /** @internal */
   isAwakeCalled = false;
+  /** @internal */
   isStartCalled = false;
+  /** @internal */
   isEnableCalled = false;
+  /** @internal */
   isDuringPlay = false;
 
   private _enabled = true;
@@ -227,7 +227,7 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  override fromData (data: ComponentData): void {
+  override fromData (data: spec.ComponentData): void {
     super.fromData(data);
     if (data.item !== undefined) {
       const item = this.findObject(data.item, VFXItem);

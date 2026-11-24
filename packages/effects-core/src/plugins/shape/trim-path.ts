@@ -1,20 +1,9 @@
+import type { TrimPathData } from '@galacean/effects-specification';
+import { TrimPathMode } from '@galacean/effects-specification';
 import type { ContourMeasure } from './contour-measure';
 import { ContourMeasureIter } from './contour-measure';
 import type { GraphicsPath } from './graphics-path';
 import type { TrimmedPathResult } from './trimmed-path-result';
-
-// TODO: Move to spec.
-export interface TrimPathData {
-  start: number,
-  end: number,
-  offset: number,
-  mode: TrimPathMode,
-}
-
-export enum TrimPathMode {
-  Synchronized,
-  Sequential
-}
 
 export class TrimPath {
   start = 0;

@@ -64,7 +64,7 @@ export class RuntimeAssetEditor extends EditorWindow {
 
       preview.view.primitive = assetLibrary.entry(asset.getInstanceId())?.previewMesh ?? 'sphere'; preview.resetCamera();
       preview.source = request => materialPreviews.runtime(asset, 512, request);
-      buildMaterialProperties(this.layout.inspector.section('material', 'Material'), asset);
+      buildMaterialProperties(this.layout.inspector.section('material', 'Material'), asset, false, this.document?.composition.sceneRoot.sourceScene);
       preview.buildInspector(this.layout.inspector.section('preview', 'Previewing'));
     } else if (asset instanceof Texture || asset instanceof Sprite) {
       const preview = append(this.layout.viewport, expand(new ImagePreviewViewport(engine)));

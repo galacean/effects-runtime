@@ -1,6 +1,6 @@
-import type { Scene, VFXItem } from '@galacean/effects';
+import type { Asset, VFXItem } from '@galacean/effects';
 import {
-  AssetManager, CompositionComponent, Fake3DComponent, Player, PrecompositionManager, Sprite, SpriteComponent, TextureSourceType, spec,
+  AssetManager, CompositionComponent, Fake3DComponent, Player, Scene, Sprite, SpriteComponent, TextureSourceType, spec,
 } from '@galacean/effects';
 
 const { expect } = chai;
@@ -72,11 +72,11 @@ describe('core/composition/runtime instance IDs', () => {
     expect(scene).to.deep.equal(createScene());
   });
 
-  it('returns a precomposition the caller can mount', async () => {
+  it('returns a scene the caller can instantiate and mount', async () => {
     const composition = await player.loadScene(createScene(), { autoplay: false });
     const scene = { ...createScene(), compositionId: 'template' } as unknown as spec.JSONScene;
-    const prefab = await AssetManager.loadPrecomposition(scene, { autoplay: false });
-    const root = PrecompositionManager.instantiate(prefab, composition);
+    const preparedScene = await AssetManager.loadScene(scene, { autoplay: false });
+    const root = preparedScene.instantiate(composition);
     const parent = composition.getItemByName('right')!;
     const { local } = bindings(root);
 
@@ -150,27 +150,32 @@ describe('core/composition/runtime instance IDs', () => {
     const jsonScene = createScene();
     const [inside, ...placements] = jsonScene.items;
     const components = ['sprite-component', 'second-sprite-component'];
-    const scene: Scene = {
-      jsonScene: {
-        ...jsonScene,
-        compositions: jsonScene.compositions.map(composition => composition.id === jsonScene.compositionId ?
-          { ...composition, children: [ref(inside.id), ...composition.children] } : composition),
-        items: [{ ...inside, components: components.map(ref) }, ...placements],
-        components: [...jsonScene.components, ...components.map(id => ({ id, dataType: spec.DataType.SpriteComponent,
-          item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }))],
-        miscs: [...jsonScene.miscs, { id: spriteId, dataType: 'Sprite', texture: ref(textureId) }],
-      } as unknown as spec.JSONScene,
-      bins: [], images: [], videos: [], audios: [], storage: {}, timeInfos: {}, url: '',
-      textureOptions: [{ id: textureId, dataType: spec.DataType.Texture, sourceType: TextureSourceType.data,
-        data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) } }],
-    };
-    const composition = await player.loadScene(scene, { autoplay: false });
+    const scene = new Scene({
+      ...jsonScene,
+      compositions: jsonScene.compositions.map(composition => composition.id === jsonScene.compositionId ?
+        { ...composition, children: [ref(inside.id), ...composition.children] } : composition),
+      items: [{ ...inside, components: components.map(ref) }, ...placements],
+      components: [...jsonScene.components, ...components.map(id => ({ id, dataType: spec.DataType.SpriteComponent,
+        item: ref('inside'), sprite: ref(spriteId), options: { startColor: [1, 1, 1, 1] } }))],
+      miscs: [...jsonScene.miscs, { id: spriteId, dataType: 'Sprite', texture: ref(textureId) }],
+    } as unknown as spec.JSONScene, { autoplay: false });
+
+    scene.textureOptions.push({ id: textureId, dataType: spec.DataType.Texture, sourceType: TextureSourceType.data,
+      data: { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) } });
+    scene.prepareDefinitions();
+    const composition = await player.loadScene(scene);
     const rootSprite = composition.sceneRoot.find('inside')!.getComponent(SpriteComponent).sprite;
     const spritesIn = (name: string) => bindings(composition.getItemByName(name)!).local.getComponents(SpriteComponent).map(component => component.sprite);
     const [left, leftAgain] = spritesIn('left');
     const [right] = spritesIn('right');
-    const standalone = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
-    const another = player.engine.effectsObjectServer.findObject(ref(spriteId), Sprite);
+    const { assetServer, effectsObjectServer } = player.engine;
+    const { sceneRoot } = composition;
+    const findStandaloneSprite = () => assetServer.withSceneData(sceneRoot.sourceScene?.objectsDataCache, () =>
+      effectsObjectServer.withDeserializationContext({
+        root: sceneRoot, idsMapping: new Map(), sceneAssets: new Set<Asset>(),
+      }, () => effectsObjectServer.findObject(ref(spriteId), Sprite)));
+    const standalone = findStandaloneSprite();
+    const another = findStandaloneSprite();
 
     expect(left).to.equal(leftAgain);
     expect(new Set([rootSprite, left, right, standalone, another]).size).to.equal(5);

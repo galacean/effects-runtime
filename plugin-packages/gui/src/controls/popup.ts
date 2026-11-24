@@ -1,4 +1,4 @@
-import { EventEmitter, effectsClass } from '@galacean/effects';
+import { EventEmitter, effectsClass, spec } from '@galacean/effects';
 import type {
   Engine,
   EventEmitterListener,
@@ -67,7 +67,7 @@ export abstract class Popup extends PanelContainer {
   }
 }
 
-@effectsClass('PopupPanel')
+@effectsClass(spec.DataType.PopupPanel)
 export class PopupPanel extends Popup {
   static override readonly themeType: string = 'PopupPanel';
 }

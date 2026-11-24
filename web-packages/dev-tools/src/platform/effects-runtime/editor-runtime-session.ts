@@ -1,15 +1,17 @@
-import type { Database, Engine } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { Player, RenderingDevice } from '@galacean/effects';
+import type { EditorAssetDatabase } from './asset-database';
 import { EditorRenderingDevice } from './editor-rendering-device';
+import { FileSystemAssetDatabase } from './file-system-asset-database';
 
 export class EditorRuntimeSession {
   static player: Player;
-  static assetDatabase?: Database;
+  static assetDatabase?: EditorAssetDatabase;
   static device: EditorRenderingDevice;
 
   private static lastTime = 0;
 
-  static initialize (container: HTMLElement | null, surface: HTMLCanvasElement, createDatabase?: (engine: Engine) => Database): void {
+  static initialize (container: HTMLElement | null, surface: HTMLCanvasElement, createDatabase?: (engine: Engine) => EditorAssetDatabase): void {
     if (!container) { throw new Error('The scene viewport container is missing.'); }
     const canvas = document.createElement('canvas');
 
@@ -22,8 +24,8 @@ export class EditorRuntimeSession {
     } finally { RenderingDevice.create = createDevice; }
     this.device = this.player.engine.displayServer.renderingDevice as EditorRenderingDevice;
     this.player.engine.inputServer.bindListeners(null);
-    this.assetDatabase = createDatabase?.(this.player.engine);
-    if (this.assetDatabase) { this.player.engine.assetServer.database = this.assetDatabase; }
+    this.assetDatabase = createDatabase?.(this.player.engine) ?? new FileSystemAssetDatabase(this.player.engine);
+    this.player.engine.assetServer.database = this.assetDatabase;
   }
 
   static render (time: number): void {

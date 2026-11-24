@@ -170,13 +170,14 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
     component.fromData({
       id: component.getInstanceId(),
-      dataType: 'FFDComponent',
+      dataType: spec.DataType.FFDComponent,
+      item: { id: item.getInstanceId() },
       rowNum: 2,
       colNum: 3,
       boundMin: new Vector3(-1, -0.5, 0),
       boundMax: new Vector3(1, 0.5, 0),
       controlPoints: points,
-    } as spec.FFDComponentData);
+    });
 
     return { item, component, points, gizmo: new CrystalLatticeGizmo(handler, item) };
   }
@@ -633,13 +634,14 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     gizmo.onMouseDown(down(localToView(item, points[0])));
     component.fromData({
       id: component.getInstanceId(),
-      dataType: 'FFDComponent',
+      dataType: spec.DataType.FFDComponent,
+      item: { id: item.getInstanceId() },
       rowNum: 2,
       colNum: 2,
       boundMin: new Vector3(-1, -1, 0),
       boundMax: new Vector3(1, 1, 0),
       controlPoints: points.slice(0, 4),
-    } as spec.FFDComponentData);
+    });
     gizmo.onUpdate();
     expect(component.getLattice().points).length(4);
     expect(gizmo.selected.size).equals(0);
@@ -664,13 +666,14 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         }
         target.fromData({
           id: target.getInstanceId(),
-          dataType: 'FFDComponent',
+          dataType: spec.DataType.FFDComponent,
+          item: { id: item.getInstanceId() },
           rowNum: 3,
           colNum: 3,
           boundMin: new Vector3(-1, -1, 0),
           boundMax: new Vector3(1, 1, 0),
           controlPoints: replacement,
-        } as spec.FFDComponentData);
+        });
       });
       gizmo.onMouseDown(down(start));
       expect(() => gizmo.onMouseDrag(drag(start.clone().add(new Vector2(30, 20))))).not.throws();

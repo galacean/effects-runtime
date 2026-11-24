@@ -1,6 +1,5 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
-import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -23,20 +22,11 @@ export type SpriteItemOptions = {
   renderLevel?: spec.RenderLevel,
 };
 
-/**
- * SpriteComponent 数据。扩展 spec.SpriteComponentData，新增可选 sprite 资产引用。
- * spec 包不可改，故本地扩展。
- */
-interface SpriteComponentDataEx extends spec.SpriteComponentData {
-  /** 引用的 Sprite 资产（新版数据流）；老数据经 version37Migration 迁移而来 */
-  sprite?: spec.DataPath,
-}
-
 let seed = 0;
 
 @effectsClass(spec.DataType.SpriteColorPlayableAsset)
 export class SpriteColorPlayableAsset extends TimelineClip {
-  data: ColorPlayableAssetData;
+  data: spec.SpriteColorPlayableAssetData;
 
   override createPlayable (): ClipPlayable {
     const spriteColorPlayable = new ColorPlayable();
@@ -46,7 +36,7 @@ export class SpriteColorPlayableAsset extends TimelineClip {
     return spriteColorPlayable;
   }
 
-  override fromData (data: ColorPlayableAssetData): void {
+  override fromData (data: spec.SpriteColorPlayableAssetData): void {
     super.fromData(data);
     this.data = data;
   }
@@ -116,7 +106,7 @@ export class SpriteComponent extends MaskableGraphic {
     this.updateGeometry(this.geometry);
   }
 
-  constructor (engine: Engine, props?: SpriteComponentDataEx) {
+  constructor (engine: Engine, props?: spec.SpriteComponentData) {
     super(engine);
 
     this.name = 'MSprite' + seed++;
@@ -250,7 +240,9 @@ export class SpriteComponent extends MaskableGraphic {
     }
   }
 
-  override fromData (data: SpriteComponentDataEx): void {
+  /** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
+  override fromData (data: spec.SpriteComponentData): void {
+    // @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。
     super.fromData(data);  // MaskableGraphic: 设 renderer.texture（whiteTexture 或 data.renderer.texture）、_MainTex、_Color
 
     // 单 split / 新数据流：引用 Sprite 资产，渲染读 this.sprite
@@ -281,7 +273,6 @@ export class SpriteComponent extends MaskableGraphic {
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
 
-    //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
   }
 

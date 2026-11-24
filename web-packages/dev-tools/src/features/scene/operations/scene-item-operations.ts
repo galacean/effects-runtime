@@ -27,6 +27,10 @@ export class SceneItemOperations {
 
     const created = this.run('Create ' + type.label, () => {
       const { composition, serializer, scene } = this.document;
+      const sourceScene = composition.sceneRoot.sourceScene;
+
+      if (!sourceScene) { throw new Error('The composition has no source scene.'); }
+      const objectsDataCache = sourceScene.objectsDataCache ??= new Map();
       const { item: definition, objects } = createSceneItemData(type, composition.getDuration());
       const parent = target?.parent ?? composition.sceneRoot;
       const names = new Set(parent.children.map(child => child.name));
@@ -34,7 +38,7 @@ export class SceneItemOperations {
 
       while (names.has(name)) { name = type.label + ' ' + index++; }
       definition.name = name;
-      for (const data of [definition, ...objects]) { composition.engine.assetServer.addEffectsObjectData(data); }
+      for (const data of [definition, ...objects]) { objectsDataCache.set(data.id, data); }
       const objectsById = instantiateItems([definition], composition.sceneRoot);
       const instance = objectsById.get(definition.id);
 
@@ -144,6 +148,9 @@ export class SceneItemOperations {
   }
 
   copy (items: VFXItem[]): SceneItemCopy {
+    const { composition, serializer } = this.document;
+    const { assetServer } = composition.engine;
+    const sceneData = composition.sceneRoot.sourceScene?.objectsDataCache;
     const selected = rootItems(items);
     const copiedItems = new Set(selected.flatMap(item => [item, ...item.getDescendants()]));
     const definitions = new Map<string, any>();
@@ -155,11 +162,12 @@ export class SceneItemOperations {
       const visit = (value: any): void => {
         if (!value || typeof value !== 'object') { return; }
         if (Object.keys(value).length === 1 && typeof value.id === 'string') {
-          const object = this.document.serializer.object(value.id);
+          const object = serializer.object(value.id);
 
           if ((object instanceof VFXItem && !copiedItems.has(object)) ||
             (object instanceof Component && !copiedItems.has(object.item))) { return; }
-          const source = object ? this.document.serializer.read(object).data : this.document.composition.engine.assetServer.findEffectsObjectData(value.id);
+          const source = object ? serializer.read(object).data :
+            assetServer.withSceneData(sceneData, () => assetServer.findEffectsObjectData(value.id));
 
           if (object) { extras.set(value.id, this.document.serializer.read(object).extras); }
           if (source) { collect(source); }
@@ -192,6 +200,10 @@ export class SceneItemOperations {
     if (!data.roots.length) { return clones; }
     this.run(label, () => {
       const { composition, serializer } = this.document;
+      const sourceScene = composition.sceneRoot.sourceScene;
+
+      if (!sourceScene) { throw new Error('The composition has no source scene.'); }
+      const objectsDataCache = sourceScene.objectsDataCache ??= new Map();
       // References outside the clipboard keep pointing to live objects in this scene.
       const ids = new Map(serializer.sceneObjects()
         .filter(object => object instanceof VFXItem || object instanceof Component)
@@ -205,7 +217,6 @@ export class SceneItemOperations {
 
         return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, typeof entry === 'string' && ['id', 'parentId', 'refId'].includes(key) ? ids.get(entry) ?? entry : rewrite(entry)]));
       };
-      const { assetServer } = composition.engine;
 
       for (const object of data.objects) {
         const copy = rewrite(object);
@@ -214,7 +225,7 @@ export class SceneItemOperations {
           delete copy.refId;
           if (roots.has(object.id)) { delete copy.parentId; }
         }
-        assetServer.addEffectsObjectData(copy);
+        objectsDataCache.set(copy.id, copy);
       }
       const objectsById = instantiateItems(data.roots.map(root => ({ id: ids.get(root.id)! })), composition.sceneRoot);
 

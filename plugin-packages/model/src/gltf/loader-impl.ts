@@ -562,7 +562,8 @@ export class LoaderImpl implements Loader {
         {
           id: this.timelineAssetId,
           dataType: spec.DataType.TimelineAsset,
-        },
+          tracks: [],
+        } as spec.TimelineAssetData,
       ],
     };
 
@@ -598,6 +599,7 @@ export class LoaderImpl implements Loader {
       name: data.name,
       duration: data.duration,
       type: spec.ItemType.light,
+      // @ts-expect-error 旧版模型元素保留插件索引。
       pn: 0,
       visible: true,
       endBehavior: data.endBehavior,
@@ -696,6 +698,7 @@ export class LoaderImpl implements Loader {
       name: 'Skybox-Customize',
       duration: 999,
       type: spec.ItemType.skybox,
+      // @ts-expect-error 旧版模型元素保留插件索引。
       pn: 0,
       visible: true,
       endBehavior: spec.EndBehavior.freeze,
@@ -754,6 +757,7 @@ export class LoaderImpl implements Loader {
         name: `Skybox-${skybox.skyboxType}`,
         duration: skybox.duration ?? 999,
         type: spec.ItemType.skybox,
+        // @ts-expect-error 旧版模型元素保留插件索引。
         pn: 0,
         visible: true,
         endBehavior: spec.EndBehavior.freeze,

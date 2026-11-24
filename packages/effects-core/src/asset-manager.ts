@@ -7,14 +7,12 @@ import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
-import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
-import { Precomposition } from './precompositions/precomposition';
 
 let seed = 1;
 
@@ -22,7 +20,7 @@ let seed = 1;
  * 资源管理器
  * 用于加载和动效中所有的资源文件，包括图片、插件、图层粒子数据等
  */
-export class AssetManager implements Disposable {
+export class AssetManager {
   /**
    * 相对 url 的基本路径
    */
@@ -42,10 +40,6 @@ export class AssetManager implements Disposable {
    * @default 10
    */
   private timeout: number;
-  /**
-   * 场景加载的超时定时器
-   */
-  private timers: number[] = [];
 
   /**
    * 字体加载方法
@@ -85,11 +79,10 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  static async loadPrecomposition (jsonScene: spec.JSONScene | string, options?: SceneLoadOptions): Promise<Precomposition> {
+  static async loadScene (jsonScene: spec.JSONScene | string, options?: SceneLoadOptions): Promise<Scene> {
     const assetManager = new AssetManager(options);
-    const scene = await assetManager.loadScene(jsonScene);
 
-    return new Precomposition(scene, options);
+    return assetManager.loadScene(jsonScene);
   }
 
   /**
@@ -121,12 +114,11 @@ export class AssetManager implements Disposable {
   /**
    * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
-   * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
-   * @param options - 扩展参数
-   * @returns
+   * @param renderer - 可选的 renderer 对象，用于判断压缩纹理支持情况
+   * @returns 准备好的场景数据
    */
   async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
-    let rawJSON: Scene.LoadType;
+    const options = { ...this.options };
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
@@ -139,12 +131,10 @@ export class AssetManager implements Disposable {
     const waitPromise = new Promise<Scene>((resolve, reject) => {
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
-        this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
         reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`));
       }, this.timeout * 1000);
-      this.timers.push(loadTimer);
     });
 
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
@@ -168,50 +158,45 @@ export class AssetManager implements Disposable {
     const loadResourcePromise = async () => {
       let scene: Scene;
 
-      if (isString(url)) {
-        // 兼容相对路径
-        const link = new URL(url, location.href).href;
+      if (url instanceof Scene) {
+        scene = url.withOptions(options);
+      } else {
+        let rawJSON: Scene.LoadType;
+        let sourceUrl = '';
 
-        this.baseUrl = link;
-        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+        if (isString(url)) {
+          // 兼容相对路径
+          const link = new URL(url, location.href).href;
 
-        // 小程序环境下，如果产物是相对路径，adapter 返回的是字符串，需要兼容
-        if (isString(rawJSON)) {
-          rawJSON = JSON.parse(rawJSON);
+          sourceUrl = url;
+          this.baseUrl = link;
+          rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+
+          // 小程序环境下，如果产物是相对路径，adapter 返回的是字符串，需要兼容
+          if (isString(rawJSON)) {
+            rawJSON = JSON.parse(rawJSON);
+          }
+        } else {
+          // url 为原始场景 JSON 对象
+          rawJSON = url;
+          this.baseUrl = location.href;
         }
-      } else {
-        // url 为 spec.JSONScene 或 Scene 对象
-        rawJSON = url;
-        this.baseUrl = location.href;
-      }
 
-      if (Scene.isJSONObject(rawJSON)) {
-        scene = {
-          ...rawJSON,
-        };
-      } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
 
-        scene = {
-          timeInfos,
-          url,
-          storage: {},
-          jsonScene,
-          bins: [],
-          textureOptions: [],
-          images: [],
-          videos: [],
-          audios: [],
-        };
+        scene = new Scene(jsonScene, options);
 
-        await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
+        scene.timeInfos = timeInfos;
+        scene.url = sourceUrl;
+
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => PluginSystem.notifyAssetsLoadStart(scene, options));
 
         const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
-          hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
+          hookTimeInfo('processBins', () => this.processBins(bins, options)),
+          hookTimeInfo('processImages', () => this.processImages(images, options, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
 
@@ -221,15 +206,23 @@ export class AssetManager implements Disposable {
 
         scene.textureOptions.push(...loadedTextures);
 
-        // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
-        scene.renderLevel = this.options.renderLevel;
+        // 加载结束钩子需要看到降级插件计算出的渲染等级。
+        scene.renderLevel = options.renderLevel;
+      }
+
+      await hookTimeInfo('plugin:onAssetsLoadFinish', async () => {
+        PluginSystem.notifyAssetsLoadFinish(scene, scene.options);
+      });
+      if (url instanceof Scene) {
+        scene.applyInstanceOverrides();
+      } else {
+        scene.prepareDefinitions();
       }
 
       const totalTime = performance.now() - startTime;
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`);
       window.clearTimeout(loadTimer);
-      this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
       // 各部分分段时长
@@ -256,8 +249,8 @@ export class AssetManager implements Disposable {
     };
   }
 
-  private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[]) {
-    const { renderLevel } = this.options;
+  private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[], options: SceneLoadOptions) {
+    const { renderLevel } = options;
     const baseUrl = this.baseUrl;
     const jobs = bins.map(bin => {
       if (bin instanceof ArrayBuffer) {
@@ -279,9 +272,10 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
+    options: SceneLoadOptions,
     canUseKTX2 = false,
   ): Promise<ImageLike[]> {
-    const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
+    const { useCompressedTexture, variables, disableWebP, disableAVIF } = options;
     const isKTX2PluginRegistered = !!pluginLoaderMap.ktx2;
     const canUseCompressedTexture = useCompressedTexture && canUseKTX2 && isKTX2PluginRegistered;
     const baseUrl = this.baseUrl;
@@ -373,10 +367,6 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  private async onPluginSceneLoadStart (scene: Scene) {
-    await PluginSystem.notifyAssetsLoadStart(scene, this.options);
-  }
-
   private async processTextures (scene: Scene) {
     const { bins, images, videos, jsonScene } = scene;
     const { images: imageDefinitions, videos: videoDefinitions = [], textures = [] } = jsonScene;
@@ -389,9 +379,6 @@ export class AssetManager implements Disposable {
       imageSources[imageDefinitions[i].id] = images[i];
     }
     const jobs = textures.map(async (textureOptions, idx) => {
-      if (textureOptions instanceof Texture) {
-        return textureOptions;
-      }
       if ('mipmaps' in textureOptions) {
         try {
           return await deserializeMipmapTexture(textureOptions, bins, imageSources, jsonScene.bins);
@@ -443,24 +430,6 @@ export class AssetManager implements Disposable {
         });
     });
   }
-
-  private removeTimer (id: number) {
-    const index = this.timers.indexOf(id);
-
-    if (index !== -1) {
-      this.timers.splice(index, 1);
-    }
-  }
-  /**
-   * 销毁方法
-   */
-  dispose (): void {
-    if (this.timers.length) {
-      this.timers.map(id => window.clearTimeout(id));
-    }
-    this.sourceFrom = {};
-    this.timers = [];
-  }
 }
 
 async function createTextureOptionsBySource (
@@ -487,8 +456,6 @@ async function createTextureOptionsBySource (
       sourceType: TextureSourceType.image,
       sourceFrom,
       keepImageSource: true,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
       ...options,
     };
   } else if (image instanceof HTMLVideoElement) {
@@ -496,8 +463,6 @@ async function createTextureOptionsBySource (
     return {
       sourceType: TextureSourceType.video,
       video: image,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
       ...options,
     };
   } else if (image instanceof ArrayBuffer) {
@@ -517,8 +482,6 @@ async function createTextureOptionsBySource (
           internalFormat: textureData.internalFormat,
           format: textureData.format,
           mipmaps: textureData.mipmaps,
-          minFilter: glContext.LINEAR,
-          magFilter: glContext.LINEAR,
           sourceFrom,
           ...options,
         };
@@ -538,8 +501,6 @@ async function createTextureOptionsBySource (
       data: image,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
       ...options,
     };
   }

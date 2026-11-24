@@ -117,8 +117,10 @@ describe('core/fallback/model/plugin-items', () => {
     //@ts-expect-error
     expect(scn.compositions[0].items.length).to.eql(2);
     expect(scn.items.length).to.eql(2);
+    // @ts-expect-error 迁移结果保留旧版插件索引。
     expect(item0?.pn).to.eql(0);
     expect(item0?.endBehavior).to.eql(5);
+    // @ts-expect-error 迁移结果保留旧版插件索引。
     expect(item1?.pn).to.eql(0);
 
     const scn08MeshFix = getStandardJSON({

@@ -1,18 +1,14 @@
+import * as spec from '@galacean/effects-specification';
 import { RendererComponent } from '../../../components';
 import { effectsClass } from '../../../decorators';
 import { TrackAsset } from '../track';
-import type { TrackAssetData } from '../track';
 
-interface MaterialTrackData extends TrackAssetData {
-  index?: number,
-}
-
-@effectsClass('MaterialTrack')
+@effectsClass(spec.DataType.MaterialTrack)
 export class MaterialTrack extends TrackAsset {
 
   index: number;
 
-  override fromData (data: MaterialTrackData): void {
+  override fromData (data: spec.MaterialTrackData): void {
     super.fromData(data);
     if (data.index !== undefined) {
       this.index = data.index;

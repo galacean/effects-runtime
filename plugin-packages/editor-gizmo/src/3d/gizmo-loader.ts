@@ -21,14 +21,17 @@ export class EditorGizmoPlugin extends Plugin {
     }
   }
 
-  override onCompositionCreated (composition: Composition, scene: Scene) {
+  override onCompositionCreating (composition: Composition) {
     const engine = composition.renderer.engine;
 
     iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));
     });
     iconImages.clear();
+    composition.loaderData.gizmoItems = [];
+  }
 
+  override onCompositionCreated (composition: Composition) {
     const items = composition.items;
     const targetMap: { [key: string]: VFXItem[] } = {};
 
@@ -44,6 +47,5 @@ export class EditorGizmoPlugin extends Plugin {
       }
     }
     composition.loaderData.gizmoTarget = targetMap;
-    composition.loaderData.gizmoItems = [];
   }
 }

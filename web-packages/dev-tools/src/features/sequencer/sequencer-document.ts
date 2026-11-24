@@ -25,7 +25,7 @@ import { createPropertyClip, createPropertyTrack, initialPropertyCurve, initiali
 import { SequencerIdSet, SequencerKeySelection } from './sequencer-selection';
 
 type Payload = Record<string, unknown>;
-type TransformData = Omit<TransformPlayableAsset['transformAnimationData'], 'positionOverLifetime'> & {
+type TransformData = Omit<spec.TransformPlayableAssetData, 'positionOverLifetime'> & {
   positionOverLifetime?: PositionAnimationData,
 };
 
@@ -367,7 +367,7 @@ export class SequencerDocument {
 
       if (!material) {
         material = new MaterialTrack(this.composition.engine);
-        material.setData({ id: material.getInstanceId(), dataType: 'MaterialTrack', name: 'Material ' + (property.materialIndex + 1), index: property.materialIndex, clips: [], children: [] } as unknown as spec.EffectsObjectData);
+        material.setData({ id: material.getInstanceId(), dataType: 'MaterialTrack', name: 'Material ' + (property.materialIndex + 1), index: property.materialIndex, clips: [], children: [] } as spec.MaterialTrackData);
         binding.addChild(material);
       }
       owner = material;
