@@ -8,6 +8,8 @@ export enum TransformType {
   TRANSLATION = 'translation',
   /** 旋转。 */
   ROTATION = 'rotation',
+  /** 锚点和保持外观不变的位置补偿。 */
+  ANCHOR = 'anchor',
   /** 双轴缩放。 */
   SCALE = 'scale',
   /** 文本宽度缩放。 */

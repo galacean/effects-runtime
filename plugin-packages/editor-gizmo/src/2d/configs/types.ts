@@ -65,6 +65,276 @@ export type SelectionPreviewConfig = {
 /** 元素缩放行为：整体缩放，或把缩放吸收到排版尺寸的双轴/单轴调整。 */
 export type ResizeSelectionBehavior = 'scale' | 'resize' | 'resize-x' | 'resize-y';
 
+/** 选区坐标轴、锚点和多选手柄配置。颜色使用 0xRRGGBBAA，尺寸单位为 CSS 像素。 */
+export type TransformHandlesConfig = {
+  /** 是否显示并允许操作横轴手柄，包括 Alt 旋转。 */
+  xAxisEnabled: boolean,
+  /** 是否显示并允许操作纵轴手柄，包括 Alt 旋转。 */
+  yAxisEnabled: boolean,
+  /** 是否显示并允许拖动元素锚点。 */
+  anchorEnabled: boolean,
+  /** 横轴线颜色。 */
+  xAxisLineColor: number,
+  /** 纵轴线颜色。 */
+  yAxisLineColor: number,
+  /** 横轴箭头填充色。 */
+  xAxisFillColor: number,
+  /** 纵轴箭头填充色。 */
+  yAxisFillColor: number,
+  /** 坐标轴线宽。 */
+  axisLineWidth: number,
+  /** 拖动中的坐标轴线宽。 */
+  activeAxisLineWidth: number,
+  /** 坐标轴总长度，包含箭头。 */
+  axisLength: number,
+  /** 箭头长度。 */
+  axisArrowLength: number,
+  /** 箭头底边宽度。 */
+  axisArrowWidth: number,
+  /** 锚点圆框半径，同时用于锚点命中。 */
+  anchorRadius: number,
+  /** 锚点填充圆半径。 */
+  anchorFillRadius: number,
+  /** 锚点圆框颜色。 */
+  anchorLineColor: number,
+  /** 锚点圆框线宽。 */
+  anchorLineWidth: number,
+  /** 锚点填充色。 */
+  anchorFillColor: number,
+  /** 多选缩放角点的边长。 */
+  groupCornerSize: number,
+  /** 多选缩放角点边框色。 */
+  groupCornerLineColor: number,
+  /** 多选缩放角点边框宽度。 */
+  groupCornerLineWidth: number,
+  /** 多选缩放角点填充色。 */
+  groupCornerFillColor: number,
+  /** 锚点坐标标签字号。 */
+  labelFontSize: number,
+  /** 锚点坐标标签文字颜色。 */
+  labelTextColor: number,
+  /** 锚点坐标标签背景色。 */
+  labelBackgroundColor: number,
+  /** 标签左右内边距。 */
+  labelPaddingX: number,
+  /** 标签上下内边距。 */
+  labelPaddingY: number,
+  /** 两行坐标文字间距。 */
+  labelLineGap: number,
+  /** 标签相对锚点的横向偏移。 */
+  labelOffsetX: number,
+  /** 标签相对锚点的纵向偏移。 */
+  labelOffsetY: number,
+};
+
+/** 运动路径与控制点绘制配置。颜色使用 0xRRGGBBAA，尺寸单位为 CSS 像素。 */
+export type CurveConfig = {
+  /** 运动路径颜色。 */
+  pathColor: number,
+  /** 运动路径线宽。 */
+  pathWidth: number,
+  /** 运动路径外描边颜色。 */
+  pathOutlineColor: number,
+  /** 运动路径外描边总宽度。 */
+  pathOutlineWidth: number,
+  /** 控制点与路径点之间的连线颜色。 */
+  controlLineColor: number,
+  /** 控制点连线宽度。 */
+  controlLineWidth: number,
+  /** 控制点连线外描边颜色。 */
+  controlLineOutlineColor: number,
+  /** 控制点连线外描边总宽度。 */
+  controlLineOutlineWidth: number,
+  /** 普通路径点的方框边长。 */
+  pointSize: number,
+  /** 选中路径点的方框边长。 */
+  selectedPointSize: number,
+  /** 悬停路径点的方框边长。 */
+  hoverPointSize: number,
+  /** 普通路径点填充色。 */
+  pointFillColor: number,
+  /** 选中路径点填充色。 */
+  selectedPointFillColor: number,
+  /** 悬停路径点填充色。 */
+  hoverPointFillColor: number,
+  /** 路径点边框颜色。 */
+  pointLineColor: number,
+  /** 路径点边框宽度。 */
+  pointLineWidth: number,
+  /** 路径点外描边颜色。 */
+  pointOutlineColor: number,
+  /** 路径点外描边向外扩展的宽度。 */
+  pointOutlineWidth: number,
+  /** 普通控制点半径。 */
+  controlPointRadius: number,
+  /** 选中控制点半径。 */
+  selectedControlPointRadius: number,
+  /** 悬停控制点半径。 */
+  hoverControlPointRadius: number,
+  /** 普通控制点填充色。 */
+  controlPointFillColor: number,
+  /** 选中控制点填充色。 */
+  selectedControlPointFillColor: number,
+  /** 悬停控制点填充色。 */
+  hoverControlPointFillColor: number,
+  /** 控制点圆框颜色。 */
+  controlPointLineColor: number,
+  /** 控制点圆框宽度。 */
+  controlPointLineWidth: number,
+  /** 控制点外描边颜色。 */
+  controlPointOutlineColor: number,
+  /** 控制点外描边向外扩展的宽度。 */
+  controlPointOutlineWidth: number,
+};
+
+/** 渐变编辑辅助图形配置。颜色使用 0xRRGGBBAA，尺寸单位为 CSS 像素。 */
+export type GradientConfig = {
+  /** 渐变起止点连线颜色。 */
+  lineColor: number,
+  /** 渐变起止点连线宽度。 */
+  lineWidth: number,
+  /** 径向或角度渐变范围轮廓颜色。 */
+  rangeLineColor: number,
+  /** 渐变范围轮廓线宽。 */
+  rangeLineWidth: number,
+  /** 旋转手柄圆框半径。 */
+  rotationRadius: number,
+  /** 旋转手柄圆框颜色。 */
+  rotationLineColor: number,
+  /** 旋转手柄圆框线宽。 */
+  rotationLineWidth: number,
+  /** 起止点填充圆半径。 */
+  endpointRadius: number,
+  /** 起止点填充色。 */
+  endpointFillColor: number,
+  /** 起止点圆框颜色。 */
+  endpointLineColor: number,
+  /** 起止点圆框线宽；0 表示不绘制圆框。 */
+  endpointLineWidth: number,
+  /** 色标沿渐变切线方向的宽度。 */
+  stopWidth: number,
+  /** 色标沿渐变法线方向的高度。 */
+  stopHeight: number,
+  /** 色标中心相对渐变线的法向偏移。 */
+  stopOffset: number,
+  /** 普通色标边框颜色。 */
+  stopLineColor: number,
+  /** 普通色标边框宽度。 */
+  stopLineWidth: number,
+  /** 选中色标和添加预览的边框颜色。 */
+  selectedStopLineColor: number,
+  /** 选中色标和添加预览的边框宽度。 */
+  selectedStopLineWidth: number,
+  /** 色标显示填充色；省略时显示实际渐变颜色，不修改渐变数据。 */
+  stopFillColor?: number,
+  /** 选中色标和添加预览的填充色；省略时沿用普通色标填充规则。 */
+  selectedStopFillColor?: number,
+  /** 选中色标百分比标签字号。 */
+  labelFontSize: number,
+  /** 百分比标签文字颜色。 */
+  labelTextColor: number,
+  /** 百分比标签相对色标中心的横向偏移。 */
+  labelOffsetX: number,
+  /** 百分比标签相对色标中心的纵向偏移。 */
+  labelOffsetY: number,
+};
+
+/** FFD 晶格编辑绘制配置。颜色使用 0xRRGGBBAA，尺寸单位为 CSS 像素。 */
+export type CrystalLatticeConfig = {
+  /** 普通网格线颜色。 */
+  lineColor: number,
+  /** 普通网格线宽度。 */
+  lineWidth: number,
+  /** 网格边界线颜色。 */
+  boundaryLineColor: number,
+  /** 网格边界线宽度。 */
+  boundaryLineWidth: number,
+  /** 连接两个选中点的网格线颜色。 */
+  selectedLineColor: number,
+  /** 连接两个选中点的网格线宽度。 */
+  selectedLineWidth: number,
+  /** 普通晶格点半径。 */
+  pointRadius: number,
+  /** 选中晶格点半径。 */
+  selectedPointRadius: number,
+  /** 普通晶格点填充色。 */
+  pointFillColor: number,
+  /** 选中晶格点填充色。 */
+  selectedPointFillColor: number,
+  /** 受软选择影响的晶格点填充色。 */
+  softPointFillColor: number,
+  /** 晶格点外边框颜色。 */
+  pointBorderColor: number,
+  /** 晶格点外边框向外扩展的宽度。 */
+  pointBorderWidth: number,
+  /** 晶格点悬停圆环半径。 */
+  hoverRingRadius: number,
+  /** 悬停圆环颜色。 */
+  hoverRingColor: number,
+  /** 悬停圆环线宽。 */
+  hoverRingWidth: number,
+  /** 悬停圆环外描边颜色。 */
+  hoverRingOutlineColor: number,
+  /** 悬停圆环外描边总宽度。 */
+  hoverRingOutlineWidth: number,
+  /** 选中点整体变换框颜色。 */
+  frameLineColor: number,
+  /** 整体变换框线宽。 */
+  frameLineWidth: number,
+  /** 整体变换框距选中点边界的距离。 */
+  framePadding: number,
+  /** 整体变换框的最小边长。 */
+  frameMinSize: number,
+  /** 整体变换框角点边长。 */
+  cornerSize: number,
+  /** 变换框角点填充色。 */
+  cornerFillColor: number,
+  /** 变换框角点边框颜色。 */
+  cornerLineColor: number,
+  /** 变换框角点边框宽度；0 表示不绘制边框。 */
+  cornerLineWidth: number,
+  /** 中心十字标记边长。 */
+  centerSize: number,
+  /** 中心十字标记颜色。 */
+  centerLineColor: number,
+  /** 中心十字标记线宽。 */
+  centerLineWidth: number,
+  /** 软选择影响范围轮廓颜色。 */
+  softRangeLineColor: number,
+  /** 软选择影响范围轮廓线宽。 */
+  softRangeLineWidth: number,
+  /** 框选区域边框颜色。 */
+  marqueeLineColor: number,
+  /** 框选区域边框宽度。 */
+  marqueeLineWidth: number,
+  /** 框选区域填充色；默认透明。 */
+  marqueeFillColor: number,
+  /** 操作数值标签字号。 */
+  labelFontSize: number,
+  /** 操作数值标签文字颜色。 */
+  labelTextColor: number,
+  /** 操作数值标签背景色。 */
+  labelBackgroundColor: number,
+  /** 标签左右内边距。 */
+  labelPaddingX: number,
+  /** 标签上下内边距。 */
+  labelPaddingY: number,
+  /** 标签相对指针的横向偏移。 */
+  labelOffsetX: number,
+  /** 标签相对指针的纵向偏移。 */
+  labelOffsetY: number,
+  /** 标签与画布边缘的最小距离。 */
+  labelViewportMargin: number,
+};
+
+/** FFD 基础三角网格绘制配置。颜色使用 0xRRGGBBAA，尺寸单位为 CSS 像素。 */
+export type FFDWireframeConfig = {
+  /** 三角网格线条颜色。 */
+  lineColor: number,
+  /** 三角网格线条宽度。 */
+  lineWidth: number,
+};
+
 /** 选区变换线框、手柄与信息标签配置。 */
 export type ResizeSelectionConfig = {
   /** 预览基准像素到当前显示尺寸的比例。 */

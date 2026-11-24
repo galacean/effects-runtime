@@ -4,6 +4,7 @@ import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DefaultVFXItems, VFXItemFactory, cloneGeometry, pauseVideoComponent, playVideoComponent, resizeSelectionConfig, shapeConfig, toColor } from '@galacean/effects-plugin-editor-gizmo';
 import type { PenPathData, ShapeConfig, ShapeGeometry } from '@galacean/effects-plugin-editor-gizmo';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+import { createGizmoReference, gizmoExampleNames, type GizmoExampleKind } from './reference-examples';
 
 export type Point2D = [number, number];
 export type MediaKind = 'Video' | 'Effects';
@@ -18,6 +19,7 @@ export interface DemoItem {
   name: string,
   kind: 'Frame' | 'Text' | 'RichText' | 'Sprite' | GeometryKind | MediaKind,
   status?: 'loading' | 'ready' | 'error',
+  editRoot?: VFXItem,
 }
 
 export interface MediaState {
@@ -164,6 +166,49 @@ export class DemoScene extends EventEmitter<SceneEvents> {
     this.createFrameExamples();
 
     return sprites[0];
+  }
+
+  /** 从固定 JSON 样本加载案例，保留原始控制点、网格和动画绑定。 */
+  async createGizmoExample (kind: GizmoExampleKind): Promise<{ frame: VFXItem, item: VFXItem } | undefined> {
+    const name = gizmoExampleNames[kind];
+    const index = ['ffd', 'path', 'gradient'].indexOf(kind);
+    const frame = this.createFrame([-12 + index * 12, -12], [10, 10]);
+
+    frame.name = name;
+    frame.item.name = name;
+    frame.status = 'loading';
+    this.emit('change');
+    try {
+      const { root, item } = await createGizmoReference(this.composition, kind);
+
+      if (this.disposed || !this.items.includes(frame)) {
+        root.dispose();
+
+        return;
+      }
+      root.setParent(frame.item);
+      root.setPosition(0, kind === 'path' ? 2.5 : 0, 0);
+      // 原始场景使用透明占位图；只替换可视纹理，保留几何、晶格和路径数据。
+      if (kind !== 'gradient') {
+        item.getComponent(SpriteComponent).setTexture(this.createCardTexture(
+          kind === 'ffd'
+            ? 'FFD'
+            : '路径',
+          kind === 'ffd'
+            ? '#3478e5'
+            : '#8861d8'
+        ));
+      }
+      this.register({ item: root, name: '原始场景', kind: 'Effects' });
+      this.register({ item, name: kind === 'ffd' ? 'FFD 晶格 · 5 × 5' : kind === 'path' ? '运动路径 · 拖动点或控制柄' : '渐变色 · 编辑填充',
+        kind: kind === 'gradient' ? 'Vector' : 'Sprite', editRoot: frame.item });
+      frame.status = 'ready';
+      this.emit('change');
+
+      return { frame: frame.item, item };
+    } catch (error) {
+      this.reportResourceError(frame, error);
+    }
   }
 
   /** 异步加载媒体，保留已就绪的画板和基础交互。 */

@@ -9,13 +9,19 @@ import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
 import { BufferUsage, Geometry, VertexElementType } from '../../render';
 import type { StrokeAttributes, VariableWidthPoint } from '../../math';
-import { extractMinAndMax, StarType } from '../../math';
+import { StarType, GradientValue } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
-import type { Paint, SolidPaint } from './paint';
-import { applyPaintRendererOptions, createPaint, createPaintMaterial, updatePaintMaterial } from './paint';
+import type { Paint, SolidPaint, GradientPaint } from './paint';
+import {
+  applyPaintRendererOptions,
+  createPaint,
+  createPaintMaterial,
+  isValidGradientPaint,
+  updatePaintMaterial,
+} from './paint';
 import { TrimPath } from './trim-path';
 import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
@@ -174,6 +180,68 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get shape () {
     return this.shapeAttributes;
+  }
+
+  /** Paint 编辑使用副本，提交时由组件统一刷新材质。 */
+  getColorPaint (kind: 'fill' | 'stroke', index: number): SolidPaint | GradientPaint | undefined {
+    const paint = (kind === 'fill' ? this.fills : this.strokes)[index];
+
+    if (!paint || paint.type === spec.FillType.Texture) {
+      return undefined;
+    }
+
+    return this.cloneColorPaint(paint);
+  }
+
+  private cloneColorPaint (paint: SolidPaint | GradientPaint): SolidPaint | GradientPaint {
+    if (paint.type === spec.FillType.Solid) {
+      return { type: paint.type, color: new Color().copyFrom(paint.color) };
+    }
+
+    return {
+      ...paint,
+      startPoint: paint.startPoint.clone(),
+      endPoint: paint.endPoint.clone(),
+      gradientStops: Object.assign(new GradientValue([]), {
+        stops: paint.gradientStops.stops.map(stop => ({ time: stop.time, color: new Color().copyFrom(stop.color) })),
+      }),
+    };
+  }
+
+  getGradientPaint (kind: 'fill' | 'stroke', index: number): GradientPaint | undefined {
+    const paint = this.getColorPaint(kind, index);
+
+    return paint?.type === spec.FillType.Solid ? undefined : paint;
+  }
+
+  setGradientPaint (kind: 'fill' | 'stroke', index: number, paint: GradientPaint): void {
+    const current = (kind === 'fill' ? this.fills : this.strokes)[index];
+
+    if (!current || current.type === spec.FillType.Solid || current.type === spec.FillType.Texture) {
+      throw new Error('The selected paint is not a gradient.');
+    }
+    this.setColorPaint(kind, index, paint);
+  }
+
+  /** 在已有 paint 上切换纯色/渐变，不重建形状或丢失其他填充、描边。 */
+  setColorPaint (kind: 'fill' | 'stroke', index: number, paint: SolidPaint | GradientPaint): void {
+    const paints = kind === 'fill' ? this.fills : this.strokes;
+    const current = paints[index];
+
+    if (!current || current.type === spec.FillType.Texture) {
+      throw new Error('The selected color paint does not exist.');
+    }
+    if (paint.type === spec.FillType.Solid) {
+      const { r, g, b, a } = paint.color;
+
+      if (![r, g, b, a].every(Number.isFinite)) {
+        throw new Error('Invalid paint color.');
+      }
+    } else if (!isValidGradientPaint(paint)) {
+      throw new Error('Invalid gradient paint.');
+    }
+    paints[index] = this.cloneColorPaint(paint);
+    this.materialDirty = true;
   }
 
   get strokeWidth (): number {
@@ -418,18 +486,22 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData(VertexElementType.Position) as Float32Array;
-
-    if (positionArray) {
-      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
-
-      minMaxResult.minimum.x *= this.transform.size.x;
-      minMaxResult.minimum.y *= this.transform.size.y;
-      minMaxResult.maximum.x *= this.transform.size.x;
-      minMaxResult.maximum.y *= this.transform.size.y;
-      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+  /**
+   * 获取当前已生成几何的局部包围盒副本，包含填充和描边。
+   * 与 UV 归一化范围一致，不应用对象的 transform.size 或世界变换。
+   * 未生成可绘制几何时返回 undefined。
+   */
+  getLocalBounds (): { min: Vector2, max: Vector2 } | undefined {
+    if (!this.geometry.subMeshes.some(subMesh => subMesh.indexCount)) {
+      return undefined;
     }
+    const { minimum, maximum } = this.boundingBoxInfo.boundingBox;
+
+    return { min: new Vector2(minimum.x, minimum.y), max: new Vector2(maximum.x, maximum.y) };
+  }
+
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    this.boundingBoxInfo.boundingBox.update(this.transform.getWorldMatrix());
 
     return this.boundingBoxInfo;
   }
@@ -497,8 +569,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     // Set position attribute array, calculate bounding box for uv scaling
     let minX = Number.MAX_VALUE;
     let minY = Number.MAX_VALUE;
-    let maxX = Number.MIN_VALUE;
-    let maxY = Number.MIN_VALUE;
+    let maxX = -Number.MAX_VALUE;
+    let maxY = -Number.MAX_VALUE;
 
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
@@ -517,16 +589,28 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       maxY = Math.max(maxY, y);
     }
 
+    // 缓冲区只扩容，通用包围盒与 UV 共用本次有效几何的边界。
+    const { minimum, maximum } = this.boundingBoxInfo.boundingBox;
+
+    if (vertexCount > 0 && indices.length > 0) {
+      minimum.set(minX, minY, 0);
+      maximum.set(maxX, maxY, 0);
+    } else {
+      minimum.set(0, 0, 0);
+      maximum.set(0, 0, 0);
+    }
+    this.boundingBoxInfo.reConstruct(minimum, maximum, this.transform.getWorldMatrix());
+
     // Set uv attribute array
-    const sizeX = maxX - minX;
-    const sizeY = maxY - minY;
+    const sizeX = maximum.x - minimum.x || 1;
+    const sizeY = maximum.y - minimum.y || 1;
 
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
       const uvOffset = i * 2;
 
-      uvArray[uvOffset] = (positionArray[pointsOffset] - minX) / sizeX;
-      uvArray[uvOffset + 1] = (positionArray[pointsOffset + 1] - minY) / sizeY;
+      uvArray[uvOffset] = (positionArray[pointsOffset] - minimum.x) / sizeX;
+      uvArray[uvOffset + 1] = (positionArray[pointsOffset + 1] - minimum.y) / sizeY;
     }
 
     // Set index array
@@ -700,7 +784,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (const command of commands) {
       for (const control of command.data) {
         point.set(control.x, control.y, 0);
-        matrix.transformPoint(point, point); control.set(point.x, point.y);
+        matrix.transformPoint(point, point);
+        control.set(point.x, point.y);
       }
       switch (command.action) {
         case 'moveTo':

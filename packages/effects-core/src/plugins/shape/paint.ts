@@ -26,6 +26,20 @@ export interface GradientPaint {
   endPoint: Vector2,
 }
 
+/** 渐变编辑入口与写入共用的校验；色标数量与着色器容量一致。 */
+export function isValidGradientPaint (paint: GradientPaint | undefined): paint is GradientPaint {
+  if (!paint) {
+    return false;
+  }
+  const stops = paint.gradientStops.stops;
+
+  return stops.length >= 2 && stops.length <= 8
+    && [paint.startPoint.x, paint.startPoint.y, paint.endPoint.x, paint.endPoint.y].every(Number.isFinite)
+    && stops.every((stop, index) => Number.isFinite(stop.time) && stop.time >= 0 && stop.time <= 1
+      && (index === 0 || stop.time > stops[index - 1].time)
+      && [stop.color.r, stop.color.g, stop.color.b, stop.color.a].every(Number.isFinite));
+}
+
 export interface TextureTransform {
   offset: Vector2,
   rotation: number,

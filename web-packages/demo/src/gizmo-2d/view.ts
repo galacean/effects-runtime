@@ -106,6 +106,24 @@ export class DemoView {
       }
     }
     this.events.on(element('zoom-out'), 'click', () => editor.zoom(1 / 1.2));
+    for (const kind of ['ffd', 'path', 'gradient'] as const) {
+      const button = element<HTMLButtonElement>(`menu-gizmo-${kind}`);
+
+      this.events.on(button, 'click', () => {
+        this.setCreateMenuOpen(false);
+        button.disabled = true;
+        void editor.addGizmoExample(kind).finally(() => {
+          button.disabled = false;
+        });
+      });
+    }
+    this.events.on(element('edit-lattice'), 'click', () => editor.editContent({ type: 'lattice' }));
+    this.events.on(element('edit-gradient'), 'click', () => editor.editContent({
+      type: 'gradient',
+      paintKind: 'fill',
+      paintIndex: 0,
+    }));
+    this.events.on(element('exit-content-edit'), 'click', () => editor.editContent());
     this.events.on(element('zoom-in'), 'click', () => editor.zoom(1.2));
     this.events.on(element('fit-view'), 'click', () => editor.fitToView());
     this.events.on(this.createToggle, 'click', () => this.setCreateMenuOpen(this.createMenu.hidden));
@@ -170,7 +188,9 @@ export class DemoView {
     this.refreshPenState();
     const isTextTool = tool === 'text' || tool === 'richtext';
 
-    if (isTextTool) { this.textToolType = tool; }
+    if (isTextTool) {
+      this.textToolType = tool;
+    }
     const richText = this.textToolType === 'richtext';
     const label = richText ? '创建富文本元素' : '创建文本元素';
 
@@ -227,7 +247,9 @@ export class DemoView {
   private setCreateMenuOpen (open: boolean): void {
     this.createMenu.hidden = !open;
     this.createToggle.setAttribute('aria-expanded', String(open));
-    if (open) { this.setTextMenuOpen(false); }
+    if (open) {
+      this.setTextMenuOpen(false);
+    }
   }
 
   private setTextMenuOpen (open: boolean): void {

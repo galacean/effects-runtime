@@ -5,6 +5,9 @@ import type { FrameCreateData, ItemCreateType, TextCreateData } from './gizmos/i
 import type { AutoLayoutChangeInfo } from './frame/frame-assisted-layout';
 import type { TransformType } from './gizmos/resize-selection-gizmo/transform-types';
 import type { RulerActionEvent } from './gizmos/ruler-gizmo';
+import type { CurveActionEvent } from './gizmos/curve-gizmo';
+import type { GradientActionEvent } from './gizmos/gradient-gizmo';
+import type { CrystalLatticeActionEvent } from './gizmos/crystal-lattice-gizmo';
 import type { InputEventKey, VFXItem } from '@galacean/effects';
 
 /** Gizmo 操作的生命周期阶段。 */
@@ -65,6 +68,8 @@ export type GizmoItemCreateInfo =
 export interface GizmoActionEvent {
   /** 触发事件的 Gizmo。 */
   source: Gizmo,
+  /** 本次预览已经恢复起始数据；通过 actionupdate 通知，不产生提交。 */
+  canceled?: boolean,
 }
 
 /** 选区变换事件。 */
@@ -174,6 +179,9 @@ export interface GizmoSpriteTextClickEvent extends GizmoActionEvent {
 /** 可进入操作生命周期的 Gizmo 事件。 */
 export type GizmoActionLifecycleEvent =
   | GizmoActionEvent
+  | CurveActionEvent
+  | GradientActionEvent
+  | CrystalLatticeActionEvent
   | GizmoTransformActionEvent
   | GizmoSelectionActionEvent
   | GizmoItemCreateActionEvent

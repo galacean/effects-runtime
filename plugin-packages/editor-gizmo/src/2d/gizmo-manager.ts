@@ -21,6 +21,11 @@ import type { EnterEditModeGizmo } from './gizmos/enter-edit-mode-gizmo';
 import type { LeaveEffectsEditGizmo } from './gizmos/leave-effects-edit-gizmo';
 import type { CornerRotationGizmo } from './gizmos/corner-rotation-gizmo';
 import type { RulerGizmo } from './gizmos/ruler-gizmo';
+import type { FFDWireframeGizmo } from './gizmos/ffd-wireframe-gizmo';
+import type { CrystalLatticeGizmo } from './gizmos/crystal-lattice-gizmo';
+import type { CurveGizmo } from './gizmos/curve-gizmo';
+import type { GradientGizmo } from './gizmos/gradient-gizmo';
+import type { TransformHandlesGizmo } from './gizmos/transform-handles-gizmo';
 
 /** 当前交互图中可按类型查询的内置 Gizmo 映射。 */
 export type GizmoTypeMap = {
@@ -66,6 +71,11 @@ export type GizmoTypeMap = {
   'leave-effects-edit': LeaveEffectsEditGizmo,
   /** 标尺与参考线 Gizmo。 */
   ruler: RulerGizmo,
+  'ffd-wireframe': FFDWireframeGizmo,
+  'crystal-lattice': CrystalLatticeGizmo,
+  curve: CurveGizmo,
+  gradient: GradientGizmo,
+  'transform-handles': TransformHandlesGizmo,
 };
 
 /** Gizmo 错误上报阶段。 */
