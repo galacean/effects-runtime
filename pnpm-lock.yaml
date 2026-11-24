@@ -159,8 +159,8 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
       '@galacean/effects-specification':
-        specifier: ^2.10.0
-        version: 2.10.0
+        specifier: ^2.10.1
+        version: 2.10.1
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -1467,8 +1467,8 @@ packages:
     resolution: {integrity: sha512-vO5VEk8qg4+yF7TuttDrPr5fLK2HxFf1wqdoCzaO2umBO6NNIxl+SzzLqleMwo2kuZHIYoH2OtekHLPnw9MvIQ==}
     engines: {node: '>=10.0.0'}
 
-  '@galacean/effects-specification@2.10.0':
-    resolution: {integrity: sha512-XDYxzju5hOB9cR9+hSIhBI5MjlpxK5Wm+cW/NMyI6U2U4WjdnJp2wN1FzNchL1rpv6dLWkNV1EwyPosk6rzLDA==}
+  '@galacean/effects-specification@2.10.1':
+    resolution: {integrity: sha512-pomjAciT1vy5nDq+nXj1tdWrmfMqsu0Ytt8S0RNAxoqWz7H/iXCMjREe0v4nYhn29awe8ASNPsy4Xpij2Z2Trw==}
 
   '@galacean/release-tools@0.0.3':
     resolution: {integrity: sha512-TVn1pYPeFi4Rtwi67zbcIijdW3FAKnzEeHHx1jqLspM6FoqXwOyiik3duwGprHhd624Z+OJ7KyoKQWdLeOktZw==}
@@ -5340,7 +5340,7 @@ snapshots:
 
   '@galacean/effects-math@1.2.1': {}
 
-  '@galacean/effects-specification@2.10.0': {}
+  '@galacean/effects-specification@2.10.1': {}
 
   '@galacean/release-tools@0.0.3':
     dependencies:
@@ -5811,7 +5811,7 @@ snapshots:
   '@vvfx/resource-detection@0.10.0':
     dependencies:
       '@galacean/effects-math': 1.2.1
-      '@galacean/effects-specification': 2.10.0
+      '@galacean/effects-specification': 2.10.1
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
