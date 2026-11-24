@@ -61,6 +61,7 @@ interface RichCharInfo {
   chars: CharDetail[][],
 }
 
+/** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
 export interface RichTextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -172,7 +173,9 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.disposeTextTexture();
   }
 
+  /** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
   override fromData (data: spec.RichTextComponentData): void {
+    // @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。
     super.fromData(data);
     const { interaction, options } = data;
 

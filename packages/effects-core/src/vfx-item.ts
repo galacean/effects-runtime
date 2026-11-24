@@ -27,11 +27,6 @@ import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
 
-export type VFXItemData = spec.Item & {
-  dataType: spec.DataType,
-  components: spec.DataPath[],
-};
-
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
  */

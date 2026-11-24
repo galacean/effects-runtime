@@ -56,7 +56,6 @@ export class RichTextLayout implements BaseLayout {
       maxTextWidth = 350,
       maxTextHeight = 1000,
       autoResize = spec.TextSizeMode.autoWidth,
-      // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
     } = options;
 

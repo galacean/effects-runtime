@@ -7,6 +7,7 @@ import { VertexElementType, type Geometry, type Renderer } from '../render';
 import { RendererComponent } from './renderer-component';
 
 interface MeshComponentData extends spec.ComponentData {
+  /** @ts-expect-error 暂时沿用旧版 spec 的 MaskOptions。 */
   mask?: spec.MaskOptions,
   geometry?: spec.DataPath,
 }

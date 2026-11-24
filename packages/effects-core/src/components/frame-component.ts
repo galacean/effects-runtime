@@ -13,7 +13,7 @@ import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { effectsClass } from '../decorators';
 import { HitTestType, type HitTestTriangleParams } from '../plugins';
 import { addItem } from '../utils';
-import { FrameTitle, type FrameTitleStyleData } from './frame-title';
+import { FrameTitle } from './frame-title';
 import type { Paint } from '../plugins/shape/paint';
 import { createPaint, createPaintMaterial, updatePaintMaterial } from '../plugins/shape/paint';
 import type { StrokeAttributes } from '../math/shape/stroke-attributes';
@@ -23,18 +23,7 @@ import { GraphicsPath } from '../plugins/shape/graphics-path';
 import { makeStrokeContourPath } from '../plugins/shape/contour-path';
 import type { Texture } from '../texture';
 
-export interface FrameComponentData extends spec.ComponentData {
-  fills?: spec.PaintData[],
-  strokes?: spec.PaintData[],
-  strokeWidth?: number,
-  strokeAlignment?: number,
-  strokeCap?: spec.LineCap,
-  strokeJoin?: spec.LineJoin,
-  strokeMiterLimit?: number,
-  titleStyle?: FrameTitleStyleData,
-}
-
-@effectsClass('FrameComponent')
+@effectsClass(spec.DataType.FrameComponent)
 export class FrameComponent extends RendererComponent implements Maskable {
   fills: Paint[] = [{ type: spec.FillType.Solid, color: new Color(1, 1, 1, 1) }];
   strokes: Paint[] = [];
@@ -231,7 +220,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.clipMaterial, maskRef);
   }
 
-  override fromData (data: FrameComponentData): void {
+  override fromData (data: spec.FrameComponentData): void {
     super.fromData(data);
 
     if (data.fills !== undefined) {

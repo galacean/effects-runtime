@@ -929,7 +929,9 @@ export class ParticleSystem extends Component implements Maskable {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
+    // @ts-expect-error 暂时沿用旧版粒子组件的 mask 字段。
     if (props.mask) {
+      // @ts-expect-error 暂时沿用旧版粒子组件的 mask 字段。
       this.maskManager.setMaskOptions(this.engine, props.mask);
     }
 

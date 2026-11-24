@@ -1,11 +1,10 @@
-import { effectsClass, math } from '@galacean/effects';
-import type { spec } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 import { AspectRatioStretchMode, LayoutAlignment } from './enums';
 import { assertEnumValue, assertFinite } from './utils';
 
 /** Fits every visible child into the same rectangle with a fixed width/height ratio. */
-@effectsClass('AspectRatioContainer')
+@effectsClass(spec.DataType.AspectRatioContainer)
 export class AspectRatioContainer extends Container {
   static override readonly themeType: string = 'AspectRatioContainer';
   private _ratio = 1;

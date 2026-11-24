@@ -1,9 +1,9 @@
-import { effectsClass, math } from '@galacean/effects';
-import type { Engine, spec } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
 
-@effectsClass('ColorRect')
+@effectsClass(spec.DataType.ColorRect)
 export class ColorRect extends Control {
   static override readonly themeType: string = 'ColorRect';
   color = new math.Color(1, 1, 1, 1);

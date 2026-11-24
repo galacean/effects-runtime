@@ -1,9 +1,8 @@
-import { effectsClass, math } from '@galacean/effects';
-import type { spec } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 
 /** Centers children at their bound minimum size. */
-@effectsClass('CenterContainer')
+@effectsClass(spec.DataType.CenterContainer)
 export class CenterContainer extends Container {
   static override readonly themeType: string = 'CenterContainer';
   private _useTopLeft = false;

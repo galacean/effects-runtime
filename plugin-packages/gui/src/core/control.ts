@@ -14,11 +14,11 @@ import type {
   Texture,
   TextureRegion,
   VFXItem,
-  spec,
 } from '@galacean/effects';
 import {
   effectsClass,
   EventEmitter,
+  spec,
 } from '@galacean/effects';
 import type { UIControl } from '../components/ui-control';
 import type { CursorStyle } from './enums';
@@ -156,7 +156,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * A drawable GUI object. Controls form a tree independent from the VFXItem
  * scene tree. UIControl is the bridge between both trees.
  */
-@effectsClass('Control')
+@effectsClass(spec.DataType.Control)
 export class Control {
   static readonly themeType: string = 'Control';
   readonly engine: Engine;
@@ -1763,7 +1763,7 @@ export class Control {
  * A Control that automatically measures and arranges its child Controls.
  * Concrete layout algorithms live in GUI plugin packages.
  */
-@effectsClass('Container')
+@effectsClass(spec.DataType.Container)
 export class Container extends Control {
   static override readonly themeType: string = 'Container';
   private sortPending = false;

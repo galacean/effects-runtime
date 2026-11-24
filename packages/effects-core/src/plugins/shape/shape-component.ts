@@ -8,7 +8,7 @@ import type { Engine } from '../../engine';
 import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
 import { BufferUsage, Geometry, VertexElementType } from '../../render';
-import type { StrokeAttributes, VariableWidthPoint } from '../../math';
+import type { StrokeAttributes } from '../../math';
 import { extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
@@ -142,7 +142,7 @@ export interface PolygonAttribute extends ShapeAttributes {
  * 图形组件
  * @since 2.1.0
  */
-@effectsClass('ShapeComponent')
+@effectsClass(spec.DataType.ShapeComponent)
 export class ShapeComponent extends RendererComponent implements Maskable {
 
   private static readonly tempMVP = Matrix4.fromIdentity();
@@ -742,10 +742,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
   }
 
-  override fromData (data: spec.ShapeComponentData & { strokeAlignment?: number, strokeMiterLimit?: number, variableWidthPoints?: VariableWidthPoint[], transform?: spec.TransformData }): void {
+  override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
 
+    // @ts-expect-error 暂时沿用旧版形状组件的 mask 字段。
     this.maskManager.setMaskOptions(this.engine, data.mask ?? {});
 
     const renderer = data.renderer ?? {};
@@ -770,17 +771,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this._strokeTrimPath = null;
     this._fillTrimPath = null;
 
-    //@ts-expect-error TODO: Update spec.
     if (data.strokeTrimPath) {
       this._strokeTrimPath = new TrimPath();
-      //@ts-expect-error TODO: Update spec.
       this._strokeTrimPath.fromData(data.strokeTrimPath);
     }
 
-    //@ts-expect-error TODO: Update spec.
     if (data.fillTrimPath) {
       this._fillTrimPath = new TrimPath();
-      //@ts-expect-error TODO: Update spec.
       this._fillTrimPath.fromData(data.fillTrimPath);
     }
 

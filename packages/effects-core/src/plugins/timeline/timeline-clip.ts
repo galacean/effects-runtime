@@ -2,13 +2,6 @@ import type * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import type { ClipPlayable } from './playable';
 
-/** TODO: update to spec. */
-export interface TimelineClipData extends spec.EffectsObjectData {
-  start?: number,
-  duration?: number,
-  endBehavior?: spec.EndBehavior,
-}
-
 /**
  * Timeline clip data and its playable factory.
  * @since 2.0.0
@@ -21,7 +14,7 @@ export abstract class TimelineClip extends Asset {
 
   abstract createPlayable (): ClipPlayable;
 
-  override fromData (data: TimelineClipData): void {
+  override fromData (data: spec.TimelineClipData): void {
     super.fromData(data);
     if (data.name !== undefined) { this.name = data.name; }
     if (data.start !== undefined) { this.start = data.start; }
