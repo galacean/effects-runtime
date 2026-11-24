@@ -1,0 +1,180 @@
+packages/effects-core/package.json
+  h_f2571758b99ad7 54
+packages/effects-core/src/animation/color-playable.ts
+  h_f2571758b99ad7 74
+packages/effects-core/src/components/animator.ts
+  h_f2571758b99ad7 1,10
+packages/effects-core/src/components/base-render-component.ts
+  h_f2571758b99ad7 33
+packages/effects-core/src/components/component.ts
+  h_f2571758b99ad7 230
+packages/effects-core/src/components/composition-component.ts
+  h_f2571758b99ad7 27,329
+packages/effects-core/src/components/fake-3d-component.ts
+  h_f2571758b99ad7 1,6,34
+packages/effects-core/src/components/frame-component.ts
+  h_f2571758b99ad7 17,27,252
+packages/effects-core/src/components/frame-title.ts
+  h_f2571758b99ad7 199
+packages/effects-core/src/components/mesh-component.ts
+  h_f2571758b99ad7 12
+packages/effects-core/src/components/position-constraint.ts
+  h_f2571758b99ad7 5,19,168
+packages/effects-core/src/components/renderer-component.ts
+  h_f2571758b99ad7 49
+packages/effects-core/src/effects-package.ts
+  h_f2571758b99ad7 12
+packages/effects-core/src/fallback/migration.ts
+  h_f2571758b99ad7 274,276,281,287,292,299,490,501,576,647,742-743,753,799,848,853,881,899,909,932,954-955,957,959,961,964,968,1469-1470
+packages/effects-core/src/fallback/transform.ts
+  h_f2571758b99ad7 213,215,288,306-307,310
+packages/effects-core/src/math/shape/stroke-attributes.ts
+  h_f2571758b99ad7 13
+packages/effects-core/src/math/shape/stroke-width-profile.ts
+  h_f2571758b99ad7 1,7,10,15
+packages/effects-core/src/plugins/animation-graph/animation-graph-asset.ts
+  h_f2571758b99ad7 1,9
+packages/effects-core/src/plugins/animation-graph/nodes/layer-blend-node.ts
+  h_f2571758b99ad7 18
+packages/effects-core/src/plugins/camera/camera-controller-node.ts
+  h_f2571758b99ad7 8,12,37
+packages/effects-core/src/plugins/particle/particle-system.ts
+  h_f2571758b99ad7 932,934
+packages/effects-core/src/plugins/shape/shape-component.ts
+  h_f2571758b99ad7 13,147,745,750
+packages/effects-core/src/plugins/shape/trim-path.ts
+  h_f2571758b99ad7 1-2
+packages/effects-core/src/plugins/sprite/sprite-item.ts
+  h_f2571758b99ad7 29,39,109,243-245
+packages/effects-core/src/plugins/sprite/sprite.ts
+  h_f2571758b99ad7 1,25,34,41
+packages/effects-core/src/plugins/text/text-item.ts
+  h_f2571758b99ad7 41,127,129
+packages/effects-core/src/plugins/timeline/playable-assets/color-property-playable-asset.ts
+  h_f2571758b99ad7 14
+packages/effects-core/src/plugins/timeline/playable-assets/float-property-playable-asset.ts
+  h_f2571758b99ad7 13
+packages/effects-core/src/plugins/timeline/playable-assets/object-reference-property-playable-asset.ts
+  h_f2571758b99ad7 1,10,14
+packages/effects-core/src/plugins/timeline/playable-assets/vector-property-playable-assets.ts
+  h_f2571758b99ad7 16,35,54
+packages/effects-core/src/plugins/timeline/playables/transform-playable.ts
+  h_f2571758b99ad7 104,115
+packages/effects-core/src/plugins/timeline/timeline-clip.ts
+  h_f2571758b99ad7 17
+packages/effects-core/src/plugins/timeline/track.ts
+  h_f2571758b99ad7 92
+packages/effects-core/src/plugins/timeline/tracks/material-track.ts
+  h_f2571758b99ad7 1,6,11
+packages/effects-core/src/plugins/timeline/tracks/object-reference-property-track.ts
+  h_f2571758b99ad7 1,8
+packages/effects-core/src/plugins/timeline/tracks/property-track.ts
+  h_f2571758b99ad7 1,8
+packages/effects-core/src/scene.ts
+  h_f2571758b99ad7 18
+packages/effects-core/src/texture/utils.ts
+  h_f2571758b99ad7 41,47
+plugin-packages/dom-content/src/dom-content-component.ts
+  h_f2571758b99ad7 2,12
+plugin-packages/ffd/src/ffd-component.ts
+  h_f2571758b99ad7 6,76-77
+plugin-packages/gui/src/components/ui-control.ts
+  h_f2571758b99ad7 1-2,11
+plugin-packages/gui/src/controls/button.ts
+  h_f2571758b99ad7 1-2,14
+plugin-packages/gui/src/controls/check-button.ts
+  h_f2571758b99ad7 1,7
+plugin-packages/gui/src/controls/checkbox.ts
+  h_f2571758b99ad7 1,9
+plugin-packages/gui/src/controls/color-picker.ts
+  h_f2571758b99ad7 6,159,319
+plugin-packages/gui/src/controls/color-rect.ts
+  h_f2571758b99ad7 1-2,6
+plugin-packages/gui/src/controls/label.ts
+  h_f2571758b99ad7 5,7,25
+plugin-packages/gui/src/controls/line-edit.ts
+  h_f2571758b99ad7 1-2,7
+plugin-packages/gui/src/controls/menu-button.ts
+  h_f2571758b99ad7 1-2,12,48
+plugin-packages/gui/src/controls/nine-patch-rect.ts
+  h_f2571758b99ad7 5,21
+plugin-packages/gui/src/controls/panel.ts
+  h_f2571758b99ad7 1,6
+plugin-packages/gui/src/controls/popup-menu.ts
+  h_f2571758b99ad7 6,33
+plugin-packages/gui/src/controls/popup.ts
+  h_f2571758b99ad7 1,70
+plugin-packages/gui/src/controls/progress-bar.ts
+  h_f2571758b99ad7 4,6,11
+plugin-packages/gui/src/controls/slider.ts
+  h_f2571758b99ad7 6,338,346
+plugin-packages/gui/src/controls/text-edit.ts
+  h_f2571758b99ad7 5,7,11
+plugin-packages/gui/src/controls/texture-rect.ts
+  h_f2571758b99ad7 4,6,13
+plugin-packages/gui/src/core/control.ts
+  h_f2571758b99ad7 21,159,1766
+plugin-packages/gui/src/layout/aspect-ratio-container.ts
+  h_f2571758b99ad7 1,7
+plugin-packages/gui/src/layout/box-container.ts
+  h_f2571758b99ad7 4,6,171,180
+plugin-packages/gui/src/layout/center-container.ts
+  h_f2571758b99ad7 1,5
+plugin-packages/gui/src/layout/grid-container.ts
+  h_f2571758b99ad7 1,14
+plugin-packages/gui/src/layout/margin-container.ts
+  h_f2571758b99ad7 1,5
+plugin-packages/gui/src/layout/panel-container.ts
+  h_f2571758b99ad7 1,4
+plugin-packages/gui/src/layout/separator.ts
+  h_f2571758b99ad7 1,40,49
+plugin-packages/gui/src/scroll/scroll-bar.ts
+  h_f2571758b99ad7 6,416,424
+plugin-packages/gui/src/scroll/scroll-container.ts
+  h_f2571758b99ad7 6,38
+plugin-packages/model/src/gltf/json-converter.ts
+  h_f2571758b99ad7 376,382,384
+plugin-packages/model/src/gltf/loader-impl.ts
+  h_f2571758b99ad7 602,701,760
+plugin-packages/model/src/gltf/protocol.ts
+  h_f2571758b99ad7 13,135
+plugin-packages/model/src/plugin/model-tree-component.ts
+  h_f2571758b99ad7 23,34
+plugin-packages/multimedia/src/video/video-component.ts
+  h_f2571758b99ad7 13
+plugin-packages/orientation-transformer/src/orientation-component.ts
+  h_f2571758b99ad7 1,7,11
+plugin-packages/rich-text/src/rich-text-component.ts
+  h_f2571758b99ad7 64,176,178
+plugin-packages/spine/src/spine-component.ts
+  h_f2571758b99ad7 164,166
+pnpm-lock.yaml
+  h_f2571758b99ad7 162-163,1470-1471,5343,5814
+web-packages/dev-tools/src/examples/scenes/vector-stroke-scene.ts
+  h_f2571758b99ad7 1,11,20,52
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  h_f2571758b99ad7 1,198,200
+web-packages/dev-tools/src/features/inspector/customizations/shape-width-details.ts
+  h_f2571758b99ad7 1,6,19-20,43-44
+web-packages/dev-tools/src/features/scene/document/scene-document.ts
+  h_f2571758b99ad7 101,198
+web-packages/dev-tools/src/features/scene/factories/scene-template.ts
+  h_f2571758b99ad7 5
+web-packages/dev-tools/src/features/scene/factories/stroke-width-presets.ts
+  h_f2571758b99ad7 1,3
+web-packages/dev-tools/src/features/sequencer/sequencer-document.ts
+  h_f2571758b99ad7 28,370
+web-packages/test/unit/src/effects-core/fallback/model/index.spec.ts
+  h_f2571758b99ad7 120,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96b156538eb88e83ea2e9a9f5a99f14b7c6c68e4",
+  "prompts": {},
+  "humans": {
+    "h_f2571758b99ad7": {
+      "author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
