@@ -2,8 +2,9 @@ import {
   effectsClass,
   math,
   TextCache,
+  spec,
 } from '@galacean/effects';
-import type { Engine, TextMeasurement, spec } from '@galacean/effects';
+import type { Engine, TextMeasurement } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
 import { ellipsizeText } from '../core/text-layout';
@@ -21,7 +22,7 @@ type TextLayout = {
   height: number,
 };
 
-@effectsClass('Label')
+@effectsClass(spec.DataType.Label)
 export class Label extends Control {
   static override readonly themeType: string = 'Label';
   private _text = '';

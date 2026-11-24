@@ -3,6 +3,7 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import type {
   EventEmitterListener,
@@ -10,7 +11,6 @@ import type {
   InputEventMouseButton,
   InputEventMouseMotion,
   Texture,
-  spec,
 } from '@galacean/effects';
 import type { ControlEvent } from '../core/control';
 import { Popup } from './popup';
@@ -30,7 +30,7 @@ export type PopupMenuEvent = ControlEvent & {
   idPressed: [id: PopupMenuItemId],
 };
 
-@effectsClass('PopupMenu')
+@effectsClass(spec.DataType.PopupMenu)
 export class PopupMenu extends Popup {
   static override readonly themeType: string = 'PopupMenu';
   private readonly menuEventEmitter = new EventEmitter<PopupMenuEvent>();

@@ -1,9 +1,9 @@
-import type { ShapeComponent, VariableWidthPoint } from '@galacean/effects';
+import type { ShapeComponent, spec } from '@galacean/effects';
 import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
 import { STROKE_WIDTH_PRESETS as PRESETS } from '../../scene/factories/stroke-width-presets';
 import { addShapeCollectionItem, editShapeData, readShapeData, shapeCollectionActions } from './shape-paint-details';
 
-function presetIndex (points: VariableWidthPoint[]): number {
+function presetIndex (points: spec.VariableWidthPoint[]): number {
   const index = PRESETS.findIndex(preset => preset.points.length === points.length && points.every((point, i) => {
     const reference = preset.points[i];
 
@@ -16,8 +16,8 @@ function presetIndex (points: VariableWidthPoint[]): number {
 /** Edit both sides of the width profile and optional contour bindings. */
 export function buildShapeWidthProfile (group: PropertyGroup, component: ShapeComponent): void {
   group.clear();
-  const read = (): VariableWidthPoint[] => readShapeData(component).variableWidthPoints as VariableWidthPoint[];
-  const edit = (update: (points: VariableWidthPoint[]) => void): void => editShapeData(component, data => update(data.variableWidthPoints as VariableWidthPoint[]));
+  const read = (): spec.VariableWidthPoint[] => readShapeData(component).variableWidthPoints as spec.VariableWidthPoint[];
+  const edit = (update: (points: spec.VariableWidthPoint[]) => void): void => editShapeData(component, data => update(data.variableWidthPoints as spec.VariableWidthPoint[]));
   const rebuild = (): void => buildShapeWidthProfile(group, component);
 
   group.choice('Preset', { read: () => presetIndex(read()), write: index => {
@@ -40,8 +40,8 @@ export function buildShapeWidthProfile (group: PropertyGroup, component: ShapeCo
   controls.readOnly('Count', () => String(read().length));
   read().forEach((_, index) => {
     const point = controls.group(String(index), 'Width Point ' + (index + 1), false);
-    const value = (): VariableWidthPoint => read()[index];
-    const update = (change: (point: VariableWidthPoint) => void): void => edit(points => change(points[index]));
+    const value = (): spec.VariableWidthPoint => read()[index];
+    const update = (change: (point: spec.VariableWidthPoint) => void): void => edit(points => change(points[index]));
 
     point.number('Position', { read: () => value().position, write: position => update(point => { point.position = position; }) },
       { step: .01, precision: 3, min: 0, max: 1 }, { tooltip: 'Normalized distance along the original contour, from 0 to 1.' });

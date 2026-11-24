@@ -3,6 +3,7 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import type {
   Engine,
@@ -10,7 +11,6 @@ import type {
   InputEventMouseButton,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  spec,
 } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control, ControlEvent, RootControl } from '../core/control';
@@ -35,7 +35,7 @@ type ScrollLayout = {
 const INERTIA_DECELERATION = 1000;
 
 /** Clips and scrolls its content children using two internal Range scroll bars. */
-@effectsClass('ScrollContainer')
+@effectsClass(spec.DataType.ScrollContainer)
 export class ScrollContainer extends Container {
   static override readonly themeType: string = 'ScrollContainer';
   private readonly scrollContainerEventEmitter = new EventEmitter<ScrollContainerEvent>();

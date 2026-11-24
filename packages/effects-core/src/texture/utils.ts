@@ -37,16 +37,14 @@ export function getTextureSourceSize (source: TextureSourceOptions): spec.vec2 {
   return [width, height];
 }
 
-type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptionsBase & spec.TextureFormatOptions;
-
 export async function deserializeMipmapTexture (
-  textureOptions: TextureJSONOptions,
+  textureOptions: spec.TextureJSONOptions,
   bins: ArrayBuffer[],
   imageSources: Record<string, any>,
   files: spec.BinaryFile[] = [],
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (textureOptions.target === 34067) {
-    const { mipmaps, target } = textureOptions as spec.SerializedTextureCube;
+    const { mipmaps, target } = textureOptions;
     const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => {
       // @ts-expect-error
       if (pointer.id) {

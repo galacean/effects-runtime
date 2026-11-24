@@ -38,6 +38,7 @@ interface CharInfo {
 /** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
 const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
+/** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -123,7 +124,9 @@ export class TextComponent extends MaskableGraphic {
     this.releaseTextCanvas();
   }
 
+  /** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
   override fromData (data: spec.TextComponentData): void {
+    // @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。
     super.fromData(data);
     const { interaction, options } = data;
 

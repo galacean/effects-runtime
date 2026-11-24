@@ -30,6 +30,7 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
 // TODO: Add to spec
 interface MaskableGraphicData extends spec.ComponentData {
   renderer: spec.RendererOptions,
+  /** @ts-expect-error 暂时沿用旧版 spec 的 MaskOptions。 */
   mask?: spec.MaskOptions,
 }
 

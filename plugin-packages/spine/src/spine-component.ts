@@ -161,7 +161,9 @@ export class SpineComponent extends RendererComponent implements Maskable {
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
+    // @ts-expect-error 暂时沿用旧版 Spine 组件的 mask 字段。
     if (data.mask) {
+      // @ts-expect-error 暂时沿用旧版 Spine 组件的 mask 字段。
       this.maskManager.setMaskOptions(this.engine, data.mask);
     }
     // 兼容编辑器逻辑

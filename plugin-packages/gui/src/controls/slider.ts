@@ -3,6 +3,7 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import type {
   Engine,
@@ -12,7 +13,6 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  spec,
 } from '@galacean/effects';
 import type { RootControl } from '../core/control';
 import { FocusMode, MouseFilter } from '../core/enums';
@@ -335,7 +335,7 @@ export class Slider extends Range {
 
 }
 
-@effectsClass('HSlider')
+@effectsClass(spec.DataType.HSlider)
 export class HSlider extends Slider {
   static override readonly themeType: string = 'HSlider';
   constructor (engine: Engine) {
@@ -343,7 +343,7 @@ export class HSlider extends Slider {
   }
 }
 
-@effectsClass('VSlider')
+@effectsClass(spec.DataType.VSlider)
 export class VSlider extends Slider {
   static override readonly themeType: string = 'VSlider';
   constructor (engine: Engine) {

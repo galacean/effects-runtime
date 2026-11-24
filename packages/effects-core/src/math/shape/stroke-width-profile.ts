@@ -1,18 +1,18 @@
-import type { VariableWidthPoint } from './stroke-attributes';
+import type * as spec from '@galacean/effects-specification';
 
 type Side = 'ascent' | 'descent';
 
 /** Cubic Hermite interpolation with weighted harmonic interior tangents. */
 export class StrokeWidthProfile {
-  readonly points: VariableWidthPoint[];
+  readonly points: spec.VariableWidthPoint[];
   private slopes: Record<Side, number[]>;
 
-  constructor (points: readonly VariableWidthPoint[], segmentIds: readonly number[]) {
+  constructor (points: readonly spec.VariableWidthPoint[], segmentIds: readonly number[]) {
     const ids = new Set(segmentIds);
     const sorted = points.filter(point => point.segmentId === undefined || ids.has(point.segmentId))
       .map(point => ({ ...point, position: Math.max(0, Math.min(1, point.position)), ascent: Math.max(0, point.ascent), descent: Math.max(0, point.descent) }))
       .sort((a, b) => a.position - b.position);
-    const merged: VariableWidthPoint[] = [];
+    const merged: spec.VariableWidthPoint[] = [];
 
     for (const point of sorted) {
       const previous = merged[merged.length - 1];

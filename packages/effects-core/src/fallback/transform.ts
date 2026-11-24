@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { calculateTranslation } from '../math/translate';
 import { BezierCurve, createValueGetter, InterpolationMode, LineSegments } from '../math/value-getters';
-import type { TransformPlayableAssetData } from '../plugins/timeline/playables/transform-playable';
 import { Transform } from '../transform';
 import { ensureFixedNumber, ensureFixedVec3 } from './utils';
 
@@ -211,9 +210,9 @@ function bakePositionPath (movement: spec.PositionOverLifetime, position: Vector
 }
 
 function convertAnimation (
-  source: TransformPlayableAssetData, item: spec.VFXItemData, duration: number,
+  source: spec.TransformPlayableAssetData, item: spec.VFXItemData, duration: number,
   rotationCache: Map<string, spec.FixedNumberExpression>,
-): TransformPlayableAssetData {
+): spec.TransformPlayableAssetData {
   const transform = new Transform();
 
   if (item.transform) {
@@ -286,6 +285,7 @@ export function migrateTransformAnimations (json: spec.JSONScene): void {
       continue;
     }
     const composition = component as spec.CompositionComponentData;
+    // @ts-expect-error 旧逻辑允许 timelineAsset 缺失时查找不到时间轴。
     const timeline = assets.get(composition.timelineAsset?.id) as spec.TimelineAssetData | undefined;
 
     if (!timeline || !composition.sceneBindings) {
@@ -303,9 +303,11 @@ export function migrateTransformAnimations (json: spec.JSONScene): void {
 
       if (item && track.dataType === DataType.TransformTrack) {
         for (const clip of track.clips ?? []) {
-          const asset = assets.get(clip.asset.id) as TransformPlayableAssetData | undefined;
+          // @ts-expect-error 旧版片段通过 asset 引用可播放资源。
+          const asset = assets.get(clip.asset.id) as spec.TransformPlayableAssetData | undefined;
 
           if (asset?.dataType === DataType.TransformPlayableAsset && !converted.has(asset.id)) {
+            // @ts-expect-error 旧版片段在轨道内记录时长。
             Object.assign(asset, convertAnimation(asset, item, clip.duration ?? 0, rotationCache));
             converted.add(asset.id);
           }

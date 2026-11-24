@@ -10,6 +10,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
+  /** @ts-expect-error 暂时沿用旧版 spec 的 MaskOptions。 */
   mask?: spec.MaskOptions,
 }
 

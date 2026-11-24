@@ -12,18 +12,6 @@ import { TextCache, type FontStyle, type FontWeight, type GlyphAtlas } from '../
 import type { Texture } from '../texture';
 import type { FrameComponent } from './frame-component';
 
-export interface FrameTitleStyleData {
-  color?: spec.ColorData,
-  fontSize?: number,
-  fontFamily?: string,
-  fontWeight?: FontWeight,
-  fontStyle?: FontStyle,
-  gap?: number,
-  icon?: spec.DataPath,
-  iconSize?: number,
-  iconGap?: number,
-}
-
 /** 标题使用屏幕逻辑像素，与元素的缩放无关。 */
 export class FrameTitleStyle {
   color = new Color(0.4, 0.4, 0.4, 1);
@@ -208,7 +196,7 @@ export class FrameTitle {
     }
   }
 
-  fromData (data: FrameTitleStyleData): void {
+  fromData (data: spec.FrameTitleStyleData): void {
     const style = new FrameTitleStyle();
 
     if (data.color) {

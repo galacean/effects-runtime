@@ -5,11 +5,6 @@ import { MaskProcessor } from '../material';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
 
-interface RendererComponentData extends spec.ComponentData {
-  materials?: spec.DataPath[],
-  _priority?: number,
-}
-
 /**
  * 所有渲染组件的基类
  * @since 2.0.0
@@ -51,7 +46,7 @@ export class RendererComponent extends Component {
     }
   }
 
-  override fromData (data: RendererComponentData): void {
+  override fromData (data: spec.RendererComponentData): void {
     super.fromData(data);
     if (data.materials !== undefined) {
       this.materials = data.materials.map(material => this.findObject<Material>(material));

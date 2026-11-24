@@ -1,4 +1,4 @@
-import { effectsClass } from '@galacean/effects';
+import { effectsClass, spec } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
 import { Button } from './button';
 import type { ContentInsets } from './button';
@@ -6,7 +6,7 @@ import { HorizontalAlignment } from './enums';
 
 const CHECK_ICON_GRID_SIZE = 16;
 
-@effectsClass('Checkbox')
+@effectsClass(spec.DataType.Checkbox)
 export class Checkbox extends Button {
   static override readonly themeType: string = 'Checkbox';
 

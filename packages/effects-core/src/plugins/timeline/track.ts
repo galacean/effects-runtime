@@ -6,11 +6,6 @@ import type { Constructor } from '../../utils';
 import type { ClipEvaluationData } from './playables';
 import { TrackMixerPlayable } from './playables';
 
-/** TODO: update to spec. */
-export interface TrackAssetData extends Omit<spec.TrackAssetData, 'clips'> {
-  clips: spec.DataPath[],
-}
-
 /**
  * @since 2.0.0
  */
@@ -94,7 +89,7 @@ export class TrackAsset extends Asset {
     this.clips.push(clip);
   }
 
-  override fromData (data: TrackAssetData): void {
+  override fromData (data: spec.TrackAssetData): void {
     super.fromData(data);
 
     if (data.name !== undefined) {
