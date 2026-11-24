@@ -1,0 +1,19 @@
+web-packages/dev-tools/src/features/scene/viewport/scene-gizmo.ts
+  s_8ebd8d83699f18::t_c6387d129064d3 2,13,16,115,119-122,143,246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8701c77b833fd7babea81be32031c4c3e1027d5",
+  "prompts": {},
+  "sessions": {
+    "s_8ebd8d83699f18": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20ce9-337f-7a11-9b0f-fddce3d214fc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
