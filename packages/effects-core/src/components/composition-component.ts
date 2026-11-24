@@ -12,11 +12,6 @@ export interface SceneBinding {
   value: EffectsObject,
 }
 
-export interface SceneBindingData {
-  key: spec.DataPath,
-  value: spec.DataPath,
-}
-
 export enum UpdateModes {
   EveryUpdate,
   Manual,
@@ -29,7 +24,7 @@ export type CompositionComponentEvent = {
 /**
  * @since 2.0.0
  */
-@effectsClass('CompositionComponent')
+@effectsClass(spec.DataType.CompositionComponent)
 export class CompositionComponent extends Component {
   /**
    * @internal
@@ -331,7 +326,7 @@ export class CompositionComponent extends Component {
     return startOrder;
   }
 
-  override fromData (data: Omit<spec.CompositionComponentData, 'items'>): void {
+  override fromData (data: spec.CompositionComponentData): void {
     super.fromData(data);
 
     if (data.timelineAsset !== undefined) {

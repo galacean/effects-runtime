@@ -1,10 +1,10 @@
-import { effectsClass } from '@galacean/effects';
+import { effectsClass, spec } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { Button } from './button';
 import type { ContentInsets } from './button';
 import { HorizontalAlignment } from './enums';
 
-@effectsClass('CheckButton')
+@effectsClass(spec.DataType.CheckButton)
 export class CheckButton extends Button {
   static override readonly themeType: string = 'CheckButton';
 

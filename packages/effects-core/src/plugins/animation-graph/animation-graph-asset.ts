@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import { GraphDataSet } from './graph-data-set';
@@ -6,7 +6,7 @@ import { getNodeDataClass } from './node-asset-type';
 import { InvalidIndex, type GraphNodeData } from './graph-node';
 import type { AnimationClip } from '../../animation/animation-clip';
 
-@effectsClass('AnimationGraphAsset')
+@effectsClass(spec.DataType.AnimationGraphAsset)
 export class AnimationGraphAsset extends Asset {
   nodeDatas: GraphNodeData[] = [];
   graphDataSet = new GraphDataSet();

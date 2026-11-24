@@ -3,13 +3,13 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import type {
   Engine,
   EventEmitterListener,
   InputEventMouseButton,
   InputEventMouseMotion,
-  spec,
 } from '@galacean/effects';
 import { Control, SizeFlags } from '../core/control';
 import type { ControlEvent } from '../core/control';
@@ -156,7 +156,7 @@ class HueBar extends Control {
   }
 }
 
-@effectsClass('ColorPicker')
+@effectsClass(spec.DataType.ColorPicker)
 export class ColorPicker extends VBoxContainer {
   static override readonly themeType: string = 'ColorPicker';
   private readonly colorEventEmitter = new EventEmitter<ColorPickerEvent>();
@@ -316,7 +316,7 @@ export class ColorPicker extends VBoxContainer {
   }
 }
 
-@effectsClass('ColorPickerButton')
+@effectsClass(spec.DataType.ColorPickerButton)
 export class ColorPickerButton extends Button {
   static override readonly themeType: string = 'ColorPickerButton';
   readonly picker: ColorPicker;

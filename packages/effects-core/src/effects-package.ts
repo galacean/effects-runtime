@@ -5,16 +5,11 @@ import {
   FBGeometryDataT, FBSubMeshT, FBVertexChannelT, FBVertexDataT,
 } from './__definations__';
 
-interface FileSummary {
-  assetType: string,
-  guid: string,
-}
-
 /**
  * @since 2.0.0
  */
 export class EffectsPackage {
-  fileSummary: FileSummary;
+  fileSummary: spec.FileSummary;
   exportObjectDatas: spec.EffectsObjectData[] = [];
 
   addData (effectsObjectData: spec.EffectsObjectData) {

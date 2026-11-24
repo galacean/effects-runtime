@@ -1,13 +1,14 @@
 import {
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
-import type { Engine, spec } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { MouseFilter } from '../core/enums';
 import { Range } from '../scroll/range';
 import { ProgressFillMode } from './enums';
 
-@effectsClass('ProgressBar')
+@effectsClass(spec.DataType.ProgressBar)
 export class ProgressBar extends Range {
   static override readonly themeType: string = 'ProgressBar';
   private _showPercentage = true;

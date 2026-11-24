@@ -1,8 +1,9 @@
 import {
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
-import type { Engine, spec } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control } from '../core/control';
 import { LayoutAlignment, Orientation } from './enums';
@@ -167,7 +168,7 @@ export class BoxContainer extends Container {
   }
 }
 
-@effectsClass('HBoxContainer')
+@effectsClass(spec.DataType.HBoxContainer)
 export class HBoxContainer extends BoxContainer {
   static override readonly themeType: string = 'HBoxContainer';
   constructor (engine: Engine) {
@@ -176,7 +177,7 @@ export class HBoxContainer extends BoxContainer {
   }
 }
 
-@effectsClass('VBoxContainer')
+@effectsClass(spec.DataType.VBoxContainer)
 export class VBoxContainer extends BoxContainer {
   static override readonly themeType: string = 'VBoxContainer';
   constructor (engine: Engine) {

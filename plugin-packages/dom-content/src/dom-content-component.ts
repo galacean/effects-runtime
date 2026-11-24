@@ -1,8 +1,7 @@
 import type { Engine, Renderer } from '@galacean/effects';
-import { MaskableGraphic, effectsClass, math, logger, Texture, glContext } from '@galacean/effects';
+import { MaskableGraphic, effectsClass, math, logger, Texture, glContext, spec } from '@galacean/effects';
 import { renderDOMToImage } from './dom-to-texture';
 
-const DATA_TYPE = 'DomContentComponent';
 const MAX_TEXTURE_SIZE = 2048;
 /** 单次 setContent 接受的 HTML 最大字符数，避免攻击者传入超大字符串造成 OOM/CPU 耗尽 */
 const MAX_HTML_LENGTH = 1024 * 1024; // 1M 字符
@@ -10,7 +9,7 @@ const MAX_HTML_LENGTH = 1024 * 1024; // 1M 字符
 const ALPHA_FIX_VALUE = 1 / 255;
 
 /** DOM 内容组件：将 HTML/CSS 渲染为纹理，自动检测并覆盖同 item 上其他 MaskableGraphic 组件纹理 */
-@effectsClass(DATA_TYPE)
+@effectsClass(spec.DataType.DomContentComponent)
 export class DomContentComponent extends MaskableGraphic {
   htmlContent = '';
   contentWidth = 300;

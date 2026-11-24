@@ -3,15 +3,13 @@ import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 
-interface CameraControllerData extends spec.ComponentData, spec.CameraContent {}
-
 @effectsClass(spec.DataType.CameraController)
 export class CameraController extends Component {
-  private options: CameraControllerOptions;
+  private options: spec.CameraControllerData['options'];
 
   constructor (
     engine: Engine,
-    props?: CameraControllerData,
+    props?: spec.CameraControllerData,
   ) {
     super(engine);
 
@@ -36,17 +34,9 @@ export class CameraController extends Component {
     }
   }
 
-  override fromData (data: CameraControllerData): void {
+  override fromData (data: spec.CameraControllerData): void {
     super.fromData(data);
 
     this.options = data.options;
   }
-}
-
-interface CameraControllerOptions {
-  fov: number,
-  far: number,
-  near: number,
-  clipMode?: spec.CameraClipMode,
-  aspect?: number,
 }
