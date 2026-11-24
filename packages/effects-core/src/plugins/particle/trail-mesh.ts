@@ -92,17 +92,22 @@ export class TrailMesh {
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const useAttributeTrailStart = maxTrailCount > 64;
+    const colorLookupFilters = { minFilter: glContext.NEAREST, magFilter: glContext.NEAREST };
     let shaderCacheId = 0;
 
     if (colorOverLifetime) {
       macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1;
-      uniformValues.uColorOverLifetime = this.ownTexture(Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime)));
+      uniformValues.uColorOverLifetime = this.ownTexture(Texture.createWithData(
+        engine, imageDataFromGradient(colorOverLifetime), colorLookupFilters,
+      ));
     }
     if (colorOverTrail) {
       macros.push(['COLOR_OVER_TRAIL', true]);
       shaderCacheId |= 1 << 2;
-      uniformValues.uColorOverTrail = this.ownTexture(Texture.createWithData(engine, imageDataFromGradient(colorOverTrail)));
+      uniformValues.uColorOverTrail = this.ownTexture(Texture.createWithData(
+        engine, imageDataFromGradient(colorOverTrail), colorLookupFilters,
+      ));
     }
     if (useAttributeTrailStart) {
       macros.push(['ATTR_TRAIL_START', 1]);

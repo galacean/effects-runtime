@@ -253,6 +253,7 @@ export class SnapManager {
    * @param otherPoints 吸附点集合
    * @param xEnabled 是否进行 x 轴吸附
    * @param yEnabled 是否进行 y 轴吸附
+   * @param guidesEnabled 是否参与全局参考线吸附，形状内部节点编辑时关闭
    */
   preparePoint (
     shift: Vector2,
@@ -260,6 +261,7 @@ export class SnapManager {
     otherPoints: readonly Vector2[] = this.getSnapTargetPoints(),
     xEnabled = true,
     yEnabled = true,
+    guidesEnabled = true,
   ): void {
     const previousResult = this.result;
 
@@ -285,7 +287,7 @@ export class SnapManager {
       }
     }
 
-    this.considerGuideSnaps([sourcePoint], xEnabled, yEnabled);
+    if (guidesEnabled) { this.considerGuideSnaps([sourcePoint], xEnabled, yEnabled); }
 
     this.publishResult();
   }

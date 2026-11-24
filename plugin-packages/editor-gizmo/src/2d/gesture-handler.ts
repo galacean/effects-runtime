@@ -370,6 +370,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     this.activeGizmoTool = gizmoTool;
     this.commitEditMode(this.resolveEditModeForTool(gizmoTool));
     this.disposeQueuedGizmos();
+    this.setCursor({ type: GestureCursorType.NORMAL, angle: 0 });
   }
 
   /**

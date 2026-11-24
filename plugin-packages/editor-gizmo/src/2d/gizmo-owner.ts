@@ -11,6 +11,7 @@ import type { LoadingManager } from './gizmos/loading-manager';
 import type { RulerManager } from './gizmos/ruler-manager';
 import type { GestureCursorResult } from './cursor';
 import type { EditMode } from './modes';
+import type { GizmoTool } from './gizmo-tool';
 
 /** 独立于指针捕获者的选区变换状态。 */
 export type SelectionTransformKind = 'idle' | 'move' | 'resize';
@@ -72,6 +73,9 @@ export interface GizmoOwner {
 
   /** 切换当前编辑模式。 */
   setActiveEditMode(mode: EditMode): void,
+
+  /** 切换工具；例如文本创建工具点击已有文字时回到编辑工具。 */
+  setActiveTool(tool: GizmoTool): void,
 
   /** 恢复默认编辑模式。 */
   resetEditMode(): void,

@@ -7,12 +7,15 @@ import { Box2 } from '@galacean/effects-math/es/extension/index';
 import { Vector2 } from '../math';
 import type { ItemCreateConfig } from '../configs/types';
 import { itemCreateConfig, selectionPreviewConfig } from '../configs/builtin-configs';
-import { getItemViewBox, isFramePlayerItem } from '../items';
+import { getItemViewBox, isFramePlayerItem, getPlayerItemById } from '../items';
 import { viewPositionToPixel, viewSizeToPixel } from '../viewport';
 import { toColor, drawBox } from '../drawing';
 import { DRAG_THRESHOLD_PX } from '../drag-threshold';
 import type { GizmoItemCreateInfo } from '../gizmo-action';
 import { TEXT_EDIT_BOX_LINE_COLOR, TEXT_EDIT_BOX_LINE_WIDTH } from './text-gizmo';
+import { isEditableTextItem } from '../items/item-predicates';
+import { createTextEditMode } from '../modes/create-text-edit-mode';
+import { MoveGizmoTool } from '../gizmo-tools/move-gizmo-tool';
 
 /** 元素创建类型。 */
 export enum ItemCreateType {
@@ -20,6 +23,8 @@ export enum ItemCreateType {
   NONE = 'none',
   /** 创建文本元素。 */
   TEXT = 'text',
+  /** 创建富文本元素。 */
+  RICH_TEXT = 'richtext',
   /** 创建视频生成器。 */
   VIDEO_GENERATOR = 'video-generator',
   /** 创建图片生成器。 */
@@ -45,6 +50,11 @@ export type TextCreateData = {
   /** 水平拖拽得到的固定像素宽度 */
   width: number,
 };
+
+/** 两种文本类型共享点击和拖拽创建。 */
+export function isTextCreateType (type: ItemCreateType): type is ItemCreateType.TEXT | ItemCreateType.RICH_TEXT {
+  return type === ItemCreateType.TEXT || type === ItemCreateType.RICH_TEXT;
+}
 
 const DEFAULT_FRAME_SIZE = 1024;
 const DEFAULT_TEXT_HEIGHT = 60;
@@ -141,6 +151,20 @@ export class ItemCreateGizmo extends Gizmo {
     if (event.buttonIndex !== MouseButton.Left) {
       return;
     }
+    if (isTextCreateType(this._createType)) {
+      const composition = this._owner.getEngine().sceneServer.compositions[0];
+      const target = this._owner.getSelection().hitTest(new Vector2(event.position.x, event.position.y))
+        .map(id => getPlayerItemById(composition, id))
+        .find(item => item?.isVisible && isEditableTextItem(item));
+
+      if (target) {
+        event.accept();
+        this._owner.setActiveTool(new MoveGizmoTool(this._owner));
+        this._owner.setActiveEditMode(createTextEditMode(this._owner, target, 'select'));
+
+        return;
+      }
+    }
     this._owner.setCursor(this.cursorResult);
     this.mouseGrabbed = true;
     this.dragStartViewPoint = new Vector2(event.position.x, event.position.y);
@@ -185,7 +209,7 @@ export class ItemCreateGizmo extends Gizmo {
     }
 
     // 松开时采用最终水平距离，快速拖动也保留宽度；预览仍使用时间阈值。
-    if (this._createType === ItemCreateType.TEXT) {
+    if (isTextCreateType(this._createType)) {
       this.updateTextDrag(event, true);
     }
 
@@ -233,13 +257,14 @@ export class ItemCreateGizmo extends Gizmo {
 
         break;
       }
-      case ItemCreateType.TEXT: {
+      case ItemCreateType.TEXT:
+      case ItemCreateType.RICH_TEXT: {
         const pixelPosition = this.viewPositionToPixel(this.dragStartViewPoint!);
 
         this._owner.emit('actioncommit', {
           source: this,
           createInfo: {
-            type: ItemCreateType.TEXT,
+            type: this._createType === ItemCreateType.RICH_TEXT ? ItemCreateType.RICH_TEXT : ItemCreateType.TEXT,
             id: createItemId,
             position: [pixelPosition.x, pixelPosition.y],
           },
@@ -269,7 +294,8 @@ export class ItemCreateGizmo extends Gizmo {
   /** 按当前创建类型刷新鼠标光标样式。 */
   refreshCursorResult () {
     switch (this._createType) {
-      case ItemCreateType.TEXT: {
+      case ItemCreateType.TEXT:
+      case ItemCreateType.RICH_TEXT: {
         this.cursorResult = {
           type: GestureCursorType.TEXT_CREATE,
           angle: 0,
@@ -351,7 +377,7 @@ export class ItemCreateGizmo extends Gizmo {
    * @param control 绘制控制器。
    */
   override draw (control: Control): void {
-    const isTextPreview = this._createType === ItemCreateType.TEXT;
+    const isTextPreview = isTextCreateType(this._createType);
     const previewBox = this._createType === ItemCreateType.FRAME
       ? this.frameBox
       : isTextPreview ? this.getTextPreviewBox() : null;
@@ -411,6 +437,7 @@ export class ItemCreateGizmo extends Gizmo {
 
         break;
       case ItemCreateType.TEXT:
+      case ItemCreateType.RICH_TEXT:
         this.updateTextDrag(event);
 
         break;
@@ -532,7 +559,7 @@ export class ItemCreateGizmo extends Gizmo {
     };
 
     return {
-      type: ItemCreateType.TEXT,
+      type: this._createType === ItemCreateType.RICH_TEXT ? ItemCreateType.RICH_TEXT : ItemCreateType.TEXT,
       id: this.createItemId!,
       position: textData.position,
       info: textData,
@@ -541,7 +568,7 @@ export class ItemCreateGizmo extends Gizmo {
 
   /** @returns 当前有效的拖拽创建信息。 */
   private getCurrentDragCreateInfo (): GizmoItemCreateInfo | undefined {
-    if (this._createType === ItemCreateType.TEXT && this.textBox) {
+    if (isTextCreateType(this._createType) && this.textBox) {
       return this.getTextDragCreateInfo();
     }
 
@@ -556,7 +583,8 @@ export class ItemCreateGizmo extends Gizmo {
       const selectedItems = this._owner.getSelection().getSelectedPlayerItems();
       const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined;
 
-      if (selectedItem?.type === spec.ItemType.text) {
+      if (selectedItem?.type === spec.ItemType.text
+        || (this._createType === ItemCreateType.RICH_TEXT && selectedItem?.type === spec.ItemType.richtext)) {
         const actualBox = getItemViewBox(
           selectedItem,
           GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!),

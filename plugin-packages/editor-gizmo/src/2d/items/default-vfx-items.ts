@@ -9,6 +9,7 @@ import {
   type VFXItem,
   CompositionComponent,
 } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { VFXItemFactory } from './vfx-item-factory';
 
@@ -63,6 +64,15 @@ export class DefaultVFXItems {
     const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name, TextComponent);
 
     vfxItem.type = spec.ItemType.text;
+
+    return vfxItem;
+  }
+
+  /** 创建富文本元素，使用与普通文本相同的元素生命周期。 */
+  static createRichText (composition: Composition, parent = null, name = 'NewRichText'): VFXItem {
+    const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name, RichTextComponent);
+
+    vfxItem.type = spec.ItemType.richtext;
 
     return vfxItem;
   }

@@ -77,7 +77,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
         if (i > 0) {
           segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
         }
-        charArr.push({ char: ch, x: segmentInnerX });
+        charArr.push({ char: ch, x: segmentInnerX, index: (options.textOffset ?? 0) + i });
         segmentInnerX += charWidth;
       }
 

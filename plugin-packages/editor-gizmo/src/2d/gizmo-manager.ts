@@ -8,6 +8,7 @@ import type { ImageCutGizmo } from './gizmos/image-cut-gizmo';
 import type { ImageExpandGizmo } from './gizmos/image-expand-gizmo';
 import type { ViewportOverlayGizmo } from './gizmos/viewport-overlay-gizmo';
 import type { SpriteTextEditGizmo } from './gizmos/sprite-text-edit-gizmo';
+import type { RichTextGizmo } from './gizmos/rich-text-gizmo';
 import type { TextGizmo } from './gizmos/text-gizmo';
 import type { ResizeSelectionGizmo } from './gizmos/resize-selection-gizmo';
 import type { ChangeSelectionGizmo } from './gizmos/change-selection-gizmo';
@@ -53,6 +54,8 @@ export type GizmoTypeMap = {
   'sprite-text-edit': SpriteTextEditGizmo,
   /** 文本编辑 Gizmo。 */
   text: TextGizmo,
+  /** 富文本编辑 Gizmo。 */
+  'rich-text': RichTextGizmo,
   /** 选区缩放 Gizmo。 */
   'resize-selection': ResizeSelectionGizmo,
   /** 文本编辑退出 Gizmo。 */

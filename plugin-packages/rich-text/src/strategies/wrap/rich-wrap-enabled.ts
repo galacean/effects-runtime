@@ -31,11 +31,22 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     let segmentInnerX = 0;
     let chunkChars: RichCharDetail[] = [];
     let chunkOptions: RichTextOptions | null = null; // 跟踪当前切块所属options
+    let textOffset = processedOptions[0]?.textOffset;
 
     // 结束当前行（含缓冲切块）
-    const finishCurrentLine = () => {
+    const finishCurrentLine = (includeEmpty = false) => {
       flushChunk();
-      if (currentLine.chars.length === 0) { return; }
+      if (currentLine.chars.length === 0) {
+        if (!includeEmpty || textOffset === undefined) { return; }
+        context.font = `${style.fontStyle} ${style.textWeight} ${style.fontSize}px ${style.fontFamily}`;
+        const metrics = context.measureText('x');
+
+        currentLine.chars.push([]);
+        currentLine.offsetX.push(0);
+        currentLine.richOptions.push({ text: '', textOffset, fontSize: style.fontSize, isNewLine: false });
+        currentLine.lineAscent = metrics.fontBoundingBoxAscent || style.fontSize;
+        currentLine.lineDescent = metrics.fontBoundingBoxDescent || 0;
+      }
 
       // 所有行都使用配置的行高（gapPx）
       currentLine.lineHeight = gapPx;
@@ -79,16 +90,15 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     processedOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
 
-      // 设置测量字体（包含fontStyle）
-      const fontStyle = options.fontStyle || style.fontStyle || 'normal';
-
-      context.font = `${fontStyle} ${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
-
       // 显式换行符优先处理
       if (isNewLine) {
         flushChunk();
-        finishCurrentLine();
+        finishCurrentLine(true);
       }
+      textOffset = options.textOffset ?? textOffset;
+      const fontStyle = options.fontStyle || style.fontStyle || 'normal';
+
+      context.font = `${fontStyle} ${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
 
       // 预计算缩放因子：measureText 基于 10px，乘 fontSize/10 得到逻辑像素
       const glyphScale = fontSize * scaleFactor;
@@ -132,6 +142,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         // 添加字符到切块（x为切块内相对坐标）
         chunkChars.push({
           char: ch,
+          index: (options.textOffset ?? 0) + i,
           x: segmentInnerX, // 切块内相对坐标
         });
 
@@ -142,6 +153,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         // 更新位置和宽度
         segmentInnerX += charWidth;
         currentLine.width += charWidth;
+        textOffset = options.textOffset === undefined ? undefined : options.textOffset + i + 1;
       }
 
       // 文本段结束，落盘当前切块
@@ -149,7 +161,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     });
 
     // 结束最后一行
-    finishCurrentLine();
+    finishCurrentLine(true);
 
     // 计算 bbox（包含行高带来的上下边距）
     let bboxTop = Infinity;

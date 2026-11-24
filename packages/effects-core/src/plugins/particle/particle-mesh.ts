@@ -9,6 +9,7 @@ import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Engine } from '../../engine';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
+import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import {
   getPreMultiAlpha, Material, setBlendMode, setSideMode,
@@ -193,6 +194,7 @@ export class ParticleMesh implements ParticleMeshData {
       uniformValues.uColorOverLifetime = color instanceof Texture ? color : this.ownTexture(Texture.createWithData(
         engine,
         color instanceof Uint8Array ? { data: color, width: 1, height: 1 } : imageDataFromGradient(color),
+        { minFilter: glContext.NEAREST, magFilter: glContext.NEAREST },
       ));
     }
     if (colorOverLifetime?.opacity) {
