@@ -47,6 +47,7 @@
     "@galacean/effects-plugin-gui": "workspace:*",
     "@galacean/effects-plugin-model": "workspace:*",
     "@galacean/effects-plugin-rich-text": "workspace:*",
-    "@galacean/effects-plugin-multimedia": "workspace:*"
+    "@galacean/effects-plugin-multimedia": "workspace:*",
+    "@galacean/effects-plugin-ffd": "workspace:*"
   }
 }

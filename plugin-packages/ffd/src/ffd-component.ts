@@ -34,6 +34,33 @@ export class FFDComponent extends Component {
     this.updateShaderUniform();
   }
 
+  /** 编辑器读取副本，避免绕过批量更新直接修改控制点。 */
+  getLattice () {
+    return {
+      enabled: this.enableFFD && this.rowNum >= 2 && this.rowNum <= 13 && this.colNum >= 2 && this.colNum <= 13
+        && this.controlPoints.length === this.rowNum * this.colNum,
+      rows: this.rowNum,
+      columns: this.colNum,
+      points: this.controlPoints.map(point => point.clone()),
+      min: new math.Vector3().copyFrom(this.boundMin),
+      max: new math.Vector3().copyFrom(this.boundMax),
+    };
+  }
+
+  /**
+   * 一次写入完整晶格；保留尺寸和索引顺序，并同步可序列化数据。
+   * 点数须与当前晶格一致，坐标须为有限值；不合法时抛错且不修改点集。
+   */
+  setControlPoints (points: readonly math.Vector3[]): void {
+    if (!this.data || points.length !== this.controlPoints.length
+      || points.some(point => ![point.x, point.y, point.z].every(Number.isFinite))) {
+      throw new Error('Invalid FFD control points.');
+    }
+    this.controlPoints = points.map(point => point.clone());
+    this.data.controlPoints = this.controlPoints.map(point => point.clone());
+    this.updateShaderUniform();
+  }
+
   override fromData (data: spec.FFDComponentData): void {
     super.fromData(data);
     this.data = data;

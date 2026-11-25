@@ -1,5 +1,11 @@
 import { Composition, Player, math } from '@galacean/effects';
-import { GestureHandler, selectionSnapConfig, viewportNavigationConfig, viewportOverlayConfig } from '@galacean/effects-plugin-editor-gizmo';
+import {
+  BasicEditMode,
+  GestureHandler,
+  selectionSnapConfig,
+  viewportNavigationConfig,
+  viewportOverlayConfig,
+} from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { DOMEvents, element } from './dom';
 import { DemoEditor } from './editor';
@@ -38,6 +44,7 @@ export class GizmoDemo {
       throw new Error('GUI canvas failed to initialize.');
     }
     this.handler = new GestureHandler(this.player.engine);
+    this.handler.setActiveEditMode(new BasicEditMode(this.handler));
     this.handler.parent = uiCanvas.rootControl;
     this.handler.setAnchorsAndOffsetsPreset('fullRect');
     this.handler.setErrorMonitor({

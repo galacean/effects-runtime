@@ -269,6 +269,11 @@ export class CompositionComponent extends Component {
     }
   }
 
+  /** 编辑动画数据后重新采样当前位置，不移动播放头或重建播放图。 */
+  refreshCurrentFrame (): void {
+    this.sampleTime(this.time);
+  }
+
   /**
    * Sample an absolute timeline time in seconds, already mapped by the caller.
    * Parent clips own the playback range of nested compositions; do not apply

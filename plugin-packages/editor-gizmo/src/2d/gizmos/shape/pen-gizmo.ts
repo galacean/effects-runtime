@@ -27,6 +27,8 @@ export class PenGizmo extends Gizmo {
     private readonly onEscape?: (state: PenToolState) => void,
     private readonly preserveTarget = false,
     private readonly sharedContext?: PenEditContext,
+    /** Keep a host's combined draw/edit tool while using the same runtime interaction code. */
+    private readonly combineCreateAndEdit = false,
   ) {
     super(owner);
     this.editContext = sharedContext ?? createPenEditContext();
@@ -145,6 +147,13 @@ export class PenGizmo extends Gizmo {
     }
     let hit = this.editContext.drawing ? undefined : this.hitTest(event.position);
 
+    if (this.combineCreateAndEdit && event.doubleClick && hit?.part === 'point'
+      && this.isOpenEndpoint(hit.shape, hit.index) && this.beginDrawingFromExistingPoint(hit)) {
+      this.emit('start');
+
+      return;
+    }
+
     if (this.interactionMode === 'edit' && !hit) {
       this.editContext.selected = undefined;
       this.editContext.selectedNodes.clear();
@@ -155,7 +164,7 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
-    if (this.interactionMode === 'create' && this.preserveTarget && !this.editContext.drawing && this.editContext.target) {
+    if (!this.combineCreateAndEdit && this.interactionMode === 'create' && this.preserveTarget && !this.editContext.drawing && this.editContext.target) {
       const selectedStart = this.getCreationStart();
 
       if (selectedStart && this.canCloseExistingShape(selectedStart, hit)) {
@@ -566,7 +575,7 @@ export class PenGizmo extends Gizmo {
 
   private refreshTarget (): void {
     if (this.editContext.drawing || this.editContext.dragging) { return; }
-    if (this.interactionMode === 'create' && !this.preserveTarget) {
+    if (this.interactionMode === 'create' && !this.preserveTarget && !this.combineCreateAndEdit) {
       if (this.editContext.target) { this.resetState(); }
 
       return;

@@ -64,9 +64,15 @@ export class TransformPlayable extends ClipPlayable {
     const { sizeXOverLifetime, sizeYOverLifetime, sizeZOverLifetime, rotationOverLifetime, pathGetter } = curves;
 
     if (curves.sizeSeparateAxes) {
-      if (sizeXOverLifetime) { out.values[6] = sizeXOverLifetime.getValue(life); }
-      if (sizeYOverLifetime) { out.values[7] = sizeYOverLifetime.getValue(life); }
-      if (sizeZOverLifetime) { out.values[8] = sizeZOverLifetime.getValue(life); }
+      if (sizeXOverLifetime) {
+        out.values[6] = sizeXOverLifetime.getValue(life);
+      }
+      if (sizeYOverLifetime) {
+        out.values[7] = sizeYOverLifetime.getValue(life);
+      }
+      if (sizeZOverLifetime) {
+        out.values[8] = sizeZOverLifetime.getValue(life);
+      }
     } else if (sizeXOverLifetime) {
       const size = sizeXOverLifetime.getValue(life);
 
@@ -75,9 +81,15 @@ export class TransformPlayable extends ClipPlayable {
       }
     }
 
-    if (rotationOverLifetime?.x) { out.values[3] = rotationOverLifetime.x.getValue(life); }
-    if (rotationOverLifetime?.y) { out.values[4] = rotationOverLifetime.y.getValue(life); }
-    if (rotationOverLifetime?.z) { out.values[5] = rotationOverLifetime.z.getValue(life); }
+    if (rotationOverLifetime?.x) {
+      out.values[3] = rotationOverLifetime.x.getValue(life);
+    }
+    if (rotationOverLifetime?.y) {
+      out.values[4] = rotationOverLifetime.y.getValue(life);
+    }
+    if (rotationOverLifetime?.z) {
+      out.values[5] = rotationOverLifetime.z.getValue(life);
+    }
 
     if (pathGetter) {
       const position = pathGetter.getValue(life);
@@ -110,6 +122,16 @@ export class TransformPlayableAsset extends TimelineClip {
     transformPlayable.curves = this.curves;
 
     return transformPlayable;
+  }
+
+  /** 保持 curves 对象身份，使已经编译的 playable 在下一次采样读取新路径。 */
+  setPositionPath (path: NonNullable<spec.PositionOverLifetime['path']>): void {
+    const getter = createValueGetter(path);
+
+    this.transformAnimationData.positionOverLifetime ??= {};
+    this.transformAnimationData.positionOverLifetime.path = path;
+    this.curves.pathGetter = getter;
+    this.curves.validChannels.fill(true, 0, 3);
   }
 
   override fromData (data: spec.TransformPlayableAssetData): void {

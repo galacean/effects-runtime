@@ -4,6 +4,7 @@ import type { Matrix3 } from '../math';
 import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox } from '../math';
 import { projectPoint, worldSizeToViewSize } from '../viewport/coordinates';
 import { isFramePlayerItem } from './item-predicates';
+import { getHostItemGeometry } from './host-item-geometry';
 
 /**
  * 获取元素用于编辑的视图 Box2。
@@ -24,14 +25,16 @@ export function getItemViewBox (item: VFXItem, containerSize: Vector2): Box2 {
  * @returns 有效变换；元素不可见或没有有效矩形时返回 undefined
  */
 export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Matrix3 | undefined {
-  if (!item.isVisible || !supportsRect(item)) {
+  const hostGeometry = getHostItemGeometry(item);
+
+  if (!item.isVisible || (!hostGeometry && !supportsRect(item))) {
     return undefined;
   }
 
   const hasFrameComponent = !!item.getComponent(FrameComponent);
   let viewTransform: Matrix3 | undefined;
 
-  if (item.type !== spec.ItemType.null || hasFrameComponent) {
+  if (hostGeometry || item.type !== spec.ItemType.null || hasFrameComponent) {
     const { transform, composition } = item;
 
     transform.updateLocalMatrix();
@@ -44,7 +47,15 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
       : undefined;
     const shapePoints = getShapeBoundingBoxPoints(shapeBox);
 
-    if (shapePoints) {
+    if (hostGeometry) {
+      const matrix = compositionMatrix.multiply(transform.getWorldMatrix());
+      const { min, max } = hostGeometry;
+
+      viewTransform = getBoxTransform([
+        new Vector3(min[0], max[1], 0), new Vector3(max[0], max[1], 0),
+        new Vector3(max[0], min[1], 0), new Vector3(min[0], min[1], 0),
+      ].map(point => projectPoint(point.applyMatrix(matrix), item, containerSize)));
+    } else if (shapePoints) {
       viewTransform = getBoxTransform(shapePoints.map(point =>
         projectPoint(point.clone().applyMatrix(compositionMatrix), item, containerSize),
       ));
@@ -60,7 +71,7 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
     }
   }
 
-  if (hasFrameComponent) {
+  if (hasFrameComponent || (hostGeometry && !hostGeometry.includeChildren)) {
     return viewTransform;
   }
 
