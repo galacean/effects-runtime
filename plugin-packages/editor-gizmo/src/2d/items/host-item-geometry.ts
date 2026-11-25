@@ -14,8 +14,14 @@ const providers = new WeakMap<Engine, Provider>();
 export function registerItemGeometry (engine: Engine, provider: Provider): () => void {
   if (providers.has(engine)) { throw new Error('An editor geometry provider is already registered for this engine.'); }
   providers.set(engine, provider);
+  let active = true;
 
-  return () => { if (providers.get(engine) === provider) { providers.delete(engine); } };
+  return () => {
+    if (active && providers.get(engine) === provider) {
+      providers.delete(engine);
+    }
+    active = false;
+  };
 }
 
 export function getHostItemGeometry (item: VFXItem): GizmoItemGeometry | undefined {

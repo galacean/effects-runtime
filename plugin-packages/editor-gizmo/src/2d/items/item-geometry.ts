@@ -35,20 +35,17 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
   let viewTransform: Matrix3 | undefined;
 
   if (hostGeometry || item.type !== spec.ItemType.null || hasFrameComponent) {
-    const { transform, composition } = item;
+    const { transform } = item;
 
     transform.updateLocalMatrix();
     const { x, y } = transform.size.clone().divide(2);
-    const compositionMatrix = new Matrix4()
-      .copyFrom(composition?.transform.getWorldMatrix() ?? new Matrix4())
-      .invert();
     const shapeBox = item.type === spec.ItemType.shape
       ? item.getComponent(ShapeComponent)?.getBoundingBox()
       : undefined;
     const shapePoints = getShapeBoundingBoxPoints(shapeBox);
 
     if (hostGeometry) {
-      const matrix = compositionMatrix.multiply(transform.getWorldMatrix());
+      const matrix = transform.getWorldMatrix();
       const { min, max } = hostGeometry;
 
       viewTransform = getBoxTransform([
@@ -57,10 +54,10 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
       ].map(point => projectPoint(point.applyMatrix(matrix), item, containerSize)));
     } else if (shapePoints) {
       viewTransform = getBoxTransform(shapePoints.map(point =>
-        projectPoint(point.clone().applyMatrix(compositionMatrix), item, containerSize),
+        projectPoint(point.clone(), item, containerSize),
       ));
     } else {
-      const itemWorldMatrix = compositionMatrix.multiply(transform.getWorldMatrix());
+      const itemWorldMatrix = transform.getWorldMatrix();
 
       viewTransform = getBoxTransform([
         new Vector3(-x, y, 0),

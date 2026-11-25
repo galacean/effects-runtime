@@ -31,13 +31,17 @@ export interface CurveActionEvent extends GizmoActionEvent {
 }
 
 type CurveHit = { target: MotionPathTarget, index: number, control: boolean };
+type CurveSession = CurveHit & {
+  original: spec.BezierCurvePathValue,
+  plane: Matrix4, start: Vector2, view: Vector2,
+};
 
 /** 编辑位置路径的关键点和贝塞尔控制柄，其他动画通道保持原样。 */
 export class CurveGizmo extends Gizmo {
   readonly type = GizmoType.CURVE;
   private hover?: CurveHit;
   private selected?: CurveHit;
-  private session?: CurveHit & { original: spec.BezierCurvePathValue, plane: Matrix4, start: Vector2, view: Vector2 };
+  private session?: CurveSession;
 
   private get config (): Readonly<CurveConfig> {
     return this._owner.getConfigManager().get(curveConfig);
@@ -223,8 +227,10 @@ export class CurveGizmo extends Gizmo {
     if (event.isCanceled()) {
       this.cancelInteraction();
     } else {
-      this.emit('actioncommit');
+      const session = this.session;
+
       this.session = undefined;
+      this.emit('actioncommit', false, session);
     }
     this.hover = this.hit(event.position);
     this._owner.setCursor({ type: this.hover ? GestureCursorType.HAND : GestureCursorType.NORMAL, angle: 0 });
@@ -245,22 +251,27 @@ export class CurveGizmo extends Gizmo {
   }
 
   private cancelInteraction (): void {
-    if (!this.session) {
+    const session = this.session;
+
+    if (!session) {
       return;
     }
-    const { target, original } = this.session;
+    const { target, original } = session;
 
+    this.session = undefined;
     target.clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, original]);
     target.path = original;
     target.composition.refreshCurrentFrame();
-    this.emit('actionupdate', true);
-    this.session = undefined;
+    this.emit('actionupdate', true, session);
     this.hover = undefined;
     this._owner.setCursor({ type: GestureCursorType.NORMAL, angle: 0 });
   }
 
-  private emit (phase: GizmoActionPhase, canceled = false): void {
-    const { target, index, control } = this.session!;
+  private emit (phase: GizmoActionPhase, canceled = false, session = this.session): void {
+    if (!session) {
+      return;
+    }
+    const { target, index, control } = session;
     const pointIndex = control ? Math.ceil(index / 2) : index;
     const keys = target.path[0];
     const time = pointIndex < keys.length - 1

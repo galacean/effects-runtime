@@ -180,8 +180,8 @@ export class MoveSelectionGizmo extends Gizmo {
       autoLayoutChange: finishResult?.autoLayoutChange,
     };
 
-    this._owner.emit('actioncommit', actionEvent);
     this.resetDragState();
+    this._owner.emit('actioncommit', actionEvent);
     event.accept();
   }
 

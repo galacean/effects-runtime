@@ -110,5 +110,5 @@ export { FFDWireframeGizmo } from './gizmos/ffd-wireframe-gizmo';
 export * from './gizmos/crystal-lattice-gizmo';
 export * from './gizmos/curve-gizmo';
 export * from './gizmos/motion-path';
-export { GradientGizmo, type GradientActionEvent } from './gizmos/gradient-gizmo';
+export { GradientGizmo, type GradientActionEvent, type GradientSelectionEvent } from './gizmos/gradient-gizmo';
 export { TransformHandlesGizmo } from './gizmos/transform-handles-gizmo';

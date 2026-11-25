@@ -6,7 +6,7 @@ import type { AutoLayoutChangeInfo } from './frame/frame-assisted-layout';
 import type { TransformType } from './gizmos/resize-selection-gizmo/transform-types';
 import type { RulerActionEvent } from './gizmos/ruler-gizmo';
 import type { CurveActionEvent } from './gizmos/curve-gizmo';
-import type { GradientActionEvent } from './gizmos/gradient-gizmo';
+import type { GradientActionEvent, GradientSelectionEvent } from './gizmos/gradient-gizmo';
 import type { CrystalLatticeActionEvent } from './gizmos/crystal-lattice-gizmo';
 import type { InputEventKey, VFXItem } from '@galacean/effects';
 
@@ -76,6 +76,8 @@ export interface GizmoActionEvent {
 export interface GizmoTransformActionEvent extends GizmoActionEvent {
   /** 变换类型。 */
   transformType: TransformType,
+  /** 本次拖拽实际执行的类型。仅切换修饰键不计入；transformType 为 MIXED 时包含多项。 */
+  transformTypes?: TransformType[],
   /** 本次直接变换的顶层元素 ID。 */
   itemIds?: string[],
   /** 自动布局产生的附加变更。 */
@@ -200,6 +202,8 @@ export type GizmoOwnerEvents = {
   actionupdate: [GizmoActionLifecycleEvent],
   /** 操作提交事件。 */
   actioncommit: [GizmoActionLifecycleEvent],
+  /** 渐变色标选中索引或位置百分比变化。 */
+  gradientselectionchange: [GradientSelectionEvent],
   /** 元素层级位置变更事件。 */
   placementchange: [GizmoPlacementChangeEvent],
   /** 画板子元素刷新事件。 */

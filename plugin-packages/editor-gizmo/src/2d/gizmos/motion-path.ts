@@ -63,6 +63,7 @@ export type MotionPathSnapshot = {
   item: VFXItem,
   parentMatrix: Matrix4,
   position: Vector3,
+  anchor: Vector3,
   paths: { clip: TransformPlayableAsset, path: spec.BezierCurvePathValue }[],
 };
 
@@ -72,6 +73,7 @@ export function captureMotionPaths (item: VFXItem): MotionPathSnapshot {
     item,
     parentMatrix: item.transform.getParentMatrix()?.clone() ?? new Matrix4(),
     position: item.transform.position.clone(),
+    anchor: item.transform.anchor.clone(),
     paths: findMotionPaths(item).map(({ clip, path }) => ({ clip, path: cloneConfigValue(path) })),
   };
 }
@@ -103,6 +105,27 @@ export function updateMotionPathTranslation (snapshot: MotionPathSnapshot): void
       }
     }
     clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, path]);
+  }
+}
+
+/** Apply a group affine transform to paths in each item's parent space. */
+export function transformMotionPaths (snapshot: MotionPathSnapshot, worldTransform: Matrix4): void {
+  const parent = snapshot.item.transform.getParentMatrix() ?? new Matrix4();
+
+  if (Math.abs(parent.determinant()) < 1e-10) {
+    return;
+  }
+  const matrix = parent.clone().invert().multiply(worldTransform).multiply(snapshot.parentMatrix);
+
+  for (const { clip, path } of snapshot.paths) {
+    const transformed = cloneConfigValue(path);
+    const linear = matrix.clone().setPosition(new Vector3());
+    const compensation = snapshot.anchor.clone().applyMatrix(linear).subtract(snapshot.anchor);
+
+    for (const channel of [1, 2] as const) {
+      transformed[channel] = path[channel].map(value => new Vector3(...value).applyMatrix(matrix).add(compensation).toArray());
+    }
+    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, transformed]);
   }
 }
 

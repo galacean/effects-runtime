@@ -30,6 +30,14 @@ export interface GradientActionEvent extends GizmoActionEvent {
   paintIndex: number,
 }
 
+/** 渐变色标选中状态或位置变化；独立于编辑事务生命周期。 */
+export interface GradientSelectionEvent extends GradientActionEvent {
+  /** 新选中色标在当前排序中的索引，从 0 开始；未选中时为 -1。 */
+  index: number,
+  /** 色标位置百分比，范围 0–100；未选中时为 undefined。 */
+  percentage: number | undefined,
+}
+
 type Stop = GradientPaint['gradientStops']['stops'][number];
 type Hit = { type: 'start' | 'end' | 'rotate' } | { type: 'stop', stop: Stop } | { type: 'add', ratio: number };
 
@@ -97,10 +105,19 @@ export class GradientGizmo extends Gizmo {
     return this.selected;
   }
 
+  private get selectionInfo (): Pick<GradientSelectionEvent, 'index' | 'percentage'> {
+    const stop = this.paint?.gradientStops.stops[this.selected];
+
+    return { index: this.selected, percentage: stop ? stop.time * 100 : undefined };
+  }
+
   /** 属性面板与画布共用色标选择；拖动中的目标保持不变。 */
   selectStop (index: number): void {
     if (!this.session && Number.isInteger(index) && this.paint?.gradientStops.stops[index]) {
+      const previous = this.selectionInfo;
+
       this.selected = index;
+      this.notifySelectionChange(previous);
     }
   }
 
@@ -113,32 +130,14 @@ export class GradientGizmo extends Gizmo {
 
     if (selected.length !== 1
       || selected[0] !== this.item
-      || !isValidGradientPaint(this.component?.getGradientPaint(this.paintKind, this.paintIndex))
-      || (this.session && !this.matchesSession())) {
+      || !isValidGradientPaint(this.component?.getGradientPaint(this.paintKind, this.paintIndex))) {
       this.cancelInteraction();
+      const previous = this.selectionInfo;
+
+      this.selected = -1;
+      this.notifySelectionChange(previous);
       this.exit();
     }
-  }
-
-  /** 仅恢复本次手势最后写入的 paint，不覆盖外部替换或修改。 */
-  private matchesSession (expected = this.session?.paint): boolean {
-    const session = this.session;
-    const component = this.component;
-
-    if (!session || !expected || component !== session.component) {
-      return false;
-    }
-    const current = component?.getGradientPaint(this.paintKind, this.paintIndex);
-
-    return !!current && current.type === expected.type
-      && current.startPoint.equals(expected.startPoint) && current.endPoint.equals(expected.endPoint)
-      && current.gradientStops.stops.length === expected.gradientStops.stops.length
-      && current.gradientStops.stops.every((stop, index) => {
-        const other = expected.gradientStops.stops[index];
-
-        return stop.time === other.time && stop.color.r === other.color.r && stop.color.g === other.color.g
-          && stop.color.b === other.color.b && stop.color.a === other.color.a;
-      });
   }
 
   private toView (uv: Vector2): Vector2 {
@@ -202,12 +201,25 @@ export class GradientGizmo extends Gizmo {
   }
 
   private stopView (paint: GradientPaint, ratio: number): { center: Vector2, base: Vector2, normal: Vector2 } {
-    const base = this.toView(this.stopUV(paint, ratio));
+    const uv = this.stopUV(paint, ratio);
+    const base = this.toView(uv);
     const start = this.toView(paint.startPoint);
-    const end = this.toView(paint.endPoint);
-    const direction = end.clone().subtract(start);
-    const normal = paint.type === spec.FillType.GradientAngular ? base.clone().subtract(start).normalize()
-      : new Vector2(-direction.y, direction.x).normalize();
+    let normal: Vector2;
+
+    if (paint.type === spec.FillType.GradientAngular) {
+      const radial = uv.clone().subtract(paint.startPoint);
+      // UV 圆经过投影后可能是椭圆；先投影切线，再求屏幕法线，不能直接使用半径方向。
+      const tangent = this.toView(uv.clone().add(new Vector2(-radial.y, radial.x))).subtract(base);
+
+      normal = new Vector2(-tangent.y, tangent.x).normalize();
+      if (normal.dot(base.clone().subtract(start)) < 0) {
+        normal.multiply(-1);
+      }
+    } else {
+      const direction = this.toView(paint.endPoint).subtract(start);
+
+      normal = new Vector2(-direction.y, direction.x).normalize();
+    }
 
     return { base, normal, center: base.clone().add(normal.clone().multiply(this.config.stopOffset)) };
   }
@@ -246,10 +258,26 @@ export class GradientGizmo extends Gizmo {
     if (paint.type !== spec.FillType.GradientLinear && endDistance < config.rotationRadius + 4) {
       return { type: 'rotate' };
     }
-    const ratio = this.ratio(paint, view);
+    let ratio = this.ratio(paint, view);
 
     if (ratio === undefined) {
       return;
+    }
+    // 色标轨道的偏移定义在屏幕空间；先投回渐变轴，再计算 UV 比例。
+    // 角度渐变的法向随比例变化，迭代使比例与对应轨道中心一致。
+    for (let i = 0; i < 8; i++) {
+      const { normal } = this.stopView(paint, ratio);
+      const next = this.ratio(paint, view.clone().subtract(normal.multiply(config.stopOffset)));
+
+      if (next === undefined) {
+        return;
+      }
+      const settled = Math.abs(next - ratio) < 1e-8;
+
+      ratio = next;
+      if (settled || paint.type !== spec.FillType.GradientAngular) {
+        break;
+      }
     }
     const { base, normal } = this.stopView(paint, ratio);
     const offset = view.clone().subtract(base);
@@ -280,10 +308,13 @@ export class GradientGizmo extends Gizmo {
       return;
     }
     let hit = this.hit(event.position, paint);
+    const previous = this.selectionInfo;
 
     event.accept();
     if (!hit) {
-      this.exit();
+      this.preview = undefined;
+      this.selected = -1;
+      this.notifySelectionChange(previous);
 
       return;
     }
@@ -305,23 +336,16 @@ export class GradientGizmo extends Gizmo {
       }
       hit = { type: 'stop', stop };
     }
-    this.selected = hit.type === 'stop' ? paint.gradientStops.stops.indexOf(hit.stop) : -1;
+    if (hit.type === 'stop') {
+      this.selected = paint.gradientStops.stops.indexOf(hit.stop);
+    }
     this.session = {
       component: this.component, hit, start: event.position.clone(), original, paint, selected,
       stopView: hit.type === 'stop' ? this.toView(this.stopUV(paint, hit.stop.time)) : undefined,
     };
-    // 同步监听者可能退出模式或替换 paint，写入前必须重新确认会话和目标。
-    this.emit('actionstart');
-    if (!this.session) {
-      return;
-    }
-    if (!this.matchesSession(original)) {
-      this.cancelInteraction();
-      this.exit();
 
-      return;
-    }
-    this.write();
+    this.emit('actionstart');
+    this.write(previous);
   }
 
   override onMouseDrag (event: InputEventMouseMotion): void {
@@ -330,13 +354,7 @@ export class GradientGizmo extends Gizmo {
     if (!session) {
       return;
     }
-    if (!this.matchesSession()) {
-      this.cancelInteraction();
-      this.exit();
-      event.accept();
-
-      return;
-    }
+    const previous = this.selectionInfo;
     const { hit, original, paint, start } = session;
     const delta = event.position.clone().subtract(start);
 
@@ -374,17 +392,24 @@ export class GradientGizmo extends Gizmo {
       paint[opposite] = other;
     } else if (hit.type === 'rotate') {
       const point = this.toUV(event.position);
+      const press = this.toUV(start);
 
-      if (!point) {
+      if (!point || !press) {
         return;
       }
-      const direction = point.subtract(paint.startPoint);
+      const direction = point.subtract(original.startPoint);
+      const initial = press.subtract(original.startPoint);
 
-      if (direction.length() < 1e-6) {
+      if (direction.length() < 1e-6 || initial.length() < 1e-6) {
         return;
       }
-      paint.endPoint = paint.startPoint.clone()
-        .add(direction.normalize().multiply(original.endPoint.distance(original.startPoint)));
+      const angle = Math.atan2(direction.y, direction.x) - Math.atan2(initial.y, initial.x);
+      const axis = original.endPoint.clone().subtract(original.startPoint);
+
+      paint.endPoint = original.startPoint.clone().add(new Vector2(
+        axis.x * Math.cos(angle) - axis.y * Math.sin(angle),
+        axis.x * Math.sin(angle) + axis.y * Math.cos(angle),
+      ));
     } else if (hit.type === 'stop') {
       const ratio = this.ratio(paint, session.stopView!.clone().add(delta));
 
@@ -398,7 +423,7 @@ export class GradientGizmo extends Gizmo {
       paint.gradientStops.stops.sort((a, b) => a.time - b.time);
       this.selected = paint.gradientStops.stops.indexOf(hit.stop);
     }
-    this.write();
+    this.write(previous);
     event.accept();
   }
 
@@ -406,14 +431,11 @@ export class GradientGizmo extends Gizmo {
     if (!this.session) {
       return;
     }
-    if (!this.matchesSession()) {
-      this.cancelInteraction();
-      this.exit();
-    } else if (event.isCanceled()) {
+    if (event.isCanceled()) {
       this.cancelInteraction();
     } else {
-      this.emit('actioncommit');
       this.session = undefined;
+      this.emit('actioncommit');
     }
     event.accept();
   }
@@ -438,17 +460,24 @@ export class GradientGizmo extends Gizmo {
     if (this.session || !paint || this.selected < 0 || paint.gradientStops.stops.length <= 2) {
       return;
     }
+    const previous = this.selectionInfo;
+
     this.emit('actionstart');
     paint.gradientStops.stops.splice(this.selected, 1);
     this.selected = -1;
     this.component.setGradientPaint(this.paintKind, this.paintIndex, paint);
     this.emit('actionupdate');
     this.emit('actioncommit');
+    this.notifySelectionChange(previous);
   }
 
   override dispose (): void {
     this.onDispose?.();
     this.cancelInteraction();
+    const previous = this.selectionInfo;
+
+    this.selected = -1;
+    this.notifySelectionChange(previous);
   }
 
   /** 供所属内容编辑模式退出时回滚；不释放指针捕获或资源。 */
@@ -458,20 +487,37 @@ export class GradientGizmo extends Gizmo {
     if (!session) {
       return;
     }
-    const restore = this.matchesSession();
+    const previous = this.selectionInfo;
 
     this.session = undefined;
     this.preview = undefined;
-    this.selected = restore ? session.selected : -1;
-    if (restore) {
-      session.component.setGradientPaint(this.paintKind, this.paintIndex, session.original);
-    }
+    this.selected = session.selected;
+    session.component.setGradientPaint(this.paintKind, this.paintIndex, session.original);
     this.emit('actionupdate', true);
+    this.notifySelectionChange(previous);
   }
 
-  private write (): void {
+  private write (previous: Pick<GradientSelectionEvent, 'index' | 'percentage'>): void {
     this.component.setGradientPaint(this.paintKind, this.paintIndex, this.session!.paint);
     this.emit('actionupdate');
+    this.notifySelectionChange(previous);
+  }
+
+  private notifySelectionChange (previous: Pick<GradientSelectionEvent, 'index' | 'percentage'>): void {
+    const { index, percentage } = this.selectionInfo;
+
+    if (index === previous.index && percentage === previous.percentage) {
+      return;
+    }
+    this._owner.emit('gradientselectionchange', {
+      source: this,
+      editType: 'gradient',
+      itemId: this.item.getInstanceId(),
+      paintKind: this.paintKind,
+      paintIndex: this.paintIndex,
+      index,
+      percentage,
+    });
   }
 
   private emit (phase: GizmoActionPhase, canceled = false): void {

@@ -22,6 +22,7 @@ import {
   captureMotionPaths,
   restoreMotionPaths,
   updateMotionPathTranslation,
+  transformMotionPaths,
   type MotionPathSnapshot,
 } from './motion-path';
 
@@ -36,7 +37,7 @@ type Snapshot = {
   world: Matrix4,
 };
 
-/** 修改锚点，并用局部矩阵的线性部分补偿位置，保持整个世界矩阵不变。 */
+/** 修改锚点并补偿位置，保持编辑当下的世界矩阵不变；后续变换使用新锚点。 */
 export function moveAnchor (item: VFXItem, anchor: Vector3): void {
   const transform = item.transform;
   const old = transform.anchor.clone();
@@ -63,6 +64,7 @@ export class TransformHandlesGizmo extends Gizmo {
     corner?: Vector2,
     alt: boolean,
     angle: number,
+    applied: Set<TransformType>,
   };
 
   constructor (owner: GizmoOwner, private readonly resize: ResizeSelectionGizmo) {
@@ -100,7 +102,7 @@ export class TransformHandlesGizmo extends Gizmo {
   }
 
   private items (): VFXItem[] {
-    return this._owner.getSelection().getSelectedPlayerItems();
+    return this._owner.getSelection().getSelectedPlayerItems().filter(item => item.isVisible);
   }
 
   override prepareForDispatch (): void {
@@ -232,12 +234,9 @@ export class TransformHandlesGizmo extends Gizmo {
       last: event.position.clone(),
       alt: event.altPressed,
       angle: 0,
+      applied: new Set(),
     };
-    this.motionPaths = hit.handle === 'anchor'
-      || hit.handle === 'x'
-      || hit.handle === 'y'
-      ? items.map(captureMotionPaths)
-      : [];
+    this.motionPaths = items.map(captureMotionPaths);
     this.hover = hit.handle;
     this.updateCursor(hit.handle, event.altPressed);
     this.emit('actionstart');
@@ -252,6 +251,10 @@ export class TransformHandlesGizmo extends Gizmo {
     }
     const { handle, snapshots, start, center } = session;
     const delta = event.position.clone().subtract(start);
+    const before = snapshots.map(({ item }) => ({
+      position: item.transform.position.clone(), scale: item.transform.scale.clone(),
+      quat: item.transform.quat.clone(), anchor: item.transform.anchor.clone(),
+    }));
 
     this.updateCursor(handle, event.altPressed);
     if (handle === 'anchor') {
@@ -363,6 +366,16 @@ export class TransformHandlesGizmo extends Gizmo {
         return;
       }
     }
+    if (snapshots.some(({ item }, index) => {
+      const initial = before[index];
+      const current = item.transform;
+
+      return !current.position.equals(initial.position) || !current.scale.equals(initial.scale)
+        || !current.quat.equals(initial.quat) || !current.anchor.equals(initial.anchor);
+    })) {
+      session.applied.add(handle === 'anchor' ? TransformType.ANCHOR : handle === 'scale' ? TransformType.SCALE
+        : handle === 'rotate' || event.altPressed ? TransformType.ROTATION : TransformType.TRANSLATION);
+    }
     this._owner.setSelectionTransformKind(handle === 'x' || handle === 'y' ? 'move' : 'resize');
     this.emit('actionupdate');
     event.accept();
@@ -405,6 +418,7 @@ export class TransformHandlesGizmo extends Gizmo {
       item.transform.setRotation(...new Euler().setFromQuaternion(quat.clone().conjugate()).toArray());
       item.transform.setScale(scaling.x, scaling.y, scaling.z);
     }
+    this.motionPaths.forEach(snapshot => transformMotionPaths(snapshot, affine));
 
     return true;
   }
@@ -482,11 +496,14 @@ export class TransformHandlesGizmo extends Gizmo {
     if (!session) {
       return;
     }
-    const { handle, snapshots, alt } = session;
+    const { handle, snapshots, alt, applied } = session;
+    const initialType = handle === 'anchor' ? TransformType.ANCHOR : handle === 'scale' ? TransformType.SCALE
+      : handle === 'rotate' || alt ? TransformType.ROTATION : TransformType.TRANSLATION;
+    const transformType = applied.size > 1 ? TransformType.MIXED
+      : applied.values().next().value ?? (phase === 'actionstart' ? initialType : TransformType.NULL);
 
     this._owner.emit(phase, { source: this, canceled, itemIds: snapshots.map(({ item }) => item.getInstanceId()),
-      transformType: handle === 'anchor' ? TransformType.ANCHOR : handle === 'scale' ? TransformType.SCALE
-        : handle === 'rotate' || alt ? TransformType.ROTATION : TransformType.TRANSLATION });
+      transformType, transformTypes: Array.from(applied) });
   }
 
   override draw (control: Control): void {

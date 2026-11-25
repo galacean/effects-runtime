@@ -37,18 +37,24 @@ import {
   MoveGizmoTool,
   MoveSelectionGizmo,
   ResizeSelectionGizmo,
+  TransformType,
+  registerItemGeometry,
+  getHostItemGeometry,
+  getItemViewBox,
   TransformHandlesGizmo,
   transformHandlesConfig,
   curveConfig,
   gradientConfig,
   crystalLatticeConfig,
   ffdWireframeConfig,
+  selectionSnapConfig,
   captureMotionPaths,
   getTransformedBoxCorners,
   findMotionPaths,
   updateMotionPathTranslation,
   GizmoType,
   FFDWireframeGizmo,
+  type GradientSelectionEvent,
 } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { moveAnchor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/transform-handles-gizmo';
 import { sampleGradient } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/gradient-gizmo';
@@ -979,6 +985,191 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     });
   }
 
+  describe('gradient selection events', () => {
+    let events: GradientSelectionEvent[];
+
+    beforeEach(() => {
+      events = [];
+      handler.on('gradientselectionchange', event => events.push(event));
+    });
+
+    it('reports programmatic selection with target context and ignores unchanged or invalid selections', () => {
+      const { item, gizmo } = gradient();
+
+      gizmo.selectStop(0);
+      gizmo.selectStop(0);
+      gizmo.selectStop(1);
+      for (const index of [1, -1, 2, 0.5, NaN]) {
+        gizmo.selectStop(index);
+      }
+      gizmo.onUpdate();
+      expect(events.map(({ index, percentage }) => ({ index, percentage }))).deep.equals([
+        { index: 0, percentage: 0 }, { index: 1, percentage: 100 },
+      ]);
+      expect(events[0]).includes({
+        source: gizmo, editType: 'gradient', itemId: item.getInstanceId(), paintKind: 'fill', paintIndex: 0,
+      });
+      expect(actions).length(0);
+    });
+
+    it('reports canvas stop changes and preserves selection while editing an endpoint', () => {
+      const { item, gizmo } = gradient();
+
+      for (const x of [1.2, -1.2, -1.2]) {
+        const point = localToView(item, new Vector3(x, 0, 0)).add(new Vector2(0, 12));
+
+        gizmo.onMouseDown(down(point));
+        gizmo.onMouseUp(down(point));
+      }
+      const endpoint = localToView(item, new Vector3(-1.2, 0, 0));
+
+      gizmo.onMouseDown(down(endpoint));
+      gizmo.onMouseDrag(drag(endpoint.clone().add(new Vector2(20, 10))));
+      gizmo.onMouseUp(down(endpoint));
+      gizmo.onUpdate();
+      expect(gizmo.selectedStopIndex).equals(0);
+      expect(events.map(({ index, percentage }) => ({ index, percentage }))).deep.equals([
+        { index: 1, percentage: 100 }, { index: 0, percentage: 0 },
+      ]);
+    });
+
+    it('clears stop selection on blank clicks without leaving gradient editing or changing the paint', () => {
+      const { item, component } = gradient();
+
+      handler.setActiveTool(new MoveGizmoTool(handler));
+      const mode = handler.getActiveEditMode() as BasicEditMode;
+      const edit = { type: 'gradient', paintKind: 'fill', paintIndex: 0 } as const;
+
+      mode.editContent(edit);
+      const gizmo = handler.getGizmoManager().get('gradient')!;
+      const viewport = (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
+      const original = component.getGradientPaint('fill', 0);
+      const blank = localToView(item, new Vector3(0, 2, 0));
+
+      gizmo.selectStop(0);
+      for (let i = 0; i < 2; i++) {
+        viewport.onMouseDown(down(blank));
+        viewport.onMouseUp(down(blank, { pressed: false, buttonMask: MouseButtonMask.None }));
+      }
+      expect(gizmo.selectedStopIndex).equals(-1);
+      expect(mode.contentEdit).deep.equals(edit);
+      expect(handler.getGizmoManager().get('gradient')).equals(gizmo);
+      expect(handler.getSelection().getSelectedPlayerItems()).deep.equals([item]);
+      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(actions).length(0);
+      expect(events.map(({ index, percentage }) => ({ index, percentage }))).deep.equals([
+        { index: 0, percentage: 0 }, { index: -1, percentage: undefined },
+      ]);
+    });
+
+    it('reports the written stop after insertion, sorting, fractional movement and cancellation', () => {
+      const { item, component, gizmo } = gradient();
+      const original = component.getGradientPaint('fill', 0)!;
+
+      original.gradientStops.stops.splice(1, 0, { time: 0.75, color: new math.Color(0, 1, 0, 1) });
+      component.setGradientPaint('fill', 0, original);
+      handler.on('gradientselectionchange', ({ index, percentage }) => {
+        expect(component.getGradientPaint('fill', 0)!.gradientStops.stops[index].time * 100).equals(percentage);
+        expect(gizmo.selectedStopIndex).equals(index);
+      });
+      gizmo.selectStop(2);
+      const press = localToView(item, new Vector3()).add(new Vector2(0, 12));
+      const target = localToView(item, new Vector3(0.75, 0, 0)).add(new Vector2(0, 12));
+
+      gizmo.onMouseDown(down(press));
+      expect(events.at(-1)!.index).equals(1);
+      expect(events.at(-1)!.percentage).closeTo(50, 1e-6);
+      gizmo.onMouseDrag(drag(target));
+      expect(events.at(-1)!.index).equals(2);
+      expect(events.at(-1)!.percentage).closeTo(81.25, 1e-6);
+      gizmo.selectStop(0);
+      gizmo.onUpdate();
+      expect(events).length(3);
+      gizmo.onKeyDown(key());
+      gizmo.onMouseUp(down(target));
+      expect(events).length(4);
+      expect(events.at(-1)).includes({ index: 2, percentage: 100 });
+      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(actions.some(action => action.phase === 'actioncommit')).equals(false);
+    });
+
+    for (const shortcut of ['Backspace', 'Delete']) {
+      it(`keeps a clicked stop selected and deletes it once with ${shortcut}, ignoring the key without a selection`, () => {
+        const { item, component } = gradient();
+        const paint = component.getGradientPaint('fill', 0)!;
+
+        paint.gradientStops.stops.splice(1, 0,
+          { time: 0.25, color: new math.Color(0, 1, 0, 1) },
+          { time: 0.5, color: new math.Color(1, 1, 0, 1) });
+        component.setGradientPaint('fill', 0, paint);
+        handler.setActiveTool(new MoveGizmoTool(handler));
+        const mode = handler.getActiveEditMode() as BasicEditMode;
+
+        mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
+        const gizmo = handler.getGizmoManager().get('gradient')!;
+        const viewport = (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
+
+        viewport.onKeyDown(key(shortcut));
+        expect(component.getGradientPaint('fill', 0)).deep.equals(paint);
+        expect(actions).length(0);
+        expect(events).length(0);
+        const point = localToView(item, new Vector3()).add(new Vector2(0, 12));
+
+        viewport.onMouseDown(down(point));
+        viewport.onMouseUp(down(point, { pressed: false, buttonMask: MouseButtonMask.None }));
+        const hover = new InputEventMouseMotion();
+
+        hover.position.copyFrom(localToView(item, new Vector3(0, 2, 0)));
+        viewport.onMouseMove(hover);
+        gizmo.onUpdate();
+        expect(gizmo.selectedStopIndex).equals(2);
+        actions.length = 0;
+
+        viewport.onKeyDown(key(shortcut));
+        viewport.onKeyDown(key(shortcut));
+        gizmo.onUpdate();
+        expect(component.getGradientPaint('fill', 0)!.gradientStops.stops.map(stop => stop.time))
+          .deep.equals([0, 0.25, 1]);
+        expect(gizmo.selectedStopIndex).equals(-1);
+        expect(composition.items).includes(item);
+        expect(handler.getGizmoManager().get('gradient')).equals(gizmo);
+        expect(actions.map(action => action.phase)).deep.equals(['actionstart', 'actionupdate', 'actioncommit']);
+        expect(events.map(({ index, percentage }) => ({ index, percentage }))).deep.equals([
+          { index: 2, percentage: 50 }, { index: -1, percentage: undefined },
+        ]);
+      });
+    }
+
+    it('clears selection when the idle gradient is changed to a solid fill', () => {
+      const { component, gizmo } = gradient();
+
+      gizmo.selectStop(1);
+      component.setColorPaint('fill', 0, { type: spec.FillType.Solid, color: new math.Color(0, 1, 0, 1) });
+      gizmo.onUpdate();
+      gizmo.dispose();
+      expect(events).length(2);
+      expect(events.at(-1)).includes({ index: -1, percentage: undefined });
+      expect(gizmo.selectedStopIndex).equals(-1);
+    });
+
+    it('identifies the selected stroke and clears its selection on disposal', () => {
+      const { item, component, data } = gradient();
+
+      component.fromData({ ...data, strokes: [data.fills[0], data.fills[0]], strokeWidth: 2 });
+      component.onUpdate(0);
+      const gizmo = new GradientGizmo(handler, item, 'stroke', 1);
+
+      gizmo.selectStop(1);
+      expect(events[0]).includes({
+        source: gizmo, itemId: item.getInstanceId(), paintKind: 'stroke', paintIndex: 1, index: 1, percentage: 100,
+      });
+      gizmo.dispose();
+      gizmo.dispose();
+      expect(events).length(2);
+      expect(events[1]).includes({ paintKind: 'stroke', paintIndex: 1, index: -1, percentage: undefined });
+    });
+  });
+
   it('adds, drags, sorts and deletes a gradient stop without deleting the item', () => {
     const { item, component, gizmo } = gradient();
     const center = localToView(item, new Vector3());
@@ -993,6 +1184,92 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     gizmo.onKeyDown(key('Backspace'));
     expect(component.getGradientPaint('fill', 0)!.gradientStops.stops).length(2);
     expect(composition.items).includes(item);
+  });
+
+  for (const transformed of [false, true]) {
+    it(`aligns angular gradient stops with the ellipse tangent (${transformed ? 'transformed' : 'default'})`, () => {
+      const { component, item, gizmo } = gradient(spec.FillType.GradientAngular);
+      const paint = component.getGradientPaint('fill', 0)!;
+
+      paint.startPoint.set(0.5, 0.5);
+      paint.endPoint.set(0.9, 0.5);
+      paint.gradientStops.stops.splice(1, 0, ...[0.125, 0.375, 0.625, 0.875].map(time =>
+        ({ time, color: new math.Color(0, 1, 0, 1) })));
+      component.setGradientPaint('fill', 0, paint);
+      if (transformed) {
+        item.transform.setScale(-1.5, 0.8, 1);
+        item.transform.setRotation(0, 0, 30);
+      }
+      const { calls, control } = recordDrawing();
+
+      gizmo.draw(control);
+      const ellipse = calls.find(call => call.kind === 'polyline' && call.coords.length === 130)!.coords;
+      const point = (index: number) => new Vector2(ellipse[index * 2], ellipse[index * 2 + 1]);
+      const markers = calls.filter(call => call.kind === 'polyline' && call.coords.length === 10);
+      const origin = localToView(item, new Vector3());
+      const config = handler.getConfigManager().get(gradientConfig);
+
+      for (const [index, sample] of [8, 24, 40, 56].entries()) {
+        const coords = markers[index + 1].coords;
+        const a = new Vector2(coords[0], coords[1]);
+        const b = new Vector2(coords[2], coords[3]);
+        const c = new Vector2(coords[4], coords[5]);
+        const center = a.clone().add(c).multiply(0.5);
+        const edge = b.clone().subtract(a);
+        const tangent = point(sample + 1).subtract(point(sample - 1)).normalize();
+        const offset = center.clone().subtract(point(sample));
+
+        expect(Math.abs(edge.clone().normalize().dot(tangent))).closeTo(1, 1e-6);
+        expect(offset.dot(tangent)).closeTo(0, 1e-6);
+        expect(offset.length()).closeTo(config.stopOffset, 1e-6);
+        expect(offset.dot(point(sample).subtract(origin))).greaterThan(0);
+
+        const press = center.clone().add(edge.multiply(0.4))
+          .add(offset.normalize().multiply(config.stopHeight * 0.4));
+
+        gizmo.onMouseDown(down(press));
+        gizmo.onMouseUp(down(press));
+        expect(gizmo.selectedStopIndex).equals(index + 1);
+      }
+      expect(component.getGradientPaint('fill', 0)).deep.equals(paint);
+    });
+  }
+
+  it('previews and inserts an angular gradient stop on the outward ellipse normal', () => {
+    const { component, gizmo } = gradient(spec.FillType.GradientAngular);
+    const paint = component.getGradientPaint('fill', 0)!;
+
+    paint.startPoint.set(0.5, 0.5);
+    paint.endPoint.set(0.9, 0.5);
+    component.setGradientPaint('fill', 0, paint);
+    const { calls, control } = recordDrawing();
+
+    gizmo.draw(control);
+    const ellipse = calls.find(call => call.kind === 'polyline' && call.coords.length === 130)!.coords;
+    const point = (index: number) => new Vector2(ellipse[index * 2], ellipse[index * 2 + 1]);
+    const tangent = point(9).subtract(point(7)).normalize();
+    const normal = new Vector2(-tangent.y, tangent.x);
+    const press = point(8).add(normal.multiply(handler.getConfigManager().get(gradientConfig).stopOffset));
+    const hover = new InputEventMouseMotion();
+
+    hover.position.copyFrom(press);
+    gizmo.onMouseMove(hover);
+    calls.length = 0;
+    gizmo.draw(control);
+    const markers = calls.filter(call => call.kind === 'polyline' && call.coords.length === 10);
+
+    expect(markers).length(3);
+    const preview = markers[2].coords;
+    const center = new Vector2(preview[0] + preview[4], preview[1] + preview[5]).multiply(0.5);
+
+    expect(center.distance(press)).lessThan(1e-4);
+    gizmo.onMouseDown(down(press));
+    gizmo.onMouseUp(down(press));
+    expect(gizmo.selectedStopIndex).equals(1);
+    const stops = component.getGradientPaint('fill', 0)!.gradientStops.stops;
+
+    expect(stops).length(3);
+    expect(stops[1].time).closeTo(0.125, 1e-6);
   });
 
   it('drags angular gradient stops continuously across sub-percent positions and the seam', () => {
@@ -1048,80 +1325,26 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     }
   });
 
-  for (const change of ['exit', 'paint']) {
-    it(`stops gradient writes when actionstart triggers ${change}`, () => {
-      const { item, component } = gradient();
+  for (const count of [4, 8]) {
+    it(`clears all lattice selection and redraws every point after its count changes to ${count}`, () => {
+      const { item, component, gizmo } = lattice();
+      const columns = count / 2;
+      const points = Array.from({ length: count }, (_, index) =>
+        new Vector3(index % columns, Math.floor(index / columns), 0));
 
-      handler.setActiveTool(new MoveGizmoTool(handler));
-      const mode = handler.getActiveEditMode() as BasicEditMode;
-
-      mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
-      const gizmo = handler.getGizmoManager().get(GizmoType.GRADIENT)!;
-      const original = component.getColorPaint('fill', 0);
-      const replacement = { type: spec.FillType.Solid, color: new math.Color(0, 1, 0, 1) } as const;
-
-      handler.on('actionstart', () => {
-        if (change === 'exit') {
-          mode.editContent();
-        } else {
-          component.setColorPaint('fill', 0, replacement);
-        }
+      gizmo.selected.add(0);
+      gizmo.selected.add(5);
+      component.fromData({
+        id: component.getInstanceId(), dataType: spec.DataType.FFDComponent,
+        item: { id: item.getInstanceId() }, rowNum: 2, colNum: columns,
+        boundMin: new Vector3(0, 0, 0), boundMax: new Vector3(columns - 1, 1, 0), controlPoints: points,
       });
-      const start = localToView(item, new Vector3(-1.2, 0, 0));
+      gizmo.onUpdate();
+      expect(gizmo.selected.size).equals(0);
+      const drawing = recordDrawing();
 
-      gizmo.onMouseDown(down(start));
-      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(30, 20))));
-      gizmo.onMouseUp(down(start));
-      expect(component.getColorPaint('fill', 0)).deep.equals(change === 'exit' ? original : replacement);
-      expect(mode.contentEdit).equals(undefined);
-      expect(actions.filter(action => action.canceled)).length(1);
-      expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
-    });
-  }
-
-  for (const replacement of ['solid', 'gradient', 'component']) {
-    it(`cancels a gradient session safely after external ${replacement} replacement`, () => {
-      const { item, component, data } = gradient();
-
-      handler.setActiveTool(new MoveGizmoTool(handler));
-      const mode = handler.getActiveEditMode() as BasicEditMode;
-
-      mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
-      const gizmo = handler.getGizmoManager().get(GizmoType.GRADIENT)!;
-      const start = localToView(item, new Vector3(-1.2, 0, 0));
-
-      gizmo.onMouseDown(down(start));
-      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(25, 20))));
-      let target = component;
-
-      if (replacement === 'solid') {
-        target.setColorPaint('fill', 0, { type: spec.FillType.Solid, color: new math.Color(0, 1, 0, 1) });
-      } else if (replacement === 'gradient') {
-        const paint = target.getGradientPaint('fill', 0)!;
-
-        paint.endPoint.x = 0.9;
-        paint.gradientStops.stops[0].color.g = 0.8;
-        target.setGradientPaint('fill', 0, paint);
-      } else {
-        component.dispose();
-        target = item.addComponent(ShapeComponent);
-        target.fromData(data);
-        target.onUpdate(0);
-      }
-      const expected = target.getColorPaint('fill', 0);
-
-      // 即使外部修改后先收到 Drag，也不能覆盖新 paint。
-      if (replacement === 'gradient') {
-        gizmo.onMouseDrag(drag(start.clone().add(new Vector2(50, 30))));
-      } else {
-        gizmo.onUpdate();
-      }
-      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(60, 40))));
-      gizmo.onMouseUp(down(start));
-      expect(target.getColorPaint('fill', 0)).deep.equals(expected);
-      expect(mode.contentEdit).equals(undefined);
-      expect(actions.filter(action => action.canceled)).length(1);
-      expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
+      gizmo.draw(drawing.control);
+      expect(drawing.calls.filter(call => call.kind === 'fillCircle')).length(count * 2);
     });
   }
 
@@ -2507,4 +2730,366 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(y + height - Math.max(...bottoms)).closeTo(6, 1e-5);
     resize.dispose();
   });
+  describe('review regressions', () => {
+    for (const operation of ['rotate', 'scale'] as const) {
+      it(`keeps the current anchor as the pivot after ${operation} and position resampling`, () => {
+        const { item, component } = path();
+
+        component.sampleTime(4);
+        item.transform.setScale(2, 1.5, 1);
+        item.transform.setRotation(0, 0, 20);
+        const resize = new ResizeSelectionGizmo(handler), gizmo = new TransformHandlesGizmo(handler, resize);
+
+        resize.refreshWireframeBySelectedItems();
+        const start = resize.wireframe.anchor.clone();
+
+        gizmo.onMouseDown(down(start));
+        gizmo.onMouseDrag(drag(start.clone().add(new Vector2(30, 20))));
+        gizmo.onMouseUp(down(start));
+        component.refreshCurrentFrame();
+        const anchor = item.transform.anchor.clone();
+        const pivot = anchor.clone().applyMatrix(item.transform.getWorldMatrix());
+        const origin = new Vector3().applyMatrix(item.transform.getWorldMatrix());
+
+        expect(anchor.length()).greaterThan(0);
+        if (operation === 'rotate') { item.transform.setRotation(0, 0, 65); } else { item.transform.setScale(3, 2.5, 1); }
+        const edited = Array.from(item.transform.getWorldMatrix().elements);
+
+        expect(new Vector3().applyMatrix(item.transform.getWorldMatrix()).distance(origin)).greaterThan(0.01);
+        expect(anchor.clone().applyMatrix(item.transform.getWorldMatrix()).distance(pivot)).lessThan(1e-6);
+        component.refreshCurrentFrame();
+        expect(anchor.clone().applyMatrix(item.transform.getWorldMatrix()).distance(pivot)).lessThan(1e-6);
+        item.transform.getWorldMatrix().elements.forEach((value, index) => expect(value).closeTo(edited[index], 1e-6));
+        gizmo.dispose(); resize.dispose();
+      });
+    }
+
+    it('does not start a NaN scale when oversized handles cover the lattice center', () => {
+      const { item, points, gizmo } = lattice();
+
+      handler.getConfigManager().set(crystalLatticeConfig, { cornerSize: 2000 });
+      gizmo.selected.add(0); gizmo.selected.add(5);
+      const center = localToView(item, points[0].clone().add(points[5]).multiply(0.5));
+
+      gizmo.onMouseDown(down(center));
+      gizmo.onMouseDrag(drag(center.clone().add(new Vector2(30, 10))));
+      const drawing = recordDrawing();
+
+      gizmo.draw(drawing.control);
+      expect(drawing.calls.some(call => call.text?.includes('NaN'))).equals(false);
+      gizmo.onKeyDown(key());
+    });
+
+    it('retains a committed gradient when its listener exits content editing', () => {
+      const { item, component } = gradient();
+
+      handler.setActiveTool(new MoveGizmoTool(handler));
+      const mode = handler.getActiveEditMode() as BasicEditMode;
+
+      mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
+      const gizmo = handler.getGizmoManager().get('gradient')!;
+      const start = localToView(item, new Vector3(-1.2, 0, 0));
+
+      gizmo.onMouseDown(down(start));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(25, 10))));
+      const expected = component.getGradientPaint('fill', 0);
+
+      handler.on('actioncommit', () => mode.editContent());
+      gizmo.onMouseUp(down(start));
+      expect(component.getGradientPaint('fill', 0)).deep.equals(expected);
+      expect(actions.filter(action => action.phase === 'actioncommit')).length(1);
+      expect(actions.some(action => action.canceled)).equals(false);
+    });
+
+    it('returns a radial gradient to its direction at an off-axis rotation press', () => {
+      const { item, component, gizmo } = gradient(spec.FillType.GradientRadial);
+      const original = component.getGradientPaint('fill', 0)!;
+      const press = localToView(item, new Vector3(1.2, 0, 0)).add(new Vector2(10, -8));
+
+      gizmo.onMouseDown(down(press));
+      gizmo.onMouseDrag(drag(press.clone().add(new Vector2(0, -20))));
+      expect(component.getGradientPaint('fill', 0)!.endPoint.distance(original.endPoint)).greaterThan(0.01);
+      gizmo.onMouseDrag(drag(press));
+      gizmo.onMouseUp(down(press));
+      expect(component.getGradientPaint('fill', 0)!.endPoint.distance(original.endPoint)).lessThan(1e-6);
+    });
+
+    it('inserts at the visible lane center under nonuniform scaling', () => {
+      const { item, component, gizmo } = gradient();
+
+      item.transform.setScale(3, 1, 1);
+      const paint = component.getGradientPaint('fill', 0)!;
+
+      paint.startPoint.set(0.2, 0.1); paint.endPoint.set(0.45, 0.9);
+      component.setGradientPaint('fill', 0, paint);
+      handler.getConfigManager().set(gradientConfig, { stopOffset: 20, stopWidth: 16 });
+      const a = localToView(item, new Vector3(-1.2, -0.8, 0));
+      const b = localToView(item, new Vector3(-0.2, 0.8, 0));
+      const direction = b.clone().subtract(a);
+      const normal = new Vector2(-direction.y, direction.x).normalize();
+      const press = a.clone().add(b).multiply(0.5).add(normal.multiply(20));
+
+      gizmo.onMouseDown(down(press)); gizmo.onMouseUp(down(press));
+      const stops = component.getGradientPaint('fill', 0)!.gradientStops.stops;
+
+      expect(stops).length(3); expect(stops[1].time).closeTo(0.5, 1e-6);
+    });
+
+    for (const operation of ['scale', 'rotate'] as const) {
+      for (const cancel of [false, true]) {
+        for (const anchored of [false, true]) {
+          it(`updates animated group paths for ${operation} and ${cancel ? 'cancel' : 'commit'} (anchor edited=${anchored})`, () => {
+            const { item, component } = path();
+
+            // Use an exact keyframe so this assertion does not include arc-length sampling roundoff.
+            component.sampleTime(4);
+            if (anchored) {
+              const resize = new ResizeSelectionGizmo(handler), gizmo = new TransformHandlesGizmo(handler, resize);
+
+              resize.refreshWireframeBySelectedItems();
+              const start = resize.wireframe.anchor.clone();
+
+              gizmo.onMouseDown(down(start));
+              gizmo.onMouseDrag(drag(start.clone().add(new Vector2(15, 10))));
+              gizmo.onMouseUp(down(start));
+              component.refreshCurrentFrame();
+              gizmo.dispose(); resize.dispose();
+            }
+            const second = sprite();
+
+            second.setPosition(2, -1, 0); select(item, second);
+            const original = structuredClone(findMotionPaths(item)[0].path);
+            const resize = new ResizeSelectionGizmo(handler);
+            const gizmo = new TransformHandlesGizmo(handler, resize);
+
+            resize.refreshWireframeBySelectedItems();
+            const corner = getTransformedBoxCorners(resize.wireframe.transform!)[0];
+            const center = resize.wireframe.anchor.clone();
+            const start = operation === 'scale' ? corner : corner.clone().add(new Vector2(-10, -10));
+            const offset = start.clone().subtract(center);
+            const end = operation === 'scale' ? center.clone().add(offset.multiply(1.5))
+              : center.clone().add(new Vector2(offset.x * Math.cos(0.4) - offset.y * Math.sin(0.4), offset.x * Math.sin(0.4) + offset.y * Math.cos(0.4)));
+
+            gizmo.onMouseDown(down(start, { altPressed: true }));
+            gizmo.onMouseDrag(drag(end, false, true));
+            const editedPosition = item.transform.position.clone();
+
+            expect(findMotionPaths(item)[0].path).not.deep.equals(original);
+            if (cancel) { gizmo.onKeyDown(key()); }
+            gizmo.onMouseUp(down(end)); component.refreshCurrentFrame();
+            if (cancel) { expect(findMotionPaths(item)[0].path).deep.equals(original); } else { expect(item.transform.position.distance(editedPosition)).lessThan(1e-5); }
+            gizmo.dispose(); resize.dispose();
+          });
+        }
+      }
+    }
+
+    for (const separateTrack of [false, true]) {
+      for (const cancel of [false, true]) {
+        it(`uses one current anchor across animated channels after repeated edits (separate=${separateTrack}, cancel=${cancel})`, () => {
+          const { item, clip, component } = path();
+          const animation: Pick<spec.TransformPlayableAssetData, 'sizeOverLifetime' | 'rotationOverLifetime'> = {
+            sizeOverLifetime: { size: [spec.ValueType.LINE, [[0, 1], [1, 3]]] },
+            rotationOverLifetime: { asRotation: true, z: [spec.ValueType.LINE, [[0, 10], [1, 80]]] },
+          };
+
+          if (separateTrack) {
+            const track = new TransformTrack(player.engine);
+            const animated = track.createClip(TransformPlayableAsset);
+
+            animated.fromData({ id: animated.getInstanceId(), dataType: spec.DataType.TransformPlayableAsset,
+              start: 2, duration: 4, endBehavior: spec.EndBehavior.freeze, ...animation });
+            component.timelineAsset!.tracks.push(track);
+            component.timelineAsset!.markAsChanged();
+            component.setBinding(track, item);
+          } else {
+            clip.fromData({ ...clip.transformAnimationData, ...animation });
+          }
+          component.onAwake();
+          for (const time of [3, 5]) {
+            component.sampleTime(time);
+            const beforeData = structuredClone(clip.transformAnimationData);
+            const beforePath = structuredClone(findMotionPaths(item)[0].path);
+            const beforePosition = item.transform.position.clone();
+            const beforeMatrix = Array.from(item.transform.getWorldMatrix().elements);
+            const resize = new ResizeSelectionGizmo(handler), gizmo = new TransformHandlesGizmo(handler, resize);
+
+            resize.refreshWireframeBySelectedItems();
+            const start = resize.wireframe.anchor.clone();
+
+            gizmo.onMouseDown(down(start));
+            gizmo.onMouseDrag(drag(start.clone().add(new Vector2(15, 10))));
+            const displacement = item.transform.position.clone().subtract(beforePosition);
+
+            if (cancel) { gizmo.onKeyDown(key()); displacement.set(0, 0, 0); }
+            gizmo.onMouseUp(down(start));
+            const anchor = item.transform.anchor.clone();
+
+            component.refreshCurrentFrame();
+            item.transform.getWorldMatrix().elements.forEach((value, axis) => expect(value).closeTo(beforeMatrix[axis], 1e-5));
+            if (cancel) { expect(clip.transformAnimationData).deep.equals(beforeData); }
+            // Only the gesture's displacement is added to the path; later rotation/scale uses the current anchor.
+            const endPosition = new Vector3(...beforePath[1][2]).add(displacement);
+
+            component.sampleTime(6);
+            expect(item.transform.position.distance(endPosition)).lessThan(1e-5);
+            expect(item.transform.anchor.toArray()).deep.equals(anchor.toArray());
+            expect(anchor.clone().applyMatrix(item.transform.getWorldMatrix()).distance(endPosition.clone().add(anchor))).lessThan(1e-5);
+            clip.fromData(JSON.parse(JSON.stringify(clip.transformAnimationData)));
+            component.onAwake(); component.sampleTime(6);
+            expect(item.transform.position.distance(endPosition)).lessThan(1e-5);
+            gizmo.dispose(); resize.dispose();
+          }
+        });
+      }
+    }
+
+    for (const rotate of [false, true]) {
+      it(`reports actual axis transforms when Alt changes without/with rotation (${rotate})`, () => {
+        sprite();
+        const resize = new ResizeSelectionGizmo(handler), gizmo = new TransformHandlesGizmo(handler, resize);
+        let committed: { transformType?: TransformType, transformTypes?: TransformType[] } = {};
+
+        handler.on('actioncommit', event => { if ('transformType' in event) { committed = event; } });
+        resize.refreshWireframeBySelectedItems();
+        const start = resize.wireframe.anchor.clone().add(new Vector2(40, 0));
+        const moved = start.clone().add(new Vector2(20, 0));
+
+        gizmo.onMouseDown(down(start)); gizmo.onMouseDrag(drag(moved));
+        gizmo.onMouseDrag(drag(moved, false, true));
+        if (rotate) { gizmo.onMouseDrag(drag(moved.clone().add(new Vector2(0, 20)), false, true)); }
+        gizmo.onMouseUp(down(moved, { altPressed: true }));
+        expect(committed.transformType).equals(rotate ? TransformType.MIXED : TransformType.TRANSLATION);
+        expect(committed.transformTypes).deep.equals(rotate ? [TransformType.TRANSLATION, TransformType.ROTATION] : [TransformType.TRANSLATION]);
+        gizmo.dispose(); resize.dispose();
+      });
+    }
+
+    it('does not draw or hit old axes after the selected item becomes hidden', () => {
+      const item = sprite(), resize = new ResizeSelectionGizmo(handler), gizmo = new TransformHandlesGizmo(handler, resize);
+
+      resize.refreshWireframeBySelectedItems();
+      const start = resize.wireframe.anchor.clone().add(new Vector2(40, 0));
+
+      item.setVisible(false);
+      const drawing = recordDrawing();
+
+      gizmo.draw(drawing.control);
+      expect(drawing.calls).length(0);
+      const press = down(start);
+
+      gizmo.onMouseDown(press); expect(press.isAccepted()).equals(false);
+      gizmo.dispose(); resize.dispose();
+    });
+
+    it('keeps a new registration alive after an old geometry cleanup is called twice', () => {
+      const item = sprite();
+      const provider = () => ({ min: [-2, -1] as const, max: [2, 1] as const });
+      const old = registerItemGeometry(player.engine, provider);
+
+      old();
+      const current = registerItemGeometry(player.engine, provider);
+
+      old();
+      expect(getHostItemGeometry(item)).deep.equals(provider()); current();
+      expect(getHostItemGeometry(item)).equals(undefined);
+    });
+
+    it('aligns selection bounds and local handles with a transformed composition', () => {
+      const item = sprite();
+      const previous = composition.transform.position.clone();
+
+      composition.transform.setPosition(2, -1, 0);
+      try {
+        const box = getItemViewBox(item, new Vector2(800, 600));
+        const center = localToView(item, new Vector3());
+
+        expect(box.getCenter().distance(center)).lessThan(1e-5);
+        expect(viewToLocal(item, center)!.length()).lessThan(1e-5);
+      } finally { composition.transform.setPosition(...previous.toArray()); }
+    });
+
+    it('accepts canvas and marquee children in an arbitrary named frame scope', () => {
+      const scene = new DemoScene(player, composition), frame = scene.createFrame([0, 0], [5, 5]);
+
+      frame.item.name = 'FFD example';
+      const inside = sprite(), outside = sprite();
+
+      inside.setParent(frame.item);
+      handler.setActiveEditMode(new BasicEditMode(handler, { effectsItemId: frame.item.getInstanceId() }));
+      const selection = handler.getSelection();
+
+      expect(selection.filterSelectedItems([inside.getInstanceId(), outside.getInstanceId()])).deep.equals([inside.getInstanceId()]);
+      expect(selection.resolveMarqueeSelectableItem(inside)).equals(inside);
+      expect(selection.resolveMarqueeSelectableItem(outside)).equals(undefined);
+    });
+
+    it('allows an arbitrary scope within Effects while retaining nested Effects boundaries', () => {
+      const scene = new DemoScene(player, composition);
+      const outer = scene.createFrame([0, 0], [5, 5]).item;
+      const scope = scene.createFrame([0, 0], [4, 4]).item;
+      const nested = scene.createFrame([0, 0], [2, 2]).item;
+
+      outer.name = nested.name = '动效';
+      scope.name = 'Editable subtree';
+      scope.setParent(outer); nested.setParent(scope);
+      const inside = sprite(), nestedChild = sprite();
+
+      inside.setParent(scope); nestedChild.setParent(nested);
+      handler.setActiveEditMode(new BasicEditMode(handler, { effectsItemId: scope.getInstanceId() }));
+      const selection = handler.getSelection();
+
+      expect(selection.filterSelectedItems([inside, nestedChild, scope].map(item => item.getInstanceId())))
+        .deep.equals([inside.getInstanceId()]);
+      expect(selection.resolveMarqueeSelectableItem(inside)).equals(inside);
+      expect(selection.resolveMarqueeSelectableItem(nestedChild)).equals(undefined);
+    });
+
+    it('retains scoped child selections through Demo Shift selection and repeated inspector edits', () => {
+      const scene = new DemoScene(player, composition), frame = scene.createFrame([0, 0], [5, 5]);
+      const first = sprite(), second = sprite();
+
+      first.setParent(frame.item); second.setParent(frame.item);
+      const data = [first, second].map(item => ({ item, name: item.getInstanceId(), kind: 'Sprite' as const, editRoot: frame.item }));
+      const getItem = scene.getItem.bind(scene);
+
+      scene.getItem = item => data.find(entry => entry.item === item) ?? getItem(item);
+      const editor = new DemoEditor(player, scene, handler, container);
+
+      try {
+        editor.select(first); editor.select(second, true);
+        expect(editor.selectedItems).deep.equals([first, second]);
+        editor.select(first);
+        editor.editSelected('rotate', item => item.setRotation(0, 0, 20));
+        editor.editSelected('size', item => item.transform.setSize(3, 4));
+        expect(editor.selectedItem).equals(first);
+        expect(first.transform.size.toArray()).deep.equals([3, 4]);
+        expect(frame.item.transform.size.toArray()).deep.equals([5, 5]);
+      } finally { editor.dispose(); }
+    });
+
+    for (const scoped of [false, true]) {
+      it(`routes Demo content editing from the existing selection mode (scoped=${scoped})`, () => {
+        const { item } = gradient();
+        const scene = new DemoScene(player, composition);
+
+        if (scoped) {
+          const frame = scene.createFrame([0, 0], [5, 5]);
+
+          item.setParent(frame.item);
+          handler.setActiveEditMode(new EffectsEditMode(handler, frame.item.getInstanceId()));
+        } else { handler.setActiveEditMode(new DefaultSelectionMode(handler)); }
+        select(item); handler.setActiveTool(new MoveGizmoTool(handler));
+        const editor = new DemoEditor(player, scene, handler, container);
+
+        try {
+          editor.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
+          expect(editor.gradientGizmo).instanceOf(GradientGizmo);
+          expect(editor.selectedItem).equals(item);
+          editor.editContent(); expect(editor.gradientGizmo).equals(undefined);
+        } finally { editor.dispose(); }
+      });
+    }
+  });
+
 });

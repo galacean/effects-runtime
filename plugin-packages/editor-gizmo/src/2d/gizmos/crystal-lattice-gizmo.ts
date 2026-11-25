@@ -50,10 +50,12 @@ export class CrystalLatticeGizmo extends Gizmo {
   private canceledKeys = false;
   private soft = false;
   private radius = 25;
+  private pointCount: number;
 
   constructor (owner: GizmoOwner, readonly item: VFXItem, private readonly exit: () => void = () => { },
     private readonly onDispose?: () => void) {
     super(owner);
+    this.pointCount = this.component?.getLattice().points.length ?? 0;
   }
 
   private get component (): FFDComponent {
@@ -99,6 +101,13 @@ export class CrystalLatticeGizmo extends Gizmo {
       this.exit();
     } else if (this.session && (!this.sameTarget(this.session, data) || !this.sameView(this.session))) {
       this.cancelInteraction();
+    }
+    const pointCount = data?.points.length ?? 0;
+
+    if (pointCount !== this.pointCount) {
+      this.selected.clear();
+      this.hover = -1;
+      this.pointCount = pointCount;
     }
   }
 
@@ -195,7 +204,7 @@ export class CrystalLatticeGizmo extends Gizmo {
     }
     const hitSize = this.config.cornerSize / 2 + 3;
 
-    if (frame.corners.some(point => point.distance(position) < hitSize)) {
+    if (position.distance(frame.center) > 1e-4 && frame.corners.some(point => point.distance(position) < hitSize)) {
       return 'scale';
     }
     for (const corner of frame.corners) {
@@ -416,7 +425,12 @@ export class CrystalLatticeGizmo extends Gizmo {
       const current = event.position.clone().subtract(session.center);
 
       if (session.kind === 'scale') {
-        session.scale = Math.max(0.01, current.dot(initial) / initial.lengthSquared());
+        const scale = current.dot(initial) / initial.lengthSquared();
+
+        if (!Number.isFinite(scale)) {
+          return;
+        }
+        session.scale = Math.max(0.01, scale);
       } else if (current.length() >= 3) {
         const angle = Math.atan2(current.y, current.x);
 

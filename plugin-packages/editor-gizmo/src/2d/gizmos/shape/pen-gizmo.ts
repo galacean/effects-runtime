@@ -490,7 +490,9 @@ export class PenGizmo extends Gizmo {
           control.drawBezier(from.x, from.y, c1.x, c1.y, c2.x, c2.y, to.x, to.y,
             selectedSegment ? selectedColor : hoveredSegment ? hoverColor : pathColor,
             selectedSegment ? config.selectedLineWidth : config.lineWidth);
-        } else if (this.editContext.drawing && shapeIndex === this.editContext.activeShape && this.hoverPosition && !this.editContext.dragging) {
+        }
+        if (this.editContext.drawing && shapeIndex === this.editContext.activeShape && this.hoverPosition
+          && !this.editContext.dragging && (this.editContext.prependDrawing ? i === 0 : !nextIndex)) {
           control.drawLine(from.x, from.y, this.hoverPosition.x, this.hoverPosition.y, previewColor, config.previewLineWidth);
         }
       });
@@ -642,7 +644,7 @@ export class PenGizmo extends Gizmo {
     }
     if (hit) { return hit; }
 
-    if (this.interactionMode === 'edit') {
+    if (this.interactionMode === 'edit' || this.combineCreateAndEdit) {
       const segment = this.hitSegment(point);
 
       if (segment) {

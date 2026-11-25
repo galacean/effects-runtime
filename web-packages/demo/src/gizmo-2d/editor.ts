@@ -15,6 +15,8 @@ import {
   PenEditMode,
   ShapeEditMode,
   BasicEditMode,
+  EffectsEditMode,
+  DefaultSelectionMode,
   type GradientGizmo,
   type CrystalLatticeGizmo,
   type SelectionContentEdit,
@@ -197,13 +199,20 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   editContent (edit?: SelectionContentEdit): void {
-    const mode = this.handler.getActiveEditMode();
+    let mode = this.handler.getActiveEditMode();
+
+    if (mode instanceof EffectsEditMode || mode instanceof DefaultSelectionMode) {
+      this.resetEditMode(true);
+      mode = this.handler.getActiveEditMode();
+    }
 
     if (mode instanceof BasicEditMode) {
       if (!mode.editContent(edit)) {
         this.emit('action', '请先选择对应的 FFD 或渐变图形');
       }
       this.player.canvas.focus();
+    } else {
+      this.emit('action', '请先返回选择工具再编辑内容');
     }
   }
 
@@ -263,7 +272,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       return;
     }
     this.updateTool(() => {
-      this.resetEditMode();
+      this.resetEditMode(tool === 'move' || tool === 'hand');
       this.discardDraft();
       this.geometryMode = undefined;
       this.activeTool = tool;
@@ -346,13 +355,22 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   /** Demo 返回选择工具时启用完整编辑模式，沿用宿主现有的模式切换入口。 */
-  private resetEditMode (): void {
+  private resetEditMode (preserveScope = false): void {
     const mode = this.handler.getActiveEditMode();
+    const effectsItemId = preserveScope && (mode instanceof BasicEditMode || mode instanceof EffectsEditMode)
+      ? mode.effectsItemId : undefined;
 
-    if (mode instanceof BasicEditMode && !mode.effectsItemId) {
+    if (mode instanceof BasicEditMode && mode.effectsItemId === effectsItemId) {
+      mode.editContent();
+
       return;
     }
-    this.handler.setActiveEditMode(new BasicEditMode(this.handler));
+    const ids = [...this.handler.getSelection().getSelectedIds()];
+
+    this.handler.setActiveEditMode(new BasicEditMode(this.handler, { effectsItemId }));
+    if (preserveScope) {
+      this.setSelection(ids);
+    }
   }
 
   private updateTool (update: () => void): void {
@@ -371,6 +389,8 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   select (item: VFXItem, append = false): void {
+    const ids = [...this.handler.getSelection().getSelectedIds()];
+
     this.setTool('move');
     const editRoot = this.scene.getItem(item)?.editRoot;
     const mode = this.handler.getActiveEditMode();
@@ -381,7 +401,6 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       this.resetEditMode();
     }
     const id = item.getInstanceId();
-    const ids = this.handler.getSelection().getSelectedIds();
 
     this.setSelection(append ? ids.includes(id) ? ids.filter(selectedId => selectedId !== id) : [...ids, id] : [id]);
   }
@@ -409,7 +428,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     const item = this.selectedItem;
 
     if (item) {
-      this.resetEditMode();
+      this.resetEditMode(true);
       edit(item);
       this.emit('action', label);
       this.emit('selectionchange');

@@ -651,14 +651,27 @@ export class Selection extends EventEmitter<SelectionEvents> {
       return effectsOwner ?? item;
     }
     if (
-      effectsOwner?.getInstanceId() !== this._effectsEditItemId
-      || item.getInstanceId() === this._effectsEditItemId
+      !this.isInEditScope(item)
       || item.type === spec.ItemType.composition
     ) {
       return undefined;
     }
 
     return item;
+  }
+
+  /** 任意子树可作为范围；嵌套动效仍保留自身的选择边界。 */
+  private isInEditScope (item: VFXItem): boolean {
+    for (let node: VFXItem | undefined = item; node; node = node.parent) {
+      if (node.getInstanceId() === this._effectsEditItemId) {
+        return node !== item;
+      }
+      if (isEffectsPlayerItem(node)) {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -697,7 +710,7 @@ export class Selection extends EventEmitter<SelectionEvents> {
 
       if (
         this._effectsEditItemId
-        && effectsOwner?.getInstanceId() !== this._effectsEditItemId
+        && !this.isInEditScope(item)
       ) {
         return;
       }
@@ -709,9 +722,6 @@ export class Selection extends EventEmitter<SelectionEvents> {
             resultSelectedIds.add(effectsOwnerId);
           }
 
-          return;
-        }
-        if (effectsOwnerId !== this._effectsEditItemId || id === effectsOwnerId) {
           return;
         }
       }
@@ -744,6 +754,9 @@ export class Selection extends EventEmitter<SelectionEvents> {
     let node: VFXItem | undefined = item;
 
     while (node) {
+      if (node.getInstanceId() === this._effectsEditItemId) {
+        break;
+      }
       if (effectsOwner && node === effectsOwner) {
         break;
       }
