@@ -1,0 +1,36 @@
+web-packages/test/unit/src/effects-core/owned-mask.spec.ts
+  s_1959265e50472a::t_31cd98cc42122e 251,253,264
+  s_1959265e50472a::t_93e0a0eb41a8b5 252,254
+  s_1959265e50472a::t_be3ef705f248ba 262
+  s_1959265e50472a::t_63443704c2b9b9 186-188,190,250,255-261,263,348-354,400,413,422-426,442-443
+web-packages/test/unit/src/effects-core/mask-rendering-regressions.spec.ts
+  s_1959265e50472a::t_81ecb1c7b9af24 268-293
+  s_1959265e50472a::t_21dc18330d8342 294-295
+plugin-packages/spine/src/spine-component.ts
+  s_1959265e50472a::t_a78a502531a524 205-208
+packages/effects-core/src/plugins/shape/path-geometry.ts
+  s_1959265e50472a::t_e6fa6d32ed8aed 1
+  s_1959265e50472a::t_a78a502531a524 2,4-6,30,32,43,50-93
+packages/effects-core/src/plugins/timeline/playables/property-mixer-playable.ts
+  s_1959265e50472a::t_a78a502531a524 20-21,24,54,60-61
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_1959265e50472a::t_e6fa6d32ed8aed 229-231,250-252,256,258-261,265-268
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_1959265e50472a::t_a78a502531a524 24,602,637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ae43e3298af80b9715944915f5a796a1dfae4356",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
