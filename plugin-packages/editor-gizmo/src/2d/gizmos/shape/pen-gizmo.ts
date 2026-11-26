@@ -108,6 +108,7 @@ export class PenGizmo extends Gizmo {
     if (event.buttonIndex !== MouseButton.Left) { return; }
     this.refreshTarget();
     if (!this.host.canEdit(this.editContext.target)) { return; }
+    this.updateCursor(event.position);
     event.accept();
     const starting = !this.editContext.drawing;
 
@@ -269,6 +270,7 @@ export class PenGizmo extends Gizmo {
     this.onUpdate();
     if (this.editContext.lassoing) {
       this.appendLassoPoint(event.position);
+      this.updateCursor();
 
       return;
     }
@@ -276,7 +278,7 @@ export class PenGizmo extends Gizmo {
       ? this.snapPoint(event.position) : undefined;
     this.hover = this.hitTest(event.position);
     if (!this.editContext.drawing && this.editContext.target) { this._owner.getSnapManager().clearSnappingVisualizations(); }
-    this._owner.setCursor({ type: this.hover ? GestureCursorType.POINTER : GestureCursorType.BOX_SELECT, angle: 0 });
+    this.updateCursor();
   }
 
   override onMouseDrag (event: InputEventMouseMotion): void {
@@ -285,6 +287,7 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
+    this.updateCursor();
     if (this.editContext.lassoing) {
       this.appendLassoPoint(event.position);
       event.accept();
@@ -381,6 +384,7 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
+    this.updateCursor(event.position);
     if (this.editContext.lassoing) {
       this.editContext.lassoPoints.push(event.position.clone());
       this.finishLasso();
@@ -400,6 +404,17 @@ export class PenGizmo extends Gizmo {
     this.editContext.dragPath = undefined;
     this.editContext.dragOrigin = undefined;
     this.editContext.beforeDrag = undefined;
+  }
+
+  private updateCursor (position?: Vector2): void {
+    if (position) { this.hover = this.hitTest(position); }
+    const lasso = !this.editContext.drawing && this.editContext.lassoMode && this.editContext.target;
+    const type = lasso ? GestureCursorType.BOX_SELECT
+      : this.editContext.drawing ? GestureCursorType.PEN
+        : this.editContext.dragging || this.hover ? GestureCursorType.POINTER
+          : this.interactionMode === 'create' ? GestureCursorType.PEN : GestureCursorType.BOX_SELECT;
+
+    this._owner.setCursor({ type, angle: 0 });
   }
 
   override onKeyDown (event: InputEventKey): void {

@@ -20,6 +20,7 @@ export * from './animation';
 export * from './composition';
 export * from './config';
 export * from './constants';
+export * from './culling/bounding-box';
 export * from './decorators';
 export * from './downloader';
 export * from './effects-object';

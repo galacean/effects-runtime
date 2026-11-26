@@ -1,7 +1,7 @@
 import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { Matrix3 } from '../math';
-import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox } from '../math';
+import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, boxTransformFromCorners, getBoxTransformFromBox, getTransformedBox, hasBoxArea } from '../math';
 import { projectPoint, worldSizeToViewSize } from '../viewport/coordinates';
 import { isFramePlayerItem } from './item-predicates';
 
@@ -35,28 +35,27 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
     const { transform, composition } = item;
 
     transform.updateLocalMatrix();
-    const { x, y } = transform.size.clone().divide(2);
-    const compositionMatrix = new Matrix4()
-      .copyFrom(composition?.transform.getWorldMatrix() ?? new Matrix4())
-      .invert();
-    const shapeBox = item.type === spec.ItemType.shape
+    const pathBounds = item.type === spec.ItemType.shape
       ? item.getComponent(ShapeComponent)?.getBoundingBox()
       : undefined;
-    const shapePoints = getShapeBoundingBoxPoints(shapeBox);
+    const hasLocalBounds = pathBounds ? !pathBounds.isEmpty() : transform.size.x !== 0 && transform.size.y !== 0;
 
-    if (shapePoints) {
-      viewTransform = getBoxTransform(shapePoints.map(point =>
-        projectPoint(point.clone().applyMatrix(compositionMatrix), item, containerSize),
-      ));
-    } else {
-      const itemWorldMatrix = compositionMatrix.multiply(transform.getWorldMatrix());
+    if (hasLocalBounds) {
+      const left = pathBounds?.min.x ?? -transform.size.x / 2;
+      const right = pathBounds?.max.x ?? transform.size.x / 2;
+      const top = pathBounds?.max.y ?? transform.size.y / 2;
+      const bottom = pathBounds?.min.y ?? -transform.size.y / 2;
+      const itemToComposition = new Matrix4()
+        .copyFrom(composition?.transform.getWorldMatrix() ?? new Matrix4())
+        .invert().multiply(transform.getWorldMatrix());
+      const project = (x: number, y: number) =>
+        projectPoint(new Vector3(x, y, 0).applyMatrix(itemToComposition), item, containerSize);
 
-      viewTransform = getBoxTransform([
-        new Vector3(-x, y, 0),
-        new Vector3(x, y, 0),
-        new Vector3(x, -y, 0),
-        new Vector3(-x, -y, 0),
-      ].map(point => projectPoint(point.applyMatrix(itemWorldMatrix), item, containerSize)));
+      viewTransform = boxTransformFromCorners(project(left, top), project(right, top), project(left, bottom));
+      // 原本有面积的元素投影成线时，跳过它的二维编辑框。
+      if (viewTransform && left !== right && top !== bottom && !hasBoxArea(viewTransform)) {
+        viewTransform = undefined;
+      }
     }
   }
 
@@ -77,20 +76,6 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
   }
 
   return hasChildBox ? getBoxTransformFromBox(box) : viewTransform;
-}
-
-function getShapeBoundingBoxPoints (box: ReturnType<ShapeComponent['getBoundingBox']> | undefined): Vector3[] | undefined {
-  if (!box?.area?.length || !box.area[0] || !box.area[1]) {
-    return undefined;
-  }
-
-  const points = [box.area[0].p0, box.area[0].p1, box.area[0].p2, box.area[1].p2];
-
-  if (points.some(point => !point || [point.x, point.y, point.z].some(value => !Number.isFinite(value)))) {
-    return undefined;
-  }
-
-  return points.map(point => new Vector3(point.x, point.y, point.z));
 }
 
 /** @returns 元素类型是否提供矩形编辑几何。 */

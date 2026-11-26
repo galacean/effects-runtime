@@ -156,5 +156,5 @@ class SceneBrushGizmo extends Gizmo {
   }
   override draw (control: Control): void { this.tool.draw(control); }
   override dispose (): void { this.tool.cancel(); }
-  private cursor (): void { this._owner.setCursor({ type: GestureCursorType.PEN, angle: 0 }); }
+  private cursor (): void { this._owner.setCursor({ type: GestureCursorType.PENCIL, angle: 0 }); }
 }
