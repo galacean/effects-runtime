@@ -96,7 +96,7 @@ export interface Maskable {
 /**
  * 轨道遮罩引用信息，支持正向和反向裁剪
  */
-export interface MaskReference {
+export interface TrackMatteReference {
   /**
    * 轨道遮罩来源
    */
@@ -106,7 +106,4 @@ export interface MaskReference {
    */
   inverted: boolean,
 }
-
-/** @internal */
-export type TrackMatteReference = MaskReference;
 

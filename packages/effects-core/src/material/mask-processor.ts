@@ -1,6 +1,6 @@
 import type { Engine } from '../engine';
 import type * as spec from '@galacean/effects-specification';
-import type { Maskable, MaskReference } from './types';
+import type { Maskable, TrackMatteReference } from './types';
 import type { Renderer } from '../render/renderer';
 import { TextureLoadAction } from '../texture/types';
 import type { RenderPassClearAction } from '../render/render-pass';
@@ -31,7 +31,7 @@ export class MaskProcessor {
   /**
    * 轨道遮罩引用列表，支持正向和反向裁剪
    */
-  private trackMatteReferences: MaskReference[] = [];
+  private trackMatteReferences: TrackMatteReference[] = [];
 
   private stencilClearAction: RenderPassClearAction;
 
@@ -130,7 +130,7 @@ export class MaskProcessor {
   /**
    * 获取当前轨道遮罩引用列表的浅拷贝。
    */
-  getTrackMatteReferences (): ReadonlyArray<MaskReference> {
+  getTrackMatteReferences (): ReadonlyArray<TrackMatteReference> {
     return this.trackMatteReferences.slice();
   }
 
@@ -205,7 +205,7 @@ export class MaskProcessor {
     }
   }
 
-  private drawTrackMattesWithClipping (renderer: Renderer, sources: { reference: MaskReference, paths: MaskComponent[], frames: Maskable[] }[]): void {
+  private drawTrackMattesWithClipping (renderer: Renderer, sources: { reference: TrackMatteReference, paths: MaskComponent[], frames: Maskable[] }[]): void {
     const pathBits = MaskStencil.Path | MaskStencil.Scratch;
     const sourceIntersection = MaskStencil.Source | MaskStencil.Path;
     const targetIntersection = MaskStencil.Target | MaskStencil.Path;
@@ -236,7 +236,7 @@ export class MaskProcessor {
     }
   }
 
-  private drawTrackMatteCounter (renderer: Renderer, references: readonly MaskReference[]): number {
+  private drawTrackMatteCounter (renderer: Renderer, references: readonly TrackMatteReference[]): number {
     renderer.clear(this.stencilClearAction);
     let forwardCount = 0;
 
@@ -373,7 +373,7 @@ export class MaskProcessor {
 
 }
 
-function appendMaskReference (references: MaskReference[], maskable: Maskable, inverted: boolean): void {
+function appendMaskReference (references: TrackMatteReference[], maskable: Maskable, inverted: boolean): void {
   if (references.some(reference => reference.maskable === maskable)) {
     return;
   }
