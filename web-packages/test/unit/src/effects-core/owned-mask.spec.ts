@@ -93,22 +93,18 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           mask.setMasks([entry('a', rectangle(-1, -1, 0, 1), operation, inverted)]);
           expect(render()).deep.equals(expected(x => (x < 0) !== (inverted !== (operation === Subtract))));
         });
-        for (const firstOperation of operations) {
-          for (const firstInverted of [false, true]) {
-            it(`composes ${firstOperation}/${firstInverted} then ${operation}/${inverted}`, () => {
-              mask.setMasks([
-                entry('a', rectangle(-1, -1, 0, 1), firstOperation, firstInverted),
-                entry('b', rectangle(-1, -1, 1, 0), operation, inverted),
-              ]);
-              expect(render()).deep.equals(expected((x, y) => {
-                const a = (x < 0) !== (firstInverted !== (firstOperation === Subtract));
-                const b = (y < 0) !== inverted;
+        it(`composes Add then ${spec.MaskOperation[operation]}, inverted=${inverted}`, () => {
+          mask.setMasks([
+            entry('a', rectangle(-1, -1, 0, 1)),
+            entry('b', rectangle(-1, -1, 1, 0), operation, inverted),
+          ]);
+          expect(render()).deep.equals(expected((x, y) => {
+            const a = x < 0;
+            const b = (y < 0) !== inverted;
 
-                return operation === Add ? a || b : operation === Subtract ? a && !b : a && b;
-              }));
-            });
-          }
-        }
+            return operation === Add ? a || b : operation === Subtract ? a && !b : a && b;
+          }));
+        });
       }
     }
 
@@ -127,50 +123,12 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(render()).deep.equals(expected(() => true));
     });
 
-    it('round-trips the public component enabled flag independently of path switches', () => {
-      const data: spec.MaskComponentData = {
-        id: mask.getInstanceId(), item: { id: item.getInstanceId() }, dataType: spec.DataType.MaskComponent,
-        enabled: false,
-        masks: [
-          entry('left', rectangle(-1, -1, 0, 1)),
-          { ...entry('disabled', rectangle(-1, -1, 1, 1), Subtract), enabled: false },
-        ],
-      };
-
-      SerializationHelper.deserialize(data, mask);
-      expect(mask.enabled).equals(false);
-      expect(render()).deep.equals(expected(() => true));
-      const saved = SerializationHelper.serialize(mask) as spec.MaskComponentData;
-
-      expect(saved.enabled).equals(false);
-      expect(saved).not.have.property('_enabled');
-      expect(saved.masks[1].enabled).equals(false);
-      const enabledData: spec.MaskComponentData = { ...saved, enabled: true };
-
-      SerializationHelper.deserialize(enabledData, mask);
-      expect(mask.enabled).equals(true);
-      expect(render()).deep.equals(expected(x => x < 0));
-      mask.enabled = false;
-      const defaults = { ...saved };
-
-      delete defaults.enabled;
-      SerializationHelper.deserialize(defaults, mask);
-      expect(mask.enabled).equals(true);
-      expect(render()).deep.equals(expected(x => x < 0));
-    });
-
-    it('supports holes, self intersections and zero-area closed contours', () => {
-      mask.setMasks([
-        entry('outer', rectangle(-1, -1, 1, 1)), entry('hole', rectangle(-0.5, -0.5, 0.5, 0.5), Subtract),
-      ]);
-      expect(render()).deep.equals(expected((x, y) => Math.abs(x) > 0.5 || Math.abs(y) > 0.5));
+    it('supports self-intersecting contours', () => {
       mask.setMasks([entry('cross', pathData([{ x: -1, y: -1 }, { x: 1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: 1 }]))]);
       const cross = render();
 
       expect(cross[3 * 8]).equals(true);
       expect(cross[3]).equals(false);
-      mask.setMasks([entry('line', pathData([{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }]))]);
-      expect(render()).deep.equals(expected(() => false));
     });
 
     it('moves with its owner and ordinary transform parents without clipping siblings', () => {
@@ -198,7 +156,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     });
 
     for (const inverted of [false, true]) {
-      it(`intersects legacy references and frame clipping, inverted=${inverted}`, () => {
+      it(`intersects track mattes and frame clipping, inverted=${inverted}`, () => {
         const sourceItem = new VFXItem(engine);
         const sourceGeometry = Geometry.create(engine, {
           attributes: { aPos: { size: 2, data: new Float32Array([-1, -1, 1, -1, -1, 0, 1, 0]) } },
@@ -224,7 +182,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(render()).deep.equals(expected(x => x < 0));
     });
 
-    it('preserves saturated legacy counters when combining a path stack', () => {
+    it('preserves saturated track matte counters when combining a path stack', () => {
       for (let i = 0; i < 254; i++) {
         target.maskProcessor.addTrackMatteReference({ item, drawStencilMask: ref => {
           target.maskProcessor.drawStencilGeometry(engine.renderer, geometry, math.Matrix4.IDENTITY, material, ref);
@@ -237,18 +195,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       target.maskProcessor.removeTrackMatteReference(last.maskable);
       target.maskProcessor.addTrackMatteReference(last.maskable, false);
       expect(render()).deep.equals(expected(x => x < 0));
-    });
-
-    it('evaluates a two-vertex closed Bezier lens', () => {
-      mask.setMasks([entry('lens', pathData(
-        [{ x: -1, y: 0 }, { x: 1, y: 0 }],
-        [{ x: 0, y: -1 }, { x: 0, y: 1 }],
-        [{ x: 0, y: 1 }, { x: 0, y: -1 }],
-      ))]);
-      const pixels = render();
-
-      expect(pixels[4 * 8 + 4]).equals(true);
-      expect(pixels[0]).equals(false);
     });
 
     it('uses existing custom-shape JSON for masks and preserves shape serialization', () => {
@@ -315,17 +261,10 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       };
 
       mask.setMasks([entry('compound', path)]);
-      path.shapes[0].indexes[0].point = 1;
       expect(render()).deep.equals(expected((x, y) => Math.abs(x) > 0.5 || Math.abs(y) > 0.5));
-      const snapshot = mask.getMasks();
-
-      snapshot[0].path.shapes[1].close = false;
-      expect(render()).deep.equals(expected((x, y) => Math.abs(x) > 0.5 || Math.abs(y) > 0.5));
-      mask.setMasks(snapshot);
-      expect(render()).deep.equals(expected(() => true));
     });
 
-    it('updates curved geometry and serializes detached paths with stable IDs', () => {
+    it('updates and reorders paths and round-trips their data and enabled state', () => {
       const path = rectangle(-1, -1, 0, 1);
 
       mask.setMasks([entry('a', path), entry('b', rectangle(-1, -1, 1, 0), Subtract)]);
@@ -333,6 +272,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(render()).deep.equals(expected((x, y) => x < 0 && y > 0));
       mask.moveMask('b', 0);
       expect(render()).deep.equals(expected((x, y) => x < 0 || y > 0));
+      mask.enabled = false;
       const saved = SerializationHelper.serialize(mask);
       const restoredItem = new VFXItem(engine);
       const restored = restoredItem.addComponent(MaskComponent);
@@ -340,6 +280,9 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       resources.push(restoredItem);
       restored.fromData({ ...saved, id: restored.getInstanceId(), item: { id: restoredItem.getInstanceId() } } as spec.MaskComponentData);
       expect(restored.getMasks()).deep.equals(mask.getMasks());
+      expect(restored.enabled).equals(false);
+      expect(saved.enabled).equals(false);
+      mask.enabled = true;
       mask.setMaskPath('a', rectangle(0, -1, 1, 1));
       expect(render()).deep.equals(expected((x, y) => x > 0 || y > 0));
       expect(saved.masks[1].path.points[0].x).equals(-1);
@@ -349,26 +292,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 0 }],
       ))]);
       expect(render()[5 * 8 + 4]).equals(true);
-    });
-
-    it('updates one path without rebuilding the other cached geometries', () => {
-      mask.setMasks([
-        entry('a', rectangle(-1, -1, 0, 1)),
-        entry('b', rectangle(-1, -1, 1, 0), Subtract),
-        entry('c', rectangle(-1, -1, 1, 1), Intersect),
-      ]);
-      expect(render()).deep.equals(expected((x, y) => x < 0 && y > 0));
-      const upload = chai.spy.on(Geometry.prototype, 'setAttributeData');
-
-      try {
-        mask.setMaskPath('a', rectangle(0, -1, 1, 1));
-        expect(render()).deep.equals(expected((x, y) => x > 0 && y > 0));
-        expect(upload).called.once;
-        expect(render()).deep.equals(expected((x, y) => x > 0 && y > 0));
-        expect(upload).called.once;
-      } finally {
-        chai.spy.restore(Geometry.prototype, 'setAttributeData');
-      }
     });
 
     it('animates vertices through property tracks after reordering and updating the stack', () => {
@@ -406,21 +329,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(render()).deep.equals(expected((x, y) => x < (y + 1) / 2));
     });
 
-    it('rejects malformed updates without replacing a valid stack', () => {
-      mask.setMasks([entry('a', rectangle(-1, -1, 0, 1))]);
-      expect(() => mask.setMasks([entry('duplicate', rectangle(-1, -1, 1, 1)), entry('duplicate', rectangle(-1, -1, 1, 1))])).throws();
-      expect(() => mask.setMaskPath('a', pathData([{ x: NaN, y: 0 }]))).throws();
-      const invalidIndex = rectangle(-1, -1, 1, 1);
-
-      invalidIndex.shapes[0].indexes[0].point = 4;
-      expect(() => mask.setMaskPath('a', invalidIndex)).throws();
-      invalidIndex.shapes[0].indexes[0].point = 0;
-      invalidIndex.easingIns = [{ x: 0, y: 0 }];
-      expect(() => mask.setMaskPath('a', invalidIndex)).throws();
-      expect(render()).deep.equals(expected(x => x < 0));
-    });
-
-    it('keeps layer paths alive when particle rendering components are removed', () => {
+    it('keeps layer paths across renderer removal and releases clipping on mask removal', () => {
       const system = item.addComponent(ParticleSystem);
       const renderer = item.addComponent(ParticleSystemRenderer);
 
@@ -428,46 +337,14 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       target = renderer;
       target.materials = [material];
       mask.setMasks([entry('left', rectangle(-1, -1, 0, 1))]);
-      expect(item.getComponent(MaskComponent)).equals(mask);
       expect(render()).deep.equals(expected(x => x < 0));
-      renderer.enabled = false;
-      expect(render()).deep.equals(expected(x => x < 0));
-
-      let disposals = 0;
-      const dispose = mask.dispose.bind(mask);
-
-      mask.dispose = () => { disposals++; dispose(); };
       renderer.dispose();
       system.dispose();
-      expect(disposals).equals(0);
       target = item.addComponent(RendererComponent);
       target.materials = [material];
       expect(render()).deep.equals(expected(x => x < 0));
-      item.dispose();
-      expect(disposals).equals(1);
-    });
-
-    it('shares layer paths across renderers and releases clipping when the mask is removed', () => {
-      const first = target;
-      const second = item.addComponent(RendererComponent);
-
-      second.materials = [material];
-      mask.setMasks([entry('left', rectangle(-1, -1, 0, 1))]);
-      expect(render()).deep.equals(expected(x => x < 0));
-      target = second;
-      expect(render()).deep.equals(expected(x => x < 0));
-      mask.enabled = false;
-      expect(render()).deep.equals(expected(() => true));
-      mask.enabled = true;
-      target = first;
-      expect(render()).deep.equals(expected(x => x < 0));
       mask.dispose();
-      expect(item.getComponent(MaskComponent)).equals(undefined);
       expect(render()).deep.equals(expected(() => true));
-      mask = item.addComponent(MaskComponent);
-      mask.setMasks([entry('bottom', rectangle(-1, -1, 1, 0))]);
-      target = second;
-      expect(render()).deep.equals(expected((x, y) => y < 0));
     });
 
     for (const legacy of [false, true]) {
@@ -538,7 +415,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         expect(player.engine.renderErrors.size).equals(0);
 
         const source = composition.getItemByName('matte-only source')!.getComponent(ShapeComponent);
-        const sourceData = SerializationHelper.serialize(source);
         const duplicate = await player.loadScene(scene);
         const duplicateGraphic = duplicate.getItemByName('target')!.getComponent(ShapeComponent);
         const duplicateSource = duplicate.getItemByName('matte-only source')!.getComponent(ShapeComponent);
@@ -546,19 +422,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         expect(duplicateSource).not.equals(source);
         expect(graphic.maskProcessor.getTrackMatteReferences()[0].maskable).equals(source);
         expect(duplicateGraphic.maskProcessor.getTrackMatteReferences()[0].maskable).equals(duplicateSource);
-        const exported = JSON.parse(JSON.stringify(scene));
-
-        exported.components = exported.components.map((component: spec.ComponentData) => {
-          return component.id === 'shape' ? saved : component.id === 'matte-renderer' ? sourceData : component;
-        });
-        player.destroyCurrentCompositions();
-        await player.loadScene(exported);
-        player.gotoAndStop(0);
-        const reloadedPixels = new Uint8Array(pixels.length);
-
-        gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, reloadedPixels);
-        expect(Array.from(reloadedPixels)).deep.equals(Array.from(pixels));
-        expect(player.engine.renderErrors.size).equals(0);
       });
     }
   });

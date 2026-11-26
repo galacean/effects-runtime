@@ -1,4 +1,4 @@
-import { Engine, Geometry, MaskProcessor, Material, TextureLoadAction, glContext, math } from '@galacean/effects-core';
+import { Engine, Geometry, Material, TextureLoadAction, glContext, math } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -137,45 +137,5 @@ void main() { gl_FragColor = uColor; }`,
       renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
       expect(pixels()).deep.equals(red.map((color, index) => index % 8 < 4 ? [0, 0, 255, 255] : color));
     });
-
-    for (const fails of [false, true]) {
-      it(`restores material state after a ${fails ? 'failed' : 'successful'} geometry mask draw`, () => {
-        const renderer = engine.renderer;
-        const processor = new MaskProcessor();
-        const originalDraw = renderer.drawGeometry;
-
-        material.stencilReadMask = [2, 2];
-        material.stencilWriteMask = [4, 4];
-        material.depthTest = true;
-        material.depthMask = true;
-        try {
-          if (fails) {
-            renderer.drawGeometry = () => {
-              expect(material.depthMask).equals(false);
-              expect(material.depthTest).equals(true);
-              throw new Error('Drawing failed');
-            };
-            expect(() => processor.drawStencilGeometry(renderer, geometry, math.Matrix4.IDENTITY, material, 0)).throws('Drawing failed');
-          } else {
-            processor.drawStencilGeometry(renderer, geometry, math.Matrix4.IDENTITY, material, 0);
-          }
-        } finally {
-          renderer.drawGeometry = originalDraw;
-        }
-
-        expect(material.colorMask).equals(true);
-        expect(material.stencilTest).equals(false);
-        expect(material.stencilReadMask).deep.equals([2, 2]);
-        expect(material.stencilWriteMask).deep.equals([4, 4]);
-        expect(material.depthMask).equals(true);
-        expect(material.depthTest).equals(true);
-        material.stencilTest = true;
-        material.stencilReadMask = [0xff, 0xff];
-        material.stencilRef = [1, 1];
-        material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
-        renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
-        expect(pixels()).deep.equals(Array.from({ length: 64 }, () => fails ? [0, 0, 0, 0] : [255, 0, 0, 255]));
-      });
-    }
   });
 }

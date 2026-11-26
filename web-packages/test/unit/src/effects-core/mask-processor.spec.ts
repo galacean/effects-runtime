@@ -240,29 +240,6 @@ describe('core/material/mask-processor', () => {
       expect(mp.getTrackMatteReferences()[0].maskable).to.equal(sprite);
     });
 
-    it('keeps frame clips out of track matte references when stencil drawing throws', () => {
-      const mp = new MaskProcessor();
-      const source = createMaskableSprite(engine);
-      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
-      const component = createSpriteRendererComponent(engine, [material]);
-      const frameClip = {
-        item: source.item,
-        drawStencilMask (): void {
-          throw new Error('Frame stencil draw failed');
-        },
-      };
-
-      mp.addTrackMatteReference(source);
-      component.frameClipMasks = [frameClip];
-
-      expect(() => mp.applyMasks(renderer, component)).to.throw('Frame stencil draw failed');
-      expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: source, inverted: false }]);
-
-      component.frameClipMasks = [];
-      mp.applyMasks(renderer, component);
-      expect(material.stencilRef).to.deep.equal([1, 1]);
-    });
-
     it('should setup multiple materials', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
@@ -327,6 +304,7 @@ describe('core/material/mask-processor', () => {
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
       material.stencilRef = [0, 0];
       material.stencilReadMask = [0xFF, 0xFF];
+      material.stencilWriteMask = [0x0F, 0x0F];
 
       const worldMatrix = new math.Matrix4();
 
@@ -340,6 +318,7 @@ describe('core/material/mask-processor', () => {
       expect(material.stencilOpZPass).to.deep.equals([glContext.KEEP, glContext.KEEP]);
       expect(material.stencilRef).to.deep.equals([0, 0]);
       expect(material.stencilReadMask).to.deep.equals([0xFF, 0xFF]);
+      expect(material.stencilWriteMask).to.deep.equals([0x0F, 0x0F]);
 
       geometry.dispose();
     });

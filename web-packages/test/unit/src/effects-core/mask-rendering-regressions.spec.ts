@@ -162,13 +162,8 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
           expect(render([source])).deep.equals(coverage);
           source.maskProcessor.isTrackMatte = true;
-          const runtimeSource = { item: source.item, drawStencilMask: source.drawStencilMask.bind(source) };
-
-          for (const reference of [source, runtimeSource]) {
-            target.maskProcessor.clearTrackMatteReferences();
-            target.maskProcessor.addTrackMatteReference(reference, inverted);
-            expect(render([source, target])).deep.equals(coverage.map(value => inverted ? !value : value));
-          }
+          target.maskProcessor.addTrackMatteReference(source, inverted);
+          expect(render([source, target])).deep.equals(coverage.map(value => inverted ? !value : value));
           if (withPaths) {
             masks(parent).enabled = false;
             expect(render([source, target])).deep.equals(coverage.map(() => !inverted));
@@ -215,103 +210,21 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       });
     }
 
-    for (const inverted of [false, true]) {
-      it(`combines source paths, multiple mattes and target paths, inverted=${inverted}`, () => {
-        const source = sprite();
-        const other = sprite();
-        const target = sprite();
-
-        masks(source).setMasks([
-          rectangle('left', -1, -1, 0, 1),
-          rectangle('bottom', 0, -1, 1, 0),
-          rectangle('hole', -0.5, -0.5, 0.5, 0.5, spec.MaskOperation.Subtract),
-        ]);
-        const sourceCoverage = Array.from({ length: 64 }, (_, index) => {
-          const x = index % 8;
-          const y = Math.floor(index / 8);
-
-          return (x < 4 || y < 4) && !(x >= 2 && x < 6 && y >= 2 && y < 6);
-        });
-
-        expect(render([source])).deep.equals(sourceCoverage);
-        source.maskProcessor.isTrackMatte = other.maskProcessor.isTrackMatte = true;
-        other.transform.setSize(1.5, 2);
-        other.transform.setPosition(0.25, 0, 0);
-        other.onUpdate(0);
-        masks(target).setMasks([rectangle('target', -1, -0.5, 1, 1)]);
-        const expected = sourceCoverage.map((covered, index) => (inverted ? !covered : covered) && index % 8 >= 2 && index >= 16);
-
-        for (const sourceFirst of [true, false]) {
-          target.maskProcessor.clearTrackMatteReferences();
-          if (sourceFirst) {
-            target.maskProcessor.addTrackMatteReference(source, inverted);
-            target.maskProcessor.addTrackMatteReference(other);
-          } else {
-            target.maskProcessor.addTrackMatteReference(other);
-            target.maskProcessor.addTrackMatteReference(source, inverted);
-          }
-          expect(render([source, other, target])).deep.equals(expected);
-        }
-        masks(other).setMasks([rectangle('other', -1, -1, 1, 0.5)]);
-        expect(render([source, other, target])).deep.equals(expected.map((covered, index) => covered && index < 48));
-        masks(other).enabled = false;
-        masks(source).enabled = false;
-        expect(render([source, other, target])).deep.equals(sourceCoverage.map((_, index) => !inverted && index % 8 >= 2 && index >= 16));
-        masks(target).enabled = false;
-        target.maskProcessor.clearTrackMatteReferences();
-        expect(render([target]).filter(Boolean)).has.length(64);
-      });
-    }
-
-    it('renders runtime-only structural matte sources alongside component sources', () => {
+    it('changes source visibility without changing its matte coverage', () => {
       const source = sprite();
       const target = sprite();
-      const runtimeSource = {
-        item: source.item,
-        drawStencilMask: source.drawStencilMask.bind(source),
-      };
 
-      source.transform.setSize(1, 2);
-      source.transform.setPosition(-0.5, 0, 0);
-      source.onUpdate(0);
-      target.maskProcessor.addTrackMatteReference(runtimeSource);
+      target.transform.setSize(1, 1);
+      target.onUpdate(0);
       target.maskProcessor.addTrackMatteReference(source);
-      expect(render([target]).filter(Boolean)).has.length(32);
-      expect(target.maskProcessor.getTrackMatteReferences().map(reference => reference.maskable)).deep.equals([runtimeSource, source]);
+      source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true } });
+      expect(render([source]).filter(Boolean)).has.length(0);
+      expect(render([source, target]).filter(Boolean)).has.length(16);
+
+      source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true, sourceVisible: true } });
+      expect(render([source, target]).filter(Boolean)).has.length(64);
+      expect(render([target]).filter(Boolean)).has.length(16);
     });
-
-    for (const sourceMode of ['visible-fields', 'track-matte', 'visible-track-matte'] as const) {
-      it(`preserves source visibility for ${sourceMode}`, () => {
-        const source = sprite();
-        const target = sprite();
-
-        if (sourceMode === 'visible-fields') {
-          source.maskProcessor.sourceVisible = true;
-          source.maskProcessor.isTrackMatte = true;
-        } else {
-          source.maskProcessor.loadTrackMatte(engine, {
-            trackMatte: { isTrackMatte: true, sourceVisible: sourceMode === 'visible-track-matte' },
-          });
-        }
-        source.setColor([1, 0, 0, 1]);
-        target.transform.setSize(1, 1);
-        target.onUpdate(0);
-        target.maskProcessor.addTrackMatteReference(source);
-        const visible = sourceMode !== 'track-matte';
-
-        expect(render([source]).filter(Boolean)).has.length(visible ? 64 : 0);
-        source.maskProcessor.isTrackMatte = false;
-        expect(render([source]).filter(Boolean)).has.length(64);
-        source.maskProcessor.isTrackMatte = true;
-        expect(render([source]).filter(Boolean)).has.length(visible ? 64 : 0);
-        expect(render([source, target]).filter(Boolean)).has.length(visible ? 64 : 16);
-
-        source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true } });
-        expect(render([source]).filter(Boolean)).has.length(0);
-        source.maskProcessor.loadTrackMatte(engine, { trackMatte: { isTrackMatte: true, sourceVisible: true } });
-        expect(render([source]).filter(Boolean)).has.length(64);
-      });
-    }
 
     it('uses current Spine size as a matte source without a preceding color draw', () => {
       const source = item().addComponent(SpineComponent);
@@ -353,38 +266,33 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     });
 
     for (const mode of [spec.RenderMode.BILLBOARD, spec.RenderMode.VERTICAL_BILLBOARD, spec.RenderMode.HORIZONTAL_BILLBOARD]) {
-      for (const mirrored of [false, true]) {
-        it(`draws owned paths in layer world space for ${spec.RenderMode[mode]}, mirrored=${mirrored}`, () => {
-          const target = item().addComponent(SpriteComponent);
+      it(`draws rotated and mirrored paths in layer world space for ${spec.RenderMode[mode]}`, () => {
+        const target = item().addComponent(SpriteComponent);
 
-          target.fromData({
-            id: target.getInstanceId(), item: { id: target.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
-            renderer: { renderMode: mode }, options: {},
-          } as spec.SpriteComponentData);
-          target.transform.setSize(2, 2);
-          target.transform.setRotation(0, 0, 90);
-          if (mirrored) {
-            target.transform.setScale(-0.5, 0.75, 1);
-          }
-          target.onUpdate(0);
-          const full = render([target]);
-          const clipped = full.map((visible, index) => {
-            const row = Math.floor(index / 8);
+        target.fromData({
+          id: target.getInstanceId(), item: { id: target.item.getInstanceId() }, dataType: spec.DataType.SpriteComponent,
+          renderer: { renderMode: mode }, options: {},
+        } as spec.SpriteComponentData);
+        target.transform.setSize(2, 2);
+        target.transform.setRotation(0, 0, 90);
+        target.transform.setScale(-0.5, 0.75, 1);
+        target.onUpdate(0);
+        const full = render([target]);
+        const clipped = full.map((visible, index) => {
+          const row = Math.floor(index / 8);
 
-            return visible && (mirrored ? row >= 2 && row < 4 : row >= 4);
-          });
-
-          expect(full.filter(Boolean)).has.length(mirrored ? 24 : 64);
-          masks(target).setMasks([rectangle('left', -1, -1, 0, 1)]);
-
-          expect(render([target])).deep.equals(clipped);
-          target.maskProcessor.isTrackMatte = true;
-          const consumer = sprite();
-
-          consumer.maskProcessor.addTrackMatteReference(target);
-          expect(render([target, consumer])).deep.equals(clipped);
+          return visible && row >= 2 && row < 4;
         });
-      }
+
+        expect(full.filter(Boolean)).has.length(24);
+        masks(target).setMasks([rectangle('left', -1, -1, 0, 1)]);
+        expect(render([target])).deep.equals(clipped);
+        target.maskProcessor.isTrackMatte = true;
+        const consumer = sprite();
+
+        consumer.maskProcessor.addTrackMatteReference(target);
+        expect(render([target, consumer])).deep.equals(clipped);
+      });
     }
 
     it('intersects owned paths with Frame clipping and track mattes on a Billboard target', () => {

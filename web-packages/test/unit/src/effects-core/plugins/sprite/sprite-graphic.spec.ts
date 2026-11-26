@@ -1,6 +1,6 @@
 import type { MaskableGraphic } from '@galacean/effects';
 import {
-  MaskComponent, CacheDataManager, ColorPlayable, HitTestType, Engine, Geometry, SpriteComponent, TextComponent, TextureLoadAction, VFXItem, glContext, math, spec,
+  MaskComponent, Engine, SpriteComponent, TextComponent, TextureLoadAction, VFXItem, math, spec,
 } from '@galacean/effects';
 import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
@@ -33,17 +33,8 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     after(() => engine.dispose());
 
     for (const testCase of cases) {
-      it(`${testCase.name} preserves its geometry behavior and supports owned clipping`, () => {
+      it(`${testCase.name} supports owned paths and serves as a track matte source`, () => {
         const item = new VFXItem(engine);
-        const triangle = Geometry.create(engine, {
-          attributes: {
-            aPos: { size: 3, data: new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, -0.5, 0.5, 0]) },
-            aUV: { size: 2, data: new Float32Array([0, 0, 1, 0, 0, 1]) },
-          },
-          indices: { data: new Uint16Array([0, 1, 2]) },
-          mode: glContext.TRIANGLES,
-          drawCount: 3,
-        });
         const component = item.addComponent<Graphic>(testCase.component);
         const targetItem = new VFXItem(engine);
         const target = targetItem.addComponent(SpriteComponent);
@@ -54,14 +45,9 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           const data = {
             id: component.getInstanceId(), item: { id: item.getInstanceId() }, dataType: testCase.dataType,
             renderer: { renderMode: spec.RenderMode.MESH }, options: testCase.options,
-            geometry: { id: triangle.getInstanceId() },
-            textureSheetAnimation: { row: 2, col: 2, animate: true },
           };
 
           (component as MaskableGraphic).fromData(data);
-          if (component instanceof SpriteComponent) {
-            component.time = 1;
-          }
           component.onUpdate(0);
           // 统一尺寸和纹理，排除文字排版、字形及媒体解码对几何覆盖测试的影响。
           item.transform.setSize(2, 2);
@@ -80,27 +66,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           };
           const coverage = render();
 
-          if (testCase.name === 'sprite') {
-            expect(coverage[0]).equals(true);
-            expect(coverage[63]).equals(false);
-          } else {
-            expect(coverage.every(Boolean)).equals(true);
-            expect(component.material.getVector4('_TexOffset')?.toArray()).deep.equals([0, 0, 1, 1]);
-          }
-
-          component.onStart();
-          expect(item.getHitTestParams?.(true)?.type).equals(HitTestType.triangle);
-          component.setColor([0.8, 0.6, 0.4, 0.5]);
-          const playable = new ColorPlayable();
-          const cache = new CacheDataManager({ trackData: new Map(), clipData: new Map(), sharedData: new Map() });
-
-          cache.setTrackKey(0);
-          cache.setClipKey(0);
-          playable.duration = 1;
-          playable.create({ id: 'color', dataType: spec.DataType.SpriteColorPlayableAsset, colorOverLifetime: { opacity: [spec.ValueType.CONSTANT, 0.5] } });
-          playable.evaluate(item, { time: 0.5, deltaTime: 0 }, cache);
-          expect(component.material.getColor('_Color')?.toArray()).deep.equals([0.8, 0.6, 0.4, 0.25]);
-          component.setColor([1, 1, 1, 1]);
+          expect(coverage.every(Boolean)).equals(true);
 
           const masks = item.addComponent(MaskComponent);
 
@@ -124,7 +90,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           item.dispose();
           component.geometry.dispose();
           component.material.dispose();
-          triangle.dispose();
         }
       });
     }

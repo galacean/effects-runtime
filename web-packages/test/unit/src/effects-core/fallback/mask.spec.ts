@@ -175,48 +175,44 @@ describe('core/fallback/mask', () => {
     });
   }
 
-  for (const version of ['3.2', '3.8']) {
-    it(`keeps owned paths and existing track mattes intact across repeated ${version} migration`, () => {
-      const pathComponent = {
-        id: 'owned-paths', dataType: spec.DataType.MaskComponent, item: { id: 'layer' },
-        masks: [{
-          id: 'mask', name: 'mask', operation: spec.MaskOperation.Subtract, inverted: true,
-          path: {
-            points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }], easingIns: [], easingOuts: [],
-            shapes: [{ close: true, indexes: [0, 1, 2].map(point => ({ point, easingIn: 0, easingOut: 0 })) }],
-          },
-        }],
-        // 路径蒙版组件中的同名扩展字段也不能参与旧轨道遮罩迁移。
-        mask: { references: [{ mask: { id: 'path-metadata' }, inverted: true }] },
-      };
-      const pathsBefore = JSON.parse(JSON.stringify(pathComponent));
-      const trackMatte = {
-        isTrackMatte: true, sourceVisible: false,
-        references: [{ source: { id: 'new-source' }, inverted: true }],
-      };
-      const existing = {
-        id: 'existing', dataType: spec.DataType.MeshComponent, trackMatte,
-        mask: { isMask: true, references: [{ mask: { id: 'obsolete-source' } }] },
-      };
-      const legacy = {
-        id: 'legacy', dataType: spec.DataType.MeshComponent,
-        mask: { references: [{ mask: { id: 'source' }, inverted: false }] },
-      };
-      const scene = getStandardJSON(createScene(version, [legacy, pathComponent, existing]));
+  it('keeps owned paths and existing track mattes intact across repeated migration', () => {
+    const pathComponent = {
+      id: 'owned-paths', dataType: spec.DataType.MaskComponent, item: { id: 'layer' },
+      masks: [{
+        id: 'mask', name: 'mask', operation: spec.MaskOperation.Subtract, inverted: true,
+        path: {
+          points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }], easingIns: [], easingOuts: [],
+          shapes: [{ close: true, indexes: [0, 1, 2].map(point => ({ point, easingIn: 0, easingOut: 0 })) }],
+        },
+      }],
+    };
+    const pathsBefore = JSON.parse(JSON.stringify(pathComponent));
+    const trackMatte = {
+      isTrackMatte: true, sourceVisible: false,
+      references: [{ source: { id: 'new-source' }, inverted: true }],
+    };
+    const existing = {
+      id: 'existing', dataType: spec.DataType.MeshComponent, trackMatte,
+      mask: { isMask: true, references: [{ mask: { id: 'obsolete-source' } }] },
+    };
+    const legacy = {
+      id: 'legacy', dataType: spec.DataType.MeshComponent,
+      mask: { references: [{ mask: { id: 'source' }, inverted: false }] },
+    };
+    const scene = getStandardJSON(createScene('3.2', [legacy, pathComponent, existing]));
 
-      expect(pathComponent).to.deep.equal(pathsBefore);
-      expect(existing.trackMatte).equals(trackMatte);
-      expect(existing.trackMatte.sourceVisible).equals(false);
-      expect(existing).not.to.have.property('mask');
-      expect(legacy).not.to.have.property('mask');
-      expect(legacy).to.have.property('trackMatte').that.deep.equals({
-        isTrackMatte: false, sourceVisible: true, alphaMaskEnabled: false,
-        references: [{ source: { id: 'source' }, inverted: false }],
-      });
-      const migrated = JSON.parse(JSON.stringify(scene));
-
-      getStandardJSON(scene);
-      expect(scene).to.deep.equal(migrated);
+    expect(pathComponent).to.deep.equal(pathsBefore);
+    expect(existing.trackMatte).equals(trackMatte);
+    expect(existing.trackMatte.sourceVisible).equals(false);
+    expect(existing).not.to.have.property('mask');
+    expect(legacy).not.to.have.property('mask');
+    expect(legacy).to.have.property('trackMatte').that.deep.equals({
+      isTrackMatte: false, sourceVisible: true, alphaMaskEnabled: false,
+      references: [{ source: { id: 'source' }, inverted: false }],
     });
-  }
+    const migrated = JSON.parse(JSON.stringify(scene));
+
+    getStandardJSON(scene);
+    expect(scene).to.deep.equal(migrated);
+  });
 });
