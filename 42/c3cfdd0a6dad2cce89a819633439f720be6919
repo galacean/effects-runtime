@@ -1,0 +1,23 @@
+web-packages/dev-tools/src/features/scene/viewport/scene-geometry-tools.ts
+  s_41a2855eb678e1::t_88d71372ec07e0 7-26
+  s_41a2855eb678e1::t_9efc2a350a04c7 4-6
+  s_41a2855eb678e1::t_c0ffe21ad90cdb 27-29
+plugin-packages/editor-gizmo/src/2d/items/item-geometry.ts
+  s_41a2855eb678e1::t_88d71372ec07e0 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42c3cfdd0a6dad2cce89a819633439f720be6919",
+  "prompts": {},
+  "sessions": {
+    "s_41a2855eb678e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c93-f12b-7883-b6b6-cfe81faccf0f",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
