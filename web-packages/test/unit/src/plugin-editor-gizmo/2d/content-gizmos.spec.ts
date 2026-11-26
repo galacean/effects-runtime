@@ -50,6 +50,8 @@ import {
   selectionSnapConfig,
   captureMotionPaths,
   getTransformedBoxCorners,
+  inverseTransformBoxPoint,
+  transformBoxPoint,
   findMotionPaths,
   updateMotionPathTranslation,
   GizmoType,
@@ -2285,6 +2287,94 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       resize.dispose();
     }
   });
+
+  for (const axis of ['x', 'y'] as const) {
+    it(`preserves the existing orientation during Alt-${axis} rotation after a corner rotation`, () => {
+      const item = sprite();
+
+      item.rotate(0, 0, 30);
+      const original = item.transform.quat.clone();
+      const resize = new ResizeSelectionGizmo(handler);
+      const gizmo = new TransformHandlesGizmo(handler, resize);
+
+      try {
+        resize.refreshWireframeBySelectedItems();
+        const start = resize.wireframe.anchor.clone().add(axis === 'x' ? new Vector2(40, 0) : new Vector2(0, -40));
+        let changes = 0;
+
+        item.transform.on('changed', () => changes++);
+        gizmo.onMouseDown(down(start, { altPressed: true }));
+        gizmo.onMouseDrag(drag(start, false, true));
+        expect(changes).equals(0);
+        expect(item.transform.quat.toArray()).deep.equals(original.toArray());
+
+        for (const amount of [10, 20]) {
+          const delta = axis === 'x' ? new Vector2(0, amount) : new Vector2(amount, 0);
+
+          gizmo.onMouseDrag(drag(start.clone().add(delta), false, true));
+          const rotation = item.transform.getRotation();
+
+          expect(rotation.x).closeTo(axis === 'x' ? -amount : 0, 1e-5);
+          expect(rotation.y).closeTo(axis === 'y' ? -amount : 0, 1e-5);
+          expect(rotation.z).closeTo(30, 1e-5);
+        }
+        gizmo.onKeyDown(key());
+        expect(item.transform.quat.toArray()).deep.equals(original.toArray());
+      } finally {
+        gizmo.dispose();
+        resize.dispose();
+      }
+    });
+
+    for (const kind of ['sprite', 'shape', 'host'] as const) {
+      it(`aligns the ${kind} selection outline and handles with all four corners after ${axis} rotation`, () => {
+        const item = kind === 'shape' ? gradient().item : sprite();
+        const parent = DefaultVFXItems.createEmpty(composition);
+
+        parent.transform.setRotation(10, -12, 20);
+        parent.transform.setScale(-1.2, 0.8, 1);
+        item.setParent(parent);
+        item.transform.setSize(4, 2);
+        item.transform.setAnchor(0.3, -0.2);
+        item.transform.setRotation(axis === 'x' ? 45 : 0, axis === 'y' ? 50 : 0, 15);
+        item.setPosition(0.4, -0.3, 2);
+        const unregister = kind === 'host'
+          ? registerItemGeometry(player.engine, target => target === item ? { min: [-2, -1], max: [2, 1] } : undefined)
+          : undefined;
+        const resize = new ResizeSelectionGizmo(handler);
+
+        try {
+          resize.refreshWireframeBySelectedItems();
+          const corners = [new Vector3(-2, 1, 0), new Vector3(2, 1, 0), new Vector3(2, -1, 0), new Vector3(-2, -1, 0)]
+            .map(point => localToView(item, point));
+
+          expect(resize.wireframe.edges).length(4);
+          expect(resize.wireframe.scaleCorners).length(4);
+          corners.forEach((point, index) => {
+            expect(resize.wireframe.edges[index].start.distance(point)).lessThan(1e-4);
+            expect(resize.wireframe.edges[index].end.distance(corners[(index + 1) % 4])).lessThan(1e-4);
+            expect(resize.wireframe.scaleCorners[index].center.distance(point)).lessThan(1e-4);
+          });
+          const center = localToView(item, new Vector3());
+          const transform = resize.wireframe.transform!;
+          const local = inverseTransformBoxPoint(transform, center);
+
+          expect(local.x).closeTo(0.5, 1e-5);
+          expect(local.y).closeTo(0.5, 1e-5);
+          expect(transformBoxPoint(transform, new Vector2(0.5, 0.5)).distance(center)).lessThan(1e-4);
+          const bounds = getItemViewBox(item, new Vector2(800, 600));
+
+          expect(bounds.min.x).closeTo(Math.min(...corners.map(point => point.x)), 1e-4);
+          expect(bounds.max.x).closeTo(Math.max(...corners.map(point => point.x)), 1e-4);
+          expect(bounds.min.y).closeTo(Math.min(...corners.map(point => point.y)), 1e-4);
+          expect(bounds.max.y).closeTo(Math.max(...corners.map(point => point.y)), 1e-4);
+        } finally {
+          unregister?.();
+          resize.dispose();
+        }
+      });
+    }
+  }
 
   it('constrains an axis drag and rebases when Alt changes its meaning', () => {
     const item = sprite();

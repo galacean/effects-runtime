@@ -292,18 +292,18 @@ export class TransformHandlesGizmo extends Gizmo {
         return;
       }
       if (event.altPressed) {
-        for (const { item } of snapshots) {
-          const rotation = item.transform.rotation;
+        const angle = handle === 'x' ? -step.y : -step.x;
 
-          item.transform.setRotation(
-            rotation.x + (handle === 'x'
-              ? -step.y
-              : 0),
-            rotation.y + (handle === 'y'
-              ? -step.x
-              : 0),
-            rotation.z
-          );
+        if (angle !== 0) {
+          for (const { item } of snapshots) {
+            const rotation = item.transform.getRotation();
+
+            item.transform.setRotation(
+              rotation.x + (handle === 'x' ? angle : 0),
+              rotation.y + (handle === 'y' ? angle : 0),
+              rotation.z
+            );
+          }
         }
       } else {
         if (handle === 'x') {
