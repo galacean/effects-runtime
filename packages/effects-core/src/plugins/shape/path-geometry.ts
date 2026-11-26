@@ -1,6 +1,9 @@
-import type { CustomShape, MaskPathData } from '@galacean/effects-specification';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { CustomShape, MaskPathData, TransformData } from '@galacean/effects-specification';
 import { triangulate } from '../../math/shape/triangulate';
-import type { GraphicsPath } from './graphics-path';
+import { Transform } from '../../transform';
+import { GraphicsPath } from './graphics-path';
+import { makeStrokeContourPath } from './contour-path';
 import type { ShapePath } from './shape-path';
 
 /** @internal */
@@ -24,8 +27,9 @@ export function appendBezierPath (graphics: GraphicsPath, path: MaskPathData, co
     return;
   }
   const first = points[indexes[0].point];
+  const target = contour.transform ? new GraphicsPath() : graphics;
 
-  graphics.moveTo(first.x, first.y);
+  target.moveTo(first.x, first.y);
   const count = close ? indexes.length + 1 : indexes.length;
 
   for (let i = 1; i < count; i++) {
@@ -36,14 +40,57 @@ export function appendBezierPath (graphics: GraphicsPath, path: MaskPathData, co
     const out = easingOuts[previousIndex.easingOut];
     const input = easingIns[index.easingIn];
 
-    graphics.bezierCurveTo(
+    target.bezierCurveTo(
       previous.x + (out?.x ?? 0), previous.y + (out?.y ?? 0),
       point.x + (input?.x ?? 0), point.y + (input?.y ?? 0), point.x, point.y,
       undefined, screenScale,
     );
   }
   if (close) {
-    graphics.closePath();
+    target.closePath();
+  }
+  if (contour.transform) {
+    appendTransformedPath(graphics, target, contour.transform);
+  }
+}
+
+/** @internal */
+export function appendTransformedPath (graphics: GraphicsPath, path: GraphicsPath, data: TransformData): void {
+  const commands = makeStrokeContourPath(path);
+  const transform = new Transform();
+
+  transform.fromData(data);
+  transform.setScale(transform.scale.x * (data.size?.x ?? 1), transform.scale.y * (data.size?.y ?? 1), transform.scale.z);
+  const matrix = transform.getMatrix();
+  const point = new Vector3();
+
+  if (path === graphics) {
+    graphics.clear();
+  }
+  for (const command of commands) {
+    for (const control of command.data) {
+      point.set(control.x, control.y, 0);
+      matrix.transformPoint(point, point); control.set(point.x, point.y);
+    }
+    switch (command.action) {
+      case 'moveTo':
+        graphics.moveTo(command.data[0].x, command.data[0].y);
+
+        break;
+      case 'lineTo':
+        graphics.lineTo(command.data[0].x, command.data[0].y);
+
+        break;
+      case 'bezierCurveTo':
+        graphics.bezierCurveTo(command.data[0].x, command.data[0].y, command.data[1].x, command.data[1].y,
+          command.data[2].x, command.data[2].y, command.smoothness, command.scale);
+
+        break;
+      case 'closePath':
+        graphics.closePath();
+
+        break;
+    }
   }
 }
 

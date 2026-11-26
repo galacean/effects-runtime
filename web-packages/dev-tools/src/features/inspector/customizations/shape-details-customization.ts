@@ -226,7 +226,9 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     const edit = (update: (matte: Data) => void): void => editShapeData(component, data => update(data.trackMatte));
     const rebuild = (): void => this.buildTrackMatte(group, component);
 
-    group.boolean('Is Track Matte', { read: () => read().isTrackMatte, write: value => edit(matte => { matte.isTrackMatte = value; }) });
+    group.boolean('Is Track Matte', { read: () => read().isTrackMatte, write: value => {
+      edit(matte => { matte.isTrackMatte = value; }); rebuild();
+    } });
     group.boolean('Source Visible', { read: () => read().sourceVisible, write: value => edit(matte => { matte.sourceVisible = value; }) });
     group.boolean('Alpha Mask', { read: () => read().alphaMaskEnabled, write: value => edit(matte => { matte.alphaMaskEnabled = value; }) });
     const references = group.group('References', 'References');
@@ -245,19 +247,25 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
 
     if (root) { visit(root, ''); }
 
+    const usedSources = new Set<string>((read().references as Data[]).map(ref => ref.source.id));
+    const available = candidates.filter(candidate => !usedSources.has(candidate.component.getInstanceId()));
+
     (read().references as Data[]).forEach((_, index) => {
       const reference = references.group(String(index), 'Track Matte ' + (index + 1));
       const value = (): Data => read().references[index];
+      const choices = candidates.filter(candidate => candidate.component.getInstanceId() === value().source.id || !usedSources.has(candidate.component.getInstanceId()));
 
-      reference.choice('Source', { read: () => candidates.findIndex(candidate => candidate.component === (value().source ? component.findObject(value().source) : null)) + 1,
-        write: selected => edit(matte => {
-          if (selected) { matte.references[index].source = { id: candidates[selected - 1].component.getInstanceId() }; } else { delete matte.references[index].source; }
-        }) }, ['None', ...candidates.map(candidate => candidate.label)]);
+      reference.choice('Source', { read: () => choices.findIndex(candidate => candidate.component.getInstanceId() === value().source.id),
+        write: selected => {
+          edit(matte => { matte.references[index].source = { id: choices[selected].component.getInstanceId() }; }); rebuild();
+        } }, choices.map(candidate => candidate.label));
       reference.boolean('Inverted', { read: () => value().inverted ?? false, write: value => edit(matte => { matte.references[index].inverted = value; }) });
       shapeCollectionActions(reference, [{ label: 'Remove Track Matte', action: () => edit(matte => matte.references.splice(index, 1)) }], rebuild);
     });
-    if (read().references.length < 254) {
-      addShapeCollectionItem(references, 'Add Track Matte Reference', () => edit(matte => matte.references.push({ inverted: false })), rebuild);
+    if (!read().isTrackMatte && read().references.length < 254 && available.length > 0) {
+      addShapeCollectionItem(references, 'Add Track Matte Reference', () => edit(matte => {
+        matte.references.push({ source: { id: available[0].component.getInstanceId() }, inverted: false });
+      }), rebuild);
     }
   }
 }

@@ -17,12 +17,11 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
     if (!boundObject || !this.hasActiveClip(segmentId)) {
       return;
     }
-    const targets = cache.getOrAddTrackData(() => new WeakMap<object, Record<string, any>>());
-    let directTarget = targets.get(boundObject);
+    const segments = cache.getOrAddTrackData(() => this.propertyPath.split('.'));
+    const directTarget = this.preparePath(boundObject, segments);
 
     if (!directTarget) {
-      directTarget = this.preparePath(boundObject);
-      targets.set(boundObject, directTarget);
+      return;
     }
     this.propertyValue = directTarget[this.propertyName] as T;
 
@@ -52,16 +51,14 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
     }
   }
 
-  private preparePath (target: object) {
-    const propertyPathSegments = this.propertyPath.split('.');
-
+  private preparePath (target: object, propertyPathSegments: string[]) {
     let directTarget = target as Record<string, any>;
 
     for (let i = 0; i < propertyPathSegments.length - 1; i++) {
       const property = directTarget[propertyPathSegments[i]];
 
-      if (property === undefined) {
-        console.error('The ' + propertyPathSegments[i] + ' property of ' + target + ' was not found');
+      if (property === undefined || property === null) {
+        return;
       }
       directTarget = property;
     }

@@ -190,7 +190,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.state.apply(this.skeleton);
     this.onUpdate(0);
     this.resize();
-    this.materials = this.content?.meshGroups.map(mg => mg.mesh.material) ?? [];
   }
 
   override onUpdate (dt: number) {
@@ -203,6 +202,10 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.skeleton.updateWorldTransform(Physics.update);
     if (this.content) {
       this.content.update();
+      this.materials.length = this.content.meshGroups.length;
+      for (let i = 0; i < this.materials.length; i++) {
+        this.materials[i] = this.content.meshGroups[i].mesh.material;
+      }
     }
   }
 

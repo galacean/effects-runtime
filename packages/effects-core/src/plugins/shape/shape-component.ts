@@ -21,8 +21,7 @@ import { applyPaintRendererOptions, createPaint, createPaintMaterial, updatePain
 import { TrimPath } from './trim-path';
 import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
-import { appendBezierPath, buildPathGeometry } from './path-geometry';
-import { Transform } from '../../transform';
+import { appendBezierPath, appendTransformedPath, buildPathGeometry } from './path-geometry';
 import { getContourPathBounds, makeStrokeContourPath } from './contour-path';
 import { expandStrokePath, flattenStrokePath } from '../../math/shape/stroke-expansion';
 import { triangulate } from '../../math/shape/triangulate';
@@ -600,12 +599,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           if (indexes.length < 2) {
             continue;
           }
-          const path = shape.transform ? new GraphicsPath() : this.graphicsPath;
-
-          appendBezierPath(path, customShapeAtribute, { ...shape, indexes }, ppu);
-          if (shape.transform) {
-            this.appendTransformedPath(path, shape.transform);
-          }
+          appendBezierPath(this.graphicsPath, customShapeAtribute, { ...shape, indexes }, ppu);
         }
 
         break;
@@ -640,46 +634,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       }
     }
     if (shapeAttribute.transform) {
-      this.appendTransformedPath(this.graphicsPath, shapeAttribute.transform);
-    }
-  }
-
-  private appendTransformedPath (path: GraphicsPath, data: spec.TransformData): void {
-    const commands = makeStrokeContourPath(path);
-    const transform = new Transform();
-
-    transform.fromData(data);
-    transform.setScale(transform.scale.x * (data.size?.x ?? 1), transform.scale.y * (data.size?.y ?? 1), transform.scale.z);
-    const matrix = transform.getMatrix();
-    const point = new Vector3();
-
-    if (path === this.graphicsPath) {
-      this.graphicsPath.clear();
-    }
-    for (const command of commands) {
-      for (const control of command.data) {
-        point.set(control.x, control.y, 0);
-        matrix.transformPoint(point, point); control.set(point.x, point.y);
-      }
-      switch (command.action) {
-        case 'moveTo':
-          this.graphicsPath.moveTo(command.data[0].x, command.data[0].y);
-
-          break;
-        case 'lineTo':
-          this.graphicsPath.lineTo(command.data[0].x, command.data[0].y);
-
-          break;
-        case 'bezierCurveTo':
-          this.graphicsPath.bezierCurveTo(command.data[0].x, command.data[0].y, command.data[1].x, command.data[1].y,
-            command.data[2].x, command.data[2].y, command.smoothness, command.scale);
-
-          break;
-        case 'closePath':
-          this.graphicsPath.closePath();
-
-          break;
-      }
+      appendTransformedPath(this.graphicsPath, this.graphicsPath, shapeAttribute.transform);
     }
   }
 

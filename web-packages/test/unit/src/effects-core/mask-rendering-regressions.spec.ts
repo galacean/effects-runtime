@@ -265,6 +265,34 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       expect(colorDraws).equals(0);
     });
 
+    it('clips Spine attachments that create materials after initialization', () => {
+      const target = item().addComponent(SpineComponent);
+      const atlas = new TextureAtlas('texture.png\nsize: 1,1\nfilter: Nearest,Nearest\nrepeat: none\nquad\nbounds: 0,0,1,1\n');
+
+      atlas.pages[0].texture = engine.assetServer.whiteTexture as unknown as SpineTexture;
+      const skeletonData = createSkeletonData(atlas, {
+        bones: [{ name: 'root' }],
+        slots: [{ name: 'slot', bone: 'root' }],
+        skins: [{ name: 'default', attachments: { slot: { quad: { type: 'region', path: 'quad', width: 1, height: 1 } } } }],
+        animations: { idle: { slots: { slot: { attachment: [{ time: 0.1, name: 'quad' }] } } } },
+      }, 'json');
+
+      target.fromData({
+        id: target.getInstanceId(), item: { id: target.item.getInstanceId() }, dataType: spec.DataType.SpineComponent,
+        cache: { atlas, skeletonData },
+        options: { activeAnimation: 'idle', activeSkin: 'default', spine: 0, resizeRule: 0, startSize: 1, speed: 1 },
+      } as Parameters<SpineComponent['fromData']>[0]);
+      target.initialize();
+      target.scaleFactor = 1;
+      const pathMask = masks(target);
+
+      pathMask.setMasks([rectangle('left', -1, -1, 0, 1)]);
+      target.onUpdate(200);
+      expect(render([target]).filter(Boolean)).has.length(8);
+      pathMask.enabled = false;
+      expect(render([target]).filter(Boolean)).has.length(16);
+    });
+
     for (const mode of [spec.RenderMode.BILLBOARD, spec.RenderMode.VERTICAL_BILLBOARD, spec.RenderMode.HORIZONTAL_BILLBOARD]) {
       it(`draws rotated and mirrored paths in layer world space for ${spec.RenderMode[mode]}`, () => {
         const target = item().addComponent(SpriteComponent);

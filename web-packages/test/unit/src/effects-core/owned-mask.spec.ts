@@ -183,8 +183,11 @@ for (const glType of ['webgl', 'webgl2'] as const) {
     });
 
     it('preserves saturated track matte counters when combining a path stack', () => {
+      const sourceItem = new VFXItem(engine);
+
+      resources.push(sourceItem);
       for (let i = 0; i < 254; i++) {
-        target.maskProcessor.addTrackMatteReference({ item, drawStencilMask: ref => {
+        target.maskProcessor.addTrackMatteReference({ item: sourceItem, drawStencilMask: ref => {
           target.maskProcessor.drawStencilGeometry(engine.renderer, geometry, math.Matrix4.IDENTITY, material, ref);
         } }, i === 253);
       }
@@ -244,6 +247,21 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       }
       expect(saved).not.have.property('path');
       expect(data).deep.equals(original);
+
+      Object.assign(data, rectangle(-1, -1, 0, 1));
+      data.shapes[0].transform = {
+        position: { x: 0.5, y: 0.5, z: 0 }, scale: { x: 0.5, y: 0.5, z: 1 }, eulerHint: { x: 0, y: 0, z: 90 },
+      };
+      shape.fromData(data);
+      shape.onUpdate(0);
+      engine.renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
+      engine.renderer.renderMeshes([shape]);
+      gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const transformed = Array.from({ length: 64 }, (_, i) => pixels[i * 4 + 3] > 127);
+
+      expect(transformed).deep.equals(expected((x, y) => x > 0 && y > 0.5));
+      mask.setMaskPath('shape', data);
+      expect(render()).deep.equals(transformed);
     });
 
     it('clips indexed compound contours with a hole and skips open contours', () => {
@@ -327,6 +345,13 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       mask.setMasks(mask.getMasks());
       sample(1);
       expect(render()).deep.equals(expected((x, y) => x < (y + 1) / 2));
+
+      mask.setMaskPath('a', pathData([{ x: -1, y: -1 }, { x: 0, y: 1 }]));
+      sample(0.5);
+      mask.setMaskPath('a', rectangle(-1, -1, 0, 1));
+      sample(1);
+      expect(mask.masks.a.path.points[2].x).equals(1);
+      expect(render()).deep.equals(expected((x, y) => x < (y + 1) / 2));
     });
 
     it('keeps layer paths across renderer removal and releases clipping on mask removal', () => {
@@ -372,7 +397,7 @@ for (const glType of ['webgl', 'webgl2'] as const) {
           }, {
             id: 'matte', dataType: 'VFXItemData', name: 'matte-only source', type: 'shape', duration: 5, delay: 0, endBehavior: 5,
             transform: {
-              position: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
+              position: { x: 0, y: -0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 },
               eulerHint: { x: 0, y: 0, z: 0 }, anchor: { x: 0, y: 0 },
             },
             components: [{ id: 'matte-renderer' }],
@@ -385,17 +410,20 @@ for (const glType of ['webgl', 'webgl2'] as const) {
             id: 'layer-mask', item: { id: 'layer' }, dataType: 'MaskComponent',
             masks: [entry('left', rectangle(-1, -1, 0, 1))],
           }, {
-            id: 'matte-renderer', item: { id: 'matte' }, dataType: 'ShapeComponent', type: 1, width: 2, height: 2,
+            id: 'matte-renderer', item: { id: 'matte' }, dataType: 'ShapeComponent', type: 1, width: 2, height: 1,
             fill: { color: { r: 0, g: 1, b: 0, a: 1 } }, renderer: { renderMode: 1 },
             ...(legacy ? { mask: { isMask: true } } : { trackMatte: { isTrackMatte: true } }),
           }],
         };
         const composition = await player.loadScene(scene);
 
-        player.gotoAndStop(0);
         const loaded = composition.getItemByName('target')!;
-
         const graphic = loaded.getComponent(ShapeComponent);
+        const source = composition.getItemByName('matte-only source')!.getComponent(ShapeComponent);
+
+        source.priority = 0;
+        graphic.priority = 1;
+        player.gotoAndStop(0);
         const saved = SerializationHelper.serialize(graphic);
 
         expect(graphic).instanceOf(RendererComponent);
@@ -411,10 +439,10 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         const pixels = new Uint8Array(8 * 8 * 4);
 
         gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        expect(Array.from({ length: 64 }, (_, i) => pixels[i * 4 + 3] > 127)).deep.equals(expected(x => legacy || x < 0));
+        expect(Array.from({ length: 64 }, (_, i) => pixels[i * 4] > 127)).deep.equals(expected((x, y) => x < 0 && y < 0));
+        expect(Array.from({ length: 64 }, (_, i) => pixels[i * 4 + 3] > 127)).deep.equals(expected((x, y) => (legacy || x < 0) && y < 0));
         expect(player.engine.renderErrors.size).equals(0);
 
-        const source = composition.getItemByName('matte-only source')!.getComponent(ShapeComponent);
         const duplicate = await player.loadScene(scene);
         const duplicateGraphic = duplicate.getItemByName('target')!.getComponent(ShapeComponent);
         const duplicateSource = duplicate.getItemByName('matte-only source')!.getComponent(ShapeComponent);
