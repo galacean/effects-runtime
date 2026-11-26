@@ -1,9 +1,7 @@
-import type { CompositionComponent, TimelineAsset, TrackAsset, spec } from '@galacean/effects';
+import type { CompositionComponent, TimelineAsset, TrackAsset } from '@galacean/effects';
 
 export function findSequenceTimeline (component: CompositionComponent): TimelineAsset | undefined {
-  const reference = component.definition.timelineAsset as spec.DataPath | undefined;
-
-  return reference?.id ? component.findObject<TimelineAsset>(reference) : undefined;
+  return component.timelineAsset ?? undefined;
 }
 
 /** Compile the editor's preview selection without changing the authored track tree. */

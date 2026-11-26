@@ -5,7 +5,7 @@ import { RenderingServer } from './rendering-server';
 import { InputServer } from './input-server';
 import { SceneServer } from './scene-server';
 import type { Renderer } from './render';
-import type { Disposable } from './utils';
+import type { AbstractConstructor, Disposable } from './utils';
 import { Ticker } from './ticker';
 import { Time } from './time';
 import type { PointerEventData, Region } from './plugins';
@@ -131,7 +131,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   /** Get a server registered before this engine was initialized. */
-  getServer<T extends EngineServer> (constructor: abstract new (...args: any[]) => T): T {
+  getServer<T extends EngineServer> (constructor: AbstractConstructor<T>): T {
     const server = this.servers.find(server => server.constructor === constructor) as T | undefined;
 
     return server as T;

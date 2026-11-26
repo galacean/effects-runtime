@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color, Vector2 } from '@galacean/effects-math/es/core/index';
+import { Box3, Color, Matrix4, Vector2 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import { MaskableGraphic } from '../../components';
@@ -109,6 +109,12 @@ export class TextComponent extends MaskableGraphic {
     this.maskProcessor.applyMasks(renderer, this);
 
     renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
+  }
+
+  override getRenderBounds (out = new Box3()): Box3 {
+    const [scaleX, scaleY] = this.getTextureExpandScale();
+
+    return this.getBoundingBox(out).applyMatrix4(Matrix4.fromScale(scaleX, scaleY, 1));
   }
 
   override onDestroy (): void {

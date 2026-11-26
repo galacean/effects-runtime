@@ -1,4 +1,4 @@
-import { ShapeComponent, RendererComponent, Texture, TrimPathMode, spec } from '@galacean/effects';
+import { ShapeComponent, RendererComponent, Texture, spec } from '@galacean/effects';
 import type { VFXItem } from '@galacean/effects';
 import { detailsCustomization } from '../../../framework/registry/editor-registry';
 import { DefaultObjectDetails } from '../../../ui/property-editor/default-object-details';
@@ -195,9 +195,9 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     const enabled = (): boolean => !!read();
 
     group.boolean('Enabled', { read: enabled, write: value => editShapeData(component, data => {
-      if (value) { data[key] = { start: 0, end: 1, offset: 0, mode: TrimPathMode.Synchronized }; } else { delete data[key]; }
+      if (value) { data[key] = { start: 0, end: 1, offset: 0, mode: spec.TrimPathMode.Synchronized }; } else { delete data[key]; }
     }) });
-    group.choice('Mode', { read: () => read()?.mode ?? TrimPathMode.Synchronized, write: value => editShapeData(component, data => { data[key].mode = value; }) },
+    group.choice('Mode', { read: () => read()?.mode ?? spec.TrimPathMode.Synchronized, write: value => editShapeData(component, data => { data[key].mode = value; }) },
       ['Synchronized', 'Sequential'], { enabled });
     for (const [label, property] of [['Start', 'start'], ['End', 'end'], ['Offset', 'offset']] as const) {
       group.number(label, { read: () => read()?.[property] ?? (property === 'end' ? 1 : 0),

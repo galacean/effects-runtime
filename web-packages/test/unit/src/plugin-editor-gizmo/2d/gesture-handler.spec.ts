@@ -13,7 +13,7 @@ import { BoxSelectionGizmo } from '../../../../../../plugin-packages/editor-gizm
 import { ChangeSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/change-selection-gizmo';
 import { MoveSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/move-selection-gizmo';
 import { ClickDragMultiplexGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo';
-import { selectionPreviewConfig, selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
+import { rulerConfig, selectionPreviewConfig, selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
 import { PenGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-gizmo';
 import { PenEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode';
 import type { GeometryGizmoHost, ShapeDrawingActionEvent } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
@@ -72,6 +72,9 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
       sceneServer: { compositions: [] },
     } as unknown as Engine;
     const handler = new GestureHandler(engine);
+
+    // 标尺默认作为公共 Gizmo 装配；通用手势用例关闭其命中，避免影响非标尺输入断言。
+    handler.getConfigManager().set(rulerConfig, { enabled: false });
 
     // 生产路径由宿主 projection 在派发前交付完整图；测试夹具也遵守同一生命周期。
     activateMode(handler, []);
@@ -465,9 +468,23 @@ describe('GestureHandler - GizmoTool runtime', () => {
 
     const activeGizmos = handler.getGizmoManager().activeGizmos;
 
-    expect(activeGizmos.slice(0, 3).map(gizmo => gizmo.type)).to.deep.equal(['hand', 'icon', 'loading']);
-    expect(activeGizmos.slice(3)).to.deep.equal([first, second]);
+    expect(activeGizmos.slice(0, 4).map(gizmo => gizmo.type)).to.deep.equal(['hand', 'icon', 'loading', 'ruler']);
+    expect(activeGizmos.slice(4)).to.deep.equal([first, second]);
     expect(handler.isHandToolMode()).to.equal(false);
+    handler.dispose();
+  });
+
+  it('重建 Gizmo 图后由 RulerManager 保留参考线数据', () => {
+    const handler = createHandler();
+    const first = handler.getGizmoManager().get('ruler')!;
+
+    handler.getRulerManager().setGuides({ horizontal: [40], vertical: [80] });
+    handler.rebuildGizmos();
+
+    const current = handler.getGizmoManager().get('ruler')!;
+
+    expect(current).not.to.equal(first);
+    expect(current.guides).to.deep.equal({ horizontal: [40], vertical: [80] });
     handler.dispose();
   });
 
@@ -657,7 +674,7 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
     handler.setActiveEditMode(editMode);
     activateTool(handler, () => new MoveGizmoTool(handler));
 
-    expect(handler.getGizmoManager().activeGizmos.slice(3)).to.deep.equal([mode]);
+    expect(handler.getGizmoManager().activeGizmos.slice(4)).to.deep.equal([mode]);
     handler.dispose();
   });
 

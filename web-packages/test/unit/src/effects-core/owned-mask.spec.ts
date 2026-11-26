@@ -522,7 +522,11 @@ for (const glType of ['webgl', 'webgl2'] as const) {
         const saved = SerializationHelper.serialize(graphic);
 
         expect(graphic).instanceOf(RendererComponent);
-        expect(SerializationHelper.serialize(loaded.getComponent(MaskComponent)).masks).deep.equals([entry('left', rectangle(-1, -1, 0, 1))]);
+        const savedMask = SerializationHelper.serialize(loaded.getComponent(MaskComponent));
+
+        expect(savedMask.masks).deep.equals([entry('left', rectangle(-1, -1, 0, 1))]);
+        expect(savedMask.id).equals('layer-mask');
+        expect(savedMask.item.id).equals('layer');
         expect(saved).not.have.property('pathMasks');
         expect(saved.trackMatte.references[0].source.id).equals('matte-renderer');
         expect(saved).not.have.property('mask');
@@ -535,6 +539,13 @@ for (const glType of ['webgl', 'webgl2'] as const) {
 
         const source = composition.getItemByName('matte-only source')!.getComponent(ShapeComponent);
         const sourceData = SerializationHelper.serialize(source);
+        const duplicate = await player.loadScene(scene);
+        const duplicateGraphic = duplicate.getItemByName('target')!.getComponent(ShapeComponent);
+        const duplicateSource = duplicate.getItemByName('matte-only source')!.getComponent(ShapeComponent);
+
+        expect(duplicateSource).not.equals(source);
+        expect(graphic.maskProcessor.getTrackMatteReferences()[0].maskable).equals(source);
+        expect(duplicateGraphic.maskProcessor.getTrackMatteReferences()[0].maskable).equals(duplicateSource);
         const exported = JSON.parse(JSON.stringify(scene));
 
         exported.components = exported.components.map((component: spec.ComponentData) => {

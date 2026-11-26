@@ -8,6 +8,7 @@ import type { ImageCutGizmo } from './gizmos/image-cut-gizmo';
 import type { ImageExpandGizmo } from './gizmos/image-expand-gizmo';
 import type { ViewportOverlayGizmo } from './gizmos/viewport-overlay-gizmo';
 import type { SpriteTextEditGizmo } from './gizmos/sprite-text-edit-gizmo';
+import type { RichTextGizmo } from './gizmos/rich-text-gizmo';
 import type { TextGizmo } from './gizmos/text-gizmo';
 import type { ResizeSelectionGizmo } from './gizmos/resize-selection-gizmo';
 import type { ChangeSelectionGizmo } from './gizmos/change-selection-gizmo';
@@ -19,6 +20,7 @@ import type { LeaveTextEditGizmo } from './gizmos/leave-text-edit-gizmo';
 import type { EnterEditModeGizmo } from './gizmos/enter-edit-mode-gizmo';
 import type { LeaveEffectsEditGizmo } from './gizmos/leave-effects-edit-gizmo';
 import type { CornerRotationGizmo } from './gizmos/corner-rotation-gizmo';
+import type { RulerGizmo } from './gizmos/ruler-gizmo';
 
 /** 当前交互图中可按类型查询的内置 Gizmo 映射。 */
 export type GizmoTypeMap = {
@@ -52,6 +54,8 @@ export type GizmoTypeMap = {
   'sprite-text-edit': SpriteTextEditGizmo,
   /** 文本编辑 Gizmo。 */
   text: TextGizmo,
+  /** 富文本编辑 Gizmo。 */
+  'rich-text': RichTextGizmo,
   /** 选区缩放 Gizmo。 */
   'resize-selection': ResizeSelectionGizmo,
   /** 文本编辑退出 Gizmo。 */
@@ -60,6 +64,8 @@ export type GizmoTypeMap = {
   'enter-edit-mode': EnterEditModeGizmo,
   /** 动效编辑退出 Gizmo。 */
   'leave-effects-edit': LeaveEffectsEditGizmo,
+  /** 标尺与参考线 Gizmo。 */
+  ruler: RulerGizmo,
 };
 
 /** Gizmo 错误上报阶段。 */

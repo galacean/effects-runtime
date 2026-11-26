@@ -151,7 +151,7 @@ export class RuntimeAgent {
       nodes.push({ id, name: composition.name, type: 'Scene', composition: id, active: true, visible: composition.sceneRoot.isVisible });
       addItem(composition.sceneRoot, composition, id);
     }
-    for (const object of Object.values(player.engine.effectsObjectServer.objectInstance)) {
+    for (const object of Object.values(player.engine.effectsObjectServer.objectsCache)) {
       if (this.objects.has(this.id(object)) || 'item' in object || 'children' in object) { continue; }
       this.objects.set(this.id(object), { object });
       const texture = object as Texture;
@@ -353,10 +353,11 @@ export class RuntimeAgent {
     Object.assign(this.overlay.style, { left: bounds.left + 'px', top: bounds.top + 'px', width: bounds.width + 'px', height: bounds.height + 'px', pointerEvents: this.picking ? 'auto' : 'none', cursor: this.picking ? 'crosshair' : '' });
     const entry = this.selectedId && this.objects.get(this.selectedId);
     const points = entry && entry.item && entry.composition && this.highlighting ? entry.item.components.flatMap(component => {
-      if (!('getBoundingBoxInfo' in component)) { return []; }
-      const box = (component as RendererComponent).getBoundingBoxInfo().boundingBox;
+      if (!('getRenderBounds' in component)) { return []; }
+      const box = (component as RendererComponent).getRenderBounds();
 
-      return box.vectorsWorld.map(point => entry.composition!.camera.worldToScreenPoint(point));
+      return box.getOBBPoints(component.transform.getWorldMatrix())
+        .map(point => entry.composition!.camera.worldToScreenPoint(point));
     }) : [];
 
     this.highlight!.style.display = points.length ? 'block' : 'none';

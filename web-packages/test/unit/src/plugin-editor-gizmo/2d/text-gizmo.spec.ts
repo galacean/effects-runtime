@@ -208,10 +208,10 @@ describe('plugin-editor-gizmo/text-gizmo', () => {
       const preview = document.querySelector<HTMLDivElement>('.text-gizmo-pointer-selection-preview')!;
 
       expect(session.beginFromCurrentSelection('focus')).to.equal(true);
-      session.beginPointerSelection({ x: 10, y: 20 });
+      const handle = session.beginPointerSelection({ x: 10, y: 20 });
 
       gizmo.draw();
-      session.updatePointerSelection({ x: 30, y: 20 });
+      session.updatePointerSelection(handle, { x: 30, y: 20 });
 
       expect(focus).not.to.have.been.called();
       expect(gizmo.textAreaElement.selectionStart).to.equal(1);
@@ -225,7 +225,7 @@ describe('plugin-editor-gizmo/text-gizmo', () => {
         .find(style => style.textContent?.includes('.text-gizmo-custom-style::selection'))
         ?.textContent).to.include('rgba(59, 130, 246, 0.35)');
 
-      session.finishPointerSelection({ x: 30, y: 20 });
+      session.finishPointerSelection(handle, { x: 30, y: 20 });
 
       expect(focus).to.have.been.called.once;
       expect(document.activeElement).to.equal(gizmo.textAreaElement);

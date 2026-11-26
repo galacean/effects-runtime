@@ -9,7 +9,7 @@ export function createCompositionFixture<T> (items: T[]) {
   return {
     items,
     sceneRoot: { children: items },
-    engine: { effectsObjectServer: { objectInstance: {} } },
+    engine: { effectsObjectServer: { objectsCache: {} } },
   };
 }
 

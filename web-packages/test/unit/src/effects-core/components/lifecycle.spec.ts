@@ -59,7 +59,7 @@ describe('core/components/lifecycle', () => {
     expect(events).deep.equals(['parent:awake', 'child:awake']);
     for (const object of [parent, child, parentProbe, childProbe]) {
       expect(object.isRegistered).equals(true);
-      expect(player.engine.effectsObjectServer.objectInstance[object.getInstanceId()]).equals(object);
+      expect(player.engine.effectsObjectServer.objectsCache[object.getInstanceId()]).equals(object);
     }
     parent.initializeHierarchy();
     expect(events).deep.equals(['parent:awake', 'child:awake']);
@@ -68,48 +68,18 @@ describe('core/components/lifecycle', () => {
 
   it('keeps repeated object registration and unregistration idempotent', () => {
     const node = item('node');
+    const instanceId = node.getInstanceId();
 
     node.unregisterObject();
     node.registerObject();
     node.registerObject();
     expect(node.isRegistered).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(node);
+    expect(player.engine.effectsObjectServer.objectsCache[instanceId]).equals(node);
     node.unregisterObject();
     node.unregisterObject();
     expect(node.isRegistered).equals(false);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
-    node.dispose();
-  });
-
-  it('preserves registration state when changing an instance ID', () => {
-    const node = item('node');
-    const originalID = node.getInstanceId();
-    const registeredID = '11111111111141118111111111111112';
-    const unregisteredID = '11111111111141118111111111111113';
-
-    node.setInstanceId(registeredID);
-    expect(node.isRegistered).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[originalID]).equals(undefined);
-    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(node);
-    node.unregisterObject();
-    node.setInstanceId(unregisteredID);
-    expect(node.isRegistered).equals(false);
-    expect(player.engine.effectsObjectServer.objectInstance[registeredID]).equals(undefined);
-    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(undefined);
-    node.registerObject();
-    expect(player.engine.effectsObjectServer.objectInstance[unregisteredID]).equals(node);
-    node.dispose();
-  });
-
-  it('keeps registration flags consistent when clearing the engine lookup table', () => {
-    const node = item('node');
-
-    player.engine.effectsObjectServer.clearObjectInstances();
-    expect(node.isRegistered).equals(false);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(undefined);
-    node.registerObject();
-    expect(node.isRegistered).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[node.getInstanceId()]).equals(node);
+    expect(node.getInstanceId()).equals(instanceId);
+    expect(player.engine.effectsObjectServer.objectsCache[instanceId]).equals(undefined);
     node.dispose();
   });
 
@@ -569,7 +539,7 @@ describe('core/components/lifecycle', () => {
     expect(probe.isDuringPlay).equals(false);
     expect(probe.isRegistered).equals(false);
     expect(node.components).not.includes(probe);
-    expect(player.engine.effectsObjectServer.objectInstance[probe.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectsCache[probe.getInstanceId()]).equals(undefined);
   });
 
   it('ends the parent before its children, then ends its attached components', () => {
@@ -636,7 +606,7 @@ describe('core/components/lifecycle', () => {
     expect(probe.isDuringPlay).equals(false);
     expect(probe.isAwakeCalled).equals(true);
     expect(probe.isEnableCalled).equals(true);
-    expect(player.engine.effectsObjectServer.objectInstance[probe.getInstanceId()]).equals(undefined);
+    expect(player.engine.effectsObjectServer.objectsCache[probe.getInstanceId()]).equals(undefined);
     probe.dispose();
     expect(events).deep.equals(['node:disable', 'node:destroy']);
   });

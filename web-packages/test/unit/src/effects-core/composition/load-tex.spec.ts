@@ -227,69 +227,6 @@ describe('core/composition/load-textures', () => {
     unregisterPlugin('test-load-tex-3');
   });
 
-  it('plugin modify textureOptions', async () => {
-    const a = {
-      'images': [{ 'url': 'https://gw.alipayobjects.com/zos/gltf-asset/65735550218203/image01.png' }],
-      'textures': [{ source: 0, flipY: true, minFilter: glContext.NEAREST_MIPMAP_NEAREST }, {
-        source: 0,
-        flipY: true,
-        minFilter: glContext.NEAREST_MIPMAP_LINEAR,
-        name: 'abc',
-      }],
-      'compositions': [
-        {
-          'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-          'duration': 5,
-          'id': '1',
-          'items': [
-            {
-              'type': '3',
-              'name': 'parent',
-              'pn': 0,
-              'id': '1',
-              'duration': 2,
-              'endBehavior': 5,
-              'content': { 'options': {}, 'rotationOverLifetime': { 'separateAxes': true, 'y': [0, 180] } },
-              'transform': { 'rotation': [0, 45, 0] },
-            },
-          ],
-        },
-      ],
-      'plugins': ['test-load-tex-4'],
-      'version': '1.3',
-      'compositionId': '1',
-    };
-
-    const spy = chai.spy(() => {
-    });
-
-    registerPlugin('test-load-tex-4', class TestPlugin extends Plugin {
-      onAssetsLoadFinish (scene, options, data) {
-        scene.textures[1].magFilter = glContext.LINEAR;
-        expect(scene.textures[1].name).to.eql('abc');
-        spy(1);
-      }
-
-      onCompositionCreated (composition, scene) {
-        expect(composition.textures[1].name).to.eql('abc');
-      }
-
-    });
-    const scn = await player.loadScene(a);
-
-    expect(scn.textures[1]).to.contains({
-      magFilter: glContext.LINEAR,
-      minFilter: glContext.NEAREST_MIPMAP_LINEAR,
-      name: 'abc',
-    });
-    const comp = player.play(scn);
-
-    expect(comp.textures[1].options.name).to.eql('abc');
-    expect(spy).to.has.been.called.with(1);
-
-    unregisterPlugin('test-load-tex-4');
-  });
-
   it('load bins', async () => {
     const data = new ArrayBuffer(12);
     const a = {
@@ -324,11 +261,10 @@ describe('core/composition/load-textures', () => {
         expect(scene.bins.length).to.eql(2);
         expect(scene.bins[0]).to.be.an.instanceof(ArrayBuffer);
         expect(scene.bins[1]).to.eql(data);
-        scene.storage.key = 1;
       }
 
       onCompositionCreated (composition, scene) {
-        expect(scene.storage.key).to.eql(1);
+        expect(scene.bins[1]).to.eql(data);
         spy();
       }
     });

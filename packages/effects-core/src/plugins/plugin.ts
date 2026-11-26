@@ -29,20 +29,20 @@ export abstract class Plugin {
    * 此时 JSON 中的图片和二进制已加载完成，可对资源做进一步处理。
    * @param scene - 场景对象
    * @param options - 场景加载选项
-   * @param engine - 引擎实例
    */
-  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
+  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions): void { }
 
   /**
    * 合成内容开始创建前触发。
-   * 此时 root、pluginRoot 和 sceneRoot 已创建，但场景内容尚未实例化。
+   * 此时 root、pluginRoot 和 sceneRoot 已创建，sceneRoot 的根数据已应用，场景内容尚未实例化。
+   * 此阶段注入的对象会参与后续初始化和 BeginPlay。
    * @param composition - 正在创建的合成对象
    * @param scene - 场景对象
    */
   onCompositionCreating (composition: Composition, scene?: Scene): void { }
 
   /**
-   * 合成创建完成后触发。
+   * 合成内容已反序列化，所有对象完成初始化和 BeginPlay 后触发。
    * @param composition - 合成对象
    * @param scene - 场景对象
    */

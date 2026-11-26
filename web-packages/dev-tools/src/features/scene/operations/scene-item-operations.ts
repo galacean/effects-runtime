@@ -1,5 +1,5 @@
-import type { EffectsObject, TimelineAsset } from '@galacean/effects';
-import { CompositionComponent, VFXItem, generateGUID, math } from '@galacean/effects';
+import type { EffectsObject } from '@galacean/effects';
+import { Component, CompositionComponent, VFXItem, generateGUID, math } from '@galacean/effects';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { SceneDocument } from '../document/scene-document';
 import type { SceneItemOptions } from '../factories/scene-item-factory';
@@ -7,6 +7,7 @@ import { createSceneItemData } from '../factories/scene-item-factory';
 import { sceneWorkspace } from '../scene-workspace';
 import { jsonData } from '../serialization/scene-values';
 import type { Data } from '../serialization/scene-values';
+import { instantiateItems } from './instantiate-items';
 import { attachPreservingWorld, editSceneStructure, rootItems } from './scene-structure-edit';
 
 export interface SceneItemPlacement { parent?: VFXItem, folderId?: string }
@@ -25,30 +26,38 @@ export class SceneItemOperations {
     let item: VFXItem | undefined;
 
     const created = this.run('Create ' + type.label, () => {
-      const { item: definition, objects } = createSceneItemData(type, this.document.composition.getDuration());
-      const engine = this.document.composition.engine;
-      const parent = target?.parent ?? this.document.composition.sceneRoot;
+      const { composition, serializer, scene } = this.document;
+      const sourceScene = composition.sceneRoot.sourceScene;
+
+      if (!sourceScene) { throw new Error('The composition has no source scene.'); }
+      const objectsDataCache = sourceScene.objectsDataCache ??= new Map();
+      const { item: definition, objects } = createSceneItemData(type, composition.getDuration());
+      const parent = target?.parent ?? composition.sceneRoot;
       const names = new Set(parent.children.map(child => child.name));
       let name = type.label, index = 2;
 
       while (names.has(name)) { name = type.label + ' ' + index++; }
       definition.name = name;
-      for (const data of [definition, ...objects]) { engine.assetServer.addEffectsObjectData(data); }
-      item = engine.effectsObjectServer.findObject<VFXItem>({ id: definition.id });
-      item.setParent(parent);
-      item.renderOrder = Math.ceil(Math.max(0, ...this.document.composition.items.filter(other => other !== item).map(other => other.renderOrder))) + 1;
-      for (const data of objects) {
-        const object = engine.effectsObjectServer.findObject<EffectsObject>({ id: data.id });
+      for (const data of [definition, ...objects]) { objectsDataCache.set(data.id, data); }
+      const objectsById = instantiateItems([definition], composition.sceneRoot);
+      const instance = objectsById.get(definition.id);
 
-        this.document.serializer.put(this.document.scene, data, object);
+      if (!(instance instanceof VFXItem)) { throw new Error(`Cannot instantiate item "${definition.id}".`); }
+      instance.setParent(parent);
+      instance.renderOrder = Math.ceil(Math.max(0, ...composition.items.filter(other => other !== instance).map(other => other.renderOrder))) + 1;
+      for (const data of objects) {
+        const object = objectsById.get(data.id);
+
+        if (object) { serializer.put(scene, data, object); }
       }
       if (target?.folderId) {
         const data = this.document.editor.hierarchy ??= { folders: [], itemFolders: {} };
 
         data.itemFolders[definition.id] = target.folderId;
       }
-      initialize?.(item);
-      EditorSelection.setObjects([item]);
+      item = instance;
+      initialize?.(instance);
+      EditorSelection.setObjects([instance]);
     });
 
     return created ? item : undefined;
@@ -114,8 +123,7 @@ export class SceneItemOperations {
       beforeRemove?.();
       for (const item of [this.document.composition.sceneRoot, ...this.document.composition.items]) {
         for (const component of item.getComponents(CompositionComponent)) {
-          component.items = component.items.filter(item => !deleting.has(item));
-          const timeline = component.definition.timelineAsset ? component.findObject<TimelineAsset>(component.definition.timelineAsset) : undefined;
+          const timeline = component.timelineAsset;
 
           for (const track of timeline?.flattenedTracks ?? []) {
             const binding = component.getBinding(track);
@@ -140,7 +148,11 @@ export class SceneItemOperations {
   }
 
   copy (items: VFXItem[]): SceneItemCopy {
+    const { composition, serializer } = this.document;
+    const { assetServer } = composition.engine;
+    const sceneData = composition.sceneRoot.sourceScene?.objectsDataCache;
     const selected = rootItems(items);
+    const copiedItems = new Set(selected.flatMap(item => [item, ...item.getDescendants()]));
     const definitions = new Map<string, any>();
     const extras = new Map<string, any>();
     const shared = new Set(['Texture', 'Shader', 'Geometry']);
@@ -150,8 +162,12 @@ export class SceneItemOperations {
       const visit = (value: any): void => {
         if (!value || typeof value !== 'object') { return; }
         if (Object.keys(value).length === 1 && typeof value.id === 'string') {
-          const object = this.document.serializer.object(value.id);
-          const source = object ? this.document.serializer.read(object).data : this.document.composition.engine.assetServer.findEffectsObjectData(value.id);
+          const object = serializer.object(value.id);
+
+          if ((object instanceof VFXItem && !copiedItems.has(object)) ||
+            (object instanceof Component && !copiedItems.has(object.item))) { return; }
+          const source = object ? serializer.read(object).data :
+            assetServer.withSceneData(sceneData, () => assetServer.findEffectsObjectData(value.id));
 
           if (object) { extras.set(value.id, this.document.serializer.read(object).extras); }
           if (source) { collect(source); }
@@ -183,15 +199,24 @@ export class SceneItemOperations {
 
     if (!data.roots.length) { return clones; }
     this.run(label, () => {
-      const ids = new Map(data.objects.map(object => [object.id as string, generateGUID()]));
+      const { composition, serializer } = this.document;
+      const sourceScene = composition.sceneRoot.sourceScene;
+
+      if (!sourceScene) { throw new Error('The composition has no source scene.'); }
+      const objectsDataCache = sourceScene.objectsDataCache ??= new Map();
+      // References outside the clipboard keep pointing to live objects in this scene.
+      const ids = new Map(serializer.sceneObjects()
+        .filter(object => object instanceof VFXItem || object instanceof Component)
+        .map(object => [serializer.id(object), object.getInstanceId()]));
       const roots = new Set(data.roots.map(root => root.id));
+
+      for (const object of data.objects) { ids.set(object.id, generateGUID()); }
       const rewrite = (value: any): any => {
         if (Array.isArray(value)) { return value.map(rewrite); }
         if (!value || typeof value !== 'object') { return value; }
 
         return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, typeof entry === 'string' && ['id', 'parentId', 'refId'].includes(key) ? ids.get(entry) ?? entry : rewrite(entry)]));
       };
-      const engine = this.document.composition.engine;
 
       for (const object of data.objects) {
         const copy = rewrite(object);
@@ -200,13 +225,17 @@ export class SceneItemOperations {
           delete copy.refId;
           if (roots.has(object.id)) { delete copy.parentId; }
         }
-        engine.assetServer.addEffectsObjectData(copy);
+        objectsDataCache.set(copy.id, copy);
       }
+      const objectsById = instantiateItems(data.roots.map(root => ({ id: ids.get(root.id)! })), composition.sceneRoot);
+
       for (const root of data.roots) {
-        const clone = engine.effectsObjectServer.findObject<VFXItem>({ id: ids.get(root.id)! });
-        const originalParent = root.parentId ? this.document.serializer.object(root.parentId) : undefined;
-        const parent = originalParent instanceof VFXItem && originalParent.composition === this.document.composition &&
-          (originalParent === this.document.composition.sceneRoot || this.document.composition.items.includes(originalParent)) ? originalParent : this.document.composition.sceneRoot;
+        const clone = objectsById.get(ids.get(root.id)!);
+
+        if (!(clone instanceof VFXItem)) { throw new Error(`Cannot instantiate item "${root.id}".`); }
+        const originalParent = root.parentId ? serializer.object(root.parentId) : undefined;
+        const parent = originalParent instanceof VFXItem && originalParent.composition === composition &&
+          (originalParent === composition.sceneRoot || composition.items.includes(originalParent)) ? originalParent : composition.sceneRoot;
         const names = new Set(parent.children.filter(item => item !== clone).map(child => child.name));
         const baseName = clone.name + (duplicate ? ' Copy' : '');
         let name = baseName, index = 2;
@@ -220,12 +249,16 @@ export class SceneItemOperations {
         clones.push(clone);
         const folder = root.folderId && this.document.editor.hierarchy?.folders.some(folder => folder.id === root.folderId) ? root.folderId : undefined;
 
-        if (folder) { this.document.editor.hierarchy!.itemFolders[this.document.serializer.id(clone)] = folder; }
+        if (folder) { this.document.editor.hierarchy!.itemFolders[serializer.id(clone)] = folder; }
+      }
+      for (const object of objectsById.values()) {
+        serializer.id(object);
       }
       for (const [id, extra] of data.extras) {
-        const cloneId = ids.get(id), object = cloneId && engine.effectsObjectServer.objectInstance[cloneId];
+        const cloneId = ids.get(id);
+        const object = cloneId && objectsById.get(cloneId);
 
-        if (object) { this.document.serializer.applyExtras(object, rewrite(extra)); }
+        if (object) { serializer.applyExtras(object, rewrite(extra)); }
       }
       EditorSelection.setObjects(clones);
     });

@@ -373,12 +373,15 @@ export class JSONConverter {
         duration: treeItem.duration,
         type: spec.ItemType.tree,
         dataType: spec.DataType.VFXItemData,
+        // @ts-expect-error 旧版模型元素保留 visible 字段。
         visible: treeItem.visible,
         endBehavior: treeItem.endBehavior,
         delay: treeItem.delay,
         content: {},
         renderLevel: treeItem.renderLevel,
+        // @ts-expect-error 旧版模型元素保留插件索引。
         pn: treeItem.pn,
+        // @ts-expect-error 旧版模型元素保留插件名。
         pluginName: treeItem.pluginName,
         transform: this.getTransformData(node.transform),
         components: [],

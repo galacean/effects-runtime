@@ -2,7 +2,6 @@
 import {
   AssetManager,
   type Composition,
-  PrecompositionManager,
   ShapeComponent,
   SpriteComponent,
   spec,
@@ -10,6 +9,7 @@ import {
   type VFXItem,
   CompositionComponent,
 } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { VFXItemFactory } from './vfx-item-factory';
 
@@ -68,6 +68,15 @@ export class DefaultVFXItems {
     return vfxItem;
   }
 
+  /** 创建富文本元素，使用与普通文本相同的元素生命周期。 */
+  static createRichText (composition: Composition, parent = null, name = 'NewRichText'): VFXItem {
+    const vfxItem = VFXItemFactory.createVFXItem(composition, parent, name, RichTextComponent);
+
+    vfxItem.type = spec.ItemType.richtext;
+
+    return vfxItem;
+  }
+
   /**
    * 创建视频元素。
    * @param composition 目标合成
@@ -97,17 +106,15 @@ export class DefaultVFXItems {
     parent = null,
     urlname = 'NewEffects',
   ): Promise<VFXItem> {
-    const preComposition = await AssetManager.loadPrecomposition(effects, { autoplay: false });
-    const vfxItem = PrecompositionManager.instantiate(preComposition, composition);
+    const scene = await AssetManager.loadScene(effects, { autoplay: false });
+    const vfxItem = scene.instantiate(composition);
 
     vfxItem.name = urlname;
     vfxItem.type = spec.ItemType.composition;
 
     vfxItem.getComponent(CompositionComponent).endBehavior = vfxItem.endBehavior;
 
-    if (parent) {
-      vfxItem.setParent(parent);
-    }
+    vfxItem.setParent(parent ?? composition.sceneRoot);
 
     return vfxItem;
   }

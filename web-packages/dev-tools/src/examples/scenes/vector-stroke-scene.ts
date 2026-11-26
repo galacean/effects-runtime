@@ -1,5 +1,4 @@
-import type { TrimPathData, VariableWidthPoint } from '@galacean/effects';
-import { generateGUID, spec, TrimPathMode } from '@galacean/effects';
+import { generateGUID, spec } from '@galacean/effects';
 import { createSceneItemData } from '../../features/scene/factories/scene-item-factory';
 import { createEmptyScene } from '../../features/scene/factories/scene-template';
 
@@ -9,7 +8,7 @@ export function createVectorStrokeScene (): spec.JSONScene {
   const composition = scene.compositions[0];
   const root = scene.components[0] as spec.CompositionComponentData;
   const timeline = scene.miscs[0] as spec.TimelineAssetData;
-  const trim: TrimPathData = { start: 0, end: 1, offset: 0, mode: TrimPathMode.Synchronized };
+  const trim: spec.TrimPathData = { start: 0, end: 1, offset: 0, mode: spec.TrimPathMode.Synchronized };
 
   scene.version = spec.JSONSceneVersion['3_8'];
   composition.name = 'Vector Strokes';
@@ -18,7 +17,7 @@ export function createVectorStrokeScene (): spec.JSONScene {
   for (const closed of [true, false]) {
     const { item, objects } = createSceneItemData({ type: spec.ItemType.shape, label: closed ? 'Closed Path' : 'Open Path' }, composition.duration);
     const color = closed ? { r: 1, g: 0.7, b: 0.35, a: 1 } : { r: 0.4, g: 0.85, b: 0.94, a: 1 };
-    const shape: spec.CustomShapeData & { strokeAlignment: number, variableWidthPoints: VariableWidthPoint[], fillTrimPath: TrimPathData, strokeTrimPath: TrimPathData } = {
+    const shape: spec.CustomShapeData = {
       id: objects[0].id, item: { id: item.id }, dataType: spec.DataType.ShapeComponent,
       type: spec.ShapePrimitiveType.Custom,
       points: closed
@@ -50,8 +49,7 @@ export function createVectorStrokeScene (): spec.JSONScene {
     composition.children!.push({ id: item.id });
     scene.items.push(item as unknown as spec.VFXItemData);
     scene.components.push(shape);
-    root.items.push({ id: item.id });
-    root.sceneBindings.push({ key: { id: bindingId }, value: { id: item.id } });
+    root.sceneBindings!.push({ key: { id: bindingId }, value: { id: item.id } });
     timeline.tracks.push({ id: bindingId });
     scene.miscs.push(...tracks);
   }

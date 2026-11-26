@@ -1,15 +1,9 @@
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import type * as spec from '@galacean/effects-specification';
 import type { Material, Maskable } from '../material';
 import { MaskProcessor } from '../material';
-import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
-
-interface RendererComponentData extends spec.ComponentData {
-  materials?: spec.DataPath[],
-  _priority?: number,
-  trackMatte?: spec.TrackMatteOptions,
-}
 
 /**
  * 所有渲染组件的基类
@@ -33,10 +27,6 @@ export class RendererComponent extends Component {
   maskProcessor: MaskProcessor = new MaskProcessor();
 
   protected _priority = 0;
-  /**
-   * 用于点击测试的碰撞器
-   */
-  protected boundingBoxInfo = new BoundingBoxInfo();
 
   get priority (): number {
     return this._priority;
@@ -56,7 +46,7 @@ export class RendererComponent extends Component {
     }
   }
 
-  override fromData (data: RendererComponentData): void {
+  override fromData (data: spec.RendererComponentData & { trackMatte?: spec.TrackMatteOptions }): void {
     super.fromData(data);
     this.maskProcessor.loadTrackMatte(this.engine, data);
     if (data.materials !== undefined) {
@@ -79,11 +69,14 @@ export class RendererComponent extends Component {
     this.frameClipMasks = [];
   }
 
-  /**
-   * 获取包围盒信息
-   */
-  getBoundingBoxInfo (): BoundingBoxInfo {
-    return this.boundingBoxInfo;
+  /** 元素局部坐标系中的几何边界，不含描边。没有可用几何时返回空盒。 */
+  getBoundingBox (out = new Box3()): Box3 {
+    return out.makeEmpty();
+  }
+
+  /** 同一局部坐标系中的渲染边界，包含描边等绘制范围。 */
+  getRenderBounds (out = new Box3()): Box3 {
+    return this.getBoundingBox(out);
   }
 
   render (renderer: Renderer): void {

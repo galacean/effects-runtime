@@ -1,9 +1,11 @@
 import type { Engine, spec } from '@galacean/effects';
 import { Database, EffectsObject, base64ToFile, loadImage } from '@galacean/effects';
 import { readFileAsText } from '../browser-files/file-reader';
+import type { EditorAssetDatabase } from './asset-database';
+import { deserializeAssets } from './deserialize-assets';
 import { EffectsPackage } from './effects-package';
 
-export class FileSystemAssetDatabase extends Database {
+export class FileSystemAssetDatabase extends Database implements EditorAssetDatabase {
   engine: Engine;
   static rootDirectoryHandle: FileSystemDirectoryHandle;
 
@@ -12,6 +14,7 @@ export class FileSystemAssetDatabase extends Database {
   private static packageGuidToPathMap: Record<string, string> = {};
   private static pathToPackageGuidMap: Record<string, string> = {};
   private static objectToPackageGuidMap: Record<string, string> = {};
+  private readonly objectDatas = new Map<string, spec.EffectsObjectData>();
   readonly dirtyPackageSet: Set<string> = new Set<string>();
 
   constructor (engine: Engine) {
@@ -19,33 +22,16 @@ export class FileSystemAssetDatabase extends Database {
     this.engine = engine;
   }
 
-  // loadObject<T extends EffectsObject> (path: string, classConstructor: (engine: Engine) => T) {
+  addEffectsObjectData (data: spec.EffectsObjectData): void {
+    this.objectDatas.set(data.id, data);
+  }
 
-  // }
+  override findEffectsObjectData (uuid: string): spec.EffectsObjectData | undefined {
+    return this.objectDatas.get(uuid);
+  }
 
-  override async loadGUID (guid: string): Promise<EffectsObject | undefined> {
-    const packageGuid = FileSystemAssetDatabase.objectToPackageGuidMap[guid];
-
-    if (!packageGuid) {
-      return;
-    }
-    // let effectsPackage = this.effectsPackages[packageGuid];  // 合成播放完会把对象设置为销毁，无法复用
-    let effectsPackage: EffectsPackage | undefined;
-
-    if (!effectsPackage) {
-      const path = this.GUIDToAssetPath(packageGuid);
-      const loadedPackage = await this.loadPackage(path);
-
-      if (!loadedPackage) {
-        return;
-      }
-      effectsPackage = loadedPackage;
-    }
-    for (const effectsObject of effectsPackage.exportObjects) {
-      if (effectsObject.getInstanceId() === guid) {
-        return effectsObject;
-      }
-    }
+  getEffectsObjectDataIds (): string[] {
+    return Array.from(this.objectDatas.keys());
   }
 
   async loadPackage (path: string) {
@@ -81,16 +67,18 @@ export class FileSystemAssetDatabase extends Database {
     }
 
     for (const objectData of packageData.exportObjects) {
-      this.engine.assetServer.addEffectsObjectData(objectData);
+      this.addEffectsObjectData(objectData);
     }
 
     const effectsPackage = new EffectsPackage();
 
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
-    for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(await this.engine.effectsObjectServer.findObject(objectData));
-    }
+    deserializeAssets(this.engine, new Map(), () => {
+      for (const { id } of packageData.exportObjects) {
+        effectsPackage.exportObjects.push(this.engine.effectsObjectServer.findObject({ id }));
+      }
+    });
 
     return effectsPackage;
   }
@@ -185,8 +173,6 @@ export class FileSystemAssetDatabase extends Database {
       FileSystemAssetDatabase.objectToPackageGuidMap[objectData.id] = guid;
     }
     // this.dirtyPackageSet.add(guid);
-
-    // TODO 加入到场景资产 SceneData 中
 
     // eslint-disable-next-line no-console
     console.log('import ' + guid + ' : ' + path);

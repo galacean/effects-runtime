@@ -1,5 +1,5 @@
-import { Component, effectsClass, getClass } from '@galacean/effects';
-import type { Constructor, Engine, Transform, spec } from '@galacean/effects';
+import { Component, effectsClass, getClass, spec } from '@galacean/effects';
+import type { Constructor, Engine, Transform } from '@galacean/effects';
 import { Container } from '../core/control';
 import type { Control } from '../core/control';
 import { UICanvas } from './ui-canvas';
@@ -8,7 +8,7 @@ import { UICanvas } from './ui-canvas';
  * Scene-tree bridge for a GUI Control. The VFXItem tree owns lifecycle and
  * serialization while the Control tree owns layout, drawing and input.
  */
-@effectsClass('UIControl')
+@effectsClass(spec.DataType.UIControl)
 export class UIControl extends Component {
   static fallbackParentGetDelegate?: (control: UIControl) => Control | null;
 

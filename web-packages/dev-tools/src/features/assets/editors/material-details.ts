@@ -1,4 +1,4 @@
-import type { Material } from '@galacean/effects';
+import type { Material, Scene } from '@galacean/effects';
 import { SerializationHelper, Texture, spec, math } from '@galacean/effects';
 import { propertyLabel } from '../../../ui/property-editor/default-object-details';
 import type { PropertyGroup } from '../../../ui/property-editor/property-sheet';
@@ -40,16 +40,16 @@ export function materialProperties (source: string | undefined, data: { floats?:
   ].map(property => ({ ...property, label: propertyLabel(property.name.replace(/^_/, '')) }));
 }
 
-export function materialSearchTerms (material: Material, skipColor = false): string[] {
-  if (!isPersistentResource(material, material.engine)) { return ['Default']; }
+export function materialSearchTerms (material: Material, skipColor = false, scene?: Scene): string[] {
+  if (!isPersistentResource(material, material.engine, 'material', scene)) { return ['Default']; }
 
   return ['Surface Type', 'Render Face', material.name ?? '', ...materialProperties(material.shader?.shaderData.properties, material.toData())
     .filter(property => !skipColor || property.name !== '_Color').map(property => property.label)];
 }
 
-export function buildMaterialProperties (group: PropertyGroup, material: Material, skipColor = false): void {
-  if (!isPersistentResource(material, material.engine)) { return; }
-  const contentAsset = assetLibrary.entry(material.getInstanceId());
+export function buildMaterialProperties (group: PropertyGroup, material: Material, skipColor = false, scene?: Scene): void {
+  if (!isPersistentResource(material, material.engine, 'material', scene)) { return; }
+  const contentAsset = assetLibrary.entry(material.definition.id || material.getInstanceId());
   const options = { enabled: () => contentAsset?.kind !== 'material' };
   const mutate = (action: (data: spec.MaterialData) => void): void => {
     const data = material.toData();

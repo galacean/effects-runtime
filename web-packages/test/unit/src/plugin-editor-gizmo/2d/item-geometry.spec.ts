@@ -2,6 +2,7 @@ import { restoreTestState } from '../helpers/spies';
 import { createPixelCamera, TEST_VIEW_SIZE } from '../helpers/items';
 
 import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, getTransformedBoxCorners, transformedBoxContainsPoint } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { getItemViewBox, getItemViewTransform } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-geometry';
 
@@ -18,7 +19,7 @@ describe('plugin-editor-gizmo/item-geometry', () => {
     rotation?: number,
     children?: VFXItem[],
     frameComponent?: boolean,
-    shapeBoundingBox?: { area: Array<{ p0: Vector3, p1: Vector3, p2: Vector3 }> },
+    pathBounds?: Box3,
     visible?: boolean,
   } = {}): VFXItem {
     const matrix = new Matrix4().compose(
@@ -37,8 +38,8 @@ describe('plugin-editor-gizmo/item-geometry', () => {
         if (component === FrameComponent && frameComponent) {
           return {};
         }
-        if (component === ShapeComponent && options.shapeBoundingBox) {
-          return { getBoundingBox: () => options.shapeBoundingBox };
+        if (component === ShapeComponent && options.pathBounds) {
+          return { getBoundingBox: () => options.pathBounds };
         }
 
         return undefined;
@@ -104,12 +105,7 @@ describe('plugin-editor-gizmo/item-geometry', () => {
       const item = createItem({
         type: spec.ItemType.shape,
         size: new Vector2(20, 20),
-        shapeBoundingBox: {
-          area: [
-            { p0: new Vector3(-80, 40, 0), p1: new Vector3(40, 40, 0), p2: new Vector3(40, -20, 0) },
-            { p0: new Vector3(-80, 40, 0), p1: new Vector3(40, -20, 0), p2: new Vector3(-80, -20, 0) },
-          ],
-        },
+        pathBounds: new Box3(new Vector3(-80, -20, 0), new Vector3(40, 40, 0)),
       });
       const bounds = getItemViewBox(item, TEST_VIEW_SIZE.clone());
 

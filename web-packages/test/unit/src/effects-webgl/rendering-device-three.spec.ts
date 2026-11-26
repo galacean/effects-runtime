@@ -1,11 +1,16 @@
-import type { TextureSourceOptions, spec } from '@galacean/effects';
-import { Asset, Engine, Geometry, Renderer, RenderingDevice, Texture, TextureSourceType, glContext } from '@galacean/effects';
+import type { TextureSourceOptions } from '@galacean/effects';
+import {
+  Asset, Engine, Geometry, Material, Renderer, RenderingDevice, Scene, Texture, TextureSourceType, effectsClassStore, glContext, spec,
+} from '@galacean/effects';
 import { RenderingDeviceThree } from '../../../../../packages/effects-threejs/src/rendering-device-three';
+import { ThreeDisplayObject } from '../../../../../packages/effects-threejs/src/three-display-object';
 import type { GPUBufferThree } from '../../../../../packages/effects-threejs/src/gpu-buffer-three';
 import { getThreeGeometry, disposeThreeGeometries } from '../../../../../packages/effects-threejs/src/three-geometry';
-
 import { GPUTextureThree } from '../../../../../packages/effects-threejs/src/gpu-texture-three';
 import { ThreeMaterial } from '../../../../../packages/effects-threejs/src/material/three-material';
+
+// This suite uses ThreeMaterial directly and shares the WebGL registry.
+effectsClassStore[spec.DataType.Material] = Material;
 
 const { expect } = chai;
 
@@ -78,6 +83,41 @@ describe('threejs/rendering-device', () => {
     } finally {
       material.dispose();
     }
+  });
+
+  it('tracks scene load managers and clears references with the display object', async () => {
+    // Reuse this suite's initialized host engine to exercise the loading facade.
+    const displayObject = Object.create(ThreeDisplayObject.prototype) as ThreeDisplayObject;
+
+    Object.assign(displayObject, {
+      engine, compositions: [], children: [], parent: null, baseCompositionIndex: 0, assetServer: engine.assetServer,
+    });
+    const createScene = () => {
+      const scene = new Scene({
+        compositionId: 'scene', items: [],
+        compositions: [{ id: 'scene', name: 'scene', duration: 1, endBehavior: spec.EndBehavior.freeze }],
+      } as unknown as spec.JSONScene, { autoplay: false });
+
+      scene.prepareDefinitions();
+
+      return scene;
+    };
+    const assets = displayObject.engine.assetServer;
+
+    try {
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(assets.assetManagers).to.have.length(1);
+      const first = assets.assetManagers[0];
+
+      await displayObject.loadScene(createScene(), { autoplay: false });
+      expect(assets.assetManagers).to.have.length(2);
+      expect(assets.assetManagers[0]).to.equal(first);
+      expect(assets.assetManagers[1]).not.to.equal(first);
+    } finally {
+      displayObject.dispose();
+    }
+    expect(assets.assetManagers).to.have.length(0);
+    expect(gl.isContextLost()).to.equal(false);
   });
 
   it('composes a texture asset with a device-created Three texture resource', () => {
@@ -213,6 +253,7 @@ describe('threejs/rendering-device', () => {
 
   it('initializes a deserialized texture through the material entry point', () => {
     const texture = new Texture(engine);
+    const instanceId = texture.getInstanceId();
     const canvas = document.createElement('canvas');
 
     canvas.width = 3;
@@ -224,7 +265,7 @@ describe('threejs/rendering-device', () => {
     const native = (texture.getGPUTexture() as GPUTextureThree).texture!;
 
     expect(material.material.uniforms._MainTex.value).equals(native);
-    expect(texture.getInstanceId()).equals('three-texture-asset');
+    expect(texture.getInstanceId()).equals(instanceId);
     expect(native.image).equals(canvas);
     expect(texture.width).equals(3);
     expect(texture.height).equals(2);

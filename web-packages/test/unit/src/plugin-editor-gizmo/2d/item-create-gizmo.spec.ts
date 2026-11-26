@@ -67,7 +67,10 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       setCursor: chai.spy(),
       getEngine: () => engine,
       getConfigManager: () => configs,
-      getSelection: () => ({ getSelectedPlayerItems: () => selectedItems }),
+      getSelection: () => ({
+        getSelectedPlayerItems: () => selectedItems,
+        hitTest: () => [],
+      }),
     } as unknown as GizmoOwner;
     const gizmo = new ItemCreateGizmo(owner);
 
@@ -160,7 +163,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(drawLine).to.have.been.called.exactly(8);
       expect(getSpyCalls(drawLine).slice(0, 4).every(call => call[5] === 1)).to.equal(true);
       expect(getSpyCalls(drawLine).slice(4).every(call => call[5] === 2)).to.equal(true);
-      expect(getSpyCalls(drawLine).slice(4).every(call => call[4] === toColor(0x3b82f6, 1))).to.equal(true);
+      expect(getSpyCalls(drawLine).slice(4).every(call => call[4] === toColor(0x3b82f6ff))).to.equal(true);
     });
   });
 
@@ -184,30 +187,29 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
       expect(commits[0].id).to.equal(starts[0].id);
     });
 
-    it('creates fixed-width text after a delayed horizontal drag and ignores vertical distance', () => {
-      let now = 0;
+    for (const type of [ItemCreateType.TEXT, ItemCreateType.RICH_TEXT]) {
+      it(`creates fixed-width ${type} from a horizontal drag`, () => {
+        let now = 0;
 
-      chai.spy.on(Date, 'now', () => now);
-      const { starts, commits, gizmo } = createHarness(ItemCreateType.TEXT);
+        chai.spy.on(Date, 'now', () => now);
+        const { starts, commits, gizmo } = createHarness(type);
 
-      gizmo.onMouseDown(mouseButton(100, 120, true));
-      now = 151;
-      gizmo.onMouseDrag(mouseMotion(160, 400));
+        gizmo.onMouseDown(mouseButton(100, 120));
+        now = 200;
+        gizmo.onMouseDrag(mouseMotion(160, 400));
 
-      expect(starts).to.have.lengthOf(1);
-      expect(commits).to.have.lengthOf(0);
-      expect(starts[0]).to.have.deep.nested.property('type', ItemCreateType.TEXT);
-      expect(starts[0]).to.have.deep.nested.property('position', [130, 120]);
-      expect(starts[0]).to.have.deep.nested.property('info.width', 60);
+        expect(starts).to.have.lengthOf(1);
+        expect(commits).to.have.lengthOf(0);
+        expect(starts[0]).to.deep.include({ type, position: [130, 120] });
+        expect(starts[0].info).to.have.property('width', 60);
 
-      gizmo.onMouseUp(mouseButton(160, 400, false));
+        gizmo.onMouseUp(mouseButton(160, 400, false));
 
-      expect(commits[0]).to.have.deep.nested.property('type', ItemCreateType.TEXT);
-      expect(commits[0]).to.have.deep.nested.property('position', [130, 120]);
-      expect(commits[0]).to.have.deep.nested.property('info.position', [130, 120]);
-      expect(commits[0]).to.have.deep.nested.property('info.width', 60);
-      expect(commits[0].id).to.equal(starts[0].id);
-    });
+        expect(commits).to.have.lengthOf(1);
+        expect(commits[0]).to.deep.include({ type, id: starts[0].id, position: [130, 120] });
+        expect(commits[0].info).to.deep.include({ position: [130, 120], width: 60 });
+      });
+    }
 
     it('draws the actual text bounding box while fixed-width text is being created', () => {
       let now = 0;
@@ -236,7 +238,7 @@ describe('plugin-editor-gizmo/item-create-gizmo', () => {
         [100, 144, 100, 96],
       ]);
       expect(drawLine).to.have.been.called.exactly(4);
-      expect(getSpyCalls(drawLine).every(call => call[4] === toColor(0x3b82f6, 1))).to.equal(true);
+      expect(getSpyCalls(drawLine).every(call => call[4] === toColor(0x3b82f6ff))).to.equal(true);
       expect(getSpyCalls(drawLine).every(call => call[5] === 2)).to.equal(true);
       expect(fillRect).not.to.have.been.called();
     });

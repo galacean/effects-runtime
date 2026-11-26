@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { AnimationGraphAsset, StateMachineNode } from '../plugins/animation-graph';
 import { GraphInstance } from '../plugins/animation-graph';
 import { Component } from './component.js';
@@ -7,7 +7,7 @@ import { effectsClass } from '../decorators';
 /**
  * @since 2.6.0
  */
-@effectsClass('Animator')
+@effectsClass(spec.DataType.Animator)
 export class Animator extends Component {
   /**
    * @internal
@@ -149,6 +149,7 @@ export class Animator extends Component {
   }
 
   override fromData (data: spec.AnimatorData): void {
+    super.fromData(data);
     this.graphAsset = this.findObject<AnimationGraphAsset>(data.graphAsset);
   }
 }

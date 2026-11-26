@@ -1,10 +1,11 @@
+import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { TrackMixerPlayable } from '../playables';
 import { ObjectReferencePropertyMixerPlayable } from '../playables';
 import { PropertyTrack } from './property-track';
 
 /** Animates an object reference property on the bound object. */
-@effectsClass('ObjectReferencePropertyTrack')
+@effectsClass(spec.DataType.ObjectReferencePropertyTrack)
 export class ObjectReferencePropertyTrack extends PropertyTrack {
   override createTrackMixer (): TrackMixerPlayable {
     const mixer = new ObjectReferencePropertyMixerPlayable();

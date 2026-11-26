@@ -5,8 +5,6 @@ import type { RenderingDeviceWebGL } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-const dummyRef = { id: 'existing-mask-id' };
-
 const vs = `attribute vec2 aPosition;
 void main() {
   gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
@@ -45,6 +43,8 @@ describe('core/material/mask-processor', () => {
   let canvas: HTMLCanvasElement;
   let engine: Engine;
   let renderer: Renderer;
+  let existingMask: SpriteComponent;
+  let maskRef: { id: string };
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -53,9 +53,8 @@ describe('core/material/mask-processor', () => {
     engine = glEngine;
     renderer = glEngine.renderer;
 
-    const existingMask = createMaskableSprite(engine, 'existing-mask');
-
-    existingMask.setInstanceId('existing-mask-id');
+    existingMask = createMaskableSprite(engine, 'existing-mask');
+    maskRef = { id: existingMask.getInstanceId() };
   });
 
   afterEach(() => {
@@ -349,9 +348,9 @@ describe('core/material/mask-processor', () => {
   describe('loadTrackMatte', () => {
     it('restores track matte references and preserves them during unrelated updates', () => {
       const mp = new MaskProcessor();
-      const source = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
+      const source = engine.effectsObjectServer.findObject<SpriteComponent>(maskRef);
 
-      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: dummyRef, inverted: true }] } });
+      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: maskRef, inverted: true }] } });
       expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: source, inverted: true }]);
 
       mp.loadTrackMatte(engine, {});
@@ -372,9 +371,8 @@ describe('core/material/mask-processor', () => {
 
     it('defaults references to forward clipping', () => {
       const mp = new MaskProcessor();
-      const existingMask = engine.effectsObjectServer.findObject<SpriteComponent>(dummyRef);
 
-      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: dummyRef }] } });
+      mp.loadTrackMatte(engine, { trackMatte: { references: [{ source: maskRef }] } });
 
       expect(mp.getTrackMatteReferences()).to.deep.equal([{ maskable: existingMask, inverted: false }]);
     });
@@ -383,23 +381,20 @@ describe('core/material/mask-processor', () => {
       const mp = new MaskProcessor();
 
       mp.loadTrackMatte(engine, {
-        trackMatte: { references: [{ source: { id: 'missing-mask' } }, { source: dummyRef, inverted: true }] },
+        trackMatte: { references: [{ source: { id: 'missing-mask' } }, { source: maskRef, inverted: true }] },
       });
 
       expect(mp.getTrackMatteReferences()).to.deep.equal([
-        { maskable: engine.effectsObjectServer.findObject(dummyRef), inverted: true },
+        { maskable: engine.effectsObjectServer.findObject(maskRef), inverted: true },
       ]);
     });
 
     it('should warn and cap when mask references exceed the stencil limit', () => {
       const mp = new MaskProcessor();
       const references = Array.from({ length: 256 }, (_, i) => {
-        const id = `cap-mask-${i}`;
-        const sprite = createMaskableSprite(engine, id);
+        const sprite = createMaskableSprite(engine, `cap-mask-${i}`);
 
-        sprite.setInstanceId(id);
-
-        return { source: { id }, inverted: false };
+        return { source: { id: sprite.getInstanceId() }, inverted: false };
       });
 
       mp.loadTrackMatte(engine, { trackMatte: { references } });
@@ -409,7 +404,7 @@ describe('core/material/mask-processor', () => {
 
     it('should deduplicate references pointing to the same maskable', () => {
       const mp = new MaskProcessor();
-      const references = Array.from({ length: 5 }, () => ({ source: dummyRef, inverted: false }));
+      const references = Array.from({ length: 5 }, () => ({ source: maskRef, inverted: false }));
 
       mp.loadTrackMatte(engine, { trackMatte: { references } });
 

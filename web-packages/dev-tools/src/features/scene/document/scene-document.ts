@@ -98,6 +98,7 @@ export class SceneDocument {
     this.serializer.stabilizeRenderOrder(this.scene);
     this.refreshRenderSettings();
     if (this.scene.renderSettings?.postProcessingEnabled === undefined && this.postProcessVolumes.length) {
+      // @ts-expect-error 沿用旧版场景设置中的 supportsHDR 默认值。
       this.scene.renderSettings = { supportsHDR: false, ...this.scene.renderSettings, postProcessingEnabled: true };
       this.syncPostProcessing();
     }
@@ -194,6 +195,7 @@ export class SceneDocument {
   setPostProcessingEnabled (enabled: boolean): void {
     if (!!this.scene.renderSettings?.postProcessingEnabled === enabled) { return; }
     this.begin('Set post processing');
+    // @ts-expect-error 沿用旧版场景设置中的 supportsHDR 默认值。
     this.scene.renderSettings = { supportsHDR: false, ...this.scene.renderSettings, postProcessingEnabled: enabled };
     this.syncPostProcessing();
   }

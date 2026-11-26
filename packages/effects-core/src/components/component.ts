@@ -1,11 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { VFXItem } from '../vfx-item';
-
-interface ComponentData extends spec.ComponentData {
-  _enabled?: boolean,
-}
+import { VFXItem } from '../vfx-item';
 
 /**
  * @since 2.0.0
@@ -16,9 +12,13 @@ export abstract class Component extends EffectsObject {
    * 附加到的 VFXItem 对象
    */
   item: VFXItem;
+  /** @internal */
   isAwakeCalled = false;
+  /** @internal */
   isStartCalled = false;
+  /** @internal */
   isEnableCalled = false;
+  /** @internal */
   isDuringPlay = false;
 
   private _enabled = true;
@@ -227,13 +227,21 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  override fromData (data: ComponentData): void {
+  override fromData (data: spec.ComponentData): void {
     super.fromData(data);
     if (data.item !== undefined) {
-      this.item = this.findObject<VFXItem>(data.item);
+      const item = this.findObject(data.item, VFXItem);
+
+      if (this.item && this.item !== item) {
+        removeItem(this.item.components, this);
+      }
+      this.item = item;
+      if (item && !item.components.includes(this)) {
+        item.components.push(this);
+      }
     }
-    if (data._enabled !== undefined) {
-      this._enabled = data._enabled;
+    if (data.enabled !== undefined) {
+      this._enabled = data.enabled;
     }
   }
 

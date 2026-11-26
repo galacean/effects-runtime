@@ -1,9 +1,11 @@
 import type * as spec from '@galacean/effects-specification';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import type { Engine } from '../engine';
 import type { Maskable } from '../material';
-import { extractMinAndMax } from '../math';
-import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
-import { VertexElementType, type Geometry, type Renderer } from '../render';
+import type { HitTestTriangleParams } from '../plugins/interact/click-handler';
+import { HitTestType } from '../plugins/interact/click-handler';
+import type { Geometry, Renderer } from '../render';
+import { getWorldTriangles } from '../render/geometry-triangles';
 import { RendererComponent } from './renderer-component';
 
 interface MeshComponentData extends Omit<spec.MaskableGraphicData, 'renderer'> {
@@ -46,44 +48,14 @@ export class MeshComponent extends RendererComponent implements Maskable {
   }
 
   // TODO 点击测试后续抽象一个 Collider 组件
-  getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
-    const worldMatrix = this.transform.getWorldMatrix();
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | void => ({
+    type: HitTestType.triangle,
+    triangles: getWorldTriangles(this.geometry, this.transform.getWorldMatrix()),
+    clipMasks: this.frameClipMasks,
+  });
 
-    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-    const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
-
-    if (area) {
-      return {
-        type: area.type,
-        triangles: area.area,
-        clipMasks:this.frameClipMasks,
-      };
-    }
-  };
-
-  getBoundingBox (): BoundingBoxTriangle | void {
-    const worldMatrix = this.transform.getWorldMatrix();
-
-    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
-
-    return boundingBox;
-  }
-
-  override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData(VertexElementType.Position) as Float32Array;
-
-    if (positionArray) {
-      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
-
-      minMaxResult.minimum.x *= this.transform.size.x;
-      minMaxResult.minimum.y *= this.transform.size.y;
-      minMaxResult.maximum.x *= this.transform.size.x;
-      minMaxResult.maximum.y *= this.transform.size.y;
-      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
-    }
-
-    return this.boundingBoxInfo;
+  override getBoundingBox (out = new Box3()): Box3 {
+    return this.geometry?.getBoundingBox(out) ?? out.makeEmpty();
   }
 
   override fromData (data: MeshComponentData): void {

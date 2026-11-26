@@ -6,8 +6,6 @@ import type { FloatValueNode } from '../graph-node';
 import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
 import { Blender } from '../blender';
 
-type LayerData = Required<spec.LayerData>;
-
 interface Layer {
   inputNode: PoseNode | null,
   weightValueNode: FloatValueNode | null,
@@ -17,7 +15,7 @@ interface Layer {
 @nodeDataClass(spec.NodeDataType.LayerBlendNodeData)
 export class LayerBlendNodeData extends GraphNodeData {
   baseNodeIndex = InvalidIndex;
-  layerDatas: LayerData[] = [];
+  layerDatas: Required<spec.LayerData>[] = [];
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(LayerBlendNode, context);

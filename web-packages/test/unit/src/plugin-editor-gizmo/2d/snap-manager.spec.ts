@@ -122,6 +122,24 @@ describe('SnapManager', () => {
     expect(getTargetCenterXs(snapping)).to.deep.equal([65]);
   });
 
+  it('参考线候选沿用选区过滤和作用域隔离规则', () => {
+    const snapping = createSnapManager();
+    const rootPeer = createItem('root-peer', { x: 0 });
+    const frame = createItem('frame', { frame: true, x: 20 });
+    const selected = createItem('selected', { parent: frame, x: 40 });
+    const framePeer = createItem('frame-peer', { parent: frame, x: 60 });
+    const otherFrame = createItem('other-frame', { frame: true, x: 80 });
+    const otherFrameChild = createItem('other-frame-child', { parent: otherFrame, x: 100 });
+
+    snapping.cacheSnapTargetsForGuide(
+      [rootPeer, frame, selected, framePeer, otherFrame, otherFrameChild],
+      [selected],
+      TEST_VIEW_SIZE.clone(),
+    );
+
+    expect(getTargetCenterXs(snapping)).to.deep.equal([65]);
+  });
+
   it('根作用域不缓存动效容器内部元素', () => {
     const snapping = createSnapManager();
     const selected = createItem('selected', { x: 0 });

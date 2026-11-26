@@ -1,7 +1,7 @@
 import type {
-  InputServer, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer,
+  InputServer, SceneLoadOptions, Composition, MessageItem, Scene, AssetServer, AssetManager,
 } from '@galacean/effects-core';
-import { Engine, isWebGL2, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
+import { Engine, isWebGL2, assertExist, isArray, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { disposeThreeGeometries } from './three-geometry';
@@ -95,6 +95,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const last = performance.now();
     const scenes: Scene.LoadType[] = [];
     const compositions: Composition[] = [];
+    const autoplayFlags: boolean[] = [];
     const autoplay = options?.autoplay ?? true;
     const baseOrder = this.baseCompositionIndex;
 
@@ -106,22 +107,13 @@ export class ThreeDisplayObject extends THREE.Group {
 
     await Promise.all(
       scenes.map(async (url, index) => {
-        const { source, options: opts } = this.assetServer.assembleSceneLoadOptions(url, { autoplay, ...options });
-        const assetManager = new AssetManager(opts);
+        const { source, options: opts } = this.engine.sceneServer.assembleSceneLoadOptions(url, { autoplay, ...options });
+        const assetManager = this.assetServer.createAssetManager(opts);
+
         const scene = await assetManager.loadScene(source, this.renderer);
-
-        const engine = this.engine;
-
-        engine.effectsObjectServer.clearObjectInstances();
-        this.assetServer.clearSceneData();
-
-        // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
-        PluginSystem.notifyAssetsLoadFinish(scene, assetManager.options, engine);
-        this.assetServer.prepareAssets(scene, assetManager.getAssets());
-        this.assetServer.updateTextVariables(scene, assetManager.options.variables);
-
         const composition = this.createComposition(scene, opts);
 
+        autoplayFlags[index] = opts.autoplay ?? true;
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
@@ -129,7 +121,7 @@ export class ThreeDisplayObject extends THREE.Group {
     );
 
     for (let i = 0; i < compositions.length; i++) {
-      if (autoplay) {
+      if (autoplayFlags[i]) {
         compositions[i].play();
       } else {
         compositions[i].pause();

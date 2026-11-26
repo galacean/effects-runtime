@@ -2,12 +2,12 @@ import {
   EventEmitter,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import type {
   Engine,
   EventEmitterListener,
   Texture,
-  spec,
 } from '@galacean/effects';
 import { Control } from '../core/control';
 import type { ControlEvent, Rect } from '../core/control';
@@ -18,7 +18,7 @@ export type NinePatchRectEvent = ControlEvent & {
   textureChanged: [texture: Texture | null],
 };
 
-@effectsClass('NinePatchRect')
+@effectsClass(spec.DataType.NinePatchRect)
 export class NinePatchRect extends Control {
   static override readonly themeType: string = 'NinePatchRect';
   private readonly ninePatchEventEmitter = new EventEmitter<NinePatchRectEvent>();

@@ -333,20 +333,25 @@ describe('plugin-editor-gizmo/select-text-gizmo', () => {
 
       gizmo.onMouseMove(pressedMove);
       expect(pressedMove.isAccepted()).to.equal(true);
-      expect(getSpyCalls(update).at(-1)).to.deep.equal([{ x: 24, y: 20 }]);
+      expect(getSpyCalls(update).at(-1)?.[1]).to.deep.equal({ x: 24, y: 20 });
+      const handle = getSpyCalls(update).at(-1)?.[0];
+
+      expect(handle).to.be.an('object');
 
       const drag = mouseMotion(MouseButtonMask.Left, 32, 20);
 
       gizmo.onMouseDrag(drag);
       expect(drag.isAccepted()).to.equal(true);
       expect(getSpyCalls(setCursor).at(-1)).to.deep.equal([{ type: GestureCursorType.TEXT, angle: 0 }]);
-      expect(getSpyCalls(update).at(-1)).to.deep.equal([{ x: 32, y: 20 }]);
+      expect(getSpyCalls(update).at(-1)?.[0]).to.equal(handle);
+      expect(getSpyCalls(update).at(-1)?.[1]).to.deep.equal({ x: 32, y: 20 });
 
       const up = mouseButton(false, MouseButton.Left, 36, 20);
 
       gizmo.onMouseUp(up);
       expect(up.isAccepted()).to.equal(true);
-      expect(finish).to.have.been.called.with.exactly({ x: 36, y: 20 });
+      expect(getSpyCalls(finish).at(-1)?.[0]).to.equal(handle);
+      expect(getSpyCalls(finish).at(-1)?.[1]).to.deep.equal({ x: 36, y: 20 });
       expect(session.textAreaElement.style.pointerEvents).to.equal('');
       expect(getSpyCalls(setCursor).at(-1)).to.deep.equal([{
         type: GestureCursorType.TEXT,

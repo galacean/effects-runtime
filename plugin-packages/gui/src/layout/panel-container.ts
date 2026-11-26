@@ -1,7 +1,7 @@
-import { effectsClass, math } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 
-@effectsClass('PanelContainer')
+@effectsClass(spec.DataType.PanelContainer)
 export class PanelContainer extends Container {
   static override readonly themeType: string = 'PanelContainer';
 

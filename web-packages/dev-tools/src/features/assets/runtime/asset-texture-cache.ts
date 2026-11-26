@@ -1,5 +1,6 @@
 import type { Engine } from '@galacean/effects';
 import { glContext, loadImage, spec, Texture, TextureSourceType } from '@galacean/effects';
+import type { EditorAssetDatabase } from '../../../platform/effects-runtime/asset-database';
 import { blobDataURL } from '../../../platform/browser-files/blob-data-url';
 import type { AssetEntry, AssetImage } from '../model/asset-types';
 import { notifyRuntimeAssetChanged } from './runtime-asset-changes';
@@ -44,7 +45,7 @@ export class AssetTextureCache {
         this.engines.delete(reference);
         continue;
       }
-      const texture = engine.effectsObjectServer.objectInstance[entry.id];
+      const texture = engine.effectsObjectServer.objectsCache[entry.id];
 
       if (texture instanceof Texture && !texture.isDestroyed) {
         this.textures.get(engine)?.delete(entry.id);
@@ -55,7 +56,7 @@ export class AssetTextureCache {
 
   get (engine: Engine, id: string): Texture | undefined {
     this.registerEngine(engine);
-    const entry = this.source.entry(id), object = engine.effectsObjectServer.objectInstance[id];
+    const entry = this.source.entry(id), object = engine.effectsObjectServer.objectsCache[id];
     const cached = this.textures.get(engine)?.get(id);
     const texture = object instanceof Texture ? object : cached?.isRegistered ? cached : undefined;
 
@@ -97,7 +98,10 @@ export class AssetTextureCache {
 
         return this.load(engine, id);
       }
-      const existing = engine.effectsObjectServer.objectInstance[id];
+      const database: Partial<EditorAssetDatabase> | undefined = engine.assetServer.database;
+
+      if (!database?.addEffectsObjectData) { throw new Error('An editor asset database must be registered before loading editor assets.'); }
+      const existing = engine.effectsObjectServer.objectsCache[id];
       const texture = existing instanceof Texture && !existing.isDestroyed ? existing : Texture.create(engine);
       const data = { id, name: entry.name, dataType: spec.DataType.Texture as const, source: dataURL, sourceType: TextureSourceType.image as const,
         image, flipY: true, minFilter: glContext.LINEAR, magFilter: glContext.LINEAR, wrapS: glContext.CLAMP_TO_EDGE, wrapT: glContext.CLAMP_TO_EDGE };
@@ -105,7 +109,7 @@ export class AssetTextureCache {
       texture.setData(data);
       if (texture === existing) { texture.updateSource(data); }
       texture.initialize();
-      engine.assetServer.addEffectsObjectData(data);
+      database.addEffectsObjectData(data);
       let textures = this.textures.get(engine);
 
       if (!textures) { textures = new Map(); this.textures.set(engine, textures); }

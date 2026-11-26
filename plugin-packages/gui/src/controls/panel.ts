@@ -1,9 +1,9 @@
-import { effectsClass } from '@galacean/effects';
+import { effectsClass, spec } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
 
-@effectsClass('Panel')
+@effectsClass(spec.DataType.Panel)
 export class Panel extends Control {
   static override readonly themeType: string = 'Panel';
 

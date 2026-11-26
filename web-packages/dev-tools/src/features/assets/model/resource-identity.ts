@@ -1,5 +1,6 @@
-import type { Engine } from '@galacean/effects';
+import type { Engine, Scene } from '@galacean/effects';
 import { Material, Shader, Sprite, Texture, spec } from '@galacean/effects';
+import type { EditorAssetDatabase } from '../../../platform/effects-runtime/asset-database';
 import { assetLibrary } from '../asset-library';
 import type { AssetKind } from './asset-types';
 
@@ -20,12 +21,14 @@ export function isContentResource (id: string, kind: ResourceKind): boolean {
 }
 
 /** Resource identity comes from authored definitions and explicit built-ins, never the live object table. */
-export function resourceIdentity (engine: Engine, id: string): ResourceIdentity | undefined {
+export function resourceIdentity (engine: Engine, resource: string | Resource, scene?: Scene): ResourceIdentity | undefined {
+  const id = typeof resource === 'string' ? resource : resource.definition.id || (resource instanceof Texture && resource.source?.id) || resource.getInstanceId();
   const entry = assetLibrary.entry(id);
 
   if (entry) { return entry.kind !== 'folder' && entry.kind !== 'scene' && isContentResource(id, entry.kind) ? { id, kind: entry.kind, name: entry.name } : undefined; }
   if (BUILTIN_TEXTURES[id]) { return { id, kind: 'texture', name: BUILTIN_TEXTURES[id] }; }
-  const data = engine.assetServer.findEffectsObjectData(id);
+  const { assetServer } = engine;
+  const data = scene ? assetServer.withSceneData(scene.objectsDataCache, () => assetServer.findEffectsObjectData(id)) : assetServer.findEffectsObjectData(id);
   const kind = data && DATA_KINDS[data.dataType];
 
   return kind ? { id, kind, name: (data as { name?: string }).name || data.dataType + ' ' + id.slice(0, 8) } : undefined;
@@ -35,15 +38,17 @@ export function isResource (value: unknown): value is Resource {
   return value instanceof Material || value instanceof Shader || value instanceof Sprite || value instanceof Texture;
 }
 
-export function isPersistentResource (value: unknown, engine: Engine, kind?: ResourceKind): value is Resource {
+export function isPersistentResource (value: unknown, engine: Engine, kind?: ResourceKind, scene?: Scene): value is Resource {
   if (!isResource(value) || value.engine !== engine || !value.isRegistered || value instanceof Texture && value.isDestroyed) { return false; }
   const actual = value instanceof Material ? 'material' : value instanceof Shader ? 'shader' : value instanceof Sprite ? 'sprite' : 'texture';
 
-  return (!kind || kind === actual) && resourceIdentity(engine, value.getInstanceId())?.kind === actual;
+  return (!kind || kind === actual) && resourceIdentity(engine, value, scene)?.kind === actual;
 }
 
-export function resourceCandidates (engine: Engine, kind: ResourceKind): ResourceIdentity[] {
-  const ids = new Set([...assetLibrary.entries.map(entry => entry.id), ...Object.keys(engine.assetServer.jsonSceneData), ...Object.keys(BUILTIN_TEXTURES)]);
+export function resourceCandidates (engine: Engine, kind: ResourceKind, scene?: Scene): ResourceIdentity[] {
+  const database: Partial<EditorAssetDatabase> | undefined = engine.assetServer.database;
+  const ids = new Set([...assetLibrary.entries.map(entry => entry.id), ...database?.getEffectsObjectDataIds?.() ?? [],
+    ...scene?.objectsDataCache?.keys() ?? [], ...Object.keys(BUILTIN_TEXTURES)]);
 
-  return [...ids].map(id => resourceIdentity(engine, id)).filter((entry): entry is ResourceIdentity => entry?.kind === kind);
+  return [...ids].map(id => resourceIdentity(engine, id, scene)).filter((entry): entry is ResourceIdentity => entry?.kind === kind);
 }

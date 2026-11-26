@@ -73,8 +73,8 @@ export class PluginSystem {
     );
   }
 
-  static notifyAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
-    plugins.forEach(plugin => plugin.onAssetsLoadFinish(scene, options, engine));
+  static notifyAssetsLoadFinish (scene: Scene, options: SceneLoadOptions) {
+    plugins.forEach(plugin => plugin.onAssetsLoadFinish(scene, options));
   }
 }
 

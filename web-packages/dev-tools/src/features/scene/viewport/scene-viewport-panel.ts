@@ -1,5 +1,5 @@
-import type { Engine, InputEventKey, InputEventMouseButton, VFXItem } from '@galacean/effects';
-import { InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
+import type { Engine, VFXItem } from '@galacean/effects';
+import { InputEventKey, InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
 import { Control, FocusMode } from '@galacean/effects-plugin-gui';
 import { GizmoViewportUtils } from '@galacean/effects-plugin-editor-gizmo';
 import { editorPanel, menuItem } from '../../../framework/registry/editor-registry';
@@ -16,9 +16,11 @@ import { sceneEditCommands } from '../operations/scene-edit-commands';
 import { createItemActions } from '../ui/create-item-menu';
 import { OrbitController } from './orbit-controller';
 import { SceneGizmo } from './scene-gizmo';
+import { SCENE_DRAWING_TOOLS } from './scene-tools';
 import { SceneToolbar } from './scene-toolbar';
 import { SceneViewportInput } from './scene-viewport-input';
 import { createBrushSettings, SceneBrushSettingsBar } from './scene-brush-settings';
+import { SceneToolSettingsBar } from './scene-tool-settings-bar';
 
 @editorPanel()
 export class SceneViewportPanel extends EditorWindow {
@@ -38,6 +40,7 @@ export class SceneViewportPanel extends EditorWindow {
   private context?: EditorMenu;
   private readonly brushSettings = createBrushSettings();
   private brushSettingsBar?: SceneBrushSettingsBar;
+  private toolSettingsBar?: SceneToolSettingsBar;
 
   get is2DMode (): boolean { return this._is2DMode; }
   set is2DMode (value: boolean) {
@@ -59,6 +62,9 @@ export class SceneViewportPanel extends EditorWindow {
     this.viewport = append(root, expand(new SceneViewport(engine, this)));
     this.brushSettingsBar = append(this.viewport, new SceneBrushSettingsBar(engine, this.brushSettings));
     this.brushSettingsBar.visible = false;
+    this.toolSettingsBar = append(this.viewport, new SceneToolSettingsBar(engine, () => this.is2DMode ? this.gizmo : undefined,
+      () => this.viewport?.grabFocus(), () => this.finishToolEditing()));
+    this.toolSettingsBar.visible = false;
     this.context = new EditorMenu(engine);
 
     return root;
@@ -81,10 +87,13 @@ export class SceneViewportPanel extends EditorWindow {
       }
     }
     this.gizmo?.setVisible(!!this.viewport?.visibleInHierarchy);
+    this.gizmo?.update();
     if (this.brushSettingsBar) { this.brushSettingsBar.visible = this.is2DMode && this.gizmo?.tool === 'brush'; }
+    this.toolSettingsBar?.refresh();
   }
   protected override onDisable (): void {
     this.brushSettingsBar?.closePopup();
+    this.toolSettingsBar?.closePopup();
     this.viewport?.cancelPointerInteraction();
     this.flushEdits(); this.input?.reset(); this.gizmo?.setVisible(false);
     EditorRuntimeSession.player?.container?.style.setProperty('--scene-text-edit-visibility', 'hidden');
@@ -103,6 +112,7 @@ export class SceneViewportPanel extends EditorWindow {
         input.finish();
         gizmo.handler.resetEditMode();
       });
+      gizmo.geometry.flush();
     }
     this.transformTargets = undefined;
     sceneWorkspace.current?.setScopeActive(this, false);
@@ -117,6 +127,7 @@ export class SceneViewportPanel extends EditorWindow {
     const player = EditorRuntimeSession.player, container = player.container;
 
     this.brushSettingsBar?.layoutForViewport(viewport.width);
+    this.toolSettingsBar?.layoutForViewport(viewport.width);
     if (!container || !viewport.visibleInHierarchy || viewport.width < 1 || viewport.height < 1) { return; }
     const origin = screenPosition(viewport), width = Math.floor(viewport.width), height = Math.floor(viewport.height);
 
@@ -159,6 +170,8 @@ export class SceneViewportPanel extends EditorWindow {
           }
         }
         this.observePointer(() => this.input?.mouse(event));
+        if (event instanceof InputEventMouseButton && event.canceled) { this.gizmo.geometry.discardPlacements(); }
+        this.gizmo.geometry.flush();
         const editing = this.gizmo.handler.getActiveEditMode().id === 'text-edit';
 
         sceneWorkspace.current?.setScopeActive(this, !!this.viewport?.pointerActive || editing);
@@ -179,9 +192,26 @@ export class SceneViewportPanel extends EditorWindow {
     }
     event.accept();
   }
-  key (event: InputEventKey): void { this.forwardPointerInput(() => this.input?.key(event)); }
+  key (event: InputEventKey): void {
+    if (event.pressed && event.keycode === 'Escape' && this.viewport?.pointerActive && !this.gizmo?.editingPath) {
+      this.viewport.cancelPointerInteraction(); this.viewport.root?.cancelPointerInput(); event.accept();
+
+      return;
+    }
+    this.forwardPointerInput(() => this.input?.key(event)); this.gizmo?.geometry.flush();
+  }
+
+  private finishToolEditing (): void {
+    this.viewport?.grabFocus();
+    for (const pressed of [true, false]) {
+      const event = new InputEventKey();
+
+      event.keycode = event.physicalKeycode = 'Escape'; event.pressed = pressed; this.key(event);
+    }
+  }
   cancelPointerInteraction (): void {
     this.observePointer(() => this.input?.reset());
+    this.gizmo?.geometry.discardPlacements();
     this.transformTargets = undefined;
     sceneWorkspace.current?.setScopeActive(this, false);
   }
@@ -240,8 +270,13 @@ export class SceneViewportPanel extends EditorWindow {
     const item = hits.filter(hit => hit.item.definition.id).at(-1)?.item;
 
     if (item && !EditorSelection.getSelectedObjects().includes(item)) { EditorSelection.select(item); }
+    const editActions = sceneEditCommands.actions();
+
+    if (this.is2DMode && this.gizmo?.ruler.hasSelectedGuide()) {
+      editActions.push({ label: 'Delete Ruler', shortcut: 'Delete / Backspace', action: () => { this.gizmo?.ruler.deleteRuler(); } });
+    }
     this.context.setActions([
-      { label: 'Edit', heading: true }, ...sceneEditCommands.actions(),
+      { label: 'Edit', heading: true }, ...editActions,
       { label: 'Scene', heading: true }, { label: 'Create', children: createItemActions() },
       { label: 'Select All', shortcut: 'Ctrl+A', action: () => sceneEditCommands.selectAll() },
       { label: 'Frame Selection', shortcut: 'F', enabled: this.is2DMode && !!this.gizmo?.selectedItems.length, action: () => this.frameSelection() },
@@ -250,7 +285,7 @@ export class SceneViewportPanel extends EditorWindow {
   }
   enter (position: math.Vector2): void { this.forwardPointerInput(() => this.input?.enter(position)); }
   leave (position: math.Vector2): void { this.forwardPointerInput(() => this.input?.leave(position)); }
-  focus (focused: boolean): void { this.forwardPointerInput(() => this.input?.focus(focused)); }
+  focus (focused: boolean): void { this.forwardPointerInput(() => this.input?.focus(focused)); if (!focused) { this.gizmo?.geometry.discardPlacements(); } }
   override dispose (): void { super.dispose(); this.context?.dispose(); this.input?.dispose(); this.gizmo?.dispose(); this.input = undefined; this.gizmo = undefined; }
   drawBackground (control: Control): void {
     control.fillRect(0, 0, control.width, control.height, new math.Color(22 / 255, 24 / 255, 27 / 255, 1));
@@ -287,13 +322,51 @@ export class SceneViewportPanel extends EditorWindow {
     const gizmo = this.gizmo;
 
     if (!gizmo || event.echo || event.altPressed) { return; }
-    if (!gizmo.handler.isMouseButtonPressed() && gizmo.handler.getActiveEditMode().id !== 'text-edit' && sceneEditCommands.shortcut(event)) { return; }
+    if (this.is2DMode && !gizmo.handler.isMouseButtonPressed()
+      && gizmo.handler.getActiveEditMode().id !== 'text-edit'
+      && this.deleteSelectedRulerShortcut(gizmo, event)) {
+      return;
+    }
+    const isEscape = (event.physicalKeycode || event.keycode).toLowerCase() === 'escape';
+
+    if (this.is2DMode && isEscape && gizmo.ruler.cancelInteraction()) {
+      event.accept();
+
+      return;
+    }
+    if (!gizmo.handler.isMouseButtonPressed() && !gizmo.editingPath && gizmo.handler.getActiveEditMode().id !== 'text-edit' && sceneEditCommands.shortcut(event)) { return; }
     if (event.ctrlPressed || event.metaPressed) { return; }
+    if (gizmo.handler.getActiveEditMode().id === 'text-edit' && event.physicalKeycode !== 'Escape') { return; }
     if (!this.is2DMode) { return; }
+    if (gizmo.editingPath && ['Escape', 'Enter', 'Delete', 'Backspace'].includes(event.physicalKeycode || event.keycode)) { return; }
     if (event.physicalKeycode === 'Escape') {
-      if (gizmo.tool === 'brush') { gizmo.setTool('transform'); } else if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
-    } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyB') { gizmo.setTool('brush'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else { return; }
+      if (gizmo.tool !== 'transform') { gizmo.setTool('transform'); } else if (gizmo.handler.getActiveEditMode().id !== 'default-selection') { gizmo.handler.resetEditMode(); } else { EditorSelection.clear(); }
+    } else if (gizmo.handler.isMouseButtonPressed()) { return; } else if (event.physicalKeycode === 'KeyV' || event.physicalKeycode === 'KeyW') { gizmo.setTool('transform'); } else if (event.physicalKeycode === 'KeyH') { gizmo.setTool('hand'); } else if (event.physicalKeycode === 'KeyB') { gizmo.setTool('brush'); } else if (event.physicalKeycode === 'KeyF') { gizmo.frameSelection(); } else if (event.physicalKeycode === 'Home') { gizmo.frameAll(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditText) { gizmo.editText(); } else if (event.physicalKeycode === 'Enter' && gizmo.canEditPath) { gizmo.editPath(); } else {
+      const drawing = SCENE_DRAWING_TOOLS.find(entry => entry.shortcut && event.physicalKeycode === 'Key' + entry.shortcut);
+
+      if (!drawing) { return; }
+      gizmo.setTool(drawing.tool);
+    }
     event.accept();
+  }
+
+  /** 标尺选中时优先消费删除快捷键，避免被场景元素删除命令截获。 */
+  private deleteSelectedRulerShortcut (gizmo: SceneGizmo, event: InputEventKey): boolean {
+    if (event.ctrlPressed || event.metaPressed) {
+      return false;
+    }
+    const code = (event.physicalKeycode || event.keycode).toLowerCase();
+
+    if (code !== 'delete' && code !== 'backspace') {
+      return false;
+    }
+    if (!gizmo.ruler.hasSelectedGuide()) {
+      return false;
+    }
+    gizmo.ruler.deleteRuler();
+    event.accept();
+
+    return true;
   }
 }
 
@@ -351,9 +424,7 @@ class SceneViewport extends Control {
   override onMouseLeave (): void { this.panel.leave(this.getLocalMousePosition()); }
   override onGotFocus (): void { this.panel.focus(true); }
   override onLostFocus (): void { this.panel.focus(false); }
-  override onKeyDown (event: InputEventKey): void {
-    if (event.keycode === 'Escape' && this.pointerInteraction.active) { this.pointerInteraction.cancel(); this.root?.cancelPointerInput(); event.accept(); } else { this.panel.key(event); }
-  }
+  override onKeyDown (event: InputEventKey): void { this.panel.key(event); }
   override onKeyUp (event: InputEventKey): void { this.panel.key(event); }
   override onDestroy (): void { this.pointerInteraction.cancel(); this.releaseCommands(); this.presentation.dispose(); super.onDestroy(); }
 }

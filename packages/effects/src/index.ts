@@ -21,36 +21,18 @@ Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
 Texture.createWithData = (
   engine: Engine,
   data: TextureDataType = imageDataFromColor('#fff'),
-  options = {},
+  options: TextureSourceOptions = {},
 ) => {
-  const {
-    type = glContext.UNSIGNED_BYTE,
-    format = glContext.RGBA,
-    internalFormat,
-    wrapS = glContext.MIRRORED_REPEAT,
-    wrapT = glContext.MIRRORED_REPEAT,
-    minFilter = glContext.NEAREST,
-    magFilter = glContext.NEAREST,
-    flipY = false,
-    generateMipmap = false,
-  } = options as TextureSourceOptions;
-  const tex = new Texture(
-    engine,
-    {
-      data,
-      type,
-      sourceType: TextureSourceType.data,
-      format,
-      internalFormat: internalFormat || format,
-      wrapS,
-      wrapT,
-      minFilter,
-      magFilter,
-      flipY,
-      generateMipmap,
-    } as unknown as TextureSourceOptions);
-
-  return tex;
+  return new Texture(engine, {
+    ...options,
+    data,
+    sourceType: TextureSourceType.data,
+    target: glContext.TEXTURE_2D,
+    wrapS: options.wrapS ?? glContext.MIRRORED_REPEAT,
+    wrapT: options.wrapT ?? glContext.MIRRORED_REPEAT,
+    flipY: options.flipY ?? false,
+    generateMipmap: options.generateMipmap ?? false,
+  });
 };
 
 Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {

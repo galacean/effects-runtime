@@ -34,6 +34,8 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
+  private videoInitializationReady = false;
+
   private initialVideoSettings?: {
     volume: number,
     muted: boolean,
@@ -62,7 +64,7 @@ export class VideoComponent extends MaskableGraphic {
   private replayMuted?: boolean;
   private firstFrameTexture?: Texture;
   /**
-   * 仅管理通过 URL 创建的纹理，外部传入的纹理由调用方释放。
+   * 仅管理组件通过 URL 创建的纹理，外部传入的纹理由调用方释放。
    */
   private ownedTexture?: Texture;
 
@@ -155,16 +157,16 @@ export class VideoComponent extends MaskableGraphic {
 
   private async replaceTexture (input: Texture | string, rewind = false): Promise<void> {
     const version = ++this.textureVersion;
-    const composition = this.item?.composition;
+    const item = this.item;
 
-    if (!composition) { return; }
+    if (!item?.composition) { return; }
 
     let texture: Texture;
 
     if (typeof input === 'string') {
       texture = await Texture.fromVideo(input, this.engine);
-      if (version !== this.textureVersion || this.item?.composition !== composition) {
-        this.disposeVideoTexture(texture);
+      if (version !== this.textureVersion || this.item !== item) {
+        texture.dispose();
 
         return;
       }
@@ -172,17 +174,16 @@ export class VideoComponent extends MaskableGraphic {
       texture = input;
     }
 
-    const oldOwnedTexture = this.ownedTexture;
     const video = (texture.source as Texture2DSourceOptionsVideo).video;
 
     this.resetVideoState(video);
-    this.ownedTexture = typeof input === 'string' || texture === oldOwnedTexture ? texture : undefined;
+    if (this.ownedTexture !== texture) {
+      this.ownedTexture?.dispose();
+      this.ownedTexture = typeof input === 'string' ? texture : undefined;
+    }
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = video;
-    if (oldOwnedTexture && oldOwnedTexture !== texture) {
-      this.disposeVideoTexture(oldOwnedTexture, video);
-    }
     this.initializeVideo();
     if (rewind && video) {
       this.performSeek(0, video.currentTime !== 0);
@@ -191,19 +192,10 @@ export class VideoComponent extends MaskableGraphic {
     }
   }
 
-  private disposeVideoTexture (texture: Texture, retainedVideo?: HTMLVideoElement): void {
-    const video = (texture.source as Texture2DSourceOptionsVideo).video;
-
-    if (video !== retainedVideo) {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    }
-    texture.dispose();
-  }
-
   override onAwake (): void {
     super.onAwake();
+    this.videoInitializationReady = true;
+    this.initializeVideo();
 
     const composition = this.item.composition;
 
@@ -219,11 +211,12 @@ export class VideoComponent extends MaskableGraphic {
 
   override fromData (data: VideoItemProps): void {
     this.textureVersion++;
-    super.fromData(data);
+    const previousTexture = this.renderer.texture;
 
+    super.fromData(data);
     if (this.ownedTexture && this.ownedTexture !== this.renderer.texture) {
       this.resetVideoState();
-      this.disposeVideoTexture(this.ownedTexture, (this.renderer.texture.source as Texture2DSourceOptionsVideo).video);
+      this.ownedTexture.dispose();
       this.ownedTexture = undefined;
       this.video = undefined;
     }
@@ -243,16 +236,20 @@ export class VideoComponent extends MaskableGraphic {
 
     this.videoPlaybackRate = playbackRate;
 
-    if (video) {
-      const videoAsset = this.findObject<DataAsset<HTMLVideoElement>>(video);
+    const videoAsset = video && this.findObject<DataAsset<HTMLVideoElement>>(video);
 
-      if (videoAsset) {
-        if (this.video !== videoAsset.data) {
-          this.resetVideoState(videoAsset.data);
-        }
-        this.video = videoAsset.data;
+    if (videoAsset) {
+      if (this.video !== videoAsset.data) {
+        this.resetVideoState(videoAsset.data);
+      }
+      this.video = videoAsset.data;
+      // 首次反序列化时根合成尚未就绪，延迟到 onAwake 初始化视频。
+      if (this.videoInitializationReady) {
         this.initializeVideo();
       }
+    } else if (previousTexture !== this.renderer.texture) {
+      this.resetVideoState();
+      this.video = undefined;
     }
 
     this.interaction = interaction;
@@ -401,6 +398,7 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    this.videoInitializationReady = false;
     if (this.preparingReplayFrame) {
       this.video?.pause();
     }
@@ -413,10 +411,8 @@ export class VideoComponent extends MaskableGraphic {
     super.onDestroy();
     this.playTriggered = false;
     this.playPromise = null;
-    if (this.ownedTexture) {
-      this.disposeVideoTexture(this.ownedTexture);
-      this.ownedTexture = undefined;
-    }
+    this.ownedTexture?.dispose();
+    this.ownedTexture = undefined;
     this.video = undefined;
   }
 

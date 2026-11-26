@@ -10,6 +10,7 @@ import { assertExist, generateGUID, isFunction, logger, throwDestroyedError } fr
 import type { UniformValue } from './types';
 import type { Engine } from '../engine';
 import { Asset } from '../asset';
+import { effectsClass } from '../decorators';
 import { MaterialState } from './material-state';
 import { glContext } from '../gl';
 
@@ -64,6 +65,7 @@ let seed = 1;
 /**
  * Material 类
  */
+@effectsClass(spec.DataType.Material)
 export class Material extends Asset implements Disposable {
   shaderVariant: ShaderVariant;
 
@@ -778,7 +780,7 @@ export class Material extends Asset implements Disposable {
         this.shaderSource = shader.shaderData;
       }
     }
-    this.stringTags = data.stringTags ?? {};
+    this.stringTags = { ...data.stringTags };
     this.initialized = false;
   }
 

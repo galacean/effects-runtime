@@ -159,15 +159,15 @@ export class MaskComponent extends Component {
   }
 
   override fromData (data: spec.MaskComponentData): void {
-    super.fromData({ ...data, _enabled: data.enabled ?? true });
+    super.fromData({ ...data, enabled: data.enabled ?? true });
     this.setMasks(data.masks);
   }
 
   override toData (): void {
     delete this.definition._enabled;
     Object.assign(this.definition, {
-      id: this.getInstanceId(), dataType: spec.DataType.MaskComponent,
-      item: { id: this.item.getInstanceId() }, enabled: this.enabled, masks: this.getMasks(),
+      id: this.definition.id ?? this.getInstanceId(), dataType: spec.DataType.MaskComponent,
+      item: { id: this.item.definition.id ?? this.item.getInstanceId() }, enabled: this.enabled, masks: this.getMasks(),
     });
   }
 

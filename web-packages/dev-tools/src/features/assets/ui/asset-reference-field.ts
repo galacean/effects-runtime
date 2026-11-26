@@ -21,14 +21,19 @@ const assetKinds = { Texture: 'texture', Material: 'material', Shader: 'shader',
 interface AssetPayload { type: string, data: unknown }
 
 function openReference (reference: object): void {
-  if (isResource(reference) && !isPersistentResource(reference, EditorRuntimeSession.player.engine)) { return; }
+  const engine = EditorRuntimeSession.player.engine;
+  const scene = sceneWorkspace.current?.composition.sceneRoot.sourceScene;
+
+  if (isResource(reference) && !isPersistentResource(reference, engine, undefined, scene)) { return; }
   if (reference instanceof VFXItem) {
     EditorSelection.select(reference);
 
     return;
   }
-  if (reference instanceof Texture && assetLibrary.entry(reference.getInstanceId())?.kind === 'texture' && openTextureAsset(reference.getInstanceId())) { return; }
-  if (reference instanceof EffectsObject && assetLibrary.entry(reference.getInstanceId()) && openContentAsset(reference.getInstanceId())) { return; }
+  const id = isResource(reference) ? resourceIdentity(engine, reference, scene)?.id : reference instanceof EffectsObject ? reference.getInstanceId() : undefined;
+
+  if (reference instanceof Texture && id && assetLibrary.entry(id)?.kind === 'texture' && openTextureAsset(id)) { return; }
+  if (id && assetLibrary.entry(id) && openContentAsset(id)) { return; }
   openRuntimeAsset(reference);
 }
 
@@ -56,16 +61,19 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     }
     this.caption.actions = () => {
       const reference = this.binding.read();
-      const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
-      const available = !!reference && (!isResource(reference) || isPersistentResource(reference, EditorRuntimeSession.player.engine));
+      const engine = EditorRuntimeSession.player.engine;
+      const scene = sceneWorkspace.current?.composition.sceneRoot.sourceScene;
+      const identity = isResource(reference) ? resourceIdentity(engine, reference, scene) : undefined;
+      const entry = reference instanceof EffectsObject ? assetLibrary.entry(identity?.id ?? reference.getInstanceId()) : undefined;
+      const available = !!reference && (!isResource(reference) || isPersistentResource(reference, engine, undefined, scene));
 
       return [
         { label: 'Edit', icon: 'edit', enabled: available, action: () => { if (available && reference) { openReference(reference); } } },
         { label: 'Copy Reference', icon: 'copy', enabled: available, action: () => {
           if (!available) { return; }
-          const text = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : reference instanceof EffectsObject ? reference.getInstanceId() : this.caption.text;
+          const text = entry ? assetLibrary.pathText(entry.parentId) + '/' + entry.name : identity?.id ?? (reference instanceof EffectsObject ? reference.getInstanceId() : this.caption.text);
 
-          assetReferenceClipboard.id = isResource(reference) ? reference.getInstanceId() : undefined;
+          assetReferenceClipboard.id = identity?.id;
           assetReferenceClipboard.asset = reference ?? undefined; assetReferenceClipboard.project = assetLibrary.projectId;
           void navigator.clipboard.writeText(text).catch(error => assetLibrary.report(error));
         } },
@@ -90,21 +98,26 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
   protected override browseCurrent (): void {
     const reference = this.binding.read();
 
-    if (reference instanceof EffectsObject) { revealContentAsset(reference.getInstanceId()); }
+    if (reference instanceof EffectsObject) {
+      const identity = isResource(reference) ? resourceIdentity(EditorRuntimeSession.player.engine, reference, sceneWorkspace.current?.composition.sceneRoot.sourceScene) : undefined;
+
+      revealContentAsset(identity?.id ?? reference.getInstanceId());
+    }
   }
   private assign (value: object | null): void {
     if (this.options.readOnly || this.isDisposed || value === null && this.options.allowEmpty === false) { return; }
-    if (value && this.kind && !isPersistentResource(value, EditorRuntimeSession.player.engine, this.kind)) { return; }
+    if (value && this.kind && !isPersistentResource(value, EditorRuntimeSession.player.engine, this.kind, sceneWorkspace.current?.composition.sceneRoot.sourceScene)) { return; }
     const action = () => this.binding.write(value);
 
     if (this.options.changed) { this.options.changed(action); } else { action(); }
   }
   private assignAsset (id: string): void {
     const engine = EditorRuntimeSession.player.engine;
+    const document = sceneWorkspace.current;
 
-    if (this.options.readOnly || !this.kind || resourceIdentity(engine, id)?.kind !== this.kind) { return; }
+    if (this.options.readOnly || !this.kind || resourceIdentity(engine, id, document?.composition.sceneRoot.sourceScene)?.kind !== this.kind) { return; }
     if (!assetLibrary.entry(id)) {
-      this.assign(engine.effectsObjectServer.findObject<object>({ id }));
+      this.assign(document?.serializer.object(id) ?? engine.effectsObjectServer.findObject<object>({ id }));
 
       return;
     }
@@ -115,7 +128,7 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
 
       return;
     }
-    const selection = EditorSelection.getSelectedObjects(), document = sceneWorkspace.current, project = assetLibrary.projectId;
+    const selection = EditorSelection.getSelectedObjects(), project = assetLibrary.projectId;
 
     void assetLibrary.loadAsset(engine, id).then(loaded => {
       const current = EditorSelection.getSelectedObjects();
@@ -129,21 +142,27 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     if (assetReferenceClipboard.project !== assetLibrary.projectId || !this.kind) { return false; }
     const engine = EditorRuntimeSession.player.engine;
 
-    return assetReferenceClipboard.id ? resourceIdentity(engine, assetReferenceClipboard.id)?.kind === this.kind : isPersistentResource(assetReferenceClipboard.asset, engine, this.kind);
+    const scene = sceneWorkspace.current?.composition.sceneRoot.sourceScene;
+
+    return assetReferenceClipboard.id ? resourceIdentity(engine, assetReferenceClipboard.id, scene)?.kind === this.kind : isPersistentResource(assetReferenceClipboard.asset, engine, this.kind, scene);
   }
   protected override refreshCandidates (): void {
     const engine = EditorRuntimeSession.player.engine;
-    const entries = this.kind ? resourceCandidates(engine, this.kind).map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectInstance[entry.id] })) : [];
+    const entries = this.kind ? resourceCandidates(engine, this.kind, sceneWorkspace.current?.composition.sceneRoot.sourceScene)
+      .map(entry => ({ ...entry, asset: engine.effectsObjectServer.objectsCache[entry.id] })) : [];
     const reference = this.binding.read();
 
-    this.browser.setCandidates(entries, this.kind, reference instanceof EffectsObject ? reference.getInstanceId() : '');
+    const identity = isResource(reference) ? resourceIdentity(engine, reference, sceneWorkspace.current?.composition.sceneRoot.sourceScene) : undefined;
+
+    this.browser.setCandidates(entries, this.kind, identity?.id ?? (reference instanceof EffectsObject ? reference.getInstanceId() : ''));
     this.revision = assetLibrary.revision;
   }
   override update (delta: number): void {
     const reference = this.binding.read();
-    const entry = reference instanceof EffectsObject ? assetLibrary.entry(reference.getInstanceId()) : undefined;
+    const identity = isResource(reference) ? resourceIdentity(EditorRuntimeSession.player.engine, reference, sceneWorkspace.current?.composition.sceneRoot.sourceScene) : undefined;
+    const entry = reference instanceof EffectsObject ? assetLibrary.entry(identity?.id ?? reference.getInstanceId()) : undefined;
 
-    this.caption.text = isResource(reference) ? resourceIdentity(EditorRuntimeSession.player.engine, reference.getInstanceId())?.name ?? 'Default' :
+    this.caption.text = isResource(reference) ? identity?.name ?? 'Default' :
       (reference as { name?: string } | null)?.name || (reference ? this.payloadType : 'None');
     this.useSelected.disabled = !!this.options.readOnly || !this.selectedAsset(); this.browse.disabled = !entry || !!entry.deletedAt;
     if (this.picker.visible && this.revision !== assetLibrary.revision) { this.refreshCandidates(); }
@@ -153,7 +172,7 @@ export class AssetReferenceControl extends AssetReferenceFieldBase {
     if (this.options.readOnly) { return false; }
     const payload = data as AssetPayload;
 
-    if (payload?.type === this.payloadType && this.kind) { return isPersistentResource(payload.data, EditorRuntimeSession.player.engine, this.kind); }
+    if (payload?.type === this.payloadType && this.kind) { return isPersistentResource(payload.data, EditorRuntimeSession.player.engine, this.kind, sceneWorkspace.current?.composition.sceneRoot.sourceScene); }
     const assets = payload?.type === CONTENT_ASSET_PAYLOAD ? payload.data as ContentAssetDrag : undefined;
 
     return !!this.kind && assets?.ids.length === 1 && isContentResource(assets.ids[0], this.kind);

@@ -6,7 +6,6 @@ import { createValueGetter } from '../../../math';
 import type { FrameContext } from '../playable';
 import { ClipPlayable } from '../playable';
 import { TimelineClip } from '../timeline-clip';
-import type { TimelineClipData } from '../timeline-clip';
 
 function createOptionalCurve (data: spec.FixedNumberExpression | undefined): ValueGetter<number> | undefined {
   return data === undefined ? undefined : createValueGetter(data);
@@ -102,7 +101,7 @@ export class TransformPlayable extends ClipPlayable {
 
 @effectsClass(spec.DataType.TransformPlayableAsset)
 export class TransformPlayableAsset extends TimelineClip {
-  transformAnimationData: TransformPlayableAssetData;
+  transformAnimationData: spec.TransformPlayableAssetData;
   curves: TransformAnimationCurves;
 
   override createPlayable (): TransformPlayable {
@@ -113,7 +112,7 @@ export class TransformPlayableAsset extends TimelineClip {
     return transformPlayable;
   }
 
-  override fromData (data: TransformPlayableAssetData): void {
+  override fromData (data: spec.TransformPlayableAssetData): void {
     super.fromData(data);
     this.transformAnimationData = data;
 
@@ -147,19 +146,4 @@ export class TransformPlayableAsset extends TimelineClip {
     ];
     this.curves = curves;
   }
-}
-
-export interface TransformPlayableAssetData extends TimelineClipData {
-  /**
-   * 元素大小变化属性
-   */
-  sizeOverLifetime?: spec.SizeOverLifetime,
-  /**
-   * 元素旋转变化属性
-   */
-  rotationOverLifetime?: spec.RotationOverLifetime,
-  /**
-   * 元素位置变化属性
-   */
-  positionOverLifetime?: spec.PositionOverLifetime,
 }

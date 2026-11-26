@@ -98,11 +98,10 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       graphic.onStart();
       expect(item.getHitTestParams?.()?.type).equals(HitTestType.triangle);
       expect(graphic.getHitTestParams()?.triangles).has.length(2);
-      expect(graphic.getBoundingBox().area).has.length(2);
-      const bounds = graphic.getBoundingBoxInfo().boundingBox;
+      const bounds = graphic.getBoundingBox();
 
-      expect(bounds.minimum.toArray()).deep.equals([-1, -1, 0]);
-      expect(bounds.maximum.toArray()).deep.equals([1, 1, 0]);
+      expect(bounds.min.toArray()).deep.equals([-1, -1, 0]);
+      expect(bounds.max.toArray()).deep.equals([1, 1, 0]);
     });
 
     it('keeps legacy component lookup and color animation binding limited to textured graphics', () => {

@@ -2,6 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import type { Asset } from './asset';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
 import { CompositionComponent, UpdateModes } from './components';
@@ -12,9 +13,9 @@ import type { Region } from './plugins';
 import { PlayState } from './plugins';
 import { SceneRendering } from './render';
 import type { Scene } from './scene';
-import { TextureLoadAction, type Texture } from './texture';
+import { TextureLoadAction, Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, generateGUID, noop } from './utils';
+import { assertExist } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
@@ -138,10 +139,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   reusable: boolean;
   /**
-   * 合成id
-   */
-  readonly id: string;
-  /**
    * 鼠标和触屏处理系统
    */
   readonly event?: InputServer;
@@ -158,9 +155,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly statistic: CompositionStatistic;
   /**
-   * 合成对应的 url 或者 JSON
+   * 合成对应的 URL，无来源地址时为空字符串
    */
-  readonly url: Scene.LoadType;
+  readonly url: string;
   /**
    * @internal
    * 合成根元素
@@ -180,10 +177,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly camera: Camera;
   /**
-   * 场景中视频列表
-   */
-  videos: HTMLVideoElement[] = [];
-  /**
    * 后处理渲染配置
    */
   globalVolume?: PostProcessVolume;
@@ -202,18 +195,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   protected rootComposition: CompositionComponent;
   private _renderOrder = 0;
   private _interactive = true;
-  private _textures: Texture[] = [];
 
   /**
    * Composition 构造函数
    * @param engine - 引擎实例
    * @param props - composition 的创建参数
-   * @param scene
+   * @param scene - 场景资源
    */
   constructor (
     public engine: Engine,
     props?: CompositionProps,
-    scene?: Scene,
+    private scene?: Scene,
   ) {
     super();
 
@@ -226,23 +218,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.engine.sceneServer.addComposition(this);
 
-    let sourceContent: spec.CompositionData | null = null;
+    let sourceContent: spec.CompositionData | undefined;
 
     if (scene) {
-      this.createTexturesFromData(scene.textureOptions);
-
-      for (const key of Object.keys(scene.assets)) {
-        const videoAsset = scene.assets[key];
-
-        if (videoAsset instanceof HTMLVideoElement) {
-          this.videos.push(videoAsset);
-        }
-      }
-
       this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
-      if (reusable) {
-        scene.consumed = true;
-      }
 
       sourceContent = scene.jsonScene.compositions[0];
 
@@ -263,21 +242,19 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.pluginRoot.name = 'pluginRoot';
     this.pluginRoot.setParent(this.root);
 
-    // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
+    this.sceneRoot.sourceScene = scene;
+    if (sourceContent) {
+      this.sceneRoot.definition.id = sourceContent.id;
+      this.sceneRoot.name = sourceContent.name;
+      this.sceneRoot.duration = sourceContent.duration;
+      this.sceneRoot.endBehavior = sourceContent.endBehavior;
+    }
     this.sceneRoot.setParent(this.root);
-
-    if (sourceContent) {
-      this.sceneRoot.setInstanceId(sourceContent.id);
-    }
-
     PluginSystem.notifyCompositionCreating(this, scene);
+    scene?.instantiate(this, this.sceneRoot);
 
-    if (sourceContent) {
-      this.sceneRoot.instantiatePreComposition(sourceContent, false);
-    }
-
-    // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
+    // 在实例化后设置 rootItem 的 name，避免 name 被覆盖
     this.sceneRoot.name = 'sceneRoot';
 
     this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);
@@ -295,10 +272,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.emit('animationevent', eventData);
     });
 
-    this.sceneRoot.setParent(this.root);
-
     this.renderOrder = baseRenderOrder;
-    this.id = sourceContent?.id ?? generateGUID();
     this.rootComposition.startTime = sourceContent?.startTime ?? 0;
     this.event = engine.inputServer;
     this.statistic = {
@@ -324,9 +298,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.onItemMessage = onItemMessage;
     }
 
-    PluginSystem.notifyCompositionCreated(this, scene);
     this.root.initializeHierarchy();
     this.root.beginPlay();
+    PluginSystem.notifyCompositionCreated(this, scene);
+  }
+
+  /**
+   * 合成运行时实例 ID，与 sceneRoot 的实例 ID 一致。
+   */
+  get id (): string {
+    return this.sceneRoot.getInstanceId();
   }
 
   /**
@@ -369,10 +350,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 获取场景中的纹理数组
+   * 查询当前场景拥有的纹理，返回查询时的快照。
    */
   get textures () {
-    return this._textures;
+    return this.getSceneTextures();
   }
 
   /**
@@ -591,16 +572,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
-  /**
-   * @internal
-   */
-  createTexturesFromData (textureDataList: Record<string, any>[]) {
-    for (const textureData of textureDataList) {
-      const texture = this.engine.effectsObjectServer.findObject<Texture>({ id: textureData.id });
-
-      texture.initialize();
-      this._textures.push(texture);
-    }
+  /** @internal Take ownership of assets created when loading scene data. */
+  addSceneAssets (assets: Iterable<Asset>): void {
+    this.sceneRoot.addSceneAssets(assets);
   }
 
   /**
@@ -738,24 +712,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     this.sceneTicking.clear();
 
-    for (const texture of this.textures) {
-      texture.dispose();
-    }
-
-    this._textures = [];
-
-    for (const video of this.videos) {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    }
-
-    this.videos = [];
+    this.scene?.dispose();
+    this.scene = undefined;
 
     this.sceneRendering.clear();
     PluginSystem.notifyCompositionDestroy(this);
 
-    this.dispose = noop;
     this.renderer.engine.sceneServer.removeComposition(this);
 
     if (this.engine.env === PLAYER_OPTIONS_ENV_EDITOR) {
@@ -859,7 +821,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   offloadTexture () {
     if (!this.textureOffloaded) {
-      this.textures.forEach(tex => tex && tex.offloadData());
+      this.getSceneTextures().forEach(texture => texture.offloadData());
       this.textureOffloaded = true;
     }
   }
@@ -870,8 +832,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   async reloadTexture () {
     if (this.textureOffloaded) {
-      await Promise.all(this.textures.map(tex => tex?.reloadData()));
+      await Promise.all(this.getSceneTextures().map(texture => texture.reloadData()));
       this.textureOffloaded = false;
     }
+  }
+
+  private getSceneTextures (): Texture[] {
+    const textures: Texture[] = [];
+
+    for (const item of [this.root, ...this.root.getDescendants()]) {
+      item.sceneAssets?.forEach(asset => {
+        if (asset instanceof Texture) {
+          textures.push(asset);
+        }
+      });
+    }
+
+    return textures;
   }
 }

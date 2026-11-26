@@ -11,8 +11,6 @@ import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
 import { migrateTransformAnimations } from './transform';
-import type { TrackAssetData } from '../plugins/timeline/track';
-import type { TimelineClipData } from '../plugins/timeline/timeline-clip';
 
 let currentMaskComponentId: string | undefined;
 const componentMap: Map<string, spec.ComponentData> = new Map();
@@ -272,26 +270,32 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
 
     // 修正老 json 的 item.pluginName
+    // @ts-expect-error 旧版元素通过 pn 索引插件。
     if (item.pn !== undefined) {
+      // @ts-expect-error 旧版元素通过 pn 索引插件。
       const pn = item.pn;
       const { plugins = [] } = json;
 
       if (pn !== undefined && Number.isInteger(pn)) {
+        // @ts-expect-error 保留旧版元素的插件名。
         item.pluginName = plugins[pn];
       }
     }
 
     // 修正老 json 的 item.type
+    // @ts-expect-error 旧版元素可通过 pluginName 指定插件。
     if (item.pluginName === 'editor-gizmo') {
       //@ts-expect-error
       item.type = 'editor-gizmo';
     }
+    // @ts-expect-error 旧版元素可通过 pluginName 指定插件。
     if (item.pluginName === 'orientation-transformer') {
       //@ts-expect-error
       item.type = 'orientation-transformer';
     }
 
     // gizmo 的 target id 转换为新的 item guid
+    // @ts-expect-error 旧版元素可通过 pluginName 指定插件。
     if (item.content.options.target && item.pluginName === 'editor-gizmo') {
       item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
     }
@@ -482,6 +486,7 @@ export function version33Migration (json: JSONScene): JSONScene {
       const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
 
       if (spriteComponent) {
+        // @ts-expect-error 旧版图层组件要求 renderer。
         const shape = spriteComponent.renderer.shape;
         let shapeData;
 
@@ -492,6 +497,7 @@ export function version33Migration (json: JSONScene): JSONScene {
           shapeData = shape;
         }
 
+        // @ts-expect-error 旧版图层组件要求 renderer。
         spriteComponent.renderer.shape = shapeData;
       }
     }
@@ -566,6 +572,7 @@ export function version34Migration (json: JSONScene): JSONScene {
     if (componentData.dataType === spec.DataType.SpriteComponent) {
       const spriteComponentData = componentData as spec.SpriteComponentData;
       const renderer = spriteComponentData.renderer;
+      // @ts-expect-error 旧版图层组件要求 renderer。
       const shapeData = renderer.shape as spec.ShapeGeometry;
 
       if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
@@ -635,16 +642,13 @@ export function version35Migration (json: JSONScene): JSONScene {
 
         if (richTextComponent.options) {
           // 检查是否已经处理过
-          //@ts-expect-error
           if (richTextComponent.options.useLegacyRichText === undefined) {
-            // 根据是否存在 lineGap 字段来判断版本
+            // @ts-expect-error 旧版富文本通过 lineGap 区分渲染版本。
             if (richTextComponent.options.lineGap === undefined) {
               // 旧版本（没有 lineGap 字段）
-              //@ts-expect-error
               richTextComponent.options.useLegacyRichText = true;
             } else {
               // 新版本（有 lineGap 字段）
-              //@ts-expect-error
               richTextComponent.options.useLegacyRichText = false;
             }
           }
@@ -734,7 +738,8 @@ export function version36Migration (json: JSONScene): JSONScene {
 
       if (componentData.dataType === spec.DataType.CompositionComponent) {
         const compositionComponent = componentData as spec.CompositionComponentData;
-        const compositionItems = compositionComponent.items ?? [];
+        // @ts-expect-error 旧版合成组件通过 items 引用元素。
+        const compositionItems: spec.DataPath[] = compositionComponent.items ?? [];
 
         for (const itemPath of compositionItems) {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
@@ -744,7 +749,7 @@ export function version36Migration (json: JSONScene): JSONScene {
           }
         }
 
-        //@ts-expect-error
+        // @ts-expect-error 迁移后移除旧版 items 字段。
         delete compositionComponent.items;
       }
     }
@@ -790,9 +795,7 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
     if (component.dataType !== DataType.SpriteComponent) {
       continue;
     }
-    // 本地扩展 sprite 字段（spec 包不可改）。ComponentData 是 SpriteComponentData 的超集，
-    // 故直接当 SpriteComponentData 用；sprite 需要写到对象上，用宽松类型承载。
-    const sc = component as spec.SpriteComponentData & { sprite?: spec.DataPath };
+    const sc = component as spec.SpriteComponentData;
 
     if (sc.sprite) {
       continue;  // 已迁移/新数据
@@ -842,12 +845,12 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
  */
 export function version38Migration (json: JSONScene): JSONScene {
   // 预合成引用 refId 从 item.content.options 提升到 item 顶层，
-  // spec 字段落地后由编辑器直接产出顶层 refId
+  // 将旧版嵌套的预合成引用迁移到顶层。
   for (const item of json.items) {
     const content = item.content as { options?: { refId?: string } } | undefined;
 
     if (content?.options?.refId !== undefined) {
-      (item as spec.VFXItemData & { refId?: string }).refId = content.options.refId;
+      item.refId = content.options.refId;
       delete content.options.refId;
     }
   }
@@ -877,6 +880,7 @@ export function version38Migration (json: JSONScene): JSONScene {
       continue;
     }
     const particle = component as spec.ParticleSystemData;
+    // @ts-expect-error 旧版粒子组件将发射器路径存储在 emitterTransform 中。
     const path = particle.emitterTransform?.path;
 
     if (!path) {
@@ -894,7 +898,7 @@ export function version38Migration (json: JSONScene): JSONScene {
       if (!parent || parent.dataType !== DataType.ObjectBindingTrack) {
         continue;
       }
-      const playable = {
+      const playable: spec.TransformPlayableAssetData = {
         id: generateGUID(),
         dataType: DataType.TransformPlayableAsset,
         positionOverLifetime: { path },
@@ -904,6 +908,7 @@ export function version38Migration (json: JSONScene): JSONScene {
         dataType: DataType.TransformTrack,
         children: [],
         clips: [{
+          // @ts-expect-error 旧版轨道直接存储片段的时序和资源引用。
           start: item.delay,
           duration: item.duration,
           endBehavior: item.endBehavior,
@@ -926,6 +931,7 @@ export function version38Migration (json: JSONScene): JSONScene {
       }
       json.miscs.push(playable);
     }
+    // @ts-expect-error 迁移后移除旧版 emitterTransform 字段。
     delete particle.emitterTransform;
   }
 
@@ -947,16 +953,21 @@ function migrateTimelineClips (json: JSONScene): void {
       continue;
     }
     const clips = track.clips.map(clip => {
-      const asset = assets.get(clip.asset.id) as TimelineClipData;
+      // @ts-expect-error 旧版片段的资源引用存储在 asset 字段中。
+      const asset = assets.get(clip.asset.id) as spec.TimelineClipData;
 
+      // @ts-expect-error 旧版片段在轨道内存储开始时间。
       asset.start = clip.start ?? 0;
+      // @ts-expect-error 旧版片段在轨道内存储时长。
       asset.duration = clip.duration ?? 0;
+      // @ts-expect-error 旧版片段在轨道内存储结束行为。
       asset.endBehavior = clip.endBehavior;
 
+      // @ts-expect-error 旧版片段的资源引用存储在 asset 字段中。
       return clip.asset;
     });
 
-    (data as TrackAssetData).clips = clips;
+    (data as spec.TrackAssetData).clips = clips;
   }
 }
 
@@ -1489,7 +1500,8 @@ function migrateTextScaleCurves (
 
     if (compositionComp) {
       const ccData = compositionComp as spec.CompositionComponentData;
-      const items = ccData.items;
+      // @ts-expect-error 旧版合成组件通过 items 引用元素。
+      const items: spec.DataPath[] | undefined = ccData.items;
 
       if (items) {
         topItems = [];

@@ -1,4 +1,5 @@
-import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
+import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
+import { FrameComponent, spec, TextComponent, type VFXItem } from '@galacean/effects';
 
 /**
  * 判断播放器元素是否为画板元素。
@@ -20,6 +21,24 @@ export function isFramePlayerItem (item: VFXItem) {
  */
 export function isEffectsPlayerItem (item: VFXItem) {
   return item.type === spec.ItemType.null && item.getComponent(FrameComponent) !== undefined && item.name === '动效';
+}
+
+/**
+ * 判断播放器元素是否为文本元素。
+ * @param item 播放器元素
+ * @returns 是否为文本元素
+ */
+export function isTextPlayerItem (item: VFXItem) {
+  return item.type === spec.ItemType.text && item.getComponent(TextComponent) !== undefined;
+}
+
+/**
+ * 判断播放器元素是否为富文本元素。
+ * @param item 播放器元素
+ * @returns 是否为富文本元素
+ */
+export function isRichTextPlayerItem (item: VFXItem) {
+  return item.type === spec.ItemType.richtext && item.getComponent(RichTextComponent) !== undefined;
 }
 
 /**
@@ -62,4 +81,21 @@ export function isVideoGeneratorPlayerItem (item: VFXItem) {
  */
 export function isGroupPlayerItem (item: VFXItem) {
   return item.type === spec.ItemType.null && !item.getComponent(FrameComponent);
+}
+
+/** 获取文本组件，供检查器和文本相关 Gizmo 读取。 */
+export function getEditableTextComponent (item: VFXItem | undefined): TextComponent | RichTextComponent | undefined {
+  if (item?.type === spec.ItemType.text) {
+    return item.getComponent(TextComponent);
+  }
+  if (item?.type === spec.ItemType.richtext) {
+    return item.getComponent(RichTextComponent);
+  }
+}
+
+/** 普通文本及使用新排版管线的富文本支持内联编辑。 */
+export function isEditableTextItem (item: VFXItem | undefined): boolean {
+  const component = getEditableTextComponent(item);
+
+  return !!component && (!(component instanceof RichTextComponent) || !component.textLayout.useLegacyRichText);
 }

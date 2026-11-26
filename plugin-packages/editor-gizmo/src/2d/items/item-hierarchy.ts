@@ -106,7 +106,7 @@ export function getPlayerItemById (composition: Composition | undefined, id: str
     return undefined;
   }
   const { sceneRoot } = composition;
-  const item = composition.engine.effectsObjectServer.objectInstance[id];
+  const item = composition.engine.effectsObjectServer.objectsCache[id];
 
   if (item instanceof VFXItem) {
     for (let parent = item.parent; parent; parent = parent.parent) {

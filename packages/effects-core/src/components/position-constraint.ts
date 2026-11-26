@@ -1,9 +1,8 @@
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { VFXItem } from '../vfx-item';
+import { VFXItem } from '../vfx-item';
 import { Component } from './component';
 import { effectsClass } from '../decorators';
-import type { ComponentData } from '@galacean/effects-specification';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 
 const tempVector3 = new Vector3(0, 0, 0);
 const tempVector3Second = new Vector3(0, 0, 0);
@@ -13,26 +12,11 @@ export class ConstraintTarget {
   weight = 1.0;
 }
 
-export interface ConstraintTargetData {
-  target: spec.DataPath,
-  weight: number,
-}
-
-export interface PositionConstraintData extends ComponentData {
-  positionAtRest: spec.Vector3Data,
-  positionOffset: spec.Vector3Data,
-  weight: number,
-  constrainX: boolean,
-  constrainY: boolean,
-  constrainZ: boolean,
-  targets: ConstraintTargetData[],
-}
-
 /**
  * 位置约束组件
  * 用于约束物体跟随目标对象的位置
  */
-@effectsClass('PositionConstraint')
+@effectsClass(spec.DataType.PositionConstraint)
 export class PositionConstraint extends Component {
   /**
    * 初始位置（当前元素的初始世界位置）
@@ -181,7 +165,7 @@ export class PositionConstraint extends Component {
     return start + (end - start) * t;
   }
 
-  override fromData (data: PositionConstraintData): void {
+  override fromData (data: spec.PositionConstraintData): void {
     super.fromData(data);
 
     // Deserialize all properties
@@ -196,7 +180,7 @@ export class PositionConstraint extends Component {
     for (const targetData of data.targets) {
       const constraintTarget = new ConstraintTarget();
 
-      constraintTarget.target = this.findObject(targetData.target);
+      constraintTarget.target = this.findObject(targetData.target, VFXItem);
       constraintTarget.weight = targetData.weight;
       this.targets.push(constraintTarget);
     }

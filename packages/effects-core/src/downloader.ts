@@ -302,6 +302,10 @@ export async function loadVideo (url: string | MediaProvider, autoplay = true): 
       if (settled) {return;}
       settled = true;
       cleanup();
+      video.pause();
+      video.removeAttribute('src');
+      video.srcObject = null;
+      video.load();
       reject('Load video fail.');
     };
 

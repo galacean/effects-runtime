@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas, TrackEntry } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Maskable, Renderer, Texture,
+  BinaryAsset, Engine, HitTestTriangleParams, Maskable, Renderer, Texture,
 } from '@galacean/effects';
 import {
   effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
@@ -13,7 +13,7 @@ import {
   getSkinList, readAtlasData,
 } from './utils';
 
-const { Vector2, Vector3 } = math;
+const { Box3, Vector2, Vector3 } = math;
 
 export interface BoundsData {
   x: number,
@@ -293,68 +293,43 @@ export class SpineComponent extends RendererComponent implements Maskable {
     });
   }
 
-  /**
-   * 返回当前 AABB 包围盒对应的三角形顶点数组
-   * @returns
-   */
-  getBoundingBox (): BoundingBoxTriangle {
+  override getBoundingBox (out = new Box3()): math.Box3 {
     const bounds = this.getBounds();
-    const res: BoundingBoxTriangle = {
-      type: HitTestType.triangle,
-      area: [],
-    };
+    const scale = this.startSize * this.scaleFactor;
 
-    if (!bounds) {
-      return res;
+    if (!bounds || !Number.isFinite(scale) || bounds.width < 0 || bounds.height < 0) {
+      return out.makeEmpty();
     }
     const { x, y, width, height } = bounds;
-    const wm = this.transform.getWorldMatrix();
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    const p0 = new Vector3(centerX - width / 2, centerY - height / 2, 0);
-    const p1 = new Vector3(centerX + width / 2, centerY - height / 2, 0);
-    const p2 = new Vector3(centerX + width / 2, centerY + height / 2, 0);
-    const p3 = new Vector3(centerX - width / 2, centerY + height / 2, 0);
 
-    // TODO: 优化 Spine 初始大小逻辑
-    const startSizeScaleFactor = this.startSize * this.scaleFactor;
-
-    p0.multiply(startSizeScaleFactor);
-    p1.multiply(startSizeScaleFactor);
-    p2.multiply(startSizeScaleFactor);
-    p3.multiply(startSizeScaleFactor);
-
-    wm.projectPoint(p0);
-    wm.projectPoint(p1);
-    wm.projectPoint(p2);
-    wm.projectPoint(p3);
-
-    res.area = [
-      { p0, p1, p2 },
-      { p0: p0, p1: p2, p2: p3 },
-    ];
-
-    return res;
+    return out.setFromCenterAndSize(
+      new Vector3((x + width / 2) * scale, (y + height / 2) * scale, 0),
+      new Vector3(width * Math.abs(scale), height * Math.abs(scale), 0),
+    );
   }
 
   getHitTestParams (force?: boolean): HitTestTriangleParams | void {
-    const box = this.getBoundingBox();
-    const env = this.engine.env;
-
-    if (!box.area.length) {
+    if (!force || this.engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
+    const box = this.getBoundingBox();
 
-    // 包围盒的碰撞检测 只在编辑器用
-    if (force && env === PLAYER_OPTIONS_ENV_EDITOR) {
-      return {
-        type: HitTestType.triangle,
-        triangles: box.area,
-        clipMasks:this.frameClipMasks,
-        backfaceCulling: false,
-        behavior: spec.InteractBehavior.NOTIFY,
-      };
+    if (box.isEmpty()) {
+      return;
     }
+    const wm = this.transform.getWorldMatrix();
+    const p0 = wm.transformPoint(box.min.clone());
+    const p1 = wm.transformPoint(new Vector3(box.max.x, box.min.y, 0));
+    const p2 = wm.transformPoint(box.max.clone());
+    const p3 = wm.transformPoint(new Vector3(box.min.x, box.max.y, 0));
+
+    return {
+      type: HitTestType.triangle,
+      triangles: [{ p0, p1, p2 }, { p0, p1: p2, p2: p3 }],
+      clipMasks: this.frameClipMasks,
+      backfaceCulling: false,
+      behavior: spec.InteractBehavior.NOTIFY,
+    };
   }
 
   /**

@@ -171,13 +171,10 @@ describe('core/plugins/sprite/sprite-asset', () => {
     // P0#1：texture 被解析为 Texture 实例，而非裸 {id}
     expect(sprite, 'sprite').to.be.instanceOf(Sprite);
     expect(sprite.texture, 'sprite.texture').to.be.instanceOf(Texture);
-    expect(sprite.texture.getInstanceId(), 'sprite.texture.guid').to.eql(textureID);
+    expect(sprite.texture.definition.id, 'sprite.texture file ID').to.eql(textureID);
 
     // P0#2：_MainTex 重绑到 sprite.texture，而非 super.fromData 设置的白纹理
-    const mainTex = spriteComp.material.getTexture('_MainTex')!;
-
-    expect(mainTex, '_MainTex').to.equal(sprite.texture);
-    expect(mainTex.getInstanceId(), '_MainTex.guid').to.eql(textureID);
+    expect(spriteComp.material.getTexture('_MainTex'), '_MainTex').to.equal(sprite.texture);
 
     // rect 还原 splits 驱动 geometry UV：rect=[0.25,0.25,0.5,0.5], flip=0
     // 顶点 aPos 顺序 [(-0.5,0.5),(-0.5,-0.5),(0.5,0.5),(0.5,-0.5)] →
@@ -246,7 +243,9 @@ describe('core/plugins/sprite/sprite-asset', () => {
       rotation: SpriteRotation.Rotate90,
     };
 
-    engine.assetServer.addEffectsObjectData(data as spec.EffectsObjectData);
+    engine.assetServer.database = {
+      findEffectsObjectData: id => id === data.id ? data : undefined,
+    };
 
     const sprite = engine.effectsObjectServer.findObject<Sprite>({ id: spriteID });
 
@@ -275,7 +274,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     expect(sprite.rect, 'rect').to.eql([0.25, 0.25, 0.5, 0.5]);
     expect(sprite.rotation, 'rotation').to.eql(0);
     expect(sprite.texture, 'texture').to.be.instanceOf(Texture);
-    expect(sprite.texture.getInstanceId(), 'texture.guid').to.eql(textureID);
+    expect(sprite.texture.definition.id, 'texture file ID').to.eql(textureID);
     expect(spriteComp.material.getTexture('_MainTex'), '_MainTex').to.equal(sprite.texture);
 
     // faithful：UV 与直接构造同 rect/flip 的 sprite 一致

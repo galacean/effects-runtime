@@ -1,5 +1,5 @@
-import { EventEmitter, effectsClass, math } from '@galacean/effects';
-import type { Engine, EventEmitterListener, spec } from '@galacean/effects';
+import { EventEmitter, effectsClass, math, spec } from '@galacean/effects';
+import type { Engine, EventEmitterListener } from '@galacean/effects';
 import { FocusMode } from '../core/enums';
 import { Button } from './button';
 import type { ContentInsets } from './button';
@@ -9,7 +9,7 @@ import { PopupMenu } from './popup-menu';
 
 const OPTION_ARROW_GRID_SIZE = 12;
 
-@effectsClass('MenuButton')
+@effectsClass(spec.DataType.MenuButton)
 export class MenuButton extends Button {
   static override readonly themeType: string = 'MenuButton';
   readonly popupMenu: PopupMenu;
@@ -45,7 +45,7 @@ export type OptionButtonEvent = {
   itemSelected: [id: PopupMenuItemId],
 };
 
-@effectsClass('OptionButton')
+@effectsClass(spec.DataType.OptionButton)
 export class OptionButton extends MenuButton {
   static override readonly themeType: string = 'OptionButton';
   private readonly optionEventEmitter = new EventEmitter<OptionButtonEvent>();
