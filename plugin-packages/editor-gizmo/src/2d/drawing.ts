@@ -68,7 +68,9 @@ export function truncateText (text: string, maxWidth: number, measure: TextMeasu
  * @returns 折行后的文本行数组
  */
 export function wrapText (text: string, maxWidth: number, maxLines: number, measure: TextMeasure): string[] {
-  if (maxLines <= 0 || !text) {return [];}
+  if (maxLines <= 0 || !text) {
+    return [];
+  }
   const lines: string[] = [];
 
   for (const paragraph of text.split(/\r\n|\r|\n/)) {

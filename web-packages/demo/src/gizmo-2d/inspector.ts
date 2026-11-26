@@ -1,6 +1,7 @@
-import { FrameComponent, ShapeComponent, math, spec } from '@galacean/effects';
+import { FrameComponent, GradientValue, ShapeComponent, math, spec } from '@galacean/effects';
 import { applyRichTextResize, createRichTextResizeSnapshot, getEditableTextComponent, getRichTextFrameWidth, getRichTextInputSelection, RichTextDocument } from '@galacean/effects-plugin-editor-gizmo';
-import type { Paint, SolidPaint, VFXItem } from '@galacean/effects';
+import { getColorPaint, getGradientPaint, setColorPaint } from '@galacean/effects-plugin-editor-gizmo';
+import type { GradientPaint, Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DOMEvents, element } from './dom';
 import type { DemoEditor } from './editor';
@@ -16,6 +17,13 @@ type InspectorShapeAttributes = {
   innerRadius?: number,
   outerRadius?: number,
 };
+
+const COLOR_MODES = {
+  solid: spec.FillType.Solid,
+  radial: spec.FillType.GradientRadial,
+  linear: spec.FillType.GradientLinear,
+  angular: spec.FillType.GradientAngular,
+} as const;
 
 /** 负责属性表单的读取、校验与显示，所有修改交给编辑器执行。 */
 export class InspectorPanel {
@@ -34,6 +42,11 @@ export class InspectorPanel {
   private readonly textSection = element('text-properties');
   private readonly textValue = element<HTMLTextAreaElement>('text-value');
   private readonly fillSection = element('fill-properties');
+  private readonly fillMode = element<HTMLSelectElement>('fill-mode');
+  private readonly gradientStop = element<HTMLSelectElement>('gradient-stop');
+  private readonly latticeSoft = element<HTMLInputElement>('lattice-soft');
+  private readonly latticeRadius = element<HTMLInputElement>('lattice-radius');
+  private readonly previousGradients = new WeakMap<VFXItem, GradientPaint>();
   private readonly fill = element<HTMLInputElement>('fill');
   private readonly fillValue = element('fill-value');
   private readonly fillOpacity = element<HTMLInputElement>('fill-opacity');
@@ -56,6 +69,26 @@ export class InspectorPanel {
     this.bindPositionFields();
     this.bindSizeFields();
     this.bindTextFields();
+    this.events.on(
+      this.fillMode,
+      'change',
+      () =>
+        this.setColorMode(COLOR_MODES[this.fillMode.value as keyof typeof COLOR_MODES])
+    );
+    this.events.on(this.gradientStop, 'change', () => {
+      this.editor.gradientGizmo?.selectStop(Number(this.gradientStop.value));
+      this.refresh(true);
+    });
+    this.events.on(this.latticeSoft, 'change', () => {
+      this.editor.latticeGizmo?.setSoftSelection(this.latticeSoft.checked);
+      this.refresh(true);
+    });
+    this.events.on(this.latticeRadius, 'change', () => {
+      const gizmo = this.editor.latticeGizmo;
+
+      gizmo?.setSoftSelection(gizmo.softSelection, this.latticeRadius.valueAsNumber);
+      this.refresh(true);
+    });
     this.events.on(this.mediaPlay, 'click', () => {
       this.editor.editSelected('切换媒体播放', item => {
         const media = this.scene.getMediaState(item);
@@ -78,6 +111,11 @@ export class InspectorPanel {
       }
       const channel = (index: number) => parseInt(hex.slice(index, index + 2), 16) / 255;
 
+      if (this.editor.selectedItem?.getComponent(ShapeComponent)) {
+        this.editShapeColor('修改色标颜色', color => color.set(channel(1), channel(3), channel(5), color.a));
+
+        return;
+      }
       this.editor.editSelected('修改填充', item => {
         const frame = item.getComponent(FrameComponent);
         const fill = this.getSolidPaint(frame?.fills);
@@ -96,6 +134,13 @@ export class InspectorPanel {
       const alpha = this.fillOpacity.valueAsNumber / 100;
 
       if (Number.isFinite(alpha) && alpha >= 0 && alpha <= 1) {
+        if (this.editor.selectedItem?.getComponent(ShapeComponent)) {
+          this.editShapeColor('修改填充透明度', color => {
+            color.a = alpha;
+          });
+
+          return;
+        }
         this.editor.editSelected('修改填充透明度', item => {
           const fill = this.getSolidPaint(item.getComponent(FrameComponent)?.fills);
 
@@ -158,12 +203,19 @@ export class InspectorPanel {
     const textFormats = this.editor.richTextSelectionFormats;
     const frame = item?.getComponent(FrameComponent);
     const fill = this.getSolidPaint(frame?.fills);
+    const shapePaint = getColorPaint(item?.getComponent(ShapeComponent), 'fill', 0);
+    const gradient = shapePaint && shapePaint.type !== spec.FillType.Solid ? shapePaint : undefined;
+    const stopIndex = this.selectedStopIndex(gradient);
+    const shapeColor = shapePaint?.type === spec.FillType.Solid
+      ? shapePaint.color
+      : gradient?.gradientStops.stops[stopIndex]?.color;
     const stroke = this.getSolidPaint(frame?.strokes);
     const color = typeof textFormats?.color === 'string' && /^#[\da-f]{6}/i.test(textFormats.color)
-      ? textFormats.color.slice(0, 7) : this.getFillColor(item);
+      ? textFormats.color.slice(0, 7) : shapeColor ? this.toHexColor(shapeColor) : this.getFillColor(item);
     const data = item ? this.scene.getItem(item) : undefined;
     const vectorGeometry = data?.kind === 'Vector' ? this.scene.readVectorGeometry(data) : undefined;
     const media = item ? this.scene.getMediaState(item) : undefined;
+    const lattice = this.editor.latticeGizmo;
     const signature = JSON.stringify([
       selected.map(target => target.getInstanceId()),
       item?.transform.position.toArray(), item?.transform.scale.toArray(), item?.transform.size.toArray(),
@@ -172,12 +224,20 @@ export class InspectorPanel {
       item?.name, frame?.strokeWidth, fill?.color.toArray(), stroke?.color.toArray(),
       frame?.fills[0]?.type, frame?.strokes[0]?.type,
       vectorGeometry, data?.status, media,
+      shapePaint, stopIndex,
+      lattice && [lattice.selected.size, lattice.softSelection, lattice.softRadius],
     ]);
 
     if (!force && signature === this.signature) {
       return;
     }
     this.signature = signature;
+    element('lattice-properties').hidden = !lattice;
+    if (lattice) {
+      element('lattice-selection').textContent = `${lattice.selected.size} 个控制点`;
+      this.latticeSoft.checked = lattice.softSelection;
+      this.setInput(this.latticeRadius, lattice.softRadius, !lattice.softSelection);
+    }
     this.selectionName.textContent = selected.map(target => this.scene.getName(target)).join('、') || '未选择';
     this.selectionKind.textContent = item ? this.scene.getItem(item)?.kind ?? '—' : selected.length > 1 ? `${selected.length} 个图层` : '—';
     this.setInput(this.fields.x, item?.transform.position.x);
@@ -193,7 +253,9 @@ export class InspectorPanel {
     const textTargetChanged = this.textTarget !== item;
 
     this.textTarget = item;
-    if (textTargetChanged || this.beforeTextInput?.source !== text?.text) { this.beforeTextInput = undefined; }
+    if (textTargetChanged || this.beforeTextInput?.source !== text?.text) {
+      this.beforeTextInput = undefined;
+    }
     if (text) {
       if (textTargetChanged || document.activeElement !== this.textValue) {
         this.beforeTextInput = undefined;
@@ -201,19 +263,32 @@ export class InspectorPanel {
       }
       this.setInput(this.fields.fontSize, textFormats?.size == null ? text.textStyle.fontSize : Number(textFormats.size), legacyRichText);
       this.fields.fontSize.placeholder = textFormats?.size === null ? '混合' : '';
-      if (textFormats?.size === null && document.activeElement !== this.fields.fontSize) { this.fields.fontSize.value = ''; }
+      if (textFormats?.size === null && document.activeElement !== this.fields.fontSize) {
+        this.fields.fontSize.value = '';
+      }
       element('text-bold').setAttribute('aria-pressed', String(textFormats?.b === ''));
       element('text-italic').setAttribute('aria-pressed', String(textFormats?.i === ''));
     }
     element<HTMLButtonElement>('text-bold').disabled = item?.type !== spec.ItemType.richtext || legacyRichText;
     element<HTMLButtonElement>('text-italic').disabled = item?.type !== spec.ItemType.richtext || legacyRichText;
     this.fillSection.hidden = !color;
+    element('fill-mode-field').hidden = !shapePaint;
+    element('gradient-stop-field').hidden = !gradient;
+    this.fillMode.value = Object.entries(COLOR_MODES).find(([, type]) => type === shapePaint?.type)?.[0] ?? 'solid';
+    if (gradient) {
+      const options = gradient.gradientStops.stops.map((stop, index) =>
+        new Option(`${index + 1} · ${Math.round(stop.time * 100)}%`, String(index)),
+      );
+
+      this.gradientStop.replaceChildren(...options);
+      this.gradientStop.value = String(stopIndex);
+    }
     this.frameSection.hidden = data?.kind !== 'Frame';
-    this.fillOpacityField.hidden = !fill;
+    this.fillOpacityField.hidden = !fill && !shapeColor;
     if (document.activeElement !== this.frameTitle) {
       this.frameTitle.value = item?.name ?? '';
     }
-    this.setInput(this.fillOpacity, fill ? fill.color.a * 100 : undefined);
+    this.setInput(this.fillOpacity, shapeColor ? shapeColor.a * 100 : fill ? fill.color.a * 100 : undefined);
     this.setInput(this.frameStrokeWidth, frame?.strokeWidth);
     if (stroke) {
       this.frameStroke.value = this.toHexColor(stroke.color);
@@ -242,17 +317,70 @@ export class InspectorPanel {
     }
   }
 
+  private selectedStopIndex (paint?: GradientPaint): number {
+    return Math.min(
+      Math.max(
+        0,
+        this.editor.gradientGizmo?.selectedStopIndex ?? Number(this.gradientStop.value)
+      ),
+      (paint?.gradientStops.stops.length ?? 1) - 1
+    );
+  }
+
+  private editShapeColor (label: string, edit: (color: math.Color) => void): void {
+    const component = this.editor.selectedItem?.getComponent(ShapeComponent);
+    const index = this.selectedStopIndex(getGradientPaint(component, 'fill', 0));
+
+    this.editor.editFill(label, item => {
+      const shape = item.getComponent(ShapeComponent);
+      const paint = getColorPaint(shape, 'fill', 0);
+
+      if (!paint) {
+        return;
+      }
+      edit(paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[index].color);
+      setColorPaint(shape, 'fill', 0, paint);
+    });
+    this.editor.gradientGizmo?.selectStop(index);
+  }
+
+  private setColorMode (type: typeof COLOR_MODES[keyof typeof COLOR_MODES]): void {
+    this.editor.editFill('修改颜色模式', item => {
+      const shape = item.getComponent(ShapeComponent);
+      const paint = getColorPaint(shape, 'fill', 0);
+
+      if (!paint || paint.type === type) {
+        return;
+      }
+      const gradient = paint.type !== spec.FillType.Solid ? paint : this.previousGradients.get(item);
+
+      if (paint.type !== spec.FillType.Solid) {
+        this.previousGradients.set(item, paint);
+      }
+      if (type === spec.FillType.Solid) {
+        const color = paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[0].color;
+
+        setColorPaint(shape, 'fill', 0, { type, color });
+      } else {
+        const color = paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[0].color;
+
+        setColorPaint(shape, 'fill', 0, gradient ? { ...gradient, type } : {
+          type, startPoint: new math.Vector2(0.5, 0.5), endPoint: new math.Vector2(1, 0.5),
+          gradientStops: new GradientValue([[0, color.r, color.g, color.b, color.a], [1, 0, 0, 0, 1]]),
+        });
+      }
+    });
+    this.editor.gradientGizmo?.selectStop(0);
+    this.refresh(true);
+  }
+
   private bindPositionFields (): void {
     for (const axis of ['x', 'y'] as const) {
       const input = this.fields[axis];
 
       this.events.on(input, 'change', () => {
         if (this.isValidNumber(input)) {
-          this.editor.editSelected('修改位置', item => {
-            const { x, y, z } = item.transform.position;
-
-            item.setPosition(axis === 'x' ? input.valueAsNumber : x, axis === 'y' ? input.valueAsNumber : y, z);
-          });
+          this.editor.editSelectedPosition(axis, input.valueAsNumber);
         }
       });
     }
@@ -276,11 +404,15 @@ export class InspectorPanel {
           const current = Math.abs(item.transform.size[axis] * item.transform.scale[axis]);
 
           if (text instanceof RichTextComponent) {
-            if (axis !== 'x' || text.textLayout.useLegacyRichText) { return; }
+            if (axis !== 'x' || text.textLayout.useLegacyRichText) {
+              return;
+            }
             const snapshot = createRichTextResizeSnapshot(text, 'width');
             const currentWidth = getRichTextFrameWidth(text);
 
-            if (input.valueAsNumber === Math.round(currentWidth * 100) / 100) { return; }
+            if (input.valueAsNumber === Math.round(currentWidth * 100) / 100) {
+              return;
+            }
             applyRichTextResize(snapshot, input.valueAsNumber / Math.max(currentWidth, 0.01));
           } else if (text) {
             text.setTextWidth(text.textLayout.width * input.valueAsNumber / Math.max(current, 0.01));
@@ -382,8 +514,12 @@ export class InspectorPanel {
       this.editor.editSelected('修改文本', item => {
         const text = getEditableTextComponent(item);
 
-        if (!text) { return; }
-        if (text instanceof RichTextComponent && text.textLayout.useLegacyRichText) { return; }
+        if (!text) {
+          return;
+        }
+        if (text instanceof RichTextComponent && text.textLayout.useLegacyRichText) {
+          return;
+        }
         if (item.type === spec.ItemType.richtext) {
           const document = new RichTextDocument(text.text);
 
@@ -411,7 +547,9 @@ export class InspectorPanel {
           const text = getEditableTextComponent(item);
 
           if (text instanceof RichTextComponent) {
-            if (text.textLayout.useLegacyRichText) { return; }
+            if (text.textLayout.useLegacyRichText) {
+              return;
+            }
             text.setLayoutProperties({ fontSize: fontSize.valueAsNumber, lineHeight: fontSize.valueAsNumber * 1.35 });
           } else {
             text?.setFontSize(fontSize.valueAsNumber);

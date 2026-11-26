@@ -165,7 +165,9 @@ const INFO_ICON_BOTTOM = 5.5;
 function getRichTextFrameBox (component: RichTextComponent): Box2 | undefined {
   const { frame, width, height } = component.textLayout;
 
-  if (!frame) { return; }
+  if (!frame) {
+    return;
+  }
 
   return new Box2(
     new Vector2(frame.x / width, frame.y / height),
@@ -436,11 +438,14 @@ export class ResizeSelectionGizmo extends Gizmo {
   }
 
   /**
-   * 忽略键盘按下，修饰键状态由鼠标事件提供。
-   * @param _keyCode 键盘按下事件。
+   * Escape 恢复当前缩放；修饰键状态继续由鼠标事件提供。
+   * @param event 键盘按下事件。
    */
-  override onKeyDown (_keyCode: InputEventKey): void {
-    // 修饰键状态由鼠标事件提供。
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode.toLowerCase() === 'escape' && this.handlesActive) {
+      this.cancelInteraction();
+      event.accept();
+    }
   }
 
   /**
@@ -578,6 +583,12 @@ export class ResizeSelectionGizmo extends Gizmo {
    * @param event 鼠标抬起事件。
    */
   override onMouseUp (event: InputEventMouseButton): void {
+    if (this.handlesActive && event.isCanceled()) {
+      this.cancelInteraction();
+      event.accept();
+
+      return;
+    }
     if (this.handlesActive && this.finishHandleDrag(event)) {
       event.accept();
     }
@@ -740,7 +751,9 @@ export class ResizeSelectionGizmo extends Gizmo {
 
       if (item.isVisible) {
         transform = getItemViewTransform(item, containerSize);
-        if (transform) { box.copyFrom(getTransformedBox(transform)); }
+        if (transform) {
+          box.copyFrom(getTransformedBox(transform));
+        }
 
         this.wireframe.anchor = isSingleText
           ? box.getCenter()
@@ -780,27 +793,21 @@ export class ResizeSelectionGizmo extends Gizmo {
         ];
 
         this.wireframe.widthScaleEdges = widthEdges;
-        // 左右命中带沿竖边展开，长度应取文本框高度，不能取宽度。
-        const edgeLen = widthEdges[0].start.distance(widthEdges[0].end);
+        // 透视投影后的两条边方向和长度不同，分别沿各自边线构造命中带。
+        const areas = widthEdges.map(edge => {
+          const edgeLen = edge.start.distance(edge.end);
 
-        if (edgeLen > SCALE_CORNER_HIT_SIZE) {
-          const { xAxis, yAxis } = this.boxLocalAxes();
+          if (edgeLen <= SCALE_CORNER_HIT_SIZE) {
+            return undefined;
+          }
+          const yAxis = edge.end.clone().subtract(edge.start).divide(edgeLen);
+          const xAxis = new Vector2(yAxis.y, -yAxis.x);
           const halfLen = edgeLen / 2 - SCALE_CORNER_HIT_SIZE / 2;
-          /**
-           * 创建文本宽度边的命中区域。
-           * @param mid 边中点。
-           * @returns 旋转后的命中包围盒。
-           */
-          const buildEdgeHit = (mid: Vector2): Matrix3 | undefined => (
-            getBoxTransform(getRotatedBoxCorners(mid, xAxis, yAxis, 4, halfLen))
-          );
-          const areas = [
-            buildEdgeHit(widthEdges[0].at(0.5)),
-            buildEdgeHit(widthEdges[1].at(0.5)),
-          ];
 
-          this.wireframe.widthScaleAreas = areas.filter((area): area is Matrix3 => !!area);
-        }
+          return getBoxTransform(getRotatedBoxCorners(edge.at(0.5), xAxis, yAxis, 4, halfLen));
+        });
+
+        this.wireframe.widthScaleAreas = areas.filter((area): area is Matrix3 => !!area);
       }
 
       points?.forEach(point => {
@@ -983,6 +990,7 @@ export class ResizeSelectionGizmo extends Gizmo {
 
   /** 释放配置监听器。 */
   override dispose (): void {
+    this.cancelInteraction();
     this.releaseFrameTitleWidth();
     this.configOff?.();
     this.configOff = undefined;
@@ -1075,6 +1083,31 @@ export class ResizeSelectionGizmo extends Gizmo {
     this.resizeSession = undefined;
     this.lastPoint = new Vector2();
     this.cursorPoint = new Vector2();
+  }
+
+  private cancelInteraction (): void {
+    if (!this.handlesActive) {
+      return;
+    }
+    const session = this.resizeSession;
+    const transformType = this.wireframe.activeType;
+
+    if (session) {
+      this.applyAnchoredResize(session, { totalScalar: new Vector3(1, 1, 1), totalTranslation: new Vector3() });
+      if (session.richText) {
+        session.richText.component.setLayoutProperties(session.richText.properties);
+        session.richText.component.ensureLayout();
+      }
+      if (session.text) {
+        session.text.component.setTextWidth(session.text.width);
+        session.text.component.setTextHeight(session.text.height);
+      }
+      session.item.transform.setPosition(...session.initialPosition.toArray());
+      session.item.transform.setScale(...session.initialScale.toArray());
+    }
+    this.resetTransformOperation();
+    this.refreshWireframeBySelectedItems();
+    this._owner.emit('actionupdate', { source: this, transformType, canceled: true });
   }
 
   /**
@@ -1780,7 +1813,9 @@ export class ResizeSelectionGizmo extends Gizmo {
       );
       const frameBox = richText.mode === 'width' ? getRichTextFrameBox(richText.component) : undefined;
 
-      if (frameBox) { point.multiply(frameBox.getSize()).add(frameBox.min); }
+      if (frameBox) {
+        point.multiply(frameBox.getSize()).add(frameBox.min);
+      }
       // 将重排后的固定点从左上角画布坐标转回元素的局部坐标。
       const fixedAfterResize = new Vector3(
         (point.x - 0.5) * size.x, (0.5 - point.y) * size.y, 0,

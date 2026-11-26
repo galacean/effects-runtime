@@ -27,6 +27,8 @@ export class PenGizmo extends Gizmo {
     private readonly onEscape?: (state: PenToolState) => void,
     private readonly preserveTarget = false,
     private readonly sharedContext?: PenEditContext,
+    /** Keep a host's combined draw/edit tool while using the same runtime interaction code. */
+    private readonly combineCreateAndEdit = false,
   ) {
     super(owner);
     this.editContext = sharedContext ?? createPenEditContext();
@@ -146,6 +148,13 @@ export class PenGizmo extends Gizmo {
     }
     let hit = this.editContext.drawing ? undefined : this.hitTest(event.position);
 
+    if (this.combineCreateAndEdit && event.doubleClick && hit?.part === 'point'
+      && this.isOpenEndpoint(hit.shape, hit.index) && this.beginDrawingFromExistingPoint(hit)) {
+      this.emit('start');
+
+      return;
+    }
+
     if (this.interactionMode === 'edit' && !hit) {
       this.editContext.selected = undefined;
       this.editContext.selectedNodes.clear();
@@ -156,7 +165,7 @@ export class PenGizmo extends Gizmo {
 
       return;
     }
-    if (this.interactionMode === 'create' && this.preserveTarget && !this.editContext.drawing && this.editContext.target) {
+    if (!this.combineCreateAndEdit && this.interactionMode === 'create' && this.preserveTarget && !this.editContext.drawing && this.editContext.target) {
       const selectedStart = this.getCreationStart();
 
       if (selectedStart && this.canCloseExistingShape(selectedStart, hit)) {
@@ -496,7 +505,9 @@ export class PenGizmo extends Gizmo {
           control.drawBezier(from.x, from.y, c1.x, c1.y, c2.x, c2.y, to.x, to.y,
             selectedSegment ? selectedColor : hoveredSegment ? hoverColor : pathColor,
             selectedSegment ? config.selectedLineWidth : config.lineWidth);
-        } else if (this.editContext.drawing && shapeIndex === this.editContext.activeShape && this.hoverPosition && !this.editContext.dragging) {
+        }
+        if (this.editContext.drawing && shapeIndex === this.editContext.activeShape && this.hoverPosition
+          && !this.editContext.dragging && (this.editContext.prependDrawing ? i === 0 : !nextIndex)) {
           control.drawLine(from.x, from.y, this.hoverPosition.x, this.hoverPosition.y, previewColor, config.previewLineWidth);
         }
       });
@@ -581,7 +592,7 @@ export class PenGizmo extends Gizmo {
 
   private refreshTarget (): void {
     if (this.editContext.drawing || this.editContext.dragging) { return; }
-    if (this.interactionMode === 'create' && !this.preserveTarget) {
+    if (this.interactionMode === 'create' && !this.preserveTarget && !this.combineCreateAndEdit) {
       if (this.editContext.target) { this.resetState(); }
 
       return;
@@ -648,7 +659,7 @@ export class PenGizmo extends Gizmo {
     }
     if (hit) { return hit; }
 
-    if (this.interactionMode === 'edit') {
+    if (this.interactionMode === 'edit' || this.combineCreateAndEdit) {
       const segment = this.hitSegment(point);
 
       if (segment) {

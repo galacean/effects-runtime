@@ -39,3 +39,4 @@ import './2d/text-gizmo.spec';
 import './2d/rich-text-edit.spec';
 import './2d/viewport-navigation-controller.spec';
 import './2d/viewport-overlay-gizmo.spec';
+import './2d/content-gizmos.spec';

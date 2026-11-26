@@ -4,4 +4,5 @@ export * from './effects-helper';
 export * from './effects';
 export * from './plugin-gui';
 export * from './plugin-editor-gizmo';
+import './plugin-ffd/ffd-component.spec';
 import './dev-tools/scene-resources.spec';

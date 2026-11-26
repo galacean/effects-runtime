@@ -3,11 +3,13 @@ import {
   type InputEventMouseButton,
   type InputEventMouseMotion,
   type VFXItem,
+  type InputEventKey,
 } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../gizmo';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, roundNumber } from '@galacean/effects-math/es/extension/index';
+import type { Quaternion } from '../../math';
 import { Euler, EulerOrder, Matrix4, Vector2, Vector3 } from '../../math';
 import { GestureCursorType } from '../cursor';
 import {
@@ -18,6 +20,12 @@ import {
 import { getItemViewBox } from '../items';
 import { TransformType } from './resize-selection-gizmo';
 import {
+  captureMotionPaths,
+  restoreMotionPaths,
+  updateMotionPathTranslation,
+  type MotionPathSnapshot,
+} from './motion-path';
+import {
   AssistedLayout,
   type AutoLayoutChangeInfo,
   type SelectionPlacementChange,
@@ -26,6 +34,8 @@ import {
 /** 拖动选中对象，并处理吸附、重挂载和自动布局。 */
 export class MoveSelectionGizmo extends Gizmo {
   readonly type = 'move-selection';
+  /** External document hosts can retain ownership of hierarchy and layout. */
+  assistedLayoutEnabled = true;
 
   private active = false;
   private selectedItems: VFXItem[] = [];
@@ -36,6 +46,15 @@ export class MoveSelectionGizmo extends Gizmo {
   private cursorPoint = new Vector2();
   private lastWorldPosition = new Vector3();
   private assistedLayout: AssistedLayout | undefined;
+  private initialTransforms: {
+    item: VFXItem,
+    parent?: VFXItem,
+    position: Vector3,
+    scale: Vector3,
+    quat: Quaternion,
+    rotation: Euler,
+  }[] = [];
+  private motionPaths: MotionPathSnapshot[] = [];
 
   /**
    * 在选区内按下主键时开始移动交互。
@@ -63,6 +82,15 @@ export class MoveSelectionGizmo extends Gizmo {
 
     // Selection 保证父子节点不会同时入选，交互层直接冻结权威选区。
     this.selectedItems = [...selectedItems];
+    this.initialTransforms = selectedItems.map(item => ({
+      item,
+      parent: item.parent,
+      position: item.transform.position.clone(),
+      scale: item.transform.scale.clone(),
+      quat: item.transform.quat.clone(),
+      rotation: item.transform.rotation.clone(),
+    }));
+    this.motionPaths = selectedItems.map(captureMotionPaths);
     this.cursorPoint.copyFrom(viewportPoint);
     this.active = true;
     this.startPoint = new Vector2(event.position.x, event.position.y);
@@ -73,8 +101,10 @@ export class MoveSelectionGizmo extends Gizmo {
       transformType: TransformType.TRANSLATION,
       itemIds: this.selectedItems.map(item => item.getInstanceId()),
     });
-    this.assistedLayout = new AssistedLayout(this._owner);
-    this.assistedLayout.begin(this.selectedItems);
+    if (this.assistedLayoutEnabled) {
+      this.assistedLayout = new AssistedLayout(this._owner);
+      this.assistedLayout.begin(this.selectedItems);
+    }
     event.accept();
   }
 
@@ -113,6 +143,7 @@ export class MoveSelectionGizmo extends Gizmo {
         this.cacheSnapTargets();
       }
       this.assistedLayout?.updateAutoLayout(pointer);
+      this.motionPaths.forEach(updateMotionPathTranslation);
       this._owner.emit('actionupdate', {
         source: this,
         transformType: TransformType.TRANSLATION,
@@ -129,8 +160,16 @@ export class MoveSelectionGizmo extends Gizmo {
     if (!this.active) {
       return;
     }
+    if (event.isCanceled()) {
+      this.cancelInteraction();
+      event.accept();
+
+      return;
+    }
 
     const finishResult = this.assistedLayout?.finish();
+
+    this.motionPaths.forEach(updateMotionPathTranslation);
 
     for (const change of finishResult?.placementChanges ?? []) {
       this._owner.emit('placementchange', { source: this, ...change });
@@ -141,8 +180,8 @@ export class MoveSelectionGizmo extends Gizmo {
       autoLayoutChange: finishResult?.autoLayoutChange,
     };
 
-    this._owner.emit('actioncommit', actionEvent);
     this.resetDragState();
+    this._owner.emit('actioncommit', actionEvent);
     event.accept();
   }
 
@@ -292,6 +331,8 @@ export class MoveSelectionGizmo extends Gizmo {
     }
     this.active = false;
     this.selectedItems = [];
+    this.initialTransforms = [];
+    this.motionPaths = [];
     this.selectionBox = new Box2();
     this.interactionPlane = undefined;
     this.startPoint = new Vector2();
@@ -301,6 +342,35 @@ export class MoveSelectionGizmo extends Gizmo {
     this.assistedLayout?.cancel();
     this.assistedLayout = undefined;
     this._owner.getSnapManager().reset();
+  }
+
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode.toLowerCase() === 'escape' && this.active) {
+      this.cancelInteraction();
+      event.accept();
+    }
+  }
+
+  override dispose (): void {
+    this.cancelInteraction();
+  }
+
+  private cancelInteraction (): void {
+    if (!this.active) {
+      return;
+    }
+    this.motionPaths.forEach(restoreMotionPaths);
+    for (const { item, parent, position, scale, quat, rotation } of this.initialTransforms) {
+      if (item.parent !== parent) {
+        item.setParent(parent ?? null);
+      }
+      item.transform.setPosition(...position.toArray());
+      item.transform.setScale(...scale.toArray());
+      item.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
+      item.transform.rotation.copyFrom(rotation);
+    }
+    this.resetDragState();
+    this._owner.emit('actionupdate', { source: this, transformType: TransformType.TRANSLATION, canceled: true });
   }
 }
 

@@ -50,7 +50,13 @@ describe('plugin-editor-gizmo/corner-rotation-gizmo', () => {
   }
 
   function createTransform (worldMatrix: Matrix4) {
+    const rotation = new Quaternion();
+
+    worldMatrix.decompose(new Vector3(), rotation, new Vector3());
+
     return {
+      quat: rotation,
+      rotation: new Euler().setFromQuaternion(rotation.clone().conjugate()),
       updateLocalMatrix: () => {},
       getWorldMatrix: () => worldMatrix,
       assignWorldTRS: (position?: Vector3, quaternion?: Quaternion, scale?: Vector3) => {

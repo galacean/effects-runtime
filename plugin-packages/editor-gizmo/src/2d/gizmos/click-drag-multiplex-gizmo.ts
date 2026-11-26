@@ -4,6 +4,7 @@ import type {
   InputEventMouseButton,
   InputEventMouse,
   InputEventMouseMotion,
+  InputEventKey,
 } from '@galacean/effects';
 import { Matrix3 } from '../../math';
 import type { Control } from '@galacean/effects-plugin-gui';
@@ -204,6 +205,11 @@ export class ClickDragMultiplexGizmo extends Gizmo {
     for (const candidate of [...this.clickCandidateList, ...this.dragCandidateList]) {
       candidate.onUpdate();
     }
+  }
+
+  /** 捕获仍由父 Gizmo 持有，取消键交给当前实际拖拽者处理。 */
+  override onKeyDown (event: InputEventKey): void {
+    this.dragWinner?.onKeyDown(event);
   }
 
   /**

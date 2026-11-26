@@ -4,12 +4,14 @@ import {
   type InputEventMouseButton,
   type InputEventMouseMotion,
   type VFXItem,
+  type InputEventKey,
 } from '@galacean/effects';
 import { GestureCursorType, type GestureCursorResult } from '../cursor';
 import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { GizmoType } from '../gizmo-type';
 import { decomposeItemTransform } from '../items';
+import type { Euler, Quaternion } from '../../math';
 import { DEG2RAD, RAD2DEG, Vector2, Vector3, getAngleByVectors, getTransformedBoxCorners, getVector2Angle } from '../../math';
 import { roundNumber } from '@galacean/effects-math/es/extension/index';
 import type {
@@ -55,6 +57,8 @@ export class CornerRotationGizmo extends Gizmo {
   private initialSelectionAngle = 0;
   /** pointer down 时冻结的旋转对象，避免拖拽中途换目标。 */
   private rotationItems: VFXItem[] = [];
+  private initialQuaternions: Quaternion[] = [];
+  private initialRotations: Euler[] = [];
 
   /**
    * 创建共享选框几何的角旋转交互。
@@ -143,6 +147,8 @@ export class CornerRotationGizmo extends Gizmo {
     this.interactiveDirection.copyFrom(hit.direction);
     // Selection 保证父子节点不会同时入选，交互层直接冻结权威选区。
     this.rotationItems = [...this.selectedItems];
+    this.initialQuaternions = this.rotationItems.map(item => item.transform.quat.clone());
+    this.initialRotations = this.rotationItems.map(item => item.transform.rotation.clone());
     this.initialSelectionAngle = this.resolveInitialSelectionAngle();
     this.rotationActive = true;
     this._owner.emit('actionstart', {
@@ -159,6 +165,12 @@ export class CornerRotationGizmo extends Gizmo {
    */
   override onMouseUp (event: InputEventMouseButton): void {
     if (!this.rotationActive) {
+      return;
+    }
+    if (event.isCanceled()) {
+      this.cancelInteraction();
+      event.accept();
+
       return;
     }
 
@@ -282,6 +294,34 @@ export class CornerRotationGizmo extends Gizmo {
     this.rawRotationAngle = 0;
     this.initialSelectionAngle = 0;
     this.rotationItems = [];
+    this.initialQuaternions = [];
+    this.initialRotations = [];
+  }
+
+  override onKeyDown (event: InputEventKey): void {
+    if (event.keycode.toLowerCase() === 'escape' && this.rotationActive) {
+      this.cancelInteraction();
+      event.accept();
+    }
+  }
+
+  override dispose (): void {
+    this.cancelInteraction();
+  }
+
+  private cancelInteraction (): void {
+    if (!this.rotationActive) {
+      return;
+    }
+    this.rotationItems.forEach((item, index) => {
+      const quat = this.initialQuaternions[index];
+
+      item.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
+      item.transform.rotation.copyFrom(this.initialRotations[index]);
+    });
+    this.resetOperation();
+    this.resizeSelection.refreshWireframeBySelectedItems();
+    this._owner.emit('actionupdate', { source: this, transformType: TransformType.ROTATION, canceled: true });
   }
 
   /**

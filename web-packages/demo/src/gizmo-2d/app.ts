@@ -1,5 +1,12 @@
 import { Composition, Player, math } from '@galacean/effects';
-import { Editor, type Editor2D, selectionSnapConfig, viewportNavigationConfig, viewportOverlayConfig } from '@galacean/effects-plugin-editor-gizmo';
+import {
+  Editor,
+  type Editor2D,
+  SelectionEditMode,
+  selectionSnapConfig,
+  viewportNavigationConfig,
+  viewportOverlayConfig,
+} from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { DOMEvents, element } from './dom';
 import { DemoEditor } from './editor';
@@ -39,6 +46,7 @@ export class GizmoDemo {
     this.gizmoEditor = new Editor(this.player.engine);
     composition.addItem(this.gizmoEditor.rootItem);
     this.handler = this.gizmoEditor.editor2D;
+    this.handler.setActiveEditMode(new SelectionEditMode(this.handler));
     this.handler.setErrorMonitor({
       report: (error, phase, context) => {
         this.reportError(`${context.gizmoType ?? 'gizmo'} / ${phase}: ${String(error)}`, error);

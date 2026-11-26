@@ -114,5 +114,23 @@ describe('plugin-editor-gizmo/item-geometry', () => {
       expect(bounds.min.y).to.be.closeTo(-20, 0.5 * 10 ** -(2));
       expect(bounds.max.y).to.be.closeTo(40, 0.5 * 10 ** -(2));
     });
+
+    for (const axis of ['x', 'y'] as const) {
+      it(`keeps a straight ${axis} path selectable after rotation`, () => {
+        const pathBounds = axis === 'x'
+          ? new Box3(new Vector3(-80, 0, 0), new Vector3(40, 0, 0))
+          : new Box3(new Vector3(0, -80, 0), new Vector3(0, 40, 0));
+        const item = createItem({ type: spec.ItemType.shape, pathBounds, rotation: 45 });
+        const transform = getItemViewTransform(item, TEST_VIEW_SIZE.clone())!;
+        const bounds = getItemViewBox(item, TEST_VIEW_SIZE.clone());
+        const corners = getTransformedBoxCorners(transform);
+
+        expect(bounds.isEmpty()).equals(false);
+        expect(corners[0].distance(corners[axis === 'x' ? 3 : 1])).lessThan(1e-8);
+        expect(corners[0].distance(corners[2])).closeTo(120, 1e-8);
+        expect(transformedBoxContainsPoint(transform, corners[0])).equals(true);
+        expect(transformedBoxContainsPoint(transform, bounds.max.clone().add(new Vector2(10, 10)))).equals(false);
+      });
+    }
   });
 });

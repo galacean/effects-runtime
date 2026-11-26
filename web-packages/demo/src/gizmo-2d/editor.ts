@@ -14,7 +14,16 @@ import {
   RichTextEditMode,
   PenEditMode,
   ShapeEditMode,
+  SelectionEditMode,
+  EffectsEditMode,
+  DefaultSelectionMode,
+  type GradientGizmo,
+  type CrystalLatticeGizmo,
+  type SelectionContentEdit,
   shapeConfig,
+  captureMotionPaths,
+  getGradientPaint,
+  updateMotionPathTranslation,
   createInteractionPlane,
   getBoxCorners,
   getItemViewBox,
@@ -29,6 +38,7 @@ import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, 
   Editor2D } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
+import type { GizmoExampleKind } from './reference-examples';
 
 export type DemoTool = 'move' | 'hand' | 'frame' | 'text' | 'richtext' | 'pen' | 'shape';
 export type DemoPenMode = 'create' | 'edit' | 'lasso';
@@ -60,7 +70,9 @@ function primitiveShapePath (shape: PrimitiveShapeAttributes): PenPathData | und
   const easingIns: Array<{ x: number, y: number }> = [];
   const easingOuts: Array<{ x: number, y: number }> = [];
   const add = (x: number, y: number, easingIn = { x: 0, y: 0 }, easingOut = { x: 0, y: 0 }): void => {
-    points.push({ x, y }); easingIns.push(easingIn); easingOuts.push(easingOut);
+    points.push({ x, y });
+    easingIns.push(easingIn);
+    easingOuts.push(easingOut);
   };
   const type = shape.type;
 
@@ -68,8 +80,10 @@ function primitiveShapePath (shape: PrimitiveShapeAttributes): PenPathData | und
     const width = shape.width ?? 1;
     const height = shape.height ?? 1;
 
-    add(-width / 2, -height / 2); add(width / 2, -height / 2);
-    add(width / 2, height / 2); add(-width / 2, height / 2);
+    add(-width / 2, -height / 2);
+    add(width / 2, -height / 2);
+    add(width / 2, height / 2);
+    add(-width / 2, height / 2);
   } else if (type === spec.ShapePrimitiveType.Ellipse) {
     const rx = Math.abs(shape.xRadius ?? 0.5);
     const ry = Math.abs(shape.yRadius ?? 0.5);
@@ -158,7 +172,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     });
     this.domEvents.on(viewport, 'keydown', event => {
       if (event.target instanceof HTMLTextAreaElement && event.code === 'Escape' && this.isTextEditing()) {
-        handler.resetEditMode();
+        this.resetEditMode();
         player.canvas.focus();
         event.preventDefault();
         event.stopPropagation();
@@ -185,6 +199,73 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     return items.length === 1 ? items[0] : undefined;
   }
 
+  editContent (edit?: SelectionContentEdit): void {
+    let mode = this.handler.getActiveEditMode();
+
+    if (mode instanceof EffectsEditMode || mode instanceof DefaultSelectionMode) {
+      this.resetEditMode(true);
+      mode = this.handler.getActiveEditMode();
+    }
+
+    if (mode instanceof SelectionEditMode) {
+      if (!mode.editContent(edit)) {
+        this.emit('action', '请先选择对应的 FFD 或渐变图形');
+      }
+      this.player.canvas.focus();
+    } else {
+      this.emit('action', '请先返回选择工具再编辑内容');
+    }
+  }
+
+  async addGizmoExample (kind: GizmoExampleKind): Promise<void> {
+    const example = await this.scene.createGizmoExample(kind);
+
+    if (!example || this.disposed) {
+      return;
+    }
+    this.select(example.item);
+    this.player.tick(0);
+    this.fitToView([example.frame]);
+    if (kind === 'ffd') {
+      this.editContent({ type: 'lattice' });
+    }
+    if (kind === 'gradient') {
+      this.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
+    }
+  }
+
+  get gradientGizmo (): GradientGizmo | undefined {
+    const gizmo = this.handler.getGizmoManager().get('gradient');
+
+    return gizmo?.item === this.selectedItem ? gizmo : undefined;
+  }
+
+  get latticeGizmo (): CrystalLatticeGizmo | undefined {
+    const gizmo = this.handler.getGizmoManager().get('crystal-lattice');
+
+    return gizmo?.item === this.selectedItem ? gizmo : undefined;
+  }
+
+  /** 填充面板结束旧预览后修改 paint，并在渐变模式下重新建立手柄。 */
+  editFill (label: string, edit: (item: VFXItem) => void): void {
+    const item = this.selectedItem;
+
+    if (!item) {
+      return;
+    }
+    const mode = this.handler.getActiveEditMode();
+
+    if (mode instanceof SelectionEditMode) {
+      mode.editContent();
+    }
+    edit(item);
+    if (mode instanceof SelectionEditMode && getGradientPaint(item.getComponent(ShapeComponent), 'fill', 0)) {
+      mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
+    }
+    this.emit('action', label);
+    this.emit('selectionchange');
+  }
+
   setTool (tool: DemoTool): void {
     if (tool === 'pen' && this.activeTool === 'pen' && this.geometryMode instanceof PenEditMode && this.geometryMode.state === 'edit') {
       this.setPenMode('create');
@@ -192,7 +273,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       return;
     }
     this.updateTool(() => {
-      this.handler.resetEditMode();
+      this.resetEditMode(tool === 'move' || tool === 'hand');
       this.discardDraft();
       this.geometryMode = undefined;
       this.activeTool = tool;
@@ -222,7 +303,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       return false;
     }
     this.updateTool(() => {
-      this.handler.resetEditMode();
+      this.resetEditMode();
       this.discardDraft();
       const mode = this.createPenMode('edit');
 
@@ -250,7 +331,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   setPenMode (state: DemoPenMode): void {
     const mode = this.geometryMode;
 
-    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) {
+      return;
+    }
     this.updateTool(() => {
       if (state === 'create') {
         mode.enterCreate(true);
@@ -265,9 +348,30 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   get penMode (): DemoPenMode | undefined {
     const mode = this.geometryMode;
 
-    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) { return; }
+    if (this.activeTool !== 'pen' || !(mode instanceof PenEditMode)) {
+      return;
+    }
 
     return mode.state === 'create' ? 'create' : mode.lassoMode ? 'lasso' : 'edit';
+  }
+
+  /** Demo 返回选择工具时启用完整编辑模式，沿用宿主现有的模式切换入口。 */
+  private resetEditMode (preserveScope = false): void {
+    const mode = this.handler.getActiveEditMode();
+    const effectsItemId = preserveScope && (mode instanceof SelectionEditMode || mode instanceof EffectsEditMode)
+      ? mode.effectsItemId : undefined;
+
+    if (mode instanceof SelectionEditMode && mode.effectsItemId === effectsItemId) {
+      mode.editContent();
+
+      return;
+    }
+    const ids = [...this.handler.getSelection().getSelectedIds()];
+
+    this.handler.setActiveEditMode(new SelectionEditMode(this.handler, { effectsItemId }));
+    if (preserveScope) {
+      this.setSelection(ids);
+    }
   }
 
   private updateTool (update: () => void): void {
@@ -286,9 +390,18 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   select (item: VFXItem, append = false): void {
+    const ids = [...this.handler.getSelection().getSelectedIds()];
+
     this.setTool('move');
+    const editRoot = this.scene.getItem(item)?.editRoot;
+    const mode = this.handler.getActiveEditMode();
+
+    if (editRoot && (!(mode instanceof SelectionEditMode) || mode.effectsItemId !== editRoot.getInstanceId())) {
+      this.handler.setActiveEditMode(new SelectionEditMode(this.handler, { effectsItemId: editRoot.getInstanceId() }));
+    } else if (!editRoot && mode instanceof SelectionEditMode && mode.effectsItemId) {
+      this.resetEditMode();
+    }
     const id = item.getInstanceId();
-    const ids = this.handler.getSelection().getSelectedIds();
 
     this.setSelection(append ? ids.includes(id) ? ids.filter(selectedId => selectedId !== id) : [...ids, id] : [id]);
   }
@@ -316,11 +429,34 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     const item = this.selectedItem;
 
     if (item) {
-      this.handler.resetEditMode();
+      this.resetEditMode(true);
       edit(item);
       this.emit('action', label);
       this.emit('selectionchange');
     }
+  }
+
+  /** 修改位置时保留动效的编辑范围与选区，并平移该元素的整条运动路径。 */
+  editSelectedPosition (axis: 'x' | 'y', value: number): void {
+    const item = this.selectedItem;
+
+    if (!item || !Number.isFinite(value)) {
+      return;
+    }
+    const mode = this.handler.getActiveEditMode();
+
+    if (mode instanceof SelectionEditMode) {
+      mode.editContent();
+    } else {
+      this.resetEditMode();
+    }
+    const paths = captureMotionPaths(item);
+    const { x, y, z } = item.transform.position;
+
+    item.setPosition(axis === 'x' ? value : x, axis === 'y' ? value : y, z);
+    updateMotionPathTranslation(paths);
+    this.emit('action', '修改位置');
+    this.emit('selectionchange');
   }
 
   /** 在当前视口中央插入媒体素材。 */
@@ -348,11 +484,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   /** 将全部图层放入视口，为浮动工具栏预留底部空间。 */
-  fitToView (): void {
+  fitToView (items: VFXItem[] = this.scene.getItems().map(data => data.item)): void {
     const size = GizmoViewportUtils.getContainerSize(this.viewport);
-    const boxes = this.scene.getItems()
-      .map(data => getItemViewBox(data.item, size))
-      .filter(box => !box.isEmpty());
+    const boxes = items
+      .map(item => getItemViewBox(item, size))
+      .filter(box => !box.isEmpty() && [box.min.x, box.min.y, box.max.x, box.max.y].every(Number.isFinite));
 
     if (!boxes.length || size.x <= 96 || size.y <= 160) {
       return;
@@ -404,6 +540,13 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   }
 
   private handleKeyDown (event: InputEventKey): void {
+    const mode = this.handler.getActiveEditMode();
+
+    // 拖动取消和色标删除由具体 Gizmo 处理，应用快捷键不能先清空选区。
+    if (this.handler.isMouseButtonPressed()
+      || (mode instanceof SelectionEditMode && mode.contentEdit)) {
+      return;
+    }
     if (event.ctrlPressed || event.metaPressed || event.altPressed) {
       return;
     }
@@ -415,7 +558,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
     if (event.physicalKeycode === 'Escape') {
       if (this.isTextEditing()) {
-        this.handler.resetEditMode();
+        this.resetEditMode();
       } else if (this.activeTool === 'frame' || this.activeTool === 'text' || this.activeTool === 'richtext') {
         this.setTool('move');
       } else if (this.activeTool === 'pen' || this.activeTool === 'shape') {
@@ -535,7 +678,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       if (phase === 'actionstart' && target?.kind === 'Vector') {
         const snapshot = this.scene.snapshotVectorShape(target);
 
-        if (snapshot) { this.vectorEditSnapshots.set(event.edit.itemId, snapshot); }
+        if (snapshot) {
+          this.vectorEditSnapshots.set(event.edit.itemId, snapshot);
+        }
       }
       if ((target?.kind === 'CustomShape' || target?.kind === 'Vector') && event.edit.operations.length > 0) {
         this.scene.updateCustomShape(target, event.edit.path);
