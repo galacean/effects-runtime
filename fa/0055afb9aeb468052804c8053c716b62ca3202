@@ -1,0 +1,23 @@
+web-packages/test/unit/src/plugin-editor-gizmo/2d/content-gizmos.spec.ts
+  s_d6dc6a578fa2cb::t_8c3cf363c7869a 835,856-857
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_d6dc6a578fa2cb::t_bbb72dbf48f0ae 410,416-418,423,759-763
+  s_d6dc6a578fa2cb::t_8c3cf363c7869a 478-485,490
+  s_d6dc6a578fa2cb::t_f4ddeb94ab1180 764
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fa0055afb9aeb468052804c8053c716b62ca3202",
+  "prompts": {},
+  "sessions": {
+    "s_d6dc6a578fa2cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a216a7-e353-7160-86dc-0a39599149ce",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
