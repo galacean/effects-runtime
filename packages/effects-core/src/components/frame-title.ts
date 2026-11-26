@@ -1,4 +1,5 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import type { Box3 } from '@galacean/effects-math/es/core/box3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
@@ -10,18 +11,6 @@ import { Geometry, VertexElementType, type Renderer, type TextMeasurement } from
 import { TextCache, type FontStyle, type FontWeight, type GlyphAtlas } from '../render/text-cache';
 import type { Texture } from '../texture';
 import type { FrameComponent } from './frame-component';
-
-export interface FrameTitleStyleData {
-  color?: spec.ColorData,
-  fontSize?: number,
-  fontFamily?: string,
-  fontWeight?: FontWeight,
-  fontStyle?: FontStyle,
-  gap?: number,
-  icon?: spec.DataPath,
-  iconSize?: number,
-  iconGap?: number,
-}
 
 /** 标题使用屏幕逻辑像素，与元素的缩放无关。 */
 export class FrameTitleStyle {
@@ -207,7 +196,7 @@ export class FrameTitle {
     }
   }
 
-  fromData (data: FrameTitleStyleData): void {
+  fromData (data: spec.FrameTitleStyleData): void {
     const style = new FrameTitleStyle();
 
     if (data.color) {
@@ -480,6 +469,15 @@ export class FrameTitle {
   render (renderer: Renderer): void {
     if (this.titleVisible && this.geometry) {
       this.drawMaterials.forEach((material, index) => renderer.drawGeometry(this.geometry!, this.worldMatrix, material, index));
+    }
+  }
+
+  /** 将可见标题的绘制范围并入画板局部边界。 */
+  expandRenderBounds (frame: FrameComponent, out: Box3): void {
+    if (this.titleVisible && this.geometry) {
+      const titleToFrame = frame.transform.getWorldMatrix().clone().invert().multiply(this.worldMatrix);
+
+      out.union(this.geometry.getBoundingBox().applyMatrix4(titleToFrame));
     }
   }
 

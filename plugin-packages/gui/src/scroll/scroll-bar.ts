@@ -3,6 +3,7 @@ import {
   MouseButton,
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
 import { FocusMode } from '../core/enums';
 import type {
@@ -11,7 +12,6 @@ import type {
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
-  spec,
 } from '@galacean/effects';
 import { Orientation } from '../layout/enums';
 import { Range } from './range';
@@ -413,7 +413,7 @@ export class ScrollBar extends Range {
   }
 }
 
-@effectsClass('HScrollBar')
+@effectsClass(spec.DataType.HScrollBar)
 export class HScrollBar extends ScrollBar {
   static override readonly themeType: string = 'HScrollBar';
   constructor (engine: Engine) {
@@ -421,7 +421,7 @@ export class HScrollBar extends ScrollBar {
   }
 }
 
-@effectsClass('VScrollBar')
+@effectsClass(spec.DataType.VScrollBar)
 export class VScrollBar extends ScrollBar {
   static override readonly themeType: string = 'VScrollBar';
   constructor (engine: Engine) {

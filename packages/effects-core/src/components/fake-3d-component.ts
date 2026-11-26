@@ -1,28 +1,9 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import { Component } from './component';
 import { EffectComponent } from './effect-component';
 
-interface Fake3DComponentData extends spec.ComponentData {
-  loop?: boolean,
-  amountOfMotion?: number,
-  animationLength?: number,
-  mode?: Fake3DAnimationMode,
-  startPositionX?: number,
-  startPositionY?: number,
-  startPositionZ?: number,
-  endPositionX?: number,
-  endPositionY?: number,
-  endPositionZ?: number,
-  amplitudeX?: number,
-  amplitudeY?: number,
-  amplitudeZ?: number,
-  phaseX?: number,
-  phaseY?: number,
-  phaseZ?: number,
-}
-
-@effectsClass('Fake3DComponent')
+@effectsClass(spec.DataType.Fake3DComponent)
 export class Fake3DComponent extends Component {
   loop = false;
 
@@ -50,7 +31,7 @@ export class Fake3DComponent extends Component {
 
   effectComponent: EffectComponent;
 
-  override fromData (data: Fake3DComponentData): void {
+  override fromData (data: spec.Fake3DComponentData): void {
     super.fromData(data);
     if (data.loop !== undefined) { this.loop = data.loop; }
     if (data.amountOfMotion !== undefined) { this.amountOfMotion = data.amountOfMotion; }

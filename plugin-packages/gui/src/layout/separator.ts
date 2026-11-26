@@ -1,4 +1,4 @@
-import { effectsClass, math } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
@@ -37,7 +37,7 @@ abstract class Separator extends Control {
   }
 }
 
-@effectsClass('HSeparator')
+@effectsClass(spec.DataType.HSeparator)
 export class HSeparator extends Separator {
   static override readonly themeType: string = 'HSeparator';
 
@@ -46,7 +46,7 @@ export class HSeparator extends Separator {
   }
 }
 
-@effectsClass('VSeparator')
+@effectsClass(spec.DataType.VSeparator)
 export class VSeparator extends Separator {
   static override readonly themeType: string = 'VSeparator';
 

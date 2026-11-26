@@ -1,8 +1,8 @@
-import { effectsClass, math } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import { Container } from '../core/control';
 
 /** Adds four independent margins around every visible child. */
-@effectsClass('MarginContainer')
+@effectsClass(spec.DataType.MarginContainer)
 export class MarginContainer extends Container {
   static override readonly themeType: string = 'MarginContainer';
 

@@ -22,13 +22,8 @@ export function getBoxCorners (box: Box2): Vector2[] {
   ];
 }
 
-/** 从 Box2 的视图角点建立归一化 Box2 到视图坐标的二维仿射变换。 */
-export function getBoxTransform (points: Vector2[]): Matrix3 | undefined {
-  if (points.length !== 4) {
-    return undefined;
-  }
-
-  const [leftTop, rightTop, , leftBottom] = points;
+/** 从原点和两条边的终点构造正向映射。重合的端点保留为零长度的轴。 */
+export function boxTransformFromCorners (leftTop: Vector2, rightTop: Vector2, leftBottom: Vector2): Matrix3 | undefined {
   const transform = new Matrix3().setFromRowMajorData(
     rightTop.x - leftTop.x,
     leftBottom.x - leftTop.x,
@@ -41,7 +36,24 @@ export function getBoxTransform (points: Vector2[]): Matrix3 | undefined {
     1,
   );
 
-  return Math.abs(transform.determinant()) <= MATRIX_EPSILON ? undefined : transform;
+  return transform.elements.every(Number.isFinite) ? transform : undefined;
+}
+
+/** 具有二维面积的选框可以将视图坐标反算到局部。 */
+export function hasBoxArea (transform: Matrix3): boolean {
+  const area = Math.abs(transform.determinant());
+
+  return Number.isFinite(area) && area > MATRIX_EPSILON;
+}
+
+/** 从四个视图角点取得可逆的矩形变换。 */
+export function getBoxTransform (points: Vector2[]): Matrix3 | undefined {
+  if (points.length !== 4) {
+    return undefined;
+  }
+  const transform = boxTransformFromCorners(points[0], points[1], points[3]);
+
+  return transform && hasBoxArea(transform) ? transform : undefined;
 }
 
 /** 从一个视图 Box2 建立无旋转变换。 */
@@ -131,8 +143,13 @@ export function transformedBoxIntersectsBox (
   });
 }
 
-/** 通过逆变换判断视图点是否位于 Box2 内。 */
+/** 判断视图点是否落在选框内，也支持退化为线段或点的选框。 */
 export function transformedBoxContainsPoint (transform: Matrix3, point: Vector2, box: Box2 = UNIT_BOX): boolean {
+  if (!hasBoxArea(transform)) {
+    // A straight path's zero-width or zero-height box has no inverse.
+    return transformedBoxIntersectsBox(transform, new Box2(point, point), box);
+  }
+
   return box.containsPoint(inverseTransformBoxPoint(transform, point));
 }
 

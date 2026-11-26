@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color, Vector2 } from '@galacean/effects-math/es/core/index';
+import { Box3, Color, Matrix4, Vector2 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import { MaskableGraphic } from '../../components';
@@ -38,6 +38,7 @@ interface CharInfo {
 /** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
 const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
+/** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -111,13 +112,21 @@ export class TextComponent extends MaskableGraphic {
     renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
   }
 
+  override getRenderBounds (out = new Box3()): Box3 {
+    const [scaleX, scaleY] = this.getTextureExpandScale();
+
+    return this.getBoundingBox(out).applyMatrix4(Matrix4.fromScale(scaleX, scaleY, 1));
+  }
+
   override onDestroy (): void {
     super.onDestroy();
     this.disposeTextTexture();
     this.releaseTextCanvas();
   }
 
+  /** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
   override fromData (data: spec.TextComponentData): void {
+    // @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。
     super.fromData(data);
     const { interaction, options } = data;
 

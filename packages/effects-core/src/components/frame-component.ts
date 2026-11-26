@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { RendererComponent } from './renderer-component';
 import type { VFXItem } from '../vfx-item';
 import { Material, type Maskable } from '../material';
@@ -13,7 +14,7 @@ import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { effectsClass } from '../decorators';
 import { HitTestType, type HitTestTriangleParams } from '../plugins';
 import { addItem } from '../utils';
-import { FrameTitle, type FrameTitleStyleData } from './frame-title';
+import { FrameTitle } from './frame-title';
 import type { Paint } from '../plugins/shape/paint';
 import { createPaint, createPaintMaterial, updatePaintMaterial } from '../plugins/shape/paint';
 import type { StrokeAttributes } from '../math/shape/stroke-attributes';
@@ -23,18 +24,7 @@ import { GraphicsPath } from '../plugins/shape/graphics-path';
 import { makeStrokeContourPath } from '../plugins/shape/contour-path';
 import type { Texture } from '../texture';
 
-export interface FrameComponentData extends spec.ComponentData {
-  fills?: spec.PaintData[],
-  strokes?: spec.PaintData[],
-  strokeWidth?: number,
-  strokeAlignment?: number,
-  strokeCap?: spec.LineCap,
-  strokeJoin?: spec.LineJoin,
-  strokeMiterLimit?: number,
-  titleStyle?: FrameTitleStyleData,
-}
-
-@effectsClass('FrameComponent')
+@effectsClass(spec.DataType.FrameComponent)
 export class FrameComponent extends RendererComponent implements Maskable {
   fills: Paint[] = [{ type: spec.FillType.Solid, color: new Color(1, 1, 1, 1) }];
   strokes: Paint[] = [];
@@ -209,6 +199,34 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.titleRenderer.render(renderer);
   }
 
+  override getBoundingBox (out = new Box3()): Box3 {
+    const halfWidth = Math.abs(this.transform.size.x) / 2;
+    const halfHeight = Math.abs(this.transform.size.y) / 2;
+
+    out.min.set(-halfWidth, -halfHeight, 0);
+    out.max.set(halfWidth, halfHeight, 0);
+
+    return out;
+  }
+
+  override getRenderBounds (out = new Box3()): Box3 {
+    if (this.fills.length) {
+      this.getBoundingBox(out);
+    } else {
+      out.makeEmpty();
+    }
+    const decoration = this.updateDecorationGeometry();
+
+    if (decoration && this.strokes.length && this.strokeWidth > 0 && this.strokeGeometry) {
+      const { size } = this.transform;
+
+      out.union(this.strokeGeometry.getBoundingBox().applyMatrix4(Matrix4.fromScale(size.x, size.y, 1)));
+    }
+    this.titleRenderer.expandRenderBounds(this, out);
+
+    return out;
+  }
+
   override onDestroy (): void {
     this.clipGeometry.dispose();
     this.strokeGeometry?.dispose();
@@ -231,7 +249,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.clipMaterial, maskRef);
   }
 
-  override fromData (data: FrameComponentData): void {
+  override fromData (data: spec.FrameComponentData): void {
     super.fromData(data);
 
     if (data.fills !== undefined) {

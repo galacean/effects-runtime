@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { Asset } from '../../asset';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -16,25 +16,13 @@ export enum SpriteRotation {
 }
 
 /**
- * Sprite 资产数据
- */
-export interface SpriteData extends spec.EffectsObjectData {
-  /** 关联纹理（DataPath 引用） */
-  texture?: spec.DataPath,
-  /** 归一化 UV 矩形 [x, y, w, h]，默认整张纹理 */
-  rect?: spec.vec4,
-  /** UV 旋转方式（0=None, 1=Rotate90），对齐老 splits 的 flip 语义 */
-  rotation?: SpriteRotation,
-}
-
-/**
  * Sprite 资产：一张纹理 + 一个归一化 UV 矩形区域（不含 border/pivot）。
  * 被 SpriteComponent 引用，替代直接引用 Texture + 散落的 splits。
  *
  * 反序列化全部集中在 fromData 手动解析（与 SpriteComponent 风格一致），
  * 字段反序列化统一由 fromData 完成，避免双路径带来的引用覆盖陷阱。
  */
-@effectsClass('Sprite')
+@effectsClass(spec.DataType.Sprite)
 export class Sprite extends Asset {
   /** 关联的纹理对象 */
   texture: Texture;
@@ -43,14 +31,14 @@ export class Sprite extends Asset {
   /** UV 旋转方式（对应老 splits 的 flip 0/1） */
   rotation: SpriteRotation = SpriteRotation.None;
 
-  constructor (engine: Engine, props?: SpriteData) {
+  constructor (engine: Engine, props?: spec.SpriteData) {
     super(engine);
     if (props) {
       this.fromData(props);
     }
   }
 
-  override fromData (data: SpriteData): void {
+  override fromData (data: spec.SpriteData): void {
     super.fromData(data);
     // findObject 对 Texture 实例原样返回，对 {id} 解析为 Texture 实例，
     // 兼容反序列化（data.texture 为 {id}）与手动构造（data.texture 为 Texture 实例）两条路径。

@@ -15,7 +15,7 @@ export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | s
 /** Loaded scene resources and prepared definitions that can be instantiated repeatedly. */
 export class Scene implements Disposable {
   readonly jsonScene: spec.JSONScene;
-  /** @internal Prepared definitions shared by instances of this scene. */
+  /** @hide Prepared definitions shared by instances of this scene. */
   objectsDataCache = new Map<string, spec.EffectsObjectData>();
   /** Base configuration inherited when this prepared scene is loaded again. */
   options: SceneLoadOptions;

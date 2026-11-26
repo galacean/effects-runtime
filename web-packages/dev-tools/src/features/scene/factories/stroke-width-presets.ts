@@ -1,6 +1,6 @@
-import type { VariableWidthPoint } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 
-export const STROKE_WIDTH_PRESETS: { name: string, points: VariableWidthPoint[] }[] = [
+export const STROKE_WIDTH_PRESETS: { name: string, points: spec.VariableWidthPoint[] }[] = [
   { name: 'Uniform', points: [] },
   { name: 'Wedge', points: [{ position: 0, ascent: .5, descent: .5 }, { position: 1, ascent: 0, descent: 0 }] },
   { name: 'Taper', points: [{ position: 0, ascent: .5, descent: .5 }, { position: 1, ascent: .1875, descent: .1875 }] },

@@ -1,5 +1,5 @@
-import { effectsClass, math } from '@galacean/effects';
-import type { Engine, Texture, spec } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
+import type { Engine, Texture } from '@galacean/effects';
 import { BaseButton } from './base-button';
 import { ellipsizeText } from '../core/text-layout';
 import { ButtonDrawMode, HorizontalAlignment, VerticalAlignment } from './enums';
@@ -11,7 +11,7 @@ export type ContentInsets = {
   bottom: number,
 };
 
-@effectsClass('Button')
+@effectsClass(spec.DataType.Button)
 export class Button extends BaseButton {
   static override readonly themeType: string = 'Button';
   private _text = '';

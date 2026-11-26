@@ -1,10 +1,10 @@
-import { effectsClass, math, TextCache } from '@galacean/effects';
-import type { Engine, TextLineLayout, spec } from '@galacean/effects';
+import { effectsClass, math, TextCache, spec } from '@galacean/effects';
+import type { Engine, TextLineLayout } from '@galacean/effects';
 import { getTextBoundaries, getTextIndexAtPosition, getTextPosition } from '../core/text-layout';
 import { HorizontalAlignment } from './enums';
 import { TextInput } from './text-input';
 
-@effectsClass('LineEdit')
+@effectsClass(spec.DataType.LineEdit)
 export class LineEdit extends TextInput {
   static override readonly themeType: string = 'LineEdit';
   protected readonly multiline = false;

@@ -1,5 +1,4 @@
-import { effectsClass, math } from '@galacean/effects';
-import type { spec } from '@galacean/effects';
+import { effectsClass, math, spec } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control } from '../core/control';
 import { growSlots, sum } from './utils';
@@ -12,7 +11,7 @@ type TrackMetrics = {
 };
 
 /** Places visible children in LTR row-major cells without spanning. */
-@effectsClass('GridContainer')
+@effectsClass(spec.DataType.GridContainer)
 export class GridContainer extends Container {
   static override readonly themeType: string = 'GridContainer';
   private _columns = 1;

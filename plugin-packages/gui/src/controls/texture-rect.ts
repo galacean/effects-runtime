@@ -1,15 +1,16 @@
 import {
   effectsClass,
   math,
+  spec,
 } from '@galacean/effects';
-import type { Engine, Texture, TextureRegion, spec } from '@galacean/effects';
+import type { Engine, Texture, TextureRegion } from '@galacean/effects';
 import { Control } from '../core/control';
 import { MouseFilter } from '../core/enums';
 import { TextureExpandMode, TextureStretchMode } from './enums';
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 
-@effectsClass('TextureRect')
+@effectsClass(spec.DataType.TextureRect)
 export class TextureRect extends Control {
   static override readonly themeType: string = 'TextureRect';
   private _texture: Texture | null = null;
