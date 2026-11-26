@@ -1,0 +1,19 @@
+packages/effects-core/src/plugins/timeline/playables/property-mixer-playable.ts
+  s_1959265e50472a::t_f1c6d5329d6321 20-21,24-25,55-57,63-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7dd4c456a25dba5e3509f9007639e48629b8bc93",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
