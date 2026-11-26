@@ -1,0 +1,563 @@
+packages/effects-core/src/components/effect-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 36
+plugin-packages/editor-gizmo/src/2d/gizmo-action.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,7,37-44,61,150-152,180,201-202
+packages/effects-core/src/texture/utils.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,5,7-38,41,43,47,52
+plugin-packages/gui/src/core/control.ts
+  s_1959265e50472a::t_356fa0bec9ee83 21,159,1766
+plugin-packages/editor-gizmo/src/2d/gizmo-type.ts
+  s_1959265e50472a::t_356fa0bec9ee83 25-26,39-40
+plugin-packages/gui/src/scroll/scroll-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,38
+plugin-packages/editor-gizmo/src/2d/gizmos/select-text-gizmo-base.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-300
+plugin-packages/gui/src/layout/box-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,6,171,180
+web-packages/dev-tools/src/features/scene/viewport/scene-geometry-tools.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-265
+packages/effects-core/src/render/mesh.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,116-117
+  s_1959265e50472a::t_25537609f21881 118-119
+packages/effects-core/src/plugins/shape/trim-path.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2
+packages/effects-core/src/plugins/timeline/playables/transform-playable.ts
+  s_1959265e50472a::t_356fa0bec9ee83 104,115
+web-packages/dev-tools/src/features/sequencer/sequencer-properties.ts
+  s_1959265e50472a::t_e9cdd2290520b7 146
+plugin-packages/rich-text/src/rich-text-layout-result.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-115
+plugin-packages/editor-gizmo/src/2d/configs/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 34,53-54
+plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-document.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-196
+packages/effects-core/src/asset-manager.ts
+  s_1959265e50472a::t_356fa0bec9ee83 23,82,85,117-118,121,161-162,164-165,167-169,171-182,188-191,193,198-199,205-207,209-219,252-253,275,278,367,370-373,375-380,384,394,396
+  s_1959265e50472a::t_74c3b1f47617b9 163
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 46-47,56-57,395
+  s_1959265e50472a::t_d810a98ba8d28b 351,353,375,384,388,397,407
+plugin-packages/orientation-transformer/src/orientation-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,7,11
+packages/effects-core/src/plugins/timeline/playable-assets/color-property-playable-asset.ts
+  s_1959265e50472a::t_356fa0bec9ee83 14
+web-packages/dev-tools/src/features/inspector/customizations/shape-details-customization.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,198,200
+packages/effects-core/src/components/frame-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,17,27,202-229,252
+web-packages/test/unit/src/plugin-editor-gizmo/2d/select-text-gizmo.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 336-339,346-347,353-354
+packages/effects-core/src/render/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 12
+web-packages/dev-tools/src/features/scene/serialization/scene-serializer.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,7,39,51,55,62-63,78-81,102,118,129-145,153,169,176-184,190-191,193-194,228,250-251,291,297,310,320,329,377,459,461,497-498,500,529,577-578,582,586,609
+plugin-packages/editor-gizmo/src/2d/gizmos/ruler-gizmo.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-1141
+plugin-packages/gui/src/controls/nine-patch-rect.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5,21
+web-packages/test/unit/src/plugin-editor-gizmo/2d/snap-manager.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 125-142
+packages/effects-core/src/components/mask-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 162,169-170
+web-packages/demo/src/gizmo-2d/inspector.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-2,4,51-52,73-78,88-92,156-158,162-163,170-171,186-187,191-196,198-200,202-206,208-209,223,225,275,278-285,370-377,379-395,397-400,405-406,408-419,450
+packages/effects-core/src/fallback/transform.ts
+  s_1959265e50472a::t_356fa0bec9ee83 213,215,288,306-307,310
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 68-73,76-78,82,84-85,111,160,167,172,202,204-207,209-210,212,214-217,225-226,273,281,290,300-301,312-314,387,389,409-419,520,525-536,538-539,551-563,604,611-613,615,621,623-625,629-633,635-640,642-645,649,692-699,743-752,770-772,774,874-880,882-894,897-906,909,981,989,994,1047-1049,1114-1120
+  s_1959265e50472a::t_9c3d89ae683f81 616-617,619-620
+packages/effects-core/src/animation/color-playable.ts
+  s_1959265e50472a::t_356fa0bec9ee83 74
+packages/effects-threejs/src/material/three-material.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,24
+plugin-packages/editor-gizmo/src/2d/modes/rich-text-edit-mode.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-50
+packages/effects-core/src/plugins/sprite/sprite.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,25,34,41,46
+plugin-packages/ffd/src/ffd-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,76-77
+plugin-packages/editor-gizmo/src/2d/gizmos/select-rich-text-gizmo.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-21
+plugin-packages/rich-text/src/strategies/rich-text-interfaces.ts
+  s_1959265e50472a::t_356fa0bec9ee83 11-12
+web-packages/dev-tools/src/features/scene/viewport/scene-tools.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-22
+web-packages/dev-tools/src/features/sequencer/sequencer-document.ts
+  s_1959265e50472a::t_e9cdd2290520b7 28,370,1468-1469,1472,1474-1477,1482,1487,1489
+web-packages/dev-tools/src/platform/effects-runtime/file-system-asset-database.ts
+  s_1959265e50472a::t_e9cdd2290520b7 4-5,8,17,25-27,29-31,33-34,70,77-81
+plugin-packages/multimedia/test/src/video-component.spec.ts
+  s_1959265e50472a::t_356fa0bec9ee83 39,51,114,222,255,288,321,723,811,813-816,832,844-849,852-853,855-857,859,861-865,867-870,872-873,877-944,1235,1245,1351,1354-1355,1360-1361,1366-1367,1370-1371
+web-packages/test/unit/src/dev-tools/scene-resources.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-158
+web-packages/test/unit/src/plugin-editor-gizmo/2d/text-gizmo.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 211,214,228
+packages/effects-core/src/plugins/particle/particle-mesh.ts
+  s_1959265e50472a::t_356fa0bec9ee83 12,197
+packages/effects-core/src/plugins/sprite/sprite-item.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,29,39,109,243
+packages/effects-core/src/render/geometry.ts
+  s_1959265e50472a::t_356fa0bec9ee83 3-4,6,74,192-237,425,431,475,477,664-680
+  s_1959265e50472a::t_1ca81aa67f26fb 681-682
+web-packages/dev-tools/src/features/inspector/inspector-panel.ts
+  s_1959265e50472a::t_e9cdd2290520b7 191,247
+web-packages/test/unit/src/plugin-editor-gizmo/index.ts
+  s_1959265e50472a::t_e9cdd2290520b7 29-30,39
+web-packages/test/unit/src/plugin-gui/gui-deserialization.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,573,575,579,585
+plugin-packages/gui/src/controls/popup-menu.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,33
+web-packages/demo/src/gizmo-2d/app.ts
+  s_1959265e50472a::t_e9cdd2290520b7 104
+packages/effects-core/src/plugins/timeline/tracks/property-track.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,8
+packages/effects-core/src/plugins/timeline/playable-assets/vector-property-playable-assets.ts
+  s_1959265e50472a::t_356fa0bec9ee83 16,35,54
+plugin-packages/editor-gizmo/src/2d/cursor.ts
+  s_1959265e50472a::t_356fa0bec9ee83 19-22,27-29
+plugin-packages/editor-gizmo/src/2d/gizmos/image-expand-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 259,262,276-278
+packages/effects-webgl/src/gpu-texture-webgl.ts
+  s_1959265e50472a::t_356fa0bec9ee83 250-251,401-402
+packages/effects-core/src/plugins/animation-graph/animation-graph-asset.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,9
+plugin-packages/editor-gizmo/src/2d/gizmos/sprite-text-edit-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 307-308,310-312,337
+web-packages/test/unit/src/effects-webgl/rendering-device-three.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-4,6,12-14,88-122,256,268
+web-packages/test/unit/src/effects-webgl/gl-texture.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 139-140,356-357,512-515,558-559,635-636
+plugin-packages/editor-gizmo/src/2d/gizmos/enter-edit-mode-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,5,8,39-40
+plugin-packages/model/src/gltf/loader-impl.ts
+  s_1959265e50472a::t_356fa0bec9ee83 565-566,602,701,760
+packages/effects-core/src/plugins/particle/trail-mesh.ts
+  s_1959265e50472a::t_356fa0bec9ee83 95,101-103,108-110
+packages/effects-core/src/plugins/timeline/playable-assets/float-property-playable-asset.ts
+  s_1959265e50472a::t_356fa0bec9ee83 13
+plugin-packages/editor-gizmo/src/2d/gizmo-owner.ts
+  s_1959265e50472a::t_356fa0bec9ee83 11,14,41-43,77-78
+  s_1959265e50472a::t_5e01ad0b0ba7ed 79
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-create-gizmo.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 70-73,166,190-192,194-195,197-199,201-204,206,208-212,241
+packages/effects-core/src/plugins/timeline/tracks/material-track.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,6,11
+plugin-packages/editor-gizmo/src/2d/cursor-icons.ts
+  s_1959265e50472a::t_356fa0bec9ee83 9-13,17-18,22-23
+plugin-packages/editor-gizmo/src/2d/gesture-handler.ts
+  s_1959265e50472a::t_2419f648fec543 846,848,852
+  s_1959265e50472a::t_356fa0bec9ee83 19-20,93-95,160,234-238,373,555-556,859,887
+web-packages/test/unit/src/plugin-editor-gizmo/2d/ruler-manager.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-30
+web-packages/test/unit/src/plugin-editor-gizmo/2d/gesture-handler.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 16,76-78,471-472,477-490,677
+plugin-packages/gui/src/layout/panel-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,4
+plugin-packages/gui/src/layout/margin-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,5
+plugin-packages/model/src/plugin/model-plugin.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,31,55-58,66,77-81
+web-packages/dev-tools/src/features/scene/scene-workspace.ts
+  s_1959265e50472a::t_e9cdd2290520b7 2,296,303-304
+plugin-packages/editor-gizmo/src/2d/gizmos/loading-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 27,50,52,239
+plugin-packages/gui/src/controls/color-picker.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,159,319
+web-packages/dev-tools/src/features/scene/serialization/shape-component-data.ts
+  s_1959265e50472a::t_09d727ce0cae03 37-38
+  s_1959265e50472a::t_e9cdd2290520b7 27,52-53
+  s_1959265e50472a::t_d810a98ba8d28b 36
+plugin-packages/editor-gizmo/package.json
+  s_1959265e50472a::t_356fa0bec9ee83 49-50
+plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-geometry.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-72
+packages/effects-threejs/src/gpu-texture-three.ts
+  s_1959265e50472a::t_356fa0bec9ee83 23,83,126,170,173,178,193-195,200-203
+web-packages/dev-tools/src/chrome-extension/bridge/runtime-agent.ts
+  s_1959265e50472a::t_e9cdd2290520b7 154,356-357,359-360
+web-packages/test/unit/src/effects-core/composition/runtime-instance-ids.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-204
+plugin-packages/editor-gizmo/src/2d/gizmos/viewport-overlay-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 25-26,137,151,188,190,196
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-asset.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 174,177,246-248,277
+plugin-packages/editor-gizmo/src/2d/frame/frame-assisted-layout.ts
+  s_1959265e50472a::t_356fa0bec9ee83 332,341
+plugin-packages/gui/src/controls/text-edit.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5,7,11
+plugin-packages/gui/src/components/ui-control.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,11
+web-packages/dev-tools/src/features/inspector/customizations/shape-width-details.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,6,19-20,43-44
+packages/effects-core/src/plugins/shape/contour-path.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,6,15-85,127
+plugin-packages/rich-text/src/strategies/wrap/rich-wrap-disabled.ts
+  s_1959265e50472a::t_356fa0bec9ee83 80
+web-packages/test/unit/src/plugin-editor-gizmo/2d/ruler-gizmo.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-171
+packages/effects-core/src/scene-instantiation-context.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-84
+plugin-packages/editor-gizmo/src/2d/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 35,60-61,92-94,98
+plugin-packages/editor-gizmo/src/3d/gizmo-loader.ts
+  s_1959265e50472a::t_356fa0bec9ee83 24,31-32,34
+web-packages/dev-tools/src/features/scene/factories/scene-item-factory.ts
+  s_1959265e50472a::t_e9cdd2290520b7 10,42,66
+web-packages/test/unit/src/plugin-editor-gizmo/2d/rich-text-edit.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-95
+packages/effects-core/src/plugin-system.ts
+  s_1959265e50472a::t_356fa0bec9ee83 76-77
+packages/effects-core/src/components/mesh-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,5-8,51-58
+plugin-packages/editor-gizmo/src/2d/gizmos/box-selection-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 139-140
+plugin-packages/gui/src/controls/popup.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,70
+packages/effects-core/src/scene-loader.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,5-7,15-16,20-71
+plugin-packages/rich-text/src/rich-text-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 8-12,17-18,22-24,27-28,37-48,81-134,183-185,192-193,214-215,217-218,224,231,242-247,253,258-260,268-270,295-296,495-497,505-516,520,576-588,601,608,612,614-616,618-619,677,679-680
+packages/effects-core/src/plugins/text/text-item.ts
+  s_1959265e50472a::t_e9cdd2290520b7 118-119
+  s_1959265e50472a::t_356fa0bec9ee83 2,114-117
+web-packages/test/unit/src/effects-core/engine-server.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-4,243,253-260,264-345,353,367,370,373,382-411,430,442-443,470,483,497
+packages/effects-core/src/scene-server.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4-5,47-58,65-66,68-69
+plugin-packages/editor-gizmo/src/2d/configs/types.ts
+  s_1959265e50472a::t_356fa0bec9ee83 9,35,41,45,55,57,59,76,80,82,90,96,98,118,122,126,130,134,142,152,156,162,164,172,186,188,190,194,202,204,212,214,216,218,220,222,224,226,228,260,264,266,328,342,344,381-420
+  s_1959265e50472a::t_09dde726152258 421
+plugin-packages/editor-gizmo/src/2d/selection/snap-manager.ts
+  s_1959265e50472a::t_356fa0bec9ee83 14-21,34,76-78,102-112,146-176,197,237-238,256,264,290-326,430-461,577-582,686-689
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-tool.ts
+  s_1959265e50472a::t_e9cdd2290520b7 159
+packages/effects-core/src/plugins/timeline/tracks/object-reference-property-track.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,8
+web-packages/dev-tools/src/features/sequencer/sequencer-preview.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,4
+web-packages/dev-tools/src/features/scene/viewport/scene-viewport-panel.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-2,19,23,43,65-67,90,92,96,115,130,173-174,195-211,214,273-277,279,288,325-337,339,341,343-366,368-369,427
+plugin-packages/dom-content/src/dom-content-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,12
+web-packages/test/unit/src/index.ts
+  s_1959265e50472a::t_e9cdd2290520b7 7
+packages/effects-core/src/components/base-render-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,10-11,13,219-220,223-224,226-233,235-236,238
+plugin-packages/editor-gizmo/src/2d/gizmos/image-cut-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 267,275,289-292
+plugin-packages/editor-gizmo/src/2d/modes/create-text-edit-mode.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-12
+packages/effects-core/src/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 14-15,23
+plugin-packages/editor-gizmo/src/2d/configs/builtin-configs.ts
+  s_1959265e50472a::t_356fa0bec9ee83 16,28-50,63,66,68,76,78-79,89,99,101-102,107-109,123,125,127,129,131,135,143,145,148-149,153,163-165,167,174-175,179-187,209,211-212,222-235,251,258-259
+plugin-packages/editor-gizmo/src/2d/gizmos/mask-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 22,261,293,320,327,344,424-425,438-440,442-444,662
+packages/effects-core/src/components/composition-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 27,51,71-75,81,138-139,301,311,332-338
+plugin-packages/gui/src/scroll/scroll-bar.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,416,424
+web-packages/dev-tools/src/features/hierarchy/hierarchy-panel.ts
+  s_1959265e50472a::t_e9cdd2290520b7 331
+packages/effects-core/src/components/position-constraint.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,5,19,168,183
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-geometry.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 5,22,41-42,108
+plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-resize.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-86
+plugin-packages/editor-gizmo/src/2d/gizmos/select-text-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,3,5,7-8,11-12,15
+packages/effects-threejs/src/three-display-object.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,4,98,110-111,113,116,124
+web-packages/test/unit/src/effects-core/composition/texture-options.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-63
+web-packages/dev-tools/src/features/assets/runtime/runtime-asset-changes.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,6,9,12,16,58
+packages/effects-core/src/utils/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 25-26
+packages/effects-core/src/decorators.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,13
+packages/effects-core/src/plugins/animation-graph/nodes/layer-blend-node.ts
+  s_1959265e50472a::t_356fa0bec9ee83 18
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,6,12-14,26,29-30,144,152-153,335-336,340,381-384,388-402,404,407,409-411,413,416-418,420-421,423-425,427-433,435-437,488-490,503,507-508,514-515,548,690,692,702,705,837
+plugin-packages/gui/src/layout/grid-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,14
+web-packages/test/unit/src/plugin-editor-gizmo/2d/drawing.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,11-29
+  s_1959265e50472a::t_f4fe8020d20c18 30
+packages/effects-core/src/plugins/timeline/track.ts
+  s_1959265e50472a::t_356fa0bec9ee83 92
+plugin-packages/gui/src/controls/check-button.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,7
+plugin-packages/gui/src/controls/progress-bar.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,6,11
+web-packages/test/unit/src/effects-core/owned-mask.spec.ts
+  s_1959265e50472a::t_de0cd07032b2ad 542-548
+  s_1959265e50472a::t_09d727ce0cae03 525-529
+web-packages/dev-tools/src/features/assets/runtime/asset-texture-cache.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,48,59,101-104,112
+packages/effects-webgl/src/gpu-framebuffer-webgl.ts
+  s_1959265e50472a::t_356fa0bec9ee83 107,116,211-212,227-228,328
+web-packages/dev-tools/src/features/assets/runtime/asset-object-cache.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3-4,17-21,23,33,35,37,41,46,54,69-71,79,85-88,96-99,101-103,105-126,128-142,147-148,156
+web-packages/dev-tools/src/features/scene/operations/scene-edit-commands.ts
+  s_1959265e50472a::t_e9cdd2290520b7 93
+web-packages/dev-tools/src/platform/effects-runtime/asset-database.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-7
+web-packages/dev-tools/src/features/scene/operations/scene-item-operations.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-2,10,29-35,41-47,49,51,58-60,126,151-153,155,165-170,202-210,212-213,228,230-231,233-238,252-255,258-259,261
+plugin-packages/gui/src/controls/label.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5,7,25
+plugin-packages/gui/src/controls/button.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,14
+web-packages/test/case/src/common/player/test-player.ts
+  s_1959265e50472a::t_e9cdd2290520b7 59
+plugin-packages/gui/src/controls/line-edit.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,7
+packages/effects-core/src/material/material.ts
+  s_1959265e50472a::t_356fa0bec9ee83 13,68,783
+plugin-packages/editor-gizmo/src/2d/modes/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5-6
+packages/effects-core/src/downloader.ts
+  s_1959265e50472a::t_356fa0bec9ee83 305-308
+plugin-packages/gui/src/controls/panel.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,6
+web-packages/test/unit/src/effects/scene-load.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 273,287
+plugin-packages/editor-gizmo/src/2d/gizmos/ruler-manager.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-70
+web-packages/test/unit/src/effects-core/composition/composition-component.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,61,64-66,68-70,72-73,98,106,188,190-191,211-217,230-236
+plugin-packages/multimedia/src/video/video-loader.ts
+  s_1959265e50472a::t_356fa0bec9ee83 16
+web-packages/demo/src/gizmo-2d/editor.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,9-10,12-14,28,33-34,131-137,145,190,194,208,211,217,224,233,235,240-243,250-251,253-262,265-266,268-273,278,282-285,296-314,401-403,410-415,419,436-441,445,464-465,579,588,590-594,618-635,642-647,658-659,751
+plugin-packages/gui/src/controls/color-rect.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,6
+packages/effects/src/player.ts
+  s_1959265e50472a::t_356fa0bec9ee83 295,414,416-419
+packages/effects-core/src/plugins/timeline/timeline-clip.ts
+  s_1959265e50472a::t_356fa0bec9ee83 17
+plugin-packages/editor-gizmo/src/2d/items/item-hierarchy.ts
+  s_1959265e50472a::t_356fa0bec9ee83 109
+plugin-packages/gui/src/controls/menu-button.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,12,48
+packages/effects-core/src/render/geometry-triangles.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-47
+plugin-packages/gui/src/layout/aspect-ratio-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,7
+packages/effects-core/src/plugins/timeline/playable-assets/object-reference-property-playable-asset.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,10,14
+packages/effects-core/src/components/animator.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,10,152
+plugin-packages/model/src/gltf/protocol.ts
+  s_1959265e50472a::t_356fa0bec9ee83 13,135
+web-packages/dev-tools/src/platform/effects-runtime/deserialize-assets.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-15
+packages/effects-core/src/math/shape/stroke-attributes.ts
+  s_1959265e50472a::t_356fa0bec9ee83 13
+packages/effects-core/package.json
+  s_1959265e50472a::t_356fa0bec9ee83 54
+plugin-packages/model/src/gltf/json-converter.ts
+  s_1959265e50472a::t_356fa0bec9ee83 376,382,384
+packages/effects-core/src/fallback/migration.ts
+  s_1959265e50472a::t_356fa0bec9ee83 273,275,280,286,291,298,489,500,575,646,741-742,752,798,848,853,883,901,911,934,956-957,959,961,963,966,970,1503-1504
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2-3,37,135-140,164-175,370,693,696-698,710,771-772,774-782,784,798-799,878-889,895-904,937,943-955,962-963,979,1142,1171-1174,1181-1182,1310-1329,1369,1372,1617,1631,1748-1750,1771-1792,2062-2063
+plugin-packages/gui/src/controls/texture-rect.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,6,13
+plugin-packages/model/src/plugin/model-item.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,5,132,235-241,244
+packages/effects-core/src/components/component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,15,17,19,21,230,233-241,243-244
+plugin-packages/editor-gizmo/src/2d/items/default-vfx-items.ts
+  s_1959265e50472a::t_356fa0bec9ee83 12,71-79,109-110,117
+packages/effects-core/src/effects-object.ts
+  s_1959265e50472a::t_356fa0bec9ee83 3,19,43-45,66,79,81
+web-packages/dev-tools/src/features/assets/editors/runtime-asset-editor.ts
+  s_1959265e50472a::t_e9cdd2290520b7 67,109
+web-packages/test/unit/src/effects-core/components/lifecycle.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 62,71,77,81-82,542,609
+plugin-packages/editor-gizmo/src/2d/rich-text/index.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-4
+packages/effects-core/src/components/frame-title.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,199,475-480
+  s_1959265e50472a::t_f9dc68980157c1 481-483
+web-packages/dev-tools/src/features/scene/viewport/scene-tool-settings-bar.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-133
+plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-edit-session.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-284
+web-packages/test/unit/src/plugin-editor-gizmo/helpers/items.ts
+  s_1959265e50472a::t_e9cdd2290520b7 12
+plugin-packages/editor-gizmo/src/2d/gizmo-manager.ts
+  s_1959265e50472a::t_356fa0bec9ee83 11,23,57-58,67-68
+plugin-packages/editor-gizmo/src/2d/rich-text/rich-text-editor.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-313
+plugin-packages/model/src/runtime/material.ts
+  s_1959265e50472a::t_356fa0bec9ee83 872
+web-packages/test/unit/src/effects-core/composition/load-tex.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 267
+web-packages/dev-tools/src/ui/controls/floating-toolbar.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-120
+packages/effects-core/src/plugins/camera/camera-controller-node.ts
+  s_1959265e50472a::t_356fa0bec9ee83 8,12,37
+web-packages/test/unit/src/effects-webgl/texture-utils.ts
+  s_1959265e50472a::t_e9cdd2290520b7 434-436
+web-packages/dev-tools/src/features/assets/model/resource-identity.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,3,24-25,30-31,41,45,48-51,53
+web-packages/test/unit/src/effects-core/fallback/model/index.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 120,123
+packages/effects-core/src/math/shape/stroke-width-profile.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,7,10,15
+plugin-packages/multimedia/src/audio/audio-loader.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,16
+packages/effects-core/src/composition.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5,16,18,158,160,203,208,221,246,248-251,253,255,257,303-310,353,356,575-577,715-716,824,835,839-851
+  s_1959265e50472a::t_2bda0f5ea38264 852
+plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode.ts
+  s_1959265e50472a::t_356fa0bec9ee83 32-33,36,41-52,54,58,68
+plugin-packages/editor-gizmo/src/2d/gizmos/rich-text-gizmo.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-80
+packages/effects-core/src/components/fake-3d-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,6,34
+web-packages/dev-tools/src/features/scene/operations/scene-structure-edit.ts
+  s_1959265e50472a::t_e9cdd2290520b7 52,55
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,19,40-47,77-78,104,161,177,315-347
+  s_1959265e50472a::t_699dde31b051a2 348-349
+plugin-packages/editor-gizmo/src/2d/items/item-predicates.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-2,26-43,85-101
+web-packages/demo/src/gizmo-2d/view.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,17-25,27,29-33,49-88,91,97-99,116-126,150,162,166,170-184,192-203,230-240,282
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize.ts
+  s_1959265e50472a::t_356fa0bec9ee83 73-76,80
+packages/effects/src/index.ts
+  s_1959265e50472a::t_356fa0bec9ee83 24,26-35
+web-packages/test/unit/src/effects-core/plugins/timeline/object-reference-property.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 150-151,161,173,176,188,202
+web-packages/test/unit/src/effects-core/components/maskable-graphic-compat.spec.ts
+  s_1959265e50472a::t_75490ff1f0d6c9 101,103-104
+plugin-packages/model/test/src/plugin-unit.spec.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2-3,774,776-778,1000,1103-1108,1126,1129
+web-packages/dev-tools/src/features/assets/ui/asset-reference-field.ts
+  s_1959265e50472a::t_e9cdd2290520b7 24-27,33-36,64-68,74,76,101-105,109,116,118,120,131,145-147,151-152,155-157,162-163,165,175
+web-packages/dev-tools/src/features/assets/editors/material-details.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,43-44,50-52
+plugin-packages/editor-gizmo/src/2d/items/item-geometry.ts
+  s_1959265e50472a::t_356fa0bec9ee83 4,38,41-58
+web-packages/test/unit/src/plugin-editor-gizmo/2d/resize-selection-gizmo.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 7,249,1094,1173,1210,1241
+plugin-packages/gui/src/controls/slider.ts
+  s_1959265e50472a::t_356fa0bec9ee83 6,338,346
+web-packages/dev-tools/src/features/scene/viewport/scene-brush-settings.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3,7,9,13,33-34,36,39,44-45,48-50,53,55-56,58,63-64,76-78,80-82,84-86,88,92,103-104,108,112-122,154,157,163-164,166-167
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/shape-model-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 11,102,114,138-139,141-142,153-156,162,170-179
+  s_1959265e50472a::t_ef4125e15fa960 180-182
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-base.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 51
+web-packages/dev-tools/src/ui/controls/color-picker.ts
+  s_1959265e50472a::t_e9cdd2290520b7 182-183
+plugin-packages/editor-gizmo/src/2d/math/geometry.ts
+  s_1959265e50472a::t_356fa0bec9ee83 25-26,39-56,146,148-152
+plugin-packages/spine/src/spine-component.ts
+  s_1959265e50472a::t_d810a98ba8d28b 4
+  s_1959265e50472a::t_e9cdd2290520b7 16,296,298,300-301,304-308,312-314,317,320-324,326-332
+packages/effects-core/src/engine.ts
+  s_1959265e50472a::t_356fa0bec9ee83 8,134
+plugin-packages/editor-gizmo/src/2d/drawing.ts
+  s_1959265e50472a::t_356fa0bec9ee83 13-14,17-18,21-22,29-32,40-48
+  s_1959265e50472a::t_f30cd57aab5945 49-50
+plugin-packages/editor-gizmo/src/2d/gizmos/item-create-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 10,16-18,26-27,54-58,154-167,212,260-261,267,297-298,380,398-399,405,440,562,571,586-587
+packages/effects-core/src/effects-object-server.ts
+  s_1959265e50472a::t_e9cdd2290520b7 137
+  s_1959265e50472a::t_356fa0bec9ee83 2,4,10,12-19,24,26-28,100-101,103,108,113,116-130,133-136,138-144,147-159,162
+web-packages/dev-tools/src/features/assets/runtime/runtime-asset-source.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,23-24,34
+web-packages/dev-tools/src/examples/scenes/vector-stroke-scene.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,11,52
+  s_1959265e50472a::t_4508a51aa0bc33 20
+web-packages/dev-tools/src/features/scene/document/scene-document.ts
+  s_1959265e50472a::t_e9cdd2290520b7 101,198
+plugin-packages/model/src/plugin/model-tree-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 23,34
+web-packages/dev-tools/src/features/scene/viewport/scene-toolbar.ts
+  s_1959265e50472a::t_e9cdd2290520b7 3-8,16-17,30-67,70-72,78-79,83-88,94-109,113-116,120-122,125,130,132-140,142-146,148-150,152-154,156-162,164-166,169,171,177-185,189-207,211-212,214,220,225-231,234,236-237,240-249,252,254,256-265,267-281
+web-packages/test/unit/src/effects-core/composition/index.ts
+  s_1959265e50472a::t_e9cdd2290520b7 11-12
+web-packages/dev-tools/src/features/scene/document/scene-types.ts
+  s_1959265e50472a::t_e9cdd2290520b7 2,24
+web-packages/test/unit/src/effects-core/composition/plugin.spec.ts
+  s_1959265e50472a::t_e9cdd2290520b7 24,32-34,45,49,57,66,72
+packages/effects-core/src/vfx-item.ts
+  s_1959265e50472a::t_356fa0bec9ee83 7,17-18,25,28,68,93-95,791,793-797,799-800,806-816,980,1004,1006-1008,1010-1019,1024,1028,1063-1065
+packages/effects-core/src/components/renderer-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,49,72-79
+packages/effects-core/src/asset-server.ts
+  s_1959265e50472a::t_356fa0bec9ee83 3,5,7,10,12-13,15-18,20,26-28,39-40,43-44,47-49,51-52,54,56,59-60,63-66,68-69,71-75,77-78,80,82-88,90-93,96,98-100,102-103,105-110,115-116,118,125-127
+  s_1959265e50472a::t_e9cdd2290520b7 14
+plugin-packages/editor-gizmo/src/2d/text/text-edit-session.ts
+  s_1959265e50472a::t_356fa0bec9ee83 55-56,369,371-373,376,382-383,388,391-392,401,404-405,417-418
+web-packages/dev-tools/src/platform/effects-runtime/editor-runtime-session.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,3,5,9,14,27-28
+web-packages/demo/html/gizmo-2d.html
+  s_1959265e50472a::t_e9cdd2290520b7 35-41,58-68,72-79,101-102,126-128,135-136,154,156-157,174-188,219-225
+packages/effects-core/src/scene.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1-6,8-10,15-228,240,307
+plugin-packages/gui/src/controls/checkbox.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,9
+plugin-packages/gui/src/layout/center-container.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,5
+packages/effects-core/src/plugins/plugin.ts
+  s_1959265e50472a::t_356fa0bec9ee83 33,37-38,45
+web-packages/dev-tools/src/features/scene/viewport/scene-gizmo.ts
+  s_1959265e50472a::t_e9cdd2290520b7 2,7-8,10-13,16,18-19,24,27-29,33-34,45-46,48,50-51,61-66,83-91,96-97,99,102-113,115,119-125,143-162,176,197-240,246,293,296-302,306-371,382
+packages/effects-core/src/plugins/interact/interact-item.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,7,333-335,337-346
+web-packages/dev-tools/src/ui/icons/editor-icon-paths.ts
+  s_1959265e50472a::t_e9cdd2290520b7 2-28
+packages/effects-core/src/effects-package.ts
+  s_1959265e50472a::t_356fa0bec9ee83 12
+plugin-packages/multimedia/src/video/video-component.ts
+  s_1959265e50472a::t_356fa0bec9ee83 37-38,67,160,162,168-169,180-183,197-198,214,216,219,239,241-247,250-252,401,414-415
+plugin-packages/editor-gizmo/src/2d/gizmos/text-gizmo.ts
+  s_1959265e50472a::t_356fa0bec9ee83 20,152
+web-packages/dev-tools/src/features/scene/factories/scene-template.ts
+  s_1959265e50472a::t_4508a51aa0bc33 7
+packages/effects-core/src/scene-objects-factory.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-99
+plugin-packages/rich-text/src/rich-text-layout.ts
+  s_1959265e50472a::t_356fa0bec9ee83 9,12-13
+web-packages/dev-tools/src/features/scene/operations/instantiate-items.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1-34
+packages/effects-core/src/texture/texture.ts
+  s_1959265e50472a::t_356fa0bec9ee83 5,7,21,32,36,47-50,86,99,108,185-189,228,231,236,276,280-292,295-297,337,351,370-374,403-404
+packages/effects-core/src/asset.ts
+  s_1959265e50472a::t_356fa0bec9ee83 2,36,39-42
+plugin-packages/rich-text/src/strategies/wrap/rich-wrap-enabled.ts
+  s_1959265e50472a::t_356fa0bec9ee83 34,37,39-49,96,98-101,145,156,164
+plugin-packages/gui/src/layout/separator.ts
+  s_1959265e50472a::t_356fa0bec9ee83 1,40,49
+web-packages/dev-tools/src/features/scene/factories/stroke-width-presets.ts
+  s_1959265e50472a::t_e9cdd2290520b7 1,3
+pnpm-lock.yaml
+  s_1959265e50472a::t_eb2fb2fa667151 162-163,1470-1471,5343,5814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d0f6b547cf601b62ea238809c302f3d917d590be",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
