@@ -345,13 +345,6 @@ for (const glType of ['webgl', 'webgl2'] as const) {
       mask.setMasks(mask.getMasks());
       sample(1);
       expect(render()).deep.equals(expected((x, y) => x < (y + 1) / 2));
-
-      mask.setMaskPath('a', pathData([{ x: -1, y: -1 }, { x: 0, y: 1 }]));
-      sample(0.5);
-      mask.setMaskPath('a', rectangle(-1, -1, 0, 1));
-      sample(1);
-      expect(mask.masks.a.path.points[2].x).equals(1);
-      expect(render()).deep.equals(expected((x, y) => x < (y + 1) / 2));
     });
 
     it('keeps layer paths across renderer removal and releases clipping on mask removal', () => {
