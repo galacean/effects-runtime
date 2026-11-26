@@ -3,7 +3,7 @@ import type { Editor3D } from '../editor-3d';
 import { rayAxisParameter } from '../../math/geometry-3d';
 import { rayPlanePoint } from '../../math/plane';
 import type { Point2, Point3 } from '../../math/types';
-import { add3, sub3, mul3, dot3, cross3, unit3 } from '../../math/vector3';
+import { sub3, mul3, dot3, cross3, unit3 } from '../../math/vector3';
 import { Gizmo3D, type Transform3DActionEvent, type Transform3DOperation, type Viewport3DSpace } from './gizmo-3d';
 import type { NativeGizmoType } from './viewport-gizmo-picker';
 
@@ -45,6 +45,19 @@ function matchesLocal (item: VFXItem, value: LocalTransform): boolean {
 const vector = (p: Point3): Vector3 => new Vector3(p.x, p.y, p.z);
 const identity = new Matrix4();
 const axes: Point3[] = [{ x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 0, z: 1 }];
+const transformKeys = ['position', 'quat', 'scale'] as const;
+
+/** The visible handle and the drag operation share the same world-space pivot and orientation. */
+export function getTransformGizmoPose (items: readonly VFXItem[], space: Viewport3DSpace) {
+  const pivot = new Vector3();
+  const rotation = new Quaternion();
+
+  for (const item of items) { pivot.add(item.transform.getWorldPosition()); }
+  pivot.multiply(1 / items.length);
+  if (space === 'local') { items[0].transform.assignWorldTRS(undefined, rotation); }
+
+  return { pivot, rotation };
+}
 
 /** Perspective ray-based axes, planes, rotation rings and scale handles. */
 export class TransformGizmo3D extends Gizmo3D {
@@ -79,21 +92,11 @@ export class TransformGizmo3D extends Gizmo3D {
       // Only roll back our own preview. Another editor may have replaced the item or its transform.
       if (preview && item.transform.getValid() && matchesLocal(item, preview)) { item.transform.setTransform(before); }
     }
+    this.owner.updateGizmos();
     this.owner.emit('actioncommit', { ...drag.action, canceled: true, reason });
   }
   setOperation (operation: Transform3DOperation): void { this.cancel('operation'); this.operation = operation; }
   setSpace (space: Viewport3DSpace): void { this.cancel('space'); this.space = space; }
-  private createFrame (items: readonly VFXItem[]): Frame {
-    const sum = items.reduce((total, item) => add3(total, new Vector3().applyMatrix(item.transform.getWorldMatrix())), { x: 0, y: 0, z: 0 });
-    const pivot = mul3(sum, 1 / items.length);
-    const rotation = new Quaternion();
-
-    if (this.space === 'local') {
-      items[0].transform.assignWorldTRS(undefined, rotation);
-    }
-
-    return { pivot, rotation, axes: axes.map(axis => vector(axis).applyQuaternion(rotation)) };
-  }
   private planeAxes (handle: string): [number, number] { return handle === 'xy' ? [0, 1] : handle === 'xz' ? [0, 2] : [1, 2]; }
   private nativeType (): NativeGizmoType { return this.operation === 'translate' ? 'translation' : this.operation === 'rotate' ? 'rotation' : 'scale'; }
   private nativeHandle (key: string): Handle | undefined {
@@ -124,7 +127,8 @@ export class TransformGizmo3D extends Gizmo3D {
 
     if (!ray) { return; }
     this.cancel('restart');
-    const frame = this.createFrame(selected);
+    const { pivot, rotation } = getTransformGizmoPose(selected, this.space);
+    const frame = { pivot, rotation, axes: axes.map(axis => vector(axis).applyQuaternion(rotation)) };
     const drag: TransformDrag = {
       action: { source: this, transformType: this.operation, itemIds: selected.map(item => item.getInstanceId()) },
       items: [], composition: this.owner.composition,
@@ -243,12 +247,20 @@ export class TransformGizmo3D extends Gizmo3D {
         scale: this.operation === 'scale' ? s : initial.before.scale });
     }
     // Validate the whole selection before publishing any preview.
-    drag.items.forEach((entry, index) => {
-      entry.preview = after[index];
-      entry.item.transform.setTransform(after[index]);
-    });
+    for (const [index, entry] of drag.items.entries()) {
+      entry.preview ??= { ...entry.before };
+      for (const key of transformKeys) {
+        const change = { [key]: after[index][key] };
+
+        // A setter can synchronously cancel the drag. Only the properties written so far belong to this preview.
+        Object.assign(entry.preview, change);
+        entry.item.transform.setTransform(change);
+        if (this.drag !== drag) { return; }
+      }
+    }
+    this.owner.updateGizmos();
     event.accept();
-    this.owner.emit('actionupdate', drag.action);
+    if (this.drag === drag) { this.owner.emit('actionupdate', drag.action); }
   }
   override onMouseUp (event: InputEventMouseButton): void {
     const drag = this.drag;
@@ -267,7 +279,16 @@ export class TransformGizmo3D extends Gizmo3D {
     const key = event.keycode.toLowerCase();
 
     if (event.ctrlPressed || event.metaPressed) { return; }
-    if (key === 'w' || key === 'e' || key === 'r') { this.setOperation(key === 'w' ? 'translate' : key === 'e' ? 'rotate' : 'scale'); event.accept(); } else if (key === 'x') { this.setSpace(this.space === 'world' ? 'local' : 'world'); event.accept(); } else if (key === 'escape') { this.cancel('escape'); event.accept(); }
+    if (key === 'w' || key === 'e' || key === 'r') {
+      this.owner.setTool(key === 'w' ? 'translate' : key === 'e' ? 'rotate' : 'scale');
+      event.accept();
+    } else if (key === 'x') {
+      this.owner.setTool(this.operation, this.space === 'world' ? 'local' : 'world');
+      event.accept();
+    } else if (key === 'escape') {
+      this.cancel('escape');
+      event.accept();
+    }
   }
 }
 function around (pivot: Point3, matrix: Matrix4): Matrix4 {

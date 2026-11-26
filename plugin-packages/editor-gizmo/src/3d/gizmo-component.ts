@@ -8,7 +8,6 @@ import {
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
 import type { EditorGizmoPlugin } from './gizmo-loader';
-import { iconTextures } from './gizmo-loader';
 import type { GizmoItemBoundingSphere, GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
 import { BoundingType } from './gizmo-vfx-item';
 import { computeOrthographicOffCenter } from '../math/projection';
@@ -61,18 +60,13 @@ export class GizmoComponent extends RendererComponent {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
-    for (const item of this.item.composition?.items ?? []) {
-      if (item.id === this.target) {
-        this.targetItem = item;
-      }
-    }
-    const targetItem = this.targetItem;
+    const composition = this.item.composition;
+    const targetItem = this.targetItem ?? composition?.items.find(item => item.id === this.target);
 
-    if (!targetItem) {
-
+    if (!composition || !targetItem) {
       return;
     }
-    const composition = this.item.composition;
+    this.targetItem = targetItem;
 
     for (const plugin of PluginSystem.getPlugins() ?? []) {
       if (plugin.name === 'editor-gizmo') {
@@ -113,7 +107,7 @@ export class GizmoComponent extends RendererComponent {
         break;
       case GizmoSubType.camera:
       case GizmoSubType.light:
-        this.createBasicContent(targetItem, gizmoSubType, iconTextures);
+        this.createBasicContent(targetItem, gizmoSubType, gizmoPlugin.getIconTextures(composition));
 
         break;
       case GizmoSubType.rotation:
@@ -123,7 +117,7 @@ export class GizmoComponent extends RendererComponent {
 
         break;
       case GizmoSubType.viewHelper:
-        this.createCombinationContent(targetItem, gizmoSubType, iconTextures);
+        this.createCombinationContent(targetItem, gizmoSubType, gizmoPlugin.getIconTextures(composition));
 
         break;
       case GizmoSubType.boundingBox:
@@ -133,7 +127,7 @@ export class GizmoComponent extends RendererComponent {
       default:
         break;
     }
-    composition?.loaderData.gizmoItems.push(this.item);
+    (composition.loaderData.gizmoItems ??= []).push(this.item);
   }
 
   override onEnable (): void {
@@ -229,7 +223,7 @@ export class GizmoComponent extends RendererComponent {
       }
     }
 
-    const arr: VFXItem[] = composition.loaderData.gizmoItems;
+    const arr: VFXItem[] = composition.loaderData.gizmoItems ?? [];
     const index = arr.indexOf(this.item);
 
     if (index > -1) {
@@ -297,7 +291,7 @@ export class GizmoComponent extends RendererComponent {
           // 移动\旋转\缩放gizmo去除近大远小
           if (gizmoSubType === GizmoSubType.rotation || gizmoSubType === GizmoSubType.scale || gizmoSubType === GizmoSubType.translation) {
             const camera = item.composition!.camera;
-            const cameraPos = camera.position || new Vector3();
+            const cameraPos = camera.worldPosition;
             const itemPos = targetTransform.position;
             const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 
@@ -360,7 +354,7 @@ export class GizmoComponent extends RendererComponent {
               mesh.material.setMatrix('_MatrixP', proMat5);
             } else {
               if (gizmoSubType === GizmoSubType.rotation) {
-                const cameraPos = item.composition!.camera.position || [0, 0, 0];
+                const cameraPos = item.composition!.camera.worldPosition;
 
                 mesh.material.setVector3('u_cameraPos', cameraPos);
                 mesh.material.setVector3('u_center', center);
@@ -396,7 +390,7 @@ export class GizmoComponent extends RendererComponent {
 
           if (gizmoSubType === GizmoSubType.light || gizmoSubType === GizmoSubType.camera) {
             const camera = item.composition!.camera;
-            const cameraPos = camera.position || new Vector3(0, 0, 0);
+            const cameraPos = camera.worldPosition;
             const itemPos = targetTransform.position;
             const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 
@@ -663,7 +657,7 @@ export class GizmoComponent extends RendererComponent {
           gizmoSubType === GizmoSubType.light
         ) {
           const camera = item.composition!.camera;
-          const cameraPos = camera.position || [0, 0, 0];
+          const cameraPos = camera.worldPosition;
           const itemPos = targetTransform.position;
           const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 

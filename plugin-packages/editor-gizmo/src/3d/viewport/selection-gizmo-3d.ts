@@ -1,5 +1,5 @@
 import type { math } from '@galacean/effects';
-import { MouseButton, spec, type InputEventMouseButton, type InputEventMouseMotion, type VFXItem } from '@galacean/effects';
+import { MouseButton, spec, VFXItem, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Point2 } from '../../math/types';
 import { Gizmo3D } from './gizmo-3d';
 import { getItemWorldBoundsCorners } from './item-bounds';
@@ -30,10 +30,14 @@ export class SelectionGizmo3D extends Gizmo3D {
   get marqueeRect (): MarqueeRect | undefined { return this.rect; }
 
   get items (): readonly VFXItem[] {
-    const selected = this.owner.selection.getSelectedPlayerItems();
-    const selectable = this.selectableItems;
+    return this.owner.selection.getSelectedPlayerItems().filter(item => this.isSelectable(item));
+  }
 
-    return selectable ? selected.filter(item => selectable.has(item)) : selected;
+  private isSelectable (item: VFXItem): boolean {
+    const root = this.owner.gizmoRoot;
+
+    return (!this.selectableItems || this.selectableItems.has(item))
+      && (!root || (item !== root && !VFXItem.isAncestor(root, item)));
   }
 
   private selectHits (hits: Set<VFXItem>): void {
@@ -50,7 +54,7 @@ export class SelectionGizmo3D extends Gizmo3D {
   }
 
   canTransform (item: VFXItem): boolean {
-    if (item.composition !== this.owner.composition || (this.selectableItems && !this.selectableItems.has(item))) { return false; }
+    if (item.composition !== this.owner.composition || !this.isSelectable(item)) { return false; }
     for (let node: VFXItem | undefined = item; node; node = node.parent) {
       if (!node.isVisible || !node.isActive || this.lockedItems.has(node)) { return false; }
     }
@@ -65,7 +69,7 @@ export class SelectionGizmo3D extends Gizmo3D {
     const helpers = new Set<VFXItem>(composition.loaderData.gizmoItems);
 
     return Array.from(this.selectableItems ?? composition.items).filter(item => {
-      if (item.composition !== composition || item.type === spec.ItemType.skybox) { return false; }
+      if (item.composition !== composition || item.type === spec.ItemType.skybox || !this.isSelectable(item)) { return false; }
       for (let node: VFXItem | undefined = item; node; node = node.parent) {
         if (helpers.has(node) || !node.isActive || !node.isVisible) { return false; }
       }
@@ -112,7 +116,7 @@ export class SelectionGizmo3D extends Gizmo3D {
     const origin = composition.getHitTestRay(x, y).origin;
     const candidates = new Set(this.candidates());
     const helpers = new Set<VFXItem>(composition.loaderData.gizmoItems);
-    const hits = composition.hitTest(x, y, true, { skip: item => helpers.has(item) || !item.isVisible });
+    const hits = composition.hitTest(x, y, true, { skip: item => item === this.owner.gizmoRoot || helpers.has(item) || !item.isVisible });
     let nearest: VFXItem | undefined;
     let distance = Infinity;
 

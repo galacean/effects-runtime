@@ -5,7 +5,7 @@ export interface CameraEditData {
   position: Point3,
   target: Point3,
   up: Point3,
-  /** Vertical field of view in degrees. */
+  /** Field of view in degrees along the axis specified by the camera's clip mode. */
   fov: number,
 }
 

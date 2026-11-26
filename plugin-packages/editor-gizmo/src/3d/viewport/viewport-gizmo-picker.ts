@@ -1,13 +1,13 @@
-import type { Composition, VFXItem } from '@galacean/effects';
+import type { VFXItem } from '@galacean/effects';
 import { GizmoSubType } from '../define';
-import { GizmoComponent } from '../gizmo-component';
+import type { GizmoComponent } from '../gizmo-component';
 import type { Editor3D } from '../editor-3d';
 import type { Point2 } from '../../math/types';
 
-export type NativeGizmoType = 'translation' | 'rotation' | 'scale' | 'view-helper' | 'floor-grid';
+export type NativeGizmoType = keyof typeof gizmoSubTypes;
 export interface NativeGizmoHit { key: string, target?: string }
 
-const subTypes: Record<NativeGizmoType, GizmoSubType> = {
+export const gizmoSubTypes = {
   translation: GizmoSubType.translation,
   rotation: GizmoSubType.rotation,
   scale: GizmoSubType.scale,
@@ -16,31 +16,23 @@ const subTypes: Record<NativeGizmoType, GizmoSubType> = {
 };
 const skipChildren = { skip: () => true };
 
-/** Pick the helper meshes registered in this viewport's composition, in world space. */
+/** Pick the meshes owned by the current viewport's gizmo layer. */
 export class ViewportGizmoPicker {
   constructor (private readonly owner: Editor3D) {}
 
-  private registered (composition: Composition | undefined, type: NativeGizmoType): GizmoComponent[] {
-    const items: VFXItem[] = composition?.loaderData?.gizmoItems ?? [];
-    const components: GizmoComponent[] = [];
-
-    for (const item of items) {
-      const component = item.getComponent(GizmoComponent);
-
-      if (component?.subType === subTypes[type] && component.meshes.length) { components.push(component); }
-    }
-
-    return components;
+  private registered (type: NativeGizmoType): GizmoComponent[] {
+    return this.owner.gizmoComponents.filter(component =>
+      component.subType === gizmoSubTypes[type] && component.meshes.length > 0);
   }
 
   /** A registered mesh owns its visual even while explicitly hidden. */
   hasMesh (type: NativeGizmoType): boolean {
-    return this.registered(this.owner.composition, type).length > 0;
+    return this.registered(type).length > 0;
   }
 
   hit (point: Point2, type: NativeGizmoType): NativeGizmoHit | undefined {
     const composition = this.owner.composition;
-    const components = this.registered(composition, type);
+    const components = this.registered(type);
 
     if (!components.length || !composition?.interactive) { return; }
     const ndc = this.owner.toNDC(point);
