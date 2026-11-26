@@ -1,7 +1,7 @@
 import {
   getControlPoints,
   MouseButton,
-  spec,
+  type spec,
   type VFXItem,
   type InputEventKey,
   type InputEventMouseButton,
@@ -19,7 +19,7 @@ import type { CurveConfig } from '../configs/types';
 import { cloneConfigValue } from '../configs/config-definition';
 import { localToView, viewToLocal } from './content-edit-utils';
 import { GestureCursorType } from '../cursor';
-import { findMotionPaths, type MotionPathTarget } from './motion-path';
+import { findMotionPaths, setMotionPath, type MotionPathTarget } from './motion-path';
 
 /** 运动路径编辑事件。 */
 export interface CurveActionEvent extends GizmoActionEvent {
@@ -213,9 +213,9 @@ export class CurveGizmo extends Gizmo {
         path[2][j] = [next.x, next.y, next.z];
       }
     }
-    target.clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, path]);
+    setMotionPath(target, path);
     target.path = path;
-    target.composition.refreshCurrentFrame();
+    target.composition.sampleTime(target.composition.getTime());
     this.emit('actionupdate');
     event.accept();
   }
@@ -259,9 +259,9 @@ export class CurveGizmo extends Gizmo {
     const { target, original } = session;
 
     this.session = undefined;
-    target.clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, original]);
+    setMotionPath(target, original);
     target.path = original;
-    target.composition.refreshCurrentFrame();
+    target.composition.sampleTime(target.composition.getTime());
     this.emit('actionupdate', true, session);
     this.hover = undefined;
     this._owner.setCursor({ type: GestureCursorType.NORMAL, angle: 0 });

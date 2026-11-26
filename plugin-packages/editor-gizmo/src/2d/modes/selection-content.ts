@@ -1,8 +1,9 @@
-import { ShapeComponent, isValidGradientPaint, type VFXItem } from '@galacean/effects';
+import { ShapeComponent, type VFXItem } from '@galacean/effects';
 import { FFDComponent } from '@galacean/effects-plugin-ffd';
 import type { GizmoOwner } from '../gizmo-owner';
-import { CrystalLatticeGizmo } from '../gizmos/crystal-lattice-gizmo';
-import { GradientGizmo } from '../gizmos/gradient-gizmo';
+import type { CrystalLatticeGizmo } from '../gizmos/crystal-lattice-gizmo';
+import type { GradientGizmo } from '../gizmos/gradient-gizmo';
+import { getGradientPaint, isValidGradientPaint } from '../items/shape-editing';
 
 export type SelectionContentEdit = {
   type: 'lattice',
@@ -31,23 +32,7 @@ export function getSelectionContentItem (owner: GizmoOwner, edit: SelectionConte
   if (edit.type === 'lattice') {
     return item.getComponent(FFDComponent)?.getLattice().enabled ? item : undefined;
   }
-  const paint = item.getComponent(ShapeComponent)?.getGradientPaint(edit.paintKind, edit.paintIndex);
+  const paint = getGradientPaint(item.getComponent(ShapeComponent), edit.paintKind, edit.paintIndex);
 
   return isValidGradientPaint(paint) ? item : undefined;
-}
-
-/** 只组装现有模式内部的内容工具；不切换动效选择范围。 */
-export function createSelectionContentGizmo (owner: GizmoOwner, edit: SelectionContentEdit, exit: () => void,
-  onDispose?: (gizmo: SelectionContentGizmo) => void): SelectionContentGizmo | undefined {
-  const item = getSelectionContentItem(owner, edit);
-
-  if (!item) {
-    return;
-  }
-
-  const release = () => onDispose?.(gizmo);
-  const gizmo: SelectionContentGizmo = edit.type === 'lattice' ? new CrystalLatticeGizmo(owner, item, exit, release)
-    : new GradientGizmo(owner, item, edit.paintKind, edit.paintIndex, exit, release);
-
-  return gizmo;
 }

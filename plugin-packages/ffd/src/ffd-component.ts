@@ -11,7 +11,7 @@ export class FFDComponent extends Component {
   private rowNum = 5;                     // 行数量（列控制点数）
   private colNum = 5;                     // 列数量（行控制点数）
 
-  private controlPoints: math.Vector3[] = [];  // 控制点数组， from time line
+  private readonly controlPoints: math.Vector3[] = [];  // 控制点数组， from time line
 
   private currentSpriteComponent: SpriteComponent;      // 存储当前的SpriteComponent
   private boundMin = new math.Vector3(-0.5, -0.5, 0.0); // 当前SpriteComponent的BBX
@@ -37,8 +37,7 @@ export class FFDComponent extends Component {
   /** 编辑器读取副本，避免绕过批量更新直接修改控制点。 */
   getLattice () {
     return {
-      enabled: this.enableFFD && this.rowNum >= 2 && this.rowNum <= 13 && this.colNum >= 2 && this.colNum <= 13
-        && this.controlPoints.length === this.rowNum * this.colNum,
+      enabled: this.enableFFD && this.isValidLattice(this.controlPoints),
       rows: this.rowNum,
       columns: this.colNum,
       points: this.controlPoints.map(point => point.clone()),
@@ -49,14 +48,14 @@ export class FFDComponent extends Component {
 
   /**
    * 一次写入完整晶格；保留尺寸和索引顺序，并同步可序列化数据。
-   * 点数须与当前晶格一致，坐标须为有限值；不合法时抛错且不修改点集。
+   * 行列须为 [2, 13] 内的整数，点集须完整且坐标有限；不合法时抛错且不修改点集。
    */
   setControlPoints (points: readonly math.Vector3[]): void {
-    if (!this.data || points.length !== this.controlPoints.length
-      || points.some(point => ![point.x, point.y, point.z].every(Number.isFinite))) {
+    if (!this.data || points.length !== this.controlPoints.length || !this.isValidLattice(points)) {
       throw new Error('Invalid FFD control points.');
     }
-    this.controlPoints = points.map(point => point.clone());
+    // 动画混合器会缓存数组和控制点引用，必须原地更新。
+    points.forEach((point, i) => this.controlPoints[i].copyFrom(point));
     this.data.controlPoints = this.controlPoints.map(point => point.clone());
     this.updateShaderUniform();
   }
@@ -65,6 +64,23 @@ export class FFDComponent extends Component {
     super.fromData(data);
     this.data = data;
     this.initData();
+  }
+
+  private isValidLattice (points: readonly math.Vector3[]): boolean {
+    if (!Number.isInteger(this.rowNum) || this.rowNum < 2 || this.rowNum > 13
+      || !Number.isInteger(this.colNum) || this.colNum < 2 || this.colNum > 13
+      || points.length !== this.rowNum * this.colNum) {
+      return false;
+    }
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || !Number.isFinite(point.z)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -108,15 +124,12 @@ export class FFDComponent extends Component {
     const capacity = this.rowNum * this.colNum;
     const count = Math.min(this.data.controlPoints.length, capacity);
 
+    // 初始化时复制输入点，避免后续原地更新修改调用方持有的数据。
     this.controlPoints.length = 0;
     for (let i = 0; i < count; i++) {
-      const points: any = this.data.controlPoints[i];
+      const point = this.data.controlPoints[i];
 
-      this.controlPoints.push(
-        points instanceof math.Vector3
-          ? points
-          : new math.Vector3(points?.x ?? 0, points?.y ?? 0, points?.z ?? 0)
-      );
+      this.controlPoints.push(new math.Vector3(point?.x ?? 0, point?.y ?? 0, point?.z ?? 0));
     }
 
     for (let i = count; i < capacity; i++) {

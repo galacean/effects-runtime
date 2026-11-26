@@ -24,6 +24,7 @@ export function registerItemGeometry (engine: Engine, provider: Provider): () =>
   };
 }
 
-export function getHostItemGeometry (item: VFXItem): GizmoItemGeometry | undefined {
+/** Read the custom local geometry registered for the item's engine. */
+export function getCustomItemGeometry (item: VFXItem): GizmoItemGeometry | undefined {
   return providers.get(item.engine)?.(item);
 }

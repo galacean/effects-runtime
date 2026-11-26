@@ -18,6 +18,7 @@ import { transformHandlesConfig } from '../configs/builtin-configs';
 import type { TransformHandlesConfig } from '../configs/types';
 import { localToView, snapTranslation, viewToLocal } from './content-edit-utils';
 import { TransformType, type ResizeSelectionGizmo } from './resize-selection-gizmo';
+import { getShapeRenderBounds } from '../items/shape-editing';
 import {
   captureMotionPaths,
   restoreMotionPaths,
@@ -57,6 +58,7 @@ export class TransformHandlesGizmo extends Gizmo {
   private session?: {
     handle: Handle,
     snapshots: Snapshot[],
+    axisRotations: Euler[],
     start: Vector2,
     last: Vector2,
     center: Vector2,
@@ -228,6 +230,12 @@ export class TransformHandlesGizmo extends Gizmo {
     this.session = {
       ...hit,
       snapshots,
+      axisRotations: snapshots.map(({ item, quat, rotation }) => {
+        // 保留 setRotation 的未折叠角度；四元数操作可能使用不同约定更新 rotation 缓存。
+        const rotationQuat = new Quaternion().setFromEuler(rotation).conjugate();
+
+        return Math.abs(rotationQuat.dot(quat)) > 1 - 1e-12 ? rotation.clone() : item.transform.getRotation();
+      }),
       center: fixed,
       pivot,
       start: event.position.clone(),
@@ -295,14 +303,12 @@ export class TransformHandlesGizmo extends Gizmo {
         const angle = handle === 'x' ? -step.y : -step.x;
 
         if (angle !== 0) {
-          for (const { item } of snapshots) {
-            const rotation = item.transform.getRotation();
+          for (const [index, { item }] of snapshots.entries()) {
+            const rotation = session.axisRotations[index];
 
-            item.transform.setRotation(
-              rotation.x + (handle === 'x' ? angle : 0),
-              rotation.y + (handle === 'y' ? angle : 0),
-              rotation.z
-            );
+            // 持续累加会话角度，避免每帧分解四元数时 Y 在 ±90° 处折返。
+            rotation[handle] += angle;
+            item.transform.setRotation(rotation.x, rotation.y, rotation.z);
           }
         }
       } else {
@@ -540,7 +546,7 @@ export class TransformHandlesGizmo extends Gizmo {
       if ((this.session?.handle ?? this.hover) === 'anchor') {
         const item = this.items()[0];
         const size = item.transform.size;
-        const bounds = item.getComponent(ShapeComponent)?.getLocalBounds() ?? {
+        const bounds = getShapeRenderBounds(item.getComponent(ShapeComponent)) ?? {
           min: new Vector2(-Math.abs(size.x) / 2, -Math.abs(size.y) / 2),
           max: new Vector2(Math.abs(size.x) / 2, Math.abs(size.y) / 2),
         };

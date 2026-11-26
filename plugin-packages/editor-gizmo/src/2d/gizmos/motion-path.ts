@@ -16,6 +16,21 @@ export type MotionPathTarget = {
   path: spec.BezierCurvePathValue,
 };
 
+/** 通过统一资产入口更新路径，并让已编译的时间线在下一次采样读取新数据。 */
+export function setMotionPath (
+  { clip, composition }: Pick<MotionPathTarget, 'clip' | 'composition'>,
+  path: spec.BezierCurvePathValue,
+): void {
+  const data = cloneConfigValue(clip.transformAnimationData);
+
+  data.positionOverLifetime = {
+    ...data.positionOverLifetime,
+    path: [spec.ValueType.BEZIER_CURVE_PATH, cloneConfigValue(path)],
+  };
+  clip.setData(data);
+  composition.timelineAsset?.markAsChanged();
+}
+
 /** 按现有轨道绑定查找路径，不使用当前播放姿态推算动画基准。 */
 export function findMotionPaths (item: VFXItem): MotionPathTarget[] {
   const results: MotionPathTarget[] = [];
@@ -64,7 +79,7 @@ export type MotionPathSnapshot = {
   parentMatrix: Matrix4,
   position: Vector3,
   anchor: Vector3,
-  paths: { clip: TransformPlayableAsset, path: spec.BezierCurvePathValue }[],
+  paths: Pick<MotionPathTarget, 'clip' | 'composition' | 'path'>[],
 };
 
 /** 平移会话保存路径及其父坐标系；动画自身播放不触发路径改写。 */
@@ -74,7 +89,7 @@ export function captureMotionPaths (item: VFXItem): MotionPathSnapshot {
     parentMatrix: item.transform.getParentMatrix()?.clone() ?? new Matrix4(),
     position: item.transform.position.clone(),
     anchor: item.transform.anchor.clone(),
-    paths: findMotionPaths(item).map(({ clip, path }) => ({ clip, path: cloneConfigValue(path) })),
+    paths: findMotionPaths(item).map(({ clip, composition, path }) => ({ clip, composition, path: cloneConfigValue(path) })),
   };
 }
 
@@ -94,7 +109,8 @@ export function updateMotionPathTranslation (snapshot: MotionPathSnapshot): void
   const matrix = parent.clone().invert().multiply(new Matrix4().setPosition(translation)).multiply(parentMatrix);
   const point = new Vector3();
 
-  for (const { clip, path: original } of snapshot.paths) {
+  for (const target of snapshot.paths) {
+    const original = target.path;
     // 时间关键帧保留独立副本；坐标直接生成，避免先深拷贝再逐点替换。
     const path: spec.BezierCurvePathValue = [cloneConfigValue(original[0]), [], []];
 
@@ -104,7 +120,7 @@ export function updateMotionPathTranslation (snapshot: MotionPathSnapshot): void
         path[channel].push([point.x, point.y, point.z]);
       }
     }
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, path]);
+    setMotionPath(target, path);
   }
 }
 
@@ -117,21 +133,21 @@ export function transformMotionPaths (snapshot: MotionPathSnapshot, worldTransfo
   }
   const matrix = parent.clone().invert().multiply(worldTransform).multiply(snapshot.parentMatrix);
 
-  for (const { clip, path } of snapshot.paths) {
-    const transformed = cloneConfigValue(path);
+  for (const target of snapshot.paths) {
+    const transformed = cloneConfigValue(target.path);
     const linear = matrix.clone().setPosition(new Vector3());
     const compensation = snapshot.anchor.clone().applyMatrix(linear).subtract(snapshot.anchor);
 
     for (const channel of [1, 2] as const) {
-      transformed[channel] = path[channel].map(value => new Vector3(...value).applyMatrix(matrix).add(compensation).toArray());
+      transformed[channel] = target.path[channel].map(value => new Vector3(...value).applyMatrix(matrix).add(compensation).toArray());
     }
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, transformed]);
+    setMotionPath(target, transformed);
   }
 }
 
 /** 和元素变换一起回滚，下一次时间线采样也读取原始路径。 */
 export function restoreMotionPaths (snapshot: MotionPathSnapshot): void {
-  for (const { clip, path } of snapshot.paths) {
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, cloneConfigValue(path)]);
+  for (const target of snapshot.paths) {
+    setMotionPath(target, target.path);
   }
 }

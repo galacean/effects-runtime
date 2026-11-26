@@ -793,27 +793,21 @@ export class ResizeSelectionGizmo extends Gizmo {
         ];
 
         this.wireframe.widthScaleEdges = widthEdges;
-        // 左右命中带沿竖边展开，长度应取文本框高度，不能取宽度。
-        const edgeLen = widthEdges[0].start.distance(widthEdges[0].end);
+        // 透视投影后的两条边方向和长度不同，分别沿各自边线构造命中带。
+        const areas = widthEdges.map(edge => {
+          const edgeLen = edge.start.distance(edge.end);
 
-        if (edgeLen > SCALE_CORNER_HIT_SIZE) {
-          const { xAxis, yAxis } = this.boxLocalAxes();
+          if (edgeLen <= SCALE_CORNER_HIT_SIZE) {
+            return undefined;
+          }
+          const yAxis = edge.end.clone().subtract(edge.start).divide(edgeLen);
+          const xAxis = new Vector2(yAxis.y, -yAxis.x);
           const halfLen = edgeLen / 2 - SCALE_CORNER_HIT_SIZE / 2;
-          /**
-           * 创建文本宽度边的命中区域。
-           * @param mid 边中点。
-           * @returns 旋转后的命中包围盒。
-           */
-          const buildEdgeHit = (mid: Vector2): Matrix3 | undefined => (
-            getBoxTransform(getRotatedBoxCorners(mid, xAxis, yAxis, 4, halfLen))
-          );
-          const areas = [
-            buildEdgeHit(widthEdges[0].at(0.5)),
-            buildEdgeHit(widthEdges[1].at(0.5)),
-          ];
 
-          this.wireframe.widthScaleAreas = areas.filter((area): area is Matrix3 => !!area);
-        }
+          return getBoxTransform(getRotatedBoxCorners(edge.at(0.5), xAxis, yAxis, 4, halfLen));
+        });
+
+        this.wireframe.widthScaleAreas = areas.filter((area): area is Matrix3 => !!area);
       }
 
       points?.forEach(point => {

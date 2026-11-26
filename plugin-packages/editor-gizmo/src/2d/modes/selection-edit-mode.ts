@@ -13,33 +13,27 @@ import { TransformHandlesGizmo } from '../gizmos/transform-handles-gizmo';
 import { createSelectionInteractionGizmo } from '../selection/create-selection-interaction-gizmo';
 import type { EditMode } from './edit-mode';
 import { EffectsEditMode, type EffectsEditModeOptions } from './effects-edit-mode';
-import {
-  createSelectionContentGizmo,
-  getSelectionContentItem,
-  type SelectionContentEdit,
-  type SelectionContentGizmo,
-  type SelectionGizmoOptions,
-} from './selection-content';
+import { GradientEditMode } from './gradient-edit-mode';
+import { LatticeEditMode } from './lattice-edit-mode';
+import type { SelectionContentEdit, SelectionGizmoOptions } from './selection-content';
 
-/** 可独立启用完整编辑能力，也可限定在单个动效子树内。 */
-export type BasicEditModeOptions = SelectionGizmoOptions & EffectsEditModeOptions & {
+/** 选区变换工具及可选的动效子树范围。 */
+export type SelectionEditModeOptions = SelectionGizmoOptions & EffectsEditModeOptions & {
   /** 省略时编辑根选区，提供时放开指定动效的内部选择范围。 */
   effectsItemId?: string,
 };
 
-/** 独立装配选区变换、运动路径、FFD 和渐变编辑，并管理动效选择范围。 */
-export class BasicEditMode implements EditMode {
-  readonly id = 'basic-edit';
-  contentEdit?: SelectionContentEdit;
+/** 管理选区变换和选择范围；内容编辑交给对应的渐变或晶格模式。 */
+export class SelectionEditMode implements EditMode {
+  readonly id = 'selection-edit';
   private readonly effectsMode?: EffectsEditMode;
-  /** 保留图重建后仍被捕获的实例，直到宿主实际释放。 */
-  private readonly contentGizmos = new Set<SelectionContentGizmo>();
+  private contentMode?: GradientEditMode | LatticeEditMode;
 
   /**
    * @param owner Gizmo 宿主
-   * @param options 完整编辑能力及动效范围配置
+   * @param options 选区变换及动效范围配置
    */
-  constructor (private readonly owner: GizmoOwner, private readonly options: BasicEditModeOptions = {}) {
+  constructor (private readonly owner: GizmoOwner, private readonly options: SelectionEditModeOptions = {}) {
     if (options.effectsItemId) {
       this.effectsMode = new EffectsEditMode(owner, options.effectsItemId, options);
     }
@@ -47,6 +41,10 @@ export class BasicEditMode implements EditMode {
 
   get effectsItemId (): string | undefined {
     return this.options.effectsItemId;
+  }
+
+  get contentEdit (): SelectionContentEdit | undefined {
+    return this.contentMode?.edit;
   }
 
   canRemainActiveForTool (tool: GizmoTool): boolean {
@@ -58,41 +56,36 @@ export class BasicEditMode implements EditMode {
   }
 
   onExit (): void {
-    this.cancelContentInteractions();
+    this.contentMode?.onExit();
     this.effectsMode?.onExit();
   }
 
   /** 在当前选择范围内切换内容编辑，退出时立即回滚尚未提交的操作。 */
   editContent (edit?: SelectionContentEdit): boolean {
-    if (edit && (this.options.allowTransform === false || !getSelectionContentItem(this.owner, edit))) {
+    const exit = () => { this.editContent(); };
+    const nextMode = !edit ? undefined : edit.type === 'gradient'
+      ? new GradientEditMode(this.owner, edit, exit)
+      : new LatticeEditMode(this.owner, exit);
+
+    if (nextMode && (this.options.allowTransform === false || !nextMode.canEdit())) {
       return false;
     }
-    this.cancelContentInteractions();
-    this.contentEdit = edit;
+    this.contentMode?.onExit();
+    this.contentMode = nextMode;
     this.owner.rebuildGizmos();
 
     return true;
   }
 
-  /** 按命中优先级创建完整工具列表，当前捕获者仍由宿主负责释放。 */
+  /** 内容模式替换选区变换工具，但不切换动效选择范围。 */
   createGizmos (): Gizmo[] {
     const wireframe = this.options.showFFDWireframe !== false ? [new FFDWireframeGizmo(this.owner)] : [];
-    const contentGizmo = this.contentEdit && createSelectionContentGizmo(
-      this.owner,
-      this.contentEdit,
-      () => this.editContent(),
-      gizmo => {
-        this.contentGizmos.delete(gizmo);
-      },
-    );
+    const contentGizmos = this.contentMode?.createGizmos();
 
-    if (contentGizmo) {
-      this.contentGizmos.add(contentGizmo);
-
-      return [...wireframe, contentGizmo];
+    if (contentGizmos?.length) {
+      return [...wireframe, ...contentGizmos];
     }
-    this.cancelContentInteractions();
-    this.contentEdit = undefined;
+    this.contentMode = undefined;
     const allowTransform = this.options.allowTransform !== false;
     const resize = new ResizeSelectionGizmo(this.owner, { interactive: allowTransform });
 
@@ -107,12 +100,5 @@ export class BasicEditMode implements EditMode {
       this.effectsItemId ? new LeaveEffectsEditGizmo(this.owner) : new EnterEditModeGizmo(this.owner),
       createSelectionInteractionGizmo(this.owner, { allowTransform }),
     ];
-  }
-
-  private cancelContentInteractions (): void {
-    const gizmos = Array.from(this.contentGizmos);
-
-    this.contentGizmos.clear();
-    gizmos.forEach(gizmo => gizmo.cancelInteraction());
   }
 }

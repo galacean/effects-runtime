@@ -1,6 +1,8 @@
 export type { EditMode } from './edit-mode';
 export { DefaultSelectionMode } from './default-selection-mode';
-export { BasicEditMode, type BasicEditModeOptions } from './basic-edit-mode';
+export { SelectionEditMode, type SelectionEditModeOptions } from './selection-edit-mode';
+export { GradientEditMode, type GradientEditModeOptions } from './gradient-edit-mode';
+export { LatticeEditMode } from './lattice-edit-mode';
 export { EffectsEditMode, type EffectsEditModeOptions } from './effects-edit-mode';
 export { TextEditMode } from './text-edit-mode';
 export { RichTextEditMode } from './rich-text-edit-mode';

@@ -1,6 +1,7 @@
 import {
   Composition,
   CompositionComponent,
+  FrameComponent,
   Geometry,
   InputEventKey,
   InputEventMouseButton,
@@ -26,7 +27,7 @@ import {
   CornerRotationGizmo,
   CrystalLatticeGizmo,
   CurveGizmo,
-  BasicEditMode,
+  SelectionEditMode,
   DefaultSelectionMode,
   DefaultVFXItems,
   EffectsEditMode,
@@ -34,12 +35,14 @@ import {
   GestureHandler,
   GizmoTool,
   GradientGizmo,
+  GradientEditMode,
+  LatticeEditMode,
   MoveGizmoTool,
   MoveSelectionGizmo,
   ResizeSelectionGizmo,
   TransformType,
   registerItemGeometry,
-  getHostItemGeometry,
+  getCustomItemGeometry,
   getItemViewBox,
   TransformHandlesGizmo,
   transformHandlesConfig,
@@ -49,6 +52,11 @@ import {
   ffdWireframeConfig,
   selectionSnapConfig,
   captureMotionPaths,
+  getGradientPaint,
+  getShapeRenderBounds,
+  setColorPaint,
+  setGradientPaint,
+  setMotionPath,
   getTransformedBoxCorners,
   inverseTransformBoxPoint,
   transformBoxPoint,
@@ -91,7 +99,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     composition.camera.fov = 45;
     handler = new GestureHandler(player.engine);
     actions = [];
-    handler.setActiveEditMode(new BasicEditMode(handler));
+    handler.setActiveEditMode(new SelectionEditMode(handler));
     for (const phase of ['actionstart', 'actionupdate', 'actioncommit'] as const) {
       handler.on(phase, event => actions.push({
         phase,
@@ -828,12 +836,12 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     const { component, data } = gradient(spec.FillType.GradientLinear, 2);
     const box = component.getRenderBounds();
 
-    expect(component.getLocalBounds()!.max.x).closeTo(3, 1e-5);
+    expect(getShapeRenderBounds(component)!.max.x).closeTo(3, 1e-5);
     expect(box.max.x).closeTo(3, 1e-5);
     expect(component.getBoundingBox().max.x).equals(2);
     component.strokeWidth = 0;
     component.onUpdate(0);
-    const bounds = component.getLocalBounds()!;
+    const bounds = getShapeRenderBounds(component)!;
 
     component.getRenderBounds(box);
     expect(bounds.min.toArray()).deep.equals([-2, -1]);
@@ -841,28 +849,28 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(box.min.toArray()).deep.equals([-2, -1, 0]);
     expect(box.max.toArray()).deep.equals([2, 1, 0]);
     bounds.max.x = 100;
-    expect(component.getLocalBounds()!.max.x).equals(2);
+    expect(getShapeRenderBounds(component)!.max.x).equals(2);
     expect(component.getRenderBounds(box).max.x).equals(2);
     component.fromData({ ...data, fills: [], strokes: [] });
     component.onUpdate(0);
-    expect(component.getLocalBounds()).equals(undefined);
+    expect(getShapeRenderBounds(component)).equals(undefined);
     expect(component.getRenderBounds(box).isEmpty()).equals(true);
     expect(component.getBoundingBox().isEmpty()).equals(false);
     component.fromData(data);
     component.onUpdate(0);
-    expect(component.getLocalBounds()!.max.x).closeTo(3, 1e-5);
+    expect(getShapeRenderBounds(component)!.max.x).closeTo(3, 1e-5);
     expect(component.getRenderBounds(box).max.x).closeTo(3, 1e-5);
   });
 
   it('uses solid shape geometry bounds independently of item size and refreshes world bounds after transforms', () => {
     const { component, item } = gradient();
 
-    component.setColorPaint('fill', 0, { type: spec.FillType.Solid, color: new math.Color(1, 0, 0, 1) });
+    setColorPaint(component, 'fill', 0, { type: spec.FillType.Solid, color: new math.Color(1, 0, 0, 1) });
     component.onUpdate(0);
     item.transform.size.set(5, 7);
     item.transform.setScale(-2, 3, 1);
     item.setPosition(10, -4, 0);
-    const bounds = component.getLocalBounds()!;
+    const bounds = getShapeRenderBounds(component)!;
     const box = component.getRenderBounds();
 
     expect(bounds.min.toArray()).deep.equals([-2, -1]);
@@ -876,8 +884,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     component.getRenderBounds(box).applyMatrix4(item.transform.getWorldMatrix());
     box.min.toArray().forEach((value, index) => expect(value).closeTo([7, -8, 0][index], 1e-5));
     box.max.toArray().forEach((value, index) => expect(value).closeTo([13, 0, 0][index], 1e-5));
-    expect(component.getLocalBounds()!.min.toArray()).deep.equals(bounds.min.toArray());
-    expect(component.getLocalBounds()!.max.toArray()).deep.equals(bounds.max.toArray());
+    expect(getShapeRenderBounds(component)!.min.toArray()).deep.equals(bounds.min.toArray());
+    expect(getShapeRenderBounds(component)!.max.toArray()).deep.equals(bounds.max.toArray());
   });
 
   it('normalizes negative local shape coordinates to the same UV range as centered geometry', () => {
@@ -915,8 +923,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       },
     });
     component.onUpdate(0);
-    expect(component.getLocalBounds()!.min.toArray()).deep.equals([-7, -5]);
-    expect(component.getLocalBounds()!.max.toArray()).deep.equals([-3, -3]);
+    expect(getShapeRenderBounds(component)!.min.toArray()).deep.equals([-7, -5]);
+    expect(getShapeRenderBounds(component)!.max.toArray()).deep.equals([-3, -3]);
     expect(readUVRange()).deep.equals(original);
     item.setPosition(-10, -10, 0);
     component.onUpdate(0);
@@ -936,10 +944,10 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         startPoint: { x: 0.2, y: 0.5 }, endPoint: { x: invalid === 'endpoint' ? Infinity : 0.8, y: 0.5 },
         gradientStops: [spec.ValueType.GRADIENT_COLOR, stops] }] } as unknown as spec.ShapeComponentData);
       component.onUpdate(0);
-      const paint = component.getGradientPaint('fill', 0)!;
+      const paint = getGradientPaint(component, 'fill', 0)!;
 
-      expect(() => component.setGradientPaint('fill', 0, paint)).throws('Invalid gradient paint.');
-      const mode = handler.getActiveEditMode() as BasicEditMode;
+      expect(() => setGradientPaint(component, 'fill', 0, paint)).throws('Invalid gradient paint.');
+      const mode = handler.getActiveEditMode() as SelectionEditMode;
 
       expect(mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 })).equals(false);
       expect(() => gizmo.onMouseDown(down(localToView(item, new Vector3(-1.2, 0, 0))))).not.throws();
@@ -949,29 +957,51 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
   it('copies submitted paint and leaves the previous paint intact when validation fails', () => {
     const { component } = gradient();
-    const paint = component.getGradientPaint('fill', 0)!;
+    const paint = getGradientPaint(component, 'fill', 0)!;
 
     paint.startPoint.x = 0.3;
-    component.setGradientPaint('fill', 0, paint);
+    setGradientPaint(component, 'fill', 0, paint);
     paint.startPoint.x = 0.4;
     paint.gradientStops.stops[0].color.g = 0.8;
-    const saved = component.getGradientPaint('fill', 0)!;
+    const saved = getGradientPaint(component, 'fill', 0)!;
 
     expect(saved.startPoint.x).equals(0.3);
     expect(saved.gradientStops.stops[0].color.g).equals(0);
     paint.gradientStops.stops[1].time = paint.gradientStops.stops[0].time;
-    expect(() => component.setColorPaint('fill', 0, paint)).throws();
-    expect(component.getGradientPaint('fill', 0)).deep.equals(saved);
+    expect(() => setColorPaint(component, 'fill', 0, paint)).throws();
+    expect(getGradientPaint(component, 'fill', 0)).deep.equals(saved);
+  });
+
+  it('refreshes only the edited paint material through the generic runtime setter', () => {
+    const { component } = gradient(spec.FillType.GradientLinear, 2);
+    const fillMaterial = component.materials[0];
+    const strokeMaterial = component.materials[1];
+    const stroke = component.getPaint('stroke', 0);
+    const bounds = component.getRenderBounds();
+    const paint = { type: spec.FillType.Solid, color: new math.Color(0.2, 0.4, 0.6, 1) } as const;
+
+    component.setPaint('fill', 0, paint);
+    component.onUpdate(0);
+    expect(component.getPaint('fill', 0)).equals(paint);
+    expect(component.materials).deep.equals([fillMaterial, strokeMaterial]);
+    expect(fillMaterial.getFloat('_FillType')).equals(spec.FillType.Solid);
+    expect(fillMaterial.color.toArray()).deep.equals(paint.color.toArray());
+    expect(component.getPaint('stroke', 0)).equals(stroke);
+    expect(component.getRenderBounds()).deep.equals(bounds);
+    for (const index of [-1, 0.5, 1, NaN]) {
+      expect(() => component.setPaint('fill', index, paint)).throws('The selected paint does not exist.');
+    }
+    expect(component.getPaint('fill', 0)).equals(paint);
   });
 
   it('matches renderer smoothstep instead of linear gradient interpolation', () => {
     const { component } = gradient();
-    const paint = component.getGradientPaint('fill', 0)!;
+    const paint = getGradientPaint(component, 'fill', 0)!;
     const color = sampleGradient(paint, 0.25);
 
     expect(color.b).closeTo(0.15625, 1e-6);
     paint.startPoint.x = 9;
-    expect(component.getGradientPaint('fill', 0)!.startPoint.x).equals(0.2);
+    expect(getGradientPaint(component, 'fill', 0)!.startPoint.x).equals(0.2);
   });
 
   for (const type of [spec.FillType.GradientLinear, spec.FillType.GradientRadial, spec.FillType.GradientAngular]) {
@@ -981,11 +1011,11 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
       gizmo.onMouseDown(down(start));
       gizmo.onMouseDrag(drag(start.clone().add(new Vector2(25, 20))));
-      expect(component.getGradientPaint('fill', 0)!.startPoint.x).not.equals(0.2);
+      expect(getGradientPaint(component, 'fill', 0)!.startPoint.x).not.equals(0.2);
       gizmo.onKeyDown(key());
       gizmo.onMouseDrag(drag(start.clone().add(new Vector2(50, 20))));
       gizmo.onMouseUp(down(start));
-      expect(component.getGradientPaint('fill', 0)!.startPoint.toArray()).deep.equals([0.2, 0.5]);
+      expect(getGradientPaint(component, 'fill', 0)!.startPoint.toArray()).deep.equals([0.2, 0.5]);
       expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
     });
   }
@@ -1042,13 +1072,13 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const { item, component } = gradient();
 
       handler.setActiveTool(new MoveGizmoTool(handler));
-      const mode = handler.getActiveEditMode() as BasicEditMode;
+      const mode = handler.getActiveEditMode() as SelectionEditMode;
       const edit = { type: 'gradient', paintKind: 'fill', paintIndex: 0 } as const;
 
       mode.editContent(edit);
       const gizmo = handler.getGizmoManager().get('gradient')!;
       const viewport = (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
-      const original = component.getGradientPaint('fill', 0);
+      const original = getGradientPaint(component, 'fill', 0);
       const blank = localToView(item, new Vector3(0, 2, 0));
 
       gizmo.selectStop(0);
@@ -1060,7 +1090,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       expect(mode.contentEdit).deep.equals(edit);
       expect(handler.getGizmoManager().get('gradient')).equals(gizmo);
       expect(handler.getSelection().getSelectedPlayerItems()).deep.equals([item]);
-      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(original);
       expect(actions).length(0);
       expect(events.map(({ index, percentage }) => ({ index, percentage }))).deep.equals([
         { index: 0, percentage: 0 }, { index: -1, percentage: undefined },
@@ -1069,12 +1099,12 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
     it('reports the written stop after insertion, sorting, fractional movement and cancellation', () => {
       const { item, component, gizmo } = gradient();
-      const original = component.getGradientPaint('fill', 0)!;
+      const original = getGradientPaint(component, 'fill', 0)!;
 
       original.gradientStops.stops.splice(1, 0, { time: 0.75, color: new math.Color(0, 1, 0, 1) });
-      component.setGradientPaint('fill', 0, original);
+      setGradientPaint(component, 'fill', 0, original);
       handler.on('gradientselectionchange', ({ index, percentage }) => {
-        expect(component.getGradientPaint('fill', 0)!.gradientStops.stops[index].time * 100).equals(percentage);
+        expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops[index].time * 100).equals(percentage);
         expect(gizmo.selectedStopIndex).equals(index);
       });
       gizmo.selectStop(2);
@@ -1094,28 +1124,28 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       gizmo.onMouseUp(down(target));
       expect(events).length(4);
       expect(events.at(-1)).includes({ index: 2, percentage: 100 });
-      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(original);
       expect(actions.some(action => action.phase === 'actioncommit')).equals(false);
     });
 
     for (const shortcut of ['Backspace', 'Delete']) {
       it(`keeps a clicked stop selected and deletes it once with ${shortcut}, ignoring the key without a selection`, () => {
         const { item, component } = gradient();
-        const paint = component.getGradientPaint('fill', 0)!;
+        const paint = getGradientPaint(component, 'fill', 0)!;
 
         paint.gradientStops.stops.splice(1, 0,
           { time: 0.25, color: new math.Color(0, 1, 0, 1) },
           { time: 0.5, color: new math.Color(1, 1, 0, 1) });
-        component.setGradientPaint('fill', 0, paint);
+        setGradientPaint(component, 'fill', 0, paint);
         handler.setActiveTool(new MoveGizmoTool(handler));
-        const mode = handler.getActiveEditMode() as BasicEditMode;
+        const mode = handler.getActiveEditMode() as SelectionEditMode;
 
         mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
         const gizmo = handler.getGizmoManager().get('gradient')!;
         const viewport = (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
 
         viewport.onKeyDown(key(shortcut));
-        expect(component.getGradientPaint('fill', 0)).deep.equals(paint);
+        expect(getGradientPaint(component, 'fill', 0)).deep.equals(paint);
         expect(actions).length(0);
         expect(events).length(0);
         const point = localToView(item, new Vector3()).add(new Vector2(0, 12));
@@ -1133,7 +1163,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         viewport.onKeyDown(key(shortcut));
         viewport.onKeyDown(key(shortcut));
         gizmo.onUpdate();
-        expect(component.getGradientPaint('fill', 0)!.gradientStops.stops.map(stop => stop.time))
+        expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops.map(stop => stop.time))
           .deep.equals([0, 0.25, 1]);
         expect(gizmo.selectedStopIndex).equals(-1);
         expect(composition.items).includes(item);
@@ -1149,7 +1179,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const { component, gizmo } = gradient();
 
       gizmo.selectStop(1);
-      component.setColorPaint('fill', 0, { type: spec.FillType.Solid, color: new math.Color(0, 1, 0, 1) });
+      setColorPaint(component, 'fill', 0, { type: spec.FillType.Solid, color: new math.Color(0, 1, 0, 1) });
       gizmo.onUpdate();
       gizmo.dispose();
       expect(events).length(2);
@@ -1181,26 +1211,26 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     const cursor = center.clone().add(new Vector2(0, 12));
 
     gizmo.onMouseDown(down(cursor));
-    expect(component.getGradientPaint('fill', 0)!.gradientStops.stops).length(3);
+    expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops).length(3);
     gizmo.onMouseDrag(drag(cursor.clone().add(new Vector2(25, 0))));
     gizmo.onMouseUp(down(cursor));
-    expect(component.getGradientPaint('fill', 0)!.gradientStops.stops[1].time).greaterThan(0.5);
+    expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops[1].time).greaterThan(0.5);
     gizmo.onKeyDown(key('Backspace'));
     gizmo.onKeyDown(key('Backspace'));
-    expect(component.getGradientPaint('fill', 0)!.gradientStops.stops).length(2);
+    expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops).length(2);
     expect(composition.items).includes(item);
   });
 
   for (const transformed of [false, true]) {
     it(`aligns angular gradient stops with the ellipse tangent (${transformed ? 'transformed' : 'default'})`, () => {
       const { component, item, gizmo } = gradient(spec.FillType.GradientAngular);
-      const paint = component.getGradientPaint('fill', 0)!;
+      const paint = getGradientPaint(component, 'fill', 0)!;
 
       paint.startPoint.set(0.5, 0.5);
       paint.endPoint.set(0.9, 0.5);
       paint.gradientStops.stops.splice(1, 0, ...[0.125, 0.375, 0.625, 0.875].map(time =>
         ({ time, color: new math.Color(0, 1, 0, 1) })));
-      component.setGradientPaint('fill', 0, paint);
+      setGradientPaint(component, 'fill', 0, paint);
       if (transformed) {
         item.transform.setScale(-1.5, 0.8, 1);
         item.transform.setRotation(0, 0, 30);
@@ -1236,17 +1266,17 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         gizmo.onMouseUp(down(press));
         expect(gizmo.selectedStopIndex).equals(index + 1);
       }
-      expect(component.getGradientPaint('fill', 0)).deep.equals(paint);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(paint);
     });
   }
 
   it('previews and inserts an angular gradient stop on the outward ellipse normal', () => {
     const { component, gizmo } = gradient(spec.FillType.GradientAngular);
-    const paint = component.getGradientPaint('fill', 0)!;
+    const paint = getGradientPaint(component, 'fill', 0)!;
 
     paint.startPoint.set(0.5, 0.5);
     paint.endPoint.set(0.9, 0.5);
-    component.setGradientPaint('fill', 0, paint);
+    setGradientPaint(component, 'fill', 0, paint);
     const { calls, control } = recordDrawing();
 
     gizmo.draw(control);
@@ -1271,7 +1301,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     gizmo.onMouseDown(down(press));
     gizmo.onMouseUp(down(press));
     expect(gizmo.selectedStopIndex).equals(1);
-    const stops = component.getGradientPaint('fill', 0)!.gradientStops.stops;
+    const stops = getGradientPaint(component, 'fill', 0)!.gradientStops.stops;
 
     expect(stops).length(3);
     expect(stops[1].time).closeTo(0.125, 1e-6);
@@ -1279,12 +1309,12 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
   it('drags angular gradient stops continuously across sub-percent positions and the seam', () => {
     const { component, item, gizmo } = gradient(spec.FillType.GradientAngular);
-    const paint = component.getGradientPaint('fill', 0)!;
+    const paint = getGradientPaint(component, 'fill', 0)!;
 
     paint.startPoint.set(0.5, 0.5);
     paint.endPoint.set(0.9, 0.5);
     paint.gradientStops.stops.splice(1, 0, { time: 0.25, color: new math.Color(0, 1, 0, 1) });
-    component.setGradientPaint('fill', 0, paint);
+    setGradientPaint(component, 'fill', 0, paint);
     const base = localToView(item, new Vector3(0, 0.8, 0));
     const start = base.clone().add(new Vector2(0, -12));
 
@@ -1300,7 +1330,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       );
 
       gizmo.onMouseDrag(drag(start.clone().add(target.subtract(base))));
-      expect(component.getGradientPaint('fill', 0)!.gradientStops.stops[gizmo.selectedStopIndex].time)
+      expect(getGradientPaint(component, 'fill', 0)!.gradientStops.stops[gizmo.selectedStopIndex].time)
         .closeTo(ratio % 1, 1e-6);
     }
     gizmo.onMouseUp(down(start));
@@ -1316,7 +1346,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     try {
       Object.defineProperty(window, 'navigator', { configurable: true, value: undefined });
       gizmo.onMouseDrag(drag(start.clone().add(new Vector2(20, 20)), false, true));
-      const paint = component.getGradientPaint('fill', 0)!;
+      const paint = getGradientPaint(component, 'fill', 0)!;
 
       expect(paint.startPoint.x).greaterThan(0.2);
       expect(paint.startPoint.clone().add(paint.endPoint).toArray()).deep.equals([1, 1]);
@@ -1353,16 +1383,51 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     });
   }
 
-  it('updates existing path playables without rebuilding their curve object', () => {
-    const { item, clip } = path();
-    const playable = clip.createPlayable();
-    const curves = playable.curves;
-    const data = structuredClone(findMotionPaths(item)[0].path);
+  it('resamples edited paths through the asset API while preserving clip metadata and other channels', () => {
+    const { item, clip, component } = path();
 
-    data[1][0][0] = -4;
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, data]);
-    expect(playable.curves).equals(curves);
-    expect((playable.curves.pathGetter!.getValue(0) as math.Vector3).x).closeTo(-4, 1e-5);
+    clip.setData({
+      ...clip.transformAnimationData,
+      name: 'Animated path',
+      sizeOverLifetime: { size: [spec.ValueType.LINE, [[0, 1], [1, 3]]] },
+      rotationOverLifetime: { asRotation: true, z: [spec.ValueType.LINE, [[0, 10], [1, 80]]] },
+    });
+    component.timelineAsset!.markAsChanged();
+    component.sampleTime(4);
+    const originalData = structuredClone(clip.transformAnimationData);
+    const position = item.transform.position.clone();
+    const rotation = item.transform.quat.toArray();
+    const scale = item.transform.scale.toArray();
+    const time = component.getTime();
+    const target = findMotionPaths(item)[0];
+    const editedPath = structuredClone(target.path);
+    let changes = 0;
+
+    clip.on('changed', () => { changes++; });
+    for (const channel of [1, 2] as const) {
+      for (const point of editedPath[channel]) {
+        point[0] += 3;
+        point[1] -= 2;
+      }
+    }
+    setMotionPath(target, editedPath);
+    component.sampleTime(component.getTime());
+    expect(changes).equals(1);
+    expect(component.getTime()).equals(time);
+    expect(item.transform.position.x).closeTo(position.x + 3, 1e-5);
+    expect(item.transform.position.y).closeTo(position.y - 2, 1e-5);
+    expect(item.transform.position.z).closeTo(position.z, 1e-5);
+    expect(item.transform.quat.toArray()).deep.equals(rotation);
+    expect(item.transform.scale.toArray()).deep.equals(scale);
+    expect(clip.transformAnimationData).deep.equals({
+      ...originalData,
+      positionOverLifetime: {
+        ...originalData.positionOverLifetime,
+        path: [spec.ValueType.BEZIER_CURVE_PATH, editedPath],
+      },
+    });
+    editedPath[1][0][0] = 999;
+    expect(findMotionPaths(item)[0].path[1][0][0]).equals(1);
   });
 
   it('mirrors a middle path control, reports its keyframe time, and restores on Escape', () => {
@@ -1409,7 +1474,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       });
     }
     gizmo.onMouseUp(down(start));
-    component.refreshCurrentFrame();
+    component.sampleTime(component.getTime());
     expect(component.getTime()).equals(3);
     item.transform.position.toArray().forEach((value, i) => expect(value).closeTo(movedPosition.toArray()[i], 1e-5));
     component.sampleTime(6);
@@ -1448,7 +1513,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       gizmo.onMouseDrag(drag(end));
       gizmo.onMouseUp(down(end));
       expect(findMotionPaths(item)[0].path).deep.equals(original);
-      component.refreshCurrentFrame();
+      component.sampleTime(component.getTime());
       item.transform.position.toArray().forEach((value, i) => expect(value).closeTo(position.toArray()[i], 1e-5));
       expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
       gizmo.dispose();
@@ -1545,7 +1610,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     const original = structuredClone(findMotionPaths(item)[0].path);
 
     original[2][1] = [...original[1][1]];
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, original]);
+    setMotionPath(findMotionPaths(item)[0], original);
     const start = localToView(item, new Vector3(...original[1][1]), item.transform.getParentMatrix());
 
     gizmo.onMouseDown(down(start));
@@ -1553,7 +1618,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(findMotionPaths(item)[0].path[1][1]).not.deep.equals(original[1][1]);
     gizmo.onKeyDown(key());
     original[2][1][0] -= 0.06;
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, original]);
+    setMotionPath(findMotionPaths(item)[0], original);
     const handle = localToView(item, new Vector3(...original[2][1]), item.transform.getParentMatrix());
 
     gizmo.onMouseDown(down(handle));
@@ -1568,7 +1633,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     const original = structuredClone(findMotionPaths(item)[0].path);
 
     original[2][2][1] += 1;
-    clip.setPositionPath([spec.ValueType.BEZIER_CURVE_PATH, original]);
+    setMotionPath(findMotionPaths(item)[0], original);
     const press = localToView(
       item,
       new Vector3(...original[2][1]),
@@ -1585,7 +1650,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
   it('keeps the effects selection and translates the path when editing position in the inspector', async function () {
     this.timeout(10000);
     const { root, item } = await createGizmoReference(composition, 'path');
-    const mode = new BasicEditMode(handler, { effectsItemId: root.getInstanceId() });
+    const mode = new SelectionEditMode(handler, { effectsItemId: root.getInstanceId() });
 
     handler.setActiveTool(new MoveGizmoTool(handler));
     handler.setActiveEditMode(mode);
@@ -1608,7 +1673,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
           expect(value[2]).equals(original[channel][i][2]);
         });
       }
-      root.getComponent(CompositionComponent).refreshCurrentFrame();
+      root.getComponent(CompositionComponent).sampleTime(root.getComponent(CompositionComponent).getTime());
       expect(item.transform.position.x).closeTo(position.x + 1.25, 1e-5);
       expect(item.transform.position.y).closeTo(position.y - 0.75, 1e-5);
     } finally {
@@ -1790,14 +1855,14 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
     it('styles gradient markers with color alpha without changing the underlying paint', () => {
       const { component, item, gizmo } = gradient(spec.FillType.GradientAngular);
-      const original = component.getGradientPaint('fill', 0)!;
+      const original = getGradientPaint(component, 'fill', 0)!;
       const manager = handler.getConfigManager();
       const { calls, control } = recordDrawing();
 
       original.gradientStops.stops.forEach(stop => {
         stop.color.a = 0.4;
       });
-      component.setGradientPaint('fill', 0, original);
+      setGradientPaint(component, 'fill', 0, original);
       manager.set(gradientConfig, {
         lineColor: 0xFF000080,
         lineWidth: 3,
@@ -1823,7 +1888,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       expect(calls.find(call => call.kind === 'circle' && call.coords[2] === 24)!.width).equals(4);
       expect(calls.filter(call => call.kind === 'circle' && call.coords[2] === 7)).length(2);
       expect(calls.filter(call => call.kind === 'fillTriangle').every(call => call.color?.[3] === 0.4)).equals(true);
-      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(original);
 
       manager.set(gradientConfig, { selectedStopFillColor: 0x0000FF80 });
       gizmo.selectStop(0);
@@ -1839,7 +1904,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       expect(press.isAccepted()).equals(true);
       expect(gizmo.selectedStopIndex).equals(0);
       gizmo.onKeyDown(key());
-      expect(component.getGradientPaint('fill', 0)).deep.equals(original);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(original);
       gizmo.dispose();
     });
 
@@ -2165,7 +2230,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       gizmo.onMouseDown(down(start));
       for (const offset of [new Vector2(20, 15), new Vector2(40, 30)]) {
         gizmo.onMouseDrag(drag(start.clone().add(offset)));
-        component.refreshCurrentFrame();
+        component.sampleTime(component.getTime());
         item.transform.getWorldMatrix().elements.forEach((value, index) => expect(value).closeTo(matrix[index], 1e-5));
       }
       expect(findMotionPaths(item)[0].path).not.deep.equals(original);
@@ -2176,7 +2241,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         expect(findMotionPaths(item)[0].path).deep.equals(original);
       }
       gizmo.onMouseUp(down(start));
-      component.refreshCurrentFrame();
+      component.sampleTime(component.getTime());
       item.transform.getWorldMatrix().elements.forEach((value, index) => expect(value).closeTo(matrix[index], 1e-5));
       expect(actions.filter(action => action.phase === 'actioncommit')).length(cancel ? 0 : 1);
       gizmo.dispose();
@@ -2311,15 +2376,20 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         expect(changes).equals(0);
         expect(item.transform.quat.toArray()).deep.equals(original.toArray());
 
-        for (const amount of [10, 20]) {
+        for (const amount of [10, 20, 100, 120, 400, 420]) {
           const delta = axis === 'x' ? new Vector2(0, amount) : new Vector2(amount, 0);
 
           gizmo.onMouseDrag(drag(start.clone().add(delta), false, true));
-          const rotation = item.transform.getRotation();
+          const rotation = item.transform.rotation;
 
           expect(rotation.x).closeTo(axis === 'x' ? -amount : 0, 1e-5);
           expect(rotation.y).closeTo(axis === 'y' ? -amount : 0, 1e-5);
           expect(rotation.z).closeTo(30, 1e-5);
+          const expected = new math.Quaternion().setFromEuler(new math.Euler(
+            axis === 'x' ? -amount : 0, axis === 'y' ? -amount : 0, 30,
+          )).conjugate();
+
+          expect(Math.abs(item.transform.quat.dot(expected))).closeTo(1, 1e-8);
         }
         gizmo.onKeyDown(key());
         expect(item.transform.quat.toArray()).deep.equals(original.toArray());
@@ -2378,6 +2448,151 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       });
     }
   }
+
+  for (const includeChildren of [undefined, false, true]) {
+    it(`honors custom geometry child aggregation for frames (${includeChildren})`, () => {
+      const frame = DefaultVFXItems.createEmpty(composition);
+
+      frame.addComponent(FrameComponent);
+      const child = sprite();
+
+      child.setParent(frame);
+      child.setPosition(5, 0, 0);
+      child.transform.setSize(2, 2);
+      const unregister = registerItemGeometry(player.engine, item => item === frame
+        ? { min: [-1, -1], max: [1, 1], includeChildren }
+        : undefined);
+
+      try {
+        const bounds = getItemViewBox(frame, new Vector2(800, 600));
+        const frameRight = localToView(frame, new Vector3(1, 0, 0)).x;
+        const childRight = localToView(child, new Vector3(1, 0, 0)).x;
+
+        expect(bounds.max.x).closeTo(includeChildren ? childRight : frameRight, 1e-5);
+        expect(bounds.containsPoint(localToView(child, new Vector3()))).equals(includeChildren === true);
+      } finally {
+        unregister();
+      }
+    });
+  }
+
+  for (const rotation of [[55, 30, 0], [0, 60, 0], [-50, -25, 15]] as const) {
+    it(`follows both perspective text edges with width hit bands (${rotation})`, () => {
+      const item = DefaultVFXItems.createText(composition);
+
+      item.transform.setSize(4, 4);
+      item.transform.setRotation(rotation[0], rotation[1], rotation[2]);
+      select(item);
+      const resize = new ResizeSelectionGizmo(handler);
+
+      try {
+        resize.refreshWireframeBySelectedItems();
+        expect(resize.wireframe.widthScaleAreas).length(2);
+        for (const edge of resize.wireframe.widthScaleEdges) {
+          for (const ratio of [0.25, 0.5, 0.75]) {
+            resize.refreshTransformType(edge.at(ratio));
+            expect(resize.activeType).equals(TransformType.WIDTH_SCALE);
+          }
+        }
+        for (const corner of resize.wireframe.scaleCorners) {
+          resize.refreshTransformType(corner.center);
+          expect(resize.activeType).equals(TransformType.SCALE);
+        }
+      } finally {
+        resize.dispose();
+      }
+    });
+  }
+
+  for (const initialY of [80, -80, 90, -90, 100, -100, 460, -460]) {
+    it(`accumulates Alt-Y rotation from ${initialY} degrees without folding the angles`, () => {
+      const item = sprite();
+
+      item.transform.setRotation(15, initialY, 30);
+      const original = item.transform.quat.clone();
+      const originalRotation = item.transform.rotation.toArray();
+      const resize = new ResizeSelectionGizmo(handler);
+      const gizmo = new TransformHandlesGizmo(handler, resize);
+
+      try {
+        resize.refreshWireframeBySelectedItems();
+        const start = resize.wireframe.anchor.clone().add(new Vector2(0, -40));
+
+        gizmo.onMouseDown(down(start, { altPressed: true }));
+        for (const distance of [10, 20, 40, 80, 280, 380, 360]) {
+          const angle = Math.sign(initialY) * distance;
+
+          gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-angle, 0)), false, true));
+          const angles = [15, initialY + angle, 30] as const;
+          const expected = new math.Quaternion().setFromEuler(new math.Euler(...angles)).conjugate();
+
+          expect(Math.abs(item.transform.quat.dot(expected))).closeTo(1, 1e-8);
+          item.transform.rotation.toArray().forEach((value, index) => expect(value).closeTo(angles[index], 1e-5));
+        }
+        gizmo.onKeyDown(key());
+        expect(item.transform.quat.toArray()).deep.equals(original.toArray());
+        expect(item.transform.rotation.toArray()).deep.equals(originalRotation);
+      } finally {
+        gizmo.dispose();
+        resize.dispose();
+      }
+    });
+  }
+
+  it('keeps separate Alt-Y angles through modifier changes and subsequent drags', () => {
+    const items = [sprite(), sprite()];
+
+    items[0].transform.setRotation(5, 80, 25);
+    items[1].transform.setRotation(-10, 100, -15);
+    select(...items);
+    const resize = new ResizeSelectionGizmo(handler);
+    const gizmo = new TransformHandlesGizmo(handler, resize);
+    const expectRotation = (amount: number) => {
+      items.forEach((item, index) => {
+        const angles = index === 0 ? [5, 80 + amount, 25] as const : [-10, 100 + amount, -15] as const;
+        const expected = new math.Quaternion().setFromEuler(new math.Euler(...angles)).conjugate();
+
+        item.transform.rotation.toArray().forEach((value, axis) => expect(value).closeTo(angles[axis], 1e-5));
+        expect(Math.abs(item.transform.quat.dot(expected))).closeTo(1, 1e-8);
+      });
+    };
+
+    try {
+      resize.refreshWireframeBySelectedItems();
+      const start = resize.wireframe.anchor.clone().add(new Vector2(0, -40));
+
+      gizmo.onMouseDown(down(start));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(0, 10))));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-10, 10)), false, true));
+      expectRotation(0);
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-30, 10)), false, true));
+      expectRotation(20);
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-40, 10))));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-40, 20))));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(-50, 20)), false, true));
+      expectRotation(20);
+      const end = start.clone().add(new Vector2(-70, 20));
+
+      gizmo.onMouseDrag(drag(end, false, true));
+      expectRotation(40);
+      gizmo.onMouseUp(down(end, { altPressed: true }));
+      expect(actions.filter(action => action.phase === 'actioncommit')).length(1);
+      const committed = items.map(item => item.transform.quat.toArray());
+
+      resize.refreshWireframeBySelectedItems();
+      const nextStart = resize.wireframe.anchor.clone().add(new Vector2(0, -40));
+
+      gizmo.onMouseDown(down(nextStart, { altPressed: true }));
+      gizmo.onMouseDrag(drag(nextStart.clone().add(new Vector2(-20, 0)), false, true));
+      expectRotation(60);
+      gizmo.onKeyDown(key());
+      expectRotation(40);
+      items.forEach((item, index) => expect(item.transform.quat.toArray()).deep.equals(committed[index]));
+    } finally {
+      gizmo.dispose();
+      resize.dispose();
+    }
+  });
 
   it('constrains an axis drag and rebases when Alt changes its meaning', () => {
     const item = sprite();
@@ -2463,20 +2678,26 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     });
   }
 
-  it('keeps opposite controls fixed while Alt is pressed', () => {
+  it('moves the dragged control and keeps its opposite fixed while Alt is pressed', () => {
     const { item, gizmo } = path();
     const original = structuredClone(findMotionPaths(item)[0].path);
     const start = localToView(item, new Vector3(...original[2][1]), item.transform.getParentMatrix());
 
     gizmo.onMouseDown(down(start));
     gizmo.onMouseDrag(drag(start.clone().add(new Vector2(20, -20)), false, true));
-    expect(findMotionPaths(item)[0].path[2][2]).deep.equals(original[2][2]);
+    const controls = findMotionPaths(item)[0].path[2];
+    const moved = localToView(item, new Vector3(...controls[1]), item.transform.getParentMatrix());
+
+    expect(controls[1]).not.deep.equals(original[2][1]);
+    expect(moved.x - start.x).closeTo(20, 1e-5);
+    expect(moved.y - start.y).closeTo(-20, 1e-5);
+    expect(controls[2]).deep.equals(original[2][2]);
     gizmo.dispose();
   });
 
   it('restores content immediately on mode exit despite a later captured drag', () => {
     const { item, component, points } = lattice();
-    const mode = handler.getActiveEditMode() as BasicEditMode;
+    const mode = handler.getActiveEditMode() as SelectionEditMode;
 
     handler.setActiveTool(new MoveGizmoTool(handler));
     mode.editContent({ type: 'lattice' });
@@ -2503,11 +2724,11 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         const options = { showMotionPath: false, showTransformHandles: false };
 
         handler.setActiveTool(new MoveGizmoTool(handler));
-        handler.setActiveEditMode(effectsMode ? new BasicEditMode(handler, {
+        handler.setActiveEditMode(effectsMode ? new SelectionEditMode(handler, {
           ...options,
           effectsItemId: composition.sceneRoot.getInstanceId(),
         })
-          : new BasicEditMode(handler, options));
+          : new SelectionEditMode(handler, options));
         select(item);
         const gizmo = handler.getGizmoManager().get('click-drag-multiplex')!;
         const dispose = chai.spy.on(gizmo, 'dispose');
@@ -2523,7 +2744,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         if (transition === 'rebuild') {
           handler.rebuildGizmos();
         } else {
-          handler.setActiveEditMode(new BasicEditMode(handler, options));
+          handler.setActiveEditMode(new SelectionEditMode(handler, options));
         }
         expect(item.transform.position.toArray()).deep.equals(moved);
         expect(dispose).not.to.have.been.called();
@@ -2545,17 +2766,17 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         const target = content === 'lattice' ? lattice() : gradient();
         const { item } = target;
         const read = () => 'points' in target ? target.component.getLattice().points.map(point => point.toArray())
-          : target.component.getGradientPaint('fill', 0)!.startPoint.toArray();
+          : getGradientPaint(target.component, 'fill', 0)!.startPoint.toArray();
         const original = read();
 
         handler.setActiveTool(new MoveGizmoTool(handler));
         if (effectsMode) {
-          handler.setActiveEditMode(new BasicEditMode(handler, {
+          handler.setActiveEditMode(new SelectionEditMode(handler, {
             effectsItemId: composition.sceneRoot.getInstanceId(),
           }));
           select(item);
         }
-        const mode = handler.getActiveEditMode() as BasicEditMode;
+        const mode = handler.getActiveEditMode() as SelectionEditMode;
 
         mode.editContent(content === 'lattice' ? {
           type: 'lattice',
@@ -2593,9 +2814,48 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     }
   }
 
+  for (const content of ['lattice', 'gradient'] as const) {
+    it(`uses the standalone ${content} mode and cancels its captured drag after a rebuild on exit`, () => {
+      const target = content === 'lattice' ? lattice() : gradient();
+      const read = () => 'points' in target ? target.component.getLattice().points.map(point => point.toArray())
+        : getGradientPaint(target.component, 'fill', 0)!.startPoint.toArray();
+      const original = read();
+      const mode = content === 'lattice' ? new LatticeEditMode(handler) : new GradientEditMode(handler);
+
+      handler.setActiveTool(new MoveGizmoTool(handler));
+      expect(mode.canEdit()).equals(true);
+      handler.setActiveEditMode(mode);
+      const type = content === 'lattice' ? GizmoType.CRYSTAL_LATTICE : GizmoType.GRADIENT;
+      const gizmo = handler.getGizmoManager().get(type)!;
+      const viewport = (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
+      const start = localToView(target.item, 'points' in target ? target.points[0] : new Vector3(-1.2, 0, 0));
+
+      expect(handler.getGizmoManager().get('transform-handles')).equals(undefined);
+      expect(handler.getGizmoManager().get('resize-selection')).equals(undefined);
+      expect(handler.getGizmoManager().get('curve')).equals(undefined);
+      viewport.onMouseDown(down(start));
+      viewport.onMouseMove(drag(start.clone().add(new Vector2(20, 0))));
+      const moved = read();
+
+      expect(moved).not.deep.equals(original);
+      handler.rebuildGizmos();
+      expect(read()).deep.equals(moved);
+      viewport.onMouseMove(drag(start.clone().add(new Vector2(30, 0))));
+      expect(read()).not.deep.equals(moved);
+      handler.setActiveEditMode(new SelectionEditMode(handler));
+      expect(read()).deep.equals(original);
+      viewport.onMouseMove(drag(start.clone().add(new Vector2(40, 0))));
+      viewport.onMouseUp(down(start, { pressed: false, buttonMask: MouseButtonMask.None }));
+      expect(read()).deep.equals(original);
+      expect(actions.filter(action => action.canceled)).length(1);
+      expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
+      expect(handler.getGizmoManager().get(type)).equals(undefined);
+    });
+  }
+
   it('switches content editing inside the existing selection mode', () => {
     const { item } = lattice();
-    const mode = handler.getActiveEditMode() as BasicEditMode;
+    const mode = handler.getActiveEditMode() as SelectionEditMode;
 
     expect(mode.editContent({ type: 'lattice' })).equals(true);
     expect(handler.getActiveEditMode()).equals(mode);
@@ -2638,7 +2898,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       for (const tool of ['pen', 'shape', 'frame', 'text'] as const) {
         editor.setTool(tool);
         editor.setTool('move');
-        expect(handler.getActiveEditMode()).instanceOf(BasicEditMode);
+        expect(handler.getActiveEditMode()).instanceOf(SelectionEditMode);
         expect(handler.getGizmoManager().get('ffd-wireframe')).instanceOf(FFDWireframeGizmo);
         expect(handler.getGizmoManager().get('curve')).instanceOf(CurveGizmo);
         expect(handler.getGizmoManager().get('transform-handles')).instanceOf(TransformHandlesGizmo);
@@ -2708,8 +2968,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     player.tick(0);
     select(item);
     const shape = item.getComponent(ShapeComponent);
-    const original = shape.getGradientPaint('fill', 0)!;
-    const bounds = shape.getLocalBounds()!;
+    const original = getGradientPaint(shape, 'fill', 0)!;
+    const bounds = getShapeRenderBounds(shape)!;
 
     expect(original.type).equals(spec.FillType.GradientAngular);
     expect(original.gradientStops.stops[0].color.r).closeTo(0.8941, 1e-6);
@@ -2719,7 +2979,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
     gizmo.onMouseDown(down(start));
     gizmo.onMouseDrag(drag(start.clone().add(new Vector2(20, -15))));
-    expect(shape.getGradientPaint('fill', 0)!.endPoint.toArray()).not.deep.equals(original.endPoint.toArray());
+    expect(getGradientPaint(shape, 'fill', 0)!.endPoint.toArray()).not.deep.equals(original.endPoint.toArray());
     gizmo.onKeyDown(key());
     for (const type of [
       spec.FillType.Solid,
@@ -2727,7 +2987,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       spec.FillType.GradientAngular,
       spec.FillType.GradientRadial,
     ] as const) {
-      shape.setColorPaint('fill', 0, type === spec.FillType.Solid ? {
+      setColorPaint(shape, 'fill', 0, type === spec.FillType.Solid ? {
         type,
         color: original.gradientStops.stops[0].color,
       } : {
@@ -2736,9 +2996,9 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       });
       shape.onUpdate(0);
       expect(shape.material.getFloat('_FillType')).equals(type);
-      expect(shape.getLocalBounds()!.min.toArray()).deep.equals(bounds.min.toArray());
+      expect(getShapeRenderBounds(shape)!.min.toArray()).deep.equals(bounds.min.toArray());
       if (type !== spec.FillType.Solid) {
-        expect(shape.getGradientPaint('fill', 0)!.gradientStops.stops.map(stop =>
+        expect(getGradientPaint(shape, 'fill', 0)!.gradientStops.stops.map(stop =>
           stop.color.toArray())).deep.equals(original.gradientStops.stops.map(stop =>
           stop.color.toArray()));
       }
@@ -2839,7 +3099,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
         gizmo.onMouseDown(down(start));
         gizmo.onMouseDrag(drag(start.clone().add(new Vector2(30, 20))));
         gizmo.onMouseUp(down(start));
-        component.refreshCurrentFrame();
+        component.sampleTime(component.getTime());
         const anchor = item.transform.anchor.clone();
         const pivot = anchor.clone().applyMatrix(item.transform.getWorldMatrix());
         const origin = new Vector3().applyMatrix(item.transform.getWorldMatrix());
@@ -2850,34 +3110,40 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
         expect(new Vector3().applyMatrix(item.transform.getWorldMatrix()).distance(origin)).greaterThan(0.01);
         expect(anchor.clone().applyMatrix(item.transform.getWorldMatrix()).distance(pivot)).lessThan(1e-6);
-        component.refreshCurrentFrame();
+        component.sampleTime(component.getTime());
         expect(anchor.clone().applyMatrix(item.transform.getWorldMatrix()).distance(pivot)).lessThan(1e-6);
         item.transform.getWorldMatrix().elements.forEach((value, index) => expect(value).closeTo(edited[index], 1e-6));
         gizmo.dispose(); resize.dispose();
       });
     }
 
-    it('does not start a NaN scale when oversized handles cover the lattice center', () => {
-      const { item, points, gizmo } = lattice();
+    it('marquee-selects from the lattice center when oversized handles cover it', () => {
+      const { item, component, points, gizmo } = lattice();
 
       handler.getConfigManager().set(crystalLatticeConfig, { cornerSize: 2000 });
       gizmo.selected.add(0); gizmo.selected.add(5);
       const center = localToView(item, points[0].clone().add(points[5]).multiply(0.5));
+      const end = localToView(item, points[5]).add(new Vector2(10, -10));
 
       gizmo.onMouseDown(down(center));
-      gizmo.onMouseDrag(drag(center.clone().add(new Vector2(30, 10))));
+      expect(gizmo.selected.size).equals(0);
+      gizmo.onMouseDrag(drag(end));
       const drawing = recordDrawing();
 
       gizmo.draw(drawing.control);
       expect(drawing.calls.some(call => call.text?.includes('NaN'))).equals(false);
-      gizmo.onKeyDown(key());
+      gizmo.onMouseUp(down(end));
+      expect(Array.from(gizmo.selected).sort()).deep.equals([4, 5]);
+      expect(component.getLattice().points.map(point => point.toArray())).deep.equals(points.map(point => point.toArray()));
+      expect(actions.filter(action => action.phase === 'actioncommit')).length(0);
+      gizmo.dispose();
     });
 
     it('retains a committed gradient when its listener exits content editing', () => {
       const { item, component } = gradient();
 
       handler.setActiveTool(new MoveGizmoTool(handler));
-      const mode = handler.getActiveEditMode() as BasicEditMode;
+      const mode = handler.getActiveEditMode() as SelectionEditMode;
 
       mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
       const gizmo = handler.getGizmoManager().get('gradient')!;
@@ -2885,36 +3151,36 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
       gizmo.onMouseDown(down(start));
       gizmo.onMouseDrag(drag(start.clone().add(new Vector2(25, 10))));
-      const expected = component.getGradientPaint('fill', 0);
+      const expected = getGradientPaint(component, 'fill', 0);
 
       handler.on('actioncommit', () => mode.editContent());
       gizmo.onMouseUp(down(start));
-      expect(component.getGradientPaint('fill', 0)).deep.equals(expected);
+      expect(getGradientPaint(component, 'fill', 0)).deep.equals(expected);
       expect(actions.filter(action => action.phase === 'actioncommit')).length(1);
       expect(actions.some(action => action.canceled)).equals(false);
     });
 
     it('returns a radial gradient to its direction at an off-axis rotation press', () => {
       const { item, component, gizmo } = gradient(spec.FillType.GradientRadial);
-      const original = component.getGradientPaint('fill', 0)!;
+      const original = getGradientPaint(component, 'fill', 0)!;
       const press = localToView(item, new Vector3(1.2, 0, 0)).add(new Vector2(10, -8));
 
       gizmo.onMouseDown(down(press));
       gizmo.onMouseDrag(drag(press.clone().add(new Vector2(0, -20))));
-      expect(component.getGradientPaint('fill', 0)!.endPoint.distance(original.endPoint)).greaterThan(0.01);
+      expect(getGradientPaint(component, 'fill', 0)!.endPoint.distance(original.endPoint)).greaterThan(0.01);
       gizmo.onMouseDrag(drag(press));
       gizmo.onMouseUp(down(press));
-      expect(component.getGradientPaint('fill', 0)!.endPoint.distance(original.endPoint)).lessThan(1e-6);
+      expect(getGradientPaint(component, 'fill', 0)!.endPoint.distance(original.endPoint)).lessThan(1e-6);
     });
 
     it('inserts at the visible lane center under nonuniform scaling', () => {
       const { item, component, gizmo } = gradient();
 
       item.transform.setScale(3, 1, 1);
-      const paint = component.getGradientPaint('fill', 0)!;
+      const paint = getGradientPaint(component, 'fill', 0)!;
 
       paint.startPoint.set(0.2, 0.1); paint.endPoint.set(0.45, 0.9);
-      component.setGradientPaint('fill', 0, paint);
+      setGradientPaint(component, 'fill', 0, paint);
       handler.getConfigManager().set(gradientConfig, { stopOffset: 20, stopWidth: 16 });
       const a = localToView(item, new Vector3(-1.2, -0.8, 0));
       const b = localToView(item, new Vector3(-0.2, 0.8, 0));
@@ -2923,7 +3189,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const press = a.clone().add(b).multiply(0.5).add(normal.multiply(20));
 
       gizmo.onMouseDown(down(press)); gizmo.onMouseUp(down(press));
-      const stops = component.getGradientPaint('fill', 0)!.gradientStops.stops;
+      const stops = getGradientPaint(component, 'fill', 0)!.gradientStops.stops;
 
       expect(stops).length(3); expect(stops[1].time).closeTo(0.5, 1e-6);
     });
@@ -2945,7 +3211,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
               gizmo.onMouseDown(down(start));
               gizmo.onMouseDrag(drag(start.clone().add(new Vector2(15, 10))));
               gizmo.onMouseUp(down(start));
-              component.refreshCurrentFrame();
+              component.sampleTime(component.getTime());
               gizmo.dispose(); resize.dispose();
             }
             const second = sprite();
@@ -2969,7 +3235,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
             expect(findMotionPaths(item)[0].path).not.deep.equals(original);
             if (cancel) { gizmo.onKeyDown(key()); }
-            gizmo.onMouseUp(down(end)); component.refreshCurrentFrame();
+            gizmo.onMouseUp(down(end)); component.sampleTime(component.getTime());
             if (cancel) { expect(findMotionPaths(item)[0].path).deep.equals(original); } else { expect(item.transform.position.distance(editedPosition)).lessThan(1e-5); }
             gizmo.dispose(); resize.dispose();
           });
@@ -3018,7 +3284,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
             gizmo.onMouseUp(down(start));
             const anchor = item.transform.anchor.clone();
 
-            component.refreshCurrentFrame();
+            component.sampleTime(component.getTime());
             item.transform.getWorldMatrix().elements.forEach((value, axis) => expect(value).closeTo(beforeMatrix[axis], 1e-5));
             if (cancel) { expect(clip.transformAnimationData).deep.equals(beforeData); }
             // Only the gesture's displacement is added to the path; later rotation/scale uses the current anchor.
@@ -3084,8 +3350,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const current = registerItemGeometry(player.engine, provider);
 
       old();
-      expect(getHostItemGeometry(item)).deep.equals(provider()); current();
-      expect(getHostItemGeometry(item)).equals(undefined);
+      expect(getCustomItemGeometry(item)).deep.equals(provider()); current();
+      expect(getCustomItemGeometry(item)).equals(undefined);
     });
 
     it('aligns selection bounds and local handles with a transformed composition', () => {
@@ -3109,7 +3375,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const inside = sprite(), outside = sprite();
 
       inside.setParent(frame.item);
-      handler.setActiveEditMode(new BasicEditMode(handler, { effectsItemId: frame.item.getInstanceId() }));
+      handler.setActiveEditMode(new SelectionEditMode(handler, { effectsItemId: frame.item.getInstanceId() }));
       const selection = handler.getSelection();
 
       expect(selection.filterSelectedItems([inside.getInstanceId(), outside.getInstanceId()])).deep.equals([inside.getInstanceId()]);
@@ -3129,7 +3395,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       const inside = sprite(), nestedChild = sprite();
 
       inside.setParent(scope); nestedChild.setParent(nested);
-      handler.setActiveEditMode(new BasicEditMode(handler, { effectsItemId: scope.getInstanceId() }));
+      handler.setActiveEditMode(new SelectionEditMode(handler, { effectsItemId: scope.getInstanceId() }));
       const selection = handler.getSelection();
 
       expect(selection.filterSelectedItems([inside, nestedChild, scope].map(item => item.getInstanceId())))

@@ -4,7 +4,7 @@ import type { Matrix3 } from '../math';
 import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, boxTransformFromCorners, getBoxTransformFromBox, getTransformedBox, hasBoxArea } from '../math';
 import { projectPoint, worldSizeToViewSize } from '../viewport/coordinates';
 import { isFramePlayerItem } from './item-predicates';
-import { getHostItemGeometry } from './host-item-geometry';
+import { getCustomItemGeometry } from './custom-item-geometry';
 
 /**
  * 获取元素用于编辑的视图 Box2。
@@ -25,30 +25,30 @@ export function getItemViewBox (item: VFXItem, containerSize: Vector2): Box2 {
  * @returns 有效变换；元素不可见或没有有效矩形时返回 undefined
  */
 export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Matrix3 | undefined {
-  const hostGeometry = getHostItemGeometry(item);
+  const customGeometry = getCustomItemGeometry(item);
 
-  if (!item.isVisible || (!hostGeometry && !supportsRect(item))) {
+  if (!item.isVisible || (!customGeometry && !supportsRect(item))) {
     return undefined;
   }
 
   const hasFrameComponent = !!item.getComponent(FrameComponent);
   let viewTransform: Matrix3 | undefined;
 
-  if (hostGeometry || item.type !== spec.ItemType.null || hasFrameComponent) {
+  if (customGeometry || item.type !== spec.ItemType.null || hasFrameComponent) {
     const { transform } = item;
 
     transform.updateLocalMatrix();
-    const pathBounds = !hostGeometry && item.type === spec.ItemType.shape
+    const pathBounds = !customGeometry && item.type === spec.ItemType.shape
       ? item.getComponent(ShapeComponent)?.getBoundingBox()
       : undefined;
-    const hasLocalBounds = hostGeometry
+    const hasLocalBounds = customGeometry
       || (pathBounds ? !pathBounds.isEmpty() : transform.size.x !== 0 && transform.size.y !== 0);
 
     if (hasLocalBounds) {
-      const left = hostGeometry?.min[0] ?? pathBounds?.min.x ?? -transform.size.x / 2;
-      const right = hostGeometry?.max[0] ?? pathBounds?.max.x ?? transform.size.x / 2;
-      const top = hostGeometry?.max[1] ?? pathBounds?.max.y ?? transform.size.y / 2;
-      const bottom = hostGeometry?.min[1] ?? pathBounds?.min.y ?? -transform.size.y / 2;
+      const left = customGeometry?.min[0] ?? pathBounds?.min.x ?? -transform.size.x / 2;
+      const right = customGeometry?.max[0] ?? pathBounds?.max.x ?? transform.size.x / 2;
+      const top = customGeometry?.max[1] ?? pathBounds?.max.y ?? transform.size.y / 2;
+      const bottom = customGeometry?.min[1] ?? pathBounds?.min.y ?? -transform.size.y / 2;
       const itemWorldMatrix = transform.getWorldMatrix();
       const project = (x: number, y: number) =>
         projectPoint(new Vector3(x, y, 0).applyMatrix(itemWorldMatrix), item, containerSize);
@@ -63,7 +63,7 @@ export function getItemViewTransform (item: VFXItem, containerSize: Vector2): Ma
     }
   }
 
-  if (hasFrameComponent || (hostGeometry && !hostGeometry.includeChildren)) {
+  if (customGeometry ? !customGeometry.includeChildren : hasFrameComponent) {
     return viewTransform;
   }
 

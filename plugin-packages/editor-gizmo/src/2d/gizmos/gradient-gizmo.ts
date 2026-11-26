@@ -1,7 +1,6 @@
 import {
   MouseButton,
   ShapeComponent,
-  isValidGradientPaint,
   math,
   spec,
   type GradientPaint,
@@ -20,6 +19,7 @@ import { toColor } from '../drawing';
 import { gradientConfig } from '../configs/builtin-configs';
 import type { GradientConfig } from '../configs/types';
 import { localToView, snapTranslation, viewToLocal } from './content-edit-utils';
+import { getGradientPaint, getShapeRenderBounds, isValidGradientPaint, setGradientPaint } from '../items/shape-editing';
 
 /** 渐变填充或描边编辑事件。 */
 export interface GradientActionEvent extends GizmoActionEvent {
@@ -96,7 +96,7 @@ export class GradientGizmo extends Gizmo {
   }
 
   private get paint (): GradientPaint | undefined {
-    const paint = this.session?.paint ?? this.component?.getGradientPaint(this.paintKind, this.paintIndex);
+    const paint = this.session?.paint ?? getGradientPaint(this.component, this.paintKind, this.paintIndex);
 
     return isValidGradientPaint(paint) ? paint : undefined;
   }
@@ -130,7 +130,7 @@ export class GradientGizmo extends Gizmo {
 
     if (selected.length !== 1
       || selected[0] !== this.item
-      || !isValidGradientPaint(this.component?.getGradientPaint(this.paintKind, this.paintIndex))) {
+      || !isValidGradientPaint(getGradientPaint(this.component, this.paintKind, this.paintIndex))) {
       this.cancelInteraction();
       const previous = this.selectionInfo;
 
@@ -141,7 +141,7 @@ export class GradientGizmo extends Gizmo {
   }
 
   private toView (uv: Vector2): Vector2 {
-    const bounds = this.component.getLocalBounds()!;
+    const bounds = getShapeRenderBounds(this.component)!;
 
     return localToView(
       this.item,
@@ -155,7 +155,7 @@ export class GradientGizmo extends Gizmo {
 
   private toUV (view: Vector2): Vector2 | undefined {
     const point = viewToLocal(this.item, view);
-    const bounds = this.component.getLocalBounds();
+    const bounds = getShapeRenderBounds(this.component);
 
     if (!point || !bounds || bounds.max.x === bounds.min.x || bounds.max.y === bounds.min.y) {
       return;
@@ -225,7 +225,7 @@ export class GradientGizmo extends Gizmo {
   }
 
   private hit (view: Vector2, paint: GradientPaint): Hit | undefined {
-    if (!this.component.getLocalBounds()) {
+    if (!getShapeRenderBounds(this.component)) {
       return;
     }
     const config = this.config;
@@ -318,7 +318,7 @@ export class GradientGizmo extends Gizmo {
 
       return;
     }
-    const original = this.component.getGradientPaint(this.paintKind, this.paintIndex)!;
+    const original = getGradientPaint(this.component, this.paintKind, this.paintIndex)!;
     const selected = this.selected;
 
     if (hit.type === 'add') {
@@ -465,7 +465,7 @@ export class GradientGizmo extends Gizmo {
     this.emit('actionstart');
     paint.gradientStops.stops.splice(this.selected, 1);
     this.selected = -1;
-    this.component.setGradientPaint(this.paintKind, this.paintIndex, paint);
+    setGradientPaint(this.component, this.paintKind, this.paintIndex, paint);
     this.emit('actionupdate');
     this.emit('actioncommit');
     this.notifySelectionChange(previous);
@@ -492,13 +492,13 @@ export class GradientGizmo extends Gizmo {
     this.session = undefined;
     this.preview = undefined;
     this.selected = session.selected;
-    session.component.setGradientPaint(this.paintKind, this.paintIndex, session.original);
+    setGradientPaint(session.component, this.paintKind, this.paintIndex, session.original);
     this.emit('actionupdate', true);
     this.notifySelectionChange(previous);
   }
 
   private write (previous: Pick<GradientSelectionEvent, 'index' | 'percentage'>): void {
-    this.component.setGradientPaint(this.paintKind, this.paintIndex, this.session!.paint);
+    setGradientPaint(this.component, this.paintKind, this.paintIndex, this.session!.paint);
     this.emit('actionupdate');
     this.notifySelectionChange(previous);
   }
@@ -536,7 +536,7 @@ export class GradientGizmo extends Gizmo {
   override draw (control: Control): void {
     const paint = this.paint;
 
-    if (!paint || !this.component?.getLocalBounds()) {
+    if (!paint || !getShapeRenderBounds(this.component)) {
       return;
     }
     const config = this.config;

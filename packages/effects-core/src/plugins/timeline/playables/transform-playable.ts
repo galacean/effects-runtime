@@ -124,16 +124,6 @@ export class TransformPlayableAsset extends TimelineClip {
     return transformPlayable;
   }
 
-  /** 保持 curves 对象身份，使已经编译的 playable 在下一次采样读取新路径。 */
-  setPositionPath (path: NonNullable<spec.PositionOverLifetime['path']>): void {
-    const getter = createValueGetter(path);
-
-    this.transformAnimationData.positionOverLifetime ??= {};
-    this.transformAnimationData.positionOverLifetime.path = path;
-    this.curves.pathGetter = getter;
-    this.curves.validChannels.fill(true, 0, 3);
-  }
-
   override fromData (data: spec.TransformPlayableAssetData): void {
     super.fromData(data);
     this.transformAnimationData = data;

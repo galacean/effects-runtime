@@ -1,5 +1,6 @@
 import { FrameComponent, GradientValue, ShapeComponent, math, spec } from '@galacean/effects';
 import { applyRichTextResize, createRichTextResizeSnapshot, getEditableTextComponent, getRichTextFrameWidth, getRichTextInputSelection, RichTextDocument } from '@galacean/effects-plugin-editor-gizmo';
+import { getColorPaint, getGradientPaint, setColorPaint } from '@galacean/effects-plugin-editor-gizmo';
 import type { GradientPaint, Paint, SolidPaint, VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { DOMEvents, element } from './dom';
@@ -202,7 +203,7 @@ export class InspectorPanel {
     const textFormats = this.editor.richTextSelectionFormats;
     const frame = item?.getComponent(FrameComponent);
     const fill = this.getSolidPaint(frame?.fills);
-    const shapePaint = item?.getComponent(ShapeComponent)?.getColorPaint('fill', 0);
+    const shapePaint = getColorPaint(item?.getComponent(ShapeComponent), 'fill', 0);
     const gradient = shapePaint && shapePaint.type !== spec.FillType.Solid ? shapePaint : undefined;
     const stopIndex = this.selectedStopIndex(gradient);
     const shapeColor = shapePaint?.type === spec.FillType.Solid
@@ -328,17 +329,17 @@ export class InspectorPanel {
 
   private editShapeColor (label: string, edit: (color: math.Color) => void): void {
     const component = this.editor.selectedItem?.getComponent(ShapeComponent);
-    const index = this.selectedStopIndex(component?.getGradientPaint('fill', 0));
+    const index = this.selectedStopIndex(getGradientPaint(component, 'fill', 0));
 
     this.editor.editFill(label, item => {
       const shape = item.getComponent(ShapeComponent);
-      const paint = shape.getColorPaint('fill', 0);
+      const paint = getColorPaint(shape, 'fill', 0);
 
       if (!paint) {
         return;
       }
       edit(paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[index].color);
-      shape.setColorPaint('fill', 0, paint);
+      setColorPaint(shape, 'fill', 0, paint);
     });
     this.editor.gradientGizmo?.selectStop(index);
   }
@@ -346,7 +347,7 @@ export class InspectorPanel {
   private setColorMode (type: typeof COLOR_MODES[keyof typeof COLOR_MODES]): void {
     this.editor.editFill('修改颜色模式', item => {
       const shape = item.getComponent(ShapeComponent);
-      const paint = shape?.getColorPaint('fill', 0);
+      const paint = getColorPaint(shape, 'fill', 0);
 
       if (!paint || paint.type === type) {
         return;
@@ -359,11 +360,11 @@ export class InspectorPanel {
       if (type === spec.FillType.Solid) {
         const color = paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[0].color;
 
-        shape.setColorPaint('fill', 0, { type, color });
+        setColorPaint(shape, 'fill', 0, { type, color });
       } else {
         const color = paint.type === spec.FillType.Solid ? paint.color : paint.gradientStops.stops[0].color;
 
-        shape.setColorPaint('fill', 0, gradient ? { ...gradient, type } : {
+        setColorPaint(shape, 'fill', 0, gradient ? { ...gradient, type } : {
           type, startPoint: new math.Vector2(0.5, 0.5), endPoint: new math.Vector2(1, 0.5),
           gradientStops: new GradientValue([[0, color.r, color.g, color.b, color.a], [1, 0, 0, 0, 1]]),
         });

@@ -11,17 +11,16 @@ import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
 import { BufferUsage, Geometry, VertexElementType, getWorldTriangles } from '../../render';
 import type { StrokeAttributes } from '../../math';
-import { StarType, GradientValue } from '../../math';
+import { StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
 import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
-import type { Paint, SolidPaint, GradientPaint } from './paint';
+import type { Paint, SolidPaint } from './paint';
 import {
   applyPaintRendererOptions,
   createPaint,
   createPaintMaterial,
-  isValidGradientPaint,
   updatePaintMaterial,
 } from './paint';
 import { TrimPath } from './trim-path';
@@ -186,65 +185,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.shapeAttributes;
   }
 
-  /** Paint 编辑使用副本，提交时由组件统一刷新材质。 */
-  getColorPaint (kind: 'fill' | 'stroke', index: number): SolidPaint | GradientPaint | undefined {
-    const paint = (kind === 'fill' ? this.fills : this.strokes)[index];
-
-    if (!paint || paint.type === spec.FillType.Texture) {
-      return undefined;
-    }
-
-    return this.cloneColorPaint(paint);
+  /** 读取现有填充或描边；修改后须通过 setPaint 通知材质刷新。 */
+  getPaint (kind: 'fill' | 'stroke', index: number): Paint | undefined {
+    return (kind === 'fill' ? this.fills : this.strokes)[index];
   }
 
-  private cloneColorPaint (paint: SolidPaint | GradientPaint): SolidPaint | GradientPaint {
-    if (paint.type === spec.FillType.Solid) {
-      return { type: paint.type, color: new Color().copyFrom(paint.color) };
-    }
-
-    return {
-      ...paint,
-      startPoint: paint.startPoint.clone(),
-      endPoint: paint.endPoint.clone(),
-      gradientStops: Object.assign(new GradientValue([]), {
-        stops: paint.gradientStops.stops.map(stop => ({ time: stop.time, color: new Color().copyFrom(stop.color) })),
-      }),
-    };
-  }
-
-  getGradientPaint (kind: 'fill' | 'stroke', index: number): GradientPaint | undefined {
-    const paint = this.getColorPaint(kind, index);
-
-    return paint?.type === spec.FillType.Solid ? undefined : paint;
-  }
-
-  setGradientPaint (kind: 'fill' | 'stroke', index: number, paint: GradientPaint): void {
-    const current = (kind === 'fill' ? this.fills : this.strokes)[index];
-
-    if (!current || current.type === spec.FillType.Solid || current.type === spec.FillType.Texture) {
-      throw new Error('The selected paint is not a gradient.');
-    }
-    this.setColorPaint(kind, index, paint);
-  }
-
-  /** 在已有 paint 上切换纯色/渐变，不重建形状或丢失其他填充、描边。 */
-  setColorPaint (kind: 'fill' | 'stroke', index: number, paint: SolidPaint | GradientPaint): void {
+  /** 替换一个已有的 Paint 槽位，保留其他填充、描边与几何。 */
+  setPaint (kind: 'fill' | 'stroke', index: number, paint: Paint): void {
     const paints = kind === 'fill' ? this.fills : this.strokes;
-    const current = paints[index];
 
-    if (!current || current.type === spec.FillType.Texture) {
-      throw new Error('The selected color paint does not exist.');
+    if (!Number.isInteger(index) || !paints[index]) {
+      throw new Error('The selected paint does not exist.');
     }
-    if (paint.type === spec.FillType.Solid) {
-      const { r, g, b, a } = paint.color;
-
-      if (![r, g, b, a].every(Number.isFinite)) {
-        throw new Error('Invalid paint color.');
-      }
-    } else if (!isValidGradientPaint(paint)) {
-      throw new Error('Invalid gradient paint.');
-    }
-    paints[index] = this.cloneColorPaint(paint);
+    paints[index] = paint;
     this.materialDirty = true;
   }
 
@@ -489,22 +442,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override getRenderBounds (out = new Box3()): Box3 {
     this.updateGeometry();
 
-    return out.copyFrom(this.renderBounds);
-  }
-
-  /**
-   * 获取可绘制几何的局部包围盒副本，包含填充和描边。
-   * 与 UV 归一化范围一致，不应用对象的 transform.size 或世界变换。
-   * 没有可绘制几何时返回 undefined。
-   */
-  getLocalBounds (): { min: Vector2, max: Vector2 } | undefined {
-    this.updateGeometry();
-    if (this.renderBounds.isEmpty() || !this.geometry.subMeshes.some(subMesh => subMesh.indexCount)) {
-      return undefined;
+    if (!this.geometry.subMeshes.some(subMesh => (subMesh.indexCount ?? 0) > 0)) {
+      return out.makeEmpty();
     }
-    const { min, max } = this.renderBounds;
 
-    return { min: new Vector2(min.x, min.y), max: new Vector2(max.x, max.y) };
+    return out.copyFrom(this.renderBounds);
   }
 
   private updateGeometry (): void {

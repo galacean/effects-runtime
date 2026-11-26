@@ -14,7 +14,7 @@ import {
   RichTextEditMode,
   PenEditMode,
   ShapeEditMode,
-  BasicEditMode,
+  SelectionEditMode,
   EffectsEditMode,
   DefaultSelectionMode,
   type GradientGizmo,
@@ -22,6 +22,7 @@ import {
   type SelectionContentEdit,
   shapeConfig,
   captureMotionPaths,
+  getGradientPaint,
   updateMotionPathTranslation,
   createInteractionPlane,
   getBoxCorners,
@@ -206,7 +207,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
       mode = this.handler.getActiveEditMode();
     }
 
-    if (mode instanceof BasicEditMode) {
+    if (mode instanceof SelectionEditMode) {
       if (!mode.editContent(edit)) {
         this.emit('action', '请先选择对应的 FFD 或渐变图形');
       }
@@ -254,11 +255,11 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
     const mode = this.handler.getActiveEditMode();
 
-    if (mode instanceof BasicEditMode) {
+    if (mode instanceof SelectionEditMode) {
       mode.editContent();
     }
     edit(item);
-    if (mode instanceof BasicEditMode && item.getComponent(ShapeComponent)?.getGradientPaint('fill', 0)) {
+    if (mode instanceof SelectionEditMode && getGradientPaint(item.getComponent(ShapeComponent), 'fill', 0)) {
       mode.editContent({ type: 'gradient', paintKind: 'fill', paintIndex: 0 });
     }
     this.emit('action', label);
@@ -357,17 +358,17 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   /** Demo 返回选择工具时启用完整编辑模式，沿用宿主现有的模式切换入口。 */
   private resetEditMode (preserveScope = false): void {
     const mode = this.handler.getActiveEditMode();
-    const effectsItemId = preserveScope && (mode instanceof BasicEditMode || mode instanceof EffectsEditMode)
+    const effectsItemId = preserveScope && (mode instanceof SelectionEditMode || mode instanceof EffectsEditMode)
       ? mode.effectsItemId : undefined;
 
-    if (mode instanceof BasicEditMode && mode.effectsItemId === effectsItemId) {
+    if (mode instanceof SelectionEditMode && mode.effectsItemId === effectsItemId) {
       mode.editContent();
 
       return;
     }
     const ids = [...this.handler.getSelection().getSelectedIds()];
 
-    this.handler.setActiveEditMode(new BasicEditMode(this.handler, { effectsItemId }));
+    this.handler.setActiveEditMode(new SelectionEditMode(this.handler, { effectsItemId }));
     if (preserveScope) {
       this.setSelection(ids);
     }
@@ -395,9 +396,9 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     const editRoot = this.scene.getItem(item)?.editRoot;
     const mode = this.handler.getActiveEditMode();
 
-    if (editRoot && (!(mode instanceof BasicEditMode) || mode.effectsItemId !== editRoot.getInstanceId())) {
-      this.handler.setActiveEditMode(new BasicEditMode(this.handler, { effectsItemId: editRoot.getInstanceId() }));
-    } else if (!editRoot && mode instanceof BasicEditMode && mode.effectsItemId) {
+    if (editRoot && (!(mode instanceof SelectionEditMode) || mode.effectsItemId !== editRoot.getInstanceId())) {
+      this.handler.setActiveEditMode(new SelectionEditMode(this.handler, { effectsItemId: editRoot.getInstanceId() }));
+    } else if (!editRoot && mode instanceof SelectionEditMode && mode.effectsItemId) {
       this.resetEditMode();
     }
     const id = item.getInstanceId();
@@ -444,7 +445,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     }
     const mode = this.handler.getActiveEditMode();
 
-    if (mode instanceof BasicEditMode) {
+    if (mode instanceof SelectionEditMode) {
       mode.editContent();
     } else {
       this.resetEditMode();
@@ -543,7 +544,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
     // 拖动取消和色标删除由具体 Gizmo 处理，应用快捷键不能先清空选区。
     if (this.handler.isMouseButtonPressed()
-      || (mode instanceof BasicEditMode && mode.contentEdit)) {
+      || (mode instanceof SelectionEditMode && mode.contentEdit)) {
       return;
     }
     if (event.ctrlPressed || event.metaPressed || event.altPressed) {
