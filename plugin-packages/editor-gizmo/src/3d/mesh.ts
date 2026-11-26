@@ -1,10 +1,10 @@
 import type { Engine, Geometry, spec } from '@galacean/effects';
-import { glContext, Material, Mesh, Texture, Transform, math } from '@galacean/effects';
+import { glContext, Material, Texture, Transform, math } from '@galacean/effects';
 import type { MeshOption } from './geometry';
 import { createGeometry, GeometryType } from './geometry';
 import { GizmoSubType } from './define';
-import type { GizmoItemBounding } from './gizmo-vfx-item';
-import { BoundingType } from './gizmo-vfx-item';
+import type { GizmoItemBounding } from './gizmo-bounds';
+import { BoundingType } from './gizmo-bounds';
 import { color, renderMode } from './constants';
 
 type vec3 = spec.vec3;
@@ -12,22 +12,28 @@ type Vector3 = math.Vector3;
 type TriangleLike = math.TriangleLike;
 const { Vector2, Vector3, Matrix4 } = math;
 
+export interface GizmoGeometryData {
+  name: string,
+  geometry: Geometry,
+  material: Material,
+}
+
 /**
- * 根据 gizmoSubType 类型创建几何体 Mesh
+ * 根据 gizmoSubType 类型创建几何体和材质
  * @param subType - gizmoSubType 类型
  * @param boundingMap - 包围盒 Map
  * @param iconTexture - 图标纹理
  * @param options - 几何体参数
- * @returns 基础几何体 Mesh | 组合几何体 Map<Mesh, Transform>
+ * @returns 基础绘制数据，或带局部变换的组合绘制数据
  */
-export function createMeshFromSubType (
+export function createGizmoGeometry (
   engine: Engine,
   subType: GizmoSubType,
   boundingMap: Map<string, GizmoItemBounding>,
   iconTexture?: Map<string, Texture>,
   options?: MeshOption
-): Mesh | Map<Mesh, Transform> {
-  let result: Mesh | Map<Mesh, Transform>;
+): GizmoGeometryData | Map<GizmoGeometryData, Transform> {
+  let result: GizmoGeometryData | Map<GizmoGeometryData, Transform>;
 
   if (!options) {
     options = { size: 0, renderMode: WebGLRenderingContext['TRIANGLES'] };
@@ -35,35 +41,35 @@ export function createMeshFromSubType (
 
   switch (subType) {
     case GizmoSubType.sprite:
-      result = createSpriteMesh(engine, options);
+      result = createSpriteGeometry(engine, options);
 
       break;
     case GizmoSubType.camera:
-      result = createSpriteMesh(engine, options, iconTexture ? iconTexture.get('camera') : undefined, boundingMap);
+      result = createSpriteGeometry(engine, options, iconTexture ? iconTexture.get('camera') : undefined, boundingMap);
 
       break;
     case GizmoSubType.light:
-      result = createSpriteMesh(engine, options, iconTexture ? iconTexture.get('light') : undefined, boundingMap);
+      result = createSpriteGeometry(engine, options, iconTexture ? iconTexture.get('light') : undefined, boundingMap);
 
       break;
     case GizmoSubType.translation:
-      result = createTranslationMesh(engine, options, boundingMap);
+      result = createTranslationGeometry(engine, options, boundingMap);
 
       break;
     case GizmoSubType.scale:
-      result = createScaleMesh(engine, options, boundingMap);
+      result = createScaleGeometry(engine, options, boundingMap);
 
       break;
     case GizmoSubType.viewHelper:
-      result = createViewHelperMesh(engine, options, boundingMap, iconTexture as Map<string, Texture>);
+      result = createViewHelperGeometry(engine, options, boundingMap, iconTexture as Map<string, Texture>);
 
       break;
     case GizmoSubType.rotation:
-      result = createRotationMesh(engine, options, boundingMap);
+      result = createRotationGeometry(engine, options, boundingMap);
 
       break;
     default:
-      result = createBasicMesh(engine, subType, options);
+      result = createBasicGeometry(engine, subType, options);
 
       break;
   }
@@ -72,18 +78,18 @@ export function createMeshFromSubType (
 }
 
 /**
- * 创建旋转组件 Mesh 数组
+ * 创建旋转手柄的几何体和材质
  * @internal
  * @param options
  * @param boundingMap - 包围盒 Map
- * @returns Mesh 数组和对应的 Transform 组成的 Map
+ * @returns 绘制数据和对应的局部变换
  */
-function createRotationMesh (
+function createRotationGeometry (
   engine: Engine,
   options: MeshOption,
   boundingMap: Map<string, GizmoItemBounding>,
-): Map<Mesh, Transform> {
-  const result: Map<Mesh, Transform> = new Map();
+): Map<GizmoGeometryData, Transform> {
+  const result: Map<GizmoGeometryData, Transform> = new Map();
   const scale = options.size.scale || 1;
   const size = {
     radius: 0.8 * scale,
@@ -94,33 +100,21 @@ function createRotationMesh (
   };
   const boundSize = { ...size, tube: size.tube * 2 };
   const name = 'rotation';
-  const xCircle = createBasicMesh(engine, GizmoSubType.torus, {
+  const xCircle = createBasicGeometry(engine, GizmoSubType.torus, {
     size, color: color.xAxisColor as vec3, renderMode, name,
   }, 'hideBack');
-  const yCircle = createBasicMesh(engine, GizmoSubType.torus, {
+  const yCircle = createBasicGeometry(engine, GizmoSubType.torus, {
     size, color: color.yAxisColor as vec3, renderMode, name,
   }, 'hideBack');
-  const zCircle = createBasicMesh(engine, GizmoSubType.torus, {
+  const zCircle = createBasicGeometry(engine, GizmoSubType.torus, {
     size, color: color.zAxisColor as vec3, renderMode, name,
   }, 'hideBack');
-  const center = createBasicMesh(engine, GizmoSubType.sphere, {
+  const center = createBasicGeometry(engine, GizmoSubType.sphere, {
     size, color: [0.3, 0.3, 0.3], alpha: 0.1, renderMode, name,
   }, 'blend');
-  const xCircleBounding = createBasicMesh(engine, GizmoSubType.torus, {
-    size: boundSize,
-    color: color.xAxisColor as vec3,
-    renderMode,
-  });
-  const yCircleBounding = createBasicMesh(engine, GizmoSubType.torus, {
-    size: boundSize,
-    color: color.yAxisColor as vec3,
-    renderMode,
-  });
-  const zCircleBounding = createBasicMesh(engine, GizmoSubType.torus, {
-    size: boundSize,
-    color: color.zAxisColor as vec3,
-    renderMode,
-  });
+  const xCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
+  const yCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
+  const zCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
 
   const xCircleTransform = new Transform({
     valid: true,
@@ -145,19 +139,22 @@ function createRotationMesh (
 
   boundingMap.set('xAxis', {
     type: BoundingType.triangle,
-    triangles: xCircleBounding.firstGeometry() ? getTriangle(xCircleBounding.firstGeometry(), xCircleTransform) : [],
+    triangles: getTriangle(xCircleBounding, xCircleTransform),
     backfaceCulling: true,
   });
   boundingMap.set('yAxis', {
     type: BoundingType.triangle,
-    triangles: yCircleBounding.firstGeometry() ? getTriangle(yCircleBounding.firstGeometry(), yCircleTransform) : [],
+    triangles: getTriangle(yCircleBounding, yCircleTransform),
     backfaceCulling: true,
   });
   boundingMap.set('zAxis', {
     type: BoundingType.triangle,
-    triangles: zCircleBounding.firstGeometry() ? getTriangle(zCircleBounding.firstGeometry(), zCircleTransform) : [],
+    triangles: getTriangle(zCircleBounding, zCircleTransform),
     backfaceCulling: true,
   });
+  xCircleBounding.dispose();
+  yCircleBounding.dispose();
+  zCircleBounding.dispose();
 
   return result;
 }
@@ -197,14 +194,14 @@ function getTriangle (geometry: Geometry, transform: Transform): TriangleLike[] 
 }
 
 /**
- * 创建位移组件 Mesh 数组
+ * 创建位移手柄的几何体和材质
  * @internal
  * @param options
  * @param boundingMap - 包围盒 Map
- * @returns Mesh 数组和对应的 Transform 组成的 Map
+ * @returns 绘制数据和对应的局部变换
  */
-function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>): Map<Mesh, Transform> {
-  const result: Map<Mesh, Transform> = new Map();
+function createTranslationGeometry (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>): Map<GizmoGeometryData, Transform> {
+  const result: Map<GizmoGeometryData, Transform> = new Map();
   const scale = options.size.scale || 1;
   const axisSize = {
     width: 0.8 * scale,
@@ -212,7 +209,7 @@ function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap
     depth: 0.02 * scale,
   };
   const name = 'translation';
-  const axisMesh = createAxisMesh(engine, axisSize, false, name);
+  const axisMesh = createAxisGeometry(engine, axisSize, false, name);
 
   for (const [mesh, transform] of axisMesh) {
     result.set(mesh, transform);
@@ -222,21 +219,21 @@ function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap
     radius: 0.05 * scale,
     height: 0.2 * scale,
   };
-  const xArrow = createBasicMesh(engine, GizmoSubType.cone, {
+  const xArrow = createBasicGeometry(engine, GizmoSubType.cone, {
     size: arrowSize,
     color: color.xAxisColor as vec3,
     renderMode,
     depthTest: true,
     name,
   }, 'blend');
-  const yArrow = createBasicMesh(engine, GizmoSubType.cone, {
+  const yArrow = createBasicGeometry(engine, GizmoSubType.cone, {
     size: arrowSize,
     color: color.yAxisColor as vec3,
     renderMode,
     depthTest: true,
     name,
   }, 'blend');
-  const zArrow = createBasicMesh(engine, GizmoSubType.cone, {
+  const zArrow = createBasicGeometry(engine, GizmoSubType.cone, {
     size: arrowSize,
     color: color.zAxisColor as vec3,
     renderMode,
@@ -264,13 +261,13 @@ function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap
     width: 0.2 * scale,
     height: 0.2 * scale,
   };
-  const xyPlane = createBasicMesh(engine, GizmoSubType.plane, {
+  const xyPlane = createBasicGeometry(engine, GizmoSubType.plane, {
     size: planeSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
   });
-  const yzPlane = createBasicMesh(engine, GizmoSubType.plane, {
+  const yzPlane = createBasicGeometry(engine, GizmoSubType.plane, {
     size: planeSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
   });
-  const zxPlane = createBasicMesh(engine, GizmoSubType.plane, {
+  const zxPlane = createBasicGeometry(engine, GizmoSubType.plane, {
     size: planeSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
   });
   const xyPlaneTransform = new Transform({
@@ -300,19 +297,19 @@ function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap
   createAxisBounding({ width: arrowSize.radius * 2.4, length: axisSize.width + arrowSize.height / 2 }, boundingMap);
   boundingMap.set('xyPlane', {
     type: BoundingType.triangle,
-    triangles: xyPlane.firstGeometry() ? getTriangle(xyPlane.firstGeometry(), xyPlaneTransform) : [],
+    triangles: xyPlane.geometry ? getTriangle(xyPlane.geometry, xyPlaneTransform) : [],
     backfaceCulling: false,
   });
 
   // FIXME: getTriangle 函数调用 getWorldMatrix 后 worldMatrix被修改
   boundingMap.set('yzPlane', {
     type: BoundingType.triangle,
-    triangles: yzPlane.firstGeometry() ? getTriangle(yzPlane.firstGeometry(), yzPlaneTransform) : [],
+    triangles: yzPlane.geometry ? getTriangle(yzPlane.geometry, yzPlaneTransform) : [],
     backfaceCulling: false,
   });
   boundingMap.set('zxPlane', {
     type: BoundingType.triangle,
-    triangles: zxPlane.firstGeometry() ? getTriangle(zxPlane.firstGeometry(), zxPlaneTransform) : [],
+    triangles: zxPlane.geometry ? getTriangle(zxPlane.geometry, zxPlaneTransform) : [],
     backfaceCulling: false,
   });
 
@@ -320,14 +317,14 @@ function createTranslationMesh (engine: Engine, options: MeshOption, boundingMap
 }
 
 /**
- * 创建缩放组件 Mesh 数组
+ * 创建缩放手柄的几何体和材质
  * @internal
  * @param options
  * @param boundingMap - 包围盒 Map
- * @returns Mesh 数组和对应的 Transform 组成的 Map
+ * @returns 绘制数据和对应的局部变换
  */
-function createScaleMesh (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>): Map<Mesh, Transform> {
-  const result: Map<Mesh, Transform> = new Map();
+function createScaleGeometry (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>): Map<GizmoGeometryData, Transform> {
+  const result: Map<GizmoGeometryData, Transform> = new Map();
   const scale = options.size.scale || 1;
   const axisSize = {
     width: 0.8 * scale,
@@ -335,7 +332,7 @@ function createScaleMesh (engine: Engine, options: MeshOption, boundingMap: Map<
     depth: 0.02 * scale,
   };
   const name = 'scale';
-  const axisMesh = createAxisMesh(engine, axisSize, false, name);
+  const axisMesh = createAxisGeometry(engine, axisSize, false, name);
 
   for (const [mesh, transform] of axisMesh) {
     result.set(mesh, transform);
@@ -350,16 +347,16 @@ function createScaleMesh (engine: Engine, options: MeshOption, boundingMap: Map<
     height: 0.2 * scale,
     depth: 0.2 * scale,
   };
-  const xCube = createBasicMesh(engine, GizmoSubType.box, {
+  const xCube = createBasicGeometry(engine, GizmoSubType.box, {
     size: boxSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
   }, 'blend');
-  const yCube = createBasicMesh(engine, GizmoSubType.box, {
+  const yCube = createBasicGeometry(engine, GizmoSubType.box, {
     size: boxSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
   }, 'blend');
-  const zCube = createBasicMesh(engine, GizmoSubType.box, {
+  const zCube = createBasicGeometry(engine, GizmoSubType.box, {
     size: boxSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
   }, 'blend');
-  const centerCube = createBasicMesh(engine, GizmoSubType.box, {
+  const centerCube = createBasicGeometry(engine, GizmoSubType.box, {
     size: centerBoxSize,
     color: [0.8, 0.8, 0.8],
     renderMode,
@@ -398,21 +395,21 @@ function createScaleMesh (engine: Engine, options: MeshOption, boundingMap: Map<
 }
 
 /**
- * 创建视图辅助组件 Mesh 数组
+ * 创建方向指示器的几何体和材质
  * @internal
  * @param options
  * @param boundingMap - 包围盒 Map
- * @returns Mesh 数组和对应的 Transform 组成的 Map
+ * @returns 绘制数据和对应的局部变换
  */
-function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>, texture: Map<string, Texture>): Map<Mesh, Transform> {
-  const result: Map<Mesh, Transform> = new Map();
+function createViewHelperGeometry (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>, texture: Map<string, Texture>): Map<GizmoGeometryData, Transform> {
+  const result: Map<GizmoGeometryData, Transform> = new Map();
   const scale = options.size.scale || 1;
   const axisSize = {
     width: 0.8 * scale,
     height: 0.02 * scale,
     depth: 0.02 * scale,
   };
-  const axisMesh = createAxisMesh(engine, axisSize, true);
+  const axisMesh = createAxisGeometry(engine, axisSize, true);
 
   for (const [mesh, transform] of axisMesh) {
     result.set(mesh, transform);
@@ -423,9 +420,9 @@ function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap:
   };
   const length = (axisSize.width + planeSize.width) / 2;
   const depthTest = true;
-  const posXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posX' }, texture.get('posX'));
-  const posYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posY' }, texture.get('posY'));
-  const posZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'posZ' }, texture.get('posZ'));
+  const posXSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posX' }, texture.get('posX'));
+  const posYSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posY' }, texture.get('posY'));
+  const posZSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posZ' }, texture.get('posZ'));
   const posXSphereTransform = new Transform({
     valid: true,
   });
@@ -439,9 +436,9 @@ function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap:
   posXSphereTransform.translate(length, 0, 0);
   posYSphereTransform.translate(0, length, 0);
   posZSphereTransform.translate(0, 0, length);
-  const negXSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negX' }, texture.get('negX'));
-  const negYSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negY' }, texture.get('negY'));
-  const negZSphere = createSpriteMesh(engine, { size: planeSize, renderMode, depthTest, name: 'negZ' }, texture.get('negZ'));
+  const negXSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negX' }, texture.get('negX'));
+  const negYSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negY' }, texture.get('negY'));
+  const negZSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negZ' }, texture.get('negZ'));
   const negXSphereTransform = new Transform({
     valid: true,
   });
@@ -500,21 +497,21 @@ function createViewHelperMesh (engine: Engine, options: MeshOption, boundingMap:
 }
 
 /**
- * 创建坐标轴 Mesh 数组
+ * 创建坐标轴的几何体和材质
  * @internal
  * @param axisSize - 坐标轴尺寸
  * @param isCentered - 是否居中，默认 false
- * @returns Mesh 数组和对应的 Transform 组成的 Map
+ * @returns 绘制数据和对应的局部变换
  */
-function createAxisMesh (engine: Engine, axisSize: { width: number, height: number, depth: number }, isCentered = false, name?: string): Map<Mesh, Transform> {
-  const result: Map<Mesh, Transform> = new Map();
-  const xAxis = createBasicMesh(engine, GizmoSubType.box, {
+function createAxisGeometry (engine: Engine, axisSize: { width: number, height: number, depth: number }, isCentered = false, name?: string): Map<GizmoGeometryData, Transform> {
+  const result: Map<GizmoGeometryData, Transform> = new Map();
+  const xAxis = createBasicGeometry(engine, GizmoSubType.box, {
     size: axisSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
   });
-  const yAxis = createBasicMesh(engine, GizmoSubType.box, {
+  const yAxis = createBasicGeometry(engine, GizmoSubType.box, {
     size: axisSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
   });
-  const zAxis = createBasicMesh(engine, GizmoSubType.box, {
+  const zAxis = createBasicGeometry(engine, GizmoSubType.box, {
     size: axisSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
   });
 
@@ -543,13 +540,13 @@ function createAxisMesh (engine: Engine, axisSize: { width: number, height: numb
 }
 
 /**
- * 创建基础几何体 Mesh
+ * 创建基础几何体和材质
  * @internal
  * @param subType - gizmoSubType 类型
  * @param options - 几何体参数
- * @returns 几何体 Mesh
+ * @returns 基础绘制数据
  */
-function createBasicMesh (engine: Engine, subType: GizmoSubType, options: MeshOption, materialType = 'default'): Mesh {
+function createBasicGeometry (engine: Engine, subType: GizmoSubType, options: MeshOption, materialType = 'default'): GizmoGeometryData {
   const {
     size, color, alpha, renderMode, depthTest, name,
   } = options;
@@ -623,14 +620,7 @@ function createBasicMesh (engine: Engine, subType: GizmoSubType, options: MeshOp
       break;
   }
 
-  return Mesh.create(
-    engine,
-    {
-      name: name ? name : geometryType.toString(),
-      geometry,
-      material,
-      priority: 3000,
-    });
+  return { name: name ? name : geometryType.toString(), geometry, material };
 }
 
 /**
@@ -640,7 +630,7 @@ function createBasicMesh (engine: Engine, subType: GizmoSubType, options: MeshOp
  * @param boundingMap
  * @returns
  */
-function createSpriteMesh (engine: Engine, options: MeshOption, texture?: Texture, boundingMap?: Map<string, GizmoItemBounding>): Mesh {
+function createSpriteGeometry (engine: Engine, options: MeshOption, texture?: Texture, boundingMap?: Map<string, GizmoItemBounding>): GizmoGeometryData {
   const geometry = createGeometry(engine, GeometryType.Sprite, options.size, renderMode);
   let spriteColor;
 
@@ -659,14 +649,7 @@ function createSpriteMesh (engine: Engine, options: MeshOption, texture?: Textur
     });
   }
 
-  return Mesh.create(
-    engine,
-    {
-      name: options.name || 'sprite',
-      geometry,
-      material,
-      priority: 3000,
-    });
+  return { name: options.name || 'sprite', geometry, material };
 }
 
 /**

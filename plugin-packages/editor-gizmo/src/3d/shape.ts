@@ -1,9 +1,9 @@
 import type { Engine, spec } from '@galacean/effects';
-import { Geometry, Material, Mesh, glContext, math } from '@galacean/effects';
+import { Geometry, Material, glContext, math } from '@galacean/effects';
+import sceneDepthTest from './shaders/scene-depth.glsl';
 
 type vec3 = spec.vec3;
 type Vector3 = math.Vector3;
-type Matrix4 = math.Matrix4;
 
 const { Euler, Vector3, Matrix4 } = math;
 
@@ -282,71 +282,55 @@ Shapes['7'] = Shapes.RectangleEdge;
 Shapes['8'] = Shapes.Edge;
 Shapes['9'] = Shapes.Texture;
 
-export function createMeshFromShape (engine: Engine, args: { shape: string, type?: number }, options: { color?: vec3, depthTest?: boolean }): Mesh {
-  const ret = Shapes[args.type || args.shape](args);
-  const geo = combineGeometries(ret);
+export function createShapeGeometry (engine: Engine, args: { shape: string, type?: number, [key: string]: unknown }): Geometry {
+  const { points, indices } = combineGeometries(Shapes[args.type || args.shape](args));
 
-  return createMesh(engine, geo.points, geo.indices, options.color || [1, 0, 0], options.depthTest, args.shape);
+  return Geometry.create(engine, {
+    attributes: {
+      a_Position: {
+        size: 3,
+        data: points,
+      },
+    },
+    indices: { data: indices },
+    mode: glContext.LINES,
+    drawCount: indices.length,
+  });
 }
 
-function createMesh (engine: Engine, points: Float32Array, indices: Uint16Array, color: vec3, depthTest = false, name?: string): Mesh {
-  const material = Material.create(
-    engine,
-    {
-      uniformValues: {
-        u_color: new Float32Array(color),
-        u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
-      },
-      shader: {
-        shared: true,
-        fragment: `
-    precision mediump float;
+/** Material for scene helpers that respect scene occlusion after post-processing. */
+export function createSceneShapeMaterial (engine: Engine, color: vec3): Material {
+  const material = Material.create(engine, {
+    shader: {
+      shared: true,
+      fragment: `
+        precision mediump float;
 
-    uniform vec3 u_color;
+        ${sceneDepthTest}
+        uniform vec3 u_color;
 
-    void main(){
-      gl_FragColor = vec4(u_color,1.0);
-    }`,
-        vertex: `precision highp float;
+        void main() {
+          testSceneDepth();
+          gl_FragColor = vec4(u_color, 1.0);
+        }`,
+      vertex: `
+        precision highp float;
 
-    attribute vec3 a_Position;
+        attribute vec3 a_Position;
+        uniform mat4 effects_ObjectToWorld;
+        uniform mat4 effects_MatrixVP;
 
-    uniform mat4 u_model;
-    uniform mat4 effects_MatrixVP;
-    void main(){
-      gl_Position = effects_MatrixVP * u_model * vec4(a_Position,1.0);
-    }`,
-      },
-    });
+        void main() {
+          gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(a_Position, 1.0);
+        }`,
+    },
+  });
 
   material.setVector3('u_color', Vector3.fromArray(color));
-  material.setMatrix('u_model', Matrix4.IDENTITY);
-  material.depthTest = depthTest;
+  material.depthTest = true;
   material.stencilTest = false;
   material.blending = false;
   material.depthMask = true;
-  const geometry = Geometry.create(
-    engine,
-    {
-      attributes: {
-        a_Position: {
-          size: 3,
-          data: points,
-        },
-      },
-      indices: {
-        data: indices,
-      },
-      mode: glContext.LINES,
-      drawCount: indices.length,
-    });
 
-  return Mesh.create(
-    engine,
-    {
-      name,
-      geometry,
-      material,
-      priority: 3000,
-    });
+  return material;
 }

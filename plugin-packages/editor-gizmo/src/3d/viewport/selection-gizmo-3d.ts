@@ -1,5 +1,5 @@
 import type { math } from '@galacean/effects';
-import { MouseButton, spec, VFXItem, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { MouseButton, spec, type VFXItem, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
 import type { Point2 } from '../../math/types';
 import { Gizmo3D } from './gizmo-3d';
 import { getItemWorldBoundsCorners } from './item-bounds';
@@ -34,10 +34,7 @@ export class SelectionGizmo3D extends Gizmo3D {
   }
 
   private isSelectable (item: VFXItem): boolean {
-    const root = this.owner.gizmoRoot;
-
-    return (!this.selectableItems || this.selectableItems.has(item))
-      && (!root || (item !== root && !VFXItem.isAncestor(root, item)));
+    return !this.selectableItems || this.selectableItems.has(item);
   }
 
   private selectHits (hits: Set<VFXItem>): void {
@@ -66,12 +63,11 @@ export class SelectionGizmo3D extends Gizmo3D {
     const composition = this.owner.composition;
 
     if (!composition) { return []; }
-    const helpers = new Set<VFXItem>(composition.loaderData.gizmoItems);
 
     return Array.from(this.selectableItems ?? composition.items).filter(item => {
       if (item.composition !== composition || item.type === spec.ItemType.skybox || !this.isSelectable(item)) { return false; }
       for (let node: VFXItem | undefined = item; node; node = node.parent) {
-        if (helpers.has(node) || !node.isActive || !node.isVisible) { return false; }
+        if (!node.isActive || !node.isVisible) { return false; }
       }
 
       return true;
@@ -115,8 +111,7 @@ export class SelectionGizmo3D extends Gizmo3D {
     const { x, y } = ndc;
     const origin = composition.getHitTestRay(x, y).origin;
     const candidates = new Set(this.candidates());
-    const helpers = new Set<VFXItem>(composition.loaderData.gizmoItems);
-    const hits = composition.hitTest(x, y, true, { skip: item => item === this.owner.gizmoRoot || helpers.has(item) || !item.isVisible });
+    const hits = composition.hitTest(x, y, true, { skip: item => !item.isVisible });
     let nearest: VFXItem | undefined;
     let distance = Infinity;
 

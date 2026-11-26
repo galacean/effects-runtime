@@ -1,11 +1,11 @@
-import { EventEmitter, math, type Composition, type EventEmitterListener, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion, type MouseButton, type VFXItem } from '@galacean/effects';
+import { EventEmitter, math, type Composition, type EventEmitterListener, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion, type MouseButton } from '@galacean/effects';
 import { Control, FocusMode, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import type { Selection } from '../2d/selection/selection';
 import type { Editor } from '../editor';
 import type { Point2, Point3, Ray3 } from '../math/types';
-import type { GizmoComponent } from './gizmo-component';
 import type { Gizmo3D, Gizmo3DEvents, Viewport3DSpace, Viewport3DTool } from './viewport/gizmo-3d';
-import { GizmoLayer3D } from './viewport/gizmo-layer-3d';
+import { GizmoRenderer3D } from './viewport/gizmo-renderer-3d';
+import { GridGizmo3D } from './viewport/grid-gizmo-3d';
 import { SelectionGizmo3D } from './viewport/selection-gizmo-3d';
 import { TransformGizmo3D } from './viewport/transform-gizmo-3d';
 import { ViewportGizmo3D } from './viewport/viewport-gizmo-3d';
@@ -34,7 +34,9 @@ export class Editor3D extends Control {
   readonly transform: TransformGizmo3D;
   readonly camera: ViewportGizmo3D;
   readonly selectionGizmo: SelectionGizmo3D;
-  private gizmoLayer?: GizmoLayer3D;
+  readonly grid: GridGizmo3D;
+  readonly sceneGizmos: Gizmo3D[] = [];
+  private gizmoRenderer?: GizmoRenderer3D;
   private readonly offSelectionChange: () => void;
   private offCameraUpdate?: () => void;
   private cameraOnly = false;
@@ -52,6 +54,7 @@ export class Editor3D extends Control {
     this.camera = new ViewportGizmo3D(this);
     this.transform = new TransformGizmo3D(this);
     this.selectionGizmo = new SelectionGizmo3D(this);
+    this.grid = new GridGizmo3D(this);
     this.offSelectionChange = editor.selection.on('selectionchange', () => {
       if (this.enabled) {
         this.cancel('selection');
@@ -62,16 +65,6 @@ export class Editor3D extends Control {
 
   get selection (): Selection { return this.editor.selection; }
 
-  /** @internal Root of the handles owned by this viewport. */
-  get gizmoRoot (): VFXItem | undefined { return this.gizmoLayer?.root; }
-
-  /** @internal Helpers created for the composition currently being edited. */
-  get gizmoComponents (): readonly GizmoComponent[] {
-    const composition = this.composition;
-
-    return composition && this.gizmoLayer?.root.composition === composition ? this.gizmoLayer.components : [];
-  }
-
   /** @internal Activate viewport input or roll back the current interaction. */
   setActive (active: boolean): void {
     if (!active) {
@@ -81,8 +74,11 @@ export class Editor3D extends Control {
       this.camera.restoreSceneCamera();
     }
     this.enabled = active;
-    this.gizmoLayer?.setActive(active);
     if (active) {
+      if (!this.gizmoRenderer) {
+        this.gizmoRenderer = new GizmoRenderer3D(this);
+        this.engine.renderer.addRendererFeature(this.gizmoRenderer);
+      }
       // Camera navigation must finish before scene components collect their render data.
       this.offCameraUpdate ??= this.engine.on('update', deltaTime => this.camera.onUpdate(deltaTime));
       this.camera.applyToComposition();
@@ -103,11 +99,9 @@ export class Editor3D extends Control {
     if (!this.enabled) { return; }
     const composition = this.composition;
 
-    if (this.gizmoLayer?.root.composition !== composition) {
-      this.gizmoLayer?.root.dispose();
-      this.gizmoLayer = composition ? new GizmoLayer3D(composition) : undefined;
-    }
-    this.gizmoLayer?.update(this);
+    this.transform.updateGeometry();
+    this.camera.updateGeometry();
+    if (composition) { this.grid.onUpdate(); }
   }
 
   get viewportSize (): math.Vector2 {
@@ -261,7 +255,11 @@ export class Editor3D extends Control {
     this.offSelectionChange();
     this.cancel('viewport-exit');
     this.camera.restoreSceneCamera();
-    this.gizmoLayer?.root.dispose();
-    this.gizmoLayer = undefined;
+    this.gizmoRenderer?.dispose();
+    this.grid.dispose();
+    this.transform.dispose();
+    this.camera.dispose();
+    this.sceneGizmos.forEach(gizmo => gizmo.dispose());
+    this.sceneGizmos.length = 0;
   }
 }

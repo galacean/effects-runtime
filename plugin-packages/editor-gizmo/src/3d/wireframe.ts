@@ -1,149 +1,43 @@
-import type { ShaderMacros, GeometryDrawMode, Engine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, Geometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
+import type { Engine, GeometryDrawMode, ShaderMacros, spec } from '@galacean/effects';
+import { GLSLVersion, glContext, Geometry, Material, math } from '@galacean/effects';
+import type { GizmoGeometryData } from './mesh';
 
 const { Vector4 } = math;
 
-export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec.vec3): Mesh {
-  const geometry = new SharedGeometry(
-    engine,
-    {
-      geometry: mesh.firstGeometry(),
-      mode: glContext.LINES,
-      index: {
-        data: new Uint16Array(0),
-      },
-      name: 'testtest',
-    });
-
-  const { vertex, fragment, macros, name } = mesh.material.props.shader;
-  const materialOptions = { ...mesh.material.props };
-  const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
-
-  materialOptions.shader = {
-    vertex,
-    fragment,
-    macros: newMacros,
-    shared: true,
-    name: name + '_wireframe',
-    glslVersion: engine.displayServer.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-  };
-  const material = Material.create(engine, materialOptions);
-
-  material.depthTest = mesh.material.depthTest;
-  material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
-
-  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
-    engine,
-    {
-      geometry,
-      material,
-      priority: 3000,
-      name: materialOptions.shader.name,
-    }), WireframeGeometryType.quad);
-}
-
-export enum WireframeGeometryType {
-  triangle,
-  quad,
-}
-
-export function destroyWireframeMesh (mesh: Mesh) {
-  mesh.geometry?.dispose();
-  mesh.dispose({ geometries: DestroyOptions.keep });
-}
-
-export function updateWireframeMesh (originGeometry: Geometry, originMaterial: Material, wireframe: Mesh, type: WireframeGeometryType) {
-  wireframe.material.cloneUniforms(originMaterial);
-
-  const geometry = originGeometry;
-  const wireframeGeometry = wireframe.firstGeometry();
-
-  for (const macro of Object.keys(originMaterial.enabledMacros)) {
-    wireframe.material.enableMacro(macro, originMaterial.enabledMacros[macro]);
-  }
-
-  if (type === WireframeGeometryType.triangle) {
-    // 线框模式不绘制模型的时候，drawCount 为负数
-    const drawCount = Math.abs(geometry.getDrawCount());
-
-    if (drawCount !== 0) {
-      if (drawCount !== wireframeGeometry.getDrawCount() / 2) {
-        const indexData = geometry.getIndexData() as Uint16Array | undefined;
-        const data = indexData ? getTriangleIndexData(indexData) : getTriangleIndexDataByCount(drawCount);
-
-        wireframeGeometry.setIndexData(data);
-        wireframeGeometry.setDrawCount(data.length);
-      }
-    }
-  } else if (type === WireframeGeometryType.quad) {
-    if (geometry.getDrawCount() / 6 !== wireframeGeometry.getDrawCount() / 8) {
-      const data = getQuadIndexData(geometry.getDrawCount() / 6, geometry.getIndexData() as Uint16Array);
-
-      wireframeGeometry.setIndexData(data);
-      wireframeGeometry.setDrawCount(data.length);
-    }
-  }
-
-  return wireframe;
-}
-
-function getQuadIndexData (faceCount: number, oid: Uint16Array): Uint16Array {
-  const indexData = new Uint16Array(faceCount * 8);
-
-  for (let i = 0; i < faceCount; i++) {
-    const idx = i * 8;
-    const base = i * 4;
-
-    indexData[idx] = base;
-    indexData[idx + 1] = 1 + base;
-    indexData[idx + 2] = 1 + base;
-    indexData[idx + 3] = 3 + base;
-    indexData[idx + 4] = 3 + base;
-    indexData[idx + 5] = 2 + base;
-    indexData[idx + 6] = 2 + base;
-    indexData[idx + 7] = base;
-  }
-
-  return indexData;
-}
-
-export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec3): Mesh {
-  const geometry = new SharedGeometry(
-    engine,
-    {
-      geometry: mesh.firstGeometry(),
-      mode: glContext.LINES,
-      index: {
-        data: new Uint32Array(0),
-      },
-    });
-  const { vertex, fragment } = mesh.material.shader.shaderData;
-  const materialOptions = { ...mesh.material.props };
-
-  const newMacros = [['PREVIEW_BORDER', 1]] as ShaderMacros;
-
-  materialOptions.shader = {
-    vertex,
-    fragment,
-    macros: newMacros,
-    shared: true,
-    name: (mesh.name ?? 'unamedmesh') + '_wireframe',
-    glslVersion: engine.displayServer.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-  };
-
-  const material = Material.create(engine, materialOptions);
+export function createWireframeGeometry (engine: Engine, source: Geometry, sourceMaterial: Material, color: spec.vec3): GizmoGeometryData {
+  const geometry = new SharedGeometry(engine, {
+    geometry: source, mode: glContext.LINES, index: { data: new Uint32Array(0) },
+  });
+  const { vertex, fragment } = sourceMaterial.shader.shaderData;
+  const material = Material.create(engine, {
+    ...sourceMaterial.props,
+    shader: {
+      vertex, fragment, macros: [['PREVIEW_BORDER', 1]] as ShaderMacros, shared: true,
+      name: 'model-wireframe',
+      glslVersion: engine.displayServer.renderingDevice.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    },
+  });
 
   material.depthTest = true;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
-    engine,
-    {
-      geometry,
-      material,
-      priority: 3000,
-      name: materialOptions.shader.name,
-    }), WireframeGeometryType.triangle);
+  return updateWireframeGeometry(source, sourceMaterial, { name: 'model-wireframe', geometry, material });
+}
+
+export function updateWireframeGeometry (source: Geometry, sourceMaterial: Material, wireframe: GizmoGeometryData): GizmoGeometryData {
+  wireframe.material.cloneUniforms(sourceMaterial);
+  for (const name of Object.keys(sourceMaterial.enabledMacros)) { wireframe.material.enableMacro(name, sourceMaterial.enabledMacros[name]); }
+  const count = Math.abs(source.getDrawCount());
+
+  if (count && count !== wireframe.geometry.getDrawCount() / 2) {
+    const indices = source.getIndexData();
+    const lines = indices ? getTriangleIndexData(indices) : getTriangleIndexDataByCount(count);
+
+    wireframe.geometry.setIndexData(lines);
+    wireframe.geometry.setDrawCount(lines.length);
+  }
+
+  return wireframe;
 }
 
 function getTriangleIndexDataByCount (drawCount: number): Uint32Array {
@@ -167,7 +61,7 @@ function getTriangleIndexDataByCount (drawCount: number): Uint32Array {
   return indexData;
 }
 
-function getTriangleIndexData (oid: Uint16Array): Uint32Array {
+function getTriangleIndexData (oid: ArrayLike<number>): Uint32Array {
   const faceCount = oid.length / 3;
   const indexData = new Uint32Array(faceCount * 6);
 

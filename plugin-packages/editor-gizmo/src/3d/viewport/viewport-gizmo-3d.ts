@@ -1,9 +1,14 @@
-import { MouseButton, Transform, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey } from '@galacean/effects';
+import { MouseButton, PluginSystem, Transform, glContext, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type Renderer } from '@galacean/effects';
 import type { Point2, Point3 } from '../../math/types';
 import { add3, sub3, mul3, cross3, length3, unit3 } from '../../math/vector3';
 import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-navigation';
 import { Gizmo3D, type Viewport3DCameraEvent } from './gizmo-3d';
 import { getItemWorldBoundsCorners } from './item-bounds';
+import { GizmoGeometry } from './gizmo-geometry';
+import { GizmoSubType } from '../define';
+import type { GizmoItemBoundingSphere } from '../gizmo-bounds';
+import type { EditorGizmoPlugin } from '../gizmo-loader';
+import { computeOrthographicOffCenter } from '../../math/projection';
 
 const vector = (point: Point3) => new math.Vector3(point.x, point.y, point.z);
 
@@ -53,6 +58,56 @@ export class ViewportGizmo3D extends Gizmo3D {
   private flyKeys = new Set<string>();
   private flyTime = 0;
   private flySpeed = 5;
+  private geometryScene?: Composition;
+  geometry?: GizmoGeometry;
+
+  updateGeometry (): void {
+    const composition = this.owner.composition;
+
+    if (this.geometryScene !== composition) {
+      this.dispose();
+      this.geometryScene = composition;
+    }
+    if (!composition) { return; }
+    if (!this.geometry) {
+      const plugin = PluginSystem.getPlugins()?.find(plugin => plugin.name === 'editor-gizmo') as EditorGizmoPlugin | undefined;
+
+      if (!plugin) { return; }
+      this.geometry = new GizmoGeometry(this.owner.engine, GizmoSubType.viewHelper,
+        { size: { scale: 1 }, renderMode: glContext.TRIANGLES }, plugin.getIconTextures(composition));
+    }
+    const geometry = this.geometry;
+    const camera = composition.camera;
+    const orientation = camera.getInverseViewMatrix().getTransform().rotation.conjugate();
+    const rotation = new math.Matrix4().compose(math.Vector3.ZERO, orientation, math.Vector3.ONE);
+    const width = 2 * Math.tan(30 * Math.PI / 360) * 16;
+    const height = width * composition.renderer.getHeight() / composition.renderer.getWidth();
+    const model = new math.Matrix4().compose(new math.Vector3(width / 2 - 0.8, height / 2 - 0.8, 0), orientation, math.Vector3.ONE);
+
+    geometry.projection = computeOrthographicOffCenter(-width / 2, width / 2, -height / 2, height / 2, -16, 16);
+    geometry.updateMatrix(camera.getInverseViewMatrix().multiply(model));
+    for (const { data, local } of geometry.parts) {
+      if (!geometry.bounds.has(data.name)) { continue; }
+      const position = rotation.projectPoint(local.position, new math.Vector3());
+      const radius = (geometry.bounds.get(data.name) as GizmoItemBoundingSphere).radius;
+      const distance = position.toVector2().length();
+      const alpha = data.name.endsWith('Z') ? 1 : Math.max(0, Math.min(1, distance * 2 / radius - 1));
+
+      data.material.setVector2('u_alpha', new math.Vector2(alpha, 0));
+    }
+  }
+
+  override draw (renderer: Renderer): void {
+    this.updateGeometry();
+    this.geometry?.draw(renderer);
+  }
+
+  override dispose (): void {
+    this.geometry?.dispose();
+    this.geometry = undefined;
+    this.geometryScene = undefined;
+  }
+
   get state (): CameraEditData | undefined {
     const composition = this.owner.composition;
 

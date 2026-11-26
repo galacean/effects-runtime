@@ -1,8 +1,7 @@
-import type { Composition, VFXItem } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
 import { Plugin, Texture, TextureSourceType } from '@galacean/effects';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
-import { GizmoComponent } from './gizmo-component';
 
 export class EditorGizmoPlugin extends Plugin {
   override order = 1001;
@@ -41,28 +40,6 @@ export class EditorGizmoPlugin extends Plugin {
     }
 
     return textures;
-  }
-
-  override onCompositionCreating (composition: Composition) {
-    composition.loaderData.gizmoItems = [];
-  }
-
-  override onCompositionCreated (composition: Composition) {
-    const items = composition.items;
-    const targetMap: { [key: string]: VFXItem[] } = {};
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const gizmoComponent = item.getComponent(GizmoComponent);
-
-      if (gizmoComponent) {
-        if (!targetMap[gizmoComponent.target]) {
-          targetMap[gizmoComponent.target] = [];
-        }
-        targetMap[gizmoComponent.target].push(item);
-      }
-    }
-    composition.loaderData.gizmoTarget = targetMap;
   }
 
   override onCompositionDestroy (composition: Composition): void {

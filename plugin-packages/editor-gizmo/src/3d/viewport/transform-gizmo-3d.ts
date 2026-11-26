@@ -1,10 +1,13 @@
-import { math, MouseButton, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type VFXItem } from '@galacean/effects';
+import { math, glContext, MouseButton, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type Renderer, type VFXItem } from '@galacean/effects';
 import type { Editor3D } from '../editor-3d';
 import { rayPlanePoint } from '../../math/plane';
 import type { Point2, Point3 } from '../../math/types';
 import { sub3, mul3, dot3, cross3, unit3, length3 } from '../../math/vector3';
 import { Gizmo3D, type Transform3DActionEvent, type Transform3DOperation, type Viewport3DSpace } from './gizmo-3d';
 import type { NativeGizmoType } from './viewport-gizmo-picker';
+import { gizmoSubTypes } from './viewport-gizmo-picker';
+import { GizmoGeometry } from './gizmo-geometry';
+import { moveToPointWidthFixDistance } from '../util';
 
 const { Vector3, Quaternion, Matrix4 } = math;
 
@@ -67,11 +70,55 @@ export class TransformGizmo3D extends Gizmo3D {
   operation: Transform3DOperation;
   space: Viewport3DSpace;
   private drag?: TransformDrag;
+  private readonly geometries = new Map<Transform3DOperation, GizmoGeometry>();
+  geometry?: GizmoGeometry;
   constructor (owner: Editor3D, options: TransformGizmo3DOptions = {}) {
     super(owner);
     this.operation = options.transform ?? 'translate';
     this.space = options.space ?? 'world';
   }
+
+  updateGeometry (): void {
+    this.geometry = undefined;
+    const composition = this.owner.composition;
+    const items = this.owner.selectionGizmo.items;
+
+    if (!composition || this.owner.tool === 'camera' || !items.length || items.some(item => !this.owner.selectionGizmo.canTransform(item))) { return; }
+    let geometry = this.geometries.get(this.operation);
+
+    if (!geometry) {
+      geometry = new GizmoGeometry(this.owner.engine, gizmoSubTypes[this.nativeType()], { size: { scale: 2 }, renderMode: glContext.TRIANGLES });
+      this.geometries.set(this.operation, geometry);
+    }
+    const { pivot, rotation } = getTransformGizmoPose(items, this.space);
+    const cameraPosition = composition.camera.worldPosition;
+    const center = moveToPointWidthFixDistance(cameraPosition, pivot);
+
+    geometry.updateMatrix(new Matrix4().compose(center, rotation, Vector3.ONE));
+    if (this.operation === 'rotate') {
+      for (const { data: { material } } of geometry.parts) {
+        material.setVector3('u_cameraPos', cameraPosition);
+        material.setVector3('u_center', center);
+      }
+    }
+    this.geometry = geometry;
+  }
+
+  override draw (renderer: Renderer): void {
+    this.updateGeometry();
+    this.geometry?.draw(renderer);
+  }
+
+  override dispose (): void {
+    this.geometries.forEach(geometry => geometry.dispose());
+    this.geometries.clear();
+    this.geometry = undefined;
+  }
+
+  hasGeometry (operation: Transform3DOperation): boolean {
+    return !!this.geometries.get(operation)?.parts.length;
+  }
+
   private valid (drag: TransformDrag): boolean {
     const selected = this.owner.selectionGizmo.items;
 

@@ -1,13 +1,11 @@
 import { Player } from '@galacean/effects';
-import { primaryJSON, basicJSON } from './assets';
+import { primaryJSON, basicGeometry } from './assets';
+import { attachEditor, GeometryGizmo3D } from './editor';
 
 (async () => {
-  const player = new Player({
-    container: document.getElementById('J-container'),
-    renderFramework: 'webgl2',
-  });
-  const json = JSON.parse(primaryJSON);
+  const player = new Player({ container: document.getElementById('J-container'), renderFramework: 'webgl2', env: 'editor', interactive: true });
+  const composition = await player.loadScene(JSON.parse(primaryJSON));
+  const editor = attachEditor(player, composition);
 
-  json.compositions[0].items = JSON.parse(basicJSON);
-  const scene = await player.loadScene(json);
+  for (const example of basicGeometry) { editor.editor3D.sceneGizmos.push(new GeometryGizmo3D(editor.editor3D, example)); }
 })();

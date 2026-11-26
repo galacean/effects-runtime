@@ -1,17 +1,3 @@
-import type { GeometryDrawMode, spec } from '@galacean/effects';
-
-export interface GizmoVFXItemOptions {
-  target: string,
-  subType: GizmoSubType,
-  renderMode?: GeometryDrawMode,
-  type: 'editor-gizmo',
-  color: spec.vec3,
-  size?: number,
-  depthTest?: boolean,
-}
-
-export const GizmoVFXItemType = 'gizmo' as spec.ItemType;
-
 /**
  * Gizmo 类型
  */

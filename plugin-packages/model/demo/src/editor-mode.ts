@@ -1,8 +1,8 @@
 import type { Player } from '@galacean/effects';
-import { math, spec, generateGUID } from '@galacean/effects';
+import { math, spec } from '@galacean/effects';
 import { CameraGestureHandlerImp, PSkyboxCreator, PSkyboxType } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
-import { GizmoSubType } from '@galacean/effects-plugin-editor-gizmo';
+import { ModelWireframeRenderer } from './wireframe';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -17,6 +17,7 @@ let scaleBegin = false;
 let rotationBegin = false;
 
 let playScene: spec.JSONScene;
+let wireframe: ModelWireframeRenderer;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
@@ -99,8 +100,6 @@ async function getCurrentScene () {
 
   loader.dispose();
 
-  jsonScene.plugins.push('editor-gizmo');
-
   return jsonScene;
 }
 
@@ -115,9 +114,7 @@ export async function loadScene (inPlayer: Player) {
   let renderMode3D = spec.RenderMode3D.none;
 
   if (editorMode === EditorMode.wireframe) {
-    currentScene = addWireframeItems(playScene);
-  } else if (editorMode === EditorMode.wireframe2) {
-    currentScene = addWireframeItems(playScene, false);
+    currentScene = hideModelSurfaces(playScene);
   } else if (editorMode === EditorMode.diffuse) {
     renderMode3D = spec.RenderMode3D.diffuse;
   }
@@ -130,84 +127,24 @@ export async function loadScene (inPlayer: Player) {
     },
   };
 
-  return player.loadScene(currentScene, loadOptions).then(async comp => {
+  return player.loadScene(currentScene, loadOptions).then(comp => {
     gestureHandler = new CameraGestureHandlerImp(comp);
+    if (!wireframe) {
+      wireframe = new ModelWireframeRenderer();
+      player.renderer.addRendererFeature(wireframe);
+    }
+    wireframe.setScene(comp, editorMode === EditorMode.wireframe || editorMode === EditorMode.wireframe2);
 
     return true;
   });
 }
 
-function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
-  const newComponents: any = [];
-
-  scene.components.forEach(comp => {
-    const newComponent: any = { ...comp };
-
-    if (newComponent.dataType === spec.DataType.MeshComponent) {
-      newComponent.hide = hide3DModel;
-    }
-    newComponents.push(newComponent);
-  });
-  const newItems: any = [
-    ...scene.items,
-  ];
-
-  scene.items.forEach(item => {
-    if (item.type === 'mesh') {
-      const { name, duration, endBehavior } = item;
-      const newItem: any = {
-        name: name + '_shadedWireframe',
-        id: generateGUID(),
-        pn: 1,
-        type: 'editor-gizmo',
-        visible: true,
-        duration: duration ?? 999,
-        dataType: spec.DataType.VFXItemData,
-        endBehavior,
-        transform: {
-          scale: { x: 1, y: 1, z: 1 },
-          position: { x: 0, y: 0, z: 0 },
-          eulerHint: { x: 0, y: 0, z: 0 },
-        },
-      };
-      const newComponent = {
-        dataType: 'GizmoComponent',
-        id: generateGUID(),
-        item: { id: newItem.id },
-        options: {
-          target: item.id,
-          subType: GizmoSubType.modelWireframe,
-          color: [0, 255, 255],
-        },
-      };
-
-      newItem.components = [
-        { id: newComponent.id },
-      ];
-      newComponents.push(newComponent);
-      newItems.push(newItem);
-    }
-  });
-  const newComposition = {
-    ...scene.compositions[0],
-  };
-  const items = [];
-
-  for (const item of newItems) {
-    items.push({
-      id: item.id,
-    });
-  }
-  //@ts-expect-error
-  newComposition.items = items;
-  const newScene: spec.JSONScene = {
+function hideModelSurfaces (scene: spec.JSONScene): spec.JSONScene {
+  return {
     ...scene,
-    components: newComponents,
-    items: newItems,
-    compositions: [newComposition],
+    components: scene.components.map(component => component.dataType === spec.DataType.MeshComponent
+      ? { ...component, hide: true } : component),
   };
-
-  return newScene;
 }
 
 function registerMouseEvent () {

@@ -1,4 +1,4 @@
-import type { InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
+import type { InputEventKey, InputEventMouseButton, InputEventMouseMotion, Renderer } from '@galacean/effects';
 import type { CameraEditData } from './camera-navigation';
 import type { Editor3D } from '../editor-3d';
 import type { TransformGizmo3D } from './transform-gizmo-3d';
@@ -31,7 +31,7 @@ export type Gizmo3DEvents = {
   toolchange: [tool: Viewport3DTool, space: Viewport3DSpace],
 };
 
-/** Interaction owned by a single 3D viewport. Accepting a press captures its pointer. */
+/** Viewport-owned input, drawing and resource lifecycle for a 3D tool. */
 export abstract class Gizmo3D {
   abstract readonly type: string;
   constructor (protected readonly owner: Editor3D) {}
@@ -42,5 +42,7 @@ export abstract class Gizmo3D {
   onKeyDown (event: InputEventKey): void {}
   onKeyUp (event: InputEventKey): void {}
   onUpdate (): void {}
+  draw (renderer: Renderer): void {}
+  dispose (): void {}
   cancel (reason: string): void {}
 }

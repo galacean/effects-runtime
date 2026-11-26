@@ -232,10 +232,10 @@ export class Renderer {
       return;
     }
     if (options.postProcessingEnabled) {
-      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear, readableDepthStencilTextures } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
 
-      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear) {
-        throw new Error('Post processing requires half float textures with color attachment and linear filtering support.');
+      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear || !readableDepthStencilTextures) {
+        throw new Error('Post processing requires half float textures with color attachment and linear filtering support, and readable depth stencil textures.');
       }
     }
 
@@ -268,8 +268,9 @@ export class Renderer {
       const width = options.target?.viewport[2] ?? this.getWidth();
       const height = options.target?.viewport[3] ?? this.getHeight();
 
-      sceneTarget = this.getTemporaryRT('DrawObjectPass', width, height, 16, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+      sceneTarget = this.getTemporaryRT('_CameraColor', width, height, 24, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
       resourceData.cameraColor = sceneTarget.getColorTextures()[0];
+      resourceData.cameraDepth = sceneTarget.getDepthTexture();
     }
     this.setFramebuffer(sceneTarget ?? options.target ?? null);
 

@@ -1,10 +1,7 @@
-import { math } from '@galacean/effects';
+import type { math } from '@galacean/effects';
 
-export type Ray = math.Ray;
-export type TriangleLike = math.TriangleLike;
+type TriangleLike = math.TriangleLike;
 type Vector3 = math.Vector3;
-
-const { Vector3, Ray } = math;
 
 /**
  * 包围盒类型

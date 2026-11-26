@@ -80,11 +80,10 @@ for (const renderFramework of ['webgl', 'webgl2'] as const) {
 
       player.renderer.clear = action => actions.push(action);
       player.renderer.renderCompositions([first, second], {});
-      expect(actions).to.have.length(3);
+      expect(actions.slice(1).filter(action => action.depthAction === TextureLoadAction.clear)).to.have.length(2);
+      expect(actions.slice(1).filter(action => action.stencilAction === TextureLoadAction.clear)).to.have.length(2);
       for (const action of actions.slice(1)) {
         expect(action.colorAction).not.equals(TextureLoadAction.clear);
-        expect(action.depthAction).equals(TextureLoadAction.clear);
-        expect(action.stencilAction).equals(TextureLoadAction.clear);
       }
     });
 

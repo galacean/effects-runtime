@@ -1,6 +1,4 @@
-import type { VFXItem } from '@galacean/effects';
 import { GizmoSubType } from '../define';
-import type { GizmoComponent } from '../gizmo-component';
 import type { Editor3D } from '../editor-3d';
 import type { Point2 } from '../../math/types';
 
@@ -14,49 +12,39 @@ export const gizmoSubTypes = {
   'view-helper': GizmoSubType.viewHelper,
   'floor-grid': GizmoSubType.floorGrid,
 };
-const skipChildren = { skip: () => true };
 
-/** Pick the meshes owned by the current viewport's gizmo layer. */
+/** Pick the same geometry matrices used by the active viewport's draw pass. */
 export class ViewportGizmoPicker {
   constructor (private readonly owner: Editor3D) {}
 
-  private registered (type: NativeGizmoType): GizmoComponent[] {
-    return this.owner.gizmoComponents.filter(component =>
-      component.subType === gizmoSubTypes[type] && component.meshes.length > 0);
-  }
-
-  /** A registered mesh owns its visual even while explicitly hidden. */
   hasMesh (type: NativeGizmoType): boolean {
-    return this.registered(type).length > 0;
+    if (type === 'floor-grid') { return !!this.owner.composition; }
+    if (type === 'view-helper') { return !!this.owner.camera.geometry?.parts.length; }
+
+    return this.owner.transform.hasGeometry(type === 'translation' ? 'translate' : type === 'rotation' ? 'rotate' : 'scale');
   }
 
   hit (point: Point2, type: NativeGizmoType): NativeGizmoHit | undefined {
     const composition = this.owner.composition;
-    const components = this.registered(type);
 
-    if (!components.length || !composition?.interactive) { return; }
+    if (!this.owner.enabled || !composition?.interactive || type === 'floor-grid') { return; }
     const ndc = this.owner.toNDC(point);
 
     if (!ndc) { return; }
-    const { x, y } = ndc;
-    const ray = composition.getHitTestRay(x, y);
-    let nearest: NativeGizmoHit | undefined;
-    let distance = Infinity;
+    const viewHelper = type === 'view-helper';
 
-    for (const component of components) {
-      let node: VFXItem | undefined = component.item;
+    if (viewHelper) {
+      this.owner.camera.updateGeometry();
+    } else {
+      const operation = type === 'translation' ? 'translate' : type === 'rotation' ? 'rotate' : 'scale';
 
-      while (node && node.isActive && node.isVisible) { node = node.parent; }
-      if (!component.enabled || node) { continue; }
-      if (!component.item.hitTest(ray, x, y, [], [], true, skipChildren) || !component.hitBounding) { continue; }
-      const depth = ray.origin.distanceSquared(component.hitBounding.position);
-
-      if (depth <= distance) {
-        distance = depth;
-        nearest = { key: component.hitBounding.key, target: component.target };
-      }
+      if (this.owner.tool !== operation) { return; }
+      this.owner.transform.updateGeometry();
     }
+    const geometry = viewHelper ? this.owner.camera.geometry : this.owner.transform.geometry;
+    const hit = geometry?.hit(composition.getHitTestRay(ndc.x, ndc.y), ndc, composition.camera);
+    const items = this.owner.selectionGizmo.items;
 
-    return nearest;
+    return hit && { key: hit.key, target: !viewHelper && items.length === 1 ? items[0].getInstanceId() : undefined };
   }
 }
