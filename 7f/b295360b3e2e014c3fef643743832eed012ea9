@@ -1,0 +1,66 @@
+plugin-packages/editor-gizmo/src/3d/viewport/selection-gizmo-3d.ts
+  s_41a2855eb678e1::t_79942b2ca83120 2,33-37,39-40,57,72,119
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  s_41a2855eb678e1::t_464b8c6432adb1 76-79,257
+  s_41a2855eb678e1::t_a2135addc58fae 98,160
+  s_41a2855eb678e1::t_527fe67a2be2e5 259
+  s_41a2855eb678e1::t_642a06507b4d7a 96-97
+  s_41a2855eb678e1::t_3df399d3af0b13 6,66-68,70,72
+  s_41a2855eb678e1::t_4aa5945ef403d2 1,64-65
+  s_41a2855eb678e1::t_2b50d9befb2d3c 69,71
+  s_41a2855eb678e1::t_c26bbf510025ed 8,37,55-58,81,99-107,230,258
+  s_41a2855eb678e1::t_cd80e4cb251472 82-85
+  s_41a2855eb678e1::t_1e710352472e88 73
+plugin-packages/editor-gizmo/src/3d/gizmo-loader.ts
+  s_41a2855eb678e1::t_80161b06004a14 11
+  s_41a2855eb678e1::t_442ca5ba87d643 1,9,15,17-30,32-39,41-43,67-73
+  s_41a2855eb678e1::t_1a3a3f5266dfa1 2,40
+  s_41a2855eb678e1::t_65d39ecd1ea5f8 12-14
+plugin-packages/editor-gizmo/src/3d/viewport/camera-navigation.ts
+  s_41a2855eb678e1::t_464b8c6432adb1 8
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-picker.ts
+  s_41a2855eb678e1::t_9b8752f78e5869 7,10
+  s_41a2855eb678e1::t_2b50d9befb2d3c 24-25
+  s_41a2855eb678e1::t_3df399d3af0b13 1,3,23,30,35
+  s_41a2855eb678e1::t_7fe9d15773349d 19
+plugin-packages/editor-gizmo/src/3d/gizmo-component.ts
+  s_41a2855eb678e1::t_442ca5ba87d643 66,69,110,120,130
+  s_41a2855eb678e1::t_527fe67a2be2e5 294,357,393,660
+  s_41a2855eb678e1::t_9b8752f78e5869 63-64,226
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  s_41a2855eb678e1::t_9b8752f78e5869 50-60,130-131,282-291
+  s_41a2855eb678e1::t_ca21dedc6f001f 6
+  s_41a2855eb678e1::t_642a06507b4d7a 95,261
+  s_41a2855eb678e1::t_4fdccbcb6c1659 48,251-259
+  s_41a2855eb678e1::t_7fe9d15773349d 250,260,263
+  s_41a2855eb678e1::t_4939940f9e7f92 49
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-layer-3d.ts
+  s_41a2855eb678e1::t_c26bbf510025ed 1-10,12-18,22-47,49-53,55-58,60-90
+  s_41a2855eb678e1::t_3df399d3af0b13 11,48
+  s_41a2855eb678e1::t_79942b2ca83120 19-21,54
+  s_41a2855eb678e1::t_527fe67a2be2e5 59
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  s_41a2855eb678e1::t_464b8c6432adb1 62,72,92,96,105,111,114-115,136-137,149,269,272,320,322,336
+  s_41a2855eb678e1::t_ca2287032a6179 11,50,94,97-104,119,122-123,125-133,145-146
+  s_41a2855eb678e1::t_cd80e4cb251472 85,112-113,202-203,205,270-271,273-277,337-340,343
+  s_41a2855eb678e1::t_8494b0a6cce5b3 124
+  s_41a2855eb678e1::t_91c99cc03e3fa1 68-70
+  s_41a2855eb678e1::t_64ac3caf299314 1,10,12-13,49,63-67,93,95,109-110,116-118,120-121,134-135,138-144,147-148,204
+  s_41a2855eb678e1::t_ca21dedc6f001f 47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7fb295360b3e2e014c3fef643743832eed012ea9",
+  "prompts": {},
+  "sessions": {
+    "s_41a2855eb678e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c93-f12b-7883-b6b6-cfe81faccf0f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
