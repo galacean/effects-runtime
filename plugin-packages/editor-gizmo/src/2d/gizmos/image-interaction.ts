@@ -1,5 +1,5 @@
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
-import type { Vector2 } from '../math';
+import type { Vector2 } from '../../math';
 
 /** 图片裁切和扩边的交互类型。 */
 export enum ImageInteractionType {

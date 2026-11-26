@@ -4,7 +4,7 @@ import { Gizmo } from '../gizmo';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { GestureCursorType, type GestureCursorResult } from '../cursor';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import type { ItemCreateConfig } from '../configs/types';
 import { itemCreateConfig, selectionPreviewConfig } from '../configs/builtin-configs';
 import { getItemViewBox, isFramePlayerItem, getPlayerItemById } from '../items';

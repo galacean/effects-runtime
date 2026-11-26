@@ -1,4 +1,3 @@
-export * from './math';
 export type { ViewportNavigationRange } from './viewport';
 export * from './text';
 export * from './modes';

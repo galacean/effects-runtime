@@ -1,7 +1,7 @@
 import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import type { Matrix3 } from '../math';
-import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox } from '../math';
+import type { Matrix3 } from '../../math';
+import { Euler, EulerOrder, Matrix4, Quaternion, Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox } from '../../math';
 import { projectPoint, worldSizeToViewSize } from '../viewport/coordinates';
 import { isFramePlayerItem } from './item-predicates';
 

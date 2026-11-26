@@ -7,7 +7,7 @@ import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/
 import { FrameManager, GestureCursorType, ConfigManager, SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import type { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection';
 import { SelectTextGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/select-text-gizmo';
 import { TextEditSession } from '../../../../../../plugin-packages/editor-gizmo/src/2d/text/text-edit-session';

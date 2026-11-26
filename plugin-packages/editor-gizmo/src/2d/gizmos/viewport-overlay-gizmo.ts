@@ -1,8 +1,8 @@
 import { Texture, FrameComponent, spec } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import type { Matrix3 } from '../math';
-import { Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners } from '../math';
+import type { Matrix3 } from '../../math';
+import { Vector2, Vector3, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners } from '../../math';
 import { Gizmo } from '../gizmo';
 import { GizmoType } from '../gizmo-type';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';

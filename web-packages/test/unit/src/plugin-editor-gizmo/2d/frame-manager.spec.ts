@@ -1,7 +1,7 @@
 import { restoreTestState } from '../helpers/spies';
 import type { Engine } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { FrameLayoutMode, FrameManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 
 const { expect } = chai;

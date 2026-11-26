@@ -5,7 +5,7 @@ import type {
   InputEventMouse,
   InputEventMouseMotion,
 } from '@galacean/effects';
-import { Matrix3 } from '../math';
+import { Matrix3 } from '../../math';
 import type { Control } from '@galacean/effects-plugin-gui';
 
 /**

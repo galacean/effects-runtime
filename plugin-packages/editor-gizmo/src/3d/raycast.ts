@@ -1,12 +1,6 @@
 import type { Camera } from '@galacean/effects';
-import { math } from '@galacean/effects';
-import { distanceOfPointAndLine, projectionOfPointAndLine } from './math-utils';
-
-type Vector2 = math.Vector2;
-type Vector3 = math.Vector3;
-type Matrix4 = math.Matrix4;
-
-const { Matrix4, Vector2, Vector3 } = math;
+import { Matrix4, Vector3, type Vector2 } from '../math/core';
+import { distanceOfPointAndLine, projectionOfPointAndLine } from '../math/projected-line';
 
 /**
  * 线条包围盒射线检测算法

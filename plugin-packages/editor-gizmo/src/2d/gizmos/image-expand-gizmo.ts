@@ -1,5 +1,5 @@
 import { Box2, Line2 } from '@galacean/effects-math/es/extension/index';
-import { RAD2DEG, Vector2, getBoxCorners, getTransformedBoxCorners, inverseTransformBoxPoint, setBoxFromPoints, transformedBoxContainsPoint, type Matrix3 } from '../math';
+import { RAD2DEG, Vector2, getBoxCorners, getTransformedBoxCorners, inverseTransformBoxPoint, setBoxFromPoints, transformedBoxContainsPoint, type Matrix3 } from '../../math';
 import type { ImageExpandConfig } from '../configs/types';
 import { imageExpandConfig } from '../configs/builtin-configs';
 import type { VFXItem } from '@galacean/effects';

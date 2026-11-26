@@ -3,7 +3,7 @@ import { GestureCursorType } from '../cursor';
 import { effectsEditModeConfig } from '../configs/builtin-configs';
 import { Gizmo } from '../gizmo';
 import { isEditableTextItem, isEffectsPlayerItem } from '../items';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import { EffectsEditMode } from '../modes/effects-edit-mode';
 import { createTextEditMode } from '../modes/create-text-edit-mode';
 

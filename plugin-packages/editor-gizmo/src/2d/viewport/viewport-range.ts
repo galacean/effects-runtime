@@ -1,4 +1,4 @@
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 
 /**

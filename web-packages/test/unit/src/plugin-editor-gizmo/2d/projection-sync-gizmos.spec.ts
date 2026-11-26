@@ -11,8 +11,8 @@ import { ImageInteractionType } from '../../../../../../plugin-packages/editor-g
 import { GestureCursorType, type GestureCursorResult } from '../../../../../../plugin-packages/editor-gizmo/src/2d/cursor';
 
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import type { Matrix3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
-import { Vector2, getBoxTransform, getBoxTransformFromBox, getBoxCorners, getTransformedBoxCorners, setBoxFromPoints, transformBoxPoint } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import type { Matrix3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
+import { Vector2, getBoxTransform, getBoxTransformFromBox, getBoxCorners, getTransformedBoxCorners, setBoxFromPoints, transformBoxPoint } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
 
 const { expect } = chai;

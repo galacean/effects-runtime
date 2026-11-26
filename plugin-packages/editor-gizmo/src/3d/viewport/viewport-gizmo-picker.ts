@@ -2,7 +2,7 @@ import type { Composition, VFXItem } from '@galacean/effects';
 import { GizmoSubType } from '../define';
 import { GizmoComponent } from '../gizmo-component';
 import type { Editor3D } from '../editor-3d';
-import type { Point2 } from './gizmo-3d-math';
+import type { Point2 } from '../../math/types';
 
 export type NativeGizmoType = 'translation' | 'rotation' | 'scale' | 'view-helper' | 'floor-grid';
 export interface NativeGizmoHit { key: string, target?: string }

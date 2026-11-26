@@ -2,8 +2,8 @@ import { TextCache } from '@galacean/effects';
 import { ellipsizeText } from '@galacean/effects-plugin-gui';
 import type { Control, TextMeasure } from '@galacean/effects-plugin-gui';
 import { type Box2 } from '@galacean/effects-math/es/extension/index';
-import type { Vector2 } from './math';
-import { Color, Matrix3, Vector3, getBoxCorners } from './math';
+import type { Vector2 } from '../math';
+import { Color, Matrix3, Vector3, getBoxCorners } from '../math';
 
 /** 信息标签默认字号。 */
 export const INFO_TEXT_FONT_SIZE = 14;

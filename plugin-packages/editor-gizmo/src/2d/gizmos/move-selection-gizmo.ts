@@ -8,7 +8,7 @@ import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../gizmo';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, roundNumber } from '@galacean/effects-math/es/extension/index';
-import { Euler, EulerOrder, Matrix4, Vector2, Vector3 } from '../math';
+import { Euler, EulerOrder, Matrix4, Vector2, Vector3 } from '../../math';
 import { GestureCursorType } from '../cursor';
 import {
   GizmoViewportUtils,

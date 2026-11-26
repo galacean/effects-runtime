@@ -1,4 +1,5 @@
-import { add3, sub3, mul3, length3, unit3, cross3, type Point3 } from './gizmo-3d-math';
+import type { Point3 } from '../../math/types';
+import { add3, sub3, mul3, length3, unit3, cross3 } from '../../math/vector3';
 
 export interface CameraEditData {
   position: Point3,

@@ -2,7 +2,7 @@ import { InputEventKey, InputEventMouseButton, InputEventMouseMotion, MouseButto
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import { RulerGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler-gizmo';
 import { RulerManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ruler-manager';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';

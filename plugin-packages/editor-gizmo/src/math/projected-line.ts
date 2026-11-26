@@ -1,9 +1,4 @@
-import { math } from '@galacean/effects';
-
-type Vector2 = math.Vector2;
-type Vector3 = math.Vector3;
-
-const { Matrix4, Vector2 } = math;
+import { Vector2, type Vector3 } from './core';
 
 export function distanceOfPointAndLine (point: Vector2, line: [Vector2, Vector2]): { distance: number, isInLine: boolean } {
   //三角形三个边长
@@ -68,47 +63,4 @@ export function projectionOfPointAndLine (point: Vector2, line: [Vector3, Vector
   const worldP = line[0].clone().add(worldAP);
 
   return worldP;
-}
-
-export function computeOrthographicOffCenter (
-  left: number,
-  right: number,
-  bottom: number,
-  top: number,
-  near: number,
-  far: number
-) {
-  let a = 1.0 / (right - left);
-  let b = 1.0 / (top - bottom);
-  let c = 1.0 / (far - near);
-
-  const tx = -(right + left) * a;
-  const ty = -(top + bottom) * b;
-  const tz = -(far + near) * c;
-
-  a *= 2.0;
-  b *= 2.0;
-  c *= -2.0;
-
-  return new Matrix4(
-    a,
-    0.0,
-    0.0,
-    0.0,
-    //
-    0.0,
-    b,
-    0.0,
-    0.0,
-    //
-    0.0,
-    0.0,
-    c,
-    0.0,
-    //
-    tx,
-    ty,
-    tz,
-    1.0,
-  );
 }

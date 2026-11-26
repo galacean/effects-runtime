@@ -2,8 +2,8 @@ import { EventEmitter, math, type Composition, type EventEmitterListener, type I
 import { Control, FocusMode, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import type { Selection } from '../2d/selection/selection';
 import type { Editor } from '../editor';
+import type { Point2, Point3, Ray3 } from '../math/types';
 import type { Gizmo3D, Gizmo3DEvents, Viewport3DSpace, Viewport3DTool } from './viewport/gizmo-3d';
-import type { Point2, Point3, Ray3 } from './viewport/gizmo-3d-math';
 import { SelectionGizmo3D } from './viewport/selection-gizmo-3d';
 import { TransformGizmo3D } from './viewport/transform-gizmo-3d';
 import { ViewportGizmo3D } from './viewport/viewport-gizmo-3d';

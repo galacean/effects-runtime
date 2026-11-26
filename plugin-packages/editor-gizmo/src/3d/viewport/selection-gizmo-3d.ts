@@ -1,7 +1,8 @@
 import type { math } from '@galacean/effects';
 import { MouseButton, spec, type InputEventMouseButton, type InputEventMouseMotion, type VFXItem } from '@galacean/effects';
+import type { Point2 } from '../../math/types';
 import { Gizmo3D } from './gizmo-3d';
-import { getBoundsPoints, type Point2 } from './gizmo-3d-math';
+import { getItemWorldBoundsCorners } from './item-bounds';
 
 interface MarqueeRect {
   readonly left: number,
@@ -134,7 +135,7 @@ export class SelectionGizmo3D extends Gizmo3D {
     const hits: VFXItem[] = [];
 
     for (const item of this.candidates()) {
-      const points = getBoundsPoints([item]).map(point => this.owner.project(point)).filter((point): point is math.Vector2 => !!point);
+      const points = getItemWorldBoundsCorners([item]).map(point => this.owner.project(point)).filter((point): point is math.Vector2 => !!point);
 
       if (!points.length) { continue; }
       const xs = points.map(p => p.x), ys = points.map(p => p.y);

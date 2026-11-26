@@ -10,7 +10,7 @@ import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { GizmoType } from '../gizmo-type';
 import { decomposeItemTransform } from '../items';
-import { DEG2RAD, RAD2DEG, Vector2, Vector3, getAngleByVectors, getTransformedBoxCorners, getVector2Angle } from '../math';
+import { DEG2RAD, RAD2DEG, Vector2, Vector3, getAngleByVectors, getTransformedBoxCorners, getVector2Angle } from '../../math';
 import { roundNumber } from '@galacean/effects-math/es/extension/index';
 import type {
   ResizeSelectionGizmo } from './resize-selection-gizmo';

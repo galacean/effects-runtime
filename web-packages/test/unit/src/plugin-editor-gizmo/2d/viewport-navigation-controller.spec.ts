@@ -1,7 +1,7 @@
 import { restoreTestState, getSpyCalls, type TestSpy } from '../helpers/spies';
 import { InputEventMouseButton, MouseButton, MouseButtonMask, type Engine } from '@galacean/effects';
 
-import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
 import { viewportNavigationConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';

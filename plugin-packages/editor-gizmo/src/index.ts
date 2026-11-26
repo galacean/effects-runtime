@@ -4,6 +4,7 @@ import { EditorGizmoPlugin } from './3d/gizmo-loader';
 
 registerPlugin('editor-gizmo', EditorGizmoPlugin);
 
+export * from './math';
 export * from './2d';
 export * from './3d';
 export * from './editor';

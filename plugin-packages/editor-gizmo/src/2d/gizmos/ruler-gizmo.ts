@@ -7,7 +7,7 @@ import type { GizmoActionEvent } from '../gizmo-action';
 import { RulerManager, type RulerDirection, type RulerGuides } from './ruler-manager';
 import { GizmoType } from '../gizmo-type';
 import { GestureCursorType } from '../cursor';
-import { Matrix3, Vector2 } from '../math';
+import { Matrix3, Vector2 } from '../../math';
 import { getItemViewBox } from '../items';
 import { toColor } from '../drawing';
 import { rulerConfig, selectionSnapConfig } from '../configs/builtin-configs';

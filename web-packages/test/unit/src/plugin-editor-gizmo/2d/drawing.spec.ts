@@ -1,7 +1,7 @@
 import { restoreTestState, getSpyCalls } from '../helpers/spies';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { drawDashedCorners, toCanvasColor, toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
-import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 const { expect } = chai;
 

@@ -1,6 +1,6 @@
 import type { VFXItem } from '@galacean/effects';
-import type { Euler } from '../math';
-import { Matrix4, Vector2, Vector3, RayCaster } from '../math';
+import type { Euler } from '../../math';
+import { Matrix4, Vector2, Vector3, RayCaster } from '../../math';
 import { Plane } from '@galacean/effects-math/es/extension/index';
 
 /**

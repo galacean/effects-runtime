@@ -5,7 +5,7 @@ import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { GizmoType } from '../gizmo-type';
 import { getItemViewTransform } from '../items';
-import { getTransformedBoxCorners, type Matrix3 } from '../math';
+import { getTransformedBoxCorners, type Matrix3 } from '../../math';
 import { drawCorners, toColor } from '../drawing';
 import type { RichTextEditSession } from '../rich-text/rich-text-edit-session';
 import type { RichTextViewport } from '../rich-text/rich-text-geometry';

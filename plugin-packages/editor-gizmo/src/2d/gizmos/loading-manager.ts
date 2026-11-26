@@ -1,6 +1,6 @@
 import { EventEmitter } from '@galacean/effects';
 import { type Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 单个元素的加载提示配置。 */
 export type LoadingItemOptions = {

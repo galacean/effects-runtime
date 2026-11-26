@@ -10,7 +10,7 @@ import { Gizmo } from '../gizmo';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { GizmoType } from '../gizmo-type';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getNormalizeBoxByBoxes, getTransformedBoxCorners, setBoxFromPoints, transformedBoxContainsPoint } from '../math';
+import { Vector2, getNormalizeBoxByBoxes, getTransformedBoxCorners, setBoxFromPoints, transformedBoxContainsPoint } from '../../math';
 import type { SpriteTextEditConfig } from '../configs/types';
 import { spriteTextEditConfig } from '../configs/builtin-configs';
 import { getPlayerItemById, getItemViewBox, getItemViewTransform } from '../items';

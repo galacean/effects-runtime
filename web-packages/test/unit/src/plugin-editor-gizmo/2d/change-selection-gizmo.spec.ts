@@ -6,7 +6,7 @@ import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/
 
 import { ChangeSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/change-selection-gizmo';
 import type { Selection, SelectionHitSnapshot } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { LoadingManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/loading-manager';
 
 const { expect } = chai;

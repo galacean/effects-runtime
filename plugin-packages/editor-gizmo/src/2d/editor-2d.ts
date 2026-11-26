@@ -9,7 +9,7 @@ import type { Selection } from './selection/selection';
 import type { Editor } from '../editor';
 import type { ConfigManager } from './configs/config-manager';
 import { selectionPreviewConfig } from './configs/builtin-configs';
-import { Vector2, getTransformedBoxCorners } from './math';
+import { Vector2, getTransformedBoxCorners } from '../math';
 import { FrameManager } from './frame/frame-manager';
 import { SnapManager } from './selection/snap-manager';
 import { LoadingManager } from './gizmos/loading-manager';

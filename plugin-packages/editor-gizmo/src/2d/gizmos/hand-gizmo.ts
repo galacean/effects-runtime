@@ -6,7 +6,7 @@ import {
   type InputEventMouseButton,
   type InputEventMouseMotion,
 } from '@galacean/effects';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 视口平移交互状态。 */
 enum DragType {

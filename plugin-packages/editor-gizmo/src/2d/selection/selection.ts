@@ -2,7 +2,7 @@ import { EventEmitter, type Engine, type Composition, type InputEventMouseButton
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Ray, Vector2, transformedBoxContainsPoint } from '../math';
+import { Ray, Vector2, transformedBoxContainsPoint } from '../../math';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import {
   getPlayerItemById,

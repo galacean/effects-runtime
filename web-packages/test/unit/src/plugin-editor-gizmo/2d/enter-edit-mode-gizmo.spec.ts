@@ -5,7 +5,7 @@ import { FrameManager, GestureCursorType, ConfigManager, SnapManager, effectsEdi
 
 import { EnterEditModeGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/enter-edit-mode-gizmo';
 import { ClickDragMultiplexGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import type { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection';
 import { EffectsEditMode, TextEditMode, type EditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';
 

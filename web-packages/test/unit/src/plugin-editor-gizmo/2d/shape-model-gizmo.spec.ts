@@ -2,7 +2,7 @@ import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonM
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
 import type { ShapeDrawingActionEvent } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
 import { ShapeModelGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/shape-model-gizmo';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
 import { shapeConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/builtin-configs';
 

@@ -1,7 +1,7 @@
 import { restoreTestState } from '../helpers/spies';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { SpriteTextEditGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/sprite-text-edit-gizmo';
 
 const { expect } = chai;

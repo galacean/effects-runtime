@@ -5,7 +5,7 @@ import type { GizmoOwner } from '../../gizmo-owner';
 import { penConfig } from '../../configs/builtin-configs';
 import type { PenConfig } from '../../configs/types';
 import { GestureCursorType } from '../../cursor';
-import { Vector2 } from '../../math';
+import { Vector2 } from '../../../math';
 import { toColor } from '../../drawing';
 import { appendPenHandle, cloneGeometry, deletePenPoint, disconnectPenSegment, hitPenCurve, nextGeometrySession, openClosedShapeAt, penEditOperations, splitPenSegment,
   type GeometryGizmoHost, type HandleMirrorMode,

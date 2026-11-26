@@ -5,7 +5,7 @@ import type { GizmoOwner } from '../../gizmo-owner';
 import { shapeConfig } from '../../configs/builtin-configs';
 import type { ShapeConfig } from '../../configs/types';
 import { GestureCursorType } from '../../cursor';
-import { Vector2 } from '../../math';
+import { Vector2 } from '../../../math';
 import { drawCorners, toColor } from '../../drawing';
 import { nextGeometrySession, type GeometryGizmoHost, type ShapeDrawingActionEvent, type ShapeGeometry, type ShapePrimitive } from './geometry';
 import { isDragThresholdReached } from '../../drag-threshold';

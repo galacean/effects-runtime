@@ -11,7 +11,7 @@ import type { EditorGizmoPlugin } from './gizmo-loader';
 import { iconTextures } from './gizmo-loader';
 import type { GizmoItemBoundingSphere, GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
 import { BoundingType } from './gizmo-vfx-item';
-import { computeOrthographicOffCenter } from './math-utils';
+import { computeOrthographicOffCenter } from '../math/projection';
 import { createMeshFromSubType } from './mesh';
 import { intersectRayLine } from './raycast';
 import { createMeshFromShape } from './shape';

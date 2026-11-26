@@ -1,6 +1,6 @@
 import type { Engine } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { type Vector2 } from '../math';
+import { type Vector2 } from '../../math';
 import { FrameLayoutMode, type AutoLayoutConfig, type FrameInfo, type LayoutInfo } from './types';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { getItemViewBox } from '../items/item-geometry';

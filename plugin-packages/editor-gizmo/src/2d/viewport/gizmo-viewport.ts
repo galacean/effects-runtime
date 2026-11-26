@@ -9,7 +9,7 @@ import {
 } from '@galacean/effects';
 import { Control, FocusMode, MouseFilter } from '@galacean/effects-plugin-gui';
 import { isDragThresholdReached } from '../drag-threshold';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 拖拽距离阈值状态。 */
 enum DragThresholdState {

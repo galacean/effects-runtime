@@ -1,6 +1,6 @@
 import { Line2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoActionEvent } from '../../gizmo-action';
-import { lerp, Vector2, type Vector2Like } from '../../math';
+import { lerp, Vector2, type Vector2Like } from '../../../math';
 
 /** 路径数据兼容宿主和 JSON 快照中的普通坐标对象。 */
 export type PathPoint = Vector2Like;

@@ -6,7 +6,7 @@ import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { GizmoType } from '../gizmo-type';
 import { GestureCursorType, type GestureCursorResult } from '../cursor';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 import type { IconConfig } from '../configs/types';
 import { iconConfig } from '../configs/builtin-configs';

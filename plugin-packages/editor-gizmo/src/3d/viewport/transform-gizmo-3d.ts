@@ -1,8 +1,11 @@
 import { math, MouseButton, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type VFXItem } from '@galacean/effects';
 import type { Editor3D } from '../editor-3d';
+import { rayAxisParameter } from '../../math/geometry-3d';
+import { rayPlanePoint } from '../../math/plane';
+import type { Point2, Point3 } from '../../math/types';
+import { add3, sub3, mul3, dot3, cross3, unit3 } from '../../math/vector3';
 import { Gizmo3D, type Transform3DActionEvent, type Transform3DOperation, type Viewport3DSpace } from './gizmo-3d';
 import type { NativeGizmoType } from './viewport-gizmo-picker';
-import { add3, sub3, mul3, dot3, cross3, unit3, rayPlanePoint, rayAxisParameter, type Point2, type Point3 } from './gizmo-3d-math';
 
 const { Vector3, Quaternion, Matrix4 } = math;
 

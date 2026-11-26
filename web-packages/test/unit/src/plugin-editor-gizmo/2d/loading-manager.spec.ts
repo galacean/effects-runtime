@@ -1,6 +1,6 @@
 import { restoreTestState, getSpyCalls } from '../helpers/spies';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { LoadingManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/loading-manager';
 
 const { expect } = chai;

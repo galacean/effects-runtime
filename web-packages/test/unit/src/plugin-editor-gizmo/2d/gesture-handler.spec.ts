@@ -19,7 +19,7 @@ import { PenGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/
 import { PenEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode';
 import type { GeometryGizmoHost, ShapeDrawingActionEvent } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry';
 import { ResizeSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo';
-import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { GizmoTool } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-tool';
 import { HandGizmoTool, ImageCutGizmoTool, MoveGizmoTool } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-tools';
 import type { EditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes';

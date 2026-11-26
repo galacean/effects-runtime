@@ -1,7 +1,9 @@
 import { MouseButton, math, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey } from '@galacean/effects';
+import type { Point2, Point3 } from '../../math/types';
+import { add3, sub3, mul3, dot3, cross3, length3, unit3 } from '../../math/vector3';
+import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-navigation';
 import { Gizmo3D, type Viewport3DCameraEvent } from './gizmo-3d';
-import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-math';
-import { add3, sub3, mul3, dot3, cross3, length3, unit3, getBoundsPoints, type Point2, type Point3 } from './gizmo-3d-math';
+import { getItemWorldBoundsCorners } from './item-bounds';
 
 const vector = (point: Point3) => new math.Vector3(point.x, point.y, point.z);
 
@@ -250,7 +252,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     const camera = this.state;
 
     if (!camera) { return; }
-    const points = getBoundsPoints(selected);
+    const points = getItemWorldBoundsCorners(selected);
     const min = { x: Infinity, y: Infinity, z: Infinity }, max = { x: -Infinity, y: -Infinity, z: -Infinity };
 
     for (const p of points) {

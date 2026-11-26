@@ -1,5 +1,5 @@
 import type { InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
-import type { CameraEditData } from './camera-math';
+import type { CameraEditData } from './camera-navigation';
 import type { Editor3D } from '../editor-3d';
 import type { TransformGizmo3D } from './transform-gizmo-3d';
 

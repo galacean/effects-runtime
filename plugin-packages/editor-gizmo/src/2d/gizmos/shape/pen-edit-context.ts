@@ -1,4 +1,4 @@
-import type { Vector2 } from '../../math';
+import type { Vector2 } from '../../../math';
 import type { GeometryEditKind, HandleMirrorMode, PenInteractionState, PenPathData } from './geometry';
 
 export type PenHit = { shape: number, index: number, part: 'point' | 'in' | 'out' | 'segment', t?: number };
