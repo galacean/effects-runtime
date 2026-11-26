@@ -1,13 +1,15 @@
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import type { Box2 } from '@galacean/effects-math/es/extension/box2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { Maskable, Material } from '../../material';
 import type { Renderer } from '../../render';
-import { BufferUsage, Geometry, VertexElementType } from '../../render';
+import { BufferUsage, Geometry, VertexElementType, getWorldTriangles } from '../../render';
 import type { StrokeAttributes } from '../../math';
 import { StarType, GradientValue } from '../../math';
 import type { ItemRenderer } from '../../components';
@@ -26,11 +28,11 @@ import { TrimPath } from './trim-path';
 import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
 import { Transform } from '../../transform';
-import { makeStrokeContourPath } from './contour-path';
+import { getContourPathBounds, makeStrokeContourPath } from './contour-path';
 import { expandStrokePath, flattenStrokePath } from '../../math/shape/stroke-expansion';
 import { triangulate } from '../../math/shape/triangulate';
-import type { BoundingBoxInfo } from '../interact/mesh-collider';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
+import type { HitTestTriangleParams } from '../interact/click-handler';
+import { HitTestType } from '../interact/click-handler';
 
 export * from './paint';
 
@@ -156,6 +158,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private shapeDirty = true;
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
+  private pathBounds?: Box2;
+  private readonly renderBounds = new Box3();
   private readonly fillPathResult = new TrimmedPathResult();
   private readonly strokePathResult = new TrimmedPathResult();
 
@@ -400,24 +404,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+    // Bounds can be queried before attachment, when no viewport scale is available.
+    this.shapeDirty = true;
   }
 
   override onUpdate (dt: number): void {
-    if (this.shapeDirty) {
-      const screenScale = this.computeScreenScale();
-
-      this.buildPath(this.shapeAttributes, screenScale);
-
-      const fillResult = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.fillPathResult)
-        ?? this.fillPathResult.reset(this.graphicsPath);
-      const strokeResult = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.strokePathResult)
-        ?? this.strokePathResult.reset(this.graphicsPath);
-
-      this.buildGeometryFromPath(fillResult.path, strokeResult, screenScale);
-      this.shapeDirty = false;
-      this.materialDirty = true;
-    }
-
+    this.updateGeometry();
     if (this.materialDirty) {
       this.updateMaterials();
       this.materialDirty = false;
@@ -458,52 +450,78 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
+    if (!force) {
+      return;
+    }
+
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
 
-    if (force) {
-      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
-
-      if (area) {
-        return {
-          behavior: 0,
-          type: area.type,
-          triangles: area.area,
-          backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
-          clipMasks: this.frameClipMasks,
-        };
-      }
-    }
+    return {
+      behavior: 0,
+      type: HitTestType.triangle,
+      triangles: getWorldTriangles(this.geometry, worldMatrix),
+      backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
+      clipMasks: this.frameClipMasks,
+    };
   };
 
-  getBoundingBox (): BoundingBoxTriangle {
-    const worldMatrix = this.transform.getWorldMatrix();
+  /** 原始路径在元素局部坐标系中的几何边界，包含贝塞尔曲线段内极值。 */
+  override getBoundingBox (out = new Box3()): Box3 {
+    if (!this.pathBounds) {
+      // An editor can request the new bounds before the next rendering update.
+      if (this.shapeDirty) {
+        this.buildPath(this.shapeAttributes);
+      }
+      this.pathBounds = getContourPathBounds(makeStrokeContourPath(this.graphicsPath));
+    }
 
-    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
+    const { min, max } = this.pathBounds;
 
-    return boundingBox;
+    if (this.pathBounds.isEmpty()) { return out.makeEmpty(); }
+    out.min.set(min.x, min.y, 0);
+    out.max.set(max.x, max.y, 0);
+
+    return out;
+  }
+
+  /** 填充和描边网格在同一局部坐标系中实际覆盖的边界。 */
+  override getRenderBounds (out = new Box3()): Box3 {
+    this.updateGeometry();
+
+    return out.copyFrom(this.renderBounds);
   }
 
   /**
-   * 获取当前已生成几何的局部包围盒副本，包含填充和描边。
+   * 获取可绘制几何的局部包围盒副本，包含填充和描边。
    * 与 UV 归一化范围一致，不应用对象的 transform.size 或世界变换。
-   * 未生成可绘制几何时返回 undefined。
+   * 没有可绘制几何时返回 undefined。
    */
   getLocalBounds (): { min: Vector2, max: Vector2 } | undefined {
-    if (!this.geometry.subMeshes.some(subMesh => subMesh.indexCount)) {
+    this.updateGeometry();
+    if (this.renderBounds.isEmpty() || !this.geometry.subMeshes.some(subMesh => subMesh.indexCount)) {
       return undefined;
     }
-    const { minimum, maximum } = this.boundingBoxInfo.boundingBox;
+    const { min, max } = this.renderBounds;
 
-    return { min: new Vector2(minimum.x, minimum.y), max: new Vector2(maximum.x, maximum.y) };
+    return { min: new Vector2(min.x, min.y), max: new Vector2(max.x, max.y) };
   }
 
-  override getBoundingBoxInfo (): BoundingBoxInfo {
-    this.boundingBoxInfo.boundingBox.update(this.transform.getWorldMatrix());
+  private updateGeometry (): void {
+    if (!this.shapeDirty) {
+      return;
+    }
+    const screenScale = this.computeScreenScale();
 
-    return this.boundingBoxInfo;
+    this.buildPath(this.shapeAttributes, screenScale);
+    const fillResult = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.fillPathResult)
+      ?? this.fillPathResult.reset(this.graphicsPath);
+    const strokeResult = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale, this.strokePathResult)
+      ?? this.strokePathResult.reset(this.graphicsPath);
+
+    this.buildGeometryFromPath(fillResult.path, strokeResult, screenScale);
+    this.shapeDirty = false;
+    this.materialDirty = true;
   }
 
   private buildGeometryFromPath (fillPath: GraphicsPath, strokeResult: TrimmedPathResult, screenScale: number) {
@@ -566,11 +584,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       indexArray = new IndexArray(indices.length);
     }
 
-    // Set position attribute array, calculate bounding box for uv scaling
-    let minX = Number.MAX_VALUE;
-    let minY = Number.MAX_VALUE;
-    let maxX = -Number.MAX_VALUE;
-    let maxY = -Number.MAX_VALUE;
+    // The buffers may retain vertices from a larger mesh. Only measure this build.
+    this.renderBounds.makeEmpty();
+    const point = new Vector3();
 
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
@@ -583,34 +599,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       positionArray[pointsOffset + 1] = y;
       positionArray[pointsOffset + 2] = 0;
 
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
+      this.renderBounds.expandByPoint(point.set(x, y, 0));
     }
-
-    // 缓冲区只扩容，通用包围盒与 UV 共用本次有效几何的边界。
-    const { minimum, maximum } = this.boundingBoxInfo.boundingBox;
-
-    if (vertexCount > 0 && indices.length > 0) {
-      minimum.set(minX, minY, 0);
-      maximum.set(maxX, maxY, 0);
-    } else {
-      minimum.set(0, 0, 0);
-      maximum.set(0, 0, 0);
-    }
-    this.boundingBoxInfo.reConstruct(minimum, maximum, this.transform.getWorldMatrix());
 
     // Set uv attribute array
-    const sizeX = maximum.x - minimum.x || 1;
-    const sizeY = maximum.y - minimum.y || 1;
+    const { min } = this.renderBounds;
+    const size = this.renderBounds.getSize();
 
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
       const uvOffset = i * 2;
 
-      uvArray[uvOffset] = (positionArray[pointsOffset] - minimum.x) / sizeX;
-      uvArray[uvOffset + 1] = (positionArray[pointsOffset + 1] - minimum.y) / sizeY;
+      uvArray[uvOffset] = size.x ? (positionArray[pointsOffset] - min.x) / size.x : 0;
+      uvArray[uvOffset + 1] = size.y ? (positionArray[pointsOffset + 1] - min.y) / size.y : 0;
     }
 
     // Set index array
@@ -643,7 +644,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   private computeScreenScale (): number {
     const defaultPpu = 1;
-    const composition = this.item.composition;
+    const composition = this.item?.composition;
 
     if (!composition) {
       return defaultPpu;
@@ -813,11 +814,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const destSize = new Vector2(1, 1);
 
     if (this.fills.some(paint => paint.type === spec.FillType.Texture) || this.strokes.some(paint => paint.type === spec.FillType.Texture)) {
-      const boundingBox = this.getBoundingBox();
-      const topRight = boundingBox.area[0].p1;
-      const bottomLeft = boundingBox.area[1].p2;
+      const size = this.getRenderBounds().getSize();
 
-      destSize.set(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y);
+      destSize.set(size.x, size.y);
     }
     for (let i = 0; i < this.fills.length; i++) {
       updatePaintMaterial(this.fillMaterials[i], this.fills[i], destSize);
@@ -830,6 +829,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
+    this.pathBounds = undefined;
 
     // @ts-expect-error 暂时沿用旧版形状组件的 mask 字段。
     this.maskManager.setMaskOptions(this.engine, data.mask ?? {});
@@ -965,6 +965,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onApplyAnimationProperties (): void {
     this.shapeDirty = true;
+    this.pathBounds = undefined;
     this.materialDirty = true;
   }
 

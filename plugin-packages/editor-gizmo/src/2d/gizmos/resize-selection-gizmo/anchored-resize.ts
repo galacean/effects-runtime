@@ -70,12 +70,14 @@ export function calculateAnchoredResize (
         ? new Vector3(primaryScalar, 1, 1)
         : new Vector3(1, primaryScalar, 1);
   } else {
-    const scaleX = isEqual(initialVector.x, 0) ? 1 : pointerVector.x / initialVector.x;
-    const scaleY = isEqual(initialVector.y, 0) ? 1 : pointerVector.y / initialVector.y;
+    const hasWidth = !isEqual(initialVector.x, 0);
+    const hasHeight = !isEqual(initialVector.y, 0);
+    const scaleX = hasWidth ? pointerVector.x / initialVector.x : 1;
+    const scaleY = hasHeight ? pointerVector.y / initialVector.y : 1;
 
     totalScalar = new Vector3(scaleX, scaleY, 1);
     if (lockAspectRatio) {
-      if (Math.abs(scaleX) > Math.abs(scaleY)) {
+      if (!hasHeight || (hasWidth && Math.abs(scaleX) > Math.abs(scaleY))) {
         totalScalar.y = Math.abs(scaleX) * (scaleY < 0 ? -1 : 1);
       } else {
         totalScalar.x = Math.abs(scaleY) * (scaleX < 0 ? -1 : 1);

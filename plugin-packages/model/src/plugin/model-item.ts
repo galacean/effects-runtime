@@ -2,7 +2,7 @@ import type {
   Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer,
 } from '@galacean/effects';
 import {
-  HitTestType, Behaviour, RendererComponent, VFXItem, effectsClass, spec, AnimationClip,
+  HitTestType, Behaviour, RendererComponent, VFXItem, effectsClass, spec, AnimationClip, math,
 } from '@galacean/effects';
 import type {
   ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
@@ -232,14 +232,16 @@ export class ModelMeshComponent extends RendererComponent {
     }
   };
 
-  /**
-   * 计算元素包围盒，只针对 Mesh 对象
-   * @returns 包围盒
-   */
+  override getBoundingBox (out = new math.Box3()): math.Box3 {
+    return this.content
+      ? out.copyFrom(this.content.computeBoundingBox(this.transform.getWorldMatrix()))
+      : out.makeEmpty();
+  }
+
+  /** 根据当前网格的几何边界更新交互碰撞盒。 */
   computeBoundingBox (): ModelItemBounding | undefined {
     if (this.content && this.content instanceof PMesh) {
-      const worldMatrix = this.transform.getWorldMatrix();
-      const bbox = this.content.computeBoundingBox(worldMatrix);
+      const bbox = this.getBoundingBox();
       const center = bbox.getCenter(new Vector3());
       const size = bbox.getSize(new Vector3());
 

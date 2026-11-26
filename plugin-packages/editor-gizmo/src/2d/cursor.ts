@@ -24,7 +24,9 @@ export enum GestureCursorType {
   TEXT_ROTATION = 'text-rotation',
   /** 圆形画笔光标。 */
   CIRCLE = 'circle',
-  /** 以笔尖为落点的绘制光标。 */
+  /** 铅笔形绘制光标。 */
+  PENCIL = 'pencil',
+  /** 钢笔尖光标。 */
   PEN = 'pen',
   /** 可抓取手形光标。 */
   HAND = 'hand',

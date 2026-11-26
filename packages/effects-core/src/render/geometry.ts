@@ -1,5 +1,7 @@
 import type { RenderingDevice } from '../rendering-device';
 import * as spec from '@galacean/effects-specification';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Asset } from '../asset';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
@@ -185,6 +187,52 @@ export class Geometry extends Asset {
     const buffer = this.getVertexBuffer(name)?.buffer;
 
     return buffer ? this.bufferData.get(buffer)?.data : undefined;
+  }
+
+  /** 由绘制范围内的顶点计算几何体的局部边界。 */
+  getBoundingBox (out = new Box3()): Box3 {
+    out.makeEmpty();
+    const position = this.getVertexBuffer(VertexElementType.Position);
+    const data = this.getAttributeData(VertexElementType.Position);
+
+    if (!position || !data) { return out; }
+    const bytes = getBytesPerElement(position.type);
+    const stride = position.byteStride || position.size * bytes;
+
+    if (!bytes || !stride || !position.size) { return out; }
+    const vertexCount = 1 + Math.floor((data.byteLength - position.byteOffset - position.size * bytes) / stride);
+    const read = vertexValueReader(new DataView(data.buffer, data.byteOffset, data.byteLength), position);
+    const indexed = this.indices.length > 0;
+    const point = new Vector3();
+    const expandRange = (offset: number, count: number) => {
+      // Indexed draw offsets are bytes. Non-indexed draw offsets are vertex numbers.
+      const start = indexed ? offset / this.indices.BYTES_PER_ELEMENT : offset;
+      const end = Math.min(start + count, indexed ? this.indices.length : vertexCount);
+
+      for (let i = start; i < end; i++) {
+        const vertex = indexed ? this.indices[i] : i;
+
+        if (vertex < 0 || vertex >= vertexCount) { continue; }
+        const at = position.byteOffset + vertex * stride;
+
+        point.set(
+          read(at),
+          position.size > 1 ? read(at + bytes) : 0,
+          position.size > 2 ? read(at + 2 * bytes) : 0,
+        );
+        out.expandByPoint(point);
+      }
+    };
+
+    if (this.subMeshes.length) {
+      for (const subMesh of this.subMeshes) {
+        expandRange(subMesh.offset, indexed ? subMesh.indexCount ?? 0 : subMesh.vertexCount);
+      }
+    } else {
+      expandRange(this.drawStart, this.drawCount);
+    }
+
+    return out;
   }
 
   /** Updates an existing dynamic buffer, preserving its vertex format and capacity. */
@@ -611,6 +659,25 @@ export class Geometry extends Asset {
     this.bufferData.delete(buffer);
   }
 
+}
+
+function vertexValueReader (data: DataView, { type, normalized }: VertexBuffer): (offset: number) => number {
+  switch (type as BufferDataType) {
+    case BufferDataType.Byte:
+      return normalized ? i => Math.max(-1, data.getInt8(i) / 127) : i => data.getInt8(i);
+    case BufferDataType.UnsignedByte:
+      return normalized ? i => data.getUint8(i) / 255 : i => data.getUint8(i);
+    case BufferDataType.Short:
+      return normalized ? i => Math.max(-1, data.getInt16(i, true) / 32767) : i => data.getInt16(i, true);
+    case BufferDataType.UnsignedShort:
+      return normalized ? i => data.getUint16(i, true) / 65535 : i => data.getUint16(i, true);
+    case BufferDataType.Int:
+      return normalized ? i => Math.max(-1, data.getInt32(i, true) / 2147483647) : i => data.getInt32(i, true);
+    case BufferDataType.UnsignedInt:
+      return normalized ? i => data.getUint32(i, true) / 4294967295 : i => data.getUint32(i, true);
+    default:
+      return i => data.getFloat32(i, true);
+  }
 }
 
 function isTypedArray (value: unknown): value is spec.TypedArray {

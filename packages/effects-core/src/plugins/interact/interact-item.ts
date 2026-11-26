@@ -1,9 +1,10 @@
 import * as spec from '@galacean/effects-specification';
+import { Box3 } from '@galacean/effects-math/es/core/box3';
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { trianglesFromRect } from '../../math';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from './click-handler';
+import type { HitTestTriangleParams } from './click-handler';
 import { HitTestType } from './click-handler';
 import type { InputServer, TouchEventType } from '../../input-server';
 import { InteractMesh } from './interact-mesh';
@@ -318,19 +319,6 @@ export class InteractComponent extends RendererComponent {
       return;
     }
     const { behavior } = (this.item.props as spec.InteractItem).content.options as spec.ClickInteractOption;
-    const area = this.getBoundingBox();
-
-    if (area) {
-      return {
-        type: area.type,
-        triangles: area.area,
-        behavior,
-        clipMasks:this.frameClipMasks,
-      };
-    }
-  };
-
-  getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
     const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
 
@@ -342,8 +330,20 @@ export class InteractComponent extends RendererComponent {
 
     return {
       type: HitTestType.triangle,
-      area: triangles,
+      triangles,
+      behavior,
+      clipMasks: this.frameClipMasks,
     };
+  };
+
+  override getBoundingBox (out = new Box3()): Box3 {
+    const halfWidth = Math.abs(this.transform.size.x) / 2;
+    const halfHeight = Math.abs(this.transform.size.y) / 2;
+
+    out.min.set(-halfWidth, -halfHeight, 0);
+    out.max.set(halfWidth, halfHeight, 0);
+
+    return out;
   }
 
   override fromData (data: spec.InteractComponentData): void {

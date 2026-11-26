@@ -179,8 +179,8 @@ export class EditorColorButton extends Button {
   private readonly rgba = new math.Color(1, 1, 1, 1);
   private readonly popup: EditorDialog;
   private releaseFocusListener?: () => void;
-  constructor (engine: Engine) {
-    super(engine, ''); this.popup = new EditorDialog(engine); this.popup.modal = false;
+  constructor (engine: Engine, modal = false) {
+    super(engine, ''); this.popup = new EditorDialog(engine); this.popup.modal = modal;
     this.on('pressed', () => {
       activePickers.get(engine)?.close();
       const original = this.rgba.clone();

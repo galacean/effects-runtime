@@ -49,10 +49,10 @@ export function attachPreservingWorld (item: VFXItem, parent: VFXItem): void {
   item.setParent(parent); item.transform.cloneFromMatrix(matrix);
 }
 
-export function editSceneStructure (document: SceneDocument, label: string, action: () => void): boolean {
+export function editSceneStructure (document: SceneDocument, label: string, action: () => void, continueTransaction = false): boolean {
 
   if (sceneWorkspace.busy || document.restoring) { return false; }
-  sceneWorkspace.flushEdits(); document.commit(true);
+  if (!continueTransaction) { sceneWorkspace.flushEdits(); document.commit(true); }
   const before = capture(document);
   let after: Graph | undefined;
   let success = false;

@@ -826,30 +826,32 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
 
   it('keeps local bounds aligned with UVs after geometry shrinks or becomes empty', () => {
     const { component, data } = gradient(spec.FillType.GradientLinear, 2);
-    const box = component.getBoundingBoxInfo().boundingBox;
+    const box = component.getRenderBounds();
 
     expect(component.getLocalBounds()!.max.x).closeTo(3, 1e-5);
-    expect(box.maximum.x).closeTo(3, 1e-5);
+    expect(box.max.x).closeTo(3, 1e-5);
+    expect(component.getBoundingBox().max.x).equals(2);
     component.strokeWidth = 0;
     component.onUpdate(0);
     const bounds = component.getLocalBounds()!;
 
+    component.getRenderBounds(box);
     expect(bounds.min.toArray()).deep.equals([-2, -1]);
     expect(bounds.max.toArray()).deep.equals([2, 1]);
-    expect(box.minimum.toArray()).deep.equals([-2, -1, 0]);
-    expect(box.maximum.toArray()).deep.equals([2, 1, 0]);
+    expect(box.min.toArray()).deep.equals([-2, -1, 0]);
+    expect(box.max.toArray()).deep.equals([2, 1, 0]);
     bounds.max.x = 100;
     expect(component.getLocalBounds()!.max.x).equals(2);
-    expect(box.maximum.x).equals(2);
+    expect(component.getRenderBounds(box).max.x).equals(2);
     component.fromData({ ...data, fills: [], strokes: [] });
     component.onUpdate(0);
     expect(component.getLocalBounds()).equals(undefined);
-    expect(box.minimum.toArray()).deep.equals([0, 0, 0]);
-    expect(box.maximum.toArray()).deep.equals([0, 0, 0]);
+    expect(component.getRenderBounds(box).isEmpty()).equals(true);
+    expect(component.getBoundingBox().isEmpty()).equals(false);
     component.fromData(data);
     component.onUpdate(0);
     expect(component.getLocalBounds()!.max.x).closeTo(3, 1e-5);
-    expect(box.maximum.x).closeTo(3, 1e-5);
+    expect(component.getRenderBounds(box).max.x).closeTo(3, 1e-5);
   });
 
   it('uses solid shape geometry bounds independently of item size and refreshes world bounds after transforms', () => {
@@ -861,18 +863,19 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     item.transform.setScale(-2, 3, 1);
     item.setPosition(10, -4, 0);
     const bounds = component.getLocalBounds()!;
-    const box = component.getBoundingBoxInfo().boundingBox;
+    const box = component.getRenderBounds();
 
     expect(bounds.min.toArray()).deep.equals([-2, -1]);
     expect(bounds.max.toArray()).deep.equals([2, 1]);
-    expect(box.minimum.toArray()).deep.equals([-2, -1, 0]);
-    expect(box.maximum.toArray()).deep.equals([2, 1, 0]);
-    expect(box.minimumWorld.toArray()).deep.equals([6, -7, 0]);
-    expect(box.maximumWorld.toArray()).deep.equals([14, -1, 0]);
+    expect(box.min.toArray()).deep.equals([-2, -1, 0]);
+    expect(box.max.toArray()).deep.equals([2, 1, 0]);
+    box.applyMatrix4(item.transform.getWorldMatrix());
+    expect(box.min.toArray()).deep.equals([6, -7, 0]);
+    expect(box.max.toArray()).deep.equals([14, -1, 0]);
     item.transform.setRotation(0, 0, 90);
-    component.getBoundingBoxInfo();
-    box.minimumWorld.toArray().forEach((value, index) => expect(value).closeTo([7, -8, 0][index], 1e-5));
-    box.maximumWorld.toArray().forEach((value, index) => expect(value).closeTo([13, 0, 0][index], 1e-5));
+    component.getRenderBounds(box).applyMatrix4(item.transform.getWorldMatrix());
+    box.min.toArray().forEach((value, index) => expect(value).closeTo([7, -8, 0][index], 1e-5));
+    box.max.toArray().forEach((value, index) => expect(value).closeTo([13, 0, 0][index], 1e-5));
     expect(component.getLocalBounds()!.min.toArray()).deep.equals(bounds.min.toArray());
     expect(component.getLocalBounds()!.max.toArray()).deep.equals(bounds.max.toArray());
   });

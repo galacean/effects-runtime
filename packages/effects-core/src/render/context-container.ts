@@ -5,7 +5,6 @@ export abstract class ContextItem {
 
 type ContextItemType<T extends ContextItem> = new () => T;
 
-/** Per-render data with Unity's typed data contract using project naming conventions. */
 export class ContextContainer {
   private readonly items = new Map<ContextItemType<ContextItem>, ContextItem>();
   private readonly active = new Set<ContextItemType<ContextItem>>();
