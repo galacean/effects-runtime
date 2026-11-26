@@ -64,7 +64,7 @@ export * from './items';
 export * from './drawing';
 export * from './viewport';
 export * from './selection';
-export * from './gesture-handler';
+export * from './editor-2d';
 export * from './cursor';
 export * from './cursor-icons';
 export * from './drag-threshold';

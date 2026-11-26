@@ -1,10 +1,11 @@
-import { InputEventKey, InputEventMouseButton, MouseButton, MouseButtonMask, type InputEventMouse } from '@galacean/effects';
+import { EffectsObjectServer, InputEventKey, InputEventMouseButton, MouseButton, MouseButtonMask, type InputEventMouse } from '@galacean/effects';
 import { restoreTestState, getSpyCalls, resetSpy } from '../helpers/spies';
 import { createCompositionFixture } from '../helpers/items';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 import { CompositionComponent, Downloader, FrameComponent, InputEventMouseMotion, spec, TextComponent, type Composition, type Engine, type VFXItem } from '@galacean/effects';
-import { GestureHandler } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gesture-handler';
+import type { Editor2D } from '../../../../../../plugin-packages/editor-gizmo/src/2d/editor-2d';
+import { Editor } from '../../../../../../plugin-packages/editor-gizmo/src/editor';
 import { Control, MouseFilter } from '@galacean/effects-plugin-gui';
 
 import { GestureCursorType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/cursor';
@@ -44,7 +45,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
   }
 
   function createTestGizmoTool (
-    owner: GestureHandler,
+    owner: Editor2D,
     createGizmos: () => Gizmo[],
   ): TestGizmoTool {
     const gizmoTool = new TestGizmoTool(owner);
@@ -54,11 +55,11 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     return gizmoTool;
   }
 
-  function inputViewport (handler: GestureHandler): GizmoViewport {
+  function inputViewport (handler: Editor2D): GizmoViewport {
     return (handler as unknown as { gizmoViewport: GizmoViewport }).gizmoViewport;
   }
 
-  function createHandler (): GestureHandler {
+  function createHandler (): Editor2D {
     const container = document.createElement('div');
 
     document.body.appendChild(container);
@@ -66,12 +67,14 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
 
     container.appendChild(canvas);
     // 复刻 Effects 单 Engine 结构：engine.canvas 为真 canvas（挂进 container），其 parentElement === container，
-    // 即 GestureHandler.buildInteractionLayer 与 getContainerSize 所读的交互容器。本套用例不断言布局尺寸。
+    // 即 Editor2D.buildInteractionLayer 与 getContainerSize 所读的交互容器。本套用例不断言布局尺寸。
     const engine = {
       canvas,
       sceneServer: { compositions: [] },
     } as unknown as Engine;
-    const handler = new GestureHandler(engine);
+
+    engine.effectsObjectServer = new EffectsObjectServer(engine);
+    const handler = new Editor(engine).editor2D;
 
     // 标尺默认作为公共 Gizmo 装配；通用手势用例关闭其命中，避免影响非标尺输入断言。
     handler.getConfigManager().set(rulerConfig, { enabled: false });
@@ -87,7 +90,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     return handler;
   }
 
-  function createPreviewMedia (handler: GestureHandler, id: string, kind: 'video' | 'effects' = 'video', order?: string[]) {
+  function createPreviewMedia (handler: Editor2D, id: string, kind: 'video' | 'effects' = 'video', order?: string[]) {
     const play = chai.spy(() => { order?.push(`${id}:play`); });
     const pause = chai.spy(() => { order?.push(`${id}:pause`); });
     const videoComponent = { playVideo: play, pauseVideo: pause };
@@ -167,23 +170,23 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     return event;
   }
 
-  function sendMouseDown (handler: GestureHandler, event: MouseEvent): void {
+  function sendMouseDown (handler: Editor2D, event: MouseEvent): void {
     inputViewport(handler).onMouseDown(mouseButton(true, event));
   }
 
-  function sendMouseMove (handler: GestureHandler, event: MouseEvent): void {
+  function sendMouseMove (handler: Editor2D, event: MouseEvent): void {
     inputViewport(handler).onMouseMove(mouseMotion(event));
   }
 
-  function sendMouseUp (handler: GestureHandler, event: MouseEvent): void {
+  function sendMouseUp (handler: Editor2D, event: MouseEvent): void {
     inputViewport(handler).onMouseUp(mouseButton(false, event));
   }
 
-  function sendMouseLeave (handler: GestureHandler): void {
+  function sendMouseLeave (handler: Editor2D): void {
     inputViewport(handler).onMouseLeave();
   }
 
-  function sendWheel (handler: GestureHandler, native: WheelEvent): void {
+  function sendWheel (handler: Editor2D, native: WheelEvent): void {
     const event = new InputEventMouseButton();
 
     event.position.set(native.offsetX, native.offsetY);
@@ -204,17 +207,17 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     inputViewport(handler).onMouseWheel(event);
   }
 
-  function sendMouseDrag (handler: GestureHandler, event: MouseEvent): void {
+  function sendMouseDrag (handler: Editor2D, event: MouseEvent): void {
     inputViewport(handler).onMouseMove(mouseMotion(event));
   }
 
-  function controlCursor (handler: GestureHandler): string | undefined {
+  function controlCursor (handler: Editor2D): string | undefined {
     return (handler as unknown as {
       gizmoViewport?: { defaultCursorShape: string },
     }).gizmoViewport?.defaultCursorShape;
   }
 
-  describe('GestureHandler - Control tree ownership', () => {
+  describe('Editor2D - Control tree ownership', () => {
     it('根控件持有 viewport，更新和绘制只派发一次，销毁交互树', () => {
       const handler = createHandler();
       const viewport = inputViewport(handler);
@@ -265,7 +268,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
     });
   });
 
-  describe('GestureHandler - input routing', () => {
+  describe('Editor2D - input routing', () => {
     it('键盘按 active Gizmo 顺序派发，并在首个 accept 后停止后续键盘候选', () => {
       const handler = createHandler();
       const first = chai.spy((event: InputEventKey) => event.accept());
@@ -342,7 +345,7 @@ describe('plugin-editor-gizmo/gesture-handler', () => {
 
   });
 
-  describe('GestureHandler - FrameManager ownership', () => {
+  describe('Editor2D - FrameManager ownership', () => {
     it('creates a fresh FrameManager and restores data through a snapshot', () => {
       const oldHandler = createHandler();
 
@@ -404,11 +407,11 @@ function makeStubGizmo (type: string, overrides: StubGizmoOverrides = {}): Gizmo
   } as unknown as Gizmo;
 }
 
-function activateMoveTool (handler: GestureHandler): void {
+function activateMoveTool (handler: Editor2D): void {
   activateMode(handler, [new ResizeSelectionGizmo(handler)]);
 }
 
-function activateMode (handler: GestureHandler, modeGizmos: Gizmo[]): void {
+function activateMode (handler: Editor2D, modeGizmos: Gizmo[]): void {
   const changeSelection = new ChangeSelectionGizmo(handler);
   const boxSelection = new BoxSelectionGizmo(handler);
   const moveSelection = new MoveSelectionGizmo(handler);
@@ -427,7 +430,7 @@ function activateMode (handler: GestureHandler, modeGizmos: Gizmo[]): void {
   handler.setActiveTool(createTestGizmoTool(handler, () => graph));
 }
 
-function getMoveSelectionGizmo (handler: GestureHandler): MoveSelectionGizmo {
+function getMoveSelectionGizmo (handler: Editor2D): MoveSelectionGizmo {
   const innerMultiplex = handler.getGizmoManager().get('click-drag-multiplex');
   const move = innerMultiplex?.dragCandidates()
     .find(gizmo => gizmo.type === 'move-selection') as MoveSelectionGizmo | undefined;
@@ -439,7 +442,7 @@ function getMoveSelectionGizmo (handler: GestureHandler): MoveSelectionGizmo {
   return move;
 }
 
-function getBoxSelectionGizmo (handler: GestureHandler): BoxSelectionGizmo {
+function getBoxSelectionGizmo (handler: Editor2D): BoxSelectionGizmo {
   const innerMultiplex = handler.getGizmoManager().get('click-drag-multiplex');
 
   if (!innerMultiplex) {
@@ -454,11 +457,11 @@ function getBoxSelectionGizmo (handler: GestureHandler): BoxSelectionGizmo {
   return box;
 }
 
-function registerStub (handler: GestureHandler, gizmo: Gizmo): void {
+function registerStub (handler: Editor2D, gizmo: Gizmo): void {
   activateMode(handler, [gizmo]);
 }
 
-describe('GestureHandler - GizmoTool runtime', () => {
+describe('Editor2D - GizmoTool runtime', () => {
   it('按宿主声明顺序提交完整图', () => {
     const handler = createHandler();
     const first = makeStubGizmo('first');
@@ -525,7 +528,7 @@ describe('GestureHandler - GizmoTool runtime', () => {
 
 });
 
-describe('GestureHandler - GizmoTool EditMode runtime', () => {
+describe('Editor2D - GizmoTool EditMode runtime', () => {
   function createPenModeHarness () {
     const handler = createHandler();
     const events: ShapeDrawingActionEvent[] = [];
@@ -650,7 +653,7 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
   }
 
   function activateTool (
-    handler: GestureHandler,
+    handler: Editor2D,
     createTool: () => GizmoTool,
     baseGizmos?: Gizmo[],
   ): void {
@@ -835,7 +838,7 @@ describe('GestureHandler - GizmoTool EditMode runtime', () => {
   });
 });
 
-describe('GestureHandler - Gizmo handled gates viewport selection', () => {
+describe('Editor2D - Gizmo handled gates viewport selection', () => {
   it('Gizmo 先处理按下，handled 时不再解析选择', () => {
     const handler = createHandler();
 
@@ -1194,7 +1197,7 @@ describe('GestureHandler - Gizmo handled gates viewport selection', () => {
   });
 });
 
-describe('GestureHandler - hover underlay', () => {
+describe('Editor2D - hover underlay', () => {
   it('update 先刷新 Frame，再 fan-out active Gizmo', () => {
     const handler = createHandler();
     const order: string[] = [];
@@ -1296,7 +1299,7 @@ describe('GestureHandler - hover underlay', () => {
 
 });
 
-describe('GestureHandler - media hover preview', () => {
+describe('Editor2D - media hover preview', () => {
   it('进入、切换和取消 hover 时依次播放新目标并暂停旧目标', () => {
     const handler = createHandler();
     const order: string[] = [];
@@ -1358,7 +1361,7 @@ describe('GestureHandler - media hover preview', () => {
   });
 });
 
-describe('GestureHandler - mouse lifecycle and captured owner', () => {
+describe('Editor2D - mouse lifecycle and captured owner', () => {
   function makeStub (type: string, overrides: Record<string, unknown>): Gizmo {
     const adapt = (name: 'onMouseDown' | 'onMouseMove' | 'onMouseDrag' | 'onMouseUp') => {
       const original = overrides[name] as ((event: InputEventMouse) => unknown) | undefined;
@@ -1387,13 +1390,13 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
   }
 
   /** 安装 State 本轮创建的 stub 图（stub 参与 active dispatch，无选区过滤）。 */
-  function activateStubs (handler: GestureHandler, stubs: Gizmo[]): void {
+  function activateStubs (handler: Editor2D, stubs: Gizmo[]): void {
     activateMode(handler, stubs);
     // 当前用例只统计装配完成后的目标 round。
   }
 
   /** 静音 HandGizmo（返 false 不接管）并固定 hover 命中。 */
-  function silenceViewport (handler: GestureHandler): void {
+  function silenceViewport (handler: Editor2D): void {
     const hand = handler.getGizmoManager().get('hand')!;
 
     chai.spy.on(hand, 'onMouseDown', () => {});
@@ -1402,8 +1405,8 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
     chai.spy.on(handler.getSelection(), 'resolveHoverTarget', () => (undefined));
   }
 
-  /** 经 runtime Control callback 进入 GestureHandler。 */
-  function dispatchMouse (handler: GestureHandler, event: InputEventMouseButton | InputEventMouseMotion): boolean {
+  /** 经 runtime Control callback 进入 Editor2D。 */
+  function dispatchMouse (handler: Editor2D, event: InputEventMouseButton | InputEventMouseMotion): boolean {
     const viewport = inputViewport(handler);
 
     if (event instanceof InputEventMouseMotion) {
@@ -1418,21 +1421,21 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
   }
 
   /** handler.capturedGizmo 为 private slot。 */
-  function capturedGizmo (handler: GestureHandler): Gizmo | undefined {
+  function capturedGizmo (handler: Editor2D): Gizmo | undefined {
     return (handler as unknown as { capturedGizmo?: Gizmo }).capturedGizmo;
   }
 
   /** 直接设置 capture，用于验证公共 Gizmo 的 mode 生命周期策略。 */
-  function setCapturedGizmo (handler: GestureHandler, gizmo: Gizmo): void {
+  function setCapturedGizmo (handler: Editor2D, gizmo: Gizmo): void {
     (handler as unknown as { capturedGizmo?: Gizmo }).capturedGizmo = gizmo;
   }
 
   /** 当前 viewport 候选：公共前置 Gizmo + State/EditMode 声明序。 */
-  function viewportGizmoList (handler: GestureHandler): readonly Gizmo[] {
+  function viewportGizmoList (handler: Editor2D): readonly Gizmo[] {
     return handler.getGizmoManager().activeGizmos;
   }
 
-  function ensureTestViewport (handler: GestureHandler): void {
+  function ensureTestViewport (handler: Editor2D): void {
     const engine = handler.getEngine();
 
     if (engine.sceneServer.compositions.length > 0) {
@@ -1456,7 +1459,7 @@ describe('GestureHandler - mouse lifecycle and captured owner', () => {
     } as unknown as Composition);
   }
 
-  function applyViewportChange (handler: GestureHandler): void {
+  function applyViewportChange (handler: Editor2D): void {
     ensureTestViewport(handler);
     handler.getViewportNavigation().panByViewDelta(
       new Vector2(1, 0),

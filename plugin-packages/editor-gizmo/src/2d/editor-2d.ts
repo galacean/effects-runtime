@@ -1,16 +1,16 @@
-import { type Engine, type InputEvent, type InputEventKey, type InputEventMouse, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import type { Engine, InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
 import { Control, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import { cursorMap, loadCursorIcons } from './cursor-icons';
 import type { Gizmo } from './gizmo';
 import type { GizmoOwner, SelectionTransformKind } from './gizmo-owner';
 import { GizmoManager, type GizmoErrorPhase } from './gizmo-manager';
 import { GestureCursorType, type GestureCursorResult } from './cursor';
-import type { HoveringResults } from './selection/selection';
+import type { Selection } from './selection/selection';
+import type { Editor } from '../editor';
 import type { ConfigManager } from './configs/config-manager';
 import { selectionPreviewConfig } from './configs/builtin-configs';
 import { Vector2, getTransformedBoxCorners } from './math';
 import { FrameManager } from './frame/frame-manager';
-import { Selection } from './selection/selection';
 import { SnapManager } from './selection/snap-manager';
 import { LoadingManager } from './gizmos/loading-manager';
 import { LoadingGizmo } from './gizmos/loading-gizmo';
@@ -30,7 +30,7 @@ import {
 import { GizmoViewportUtils, ViewportNavigationController } from './viewport';
 import { GizmoTool } from './gizmo-tool';
 import { HandGizmoTool } from './gizmo-tools/hand-gizmo-tool';
-import { DefaultSelectionMode, type EditMode } from './modes';
+import { DefaultSelectionMode, RichTextEditMode, TextEditMode, type EditMode } from './modes';
 import { GizmoViewport } from './viewport/gizmo-viewport';
 import type { GizmoOwnerEvents } from './gizmo-action';
 
@@ -71,12 +71,9 @@ export interface GizmoErrorMonitor {
 }
 
 /** 接收运行时输入，并协调 Gizmo、选区和视口导航。 */
-export class GestureHandler extends Control implements GizmoOwner {
+export class Editor2D extends Control implements GizmoOwner {
   /** 抓手与滚轮共享的视口导航控制器。 */
   private viewportNavigation: ViewportNavigationController;
-
-  /** 当前对外可观察的 hover 命中结果。 */
-  private hoveringResults: HoveringResults = {};
 
   /** Runtime Control 输入入口；持有输入状态并完成 Move/Drag 分流。 */
   private gizmoViewport: GizmoViewport | undefined;
@@ -101,9 +98,6 @@ export class GestureHandler extends Control implements GizmoOwner {
 
   /** 当前编辑模式。 */
   private editMode: EditMode;
-
-  /** 选中状态与命中查询器。 */
-  private selection: Selection;
 
   /** 当前 hover 的元素；用于在目标切换、离开或销毁时结束媒体预览。 */
   private hoveredMediaItemId: string | undefined;
@@ -144,25 +138,41 @@ export class GestureHandler extends Control implements GizmoOwner {
   };
 
   /**
-   * 创建手势处理器并装配基础交互状态。
-   * @param engine Effects 引擎。
+   * 创建二维编辑器并装配画布工具。
+   * @param editor 持有选区的编辑器。
    */
-  constructor (engine: Engine) {
-    super(engine);
+  constructor (private readonly editor: Editor) {
+    super(editor.engine);
     this.mouseFilter = MouseFilter.Pass;
     this.mouseForcePassScrollEvents = false;
     this.setAnchorsAndOffsetsPreset('fullRect');
-    this.frameManager = new FrameManager(engine);
+    this.frameManager = new FrameManager(editor.engine);
     this.gizmoManager = new GizmoManager();
     this.viewportNavigation = new ViewportNavigationController(this);
-    this.selection = new Selection(engine, this.hoveringResults);
     this.snapManager = new SnapManager(this);
     this.rulerManager = new RulerManager();
     this.editMode = this.createDefaultEditMode();
 
-    this.selection.on('preselectchange', this.onPreselectChange);
+    this.editor.selection.on('preselectchange', this.onPreselectChange);
     this.createViewport();
     void loadCursorIcons();
+  }
+
+  /** @internal 切换画布交互，并结束离开视口时的临时编辑会话。 */
+  setActive (active: boolean): void {
+    if (!active) {
+      if (this.isMouseButtonPressed()) { this.root?.cancelPointerInput(); }
+      // Text inputs live outside the GUI control tree.
+      if (this.editMode instanceof TextEditMode || this.editMode instanceof RichTextEditMode) {
+        this.resetEditMode();
+      }
+      this.editor.selection.clearHover();
+      this.clearCapturedGizmo();
+      this.disposeQueuedGizmos();
+    }
+    this.enabled = active;
+    this.visible = active;
+    if (active) { this.gizmoViewport?.grabFocus(true); }
   }
 
   /** 订阅原生控件或 Gizmo 业务事件。 */
@@ -213,7 +223,7 @@ export class GestureHandler extends Control implements GizmoOwner {
 
   /** @returns 当前选区与命中查询对象。 */
   getSelection (): Selection {
-    return this.selection;
+    return this.editor.selection;
   }
 
   /** @returns 当前画板管理器。 */
@@ -384,13 +394,13 @@ export class GestureHandler extends Control implements GizmoOwner {
   /** 释放资源：解绑订阅、清交互状态，并销毁当前 Gizmo 图。 */
   override onDestroy (): void {
     this.editMode.onExit?.();
-    this.clearCapturedGizmo();
-    this.selection.off('preselectchange', this.onPreselectChange);
+    this.editor.selection.off('preselectchange', this.onPreselectChange);
     if (this.hoveredMediaItemId) {
       pauseVideoItem(this.engine, this.hoveredMediaItemId);
       pauseEffectsItem(this.engine, this.hoveredMediaItemId);
       this.hoveredMediaItemId = undefined;
     }
+    this.editor.selection.clearHover();
     this.clearCapturedGizmo();
     this.disposeQueuedGizmos();
     this.gizmoManager.dispose();
@@ -439,6 +449,13 @@ export class GestureHandler extends Control implements GizmoOwner {
     };
     gizmoViewport.onKeyUpCallback = event => {
       this.dispatchInput(ControlInputPhase.KeyUp, event);
+    };
+    gizmoViewport.onLostFocusCallback = () => {
+      const hand = this.capturedGizmo instanceof HandGizmo
+        ? this.capturedGizmo
+        : this.gizmoManager.get('hand');
+
+      hand?.releasePanKey();
     };
     gizmoViewport.drawCallBack = () => {
       this.drawGizmos(gizmoViewport);
@@ -610,7 +627,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     phase: ControlInputPhase,
     event: InputEventMouse,
   ): Gizmo | undefined {
-    this.selection.clearHover();
+    this.editor.selection.clearHover();
 
     if (localOwner) {
       this.invoke(localOwner, phase, event);
@@ -842,7 +859,7 @@ export class GestureHandler extends Control implements GizmoOwner {
     if (this.isPanning()) {
       return;
     }
-    const itemId = this.selection.hoverOverlayItemId;
+    const itemId = this.editor.selection.hoverOverlayItemId;
 
     if (!itemId) {
       return;

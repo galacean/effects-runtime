@@ -44,6 +44,12 @@ export class HandGizmo extends Gizmo {
     return this.dragType === DragType.PAN || this.panKeyPressed;
   }
 
+  /** 清除空格平移状态并结束平移拖拽。 */
+  releasePanKey (): void {
+    this.panKeyPressed = false;
+    this.dragType = DragType.NONE;
+  }
+
   /**
    * 处理空格键按下并进入待平移状态。
    * @param event 键盘按下事件。
@@ -131,7 +137,7 @@ export class HandGizmo extends Gizmo {
 
   /** 释放视口平移状态。 */
   override dispose (): void {
-    this.endPan();
+    this.releasePanKey();
     super.dispose();
   }
 

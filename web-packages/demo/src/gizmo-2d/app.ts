@@ -1,5 +1,5 @@
 import { Composition, Player, math } from '@galacean/effects';
-import { GestureHandler, selectionSnapConfig, viewportNavigationConfig, viewportOverlayConfig } from '@galacean/effects-plugin-editor-gizmo';
+import { Editor, type Editor2D, selectionSnapConfig, viewportNavigationConfig, viewportOverlayConfig } from '@galacean/effects-plugin-editor-gizmo';
 import { UICanvas } from '@galacean/effects-plugin-gui';
 import { DOMEvents, element } from './dom';
 import { DemoEditor } from './editor';
@@ -12,7 +12,8 @@ export class GizmoDemo {
   private readonly unsubscribes: (() => void)[] = [];
   private readonly status = element('status');
   private readonly player: Player;
-  private readonly handler: GestureHandler;
+  private readonly gizmoEditor: Editor;
+  private readonly handler: Editor2D;
   private readonly scene: DemoScene;
   private readonly editor: DemoEditor;
   private readonly view: DemoView;
@@ -32,14 +33,12 @@ export class GizmoDemo {
 
     composition.camera.fov = 45;
     composition.camera.position = new math.Vector3(0, 0, 12);
-    const uiCanvas = composition.sceneRoot.getComponent(UICanvas);
-
-    if (!uiCanvas) {
+    if (!composition.sceneRoot.getComponent(UICanvas)) {
       throw new Error('GUI canvas failed to initialize.');
     }
-    this.handler = new GestureHandler(this.player.engine);
-    this.handler.parent = uiCanvas.rootControl;
-    this.handler.setAnchorsAndOffsetsPreset('fullRect');
+    this.gizmoEditor = new Editor(this.player.engine);
+    composition.addItem(this.gizmoEditor.rootItem);
+    this.handler = this.gizmoEditor.editor2D;
     this.handler.setErrorMonitor({
       report: (error, phase, context) => {
         this.reportError(`${context.gizmoType ?? 'gizmo'} / ${phase}: ${String(error)}`, error);
@@ -92,7 +91,7 @@ export class GizmoDemo {
     this.unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
     this.view.dispose();
     this.editor.dispose();
-    this.handler.dispose();
+    this.gizmoEditor.dispose();
     this.player.dispose();
   }
 

@@ -1,0 +1,46 @@
+import type { InputEventKey, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
+import type { CameraEditData } from './camera-math';
+import type { Editor3D } from '../editor-3d';
+import type { TransformGizmo3D } from './transform-gizmo-3d';
+
+export type Transform3DOperation = 'translate' | 'rotate' | 'scale';
+export type Viewport3DTool = Transform3DOperation | 'camera';
+export type Viewport3DSpace = 'local' | 'world';
+
+/** IDs identify the top-level items whose live transforms the gizmo edits. */
+export interface Transform3DActionEvent {
+  source: TransformGizmo3D,
+  transformType: Transform3DOperation,
+  itemIds: readonly string[],
+  /** On a canceled commit the gizmo has already rolled back its preview. */
+  canceled?: boolean,
+  reason?: string,
+}
+
+export interface Viewport3DCameraEvent {
+  camera: CameraEditData,
+  phase: 'start' | 'update' | 'commit' | 'cancel',
+}
+
+export type Gizmo3DEvents = {
+  keyDown: [event: InputEventKey],
+  actionstart: [event: Transform3DActionEvent],
+  actionupdate: [event: Transform3DActionEvent],
+  actioncommit: [event: Transform3DActionEvent],
+  camerachange: [event: Viewport3DCameraEvent],
+  toolchange: [tool: Viewport3DTool, space: Viewport3DSpace],
+};
+
+/** Interaction owned by a single 3D viewport. Accepting a press captures its pointer. */
+export abstract class Gizmo3D {
+  abstract readonly type: string;
+  constructor (protected readonly owner: Editor3D) {}
+
+  onMouseDown (event: InputEventMouseButton): void {}
+  onMouseDrag (event: InputEventMouseMotion): void {}
+  onMouseUp (event: InputEventMouseButton): void {}
+  onKeyDown (event: InputEventKey): void {}
+  onKeyUp (event: InputEventKey): void {}
+  onUpdate (): void {}
+  cancel (reason: string): void {}
+}
