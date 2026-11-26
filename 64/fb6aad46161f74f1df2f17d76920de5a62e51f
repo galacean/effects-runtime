@@ -1,0 +1,36 @@
+web-packages/test/unit/src/plugin-editor-gizmo/2d/content-gizmos.spec.ts
+  s_d6dc6a578fa2cb::t_544dc2fff52838 979
+  s_d6dc6a578fa2cb::t_152d44b82a7814 983,985,989,991,997,999
+  s_d6dc6a578fa2cb::t_43e148b2da78b2 990,992-994
+  s_41a2855eb678e1::t_c13c218cde3bc9 975
+plugin-packages/editor-gizmo/src/2d/items/shape-editing.ts
+  s_d6dc6a578fa2cb::t_e258aeb5b47448 52-53,67-70
+  s_d6dc6a578fa2cb::t_4dcba8b0f4987d 37-38,51,74-75
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_d6dc6a578fa2cb::t_e258aeb5b47448 202
+  s_d6dc6a578fa2cb::t_43e148b2da78b2 165,174,188-190,193-196,198-201,203-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "64fb6aad46161f74f1df2f17d76920de5a62e51f",
+  "prompts": {},
+  "sessions": {
+    "s_41a2855eb678e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c93-f12b-7883-b6b6-cfe81faccf0f",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_d6dc6a578fa2cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a216a7-e353-7160-86dc-0a39599149ce",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
