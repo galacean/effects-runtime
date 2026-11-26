@@ -1,0 +1,74 @@
+packages/effects-core/src/render/renderer.ts
+  h_f2571758b99ad7 235,237-238,271,273
+packages/effects-core/src/render/resource-data.ts
+  h_f2571758b99ad7 8,13
+plugin-packages/editor-gizmo/demo/src/assets.ts
+  h_f2571758b99ad7 2,4,7-26,28-101,103-227,229-342,345-350,352-353,358-360,362-365,367,370-399,404-406,408-411,413,416-513,517-519,521,524-525,527,530-532,534-537,539-550,552-554,557-558,561,563,565-608,610-614,616-620,622-633,635-638,640-643,645-655,657-660,662-665,667-670,672-675,677-957,959-968,970,975,979,983-989,991-996,998-1012,1014-1019,1021-1032,1034-1035,1037-1041,1044-1057,1059-1069,1071-1131
+plugin-packages/editor-gizmo/demo/src/basic.ts
+  h_f2571758b99ad7 2-3,6-8,10
+plugin-packages/editor-gizmo/demo/src/bbox.ts
+  h_f2571758b99ad7 1-5,8-14,16-19
+plugin-packages/editor-gizmo/demo/src/editor.ts
+  h_f2571758b99ad7 1-110
+plugin-packages/editor-gizmo/demo/src/gizmo-3d.ts
+  h_f2571758b99ad7 2-3,6-7,9
+plugin-packages/editor-gizmo/demo/src/gizmo-wireframe.ts
+  h_f2571758b99ad7 2-4,7-9,11-13
+plugin-packages/editor-gizmo/demo/src/gizmo.ts
+  h_f2571758b99ad7 1-3,6-7,9
+plugin-packages/editor-gizmo/demo/src/model-scene.ts
+  h_f2571758b99ad7 1-35
+plugin-packages/editor-gizmo/demo/src/particle.ts
+  h_f2571758b99ad7 2-3,6-8,10
+plugin-packages/editor-gizmo/demo/src/scene.ts
+  h_f2571758b99ad7 1-4,7-10,12-13
+plugin-packages/editor-gizmo/demo/src/simple.ts
+  h_f2571758b99ad7 3,6-8,10
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  h_f2571758b99ad7 1,7-8,37-39,57,78-81,102-104,258-263
+plugin-packages/editor-gizmo/src/3d/gizmo-bounds.ts
+  h_f2571758b99ad7 1,3
+plugin-packages/editor-gizmo/src/3d/gizmo-loader.ts
+  h_f2571758b99ad7 1
+plugin-packages/editor-gizmo/src/3d/mesh.ts
+  h_f2571758b99ad7 2,6-7,15-20,22,27,29,35-36,44,48,52,56,60,64,68,72,81,85,87,91-92,103,106,109,112,115-117,142,147,152,155-157,197,201,203-204,212,222,229,236,264,267,270,300,307,312,320,324,326-327,335,350,353,356,359,398,402,404-405,412,423-425,439-441,500,504,506-508,511,514,543,547,549,623,633,652
+plugin-packages/editor-gizmo/src/3d/shaders/scene-depth.glsl
+  h_f2571758b99ad7 1-14
+plugin-packages/editor-gizmo/src/3d/shape.ts
+  h_f2571758b99ad7 2-3,285-286,288-292,294-299,301-327,330,335
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-3d.ts
+  h_f2571758b99ad7 1,34,45-46
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-geometry.ts
+  h_f2571758b99ad7 1-112
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-renderer-3d.ts
+  h_f2571758b99ad7 1,4-7,9-11,14-16,18-19,21-22,25-29,31,33-38,40-41,43-44,46-49,51-58
+plugin-packages/editor-gizmo/src/3d/viewport/grid-gizmo-3d.ts
+  h_f2571758b99ad7 1-40
+plugin-packages/editor-gizmo/src/3d/viewport/selection-gizmo-3d.ts
+  h_f2571758b99ad7 2,37,70,114
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  h_f2571758b99ad7 1,8-10,73-74,80-121
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  h_f2571758b99ad7 1,7-11,61-110
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-picker.ts
+  h_f2571758b99ad7 16,21-24,30,34-42,44-46,48
+plugin-packages/editor-gizmo/src/3d/wireframe.ts
+  h_f2571758b99ad7 1-3,7-19,21,24,27-30,32-34,36-37,64
+plugin-packages/model/demo/src/editor-mode.ts
+  h_f2571758b99ad7 2,5,20,117,130,132-136,142-143,145-146,289
+plugin-packages/model/demo/src/wireframe.ts
+  h_f2571758b99ad7 1-4,6-10,12-15,18-19,22-24,28-30,32-36,38-40,42,44,49-54,58-61,65-66,68,72
+web-packages/test/unit/src/effects-core/post-processing-regressions.spec.ts
+  h_f2571758b99ad7 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7768608d80ab322300d14b143121950fcdde0db3",
+  "prompts": {},
+  "humans": {
+    "h_f2571758b99ad7": {
+      "author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
