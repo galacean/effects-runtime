@@ -5,7 +5,15 @@ import { MoveSelectionGizmo } from '../../../../../../plugin-packages/editor-giz
 import { TransformType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo';
 import type { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/selection';
 import type { Engine, VFXItem } from '@galacean/effects';
-import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math, type InputEventMouse } from '@galacean/effects';
+import {
+  InputEventMouseButton,
+  InputEventMouseMotion,
+  MouseButton,
+  MouseButtonMask,
+  Transform,
+  math,
+  type InputEventMouse,
+} from '@galacean/effects';
 import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import type { FrameManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/frame-manager';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';
@@ -67,6 +75,8 @@ describe('plugin-editor-gizmo/move-selection-gizmo', () => {
     const applyTranslation = chai.spy(() => translationResult);
     const selectedItem = {
       getInstanceId: () => 'selected',
+      getComponent: () => undefined,
+      transform: new Transform(),
     } as unknown as VFXItem;
     const engine = {
       sceneServer: { compositions: [{ items: [] }] },
@@ -129,7 +139,9 @@ describe('plugin-editor-gizmo/move-selection-gizmo', () => {
 
     const move = new MoveSelectionGizmo(owner)
 
-  ;(move as unknown as { applyTranslation: typeof applyTranslation }).applyTranslation = applyTranslation;
+      ;
+
+    (move as unknown as { applyTranslation: typeof applyTranslation }).applyTranslation = applyTranslation;
 
     return { move, owner, applyTranslation, actionStart, actionUpdate, actionCommit, loadingManager };
   }
@@ -221,7 +233,8 @@ describe('plugin-editor-gizmo/move-selection-gizmo', () => {
       const down = mouseButton(true);
 
       expect(accepted(down, () => context.move.onMouseDown(down))).to.equal(true)
-      ;(context.move as unknown as { assistedLayout: typeof assistedLayout }).assistedLayout = assistedLayout;
+      ;
+      (context.move as unknown as { assistedLayout: typeof assistedLayout }).assistedLayout = assistedLayout;
 
       const dragEvent = drag(14);
 
@@ -268,10 +281,14 @@ describe('plugin-editor-gizmo/move-selection-gizmo', () => {
       const context = setup();
       const group = {
         getInstanceId: () => 'group',
+        getComponent: () => undefined,
+        transform: new Transform(),
         parent: undefined,
       } as unknown as VFXItem;
       const other = {
         getInstanceId: () => 'other',
+        getComponent: () => undefined,
+        transform: new Transform(),
         parent: undefined,
       } as unknown as VFXItem;
 

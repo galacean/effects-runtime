@@ -38,4 +38,14 @@ export enum GizmoType {
   ITEM_CREATE = 'item-create',
   /** 标尺与参考线。 */
   RULER = 'ruler',
+  /** FFD 基础网格。 */
+  FFD_WIREFRAME = 'ffd-wireframe',
+  /** FFD 晶格编辑。 */
+  CRYSTAL_LATTICE = 'crystal-lattice',
+  /** 运动路径编辑。 */
+  CURVE = 'curve',
+  /** 渐变编辑。 */
+  GRADIENT = 'gradient',
+  /** 锚点、轴向与多选变换。 */
+  TRANSFORM_HANDLES = 'transform-handles',
 }

@@ -22,17 +22,45 @@ export function getBoxCorners (box: Box2): Vector2[] {
   ];
 }
 
-/** 从原点和两条边的终点构造正向映射。重合的端点保留为零长度的轴。 */
-export function boxTransformFromCorners (leftTop: Vector2, rightTop: Vector2, leftBottom: Vector2): Matrix3 | undefined {
+/** 从四个视图角点建立归一化 Box2 到视图坐标的投影变换。 */
+export function boxTransformFromCorners (points: Vector2[]): Matrix3 | undefined {
+  if (points.length !== 4 || points.some(point => !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+    return undefined;
+  }
+
+  const [leftTop, rightTop, rightBottom, leftBottom] = points;
+  const dx = leftTop.x - rightTop.x + rightBottom.x - leftBottom.x;
+  const dy = leftTop.y - rightTop.y + rightBottom.y - leftBottom.y;
+  let perspectiveX = 0;
+  let perspectiveY = 0;
+
+  // 绕 X/Y 轴旋转后的透视投影不再是平行四边形，需要保留第四个角点。
+  if (Math.abs(dx) > MATRIX_EPSILON || Math.abs(dy) > MATRIX_EPSILON) {
+    const topX = rightTop.x - rightBottom.x;
+    const topY = rightTop.y - rightBottom.y;
+    const leftX = leftBottom.x - rightBottom.x;
+    const leftY = leftBottom.y - rightBottom.y;
+    const denominator = topX * leftY - leftX * topY;
+
+    if (Math.abs(denominator) <= MATRIX_EPSILON) {
+      return undefined;
+    }
+    perspectiveX = (dx * leftY - leftX * dy) / denominator;
+    perspectiveY = (topX * dy - dx * topY) / denominator;
+  }
+  // 齐次坐标在盒内不能为零或变号，否则投影会穿过无穷远点。
+  if (Math.min(1 + perspectiveX, 1 + perspectiveY, 1 + perspectiveX + perspectiveY) <= MATRIX_EPSILON) {
+    return undefined;
+  }
   const transform = new Matrix3().setFromRowMajorData(
-    rightTop.x - leftTop.x,
-    leftBottom.x - leftTop.x,
+    rightTop.x - leftTop.x + perspectiveX * rightTop.x,
+    leftBottom.x - leftTop.x + perspectiveY * leftBottom.x,
     leftTop.x,
-    rightTop.y - leftTop.y,
-    leftBottom.y - leftTop.y,
+    rightTop.y - leftTop.y + perspectiveX * rightTop.y,
+    leftBottom.y - leftTop.y + perspectiveY * leftBottom.y,
     leftTop.y,
-    0,
-    0,
+    perspectiveX,
+    perspectiveY,
     1,
   );
 
@@ -51,7 +79,7 @@ export function getBoxTransform (points: Vector2[]): Matrix3 | undefined {
   if (points.length !== 4) {
     return undefined;
   }
-  const transform = boxTransformFromCorners(points[0], points[1], points[3]);
+  const transform = boxTransformFromCorners(points);
 
   return transform && hasBoxArea(transform) ? transform : undefined;
 }
@@ -74,7 +102,7 @@ export function getBoxTransformFromBox (box: Box2): Matrix3 | undefined {
 export function transformBoxPoint (transform: Matrix3, point: Vector2): Vector2 {
   const result = transform.transformPoint(new Vector3(point.x, point.y, 1));
 
-  return new Vector2(result.x, result.y);
+  return new Vector2(result.x / result.z, result.y / result.z);
 }
 
 /** 将视图点逆变换到 Box2 局部坐标。 */

@@ -17,7 +17,12 @@ import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
 import type { Paint, SolidPaint } from './paint';
-import { applyPaintRendererOptions, createPaint, createPaintMaterial, updatePaintMaterial } from './paint';
+import {
+  applyPaintRendererOptions,
+  createPaint,
+  createPaintMaterial,
+  updatePaintMaterial,
+} from './paint';
 import { TrimPath } from './trim-path';
 import { TrimmedPathResult } from './trimmed-path-result';
 import { GraphicsPath } from './graphics-path';
@@ -157,7 +162,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private readonly fillPathResult = new TrimmedPathResult();
   private readonly strokePathResult = new TrimmedPathResult();
 
-  private fills: Paint[] = [];
+  private _fills: Paint[] = [];
   private readonly strokeAttributes: StrokeAttributes = {
     width: 1,
     alignment: 0.5,
@@ -166,7 +171,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     miterLimit: 10,
   };
 
-  private strokes: Paint[] = [];
+  private _strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
   private _strokeTrimPath: TrimPath | null = null;
   private _fillTrimPath: TrimPath | null = null;
@@ -178,6 +183,26 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get shape () {
     return this.shapeAttributes;
+  }
+
+  /** 填充 Paint 列表，修改后赋回以刷新材质。 */
+  get fills (): Paint[] {
+    return this._fills;
+  }
+
+  set fills (value: Paint[]) {
+    this._fills = value;
+    this.materialDirty = true;
+  }
+
+  /** 描边 Paint 列表，修改后赋回以刷新材质。 */
+  get strokes (): Paint[] {
+    return this._strokes;
+  }
+
+  set strokes (value: Paint[]) {
+    this._strokes = value;
+    this.materialDirty = true;
   }
 
   get strokeWidth (): number {
@@ -382,17 +407,20 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
-    if (!force) {
+    if (!force || (this.fills.length === 0 && this.strokes.length === 0)) {
       return;
     }
 
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
+    const fillTriangleCount = (this.geometry.subMeshes[0].indexCount ?? 0) / 3;
+    const start = this.fills.length > 0 ? 0 : fillTriangleCount;
+    const end = this.strokes.length > 0 ? undefined : fillTriangleCount;
 
     return {
       behavior: 0,
       type: HitTestType.triangle,
-      triangles: getWorldTriangles(this.geometry, worldMatrix),
+      triangles: getWorldTriangles(this.geometry, worldMatrix).slice(start, end),
       backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
       clipMasks: this.frameClipMasks,
     };
@@ -447,21 +475,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const lineStyle = this.strokeAttributes;
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
-    if (this.fills.length > 0) {
-      for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
-        const indexOffset = indices.length;
-        const vertOffset = vertices.length / 2;
+    for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
+      const shape = shapePrimitive.shape;
+      const points: number[] = [];
+      const indexOffset = indices.length;
+      const vertOffset = vertices.length / 2;
 
-        shape.build(points, screenScale);
-        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-      }
+      shape.build(points, screenScale);
+      shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
     }
 
     const fillIndexCount = indices.length;
 
-    if (this.strokes.length > 0 && this.strokeWidth > 0) {
+    if (this.strokeWidth > 0) {
       const strokePath = strokeResult.path;
       const strokeContourPath = makeStrokeContourPath(strokePath);
       const maskPath = lineStyle.alignment === 0.5 || strokePath === this.graphicsPath
@@ -702,7 +728,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (const command of commands) {
       for (const control of command.data) {
         point.set(control.x, control.y, 0);
-        matrix.transformPoint(point, point); control.set(point.x, point.y);
+        matrix.transformPoint(point, point);
+        control.set(point.x, point.y);
       }
       switch (command.action) {
         case 'moveTo':
@@ -728,6 +755,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   private updateMaterials () {
     const destSize = new Vector2(1, 1);
+
+    if (this.fillMaterials.length !== this.fills.length || this.strokeMaterials.length !== this.strokes.length) {
+      this.syncPaintMaterials(this.fillMaterials, this.fills.length);
+      this.syncPaintMaterials(this.strokeMaterials, this.strokes.length);
+      this.materials = [...this.fillMaterials, ...this.strokeMaterials];
+    }
 
     if (this.fills.some(paint => paint.type === spec.FillType.Texture) || this.strokes.some(paint => paint.type === spec.FillType.Texture)) {
       const size = this.getRenderBounds().getSize();
