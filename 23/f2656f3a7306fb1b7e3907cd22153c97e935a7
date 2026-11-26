@@ -1,0 +1,31 @@
+web-packages/test/unit/src/effects-core/mask-processor.spec.ts
+  s_1959265e50472a::t_c547687e6d148e 307,321
+web-packages/test/unit/src/effects-core/owned-mask.spec.ts
+  s_1959265e50472a::t_3f5f6d42a85f8c 96-107
+  s_1959265e50472a::t_c547687e6d148e 126,159,185
+  s_1959265e50472a::t_6d8376ed647fb3 267,275,283-285,332
+web-packages/test/unit/src/effects-core/plugins/sprite/sprite-graphic.spec.ts
+  s_1959265e50472a::t_ecb43516b9d05a 3,36,69
+web-packages/test/unit/src/effects-core/mask-rendering-regressions.spec.ts
+  s_1959265e50472a::t_6d8376ed647fb3 165-166,213,217-218,220-222,224-227,269-270,272-282,284-285,287-291,293-295
+web-packages/test/unit/src/effects-core/fallback/mask.spec.ts
+  s_1959265e50472a::t_c547687e6d148e 178-211,213-217
+web-packages/test/unit/src/effects-webgl/stencil.spec.ts
+  s_1959265e50472a::t_c547687e6d148e 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "23f2656f3a7306fb1b7e3907cd22153c97e935a7",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
