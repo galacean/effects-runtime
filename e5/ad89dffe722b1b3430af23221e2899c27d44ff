@@ -1,0 +1,217 @@
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/transform-types.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+plugin-packages/editor-gizmo/src/2d/text/text-edit-session.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+plugin-packages/editor-gizmo/src/2d/items/item-geometry.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3-4
+plugin-packages/editor-gizmo/src/2d/gizmos/image-interaction.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/2d/gizmos/text-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+plugin-packages/editor-gizmo/src/math/types.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-3
+plugin-packages/editor-gizmo/src/2d/gizmos/item-create-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 7
+web-packages/test/unit/src/plugin-editor-gizmo/2d/loading-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+plugin-packages/editor-gizmo/src/2d/viewport/viewport-navigation-controller.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+web-packages/test/unit/src/plugin-editor-gizmo/2d/projection-sync-gizmos.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 14-15
+web-packages/test/unit/src/plugin-editor-gizmo/2d/shape-model-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/2d/selection/selection.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/math/projected-line.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-66
+plugin-packages/editor-gizmo/src/2d/gizmo-owner.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+plugin-packages/editor-gizmo/src/2d/gizmos/corner-rotation-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 13
+plugin-packages/editor-gizmo/src/2d/gizmos/rich-text-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+plugin-packages/editor-gizmo/src/2d/gizmos/select-text-gizmo-base.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 15
+plugin-packages/editor-gizmo/src/2d/viewport/gizmo-viewport.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 12
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-geometry.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+web-packages/test/unit/src/plugin-editor-gizmo/2d/viewport-navigation-controller.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-picker.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/math/utils.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1-24
+web-packages/test/unit/src/plugin-editor-gizmo/2d/box-selection-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 11
+plugin-packages/editor-gizmo/src/3d/viewport/camera-navigation.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-39
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/shape-model-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+web-packages/test/unit/src/plugin-editor-gizmo/2d/anchored-resize.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+web-packages/test/unit/src/plugin-editor-gizmo/2d/change-selection-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/move-selection-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/pen-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/3d/viewport/index.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+web-packages/test/unit/src/plugin-editor-gizmo/2d/gesture-handler.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 22
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8-9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/selection.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/image-expand-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/3d/raycast.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2-3
+plugin-packages/editor-gizmo/src/2d/frame/frame-resize.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/math/geometry-3d.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-12
+plugin-packages/editor-gizmo/src/math/geometry-2d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1-273
+web-packages/test/unit/src/plugin-editor-gizmo/2d/select-text-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+plugin-packages/editor-gizmo/src/index.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 7
+web-packages/test/unit/src/plugin-editor-gizmo/2d/snap-manager.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 6
+web-packages/test/unit/src/plugin-editor-gizmo/2d/viewport-overlay-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+web-packages/test/unit/src/plugin-editor-gizmo/2d/frame-resize.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/change-selection-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 7
+plugin-packages/editor-gizmo/src/2d/gizmos/leave-effects-edit-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/loading-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5-6
+plugin-packages/editor-gizmo/src/2d/selection/snap-manager.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/2d/gizmos/viewport-overlay-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4-5
+plugin-packages/editor-gizmo/src/2d/gizmos/enter-edit-mode-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 6
+plugin-packages/editor-gizmo/src/math/vector3.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/drawing.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+plugin-packages/editor-gizmo/src/2d/gizmos/image-cut-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/math/core.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1-30
+plugin-packages/editor-gizmo/src/2d/drawing.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5-6
+plugin-packages/editor-gizmo/src/2d/viewport/viewport-operations.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  s_1f18426a538b3f::t_2269f0b312b5c9 5
+plugin-packages/editor-gizmo/src/math/plane.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-11
+plugin-packages/editor-gizmo/src/math/ray-caster.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1-84
+web-packages/test/unit/src/plugin-editor-gizmo/2d/geometry.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 13
+plugin-packages/editor-gizmo/src/2d/editor-2d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 12
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-create-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+plugin-packages/editor-gizmo/src/2d/frame/layout-calculations.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/loading-manager.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/sprite-text-edit-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 13
+web-packages/test/unit/src/plugin-editor-gizmo/2d/frame-manager.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+web-packages/test/unit/src/plugin-editor-gizmo/2d/resize-selection-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+plugin-packages/editor-gizmo/src/3d/gizmo-component.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 14
+web-packages/test/unit/src/plugin-editor-gizmo/2d/assisted-layout.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+web-packages/test/unit/src/plugin-editor-gizmo/2d/loading-manager.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/ruler-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 10
+web-packages/test/unit/src/plugin-editor-gizmo/2d/ruler-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 5
+plugin-packages/editor-gizmo/src/2d/viewport/viewport-range.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+plugin-packages/editor-gizmo/src/math/index.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-5
+plugin-packages/editor-gizmo/src/2d/gizmos/mask-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+plugin-packages/editor-gizmo/src/2d/frame/frame-assisted-layout.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 22
+plugin-packages/editor-gizmo/src/math/projection.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-44
+plugin-packages/editor-gizmo/src/2d/gizmos/move-selection-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 11
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3-6
+web-packages/test/unit/src/plugin-editor-gizmo/2d/corner-rotation-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+plugin-packages/editor-gizmo/src/2d/gizmos/icon-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 9
+web-packages/test/unit/src/plugin-editor-gizmo/helpers/items.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+web-packages/test/unit/src/plugin-editor-gizmo/2d/enter-edit-mode-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+plugin-packages/editor-gizmo/src/2d/gizmos/box-selection-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 13
+plugin-packages/editor-gizmo/src/2d/gizmos/hand-gizmo.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/text-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 8
+plugin-packages/editor-gizmo/src/2d/viewport/viewport-utils.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/3d/viewport/selection-gizmo-3d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3,5,138
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2-4,6,255
+plugin-packages/editor-gizmo/src/3d/viewport/item-bounds.ts
+  s_1f18426a538b3f::t_8d25685a684fca 1-25
+plugin-packages/editor-gizmo/src/2d/viewport/coordinates.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2-3
+plugin-packages/editor-gizmo/src/2d/viewport/types.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+plugin-packages/editor-gizmo/src/2d/frame/frame-manager.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1-2
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-3d.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 2
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-edit-context.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 1
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/geometry.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+web-packages/test/unit/src/plugin-editor-gizmo/2d/coordinates.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 3
+web-packages/test/unit/src/plugin-editor-gizmo/2d/sprite-text-edit-gizmo.spec.ts
+  s_1f18426a538b3f::t_f7012a39c6a435 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e5ad89dffe722b1b3430af23221e2899c27d44ff",
+  "prompts": {},
+  "sessions": {
+    "s_1f18426a538b3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a2107f-082b-7220-9a78-871cc2ac6288",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
