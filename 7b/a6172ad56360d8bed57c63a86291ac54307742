@@ -1,0 +1,21 @@
+packages/effects-core/src/material/types.ts
+  s_1959265e50472a::t_10ab2595538615 99
+packages/effects-core/src/material/mask-processor.ts
+  s_1959265e50472a::t_10ab2595538615 3,34,133,208,239,376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7ba6172ad56360d8bed57c63a86291ac54307742",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
