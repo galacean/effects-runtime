@@ -34,7 +34,8 @@ function cloneColorPaint (paint: SolidPaint | GradientPaint): SolidPaint | Gradi
 
 /** 编辑器修改副本，提交前不会影响组件正在使用的 paint。 */
 export function getColorPaint (component: ShapeComponent | undefined, kind: PaintKind, index: number): SolidPaint | GradientPaint | undefined {
-  const paint = component?.getPaint(kind, index);
+  const paints = kind === 'fill' ? component?.fills : component?.strokes;
+  const paint = paints?.[index];
 
   return paint && paint.type !== spec.FillType.Texture ? cloneColorPaint(paint) : undefined;
 }
@@ -47,7 +48,9 @@ export function getGradientPaint (component: ShapeComponent | undefined, kind: P
 
 /** 只编辑已有的纯色/渐变槽位，保持其他填充、描边和形状几何。 */
 export function setColorPaint (component: ShapeComponent, kind: PaintKind, index: number, paint: SolidPaint | GradientPaint): void {
-  const current = component.getPaint(kind, index);
+  const property = kind === 'fill' ? 'fills' : 'strokes';
+  const paints = component[property];
+  const current = paints[index];
 
   if (!current || current.type === spec.FillType.Texture) {
     throw new Error('The selected color paint does not exist.');
@@ -61,11 +64,15 @@ export function setColorPaint (component: ShapeComponent, kind: PaintKind, index
   } else if (!isValidGradientPaint(paint)) {
     throw new Error('Invalid gradient paint.');
   }
-  component.setPaint(kind, index, cloneColorPaint(paint));
+  const nextPaints = paints.slice();
+
+  nextPaints[index] = cloneColorPaint(paint);
+  component[property] = nextPaints;
 }
 
 export function setGradientPaint (component: ShapeComponent, kind: PaintKind, index: number, paint: GradientPaint): void {
-  const current = component.getPaint(kind, index);
+  const paints = kind === 'fill' ? component.fills : component.strokes;
+  const current = paints[index];
 
   if (!current || current.type === spec.FillType.Solid || current.type === spec.FillType.Texture) {
     throw new Error('The selected paint is not a gradient.');

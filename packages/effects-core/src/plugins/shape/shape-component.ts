@@ -162,7 +162,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private readonly fillPathResult = new TrimmedPathResult();
   private readonly strokePathResult = new TrimmedPathResult();
 
-  private fills: Paint[] = [];
+  private _fills: Paint[] = [];
   private readonly strokeAttributes: StrokeAttributes = {
     width: 1,
     alignment: 0.5,
@@ -171,7 +171,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     miterLimit: 10,
   };
 
-  private strokes: Paint[] = [];
+  private _strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
   private _strokeTrimPath: TrimPath | null = null;
   private _fillTrimPath: TrimPath | null = null;
@@ -185,19 +185,23 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.shapeAttributes;
   }
 
-  /** 读取现有填充或描边；修改后须通过 setPaint 通知材质刷新。 */
-  getPaint (kind: 'fill' | 'stroke', index: number): Paint | undefined {
-    return (kind === 'fill' ? this.fills : this.strokes)[index];
+  /** 填充 Paint 列表，修改后赋回以刷新材质。 */
+  get fills (): Paint[] {
+    return this._fills;
   }
 
-  /** 替换一个已有的 Paint 槽位，保留其他填充、描边与几何。 */
-  setPaint (kind: 'fill' | 'stroke', index: number, paint: Paint): void {
-    const paints = kind === 'fill' ? this.fills : this.strokes;
+  set fills (value: Paint[]) {
+    this._fills = value;
+    this.materialDirty = true;
+  }
 
-    if (!Number.isInteger(index) || !paints[index]) {
-      throw new Error('The selected paint does not exist.');
-    }
-    paints[index] = paint;
+  /** 描边 Paint 列表，修改后赋回以刷新材质。 */
+  get strokes (): Paint[] {
+    return this._strokes;
+  }
+
+  set strokes (value: Paint[]) {
+    this._strokes = value;
     this.materialDirty = true;
   }
 
@@ -441,10 +445,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   /** 填充和描边网格在同一局部坐标系中实际覆盖的边界。 */
   override getRenderBounds (out = new Box3()): Box3 {
     this.updateGeometry();
-
-    if (!this.geometry.subMeshes.some(subMesh => (subMesh.indexCount ?? 0) > 0)) {
-      return out.makeEmpty();
-    }
 
     return out.copyFrom(this.renderBounds);
   }

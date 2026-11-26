@@ -972,26 +972,31 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(getGradientPaint(component, 'fill', 0)).deep.equals(saved);
   });
 
-  it('refreshes only the edited paint material through the generic runtime setter', () => {
+  it('refreshes materials when the fill and stroke paint lists are replaced', () => {
     const { component } = gradient(spec.FillType.GradientLinear, 2);
     const fillMaterial = component.materials[0];
     const strokeMaterial = component.materials[1];
-    const stroke = component.getPaint('stroke', 0);
+    const stroke = component.strokes[0];
     const bounds = component.getRenderBounds();
     const paint = { type: spec.FillType.Solid, color: new math.Color(0.2, 0.4, 0.6, 1) } as const;
 
-    component.setPaint('fill', 0, paint);
+    component.fills = [paint];
     component.onUpdate(0);
-    expect(component.getPaint('fill', 0)).equals(paint);
+    expect(component.fills[0]).equals(paint);
     expect(component.materials).deep.equals([fillMaterial, strokeMaterial]);
     expect(fillMaterial.getFloat('_FillType')).equals(spec.FillType.Solid);
     expect(fillMaterial.color.toArray()).deep.equals(paint.color.toArray());
-    expect(component.getPaint('stroke', 0)).equals(stroke);
+    expect(component.strokes[0]).equals(stroke);
+    component.strokes = [paint];
+    component.onUpdate(0);
+    expect(component.strokes[0]).equals(paint);
+    expect(component.materials).deep.equals([fillMaterial, strokeMaterial]);
+    expect(strokeMaterial.color.toArray()).deep.equals(paint.color.toArray());
     expect(component.getRenderBounds()).deep.equals(bounds);
     for (const index of [-1, 0.5, 1, NaN]) {
-      expect(() => component.setPaint('fill', index, paint)).throws('The selected paint does not exist.');
+      expect(() => setColorPaint(component, 'fill', index, paint)).throws('The selected color paint does not exist.');
     }
-    expect(component.getPaint('fill', 0)).equals(paint);
+    expect(component.fills[0]).equals(paint);
   });
 
   it('matches renderer smoothstep instead of linear gradient interpolation', () => {
