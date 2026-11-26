@@ -407,17 +407,20 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
-    if (!force) {
+    if (!force || (this.fills.length === 0 && this.strokes.length === 0)) {
       return;
     }
 
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
+    const fillTriangleCount = (this.geometry.subMeshes[0].indexCount ?? 0) / 3;
+    const start = this.fills.length > 0 ? 0 : fillTriangleCount;
+    const end = this.strokes.length > 0 ? undefined : fillTriangleCount;
 
     return {
       behavior: 0,
       type: HitTestType.triangle,
-      triangles: getWorldTriangles(this.geometry, worldMatrix),
+      triangles: getWorldTriangles(this.geometry, worldMatrix).slice(start, end),
       backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
       clipMasks: this.frameClipMasks,
     };
@@ -472,21 +475,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const lineStyle = this.strokeAttributes;
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
-    if (this.fills.length > 0) {
-      for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
-        const shape = shapePrimitive.shape;
-        const points: number[] = [];
-        const indexOffset = indices.length;
-        const vertOffset = vertices.length / 2;
+    for (const shapePrimitive of fillPath.shapePath.shapePrimitives) {
+      const shape = shapePrimitive.shape;
+      const points: number[] = [];
+      const indexOffset = indices.length;
+      const vertOffset = vertices.length / 2;
 
-        shape.build(points, screenScale);
-        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-      }
+      shape.build(points, screenScale);
+      shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
     }
 
     const fillIndexCount = indices.length;
 
-    if (this.strokes.length > 0 && this.strokeWidth > 0) {
+    if (this.strokeWidth > 0) {
       const strokePath = strokeResult.path;
       const strokeContourPath = makeStrokeContourPath(strokePath);
       const maskPath = lineStyle.alignment === 0.5 || strokePath === this.graphicsPath
@@ -754,6 +755,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   private updateMaterials () {
     const destSize = new Vector2(1, 1);
+
+    if (this.fillMaterials.length !== this.fills.length || this.strokeMaterials.length !== this.strokes.length) {
+      this.syncPaintMaterials(this.fillMaterials, this.fills.length);
+      this.syncPaintMaterials(this.strokeMaterials, this.strokes.length);
+      this.materials = [...this.fillMaterials, ...this.strokeMaterials];
+    }
 
     if (this.fills.some(paint => paint.type === spec.FillType.Texture) || this.strokes.some(paint => paint.type === spec.FillType.Texture)) {
       const size = this.getRenderBounds().getSize();

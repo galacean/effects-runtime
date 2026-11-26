@@ -832,7 +832,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     }
   });
 
-  it('keeps local bounds aligned with UVs after geometry shrinks or becomes empty', () => {
+  it('keeps local bounds aligned with geometry independently of paint lists', () => {
     const { component, data } = gradient(spec.FillType.GradientLinear, 2);
     const box = component.getRenderBounds();
 
@@ -853,8 +853,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(component.getRenderBounds(box).max.x).equals(2);
     component.fromData({ ...data, fills: [], strokes: [] });
     component.onUpdate(0);
-    expect(getShapeRenderBounds(component)).equals(undefined);
-    expect(component.getRenderBounds(box).isEmpty()).equals(true);
+    expect(getShapeRenderBounds(component)!.max.x).closeTo(3, 1e-5);
+    expect(component.getRenderBounds(box).max.x).closeTo(3, 1e-5);
     expect(component.getBoundingBox().isEmpty()).equals(false);
     component.fromData(data);
     component.onUpdate(0);
