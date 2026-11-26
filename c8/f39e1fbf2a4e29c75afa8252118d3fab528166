@@ -1,0 +1,116 @@
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-3d-math.ts
+  s_41a2855eb678e1::t_754e1d3cbd3e1f 12,25
+  s_41a2855eb678e1::t_6c9fa7e9526167 1-11,13-24,26-28
+  s_41a2855eb678e1::t_fd433c0006aa4a 29-52
+plugin-packages/editor-gizmo/src/3d/gizmo-component.ts
+  s_41a2855eb678e1::t_8fdc192ec71af7 323-332
+web-packages/demo/src/gizmo-2d/editor.ts
+  s_41a2855eb678e1::t_127cb83e3dd078 29,125
+plugin-packages/editor-gizmo/src/index.ts
+  s_41a2855eb678e1::t_2eef77223f8be7 9
+web-packages/test/unit/src/plugin-editor-gizmo/2d/gesture-handler.spec.ts
+  s_41a2855eb678e1::t_d456b7080e7875 1,75-76
+  s_41a2855eb678e1::t_127cb83e3dd078 7-8,48,58,62,70,77,93,173,177,181,185,189,210,214,220,271,348,410,414,433,445,460,464,531,656,841,1200,1302,1364,1393,1399,1408-1409,1424,1429,1434,1438,1462
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-3d.ts
+  s_41a2855eb678e1::t_6c9fa7e9526167 6-9,31,38
+  s_41a2855eb678e1::t_1d7d738bf92854 39-43,45
+  s_41a2855eb678e1::t_57696fa2978dfd 1
+  s_41a2855eb678e1::t_992b32e626cdfd 5,10-11,13-25,27-30,32
+  s_1f18426a538b3f::t_6e1f57b725abb6 2
+  s_41a2855eb678e1::t_2eef77223f8be7 3,37
+  s_41a2855eb678e1::t_64b32e3eafdaf4 26
+  s_41a2855eb678e1::t_b6cc33f90c1e08 33-36,44,46
+  s_41a2855eb678e1::t_8f2e445b671953 4,12
+plugin-packages/editor-gizmo/README.md
+  s_41a2855eb678e1::t_127cb83e3dd078 12-14,16,19-20
+  s_41a2855eb678e1::t_dd8d2a699d1318 15
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  s_41a2855eb678e1::t_57696fa2978dfd 57,61,113,115
+  s_1f18426a538b3f::t_6e1f57b725abb6 5
+  s_41a2855eb678e1::t_8f2e445b671953 1,3-4,6-50,52-56,58-60,62-112,114,116-265
+  s_41a2855eb678e1::t_2eef77223f8be7 2,51
+  s_41a2855eb678e1::t_3ff9678c219f65 266-268
+plugin-packages/editor-gizmo/src/editor.ts
+  s_41a2855eb678e1::t_0ae304963605f1 43-44
+  s_41a2855eb678e1::t_dd8d2a699d1318 1-2,10-11,17-23,25-26,45-48
+  s_41a2855eb678e1::t_027008331add62 3-9,12-16,24,27-38,41,49-50
+  s_41a2855eb678e1::t_b741286762d360 39-40
+  s_41a2855eb678e1::t_a733422434b81d 42
+web-packages/dev-tools/src/features/scene/viewport/scene-gizmo.ts
+  s_41a2855eb678e1::t_dd8d2a699d1318 71-72,133,136
+  s_41a2855eb678e1::t_9d1eed83163ee9 73
+  s_41a2855eb678e1::t_127cb83e3dd078 4-5,37-38,74,204
+plugin-packages/editor-gizmo/src/2d/gizmos/hand-gizmo.ts
+  s_41a2855eb678e1::t_73adcd2a55ee89 48-49,51-52,140
+  s_41a2855eb678e1::t_644526e7737d70 47,50
+web-packages/demo/src/gizmo-2d/app.ts
+  s_41a2855eb678e1::t_127cb83e3dd078 2,15-16,41,94
+  s_41a2855eb678e1::t_9d1eed83163ee9 36,40
+  s_41a2855eb678e1::t_dd8d2a699d1318 39
+plugin-packages/editor-gizmo/src/2d/viewport/gizmo-viewport.ts
+  s_41a2855eb678e1::t_fc30e066f9518c 270
+  s_41a2855eb678e1::t_4fc3200380e37a 75,77
+  s_41a2855eb678e1::t_9422cf1264e8f5 44-45,178-182,230,239,264-269
+plugin-packages/editor-gizmo/src/3d/index.ts
+  s_41a2855eb678e1::t_9b78d9a262f3d4 5
+  s_41a2855eb678e1::t_2eef77223f8be7 6
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-picker.ts
+  s_1f18426a538b3f::t_6e1f57b725abb6 5
+  s_41a2855eb678e1::t_2eef77223f8be7 4,21
+  s_41a2855eb678e1::t_6c9fa7e9526167 7-9,38,42,45-46,48-49
+  s_41a2855eb678e1::t_8e086d07bb243e 1,23-25,30,33,36-37,43,55-58
+  s_41a2855eb678e1::t_b08169065592a6 2-3,6,10-20,22,26-29,31-32,34-35,39-41,44,47,50-54,59-70
+plugin-packages/editor-gizmo/src/3d/viewport/index.ts
+  s_41a2855eb678e1::t_8f2e445b671953 4-5
+  s_41a2855eb678e1::t_6c9fa7e9526167 3,6
+  s_1f18426a538b3f::t_6e1f57b725abb6 1-2
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  s_41a2855eb678e1::t_8f2e445b671953 1-2,5-39,41-51,53-57,59-70,72-235,237-243,245-285
+  s_1f18426a538b3f::t_6e1f57b725abb6 3-4,244
+  s_41a2855eb678e1::t_2b45c2c2c83548 40,52,58,71
+  s_41a2855eb678e1::t_57696fa2978dfd 236
+  s_41a2855eb678e1::t_81afa6fe2cbc4e 286-288
+plugin-packages/editor-gizmo/src/2d/editor-2d.ts
+  s_41a2855eb678e1::t_43c58f6f4dbd9c 454-458
+  s_41a2855eb678e1::t_9422cf1264e8f5 453
+  s_41a2855eb678e1::t_73adcd2a55ee89 1
+  s_41a2855eb678e1::t_2eef77223f8be7 8-9,74,141-142,144-145,149,156,161-164,169-177,226,397,403,459,630,862
+  s_41a2855eb678e1::t_da6d375b9c1492 165-168
+plugin-packages/editor-gizmo/src/3d/viewport/camera-math.ts
+  s_41a2855eb678e1::t_6c9fa7e9526167 2-9
+  s_1f18426a538b3f::t_6e1f57b725abb6 1
+  s_41a2855eb678e1::t_18172731f4747e 10-38
+plugin-packages/editor-gizmo/src/3d/viewport/selection-gizmo-3d.ts
+  s_1f18426a538b3f::t_6e1f57b725abb6 3,134
+  s_41a2855eb678e1::t_57696fa2978dfd 31-34,37-39,41,46,96
+  s_41a2855eb678e1::t_8f2e445b671953 1-2,4-30,35-36,40,42-45,47-95,97-133,135-151
+  s_41a2855eb678e1::t_f724a5aa274d12 152-154
+plugin-packages/editor-gizmo/src/2d/index.ts
+  s_41a2855eb678e1::t_2eef77223f8be7 67
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  s_41a2855eb678e1::t_2eef77223f8be7 1-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c8f39e1fbf2a4e29c75afa8252118d3fab528166",
+  "prompts": {},
+  "sessions": {
+    "s_1f18426a538b3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a2107f-082b-7220-9a78-871cc2ac6288",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    },
+    "s_41a2855eb678e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c93-f12b-7883-b6b6-cfe81faccf0f",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
