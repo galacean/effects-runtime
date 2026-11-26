@@ -36,6 +36,7 @@ export class Editor3D extends Control {
   readonly selectionGizmo: SelectionGizmo3D;
   private gizmoLayer?: GizmoLayer3D;
   private readonly offSelectionChange: () => void;
+  private offCameraUpdate?: () => void;
   private cameraOnly = false;
   private capture?: PointerCapture3D;
   private readonly gizmoEvents = new EventEmitter<Editor3DEvents>();
@@ -74,12 +75,16 @@ export class Editor3D extends Control {
   /** @internal Activate viewport input or roll back the current interaction. */
   setActive (active: boolean): void {
     if (!active) {
+      this.offCameraUpdate?.();
+      this.offCameraUpdate = undefined;
       this.cancel('mode-change');
       this.camera.restoreSceneCamera();
     }
     this.enabled = active;
     this.gizmoLayer?.setActive(active);
     if (active) {
+      // Camera navigation must finish before scene components collect their render data.
+      this.offCameraUpdate ??= this.engine.on('update', deltaTime => this.camera.onUpdate(deltaTime));
       this.camera.applyToComposition();
       this.updateGizmos();
     }
@@ -164,6 +169,7 @@ export class Editor3D extends Control {
   override onMouseDown (event: InputEventMouseButton): void {
     if (event.isAccepted() || this.capture) { return; }
     if (this.tryCapture(this.camera, event)) { return; }
+    this.camera.stopNavigation();
     if (!this.cameraOnly && this.tryCapture(this.transform, event)) { return; }
     this.tryCapture(this.selectionGizmo, event);
   }
@@ -184,7 +190,7 @@ export class Editor3D extends Control {
     const capture = this.capture;
 
     if (!capture || event.isAccepted()) { return; }
-    if (!capture.dragging && capture.start.distance(event.position) < 5) { return; }
+    if (capture.gizmo === this.selectionGizmo && !capture.dragging && capture.start.distance(event.position) < 5) { return; }
     capture.dragging = true;
     capture.gizmo.onMouseDrag(event);
   }
@@ -225,7 +231,6 @@ export class Editor3D extends Control {
   }
 
   override update (deltaTime: number): void {
-    this.camera.onUpdate();
     this.transform.onUpdate();
     this.updateGizmos();
     super.update(deltaTime);
@@ -252,6 +257,7 @@ export class Editor3D extends Control {
 
   override onLostFocus (): void { this.cancel('focus-lost'); }
   override onDestroy (): void {
+    this.offCameraUpdate?.();
     this.offSelectionChange();
     this.cancel('viewport-exit');
     this.camera.restoreSceneCamera();

@@ -173,7 +173,7 @@ export class GizmoComponent extends RendererComponent {
     }
   }
 
-  override onUpdate (dt: number): void {
+  override onPreRender (): void {
     this.updateRenderData();
   }
 

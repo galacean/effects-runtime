@@ -1,6 +1,6 @@
 import { MouseButton, Transform, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey } from '@galacean/effects';
 import type { Point2, Point3 } from '../../math/types';
-import { add3, sub3, mul3, dot3, cross3, length3, unit3 } from '../../math/vector3';
+import { add3, sub3, mul3, cross3, length3, unit3 } from '../../math/vector3';
 import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-navigation';
 import { Gizmo3D, type Viewport3DCameraEvent } from './gizmo-3d';
 import { getItemWorldBoundsCorners } from './item-bounds';
@@ -15,28 +15,19 @@ function lerpPoint (a: Point3, b: Point3, t: number): Point3 {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
 }
 
-function slerpDirection (from: Point3, to: Point3, t: number): Point3 {
-  const a = unit3(from), b = unit3(to), dot = Math.max(-1, Math.min(1, dot3(a, b)));
-
-  if (dot > 0.9995) { return unit3(lerpPoint(a, b, t)); }
-  if (dot < -0.9995) {
-    const basis = Math.abs(a.x) < 0.8 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
-    const orthogonal = unit3(cross3(a, basis));
-
-    return unit3(add3(mul3(a, Math.cos(Math.PI * t)), mul3(orthogonal, Math.sin(Math.PI * t))));
-  }
-  const angle = Math.acos(dot), sine = Math.sin(angle);
-
-  return unit3(add3(mul3(a, Math.sin((1 - t) * angle) / sine), mul3(b, Math.sin(t * angle) / sine)));
+function cameraOrientation (camera: CameraEditData): math.Quaternion {
+  return new math.Quaternion().setFromRotationMatrix(
+    new math.Matrix4().lookAt(vector(camera.position), vector(camera.target), vector(camera.up)));
 }
 
 function interpolateCamera (from: CameraEditData, to: CameraEditData, t: number): CameraEditData {
   const target = lerpPoint(from.target, to.target, t);
-  const direction = slerpDirection(sub3(from.position, from.target), sub3(to.position, to.target), t);
+  const orientation = cameraOrientation(from).slerp(cameraOrientation(to), t);
+  const direction = new math.Vector3(0, 0, 1).applyQuaternion(orientation);
   const distance = length3(sub3(from.position, from.target)) + (length3(sub3(to.position, to.target)) - length3(sub3(from.position, from.target))) * t;
-  const up = lerpPoint(from.up, to.up, t);
+  const up = new math.Vector3(0, 1, 0).applyQuaternion(orientation);
 
-  return { ...to, position: add3(target, mul3(direction, distance)), target, up: length3(up) > 1e-6 ? unit3(up) : to.up };
+  return { ...to, position: add3(target, mul3(direction, distance)), target, up };
 }
 
 /** Orbit/pan/dolly, selected-item focus and clickable six-axis view helper. */
@@ -47,14 +38,21 @@ export class ViewportGizmo3D extends Gizmo3D {
   // An identity parent keeps the editor pose in world space and makes a scene camera's
   // parent assignment, including null, detectable even when its local pose is unchanged.
   private readonly viewTransform = new Transform({}, new Transform());
-  private editedScene?: { composition: Composition, transform: Transform, fov: number, disconnect: () => void };
-  private navigation?: { initial: CameraEditData, current: CameraEditData, composition: Composition };
+  private editedScene?: { composition: Composition, transform: Transform, fov: number };
+  private navigation?: {
+    initial: CameraEditData,
+    current: CameraEditData,
+    composition: Composition,
+    /** Completed edits retain their result while interpolation finishes. */
+    committed?: boolean,
+  };
   private alignment?: { to: CameraEditData, elapsed: number };
+  private smoothing = false;
   private start?: math.Vector2;
   private action?: 'orbit' | 'pan' | 'look';
   private flyKeys = new Set<string>();
   private flyTime = 0;
-  private flySpeed = 1;
+  private flySpeed = 5;
   get state (): CameraEditData | undefined {
     const composition = this.owner.composition;
 
@@ -98,22 +96,16 @@ export class ViewportGizmo3D extends Gizmo3D {
       const transform = new Transform({ position: source.position, quat: source.quat }, source.parentTransform ?? undefined);
 
       transform.rotation.copyFrom(source.rotation);
-      this.editedScene = {
-        composition, transform, fov: camera.fov,
-        disconnect: composition.engine.on('update', this.afterSceneUpdate),
-      };
+      this.editedScene = { composition, transform, fov: camera.fov };
     }
-    const eye = vector(pose.position);
-    const orientation = new math.Quaternion().setFromRotationMatrix(new math.Matrix4().lookAt(eye, vector(pose.target), vector(pose.up)));
-
-    this.viewTransform.setTransform({ position: eye, quat: orientation });
+    this.viewTransform.setTransform({ position: vector(pose.position), quat: cameraOrientation(pose) });
     camera.setTransform(this.viewTransform);
     camera.fov = pose.fov;
     this.sceneId = composition.id;
     this.pose = pose;
   }
 
-  private readonly afterSceneUpdate = (): void => {
+  private syncSceneCamera (): void {
     const scene = this.editedScene;
 
     if (!scene || !this.pose || scene.composition !== this.owner.composition) { return; }
@@ -131,14 +123,13 @@ export class ViewportGizmo3D extends Gizmo3D {
     if (fovChanged) { scene.fov = camera.fov; }
     camera.setTransform(this.viewTransform);
     camera.fov = this.pose.fov;
-  };
+  }
 
   /** Return rendering and picking to the camera animated by the scene. */
   restoreSceneCamera (): void {
     const scene = this.editedScene;
 
     if (!scene) { return; }
-    scene.disconnect();
     const camera = scene.composition.camera;
 
     camera.setTransform(scene.transform);
@@ -154,8 +145,16 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.owner.emit('camerachange', { camera, phase });
   }
 
+  /** Stop interpolation at the displayed pose before another interaction takes over. */
+  stopNavigation (): void {
+    if (this.navigation) {
+      this.navigation.current = this.state ?? this.navigation.current;
+      this.finish(false);
+    }
+  }
+
   private beginNavigation (): CameraEditData | undefined {
-    this.cancel();
+    this.stopNavigation();
     const composition = this.owner.composition;
     const camera = this.state;
 
@@ -174,14 +173,15 @@ export class ViewportGizmo3D extends Gizmo3D {
     return !!this.navigation && this.navigation.composition === this.owner.composition;
   }
 
-  private preview (camera: CameraEditData): void {
+  private preview (camera: CameraEditData, smooth = false): void {
     if (!this.navigation || !this.valid()) {
       this.cancel();
 
       return;
     }
     this.navigation.current = camera;
-    this.publish(camera, 'update');
+    this.smoothing = smooth;
+    if (!smooth) { this.publish(camera, 'update'); }
   }
 
   private finish (canceled: boolean): void {
@@ -189,20 +189,21 @@ export class ViewportGizmo3D extends Gizmo3D {
 
     this.navigation = undefined;
     this.alignment = undefined;
+    this.smoothing = false;
     this.start = undefined;
     this.action = undefined;
     this.flyKeys.clear();
-    this.flySpeed = 1;
     if (navigation && navigation.composition === this.owner.composition) {
       this.publish(canceled ? navigation.initial : navigation.current, canceled ? 'cancel' : 'commit');
     }
   }
 
-  override onUpdate (): void {
+  override onUpdate (deltaTime?: number): void {
     const composition = this.owner.composition;
 
     if (this.editedScene && this.editedScene.composition !== composition) { this.restoreSceneCamera(); }
     if (composition && composition.id !== this.sceneId) { this.applyToComposition(); }
+    this.syncSceneCamera();
     const navigation = this.navigation;
 
     if (!navigation) { return; }
@@ -211,7 +212,7 @@ export class ViewportGizmo3D extends Gizmo3D {
 
       return;
     }
-    const now = performance.now(), dt = Math.min(0.05, Math.max(0, (now - this.flyTime) / 1000));
+    const now = performance.now(), dt = Math.min(0.05, Math.max(0, (deltaTime ?? now - this.flyTime) / 1000));
 
     this.flyTime = now;
     if (this.alignment) {
@@ -226,13 +227,24 @@ export class ViewportGizmo3D extends Gizmo3D {
     }
     if (this.navigation && this.action === 'look' && this.flyKeys.size) {
       const down = (key: string) => this.flyKeys.has(key) ? 1 : 0;
-      const camera = this.navigation.current, distance = Math.max(0.1, length3(sub3(camera.position, camera.target))) * dt * this.flySpeed;
+      const camera = this.navigation.current, distance = dt * this.flySpeed;
 
       this.preview(flyEditorCamera(camera, down('d') - down('a'), down('e') - down('q'), down('w') - down('s'), distance));
     }
+    if (this.smoothing && dt > 0) {
+      const target = navigation.current;
+      const current = interpolateCamera(this.state!, target, Math.min(1, dt / 0.05));
+      const tolerance = Math.max(1, length3(sub3(target.position, target.target))) * 1e-6;
+      const settled = length3(sub3(current.position, target.position)) + length3(sub3(current.target, target.target)) < tolerance;
+
+      this.publish(settled ? target : current, 'update');
+      if (this.navigation !== navigation || navigation.current !== target || !this.smoothing) { return; }
+      if (settled) { this.smoothing = false; }
+      if (settled && !this.action) { this.finish(false); }
+    }
   }
   override cancel (): void {
-    this.finish(true);
+    this.finish(!this.navigation?.committed);
   }
   override onMouseDown (event: InputEventMouseButton): void {
     if (!this.owner.composition) { return; }
@@ -266,39 +278,41 @@ export class ViewportGizmo3D extends Gizmo3D {
       this.preview(orbitEditorCamera(before, dx, dy));
     } else {
       const forward = unit3(sub3(before.target, before.position)), right = unit3(cross3(forward, before.up)), up = unit3(cross3(right, forward));
-      const size = this.owner.viewportSize;
-      const { camera, editorTransform } = this.navigation.composition;
-      const projection = camera.getProjectionMatrix().elements;
       const depth = length3(sub3(before.position, before.target));
-      const width = size.x * editorTransform.x * projection[0];
-      const height = size.y * editorTransform.y * projection[5];
+      const delta = mul3(add3(mul3(right, -dx), mul3(up, dy)), depth / 600);
 
-      if (!width || !height) { return; }
-      const delta = add3(mul3(right, -2 * dx * depth / width), mul3(up, 2 * dy * depth / height));
-
-      this.preview({ ...before, position: add3(before.position, delta), target: add3(before.target, delta) });
+      this.preview({ ...before, position: add3(before.position, delta), target: add3(before.target, delta) }, true);
     }
     event.accept();
   }
   override onMouseUp (event: InputEventMouseButton): void {
     if (!this.navigation || this.alignment) { return; }
-    this.finish(event.isCanceled() || !this.valid());
+    if (!event.isCanceled() && this.valid() && this.smoothing) {
+      this.navigation.committed = true;
+      this.start = undefined;
+      this.action = undefined;
+    } else { this.finish(event.isCanceled() || !this.valid()); }
     event.accept();
   }
   onMouseWheel (event: InputEventMouseButton): void {
     if (event.buttonIndex !== MouseButton.WheelUp && event.buttonIndex !== MouseButton.WheelDown) { return; }
     const direction = event.buttonIndex === MouseButton.WheelUp ? -1 : 1;
+    const factor = 1 + Math.abs(event.factor) * 0.08;
 
     if (this.navigation && !this.alignment) {
-      if (this.action === 'look') { this.flySpeed = Math.max(0.1, Math.min(100, this.flySpeed * Math.exp(-direction * 0.2))); event.accept(); }
+      if (this.action === 'look') {
+        this.flySpeed = Math.max(0.01, Math.min(10000, this.flySpeed * (direction < 0 ? factor : 1 / factor)));
+        event.accept();
 
-      return;
+        return;
+      }
+      if (this.action) { return; }
     }
-    if (this.alignment) { this.finish(false); }
-    const camera = this.state;
+    const camera = this.alignment || !this.navigation ? this.beginNavigation() : this.navigation.current;
 
     if (!camera) { return; }
-    this.publish(dollyEditorCamera(camera, Math.exp(direction * Math.min(0.5, Math.abs(event.factor) * 0.12))), 'commit');
+    this.preview(dollyEditorCamera(camera, direction < 0 ? 1 / factor : factor), true);
+    this.navigation!.committed = true;
     event.accept();
   }
   override onKeyDown (event: InputEventKey): void {
@@ -320,7 +334,6 @@ export class ViewportGizmo3D extends Gizmo3D {
     const composition = this.owner.composition;
 
     if (!composition || !selected.length || size.x <= 0 || size.y <= 0) { return; }
-    if (this.navigation) { this.finish(false); }
     const camera = this.state;
 
     if (!camera) { return; }
@@ -340,8 +353,9 @@ export class ViewportGizmo3D extends Gizmo3D {
     const halfFov = Math.atan(Math.min(tanHalfX, tanHalfY));
     const direction = unit3(sub3(camera.position, camera.target));
 
-    if (!(halfFov > 0)) { return; }
-    this.publish({ ...camera, target: center, position: add3(center, mul3(direction, radius / Math.sin(halfFov) * 1.3)) }, 'commit');
+    if (!(halfFov > 0) || !this.beginNavigation()) { return; }
+    this.preview({ ...camera, target: center, position: add3(center, mul3(direction, radius / Math.sin(halfFov) * 1.3)) }, true);
+    this.navigation!.committed = true;
   }
   align (axis: number, sign: number): void {
     const camera = this.beginNavigation();

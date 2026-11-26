@@ -1,9 +1,8 @@
 import { math, MouseButton, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type VFXItem } from '@galacean/effects';
 import type { Editor3D } from '../editor-3d';
-import { rayAxisParameter } from '../../math/geometry-3d';
 import { rayPlanePoint } from '../../math/plane';
 import type { Point2, Point3 } from '../../math/types';
-import { sub3, mul3, dot3, cross3, unit3 } from '../../math/vector3';
+import { sub3, mul3, dot3, cross3, unit3, length3 } from '../../math/vector3';
 import { Gizmo3D, type Transform3DActionEvent, type Transform3DOperation, type Viewport3DSpace } from './gizmo-3d';
 import type { NativeGizmoType } from './viewport-gizmo-picker';
 
@@ -33,9 +32,12 @@ interface TransformDrag {
   frame: Frame,
   handle: Handle,
   start: Vector2,
-  startValue?: number,
-  startPoint?: Point3,
-  viewNormal?: Point3,
+  startPoint: Point3,
+  planeNormal: Point3,
+  viewNormal: Point3,
+  scaleDistance: number,
+  previousRotation: Point3,
+  rotationAngle: number,
 }
 
 function matchesLocal (item: VFXItem, value: LocalTransform): boolean {
@@ -129,30 +131,30 @@ export class TransformGizmo3D extends Gizmo3D {
     this.cancel('restart');
     const { pivot, rotation } = getTransformGizmoPose(selected, this.space);
     const frame = { pivot, rotation, axes: axes.map(axis => vector(axis).applyQuaternion(rotation)) };
+    const viewNormal = this.owner.composition!.camera.getInverseViewMatrix().transformNormal(new Vector3(0, 0, 1));
+    let planeNormal: Point3 = viewNormal;
+
+    if (typeof handle === 'number' && this.operation !== 'rotate') {
+      const axis = frame.axes[handle];
+
+      planeNormal = unit3(cross3(axis, cross3(axis, viewNormal)));
+    } else if (typeof handle === 'string' && handle !== 'view' && handle !== 'all') {
+      const [a, b] = this.planeAxes(handle);
+
+      planeNormal = cross3(frame.axes[a], frame.axes[b]);
+    }
+    const startPoint = rayPlanePoint(ray, frame.pivot, planeNormal);
+
+    if (!startPoint) { return; }
+    const offset = sub3(startPoint, pivot);
     const drag: TransformDrag = {
       action: { source: this, transformType: this.operation, itemIds: selected.map(item => item.getInstanceId()) },
       items: [], composition: this.owner.composition,
-      frame, handle, start: event.position.clone(),
+      frame, handle, start: event.position.clone(), startPoint, planeNormal, viewNormal,
+      scaleDistance: Math.max(length3(offset), 1e-6),
+      previousRotation: unit3(offset), rotationAngle: 0,
     };
 
-    if (typeof handle === 'number') {
-      if (this.operation === 'rotate') {
-        drag.startPoint = rayPlanePoint(ray, frame.pivot, frame.axes[handle]);
-        if (!drag.startPoint) { return; }
-      } else {
-        drag.startValue = rayAxisParameter(ray, frame.pivot, frame.axes[handle]);
-        if (drag.startValue === undefined) { return; }
-      }
-    } else if (handle === 'view') {
-      drag.viewNormal = unit3(ray.direction);
-      drag.startPoint = rayPlanePoint(ray, frame.pivot, drag.viewNormal);
-      if (!drag.startPoint) { return; }
-    } else if (handle !== 'all') {
-      const [a, b] = this.planeAxes(handle);
-
-      drag.startPoint = rayPlanePoint(ray, frame.pivot, cross3(frame.axes[a], frame.axes[b]));
-      if (!drag.startPoint) { return; }
-    }
     for (const item of selected) {
       const transform = item.transform;
       const parentWorld = (transform.getParentMatrix() ?? identity).clone();
@@ -180,48 +182,53 @@ export class TransformGizmo3D extends Gizmo3D {
     const ray = this.owner.ray(event.position);
 
     if (!ray) { return; }
-    const { frame, handle, start, startPoint, startValue, viewNormal } = drag;
+    const { frame, handle, start, startPoint, viewNormal } = drag;
+    const point = rayPlanePoint(ray, frame.pivot, drag.planeNormal);
+
+    if (!point) { return; }
+    const motion = sub3(point, startPoint);
     let operation = new Matrix4();
 
     if (this.operation === 'translate') {
-      let delta: Point3;
+      let delta = motion;
 
       if (typeof handle === 'number') {
-        const value = rayAxisParameter(ray, frame.pivot, frame.axes[handle]);
-
-        if (value === undefined) { return; }
-        let distance = value - startValue!;
+        let distance = dot3(motion, frame.axes[handle]);
 
         if (event.shiftPressed) { distance = Math.round(distance * 10) / 10; }
         delta = mul3(frame.axes[handle], distance);
-      } else if (handle === 'view') {
-        const p = viewNormal && rayPlanePoint(ray, frame.pivot, viewNormal);
-
-        if (!p || !startPoint) { return; }
-        delta = sub3(p, startPoint);
-      } else {
-        const [a, b] = this.planeAxes(handle); const p = rayPlanePoint(ray, frame.pivot, cross3(frame.axes[a], frame.axes[b]));
-
-        if (!p || !startPoint) { return; }
-        delta = sub3(p, startPoint);
       }
       operation.setPosition(vector(delta));
     } else if (this.operation === 'rotate' && typeof handle === 'number') {
-      const p = rayPlanePoint(ray, frame.pivot, frame.axes[handle]);
+      const axis = frame.axes[handle];
+      const edgeOn = Math.abs(dot3(viewNormal, axis)) < Math.cos(85 * Math.PI / 180);
+      let angle: number;
 
-      if (!p || !startPoint) { return; }
-      const a = unit3(sub3(startPoint, frame.pivot)), b = unit3(sub3(p, frame.pivot));
-      let angle = Math.atan2(dot3(frame.axes[handle], cross3(a, b)), dot3(a, b));
+      if (edgeOn) {
+        angle = dot3(motion, cross3(viewNormal, axis)) * Math.PI / (2 * drag.scaleDistance);
+      } else {
+        const current = unit3(sub3(point, frame.pivot));
+        const cross = cross3(drag.previousRotation, current);
 
+        drag.rotationAngle += Math.atan2(length3(cross), dot3(drag.previousRotation, current)) * Math.sign(dot3(axis, cross));
+        drag.previousRotation = current;
+        angle = drag.rotationAngle;
+      }
       if (event.shiftPressed) { angle = Math.round(angle / (Math.PI / 12)) * Math.PI / 12; }
-      operation = around(frame.pivot, new Matrix4().setFromQuaternion(new Quaternion().setFromAxisAngle(vector(frame.axes[handle]), angle)));
+      operation = around(frame.pivot, new Matrix4().setFromQuaternion(new Quaternion().setFromAxisAngle(vector(axis), angle)));
     } else if (this.operation === 'scale') {
-      const value = typeof handle === 'number' ? rayAxisParameter(ray, frame.pivot, frame.axes[handle]) : undefined;
-      let factor = handle === 'all' ? Math.exp((start.y - event.position.y) / 100) : (value ?? startValue!) / startValue!;
+      const scale = new Vector3(1, 1, 1);
+      const affected = typeof handle === 'number' ? [handle] : handle === 'all' ? [0, 1, 2] : this.planeAxes(handle);
 
-      if (!Number.isFinite(factor)) { return; } factor = Math.max(0.01, factor);
-      if (event.shiftPressed) { factor = Math.max(0.1, Math.round(factor * 10) / 10); }
-      const scale = new Vector3(handle === 0 || handle === 'all' ? factor : 1, handle === 1 || handle === 'all' ? factor : 1, handle === 2 || handle === 'all' ? factor : 1);
+      for (const index of affected) {
+        let factor = handle === 'all'
+          ? 1 + (start.y - event.position.y) / 100
+          : 1 + dot3(motion, frame.axes[index]) / drag.scaleDistance;
+
+        factor = Math.max(0.01, factor);
+        if (event.shiftPressed) { factor = Math.max(0.1, Math.round(factor * 10) / 10); }
+        scale.setElement(index, factor);
+      }
       const basis = new Matrix4().setFromQuaternion(frame.rotation);
 
       operation = around(frame.pivot, basis.clone().multiply(new Matrix4().compose(new Vector3(), new Quaternion(), scale)).multiply(basis.invert()));
