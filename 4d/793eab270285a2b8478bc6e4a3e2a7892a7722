@@ -1,0 +1,31 @@
+plugin-packages/editor-gizmo/src/3d/gizmo/editor-primitives-material.ts
+  s_5ac777588e8b59::t_8fb769418a1087 37
+packages/effects-core/src/render/renderer.ts
+  s_5ac777588e8b59::t_8fb769418a1087 235,237-238
+  s_5ac777588e8b59::t_43c10caef1361c 424
+  s_5ac777588e8b59::t_025f518da0cf7c 376,419
+  s_5ac777588e8b59::t_11d70b8280ad6b 415,417
+packages/effects-core/src/render/create-copy-shader.ts
+  s_5ac777588e8b59::t_11d70b8280ad6b 22,27
+  s_5ac777588e8b59::t_8fb769418a1087 7,13-19,23,30
+plugin-packages/editor-gizmo/src/3d/gizmo/editor-primitives.ts
+  s_5ac777588e8b59::t_11d70b8280ad6b 1-5,38-39,44-61,72,74,88-94
+  s_5ac777588e8b59::t_43c10caef1361c 75-76
+  s_5ac777588e8b59::t_4f2641e0123e09 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4d793eab270285a2b8478bc6e4a3e2a7892a7722",
+  "prompts": {},
+  "sessions": {
+    "s_5ac777588e8b59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21b1f-8b65-7a23-b44e-d96e5f1ae2bb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
