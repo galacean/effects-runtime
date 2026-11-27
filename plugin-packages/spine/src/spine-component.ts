@@ -1,8 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas, TrackEntry } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, Engine, HitTestTriangleParams, Maskable,
-  MaskMode, Renderer, Texture,
+  BinaryAsset, Engine, HitTestTriangleParams, Maskable, Renderer, Texture,
 } from '@galacean/effects';
 import {
   effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
@@ -98,19 +97,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
    * png 是否预乘 alpha
    */
   pma: boolean;
-  /**
-   * renderer 和 mask 数据
-   */
-  rendererOptions: NonNullable<spec.SpineComponent['renderer']> & {
-    /**
-     * @deprecated 2.10 起此字段无实际意义，runtime 不再赋值，仅为兼容旧版本读取保留。
-     */
-    mask?: number,
-    /**
-     * @deprecated 2.10 起此字段无实际意义，runtime 不再赋值，仅为兼容旧版本读取保留。
-     */
-    maskMode?: MaskMode,
-  };
+  rendererOptions: NonNullable<spec.SpineComponent['renderer']>;
   options: spec.PluginSpineOption;
 
   resource: SpineResource;
@@ -161,11 +148,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
-    // @ts-expect-error 暂时沿用旧版 Spine 组件的 mask 字段。
-    if (data.mask) {
-      // @ts-expect-error 暂时沿用旧版 Spine 组件的 mask 字段。
-      this.maskManager.setMaskOptions(this.engine, data.mask);
-    }
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -208,7 +190,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.state.apply(this.skeleton);
     this.onUpdate(0);
     this.resize();
-    this.materials = this.content?.meshGroups.map(mg => mg.mesh.material) ?? [];
   }
 
   override onUpdate (dt: number) {
@@ -221,6 +202,10 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.skeleton.updateWorldTransform(Physics.update);
     if (this.content) {
       this.content.update();
+      this.materials.length = this.content.meshGroups.length;
+      for (let i = 0; i < this.materials.length; i++) {
+        this.materials[i] = this.content.meshGroups[i].mesh.material;
+      }
     }
   }
 
@@ -229,14 +214,8 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
 
-    this.maskManager.drawStencilMask(renderer, this);
-
-    for (let i = 0; i < this.content.meshGroups.length; i++) {
-      const material = this.content.meshGroups[i].mesh.material;
-
-      material.setVector2('_Size', new Vector2(this.startSize * this.scaleFactor, this.startSize * this.scaleFactor));
-    }
-
+    this.updateMaterialSize();
+    this.maskProcessor.applyMasks(renderer, this);
     this.content.render(renderer);
   }
 
@@ -248,6 +227,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
 
+    this.updateMaterialSize();
     const worldMatrix = this.content.transform.getWorldMatrix();
 
     this.content.meshGroups.forEach(spineMesh => {
@@ -255,8 +235,16 @@ export class SpineComponent extends RendererComponent implements Maskable {
 
       mesh.worldMatrix = worldMatrix;
 
-      this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, worldMatrix, mesh.material, maskRef);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, mesh.geometry, worldMatrix, mesh.material, maskRef);
     });
+  }
+
+  private updateMaterialSize (): void {
+    const size = this.startSize * this.scaleFactor;
+
+    for (const spineMesh of this.content?.meshGroups ?? []) {
+      spineMesh.mesh.material.setVector2('_Size', new Vector2(size, size));
+    }
   }
 
   override onDestroy () {

@@ -8,9 +8,7 @@ import type { Geometry, Renderer } from '../render';
 import { getWorldTriangles } from '../render/geometry-triangles';
 import { RendererComponent } from './renderer-component';
 
-interface MeshComponentData extends spec.ComponentData {
-  /** @ts-expect-error 暂时沿用旧版 spec 的 MaskOptions。 */
-  mask?: spec.MaskOptions,
+interface MeshComponentData extends Omit<spec.MaskableGraphicData, 'renderer'> {
   geometry?: spec.DataPath,
 }
 
@@ -28,7 +26,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer, this);
+    this.maskProcessor.applyMasks(renderer, this);
 
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
@@ -45,7 +43,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
-      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);
     }
   }
 
@@ -65,12 +63,6 @@ export class MeshComponent extends RendererComponent implements Maskable {
 
     if (data.geometry !== undefined) {
       this.geometry = this.findObject<Geometry>(data.geometry);
-    }
-
-    const maskOptions = data.mask;
-
-    if (maskOptions) {
-      this.maskManager.setMaskOptions(this.engine, maskOptions);
     }
   }
 }

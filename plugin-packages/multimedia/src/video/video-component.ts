@@ -4,14 +4,12 @@ import { MaskableGraphic, Texture, TextureSourceType, effectsClass, math, spec }
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask'> {
+export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'> {
   listIndex?: number,
   renderer: {
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  /** @ts-expect-error 暂时沿用旧版 spec 的 MaskOptions。 */
-  mask?: spec.MaskOptions,
 }
 
 let seed = 0;

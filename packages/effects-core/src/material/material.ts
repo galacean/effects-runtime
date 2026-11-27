@@ -261,11 +261,24 @@ export class Material extends Asset implements Disposable {
     value !== undefined && this.materialState.setStencilTest(value);
   }
 
-  get stencilMask () {
-    return this.materialState.stencilMask;
+  /**
+   * stencil 比较时参与读取的位，不影响写入范围。
+   */
+  get stencilReadMask () {
+    return this.materialState.stencilReadMask;
   }
-  set stencilMask (value: UndefinedAble<[number, number]>) {
-    value && this.materialState.setStencilMask(value);
+  set stencilReadMask (value: UndefinedAble<[number, number]>) {
+    value && this.materialState.setStencilReadMask(value);
+  }
+
+  /**
+   * stencil 操作允许写入的位，不影响比较范围。
+   */
+  get stencilWriteMask () {
+    return this.materialState.stencilWriteMask;
+  }
+  set stencilWriteMask (value: UndefinedAble<[number, number]>) {
+    value && this.materialState.setStencilWriteMask(value);
   }
 
   get stencilRef () {

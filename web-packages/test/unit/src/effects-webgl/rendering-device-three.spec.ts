@@ -66,6 +66,25 @@ describe('threejs/rendering-device', () => {
     expect(gl.isContextLost()).equals(false);
   });
 
+  it('maps stencil read and write masks to separate Three material properties', () => {
+    const material = new ThreeMaterial(engine);
+
+    try {
+      expect(material.stencilReadMask).deep.equals([0xff, 0xff]);
+      expect(material.stencilWriteMask).deep.equals([0xff, 0xff]);
+      material.stencilReadMask = [1, 1];
+      expect(material.material.stencilFuncMask).equals(1);
+      expect(material.material.stencilWriteMask).equals(0xff);
+      material.stencilWriteMask = [0, 0];
+      expect(material.material.stencilFuncMask).equals(1);
+      expect(material.material.stencilWriteMask).equals(0);
+      expect(material.stencilReadMask).deep.equals([1, 1]);
+      expect(material.stencilWriteMask).deep.equals([0, 0]);
+    } finally {
+      material.dispose();
+    }
+  });
+
   it('tracks scene load managers and clears references with the display object', async () => {
     // Reuse this suite's initialized host engine to exercise the loading facade.
     const displayObject = Object.create(ThreeDisplayObject.prototype) as ThreeDisplayObject;

@@ -24,7 +24,8 @@ export interface MaterialBlendingStates {
 
 export interface MaterialStencilStates {
   stencilTest?: boolean,
-  stencilMask?: [front: GLenum, back: GLenum],
+  stencilReadMask?: [front: GLenum, back: GLenum],
+  stencilWriteMask?: [front: GLenum, back: GLenum],
   stencilRef?: [front: GLenum, back: GLenum],
   stencilFunc?: [front: GLenum, back: GLenum],
   stencilOpFail?: [front: GLenum, back: GLenum],
@@ -93,39 +94,16 @@ export interface Maskable {
 }
 
 /**
- * 蒙版引用信息，支持正面和反面蒙版
+ * 轨道遮罩引用信息，支持正向和反向裁剪
  */
-export interface MaskReference {
+export interface TrackMatteReference {
   /**
-   * 蒙版对象
+   * 轨道遮罩来源
    */
   maskable: Maskable,
   /**
    * 是否反向蒙版（true: 反向遮挡，false: 正向遮挡）
    */
   inverted: boolean,
-}
-
-/**
- * @deprecated 2.10 起蒙版模式不再通过单一枚举表达，runtime 内部已不再使用此枚举。
- * 仅为兼容旧版本对外导出的接口而保留，请改用 `MaskProcessor` 的多蒙版 API。
- */
-export enum MaskMode {
-  /**
-   * 无
-   */
-  NONE = 0,
-  /**
-   * 蒙版
-   */
-  MASK = 1,
-  /**
-   * 被遮挡
-   */
-  OBSCURED = 2,
-  /**
-   * 被反向遮挡
-   */
-  REVERSE_OBSCURED = 3,
 }
 

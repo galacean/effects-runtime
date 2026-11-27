@@ -36,7 +36,7 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
       'Start Point', 'End Point', 'Scale Mode', 'Scale Factor', 'Alignment', 'Cap', 'Join', 'Miter Limit', 'Effects',
       'Width Profile', 'Width Points', 'Preset', 'Uniform', 'Wedge', 'Taper', 'Eye', 'Ascent', 'Descent', 'Segment ID', 'Bind to Contour',
       'Fill Trim Path', 'Stroke Trim Path', 'Enabled', 'Mode', 'Start', 'End', 'Offset', 'Rendering', 'Blending', 'Side',
-      'Depth Write', 'Transparent Occlusion', 'Render Order', 'Mask', 'Is Mask', 'Alpha Mask', 'References', 'Inverted'];
+      'Depth Write', 'Transparent Occlusion', 'Render Order', 'Track Matte', 'Is Track Matte', 'Source Visible', 'Alpha Mask', 'References', 'Source', 'Inverted'];
   }
 
   override build (group: PropertyGroup): void {
@@ -68,7 +68,7 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     this.buildTrimPath(effects.group('FillTrim', 'Fill Trim Path', false), component, 'fillTrimPath');
     this.buildTrimPath(effects.group('StrokeTrim', 'Stroke Trim Path', false), component, 'strokeTrimPath');
     this.buildRenderer(group.group('Rendering', 'Rendering', false), component);
-    this.buildMask(group.group('Mask', 'Mask', false), component);
+    this.buildTrackMatte(group.group('TrackMatte', 'Track Matte', false), component);
   }
 
   private read (component: ShapeComponent): Data { return readShapeData(component); }
@@ -220,14 +220,17 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
     this.buildRenderingProperties(group);
   }
 
-  private buildMask (group: PropertyGroup, component: ShapeComponent): void {
+  private buildTrackMatte (group: PropertyGroup, component: ShapeComponent): void {
     group.clear();
-    const read = (): Data => this.read(component).mask;
-    const edit = (update: (mask: Data) => void): void => editShapeData(component, data => update(data.mask));
-    const rebuild = (): void => this.buildMask(group, component);
+    const read = (): Data => this.read(component).trackMatte;
+    const edit = (update: (matte: Data) => void): void => editShapeData(component, data => update(data.trackMatte));
+    const rebuild = (): void => this.buildTrackMatte(group, component);
 
-    group.boolean('Is Mask', { read: () => read().isMask, write: value => edit(mask => { mask.isMask = value; }) });
-    group.boolean('Alpha Mask', { read: () => read().alphaMaskEnabled, write: value => edit(mask => { mask.alphaMaskEnabled = value; }) });
+    group.boolean('Is Track Matte', { read: () => read().isTrackMatte, write: value => {
+      edit(matte => { matte.isTrackMatte = value; }); rebuild();
+    } });
+    group.boolean('Source Visible', { read: () => read().sourceVisible, write: value => edit(matte => { matte.sourceVisible = value; }) });
+    group.boolean('Alpha Mask', { read: () => read().alphaMaskEnabled, write: value => edit(matte => { matte.alphaMaskEnabled = value; }) });
     const references = group.group('References', 'References');
     const candidates: { component: RendererComponent, label: string }[] = [];
     const visit = (item: VFXItem, path: string): void => {
@@ -244,19 +247,25 @@ export class ShapeDetailsCustomization extends DefaultObjectDetails {
 
     if (root) { visit(root, ''); }
 
-    (read().references as Data[]).forEach((_, index) => {
-      const reference = references.group(String(index), 'Mask ' + (index + 1));
-      const value = (): Data => read().references[index];
+    const usedSources = new Set<string>((read().references as Data[]).map(ref => ref.source.id));
+    const available = candidates.filter(candidate => !usedSources.has(candidate.component.getInstanceId()));
 
-      reference.choice('Mask', { read: () => candidates.findIndex(candidate => candidate.component === (value().mask ? component.findObject(value().mask) : null)) + 1,
-        write: selected => edit(mask => {
-          if (selected) { mask.references[index].mask = { id: candidates[selected - 1].component.getInstanceId() }; } else { delete mask.references[index].mask; }
-        }) }, ['None', ...candidates.map(candidate => candidate.label)]);
-      reference.boolean('Inverted', { read: () => value().inverted ?? false, write: value => edit(mask => { mask.references[index].inverted = value; }) });
-      shapeCollectionActions(reference, [{ label: 'Remove Mask', action: () => edit(mask => mask.references.splice(index, 1)) }], rebuild);
+    (read().references as Data[]).forEach((_, index) => {
+      const reference = references.group(String(index), 'Track Matte ' + (index + 1));
+      const value = (): Data => read().references[index];
+      const choices = candidates.filter(candidate => candidate.component.getInstanceId() === value().source.id || !usedSources.has(candidate.component.getInstanceId()));
+
+      reference.choice('Source', { read: () => choices.findIndex(candidate => candidate.component.getInstanceId() === value().source.id),
+        write: selected => {
+          edit(matte => { matte.references[index].source = { id: choices[selected].component.getInstanceId() }; }); rebuild();
+        } }, choices.map(candidate => candidate.label));
+      reference.boolean('Inverted', { read: () => value().inverted ?? false, write: value => edit(matte => { matte.references[index].inverted = value; }) });
+      shapeCollectionActions(reference, [{ label: 'Remove Track Matte', action: () => edit(matte => matte.references.splice(index, 1)) }], rebuild);
     });
-    if (read().references.length < 254) {
-      addShapeCollectionItem(references, 'Add Mask Reference', () => edit(mask => mask.references.push({ inverted: false })), rebuild);
+    if (!read().isTrackMatte && read().references.length < 254 && available.length > 0) {
+      addShapeCollectionItem(references, 'Add Track Matte Reference', () => edit(matte => {
+        matte.references.push({ source: { id: available[0].component.getInstanceId() }, inverted: false });
+      }), rebuild);
     }
   }
 }

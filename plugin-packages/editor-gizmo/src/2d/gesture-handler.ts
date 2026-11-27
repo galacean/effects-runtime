@@ -843,12 +843,13 @@ export class GestureHandler extends Control implements GizmoOwner {
       return;
     }
     const itemId = this.selection.hoverOverlayItemId;
+    const container = this.engine.canvas.parentElement;
 
-    if (!itemId) {
+    if (!itemId || !container) {
       return;
     }
     const item = getPlayerItemById(this.engine.sceneServer.compositions[0], itemId);
-    const transform = item ? getItemViewTransform(item, GizmoViewportUtils.getContainerSize(this.engine.canvas.parentElement!)) : undefined;
+    const transform = item ? getItemViewTransform(item, GizmoViewportUtils.getContainerSize(container)) : undefined;
 
     if (!transform) {
       return;

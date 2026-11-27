@@ -7,7 +7,6 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
-import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
@@ -842,6 +841,7 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
 /**
  * 3.9 数据适配：迁移粒子发射器路径，将元素 transform 曲线转换为绝对值，并合并片段数据。
  * 粒子自身的生命周期曲线仍由 ParticleSystem 消费。
+ * 将旧 mask 轨道遮罩改为 trackMatte，保留来源颜色绘制。
  */
 export function version38Migration (json: JSONScene): JSONScene {
   // 预合成引用 refId 从 item.content.options 提升到 item 顶层，
@@ -861,6 +861,8 @@ export function version38Migration (json: JSONScene): JSONScene {
   const bindings: spec.SceneBindingData[] = [];
 
   for (const component of json.components) {
+    processTrackMatte(component);
+
     if (component.dataType !== DataType.CompositionComponent) {
       continue;
     }
@@ -1118,12 +1120,11 @@ export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer?.maskMode;
 
-  if (!maskMode || maskMode === MaskMode.NONE) {
-
+  if (!maskMode) {
     return;
   }
 
-  if (maskMode === MaskMode.MASK) {
+  if (maskMode === 1) {
     renderContent.mask = {
       isMask: true,
     };
@@ -1139,6 +1140,39 @@ export function processMask (renderContent: any) {
       },
     };
   }
+}
+
+function processTrackMatte (renderContent: spec.ComponentData & {
+  mask?: {
+    isMask?: boolean,
+    alphaMaskEnabled?: boolean,
+    references?: { mask: spec.DataPath, inverted?: boolean }[],
+  },
+  trackMatte?: spec.TrackMatteOptions,
+}) {
+  const { mask } = renderContent;
+
+  if (renderContent.dataType === DataType.MaskComponent || mask === undefined) {
+    return;
+  }
+
+  if (renderContent.trackMatte === undefined) {
+    const references: spec.TrackMatteReferenceData[] = [];
+
+    for (const reference of mask.references ?? []) {
+      if (reference.mask) {
+        references.push({ source: reference.mask, inverted: reference.inverted });
+      }
+    }
+
+    renderContent.trackMatte = {
+      isTrackMatte: mask.isMask ?? false,
+      sourceVisible: true,
+      alphaMaskEnabled: mask.alphaMaskEnabled ?? false,
+      references,
+    };
+  }
+  delete renderContent.mask;
 }
 
 function processMaskReference (renderContent: any) {

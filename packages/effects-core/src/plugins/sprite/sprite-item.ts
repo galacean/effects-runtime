@@ -240,9 +240,7 @@ export class SpriteComponent extends MaskableGraphic {
     }
   }
 
-  /** @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。 */
   override fromData (data: spec.SpriteComponentData): void {
-    // @ts-expect-error MaskableGraphic 暂时沿用旧版必填的 renderer。
     super.fromData(data);  // MaskableGraphic: 设 renderer.texture（whiteTexture 或 data.renderer.texture）、_MainTex、_Color
 
     // 单 split / 新数据流：引用 Sprite 资产，渲染读 this.sprite

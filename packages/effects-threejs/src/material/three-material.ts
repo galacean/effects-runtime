@@ -288,12 +288,24 @@ export class ThreeMaterial extends Material {
   }
 
   /**
-   * 获取模板缓冲区
+   * 获取模板读取掩码
    */
-  override get stencilMask () {
+  override get stencilReadMask () {
+    return [this.material.stencilFuncMask, this.material.stencilFuncMask];
+  }
+  override set stencilReadMask (value: UndefinedAble<[number, number]>) {
+    if (value) {
+      this.material.stencilFuncMask = value[0];
+    }
+  }
+
+  /**
+   * 获取模板写入掩码
+   */
+  override get stencilWriteMask () {
     return [this.material.stencilWriteMask, this.material.stencilWriteMask];
   }
-  override set stencilMask (value: UndefinedAble<[number, number]>) {
+  override set stencilWriteMask (value: UndefinedAble<[number, number]>) {
     if (value) {
       this.material.stencilWriteMask = value[0];
     }

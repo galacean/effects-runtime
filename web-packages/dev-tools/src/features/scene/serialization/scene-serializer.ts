@@ -39,7 +39,7 @@ const TRANSIENT = new Set(['engine', 'item', 'guid', 'definition', 'id', 'name',
   'parent', 'parentId', 'children', 'components', 'composition', 'items', 'sceneBindings', 'sourceScene', 'timelineAsset', 'time', 'visible', 'enabled', 'isActive', 'active',
   'disposed', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isEnabled', 'isDuringPlay', 'isEnded', 'isEndCalled',
   'isDirty', 'renderer', 'geometry', 'defaultGeometry', 'boundingBoxInfo', 'material', 'materials', 'canvas', 'context',
-  'text', 'textStyle', 'textLayout', 'maxLineWidth', 'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'maskManager',
+  'text', 'textStyle', 'textLayout', 'maxLineWidth', 'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'maskProcessor',
   'frameClipMasks', 'control', 'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty']);
 
 function isRuntimeField (object: EffectsObject, key: string): boolean {

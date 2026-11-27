@@ -24,7 +24,7 @@ export class RendererComponent extends Component {
    * Internal utility.
    * Not part of the public API — do not rely on this in your code.
    */
-  maskManager: MaskProcessor = new MaskProcessor();
+  maskProcessor: MaskProcessor = new MaskProcessor();
 
   protected _priority = 0;
 
@@ -46,8 +46,9 @@ export class RendererComponent extends Component {
     }
   }
 
-  override fromData (data: spec.RendererComponentData): void {
+  override fromData (data: spec.RendererComponentData & { trackMatte?: spec.TrackMatteOptions }): void {
     super.fromData(data);
+    this.maskProcessor.loadTrackMatte(this.engine, data);
     if (data.materials !== undefined) {
       this.materials = data.materials.map(material => this.findObject<Material>(material));
     }

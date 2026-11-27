@@ -131,7 +131,8 @@ export class ParticleSystem extends Component implements Maskable {
   props: ParticleSystemProps;
   time: number;
 
-  readonly maskManager: MaskProcessor;
+  /** @internal */
+  readonly maskProcessor: MaskProcessor;
 
   private generatedCount: number;
   private loopStartTime: number;
@@ -153,7 +154,7 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
-    this.maskManager = new MaskProcessor();
+    this.maskProcessor = new MaskProcessor();
 
     if (props) {
       this.fromData(props);
@@ -270,7 +271,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer = this.item.addComponent(ParticleSystemRenderer);
 
     this.renderer.setup(this.particleMeshProps, this.trailMeshProps);
-    this.renderer.maskManager = this.maskManager;
+    this.renderer.maskProcessor = this.maskProcessor;
     this.meshes = this.renderer.meshes;
 
     this.startEmit();
@@ -428,7 +429,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     for (const mesh of this.renderer.meshes) {
-      this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, mesh.worldMatrix, mesh.material, maskRef);
+      this.maskProcessor.drawStencilGeometry(this.engine.renderer, mesh.geometry, mesh.worldMatrix, mesh.material, maskRef);
     }
   }
 
@@ -929,11 +930,7 @@ export class ParticleSystem extends Component implements Maskable {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
-    // @ts-expect-error 暂时沿用旧版粒子组件的 mask 字段。
-    if (props.mask) {
-      // @ts-expect-error 暂时沿用旧版粒子组件的 mask 字段。
-      this.maskManager.setMaskOptions(this.engine, props.mask);
-    }
+    this.maskProcessor.loadTrackMatte(this.engine, props);
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,

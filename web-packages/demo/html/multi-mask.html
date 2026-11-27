@@ -1,21 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>多蒙版遮罩示例 - demo</title>
+  <link rel="icon" href="data:,">
+  <title>路径蒙版与轨道遮罩 · Galacean Effects</title>
   <style>
-    html, body, div, canvas { margin: 0; padding: 0; }
-    .container {
-      width: 375px;
-      height: 812px;
-      background-color: rgba(0,0,0,255);
-    }
+    :root { color-scheme: dark; font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #e4eaf2; background: #10141d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; }
+    button, select, input { font: inherit; }
+    button, select { color: inherit; background: #242d3d; border: 1px solid #3c4b62; border-radius: 7px; padding: 7px 10px; }
+    button { cursor: pointer; }
+    button:hover { background: #303e53; }
+    button:disabled { opacity: .45; cursor: default; }
+    input[type=range] { width: 100%; accent-color: #78b4ff; }
+    input[type=checkbox] { accent-color: #78b4ff; }
+    h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -.5px; }
+    h2 { font-size: 15px; margin: 0 0 12px; }
+    p { margin: 0; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; }
+    .muted { color: #9baac0; }
+    .badge { border: 1px solid #3c4b62; border-radius: 20px; padding: 5px 12px; white-space: nowrap; color: #b8cff1; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+    .tabs button { padding: 10px 18px; }
+    .tabs button[aria-pressed=true] { background: #214d83; border-color: #7bb7ff; color: white; }
+    main { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 20px; align-items: start; }
+    aside { display: flex; flex-direction: column; gap: 14px; }
+    .panel { background: #181f2b; border: 1px solid #303d50; border-radius: 10px; padding: 16px; }
+    label.field { display: block; margin-bottom: 12px; }
+    label.field > span { display: block; margin-bottom: 6px; color: #b9c6d7; }
+    select.wide { width: 100%; }
+    .hint { font-size: 12px; color: #9baac0; margin-top: 10px; }
+    #expected { margin-top: 12px; color: #c5d8f2; }
+    .mask-row { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 6px; margin: 10px 0; padding-bottom: 10px; border-bottom: 1px solid #303d50; align-items: center; }
+    .mask-row select { min-width: 0; padding: 5px; font-size: 12px; }
+    .row-actions { grid-column: 2 / 4; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .row-actions button { padding: 2px 9px; margin-left: auto; }
+    .row-actions button + button { margin-left: 0; }
+    .dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; }
+    .preview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .preview { min-width: 0; }
+    .preview h2 { font-size: 14px; margin: 0 0 10px; }
+    .stage { width: 100%; aspect-ratio: 1; position: relative; overflow: hidden; border: 1px solid #42516a; border-radius: 10px; background-color: #242d39; background-image: conic-gradient(#2b3543 25%, transparent 0 50%, #2b3543 0 75%, transparent 0); background-size: 20px 20px; }
+    .surface { position: absolute; inset: 0; }
+    .surface canvas { display: block; }
+    .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .caption { min-height: 48px; font-size: 12px; color: #aebcd0; margin-top: 10px; }
+    .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #c0cde0; margin: 14px 0; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .transport { display: flex; gap: 10px; align-items: center; margin: 18px 0; }
+    .transport input { flex: 1; min-width: 70px; }
+    #clock { font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 75px; }
+    #formula { font: 14px/1.8 ui-monospace, monospace; color: #c5ddff; overflow-wrap: anywhere; }
+    details { margin-top: 16px; }
+    summary { cursor: pointer; color: #b8cff1; }
+    pre { overflow: auto; max-height: 350px; font-size: 12px; background: #111721; padding: 14px; border-radius: 6px; }
+    .footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+    #status.error { color: #ff9999; }
+    [hidden] { display: none !important; }
+    @media (max-width: 1200px) { body { padding: 16px; } main { grid-template-columns: 270px minmax(0,1fr); } .preview-grid { gap: 8px; } }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { display: grid; grid-template-columns: 1fr 1fr; } header { align-items: start; } }
+    @media (max-width: 560px) { body { padding: 12px; } aside, .preview-grid { grid-template-columns: 1fr; } .tabs { flex-wrap: wrap; } header .badge { display: none; } .transport { flex-wrap: wrap; } }
   </style>
 </head>
 <body>
-<div class="container" id="J-container"></div>
-
-<script type="module" src="../src/multi-mask.ts"></script>
+  <header>
+    <div><h1>路径蒙版与轨道遮罩</h1><p class="muted">图片、文字、视频，对比图层自带路径与独立来源遮罩。</p></div>
+    <span class="badge">硬边裁剪 · WebGL</span>
+  </header>
+  <nav class="tabs" aria-label="遮罩类型">
+    <button data-mode="paths" aria-pressed="true">① 图层自带路径蒙版</button>
+    <button data-mode="tracks" aria-pressed="false">② 轨道遮罩</button>
+    <button data-mode="combined" aria-pressed="false">③ 两者叠加</button>
+  </nav>
+  <main>
+    <aside>
+      <section class="panel">
+        <h2 id="mode-title">图层自带路径蒙版</h2>
+        <label class="field"><span>验证用例</span><select id="case" class="wide"></select></label>
+        <label class="field"><span>目标内容</span><select id="image" class="wide"><option value="fireworks">透明图1 · 烟花</option><option value="coupon">透明图2 · 优惠券</option><option value="text">文字 · MASK / 文字蒙版</option><option value="video">视频 · 静音播放</option><option value="precomposition">预合成 · 图片＋文字（路径蒙版）</option></select></label>
+        <p id="ownership" class="muted"></p><p id="expected"></p>
+      </section>
+      <section class="panel" id="paths-panel"><h2>目标图层 › 蒙版</h2><div id="paths"></div><button id="add-path">＋ 添加路径</button><p class="hint">路径属于目标图层。按列表顺序计算，每条先反向，再参与运算。</p></section>
+      <section class="panel" id="tracks-panel" hidden><h2>目标图层 › 轨道遮罩</h2><div id="tracks"></div><button id="add-track">＋ 添加来源</button><p class="hint">引用独立图层；多来源取交集，勾选反向可排除该来源区域。</p><label class="hint"><input type="checkbox" id="alpha" checked> 图片 / 文字来源按透明轮廓裁剪</label><p class="hint">这是 alpha 阈值裁剪，不是连续 Alpha / Luminance 遮罩。</p></section>
+      <section class="panel">
+        <h2>运动与显示</h2>
+        <label class="field"><span>自动运动</span><select id="motion" class="wide"><option value="target">移动目标图层</option><option value="source">移动外部来源</option><option value="none">静止</option></select></label>
+        <label class="field"><span>目标旋转 <output id="rotation-value">0°</output></span><input id="rotation" type="range" min="-45" max="45" step="1" value="0"></label>
+        <label class="field"><span>渲染后端</span><select id="framework" class="wide"><option value="webgl2">WebGL 2</option><option value="webgl">WebGL 1</option></select></label>
+        <label><input type="checkbox" id="outlines" checked> 显示路径编辑轮廓</label>
+        <p class="hint" id="resolution"></p>
+      </section>
+    </aside>
+    <section>
+      <div class="preview-grid">
+        <article class="preview"><h2>① 原始内容</h2><div class="stage"><div class="surface" id="input"></div></div><p class="caption">与右侧相同的内容、时间轴和图层变换；视频默认静音。</p></article>
+        <article class="preview"><h2 id="source-title">② 路径覆盖区域</h2><div class="stage"><div class="surface" id="sources"></div><svg id="path-guides" viewBox="-4.5 -4.5 9 9" aria-label="图层内的蒙版路径轮廓"></svg></div><p class="caption" id="source-caption"></p></article>
+        <article class="preview"><h2>③ 最终结果</h2><div class="stage"><div class="surface" id="result"></div></div><p class="caption">棋盘格表示透明。所有画面共用时间轴，可暂停或拖动查看。</p></article>
+      </div>
+      <div id="legend" class="legend"></div>
+      <div class="panel"><p id="formula"></p></div>
+      <div class="transport"><button id="play">暂停</button><button id="restart">回到开头</button><button id="step">下一帧</button><input id="time" type="range" min="0" max="5" step="0.001" value="0" aria-label="时间"><output id="clock">0.00 / 5s</output></div>
+      <details class="panel"><summary>查看当前配置与图层关系</summary><pre id="structure"></pre><pre id="config"></pre></details>
+      <div class="footer"><span id="status" class="muted" role="status">加载中…</span><button id="download" disabled>导出结果 JSON</button></div>
+    </section>
+  </main>
+  <script type="module" src="../src/multi-mask.ts"></script>
 </body>
 </html>
