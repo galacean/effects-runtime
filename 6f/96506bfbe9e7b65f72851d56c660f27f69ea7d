@@ -1,0 +1,49 @@
+packages/effects-core/src/render/renderer.ts
+  s_7639f84ad5b284::t_58c914ac9c1137 77,239,241,248,264,273-274,291,294,297,300-302,306-308,311-319,336-337,339-341
+  s_7639f84ad5b284::t_ee0c94bbe8f3aa 25-32
+  s_7639f84ad5b284::t_f9b928b7933db6 345-346
+  s_7639f84ad5b284::t_d942d1308986fd 33,289-290,292,298-299,305,331-335,338
+  s_7639f84ad5b284::t_c3ca8c3f07cf29 422,424
+  s_7639f84ad5b284::t_ce23dc91272395 496
+  s_7639f84ad5b284::t_17d039070a87a5 19,68-70,85,282,293,295,303,342-344
+  s_7639f84ad5b284::t_215fd51aae57b3 304
+  s_7639f84ad5b284::t_f42d8e14303d60 320
+  s_7639f84ad5b284::t_32b49b406628fb 347-348
+packages/effects-webgl/src/gpu-framebuffer-webgl.ts
+  s_7639f84ad5b284::t_874b634fc289d9 22-26,48-52,249-405,435,457,501,508,512-520,573-579,589
+packages/effects-core/src/render/render-pass.ts
+  s_7639f84ad5b284::t_58c914ac9c1137 8-11,115-116
+packages/effects-webgl/src/gpu-renderbuffer-webgl.ts
+  s_7639f84ad5b284::t_17d039070a87a5 1,9,14,25,79-85
+packages/effects-webgl/src/rendering-device-webgl.ts
+  s_7639f84ad5b284::t_c3ca8c3f07cf29 7,586-589,599-609,611-614,618-627
+  s_7639f84ad5b284::t_a38cc41ff75c14 628
+web-packages/dev-tools/src/features/assets/preview/material-preview-renderer.ts
+  s_7639f84ad5b284::t_059ff85f3447b5 113,132,188
+packages/effects-core/src/render/render-target-pool.ts
+  s_7639f84ad5b284::t_17d039070a87a5 51,54,99
+packages/effects-core/src/render/gpu-framebuffer.ts
+  s_7639f84ad5b284::t_17d039070a87a5 13-14,40-48
+  s_7639f84ad5b284::t_7e463c3c372abf 49
+packages/effects-webgl/src/gpu-texture-webgl.ts
+  s_7639f84ad5b284::t_17d039070a87a5 34-35,124
+  s_7639f84ad5b284::t_fadb0917468f6a 125
+web-packages/dev-tools/src/platform/effects-runtime/editor-rendering-device.ts
+  s_7639f84ad5b284::t_059ff85f3447b5 1,21,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f96506bfbe9e7b65f72851d56c660f27f69ea7d",
+  "prompts": {},
+  "sessions": {
+    "s_7639f84ad5b284": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21bd3-c398-7ef3-8ac0-ddfd60619efa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
