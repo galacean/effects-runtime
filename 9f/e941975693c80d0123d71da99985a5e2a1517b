@@ -1,0 +1,81 @@
+plugin-packages/editor-gizmo/src/3d/viewport/camera-navigation.ts
+  s_bb3f30c8bf708c::t_8fe6dbad9c2ba0 1,16-21,25-26
+  s_bb3f30c8bf708c::t_e0345ad07269c6 46
+plugin-packages/editor-gizmo/src/3d/mesh.ts
+  s_bb3f30c8bf708c::t_1ed1a582c690b9 8,240-241,243-244,246-253
+  s_bb3f30c8bf708c::t_271c153744d953 202,209,215,332,335,338,345,426,429,432
+  s_bb3f30c8bf708c::t_c02dc481dd8f71 386-394,396-407,410
+  s_bb3f30c8bf708c::t_ee8d77563ffa81 1-2,92,94-128,130-132,562-563,646,674,679,788
+  s_bb3f30c8bf708c::t_a8ebc298e64163 763,778
+  s_bb3f30c8bf708c::t_7d563c7573bf9a 408-409
+plugin-packages/editor-gizmo/src/3d/viewport/selection-gizmo-3d.ts
+  s_bb3f30c8bf708c::t_b0063c4b5499b1 36-49,54,64-66,109-110,113,116-121,123
+plugin-packages/editor-gizmo/src/3d/shape.ts
+  s_bb3f30c8bf708c::t_1ed1a582c690b9 302,311,315,331,334-335
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-picker.ts
+  s_bb3f30c8bf708c::t_75e31bdae0695c 3,6,48
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  s_bb3f30c8bf708c::t_636711fa2a8f63 11,84-89,91-103,106,108,110-113,115-116,118-119
+  s_bb3f30c8bf708c::t_8fe6dbad9c2ba0 57-59,90,133-137,312,342-355,358-359,364,367-368,373-379,381-385,387,417-427,433
+  s_bb3f30c8bf708c::t_8557c37765efa6 104-105,107,109,117
+  s_bb3f30c8bf708c::t_68431050d86f0f 3
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  s_bb3f30c8bf708c::t_d0b813f3227f5b 139
+  s_bb3f30c8bf708c::t_b33a5946621eaa 5,183
+  s_bb3f30c8bf708c::t_8ab5ef480c71ff 6,23,75,99,108,114,133,404,424,431,474
+  s_bb3f30c8bf708c::t_31e586ae3a86b6 11,32,43,45-46,74,76,80-88,101,109-113,129-130,134-136,150,175-181,184-187,253,258,270-271,278-279,287,300,325,334,338,363,366,372-377,381,384,388-389,422-423,425-430,432-445,457,464-467,473,475,482-496
+  s_bb3f30c8bf708c::t_fc095ded26a610 44,47-49,51,131,137,140-149,182,218,230,233-238,245-246,267,272-277,280-281,285-286,288,320-321,323-324,332,339-342,344,346-348,350-352,354,360-361,368,378-380,382-383,385-387
+  s_bb3f30c8bf708c::t_6ce65180c72e3d 63-72,89,294,497
+plugin-packages/editor-gizmo/src/3d/viewport/grid-gizmo-3d.ts
+  s_bb3f30c8bf708c::t_1ed1a582c690b9 16,18
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-3d.ts
+  s_bb3f30c8bf708c::t_8ab5ef480c71ff 9
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  s_bb3f30c8bf708c::t_866762c29221eb 6,140,142-146,148-152,158-159,191,194,196-198,233-239,271,305-306,308-309
+  s_bb3f30c8bf708c::t_c8ba11ec517bea 160-176
+  s_bb3f30c8bf708c::t_e0345ad07269c6 303-304
+  s_bb3f30c8bf708c::t_68431050d86f0f 307
+  s_bb3f30c8bf708c::t_8ab5ef480c71ff 7,190,192-193,195
+  s_bb3f30c8bf708c::t_e5ceae17ad6e5c 141,147,153-157
+plugin-packages/editor-gizmo/src/3d/viewport/gizmo-geometry.ts
+  s_bb3f30c8bf708c::t_1ed1a582c690b9 7,9,43-46
+  s_bb3f30c8bf708c::t_6008d6d88807e7 199-205
+  s_bb3f30c8bf708c::t_d0b813f3227f5b 36,39,42
+  s_bb3f30c8bf708c::t_a8ebc298e64163 20-23,30-34,37,40,90,94-106,108-110,210-214
+  s_bb3f30c8bf708c::t_fc73a93e5e4ee6 26,38,41,47-49,51-58,61-62,67-87,89,91-93,129,133,137-174,235
+  s_bb3f30c8bf708c::t_e5ceae17ad6e5c 50,88
+  s_bb3f30c8bf708c::t_94309d0b945f90 59-60,63-66
+  s_bb3f30c8bf708c::t_636711fa2a8f63 134,206-208,231-234
+  s_bb3f30c8bf708c::t_e0345ad07269c6 107
+  s_bb3f30c8bf708c::t_6c642b1c7cab45 35
+plugin-packages/editor-gizmo/src/3d/viewport/index.ts
+  s_bb3f30c8bf708c::t_8ab5ef480c71ff 2
+plugin-packages/editor-gizmo/src/3d/constants.ts
+  s_bb3f30c8bf708c::t_1ed1a582c690b9 10
+  s_bb3f30c8bf708c::t_aea36bff5b6ba9 11-12,40
+  s_bb3f30c8bf708c::t_5b7891d1a4cd7b 4-6
+  s_bb3f30c8bf708c::t_6177c534258d69 7,20,36-38,42,44-45
+  s_bb3f30c8bf708c::t_7f268130856e54 17-19
+  s_bb3f30c8bf708c::t_e51e7ffa8deaf3 21-23,33-35
+  s_bb3f30c8bf708c::t_3159cf65b99584 39
+  s_bb3f30c8bf708c::t_23deb055fcd277 41
+  s_bb3f30c8bf708c::t_149bcd2ade04fd 43
+plugin-packages/editor-gizmo/src/3d/gizmo-bounds.ts
+  s_bb3f30c8bf708c::t_75e31bdae0695c 13-21,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9fe941975693c80d0123d71da99985a5e2a1517b",
+  "prompts": {},
+  "sessions": {
+    "s_bb3f30c8bf708c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21707-6d5c-7662-9c33-0b7879822073",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
