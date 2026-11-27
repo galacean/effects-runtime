@@ -1,4 +1,8 @@
-import { math, RenderPass, RenderPassEvent, RendererFeature, ResourceData, TextureLoadAction, type Renderer, type RenderingData } from '@galacean/effects';
+import type { Renderer, RenderingData, RenderPassDestroyOptions } from '@galacean/effects';
+import {
+  COPY_VERTEX_SHADER, COPY_FRAGMENT_SHADER, glContext, Material, math,
+  RenderPass, RenderPassEvent, RendererFeature, ResourceData, TextureLoadAction,
+} from '@galacean/effects';
 import type { Editor3D } from '../editor-3d';
 
 /** Renderer-owned overlay pass reused by the active editor. */
@@ -31,10 +35,30 @@ export class EditorPrimitives extends RendererFeature {
 }
 
 class EditorPrimitivesPass extends RenderPass {
+  private readonly depthCopyMaterial: Material;
+
   constructor (renderer: Renderer, private readonly feature: EditorPrimitives) {
     super(renderer);
     this.name = 'EditorPrimitivesPass';
     this.renderPassEvent = RenderPassEvent.AfterRendering;
+
+    this.depthCopyMaterial = Material.create(renderer.engine, {
+      shader: {
+        name: 'CopyDepth',
+        vertex: COPY_VERTEX_SHADER,
+        fragment: COPY_FRAGMENT_SHADER,
+        macros: [['DEPTH_TEXTURE', 1]],
+      },
+    });
+    this.depthCopyMaterial.colorMask = false;
+    this.depthCopyMaterial.blending = false;
+    this.depthCopyMaterial.depthTest = true;
+    this.depthCopyMaterial.depthFunc = glContext.ALWAYS;
+    this.depthCopyMaterial.depthMask = true;
+    this.depthCopyMaterial.stencilTest = false;
+    this.depthCopyMaterial.culling = false;
+    // Allow one depth-24 quantization step for coplanar scene helpers.
+    this.depthCopyMaterial.setFloat('uDepthBias', 1 / 16777216);
   }
 
   override execute (renderer: Renderer, data: RenderingData): void {
@@ -45,22 +69,28 @@ class EditorPrimitivesPass extends RenderPass {
 
     renderer.setGlobalVector4('effects_GizmoViewportSize', new math.Vector4(viewport.x, viewport.y, 0, 0));
     const sceneDepth = data.frameData.get(ResourceData).cameraDepth;
+    const target = data.options?.target ?? null;
 
-    if (sceneDepth) {
-      renderer.clear({ depthAction: TextureLoadAction.clear });
-      renderer.setGlobalTexture('effects_GizmoSceneDepth', sceneDepth);
-      renderer.setGlobalVector4('effects_GizmoSceneDepthViewport', new math.Vector4(...renderer.getViewport()));
+    if (sceneDepth && sceneDepth !== target?.getDepthTexture()) {
+      renderer.blit(sceneDepth, target, this.depthCopyMaterial);
+      this.depthCopyMaterial.setTexture('_MainTex', renderer.engine.assetServer.transparentTexture);
     }
-    renderer.setGlobalInt('effects_GizmoSceneDepthEnabled', sceneDepth ? 1 : 0);
     editor.gizmos.forEach(gizmo => {
       if (gizmo.visible && !gizmo.isActive) { gizmo.draw(renderer); }
     });
-    renderer.setGlobalInt('effects_GizmoSceneDepthEnabled', 0);
     renderer.clear({ depthAction: TextureLoadAction.clear });
     const active = editor.activeGizmo;
 
     if (active?.visible) { active.draw(renderer); }
     renderer.clear({ depthAction: TextureLoadAction.clear });
     editor.directionGizmo.drawGizmo(renderer);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    if (this.isDisposed) {
+      return;
+    }
+    this.depthCopyMaterial.dispose();
+    super.dispose(options);
   }
 }

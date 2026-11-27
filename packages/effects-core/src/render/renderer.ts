@@ -232,10 +232,10 @@ export class Renderer {
       return;
     }
     if (options.postProcessingEnabled) {
-      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear, readableDepthStencilTextures } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear, readableDepthStencilTextures, writableFragDepth } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
 
-      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear || !readableDepthStencilTextures) {
-        throw new Error('Post processing requires half float textures with color attachment and linear filtering support, and readable depth stencil textures.');
+      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear || !readableDepthStencilTextures || !writableFragDepth) {
+        throw new Error('Post processing requires half float textures with color attachment and linear filtering support, readable depth stencil textures, and fragment depth writes.');
       }
     }
 
@@ -373,6 +373,7 @@ export class Renderer {
 
   /**
    * 将源纹理复制到目标 GPUFramebuffer，可使用自定义材质进行处理
+   * 结束后恢复原 framebuffer 和视口。
    * @param source - 源纹理
    * @param destination - 目标 GPUFramebuffer，如果为 null 则渲染到屏幕
    * @param material - 可选的自定义材质，不传则使用默认复制材质
@@ -411,25 +412,16 @@ export class Renderer {
     // 设置源纹理
     blitMat.setTexture('_MainTex', source);
 
-    // 保存当前 framebuffer
+    // 保存当前 framebuffer 和视口
     const prevFramebuffer = this.currentFramebuffer;
+    const prevViewport = this.getViewport();
 
-    // 设置目标
-    if (destination) {
-      const [x, y, width, height] = destination.viewport;
-
-      this.setFramebuffer(destination);
-      this.setViewport(x, y, width, height);
-    } else {
-      // 渲染到屏幕
-      this.setFramebuffer(null);
-      this.setViewport(0, 0, this.getWidth(), this.getHeight());
-    }
+    this.setFramebuffer(destination);
 
     this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
 
-    // 恢复之前的 framebuffer
     this.setFramebuffer(prevFramebuffer);
+    this.setViewport(...prevViewport);
   }
 
   dispose (): void {

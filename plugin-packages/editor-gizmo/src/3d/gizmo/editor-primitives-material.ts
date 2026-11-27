@@ -1,6 +1,5 @@
 import type { Engine, spec } from '@galacean/effects';
 import { Material, glContext, math } from '@galacean/effects';
-import sceneDepthTest from './shaders/scene-depth.glsl';
 
 type vec3 = spec.vec3;
 const { Vector3 } = math;
@@ -13,12 +12,10 @@ export function createEditorPrimitivesMaterial (engine: Engine, color: vec3, alp
       fragment: `
         precision mediump float;
 
-        ${sceneDepthTest}
         uniform vec3 u_color;
         uniform float u_alpha;
 
         void main() {
-          testSceneDepth();
           gl_FragColor = vec4(u_color, u_alpha);
         }`,
       vertex: `
@@ -37,6 +34,7 @@ export function createEditorPrimitivesMaterial (engine: Engine, color: vec3, alp
   material.setVector3('u_color', Vector3.fromArray(color));
   material.setFloat('u_alpha', alpha);
   material.depthTest = true;
+  material.depthFunc = glContext.LEQUAL;
   material.stencilTest = false;
   material.blending = alpha < 1;
   material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
