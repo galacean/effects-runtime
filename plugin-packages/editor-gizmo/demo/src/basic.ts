@@ -7,5 +7,5 @@ import { attachEditor, GeometryGizmo3D } from './editor';
   const composition = await player.loadScene(JSON.parse(primaryJSON));
   const editor = attachEditor(player, composition);
 
-  for (const example of basicGeometry) { editor.editor3D.sceneGizmos.push(new GeometryGizmo3D(editor.editor3D, example)); }
+  for (const example of basicGeometry) { new GeometryGizmo3D(editor.editor3D, example); }
 })();

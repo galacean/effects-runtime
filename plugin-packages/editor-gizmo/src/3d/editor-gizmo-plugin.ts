@@ -1,7 +1,6 @@
 import type { Composition } from '@galacean/effects';
 import { Plugin, Texture, TextureSourceType } from '@galacean/effects';
-import { axisIconMap } from './constants';
-import { createImage, createTexture } from './util';
+import { axisIconMap } from './assets/gizmo-icons';
 
 export class EditorGizmoPlugin extends Plugin {
   override order = 1001;
@@ -9,7 +8,7 @@ export class EditorGizmoPlugin extends Plugin {
 
   private async loadIconImages (): Promise<void> {
     await Promise.all(Array.from(axisIconMap, async ([name, data]) => {
-      if (!this.iconImages.has(name)) { this.iconImages.set(name, await createImage(data)); }
+      if (!this.iconImages.has(name)) { this.iconImages.set(name, await loadIconImage(data)); }
     }));
   }
 
@@ -26,7 +25,7 @@ export class EditorGizmoPlugin extends Plugin {
     for (const name of axisIconMap.keys()) {
       const image = this.iconImages.get(name);
 
-      textures.set(name, image ? createTexture(composition.engine, image) : Texture.create(composition.engine, { data: transparent }));
+      textures.set(name, image ? Texture.create(composition.engine, { image }) : Texture.create(composition.engine, { data: transparent }));
     }
     // A directly constructed composition has no scene asset preload.
     if (this.iconImages.size !== axisIconMap.size) {
@@ -48,4 +47,14 @@ export class EditorGizmoPlugin extends Plugin {
     textures?.forEach(texture => texture.dispose());
     textures?.clear();
   }
+}
+
+function loadIconImage (url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = url;
+  });
 }

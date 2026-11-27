@@ -1,6 +1,6 @@
 import * as EFFECTS from '@galacean/effects';
 import { logger, registerPlugin } from '@galacean/effects';
-import { EditorGizmoPlugin } from './3d/gizmo-loader';
+import { EditorGizmoPlugin } from './3d/editor-gizmo-plugin';
 
 registerPlugin('editor-gizmo', EditorGizmoPlugin);
 

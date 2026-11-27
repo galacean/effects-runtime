@@ -1,29 +1,47 @@
-import { EventEmitter, math, type Composition, type EventEmitterListener, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion, type MouseButton } from '@galacean/effects';
+import { EventEmitter, math, spec, type VFXItem, type Composition, type EventEmitterListener, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion, type MouseButton } from '@galacean/effects';
 import { Control, FocusMode, MouseFilter, type ControlEvent } from '@galacean/effects-plugin-gui';
 import type { Selection } from '../2d/selection/selection';
 import type { Editor } from '../editor';
 import type { Point2, Point3, Ray3 } from '../math/types';
 import { rayPlanePoint } from '../math/plane';
-import type { Gizmo3D, Gizmo3DEvents, Viewport3DPivotMode, Viewport3DSpace, Viewport3DTool } from './viewport/gizmo-3d';
-import { GizmoRenderer3D } from './viewport/gizmo-renderer-3d';
-import { GridGizmo3D } from './viewport/grid-gizmo-3d';
-import { SelectionGizmo3D } from './viewport/selection-gizmo-3d';
-import { TransformGizmo3D } from './viewport/transform-gizmo-3d';
-import { ViewportGizmo3D } from './viewport/viewport-gizmo-3d';
-import { ViewportGizmoPicker } from './viewport/viewport-gizmo-picker';
+import type { Gizmo3D } from './gizmo/gizmo-3d';
+import { EditorPrimitives } from './gizmo/editor-primitives';
+import { GridGizmo } from './gizmo/grid-gizmo';
+import { BoxSelection3D } from './gizmo/box-selection-3d';
+import { TransformGizmo, type PivotType, type TransformSpace, type TransformActionEvent, type TransformMode } from './gizmo/transform-gizmo';
+import { ViewportCamera } from './viewport/cameras/viewport-camera';
+import type { ViewportCameraEvent } from './viewport/cameras/viewport-camera-types';
+import { DirectionGizmo } from './gizmo/direction-gizmo';
+import { transformGizmoStyle } from './gizmo/gizmo-settings';
+
+export type ViewportTool = TransformMode | 'camera';
+
+export type Editor3DInteractionEvents = {
+  keyDown: [event: InputEventKey],
+  actionstart: [event: TransformActionEvent],
+  actionupdate: [event: TransformActionEvent],
+  actioncommit: [event: TransformActionEvent],
+  camerachange: [event: ViewportCameraEvent],
+  toolchange: [tool: ViewportTool, space: TransformSpace],
+};
+
+export type Editor3DEvents = ControlEvent & Editor3DInteractionEvents;
 
 const marqueeFill = math.Color.fromHexString('#79adff26');
 const marqueeOutline = math.Color.fromHexString('#79adffff');
 
-type Editor3DEvents = ControlEvent & Gizmo3DEvents;
-
-function isGizmoEvent (name: keyof Editor3DEvents): name is keyof Gizmo3DEvents {
+function isInteractionEvent (name: keyof Editor3DEvents): name is keyof Editor3DInteractionEvents {
   return name === 'actionstart' || name === 'actionupdate' || name === 'actioncommit' || name === 'camerachange'
     || name === 'toolchange' || name === 'keyDown';
 }
 
-interface PointerCapture3D {
-  gizmo: Gizmo3D,
+interface PointerCapture {
+  handler: {
+    onMouseDown(event: InputEventMouseButton): void,
+    onMouseDrag?(event: InputEventMouseMotion): void,
+    onMouseUp?(event: InputEventMouseButton): void,
+    onKeyDown?(event: InputEventKey): void,
+  },
   button: MouseButton,
   start: math.Vector2,
   dragging: boolean,
@@ -31,19 +49,19 @@ interface PointerCapture3D {
 
 /** A full-rect GUI control with its own spatial tools, input capture and drawing lifecycle. */
 export class Editor3D extends Control {
-  readonly picker: ViewportGizmoPicker;
-  readonly transform: TransformGizmo3D;
-  readonly camera: ViewportGizmo3D;
-  readonly selectionGizmo: SelectionGizmo3D;
-  readonly grid: GridGizmo3D;
-  readonly sceneGizmos: Gizmo3D[] = [];
-  private gizmoRenderer?: GizmoRenderer3D;
+  readonly gizmos: Gizmo3D[] = [];
+  readonly transformGizmo: TransformGizmo;
+  readonly viewportCamera: ViewportCamera;
+  readonly directionGizmo: DirectionGizmo;
+  readonly boxSelection: BoxSelection3D;
+  readonly grid: GridGizmo;
+  private _activeGizmo?: Gizmo3D;
+  private gizmoRenderer?: EditorPrimitives;
   private readonly offSelectionChange: () => void;
   private offCameraUpdate?: () => void;
-  private cameraOnly = false;
-  private capture?: PointerCapture3D;
+  private capture?: PointerCapture;
   private readonly gizmoEvents = new EventEmitter<Editor3DEvents>();
-  readonly emit: EventEmitter<Gizmo3DEvents>['emit'] = this.gizmoEvents.emit;
+  readonly emit: EventEmitter<Editor3DInteractionEvents>['emit'] = this.gizmoEvents.emit;
 
   constructor (private readonly editor: Editor) {
     super(editor.engine);
@@ -51,20 +69,80 @@ export class Editor3D extends Control {
     this.mouseFilter = MouseFilter.Stop;
     this.mouseForcePassScrollEvents = false;
     this.focusMode = FocusMode.Click;
-    this.picker = new ViewportGizmoPicker(this);
-    this.camera = new ViewportGizmo3D(this);
-    this.transform = new TransformGizmo3D(this);
-    this.selectionGizmo = new SelectionGizmo3D(this);
-    this.grid = new GridGizmo3D(this);
+    this.viewportCamera = new ViewportCamera(this);
+    this.directionGizmo = this.addChild(new DirectionGizmo(this));
+    this.transformGizmo = new TransformGizmo(this);
+    this.boxSelection = new BoxSelection3D(this);
+    this.grid = new GridGizmo(this);
+    this.activeGizmo = this.transformGizmo;
     this.offSelectionChange = editor.selection.on('selectionchange', () => {
       if (this.enabled) {
         this.cancel('selection');
+        this.gizmos.forEach(gizmo => gizmo.onSelectionChanged());
         this.updateGizmos();
       }
     });
   }
 
+  get activeGizmo (): Gizmo3D | undefined { return this._activeGizmo; }
+  set activeGizmo (gizmo: Gizmo3D | undefined) {
+    if (gizmo === this._activeGizmo) { return; }
+    if (gizmo && !this.gizmos.includes(gizmo)) { throw new Error('The active gizmo must belong to this viewport.'); }
+    const previous = this._activeGizmo;
+
+    this._activeGizmo = undefined;
+    previous?.onDeactivated();
+    this._activeGizmo = gizmo;
+    gizmo?.onActivated();
+  }
+
   get selection (): Selection { return this.editor.selection; }
+
+  /** Optional document roots used for picking and selection. */
+  selectableItems?: ReadonlySet<VFXItem>;
+  lockedItems: ReadonlySet<VFXItem> = new Set();
+
+  get selectedItems (): readonly VFXItem[] {
+    return this.selection.getSelectedPlayerItems().filter(item => !this.selectableItems || this.selectableItems.has(item));
+  }
+
+  select (items: readonly VFXItem[], active?: VFXItem): void {
+    const hits = new Set(items);
+    const roots = items.filter(item => {
+      for (let parent = item.parent; parent; parent = parent.parent) {
+        if (hits.has(parent)) { return false; }
+      }
+
+      return true;
+    });
+    const ordered = active && roots.includes(active) ? [...roots.filter(item => item !== active), active] : roots;
+
+    this.selection.setSelectedItems(ordered.map(item => item.getInstanceId()));
+  }
+
+  canTransform (item: VFXItem): boolean {
+    if (item.composition !== this.composition || this.selectableItems && !this.selectableItems.has(item)) { return false; }
+    for (let node: VFXItem | undefined = item; node; node = node.parent) {
+      if (!node.isVisible || !node.isActive || this.lockedItems.has(node)) { return false; }
+    }
+
+    return true;
+  }
+
+  getSelectionCandidates (): VFXItem[] {
+    const composition = this.composition;
+
+    if (!composition) { return []; }
+
+    return Array.from(this.selectableItems ?? composition.items).filter(item => {
+      if (item.composition !== composition || item.type === spec.ItemType.skybox) { return false; }
+      for (let node: VFXItem | undefined = item; node; node = node.parent) {
+        if (!node.isActive || !node.isVisible) { return false; }
+      }
+
+      return true;
+    });
+  }
 
   /** @internal Activate viewport input or roll back the current interaction. */
   setActive (active: boolean): void {
@@ -72,17 +150,17 @@ export class Editor3D extends Control {
       this.offCameraUpdate?.();
       this.offCameraUpdate = undefined;
       this.cancel('mode-change');
-      this.camera.restoreSceneCamera();
+      this.viewportCamera.restoreSceneCamera();
     }
     this.enabled = active;
     if (active) {
       if (!this.gizmoRenderer) {
-        this.gizmoRenderer = new GizmoRenderer3D(this);
+        this.gizmoRenderer = new EditorPrimitives(this);
         this.engine.renderer.addRendererFeature(this.gizmoRenderer);
       }
       // Camera navigation must finish before scene components collect their render data.
-      this.offCameraUpdate ??= this.engine.on('update', deltaTime => this.camera.onUpdate(deltaTime));
-      this.camera.applyToComposition();
+      this.offCameraUpdate ??= this.engine.on('update', deltaTime => this.viewportCamera.update(deltaTime));
+      this.viewportCamera.applyToComposition();
       this.updateGizmos();
     }
     this.visible = active;
@@ -97,12 +175,9 @@ export class Editor3D extends Control {
 
   /** @internal Keep the visible handles and their hit regions current between frames. */
   updateGizmos (): void {
-    if (!this.enabled) { return; }
-    const composition = this.composition;
-
-    this.transform.updateGeometry();
-    this.camera.updateGeometry();
-    if (composition) { this.grid.onUpdate(); }
+    if (!this.enabled || this.isDisposed) { return; }
+    this.gizmos.forEach(gizmo => gizmo.update());
+    this.directionGizmo.updateDrawing();
   }
 
   get viewportSize (): math.Vector2 {
@@ -152,7 +227,7 @@ export class Editor3D extends Control {
   /** World length of a fixed CSS-pixel handle at this depth. */
   getHandleSize (worldPoint: Point3): number {
     const screen = this.project(worldPoint);
-    const edge = screen && this.unproject({ x: screen.x + 80, y: screen.y }, worldPoint);
+    const edge = screen && this.unproject({ x: screen.x + transformGizmoStyle.size, y: screen.y }, worldPoint);
 
     return edge ? edge.distance(new math.Vector3(worldPoint.x, worldPoint.y, worldPoint.z)) : 0;
   }
@@ -175,51 +250,52 @@ export class Editor3D extends Control {
   }
 
   override on<E extends keyof Editor3DEvents> (name: E, listener: EventEmitterListener<Editor3DEvents[E]>): () => void {
-    if (isGizmoEvent(name)) { return this.gizmoEvents.on<E>(name, listener); }
+    if (isInteractionEvent(name)) { return this.gizmoEvents.on<E>(name, listener); }
     super.on(name, listener as never);
 
     return () => this.off(name, listener);
   }
 
   override off<E extends keyof Editor3DEvents> (name: E, listener: EventEmitterListener<Editor3DEvents[E]>): void {
-    if (isGizmoEvent(name)) { this.gizmoEvents.off<E>(name, listener); } else { super.off(name, listener as never); }
+    if (isInteractionEvent(name)) { this.gizmoEvents.off<E>(name, listener); } else { super.off(name, listener as never); }
   }
 
-  get tool (): Viewport3DTool { return this.cameraOnly ? 'camera' : this.transform.operation; }
-  get space (): Viewport3DSpace { return this.transform.space; }
-  get pivotMode (): Viewport3DPivotMode { return this.transform.pivotMode; }
+  get tool (): ViewportTool { return this.activeGizmo === this.transformGizmo ? this.transformGizmo.mode : 'camera'; }
+  get space (): TransformSpace { return this.transformGizmo.space; }
+  get pivotType (): PivotType { return this.transformGizmo.pivotType; }
 
-  setPivotMode (pivot: Viewport3DPivotMode): void {
-    if (pivot === this.pivotMode) { return; }
+  setPivotType (pivot: PivotType): void {
+    if (pivot === this.pivotType) { return; }
     this.cancel('pivot-change');
-    this.transform.pivotMode = pivot;
+    this.transformGizmo.pivotType = pivot;
     this.updateGizmos();
     this.emit('toolchange', this.tool, this.space);
   }
 
-  setTool (tool: Viewport3DTool, space: Viewport3DSpace = this.space): void {
+  setTool (tool: ViewportTool, space: TransformSpace = this.space): void {
     if (tool === this.tool && space === this.space) { return; }
     this.cancel('tool-change');
-    this.cameraOnly = tool === 'camera';
-    if (tool !== 'camera') { this.transform.setOperation(tool); }
-    this.transform.setSpace(space);
+    this.activeGizmo = tool === 'camera' ? undefined : this.transformGizmo;
+    if (tool !== 'camera') { this.transformGizmo.setMode(tool); }
+    this.transformGizmo.setSpace(space);
     this.updateGizmos();
     this.emit('toolchange', tool, space);
   }
 
   override onMouseDown (event: InputEventMouseButton): void {
     if (event.isAccepted() || this.capture) { return; }
-    if (this.tryCapture(this.camera, event)) { return; }
-    this.camera.stopNavigation();
-    if (!this.cameraOnly && this.tryCapture(this.transform, event)) { return; }
-    this.tryCapture(this.selectionGizmo, event);
+    if (this.tryCapture(this.directionGizmo, event)) { return; }
+    if (this.tryCapture(this.viewportCamera, event)) { return; }
+    this.viewportCamera.stopNavigation();
+    if (this.activeGizmo?.visible && this.tryCapture(this.activeGizmo, event)) { return; }
+    this.tryCapture(this.boxSelection, event);
   }
 
-  private tryCapture (gizmo: Gizmo3D, event: InputEventMouseButton): boolean {
-    const capture = { gizmo, button: event.buttonIndex, start: event.position.clone(), dragging: false };
+  private tryCapture (handler: PointerCapture['handler'], event: InputEventMouseButton): boolean {
+    const capture = { handler, button: event.buttonIndex, start: event.position.clone(), dragging: false };
 
     this.capture = capture;
-    gizmo.onMouseDown(event);
+    handler.onMouseDown(event);
     // An event listener may close this viewport while processing the press.
     if (this.capture !== capture || event.isAccepted()) { return true; }
     this.capture = undefined;
@@ -232,14 +308,14 @@ export class Editor3D extends Control {
 
     if (event.isAccepted()) { return; }
     if (!capture) {
-      this.transform.hover(event.position);
-      this.camera.hover(event.position);
+      this.transformGizmo.hover(event.position);
+      this.directionGizmo.hover(event.position);
 
       return;
     }
-    if (capture.gizmo === this.selectionGizmo && !capture.dragging && capture.start.distance(event.position) < 5) { return; }
+    if (capture.handler === this.boxSelection && !capture.dragging && capture.start.distance(event.position) < 5) { return; }
     capture.dragging = true;
-    capture.gizmo.onMouseDrag(event);
+    capture.handler.onMouseDrag?.(event);
   }
 
   override onMouseUp (event: InputEventMouseButton): void {
@@ -247,12 +323,12 @@ export class Editor3D extends Control {
 
     if (!capture || event.buttonIndex !== capture.button) { return; }
     this.capture = undefined;
-    capture.gizmo.onMouseUp(event);
+    capture.handler.onMouseUp?.(event);
   }
 
   override onMouseWheel (event: InputEventMouseButton): void {
-    if (!event.isAccepted() && (!this.capture || this.capture.gizmo === this.camera)) {
-      this.camera.onMouseWheel(event);
+    if (!event.isAccepted() && (!this.capture || this.capture.handler === this.viewportCamera)) {
+      this.viewportCamera.onMouseWheel(event);
     }
   }
 
@@ -264,27 +340,50 @@ export class Editor3D extends Control {
 
       return;
     }
-    if (this.capture) {
-      this.capture.gizmo.onKeyDown(event);
-    } else {
-      this.camera.onKeyDown(event);
-      if (!event.isAccepted()) { this.transform.onKeyDown(event); }
-    }
+    const handler = this.capture?.handler ?? this.viewportCamera;
+
+    handler.onKeyDown?.(event);
+    if (!event.isAccepted()) { this.handleShortcut(event); }
     if (!event.isAccepted()) { this.gizmoEvents.emit('keyDown', event); }
   }
 
+  private handleShortcut (event: InputEventKey): void {
+    const key = event.keycode.toLowerCase();
+
+    if (key === 'f') {
+      this.viewportCamera.focusSelection();
+      event.accept();
+    } else if (key === '1' || key === '3' || key === '7') {
+      this.viewportCamera.orientToAxis(key === '1' ? 2 : key === '3' ? 0 : 1, event.ctrlPressed ? -1 : 1);
+      event.accept();
+    } else if (!event.ctrlPressed && !event.metaPressed) {
+      if (key === 'q') {
+        this.setTool('camera');
+      } else if (key === 'w' || key === 'e' || key === 'r') {
+        this.setTool(key === 'w' ? 'translate' : key === 'e' ? 'rotate' : 'scale');
+      } else if (key === 'x') {
+        this.setTool(this.transformGizmo.mode, this.space === 'world' ? 'local' : 'world');
+      } else if (key === 'z') {
+        this.setPivotType(this.pivotType === 'selection-center' ? 'object-center' : 'selection-center');
+      } else {
+        return;
+      }
+      event.accept();
+    }
+  }
+
   override onKeyUp (event: InputEventKey): void {
-    if (!event.isAccepted()) { this.camera.onKeyUp(event); }
+    if (!event.isAccepted()) { this.viewportCamera.onKeyUp(event); }
   }
 
   override update (deltaTime: number): void {
-    this.transform.onUpdate();
-    this.updateGizmos();
+    this.gizmos.forEach(gizmo => gizmo.update(deltaTime));
+    this.directionGizmo.updateDrawing();
     super.update(deltaTime);
   }
 
   override draw (): void {
-    const rect = this.selectionGizmo.marqueeRect;
+    const rect = this.boxSelection.marqueeRect;
 
     if (!rect) { return; }
     const width = rect.right - rect.left;
@@ -297,16 +396,16 @@ export class Editor3D extends Control {
   /** Roll back the current preview before changing tool, document or viewport. */
   cancel (reason: string): void {
     this.capture = undefined;
-    this.camera.cancel();
-    this.transform.cancel(reason);
-    this.selectionGizmo.cancel();
-    this.transform.hover();
-    this.camera.hover();
+    this.viewportCamera.cancel();
+    this.gizmos.forEach(gizmo => gizmo.cancel(reason));
+    this.boxSelection.cancel();
+    this.transformGizmo.hover();
+    this.directionGizmo.hover();
   }
 
   override onMouseLeave (): void {
-    this.transform.hover();
-    this.camera.hover();
+    this.transformGizmo.hover();
+    this.directionGizmo.hover();
   }
 
   override onLostFocus (): void { this.cancel('focus-lost'); }
@@ -314,12 +413,10 @@ export class Editor3D extends Control {
     this.offCameraUpdate?.();
     this.offSelectionChange();
     this.cancel('viewport-exit');
-    this.camera.restoreSceneCamera();
+    this.viewportCamera.restoreSceneCamera();
     this.gizmoRenderer?.dispose();
-    this.grid.dispose();
-    this.transform.dispose();
-    this.camera.dispose();
-    this.sceneGizmos.forEach(gizmo => gizmo.dispose());
-    this.sceneGizmos.length = 0;
+    this.activeGizmo = undefined;
+    for (const gizmo of this.gizmos.slice()) { gizmo.dispose(); }
+    this.gizmos.length = 0;
   }
 }

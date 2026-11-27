@@ -1,4 +1,4 @@
-import { GizmoSubType } from '@galacean/effects-plugin-editor-gizmo';
+import { PrimitiveType } from '@galacean/effects-plugin-editor-gizmo';
 import type { GeometryExample } from './editor';
 
 export const simpleJSON = `{
@@ -709,7 +709,7 @@ export const particleJSON = `{
 
 export const basicGeometry: GeometryExample[] = [
   {
-    type: GizmoSubType.box,
+    type: PrimitiveType.Box,
     'options': {
       'size': {
         'width': 0.8,
@@ -733,7 +733,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.box,
+    type: PrimitiveType.Box,
     'options': {
       'size': {
         'width': 0.8,
@@ -757,7 +757,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.sphere,
+    type: PrimitiveType.Sphere,
     'options': {
       'size': {
         'radius': 0.5,
@@ -784,7 +784,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.sphere,
+    type: PrimitiveType.Sphere,
     'options': {
       'size': {
         'radius': 0.5,
@@ -811,7 +811,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.cylinder,
+    type: PrimitiveType.Cylinder,
     'options': {
       'size': {
         'radius': 0.4,
@@ -834,7 +834,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.cylinder,
+    type: PrimitiveType.Cylinder,
     'options': {
       'size': {
         'radius': 0.4,
@@ -857,7 +857,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.cone,
+    type: PrimitiveType.Cone,
     'options': {
       'size': {
         'radius': 0.5,
@@ -880,7 +880,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.cone,
+    type: PrimitiveType.Cone,
     'options': {
       'size': {
         'radius': 0.4,
@@ -903,7 +903,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.torus,
+    type: PrimitiveType.Torus,
     'options': {
       'size': {
         'radius': 0.4,
@@ -931,7 +931,7 @@ export const basicGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.torus,
+    type: PrimitiveType.Torus,
     'options': {
       'size': {
         'radius': 0.4,
@@ -962,7 +962,7 @@ export const basicGeometry: GeometryExample[] = [
 
 export const sceneGeometry: GeometryExample[] = [
   {
-    type: GizmoSubType.frustum,
+    type: 'frustum',
     'options': {
       'size': {
         'aspect': 2,
@@ -997,7 +997,8 @@ export const sceneGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.camera,
+    type: PrimitiveType.Plane,
+    icon: 'camera',
     'options': {
       'size': {
         'width': 0.5,
@@ -1020,7 +1021,8 @@ export const sceneGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.light,
+    type: PrimitiveType.Plane,
+    icon: 'light',
     'options': {
       'size': {
         'width': 0.5,
@@ -1043,7 +1045,7 @@ export const sceneGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.pointLight,
+    type: 'point-light',
     'options': {
       'size': {
         'range': 1,
@@ -1070,7 +1072,7 @@ export const sceneGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.spotLight,
+    type: 'spot-light',
     'options': {
       'size': {
         'range': 2,
@@ -1100,7 +1102,7 @@ export const sceneGeometry: GeometryExample[] = [
     },
   },
   {
-    type: GizmoSubType.directionLight,
+    type: 'directional-light',
     'options': {
       'size': {
         'range': 1,

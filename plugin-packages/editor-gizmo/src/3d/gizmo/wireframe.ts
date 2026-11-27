@@ -1,13 +1,11 @@
-import type { Engine, GeometryDrawMode, ShaderMacros, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, Geometry, Material, math } from '@galacean/effects';
-import type { GizmoGeometryData } from './mesh';
+import type { Engine, ShaderMacros, spec } from '@galacean/effects';
+import { GLSLVersion, glContext, Material, Geometry, math } from '@galacean/effects';
+import type { GizmoMesh } from './gizmo-drawing';
 
 const { Vector4 } = math;
 
-export function createWireframeGeometry (engine: Engine, source: Geometry, sourceMaterial: Material, color: spec.vec3): GizmoGeometryData {
-  const geometry = new SharedGeometry(engine, {
-    geometry: source, mode: glContext.LINES, index: { data: new Uint32Array(0) },
-  });
+export function createWireframeMesh (engine: Engine, source: Geometry, sourceMaterial: Material, color: spec.vec3): GizmoMesh {
+  const geometry = createWireframeGeometry(engine, source);
   const { vertex, fragment } = sourceMaterial.shader.shaderData;
   const material = Material.create(engine, {
     ...sourceMaterial.props,
@@ -21,10 +19,10 @@ export function createWireframeGeometry (engine: Engine, source: Geometry, sourc
   material.depthTest = true;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeGeometry(source, sourceMaterial, { name: 'model-wireframe', geometry, material });
+  return updateWireframeMesh(source, sourceMaterial, { name: 'model-wireframe', geometry, material });
 }
 
-export function updateWireframeGeometry (source: Geometry, sourceMaterial: Material, wireframe: GizmoGeometryData): GizmoGeometryData {
+export function updateWireframeMesh (source: Geometry, sourceMaterial: Material, wireframe: GizmoMesh): GizmoMesh {
   wireframe.material.cloneUniforms(sourceMaterial);
   for (const name of Object.keys(sourceMaterial.enabledMacros)) { wireframe.material.enableMacro(name, sourceMaterial.enabledMacros[name]); }
   const count = Math.abs(source.getDrawCount());
@@ -83,33 +81,13 @@ function getTriangleIndexData (oid: ArrayLike<number>): Uint32Array {
   return indexData;
 }
 
-export interface SharedGeometryOptions {
-  name?: string,
-  drawStart?: number,
-  drawCount?: number,
-  mode?: GeometryDrawMode,
-  index?: { data: Uint16Array | Uint32Array },
-  geometry: Geometry,
-}
+function createWireframeGeometry (engine: Engine, source: Geometry): Geometry {
+  const geometry = Geometry.create(engine, {
+    attributes: {}, indices: { data: new Uint32Array(0) }, mode: glContext.LINES, drawCount: 0,
+  });
+  const vertexBuffers = source.getVertexBuffers();
 
-export class SharedGeometry extends Geometry {
-  constructor (engine: Engine, options: SharedGeometryOptions) {
-    const source = options.geometry;
-    const sourceIndex = options.index?.data ?? source.getIndexData();
-    const indexData = sourceIndex?.slice() as Uint16Array | Uint32Array | undefined;
+  for (const name of Object.keys(vertexBuffers)) { geometry.setVerticesBuffer(vertexBuffers[name]); }
 
-    super(engine, {
-      name: options.name,
-      attributes: {},
-      indices: indexData ? { data: indexData } : undefined,
-      drawStart: options.drawStart ?? 0,
-      drawCount: options.drawCount ?? 0,
-      mode: options.mode ?? 0,
-    });
-    const vertexBuffers = source.getVertexBuffers();
-
-    for (const name of Object.keys(vertexBuffers)) {
-      this.setVerticesBuffer(vertexBuffers[name]);
-    }
-  }
+  return geometry;
 }

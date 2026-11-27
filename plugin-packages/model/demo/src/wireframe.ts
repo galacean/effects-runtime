@@ -1,12 +1,12 @@
 import { RenderPass, RenderPassEvent, RendererFeature, type Composition, type Renderer, type RenderingData } from '@galacean/effects';
 import { ModelMeshComponent, type PSubMesh } from '@galacean/effects-plugin-model';
-import type { GizmoGeometryData } from '../../../editor-gizmo/src/3d/mesh';
-import { createWireframeGeometry, updateWireframeGeometry } from '../../../editor-gizmo/src/3d/wireframe';
+import type { GizmoMesh } from '../../../editor-gizmo/src/3d/gizmo/gizmo-drawing';
+import { createWireframeMesh, updateWireframeMesh } from '../../../editor-gizmo/src/3d/gizmo/wireframe';
 
 /** Draw model wireframes directly without adding helper items to the scene. */
 export class ModelWireframeRenderer extends RendererFeature {
   private composition?: Composition;
-  private readonly geometries = new Map<PSubMesh, GizmoGeometryData>();
+  private readonly geometries = new Map<PSubMesh, GizmoMesh>();
   private pass: ModelWireframePass;
 
   setScene (composition: Composition, enabled: boolean): void {
@@ -36,10 +36,10 @@ export class ModelWireframeRenderer extends RendererFeature {
         let geometry = this.geometries.get(subMesh);
 
         if (!geometry) {
-          geometry = createWireframeGeometry(renderer.engine, source, material, [0, 1, 1]);
+          geometry = createWireframeMesh(renderer.engine, source, material, [0, 1, 1]);
           this.geometries.set(subMesh, geometry);
         } else {
-          updateWireframeGeometry(source, material, geometry);
+          updateWireframeMesh(source, material, geometry);
         }
         renderer.drawGeometry(geometry.geometry, component.content.matrix, geometry.material);
       }

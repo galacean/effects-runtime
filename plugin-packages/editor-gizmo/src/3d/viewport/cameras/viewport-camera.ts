@@ -1,14 +1,10 @@
-import { MouseButton, PluginSystem, Transform, glContext, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type Renderer } from '@galacean/effects';
-import type { Point2, Point3 } from '../../math/types';
-import { add3, sub3, mul3, length3, unit3 } from '../../math/vector3';
-import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-navigation';
-import { Gizmo3D, type Viewport3DCameraEvent } from './gizmo-3d';
-import { getItemWorldBoundsCorners } from './item-bounds';
-import { GizmoGeometry } from './gizmo-geometry';
-import { GizmoSubType } from '../define';
-import type { EditorGizmoPlugin } from '../gizmo-loader';
-import { computeOrthographicOffCenter } from '../../math/projection';
-import { viewHelperStyle } from '../constants';
+import { MouseButton, Transform, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey } from '@galacean/effects';
+import type { Editor3D } from '../../editor-3d';
+import type { Point3 } from '../../../math/types';
+import { add3, sub3, mul3, length3, unit3 } from '../../../math/vector3';
+import { cameraOrientation, interpolateCamera, orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera } from './camera-operations';
+import type { ViewportCameraState, ViewportCameraEvent } from './viewport-camera-types';
+import { getItemWorldBoundsCorners } from '../item-bounds';
 
 const vector = (point: Point3) => new math.Vector3(point.x, point.y, point.z);
 
@@ -16,127 +12,36 @@ function cameraTransform (camera: Camera): Transform {
   return (camera as Camera & { readonly transform: Transform }).transform;
 }
 
-function lerpPoint (a: Point3, b: Point3, t: number): Point3 {
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
-}
-
-function cameraOrientation (camera: CameraEditData): math.Quaternion {
-  return new math.Quaternion().setFromRotationMatrix(
-    new math.Matrix4().lookAt(vector(camera.position), vector(camera.target), vector(camera.up)));
-}
-
-function interpolateCamera (from: CameraEditData, to: CameraEditData, t: number): CameraEditData {
-  const target = lerpPoint(from.target, to.target, t);
-  const orientation = cameraOrientation(from).slerp(cameraOrientation(to), t);
-  const direction = new math.Vector3(0, 0, 1).applyQuaternion(orientation);
-  const distance = length3(sub3(from.position, from.target)) + (length3(sub3(to.position, to.target)) - length3(sub3(from.position, from.target))) * t;
-  const up = new math.Vector3(0, 1, 0).applyQuaternion(orientation);
-
-  return { ...to, position: add3(target, mul3(direction, distance)), target, up };
-}
-
-/** Orbit/pan/dolly, selected-item focus and clickable six-axis view helper. */
-export class ViewportGizmo3D extends Gizmo3D {
-  readonly type = 'viewport-3d';
-  private pose?: CameraEditData;
+/** Owns the viewport camera pose, navigation and temporary scene-camera binding. */
+export class ViewportCamera {
+  private pose?: ViewportCameraState;
   private sceneId?: string;
   // An identity parent keeps the editor pose in world space and makes a scene camera's
   // parent assignment, including null, detectable even when its local pose is unchanged.
   private readonly viewTransform = new Transform({}, new Transform());
   private editedScene?: { composition: Composition, transform: Transform, fov: number };
   private navigation?: {
-    initial: CameraEditData,
-    current: CameraEditData,
+    initial: ViewportCameraState,
+    current: ViewportCameraState,
     composition: Composition,
     /** Completed edits retain their result while interpolation finishes. */
     committed?: boolean,
   };
-  private alignment?: { to: CameraEditData, elapsed: number };
+  private alignment?: { to: ViewportCameraState, elapsed: number };
   private smoothing = false;
   private start?: math.Vector2;
   private action?: 'orbit' | 'pan' | 'look' | 'dolly';
   private zoomUsesY = true;
-  private hoveredAxis?: string;
   private flyKeys = new Set<string>();
   private flyTime = 0;
   private flySpeed = 5;
-  private geometryScene?: Composition;
-  geometry?: GizmoGeometry;
 
-  updateGeometry (): void {
-    const composition = this.owner.composition;
+  constructor (private readonly viewport: Editor3D) {}
 
-    if (this.geometryScene !== composition) {
-      this.dispose();
-      this.geometryScene = composition;
-    }
-    if (!composition) { return; }
-    if (!this.geometry) {
-      const plugin = PluginSystem.getPlugins()?.find(plugin => plugin.name === 'editor-gizmo') as EditorGizmoPlugin | undefined;
+  get isNavigating (): boolean { return !!this.navigation; }
 
-      if (!plugin) { return; }
-      this.geometry = new GizmoGeometry(this.owner.engine, GizmoSubType.viewHelper,
-        { size: { scale: 1 }, renderMode: glContext.TRIANGLES }, plugin.getIconTextures(composition));
-    }
-    const geometry = this.geometry;
-    const camera = composition.camera;
-    const orientation = camera.getInverseViewMatrix().getTransform().rotation.conjugate();
-    const { x: width, y: height } = this.owner.viewportSize;
-    const inset = viewHelperStyle.margin + viewHelperStyle.size / 2;
-    const model = new math.Matrix4().compose(new math.Vector3(width / 2 - inset, height / 2 - inset, 0), new math.Quaternion(), math.Vector3.ONE);
-
-    geometry.projection = computeOrthographicOffCenter(-width / 2, width / 2, -height / 2, height / 2, -100, 100);
-
-    geometry.highlight(this.hoveredAxis);
-    for (const [index, axis] of ['X', 'Y', 'Z'].entries()) {
-      const direction = new math.Vector3();
-
-      direction.setElement(index, 1);
-      direction.applyQuaternion(orientation).multiply(viewHelperStyle.axisLength);
-      for (const part of geometry.parts) {
-        if (!part.data.name.endsWith(axis) && part.data.name !== 'pos' + axis + 'Line') { continue; }
-        const line = part.data.name.endsWith('Line');
-        const sign = part.data.name.startsWith('neg') ? -1 : 1;
-        const point = direction.clone().multiply(sign);
-
-        if (line) {
-          const length = point.toVector2().length();
-          const start = Math.min(0.5, length);
-          const midpoint = length > 0 ? (length + start) / (2 * length) : 0;
-
-          part.local.setTransform({ position: new math.Vector3(point.x * midpoint, point.y * midpoint, point.z),
-            quat: new math.Quaternion().setFromAxisAngle(new math.Vector3(0, 0, 1), Math.atan2(point.y, point.x)),
-            scale: new math.Vector3((length - start) / viewHelperStyle.axisLength, 1, 1) });
-        } else {
-          part.local.setTransform({ position: point });
-        }
-      }
-    }
-    // Paint far markers first; the front-facing circles cover lines and rear markers.
-    geometry.parts.sort((a, b) => {
-      return a.local.position.z - b.local.position.z || Number(!a.data.name.endsWith('Line')) - Number(!b.data.name.endsWith('Line'));
-    });
-    geometry.updateMatrix(camera.getInverseViewMatrix().multiply(model));
-  }
-
-  override draw (renderer: Renderer): void {
-    this.updateGeometry();
-    this.geometry?.draw(renderer);
-  }
-
-  override dispose (): void {
-    this.geometry?.dispose();
-    this.geometry = undefined;
-    this.geometryScene = undefined;
-  }
-
-  hover (point?: Point2): void {
-    this.hoveredAxis = point ? this.owner.picker.hit(point, 'view-helper')?.key : undefined;
-    this.geometry?.highlight(this.hoveredAxis);
-  }
-
-  get state (): CameraEditData | undefined {
-    const composition = this.owner.composition;
+  get state (): ViewportCameraState | undefined {
+    const composition = this.viewport.composition;
 
     if (!composition) { return; }
     if (composition.id === this.sceneId && this.pose) { return this.pose; }
@@ -153,23 +58,23 @@ export class ViewportGizmo3D extends Gizmo3D {
   }
 
   /** Set the orbit target and update the real viewport camera. */
-  setState (camera: CameraEditData): void {
+  setState (camera: ViewportCameraState): void {
     this.cancel();
     this.setPose(camera);
   }
 
-  private setPose (camera: CameraEditData): void {
-    this.sceneId = this.owner.composition?.id;
+  private setPose (camera: ViewportCameraState): void {
+    this.sceneId = this.viewport.composition?.id;
     this.pose = camera;
     this.applyToComposition();
-    this.owner.updateGizmos();
+    this.viewport.updateGizmos();
   }
 
   applyToComposition (): void {
-    const composition = this.owner.composition;
+    const composition = this.viewport.composition;
     const pose = this.state;
 
-    if (!this.owner.enabled || !composition || !pose) { return; }
+    if (!this.viewport.enabled || !composition || !pose) { return; }
     const camera = composition.camera;
 
     if (this.editedScene?.composition !== composition) {
@@ -190,7 +95,7 @@ export class ViewportGizmo3D extends Gizmo3D {
   private syncSceneCamera (): void {
     const scene = this.editedScene;
 
-    if (!scene || !this.pose || scene.composition !== this.owner.composition) { return; }
+    if (!scene || !this.pose || scene.composition !== this.viewport.composition) { return; }
     const camera = scene.composition.camera;
     const source = cameraTransform(camera);
     const rebound = source.parentTransform !== this.viewTransform.parentTransform;
@@ -222,9 +127,9 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.editedScene = undefined;
   }
 
-  private publish (camera: CameraEditData, phase: Viewport3DCameraEvent['phase']): void {
+  private publish (camera: ViewportCameraState, phase: ViewportCameraEvent['phase']): void {
     if (phase !== 'start') { this.setPose(camera); }
-    this.owner.emit('camerachange', { camera, phase });
+    this.viewport.emit('camerachange', { camera, phase });
   }
 
   /** Stop interpolation at the displayed pose before another interaction takes over. */
@@ -235,9 +140,9 @@ export class ViewportGizmo3D extends Gizmo3D {
     }
   }
 
-  private beginNavigation (): CameraEditData | undefined {
+  private beginNavigation (): ViewportCameraState | undefined {
     this.stopNavigation();
-    const composition = this.owner.composition;
+    const composition = this.viewport.composition;
     const camera = this.state;
 
     if (!composition || !camera) { return; }
@@ -252,10 +157,10 @@ export class ViewportGizmo3D extends Gizmo3D {
   }
 
   private valid (): boolean {
-    return !!this.navigation && this.navigation.composition === this.owner.composition;
+    return !!this.navigation && this.navigation.composition === this.viewport.composition;
   }
 
-  private preview (camera: CameraEditData, smooth = false): void {
+  private preview (camera: ViewportCameraState, smooth = false): void {
     if (!this.navigation || !this.valid()) {
       this.cancel();
 
@@ -275,13 +180,13 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.start = undefined;
     this.action = undefined;
     this.flyKeys.clear();
-    if (navigation && navigation.composition === this.owner.composition) {
+    if (navigation && navigation.composition === this.viewport.composition) {
       this.publish(canceled ? navigation.initial : navigation.current, canceled ? 'cancel' : 'commit');
     }
   }
 
-  override onUpdate (deltaTime?: number): void {
-    const composition = this.owner.composition;
+  update (deltaTime?: number): void {
+    const composition = this.viewport.composition;
 
     if (this.editedScene && this.editedScene.composition !== composition) { this.restoreSceneCamera(); }
     if (composition && composition.id !== this.sceneId) { this.applyToComposition(); }
@@ -325,25 +230,16 @@ export class ViewportGizmo3D extends Gizmo3D {
       if (settled && !this.action) { this.finish(false); }
     }
   }
-  override cancel (): void {
+  cancel (): void {
     this.finish(!this.navigation?.committed);
   }
-  override onMouseDown (event: InputEventMouseButton): void {
-    if (!this.owner.composition) { return; }
-    if (event.buttonIndex === MouseButton.Left) {
-      const hit = this.pickAxis(event.position);
-
-      if (hit) {
-        this.align(hit.axis, hit.sign); event.accept();
-
-        return;
-      }
-    }
+  onMouseDown (event: InputEventMouseButton): void {
+    if (!this.viewport.composition) { return; }
     const actionKey = event.ctrlPressed || event.metaPressed;
     let action: typeof this.action;
 
     if (event.buttonIndex === MouseButton.Middle || event.buttonIndex === MouseButton.Left
-      && (event.altPressed && actionKey || this.owner.tool === 'camera' && !event.altPressed)) {
+      && (event.altPressed && actionKey || this.viewport.tool === 'camera' && !event.altPressed)) {
       action = 'pan';
     } else if (event.buttonIndex === MouseButton.Right && event.altPressed) {
       action = 'dolly';
@@ -359,7 +255,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     if (event.shiftPressed) { this.flyKeys.add('shift'); }
     event.accept();
   }
-  override onMouseDrag (event: InputEventMouseMotion): void {
+  onMouseDrag (event: InputEventMouseMotion): void {
     if (!this.navigation || !this.start) { return; }
     const before = this.navigation.current;
     const dx = event.position.x - this.start.x, dy = event.position.y - this.start.y;
@@ -378,8 +274,8 @@ export class ViewportGizmo3D extends Gizmo3D {
 
       this.preview(dollyEditorCamera(before, Math.exp(delta * 0.003 * (event.shiftPressed ? 3 : 1))));
     } else {
-      const from = this.owner.unproject({ x: event.position.x - dx, y: event.position.y - dy }, before.target);
-      const to = this.owner.unproject(event.position, before.target);
+      const from = this.viewport.unproject({ x: event.position.x - dx, y: event.position.y - dy }, before.target);
+      const to = this.viewport.unproject(event.position, before.target);
 
       if (!from || !to) { return; }
       const delta = mul3(sub3(from, to), event.shiftPressed ? 4 : 1);
@@ -388,7 +284,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     }
     event.accept();
   }
-  override onMouseUp (event: InputEventMouseButton): void {
+  onMouseUp (event: InputEventMouseButton): void {
     if (!this.navigation || this.alignment) { return; }
     if (!event.isCanceled() && this.valid() && this.smoothing) {
       this.navigation.committed = true;
@@ -415,7 +311,7 @@ export class ViewportGizmo3D extends Gizmo3D {
 
     if (!camera) { return; }
     let next = dollyEditorCamera(camera, direction < 0 ? 1 / factor : factor);
-    const mousePoint = event.altPressed && this.owner.unproject(event.position, camera.target);
+    const mousePoint = event.altPressed && this.viewport.unproject(event.position, camera.target);
 
     if (mousePoint) {
       const ratio = length3(sub3(next.position, next.target)) / length3(sub3(camera.position, camera.target));
@@ -427,7 +323,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.finish(false);
     event.accept();
   }
-  override onKeyDown (event: InputEventKey): void {
+  onKeyDown (event: InputEventKey): void {
     const key = event.keycode.toLowerCase();
 
     if (this.action === 'look' && ['w', 'a', 's', 'd', 'q', 'e', 'shift'].includes(key)) {
@@ -435,15 +331,14 @@ export class ViewportGizmo3D extends Gizmo3D {
 
       return;
     }
-    if (key === 'escape') { this.cancel(); event.accept(); } else if (key === 'f') { this.focus(); event.accept(); } else if (key === '1' || key === '3' || key === '7') { this.align(key === '1' ? 2 : key === '3' ? 0 : 1, event.ctrlPressed ? -1 : 1); event.accept(); }
   }
-  override onKeyUp (event: InputEventKey): void {
+  onKeyUp (event: InputEventKey): void {
     if (this.flyKeys.delete(event.keycode.toLowerCase())) { event.accept(); }
   }
-  focus (): void {
-    const selected = this.owner.selectionGizmo.items;
-    const size = this.owner.viewportSize;
-    const composition = this.owner.composition;
+  focusSelection (): void {
+    const selected = this.viewport.transformGizmo.selectedParents;
+    const size = this.viewport.viewportSize;
+    const composition = this.viewport.composition;
 
     if (!composition || !selected.length || size.x <= 0 || size.y <= 0) { return; }
     const camera = this.state;
@@ -469,7 +364,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.preview({ ...camera, target: center, position: add3(center, mul3(direction, radius / Math.sin(halfFov) * 1.3)) }, true);
     this.navigation!.committed = true;
   }
-  align (axis: number, sign: number): void {
+  orientToAxis (axis: number, sign: number): void {
     const camera = this.beginNavigation();
 
     if (!camera) { return; }
@@ -480,19 +375,5 @@ export class ViewportGizmo3D extends Gizmo3D {
       to: { ...camera, position: add3(camera.target, mul3(vector, distance)), up: axis === 1 ? { x: 0, y: 0, z: -sign } : { x: 0, y: 1, z: 0 } },
       elapsed: 0,
     };
-  }
-  pickAxis (point: Point2): { axis: number, sign: number } | undefined {
-    const hit = this.owner.picker.hit(point, 'view-helper');
-
-    return hit && this.nativeAxis(hit.key);
-  }
-  private nativeAxis (key: string): { axis: number, sign: number } | undefined {
-    const match: Record<string, { axis: number, sign: number }> = {
-      posX: { axis: 0, sign: 1 }, negX: { axis: 0, sign: -1 },
-      posY: { axis: 1, sign: 1 }, negY: { axis: 1, sign: -1 },
-      posZ: { axis: 2, sign: 1 }, negZ: { axis: 2, sign: -1 },
-    };
-
-    return match[key];
   }
 }

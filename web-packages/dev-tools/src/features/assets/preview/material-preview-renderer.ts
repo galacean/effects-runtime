@@ -3,7 +3,7 @@ import { Material, RenderPassAttachmentStorageType, RenderingData, Serialization
   Texture, TextureLoadAction, TextureSourceType, TextureStoreAction, glContext, math } from '@galacean/effects';
 import { GLShaderLibrary } from '@galacean/effects-webgl';
 import type { GPUProgramWebGL } from '@galacean/effects-webgl';
-import { createGeometry, GeometryType } from '@galacean/effects-plugin-editor-gizmo';
+import { createPrimitiveGeometry, PrimitiveType } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
 import { EditorRenderTarget } from '../../../platform/effects-runtime/editor-render-target';
 import type { RenderedPreview } from './texture-preview-cache';
@@ -270,8 +270,8 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   private prepareGeometry (primitive: PreviewPrimitive): void {
     if (this.primitive === primitive && this.geometry) { return; }
     this.geometry?.dispose();
-    const type = { sphere: GeometryType.Sphere, plane: GeometryType.Plane, cube: GeometryType.Box, cylinder: GeometryType.Cylinder }[primitive];
-    const geometry = createGeometry(this.engine, type, { radius: 1, width: 1.7, height: 1.7, depth: 1.7, widthSegments: 48, heightSegments: 32, radialSegments: 48 });
+    const type = { sphere: PrimitiveType.Sphere, plane: PrimitiveType.Plane, cube: PrimitiveType.Box, cylinder: PrimitiveType.Cylinder }[primitive];
+    const geometry = createPrimitiveGeometry(this.engine, type, { radius: 1, width: 1.7, height: 1.7, depth: 1.7, widthSegments: 48, heightSegments: 32, radialSegments: 48 });
     const aliases = { a_Position: 'aPos', a_Normal: 'aNormal', a_UV1: 'aUV' };
 
     for (const [name, alias] of Object.entries(aliases)) {

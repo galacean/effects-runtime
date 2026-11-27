@@ -1,6 +1,5 @@
 import type { Engine, spec } from '@galacean/effects';
-import { Geometry, Material, glContext, math } from '@galacean/effects';
-import sceneDepthTest from './shaders/scene-depth.glsl';
+import { Geometry, glContext, math } from '@galacean/effects';
 
 type vec3 = spec.vec3;
 type Vector3 = math.Vector3;
@@ -10,7 +9,7 @@ const { Euler, Vector3, Matrix4 } = math;
 const rectSize = 0.04;
 const DEG2RAD = Math.PI / 180;
 
-interface GeometryData {
+interface LineShapeData {
   points: Vector3[],
   indices: number[],
 }
@@ -21,7 +20,7 @@ interface ArcPathOptions {
   rotate?: vec3,
 }
 
-function arcPath (radius: number, arc: number, options: ArcPathOptions = {}): GeometryData {
+function arcPath (radius: number, arc: number, options: ArcPathOptions = {}): LineShapeData {
   const { plane, translate = [0, 0, 0], rotate = [0, 0, 0] } = options;
   const rotMat4 = Euler.fromArray(rotate).negate().toMatrix4(new Matrix4());
   const points: Vector3[] = [];
@@ -57,7 +56,7 @@ function arcPath (radius: number, arc: number, options: ArcPathOptions = {}): Ge
   }
 }
 
-function line (p0: vec3, p1: vec3): GeometryData {
+function line (p0: vec3, p1: vec3): LineShapeData {
   return {
     points: [
       Vector3.fromArray(p0),
@@ -67,7 +66,7 @@ function line (p0: vec3, p1: vec3): GeometryData {
   };
 }
 
-function box (width: number, height: number, depth: number, center?: number[]): GeometryData {
+function box (width: number, height: number, depth: number, center?: number[]): LineShapeData {
   const w = width / 2;
   const h = height / 2;
   const d = depth / 2;
@@ -89,7 +88,7 @@ function box (width: number, height: number, depth: number, center?: number[]): 
   };
 }
 
-function rect (width: number, height: number, pos?: vec3): GeometryData {
+function rect (width: number, height: number, pos?: vec3): LineShapeData {
   const w = width / 2;
   const h = height / 2;
   const points: Vector3[] = [
@@ -113,7 +112,7 @@ function rect (width: number, height: number, pos?: vec3): GeometryData {
   };
 }
 
-function combineGeometries (geometries: GeometryData[]) {
+function combineGeometries (geometries: LineShapeData[]) {
   const points: number[] = [];
   const indices: number[] = [];
 
@@ -135,7 +134,7 @@ function combineGeometries (geometries: GeometryData[]) {
   };
 }
 
-const Shapes: Record<string, (arg: any) => GeometryData[]> = {
+const Shapes: Record<string, (arg: any) => LineShapeData[]> = {
   Texture (arg: any) {
     const ret = [];
 
@@ -165,7 +164,7 @@ const Shapes: Record<string, (arg: any) => GeometryData[]> = {
       arcPath(radius, arc),
       arc !== 360 && line([0, 0, 0], [radius, 0, 0]),
       arc !== 360 && line([0, 0, 0], [Math.cos(arc * DEG2RAD) * radius, Math.sin(arc * DEG2RAD) * radius, 0]),
-    ] as GeometryData[];
+    ] as LineShapeData[];
   },
   Box: function (arg: any) {
     const {
@@ -200,7 +199,7 @@ const Shapes: Record<string, (arg: any) => GeometryData[]> = {
       arcPath(radius, arc, { plane: 'xy' }),
       arcPath(radius, 90, { plane: 'xz', rotate: [0, 0, arc] }),
       line([0, 0, 0], [Math.cos(arc * DEG2RAD) * radius, Math.sin(arc * DEG2RAD) * radius, 0]),
-    ] as GeometryData[];
+    ] as LineShapeData[];
 
     if (arc > 90) {
       ret.push(arcPath(radius, arc > 270 ? 180 : 90, { plane: 'yz' }));
@@ -220,7 +219,7 @@ const Shapes: Record<string, (arg: any) => GeometryData[]> = {
       arc > 270 && line([0, -radius, 0], [0, -outerRadius, radius]),
       line([Math.cos(arc * DEG2RAD) * radius, Math.sin(arc * DEG2RAD) * radius, 0],
         [Math.cos(arc * DEG2RAD) * outerRadius, Math.sin(arc * DEG2RAD) * outerRadius, radius]),
-    ].concat(Shapes.Circle(arg)) as GeometryData[];
+    ].concat(Shapes.Circle(arg)) as LineShapeData[];
   },
   Edge (arg) {
     const hw = arg.width / 2;
@@ -282,7 +281,7 @@ Shapes['7'] = Shapes.RectangleEdge;
 Shapes['8'] = Shapes.Edge;
 Shapes['9'] = Shapes.Texture;
 
-export function createShapeGeometry (engine: Engine, args: { shape: string, type?: number, [key: string]: unknown }): Geometry {
+export function createLineShapeGeometry (engine: Engine, args: { shape: string, type?: number, [key: string]: unknown }): Geometry {
   const { points, indices } = combineGeometries(Shapes[args.type || args.shape](args));
 
   return Geometry.create(engine, {
@@ -298,42 +297,146 @@ export function createShapeGeometry (engine: Engine, args: { shape: string, type
   });
 }
 
-/** Material for scene helpers that respect scene occlusion after post-processing. */
-export function createSceneShapeMaterial (engine: Engine, color: vec3, alpha = 1): Material {
-  const material = Material.create(engine, {
-    shader: {
-      shared: true,
-      fragment: `
-        precision mediump float;
+interface GeometryData { points: number[], normals: number[], uvs: number[], indices: number[] }
 
-        ${sceneDepthTest}
-        uniform vec3 u_color;
-        uniform float u_alpha;
-
-        void main() {
-          testSceneDepth();
-          gl_FragColor = vec4(u_color, u_alpha);
-        }`,
-      vertex: `
-        precision highp float;
-
-        attribute vec3 a_Position;
-        uniform mat4 effects_ObjectToWorld;
-        uniform mat4 effects_MatrixVP;
-
-        void main() {
-          gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(a_Position, 1.0);
-        }`,
-    },
+function createWireGeometry (engine: Engine, points: number[], indices: number[]): Geometry {
+  return Geometry.create(engine, {
+    attributes: { a_Position: { size: 3, data: new Float32Array(points) } },
+    indices: { data: new Uint16Array(indices) }, mode: glContext.LINES, drawCount: indices.length,
   });
+}
 
-  material.setVector3('u_color', Vector3.fromArray(color));
-  material.setFloat('u_alpha', alpha);
-  material.depthTest = true;
-  material.stencilTest = false;
-  material.blending = alpha < 1;
-  material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
-  material.depthMask = true;
+export function createWireDirectionalLightGeometry (engine: Engine, radius = 1, length = 2, segments = 64, linesNumber = 8, thetaStart = 0, thetaLength = Math.PI * 2): Geometry {
+  const data: GeometryData = { points: [], normals: [], uvs: [], indices: [] };
 
-  return material;
+  createXYPlaneCircle(radius, 0, segments, thetaStart, thetaLength, 0, data.points, data.indices);
+  const start = segments % linesNumber / 2;
+  const step = segments / linesNumber;
+
+  for (let i = 0; i < linesNumber; i++) {
+    const index = start + i * step;
+    const x = data.points[3 * index];
+    const y = data.points[3 * index + 1];
+    const z = -length;
+
+    data.points.push(x, y, z);
+    data.indices.push(index, segments + i);
+  }
+
+  return createWireGeometry(engine, data.points, data.indices);
+}
+
+export function createWirePointLightGeometry (engine: Engine, range = 10, segments = 64, thetaStart = 0, thetaLength = Math.PI * 2): Geometry {
+  const data: GeometryData = { points: [], normals: [], uvs: [], indices: [] };
+
+  createXYPlaneCircle(range, 0, segments, thetaStart, thetaLength, 0, data.points, data.indices);
+  createXZPlaneCircle(range, 0, segments, thetaStart, thetaLength, segments, data.points, data.indices);
+  createYZPlaneCircle(range, 0, segments, thetaStart, thetaLength, 2 * segments, data.points, data.indices);
+
+  return createWireGeometry(engine, data.points, data.indices);
+}
+
+export function createWireSpotLightGeometry (engine: Engine, range = 10, spotAngle = 30, segments = 64, thetaStart = 0, thetaLength = Math.PI * 2): Geometry {
+  const data: GeometryData = { points: [], normals: [], uvs: [], indices: [] };
+
+  const angle = spotAngle / 2 / 180 * Math.PI;
+  const radius = range * Math.tan(angle);
+
+  createXYPlaneCircle(radius, -range, segments, thetaStart, thetaLength, 0, data.points, data.indices);
+  data.points.push(0, 0, 0);
+  const step = segments / 4;
+  const start = segments % 4 / 2;
+
+  for (let i = 0; i < 4; i++) {
+    data.indices.push(segments, start + i * step);
+  }
+
+  return createWireGeometry(engine, data.points, data.indices);
+}
+
+export function createWireFrustumGeometry (engine: Engine, position: spec.vec3, rotation: spec.vec3, fov: number, aspect: number, near: number, far: number): Geometry {
+  const data: GeometryData = { points: [], normals: [], uvs: [], indices: [] };
+
+  const fovY = fov / 180 * Math.PI;
+  const ratio = aspect;
+  const halfY = far * Math.tan(fovY / 2);
+  const halfX = halfY * ratio;
+  const point1 = new Vector3(halfX, halfY, far);
+  const point2 = new Vector3(-halfX, halfY, far);
+  const point3 = new Vector3(-halfX, -halfY, far);
+  const point4 = new Vector3(halfX, -halfY, far);
+  const matrix = Euler.fromArray(rotation).toMatrix4(new Matrix4());
+  const result1 = matrix.transformPoint(point1).add(position);
+  const result2 = matrix.transformPoint(point2).add(position);
+  const result3 = matrix.transformPoint(point3).add(position);
+  const result4 = matrix.transformPoint(point4).add(position);
+
+  data.points.push(
+    ...position,
+    ...result1.toArray(), ...result2.toArray(),
+    ...result3.toArray(), ...result4.toArray()
+  );
+  data.indices.push(0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 3, 3, 4, 4, 1);
+
+  return createWireGeometry(engine, data.points, data.indices);
+}
+
+function createXYPlaneCircle (
+  radius: number,
+  z: number,
+  segments: number,
+  thetaStart: number,
+  thetaLength: number,
+  startIndex: number,
+  points: number[],
+  indices: number[],
+) {
+  for (let i = 0; i < segments; i++) {
+    const theta = thetaStart + i * thetaLength / segments;
+    const x = radius * Math.cos(theta);
+    const y = radius * Math.sin(theta);
+
+    points.push(x, y, z);
+    indices.push(startIndex + i, startIndex + (i + 1) % segments);
+  }
+}
+
+function createXZPlaneCircle (
+  radius: number,
+  y: number,
+  segments: number,
+  thetaStart: number,
+  thetaLength: number,
+  startIndex: number,
+  points: number[],
+  indices: number[],
+) {
+  for (let i = 0; i < segments; i++) {
+    const theta = thetaStart + i * thetaLength / segments;
+    const x = radius * Math.cos(theta);
+    const z = radius * Math.sin(theta);
+
+    points.push(x, y, z);
+    indices.push(startIndex + i, startIndex + (i + 1) % segments);
+  }
+}
+
+function createYZPlaneCircle (
+  radius: number,
+  x: number,
+  segments: number,
+  thetaStart: number,
+  thetaLength: number,
+  startIndex: number,
+  points: number[],
+  indices: number[],
+) {
+  for (let i = 0; i < segments; i++) {
+    const theta = thetaStart + i * thetaLength / segments;
+    const z = radius * Math.cos(theta);
+    const y = radius * Math.sin(theta);
+
+    points.push(x, y, z);
+    indices.push(startIndex + i, startIndex + (i + 1) % segments);
+  }
 }
