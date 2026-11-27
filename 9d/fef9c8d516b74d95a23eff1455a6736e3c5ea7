@@ -1,0 +1,154 @@
+plugin-packages/editor-gizmo/src/2d/gizmos/transform-handles-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 1-595
+plugin-packages/model/package.json
+  s_1959265e50472a::t_236aa9519c795e 74
+plugin-packages/editor-gizmo/src/2d/math/geometry.ts
+  s_1959265e50472a::t_236aa9519c795e 25-54,56-57,59-60,62-63,82,105
+web-packages/demo/src/gizmo-2d/view.ts
+  s_1959265e50472a::t_236aa9519c795e 109-126,191-193,250-252
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/transform-types.ts
+  s_1959265e50472a::t_236aa9519c795e 11-12,17-18
+plugin-packages/editor-gizmo/src/2d/configs/types.ts
+  s_1959265e50472a::t_236aa9519c795e 68-337
+plugin-packages/editor-gizmo/src/2d/gizmos/shape/pen-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 30-31,151-157,168,508-510,595,662
+plugin-packages/editor-gizmo/src/2d/modes/selection-content.ts
+  s_1959265e50472a::t_236aa9519c795e 1-38
+plugin-packages/editor-gizmo/src/2d/gizmos/content-edit-utils.ts
+  s_1959265e50472a::t_236aa9519c795e 1-67
+packages/effects-core/src/plugins/timeline/playables/transform-playable.ts
+  s_1959265e50472a::t_236aa9519c795e 67-75,84-92
+plugin-packages/editor-gizmo/src/2d/gizmos/curve-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 1-378
+tsconfig.check.json
+  s_1959265e50472a::t_236aa9519c795e 6
+web-packages/demo/src/gizmo-2d/fixtures/gradient.json
+  s_1959265e50472a::t_236aa9519c795e 1
+web-packages/test/package.json
+  s_1959265e50472a::t_236aa9519c795e 18
+web-packages/test/unit/src/index.ts
+  s_1959265e50472a::t_236aa9519c795e 7
+web-packages/test/unit/src/plugin-editor-gizmo/2d/pen-gizmo.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 8,25,47,66,116-146
+  s_1959265e50472a::t_7ae174984e2f55 147
+web-packages/test/unit/src/plugin-editor-gizmo/2d/move-selection-gizmo.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 8-16,78-79,142-144,236-237,284-285,290-291
+web-packages/demo/src/gizmo-2d/fixtures/ffd.json
+  s_1959265e50472a::t_236aa9519c795e 1
+web-packages/demo/src/gizmo-2d/inspector.ts
+  s_1959265e50472a::t_236aa9519c795e 1,3-4,21-27,45-49,72-91,114-118,137-143,206-211,214,218,227-228,235-240,256-258,266-268,275-285,287,291,320-376,383,407-409,413-415,517-522,550-552
+web-packages/demo/src/gizmo-2d/app.ts
+  s_1959265e50472a::t_236aa9519c795e 2-8,47
+plugin-packages/editor-gizmo/src/2d/items/custom-item-geometry.ts
+  s_1959265e50472a::t_236aa9519c795e 1-30
+plugin-packages/editor-gizmo/src/2d/gizmos/motion-path.ts
+  s_1959265e50472a::t_236aa9519c795e 1-153
+web-packages/demo/src/gizmo-2d/fixtures/README.md
+  s_1959265e50472a::t_236aa9519c795e 1-34
+web-packages/test/unit/src/plugin-editor-gizmo/2d/corner-rotation-gizmo.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 53-56,58-59
+packages/effects-core/src/plugins/shape/shape-component.ts
+  s_1959265e50472a::t_4df54d23ef19d7 468
+  s_1959265e50472a::t_236aa9519c795e 20-25,161,170,184-203,405,411-413,418,473,670-674
+  s_1959265e50472a::t_6629c12ccd516f 675
+plugin-packages/editor-gizmo/src/2d/gizmo-type.ts
+  s_1959265e50472a::t_236aa9519c795e 41-50
+plugin-packages/editor-gizmo/src/2d/modes/lattice-edit-mode.ts
+  s_1959265e50472a::t_236aa9519c795e 1-13
+plugin-packages/editor-gizmo/src/2d/modes/selection-edit-mode.ts
+  s_1959265e50472a::t_236aa9519c795e 1-104
+packages/effects-core/src/plugins/shape/graphics-path.ts
+  s_1959265e50472a::t_0318ea5857b45c 141
+plugin-packages/editor-gizmo/package.json
+  s_1959265e50472a::t_236aa9519c795e 50-51
+plugin-packages/editor-gizmo/src/2d/gizmos/click-drag-multiplex-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 7,210-212
+  s_1959265e50472a::t_8918e54afea427 213-214
+web-packages/demo/src/gizmo-2d/scene.ts
+  s_1959265e50472a::t_236aa9519c795e 7,22,171-211
+  s_1959265e50472a::t_5a92c98ef95054 212-213
+plugin-packages/editor-gizmo/src/2d/items/item-geometry.ts
+  s_1959265e50472a::t_236aa9519c795e 7,28-30,37-38,41,44-45,48-52,54,56-58,66
+plugin-packages/editor-gizmo/src/2d/gizmo-manager.ts
+  s_1959265e50472a::t_236aa9519c795e 24-28,74-78
+plugin-packages/editor-gizmo/src/2d/gizmos/crystal-lattice-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 1-820
+web-packages/demo/src/gizmo-2d/reference-examples.ts
+  s_1959265e50472a::t_236aa9519c795e 1-33
+plugin-packages/editor-gizmo/src/2d/items/index.ts
+  s_1959265e50472a::t_236aa9519c795e 3-4
+plugin-packages/ffd/src/ffd-component.ts
+  s_1959265e50472a::t_236aa9519c795e 14,37-62,69-85,127,130,132
+web-packages/demo/src/gizmo-2d/editor.ts
+  s_1959265e50472a::t_236aa9519c795e 17-22,24-26,41,73-75,83-86,175,202-268,276,306,334-336,351-353,358-376,393-394,396-403,432,439-461,487,489-491,543-549,561,681-683
+plugin-packages/editor-gizmo/src/2d/gizmos/move-selection-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 6,12,22-27,37-38,49-57,85-93,104-107,146,163-168,172-173,184,334-335,346-374
+plugin-packages/editor-gizmo/src/2d/gizmos/gradient-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 1-612
+plugin-packages/editor-gizmo/src/2d/items/shape-editing.ts
+  s_1959265e50472a::t_236aa9519c795e 1-95
+plugin-packages/editor-gizmo/src/2d/modes/gradient-edit-mode.ts
+  s_1959265e50472a::t_236aa9519c795e 1-25
+web-packages/test/unit/src/plugin-editor-gizmo/index.ts
+  s_1959265e50472a::t_236aa9519c795e 42
+plugin-packages/editor-gizmo/src/2d/configs/index.ts
+  s_1959265e50472a::t_236aa9519c795e 27-31,51-55
+plugin-packages/editor-gizmo/src/2d/gizmos/corner-rotation-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 7,14,60-61,150-151,170-175,297-324
+plugin-packages/editor-gizmo/src/2d/modes/index.ts
+  s_1959265e50472a::t_236aa9519c795e 3-5,12
+plugin-packages/editor-gizmo/rollup.config.js
+  s_1959265e50472a::t_236aa9519c795e 7
+plugin-packages/editor-gizmo/tsconfig.json
+  s_1959265e50472a::t_236aa9519c795e 24-26
+web-packages/test/unit/src/plugin-editor-gizmo/2d/content-gizmos.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 1-3459
+plugin-packages/editor-gizmo/src/2d/gizmo-action.ts
+  s_1959265e50472a::t_236aa9519c795e 8-10,71-72,79-80,184-186,205-206
+web-packages/test/unit/src/plugin-editor-gizmo/2d/item-geometry.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 117-134
+plugin-packages/editor-gizmo/src/2d/configs/builtin-configs.ts
+  s_1959265e50472a::t_236aa9519c795e 14-18,99-250
+  s_1959265e50472a::t_97b42b7d491158 251
+plugin-packages/editor-gizmo/src/2d/gizmos/ffd-wireframe-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 1-112
+web-packages/demo/html/gizmo-2d.html
+  s_1959265e50472a::t_236aa9519c795e 57-58,97,165-167,175-179,229-237,256-257
+plugin-packages/editor-gizmo/src/2d/drawing.ts
+  s_1959265e50472a::t_236aa9519c795e 71-73
+plugin-packages/editor-gizmo/src/2d/selection/selection.ts
+  s_1959265e50472a::t_236aa9519c795e 654,663-676,713,757-759
+web-packages/test/unit/src/plugin-editor-gizmo/2d/geometry.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 12,143-176
+  s_1959265e50472a::t_5399c3f6836148 177
+web-packages/test/unit/src/plugin-ffd/ffd-component.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 1-122
+plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/resize-selection-gizmo.ts
+  s_1959265e50472a::t_236aa9519c795e 168-170,441-442,444-448,586-591,754-756,796-798,800-804,806-810,993,1088-1112,1816-1818
+plugin-packages/editor-gizmo/src/2d/index.ts
+  s_1959265e50472a::t_236aa9519c795e 28-32,58-62,109-114
+web-packages/test/unit/src/plugin-editor-gizmo/2d/drawing.spec.ts
+  s_1959265e50472a::t_236aa9519c795e 3-7
+web-packages/demo/src/gizmo-2d/fixtures/path.json
+  s_1959265e50472a::t_236aa9519c795e 1
+plugin-packages/editor-gizmo/src/2d/modes/selection-content-edit-mode.ts
+  s_1959265e50472a::t_236aa9519c795e 1-53
+pnpm-lock.yaml
+  s_1959265e50472a::t_ee17fe2679b65b 226-228,276-277,444-445,2001-2004,5830-5846
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9dfef9c8d516b74d95a23eff1455a6736e3c5ea7",
+  "prompts": {},
+  "sessions": {
+    "s_1959265e50472a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a167e8-3a91-7343-a48b-562f2e9d9a2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "澄弈 <chengyi.zzm@gmail.com>"
+    }
+  }
+}
