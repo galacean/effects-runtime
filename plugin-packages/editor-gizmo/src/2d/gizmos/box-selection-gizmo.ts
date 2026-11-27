@@ -10,7 +10,7 @@ import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getTransformedBoxCorners, transformedBoxIntersectsBox } from '../math';
+import { Vector2, getTransformedBoxCorners, transformedBoxIntersectsBox } from '../../math';
 import { drawBox, fillBox, toColor } from '../drawing';
 import { getFramePlayerItemAncestors, getItemViewTransform, isFramePlayerItem, isPlayerItemVisible } from '../items';
 import type { SelectionPreviewConfig } from '../configs/types';

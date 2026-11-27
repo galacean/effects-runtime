@@ -8,7 +8,7 @@ import { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';
 import type { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/selection';
 import { BoxSelectionGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/box-selection-gizmo';
-import { getBoxTransform, getBoxTransformFromBox, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { getBoxTransform, getBoxTransformFromBox, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { FrameManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/frame-manager';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';

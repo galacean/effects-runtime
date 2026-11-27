@@ -12,7 +12,7 @@ import { drawDashedCorners, toColor } from '../drawing';
 import { Gizmo } from '../gizmo';
 import type { GizmoOwner } from '../gizmo-owner';
 import { getItemViewTransform, getPlayerItemById } from '../items';
-import { Vector2, getTransformedBoxCorners } from '../math';
+import { Vector2, getTransformedBoxCorners } from '../../math';
 import { GizmoViewportUtils } from '../viewport/viewport-utils';
 import { TEXT_EDIT_BOX_LINE_COLOR } from './text-gizmo';
 

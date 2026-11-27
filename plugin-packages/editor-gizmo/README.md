@@ -9,11 +9,15 @@ Editor interaction and scene gizmos for Galacean Effects.
 ## Usage
 
 ```ts
-import { GestureHandler, GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { Editor } from '@galacean/effects-plugin-editor-gizmo';
+
+const editor = new Editor(engine);
+composition.addItem(editor.rootItem);
+editor.setMode('3d');
 ```
 
-Use `GestureHandler` for 2D editor interaction and `GizmoComponent` for 3D scene
-gizmos. Importing the package registers the `editor-gizmo` plugin. Keep its version
+The editor starts in 2D. Its `editor2D` and `editor3D` controls share
+`editor.selection` and stay mounted when the active mode changes. Importing the package registers the `editor-gizmo` plugin. Keep its version
 aligned with `@galacean/effects`.
 
 ## Source layout

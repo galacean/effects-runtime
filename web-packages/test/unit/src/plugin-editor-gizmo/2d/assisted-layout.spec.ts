@@ -7,7 +7,7 @@ import { AssistedLayout } from '../../../../../../plugin-packages/editor-gizmo/s
 import { FrameLayoutMode, type FrameInfo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/types';
 import type { FrameManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/frame-manager';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 const { expect } = chai;
 

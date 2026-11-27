@@ -32,7 +32,7 @@ import {
   DefaultVFXItems,
   EffectsEditMode,
   GestureCursorType,
-  GestureHandler,
+  type Editor2D,
   GizmoTool,
   GradientGizmo,
   GradientEditMode,
@@ -57,15 +57,14 @@ import {
   setColorPaint,
   setGradientPaint,
   setMotionPath,
-  getTransformedBoxCorners,
-  inverseTransformBoxPoint,
-  transformBoxPoint,
   findMotionPaths,
   updateMotionPathTranslation,
   GizmoType,
   FFDWireframeGizmo,
   type GradientSelectionEvent,
 } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
+import { Editor } from '../../../../../../plugin-packages/editor-gizmo/src/editor';
+import { getTransformedBoxCorners, inverseTransformBoxPoint, transformBoxPoint } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { moveAnchor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/transform-handles-gizmo';
 import { sampleGradient } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/gradient-gizmo';
 import { wireframeTriangles } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ffd-wireframe-gizmo';
@@ -84,7 +83,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
   let player: Player;
   let container: HTMLDivElement;
   let composition: Composition;
-  let handler: GestureHandler;
+  let gizmoEditor: Editor;
+  let handler: Editor2D;
   let actions: { phase: string, canceled?: boolean, keyframeTime?: number }[];
 
   before(() => {
@@ -97,7 +97,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     composition = new Composition(player.engine);
     composition.camera.position = new Vector3(0, 0, 12);
     composition.camera.fov = 45;
-    handler = new GestureHandler(player.engine);
+    gizmoEditor = new Editor(player.engine);
+    handler = gizmoEditor.editor2D;
     actions = [];
     handler.setActiveEditMode(new SelectionEditMode(handler));
     for (const phase of ['actionstart', 'actionupdate', 'actioncommit'] as const) {
@@ -109,7 +110,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     }
   });
   afterEach(() => {
-    handler.dispose();
+    gizmoEditor.dispose();
     player.destroyCurrentCompositions();
   });
   after(() => {
@@ -2870,7 +2871,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
   });
 
   it('keeps the original selection modes free of optional editing gizmos', () => {
-    const ordinary = new GestureHandler(player.engine);
+    const editor = new Editor(player.engine);
+    const ordinary = editor.editor2D;
 
     try {
       expect(ordinary.getActiveEditMode()).instanceOf(DefaultSelectionMode);
@@ -2892,7 +2894,7 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       ]);
       effects.forEach(gizmo => gizmo.dispose());
     } finally {
-      ordinary.dispose();
+      editor.dispose();
     }
   });
 

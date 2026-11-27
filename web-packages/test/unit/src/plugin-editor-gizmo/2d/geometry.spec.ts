@@ -11,7 +11,7 @@ import {
   inverseTransformBoxPoint,
   transformBoxPoint,
   transformedBoxContainsPoint,
-} from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+} from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 const { expect } = chai;
 

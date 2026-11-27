@@ -1,7 +1,8 @@
 import type { Composition } from '@galacean/effects';
 import { ShapeComponent, VFXItem, math, spec } from '@galacean/effects';
 import {
-  GestureHandler,
+  Editor,
+  type Editor2D,
   GizmoViewportUtils,
   HandGizmoTool,
   ItemCreateGizmoTool,
@@ -41,7 +42,8 @@ type CameraView = {
 
 /** 将 Scene 的工具、面板选区和相机视图接入共享的 2D 编辑能力。 */
 export class SceneGizmo {
-  readonly handler: GestureHandler;
+  private readonly editor: Editor;
+  readonly handler: Editor2D;
   /** 当前场景的标尺 Gizmo，供场景快捷键和宿主持久化使用。 */
   get ruler (): RulerGizmo { return this.handler.getGizmoManager().get('ruler')!; }
   readonly brush: SceneBrushTool;
@@ -78,7 +80,10 @@ export class SceneGizmo {
     const canvas = composition.pluginRoot.getComponent(UICanvas) ?? composition.pluginRoot.addComponent(UICanvas);
 
     canvas.order = Number.MAX_SAFE_INTEGER;
-    this.handler = new GestureHandler(composition.engine);
+    this.editor = new Editor(composition.engine);
+    this.editor.rootItem.setActive(false);
+    this.editor.rootItem.setParent(canvas.item);
+    this.handler = this.editor.editor2D;
     this.brush = new SceneBrushTool(this.handler, brushSettings);
     this.geometry = new SceneGeometryTools(composition, this.handler, (kind, continueCreate, finish = true) => {
       if (kind === 'pen' && !finish) {
@@ -89,9 +94,6 @@ export class SceneGizmo {
         if (kind === 'text') { this.editText(); }
       }
     });
-    this.handler.parent = canvas.rootControl;
-    this.handler.visible = false;
-    this.handler.enabled = false;
     this.handler.setActiveTool(new MoveGizmoTool(this.handler));
     this.unsubscribeWorkspace = sceneWorkspace.subscribeDocument(document => this.bindRulerDocument(document));
     this.bindRulerDocument(sceneWorkspace.current);
@@ -182,11 +184,10 @@ export class SceneGizmo {
     this.visible = value;
     const enabled = value && this.is2D;
 
-    if (!enabled && this.handler.enabled) {
+    if (!enabled && this.editor.rootItem.isActive) {
       this.handler.resetEditMode();
     }
-    this.handler.visible = enabled;
-    this.handler.enabled = enabled;
+    this.editor.rootItem.setActive(enabled);
     this.handler.ignoreInteraction = !enabled;
   }
 
@@ -300,7 +301,7 @@ export class SceneGizmo {
     this.releaseRulerState?.();
     this.releaseRulerState = undefined;
     this.rulerDocument = undefined;
-    this.handler.dispose();
+    this.editor.dispose();
   }
 
   /** 将标尺数据接入当前场景文档的编辑状态和历史记录。 */

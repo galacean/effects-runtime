@@ -1,6 +1,6 @@
 import { MouseButton, type InputEventMouseButton } from '@galacean/effects';
 import { Gizmo } from '../gizmo';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 点击当前动效范围外的画布空白区域时退出动效编辑。 */
 export class LeaveEffectsEditGizmo extends Gizmo {

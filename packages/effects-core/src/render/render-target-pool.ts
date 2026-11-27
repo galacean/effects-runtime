@@ -48,9 +48,10 @@ export class RenderTargetPool {
     depthBuffer = 0,
     filter = FilterMode.Linear,
     format = RenderTextureFormat.RGBA32,
+    samples = 1,
   ): GPUFramebuffer {
     // 使用参数计算 hash 值作为缓存 key
-    const hash = `${width}_${height}_${depthBuffer}_${filter}_${format}`;
+    const hash = `${width}_${height}_${depthBuffer}_${filter}_${format}_${samples}`;
 
     for (const entry of this.temporaryRTs) {
       if (!entry.isOccupied && entry.descriptionHash === hash) {
@@ -95,6 +96,7 @@ export class RenderTargetPool {
 
     const newFramebuffer = this.engine.displayServer.renderingDevice.createFramebuffer({
       name,
+      samples,
       storeAction: {},
       viewport: [0, 0, width, height],
       attachments: [colorAttachment],

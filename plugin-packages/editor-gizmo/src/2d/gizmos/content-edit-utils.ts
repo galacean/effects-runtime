@@ -1,5 +1,5 @@
 import type { VFXItem } from '@galacean/effects';
-import { Matrix4, Vector2, Vector3 } from '../math';
+import { Matrix4, Vector2, Vector3 } from '../../math';
 import { projectPoint } from '../viewport';
 
 export function viewportSize (item: VFXItem): Vector2 {

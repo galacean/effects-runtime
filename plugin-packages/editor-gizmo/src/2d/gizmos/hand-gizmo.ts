@@ -6,7 +6,7 @@ import {
   type InputEventMouseButton,
   type InputEventMouseMotion,
 } from '@galacean/effects';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 视口平移交互状态。 */
 enum DragType {
@@ -42,6 +42,12 @@ export class HandGizmo extends Gizmo {
   /** @returns 是否正在平移或等待空格拖拽。 */
   isPanning (): boolean {
     return this.dragType === DragType.PAN || this.panKeyPressed;
+  }
+
+  /** 清除空格平移状态并结束平移拖拽。 */
+  releasePanKey (): void {
+    this.panKeyPressed = false;
+    this.dragType = DragType.NONE;
   }
 
   /**
@@ -131,7 +137,7 @@ export class HandGizmo extends Gizmo {
 
   /** 释放视口平移状态。 */
   override dispose (): void {
-    this.endPan();
+    this.releasePanKey();
     super.dispose();
   }
 

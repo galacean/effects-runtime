@@ -1,5 +1,5 @@
 import { Line2, type Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxCorners } from '../math';
+import { Vector2, getBoxCorners } from '../../math';
 import type { SnapConfig } from '../configs/types';
 import { selectionSnapConfig } from '../configs/builtin-configs';
 import type { VFXItem } from '@galacean/effects';

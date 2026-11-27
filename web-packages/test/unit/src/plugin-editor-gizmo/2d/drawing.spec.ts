@@ -5,7 +5,7 @@ import {
   toCanvasColor,
   toColor,
 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
-import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Color, Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 const { expect } = chai;
 

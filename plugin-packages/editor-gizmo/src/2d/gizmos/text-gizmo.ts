@@ -7,7 +7,7 @@ import { GizmoType } from '../gizmo-type';
 import { getItemViewBox, getItemViewTransform } from '../items';
 import { drawCorners, toColor } from '../drawing';
 import type { TextEditSession, TextInteractionParam, TextResult } from '../text/text-edit-session';
-import { getTransformedBoxCorners } from '../math';
+import { getTransformedBoxCorners } from '../../math';
 
 export type {
   TextEmptyResult,

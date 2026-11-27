@@ -1,25 +1,14 @@
-import { Player } from '@galacean/effects';
-import { primaryJSON, sceneJSON } from './assets';
-import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { Player, Transform } from '@galacean/effects';
+import { createGridGeometry } from '@galacean/effects-plugin-editor-gizmo';
+import { primaryJSON, sceneGeometry } from './assets';
+import { attachEditor, GeometryGizmo3D, ShapeGizmo3D } from './editor';
 
 (async () => {
-  const player = new Player({
-    container: document.getElementById('J-container'),
-    env: 'editor',
-    interactive: true,
-  });
+  const player = new Player({ container: document.getElementById('J-container'), env: 'editor', interactive: true });
+  const composition = await player.loadScene(JSON.parse(primaryJSON));
+  const viewport = attachEditor(player, composition).editor3D;
+  const grid = createGridGeometry(viewport.engine, 5, 10);
 
-  player.on('click', e => {
-    const { id } = e;
-    const composition = player.getCompositions()[0];
-    const item = composition.items.find(item => item.id === String(id))!;
-
-    console.info('itemId: ' + item.id);
-    console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
-  });
-
-  const json = JSON.parse(primaryJSON);
-
-  json.compositions[0].items = JSON.parse(sceneJSON);
-  await player.loadScene(json);
+  for (const example of sceneGeometry) { new GeometryGizmo3D(viewport, example); }
+  new ShapeGizmo3D(viewport, grid, new Transform({ rotation: [82, 0, 0] }), [1, 1, 1]);
 })();

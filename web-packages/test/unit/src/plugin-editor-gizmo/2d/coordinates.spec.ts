@@ -1,6 +1,6 @@
 import { restoreTestState } from '../helpers/spies';
 import type { VFXItem } from '@galacean/effects';
-import { Matrix4, Quaternion, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Quaternion, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { Plane } from '@galacean/effects-math/es/extension/index';
 import { viewSizeToWorld } from '../../../../../../plugin-packages/editor-gizmo/src/2d/viewport';
 

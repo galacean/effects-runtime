@@ -1,4 +1,4 @@
-import type { Vector2, Vector3 } from '../../math';
+import type { Vector2, Vector3 } from '../../../math';
 
 /** 选区变换的语义类型；由移动、缩放与角旋转行为共同用于命令事务。 */
 export enum TransformType {

@@ -4,7 +4,7 @@ import {
   type InputEventMouseButton,
   type InputEventMouseMotion,
 } from '@galacean/effects';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import type { SelectionHitSnapshot } from '../selection';
 import {
   getItemChildren,

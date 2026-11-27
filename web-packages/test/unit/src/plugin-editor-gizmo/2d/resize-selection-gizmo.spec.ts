@@ -7,7 +7,7 @@ import { restoreTestState, getSpyCalls, spyOnGetter, type TestSpy } from '../hel
 import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, ShapeComponent, TextComponent, Transform, type InputEventMouse, spec, type Engine, type Texture, type VFXItem } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Box2, Circle, Line2 } from '@galacean/effects-math/es/extension/index';
-import { getBoxTransform, Euler, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { getBoxTransform, Euler, Matrix4, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { getRotatedBoxCorners } from '../../../../../../plugin-packages/editor-gizmo/src/2d/drawing';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameManager, LoadingManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d';

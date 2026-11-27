@@ -7,7 +7,7 @@ import { toColor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/d
 import { ItemCreateGizmo, ItemCreateType } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/item-create-gizmo';
 
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
 import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 

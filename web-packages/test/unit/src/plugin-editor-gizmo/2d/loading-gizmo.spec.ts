@@ -5,7 +5,7 @@ import type { Control } from '@galacean/effects-plugin-gui';
 import { LoadingGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/loading-gizmo';
 import type { LoadingItemOptions } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/loading-manager';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 const { expect } = chai;
 

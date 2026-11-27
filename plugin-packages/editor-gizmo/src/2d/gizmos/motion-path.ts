@@ -6,7 +6,7 @@ import {
   type TrackAsset,
   type VFXItem,
 } from '@galacean/effects';
-import { Matrix4, Vector3 } from '../math';
+import { Matrix4, Vector3 } from '../../math';
 import { cloneConfigValue } from '../configs/config-definition';
 
 export type MotionPathTarget = {

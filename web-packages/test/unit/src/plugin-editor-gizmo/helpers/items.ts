@@ -1,6 +1,6 @@
 import { type TestSpy } from './spies';
 import { spec, type VFXItem } from '@galacean/effects';
-import { Matrix4, Vector2, type Matrix3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Vector2, type Matrix3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 
 // Power-of-two dimensions keep pixel coordinates exact through projection.
 export const TEST_VIEW_SIZE = new Vector2(1024, 1024);

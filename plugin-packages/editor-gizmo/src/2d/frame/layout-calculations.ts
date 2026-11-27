@@ -1,6 +1,6 @@
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
 import { Line2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 import type { LayoutInfo } from './types';
 
 /** 自动布局兄弟元素的几何与位置信息。 */

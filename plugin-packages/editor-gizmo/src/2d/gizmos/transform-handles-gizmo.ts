@@ -12,7 +12,7 @@ import type { GizmoOwner } from '../gizmo-owner';
 import { Gizmo } from '../gizmo';
 import { GizmoType } from '../gizmo-type';
 import { GestureCursorType } from '../cursor';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3, getTransformedBoxCorners } from '../math';
+import { Euler, Matrix4, Quaternion, Vector2, Vector3, getTransformedBoxCorners } from '../../math';
 import { toColor } from '../drawing';
 import { transformHandlesConfig } from '../configs/builtin-configs';
 import type { TransformHandlesConfig } from '../configs/types';

@@ -1,7 +1,7 @@
 import { EventEmitter, spec, TextComponent, type VFXItem } from '@galacean/effects';
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoOwner } from '../gizmo-owner';
-import { type Matrix3, getTransformedBoxCorners } from '../math';
+import { type Matrix3, getTransformedBoxCorners } from '../../math';
 import { TextCaretMapper, type TextCaretLayout, type ViewPoint } from './text-caret-mapper';
 
 /** 文本编辑进入后选中全文或仅聚焦输入框。 */

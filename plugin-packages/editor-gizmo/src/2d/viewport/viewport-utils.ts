@@ -1,5 +1,5 @@
 import { type Engine } from '@galacean/effects';
-import { Matrix4, Vector2, Vector3 } from '../math';
+import { Matrix4, Vector2, Vector3 } from '../../math';
 
 /** 读取 Gizmo 使用的当前视口和相机参数。 */
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

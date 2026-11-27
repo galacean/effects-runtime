@@ -1,13 +1,11 @@
 import { Player } from '@galacean/effects';
-import { primaryJSON, particleJSON } from './assets';
+import { particleJSON } from './assets';
+import { attachEditor, showEmitters } from './editor';
 
 (async () => {
-  const player = new Player({
-    container: document.getElementById('J-container'),
-    env: 'editor',
-  });
-  const json = JSON.parse(primaryJSON);
+  const player = new Player({ container: document.getElementById('J-container'), env: 'editor', interactive: true });
+  const composition = await player.loadScene(JSON.parse(particleJSON));
+  const editor = attachEditor(player, composition);
 
-  json.compositions[0].items = JSON.parse(particleJSON);
-  await player.loadScene(json);
+  showEmitters(editor, composition);
 })();

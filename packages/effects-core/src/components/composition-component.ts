@@ -273,7 +273,6 @@ export class CompositionComponent extends Component {
    * Sample an absolute timeline time in seconds, already mapped by the caller.
    * Parent clips own the playback range of nested compositions; do not apply
    * this component's standalone end behavior or update its end state here.
-   * @internal
    */
   sampleTime (time: number) {
     const previousTime = this.time;

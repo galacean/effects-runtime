@@ -4,7 +4,7 @@ import {
   GizmoViewportUtils, ItemCreateType, createInteractionPlane, projectPoint, shapeConfig, toColor, viewPositionToWorld,
 } from '@galacean/effects-plugin-editor-gizmo';
 import type {
-  GeometryGizmoHost, GestureHandler, GizmoActionLifecycleEvent, GizmoItemCreateActionEvent, GizmoPlacementChangeEvent, PenPathData, ShapeDrawingActionEvent,
+  Editor2D, GeometryGizmoHost, GizmoActionLifecycleEvent, GizmoItemCreateActionEvent, GizmoPlacementChangeEvent, PenPathData, ShapeDrawingActionEvent,
 } from '@galacean/effects-plugin-editor-gizmo';
 import { SceneItemOperations } from '../operations/scene-item-operations';
 import { attachPreservingWorld, editSceneStructure } from '../operations/scene-structure-edit';
@@ -23,7 +23,7 @@ export class SceneGeometryTools implements GeometryGizmoHost {
 
   constructor (
     private readonly composition: Composition,
-    private readonly handler: GestureHandler,
+    private readonly handler: Editor2D,
     private readonly created: (kind: 'shape' | 'pen' | 'text' | 'frame', continueCreate: boolean, finish?: boolean) => void,
   ) {
     this.releases = [

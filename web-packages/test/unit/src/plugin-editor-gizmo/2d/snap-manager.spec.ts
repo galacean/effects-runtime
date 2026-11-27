@@ -3,7 +3,7 @@ import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 
 import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';
 import { ConfigManager, selectionSnapConfig } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmo-owner';

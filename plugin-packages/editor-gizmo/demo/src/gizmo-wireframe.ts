@@ -1,28 +1,14 @@
 import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-editor-gizmo';
-import '@galacean/effects-plugin-model';
-import test_scene from './json/wireframe-mode.json';
-import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
-import { JSONConverter } from '@galacean/effects-plugin-model';
+import { ModelWireframeRenderer } from '../../../model/demo/src/wireframe';
+import { attachEditor } from './editor';
+import { loadModelScene } from './model-scene';
 
 (async () => {
-  const player = new Player({
-    container: document.getElementById('J-container'),
-    renderFramework: 'webgl2',
-    interactive: true,
-    env: 'editor',
-  });
+  const player = new Player({ container: document.getElementById('J-container'), renderFramework: 'webgl2', interactive: true, env: 'editor' });
+  const composition = await loadModelScene(player, true);
+  const wireframe = new ModelWireframeRenderer();
 
-  player.on('click', e => {
-    const { id } = e;
-    const composition = player.getCompositions()[0];
-    const item = composition.items.find(item => item.id === String(id))!;
-
-    console.info('itemId: ' + item.id);
-    console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
-  });
-  const converter = new JSONConverter(player.renderer);
-  const scene = await converter.processScene(test_scene);
-
-  await player.loadScene(scene);
+  attachEditor(player, composition);
+  player.renderer.addRendererFeature(wireframe);
+  wireframe.setScene(composition, true);
 })();

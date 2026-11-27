@@ -35,7 +35,7 @@ import {
   type ShapePrimitive,
 } from '@galacean/effects-plugin-editor-gizmo';
 import type { GizmoActionLifecycleEvent, GizmoActionPhase, GizmoItemCreateInfo, GizmoTextItemCreateInfo, GizmoRichTextItemCreateInfo,
-  GestureHandler } from '@galacean/effects-plugin-editor-gizmo';
+  Editor2D } from '@galacean/effects-plugin-editor-gizmo';
 import { DOMEvents } from './dom';
 import type { DemoItem, DemoScene, MediaKind, Point2D } from './scene';
 import type { GizmoExampleKind } from './reference-examples';
@@ -136,7 +136,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
   constructor (
     private readonly player: Player,
     private readonly scene: DemoScene,
-    private readonly handler: GestureHandler,
+    private readonly handler: Editor2D,
     private readonly viewport: HTMLElement,
   ) {
     super();

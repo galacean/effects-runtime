@@ -1,4 +1,4 @@
-import { GPUResource, throwDestroyedError, logger } from '@galacean/effects-core';
+import { GPUResource, throwDestroyedError, logger, isWebGL2 } from '@galacean/effects-core';
 import type { RenderPassAttachmentStorageType, RestoreHandler } from '@galacean/effects-core';
 import type { RenderingDeviceWebGL } from './rendering-device-webgl';
 
@@ -6,11 +6,12 @@ export interface RenderbufferPropsWebGL {
   storageType: RenderPassAttachmentStorageType,
   format: GLenum,
   attachment: GLenum,
+  samples?: number,
 }
 
 export class GPURenderbufferWebGL extends GPUResource implements RestoreHandler {
   readonly size: [x: number, y: number] = [0, 0];
-  readonly multiSample = 1;
+  readonly multiSample: number;
   readonly storageType: RenderPassAttachmentStorageType;
   readonly format: GLenum;
   readonly attachment: GLenum;
@@ -21,6 +22,7 @@ export class GPURenderbufferWebGL extends GPUResource implements RestoreHandler 
     this.storageType = props.storageType;
     this.format = props.format;
     this.attachment = props.attachment;
+    this.multiSample = isWebGL2(device.gl) ? props.samples ?? 1 : 1;
   }
 
   initialize (): void {
@@ -74,7 +76,13 @@ export class GPURenderbufferWebGL extends GPUResource implements RestoreHandler 
 
       device.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
       if (width && height) {
-        gl.renderbufferStorage(gl.RENDERBUFFER, this.format, this.size[0] = width, this.size[1] = height);
+        if (this.multiSample > 1) {
+          gl.renderbufferStorageMultisample(gl.RENDERBUFFER, this.multiSample, this.format, width, height);
+        } else {
+          gl.renderbufferStorage(gl.RENDERBUFFER, this.format, width, height);
+        }
+        this.size[0] = width;
+        this.size[1] = height;
       } else {
         logger.error(`Invalid render buffer size: ${width}x${height}.`);
       }

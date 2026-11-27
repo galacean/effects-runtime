@@ -1,4 +1,4 @@
-import type { Vector2 } from './math';
+import type { Vector2 } from '../math';
 import type { FrameManager } from './frame/frame-manager';
 import type { Selection } from './selection/selection';
 import type { GizmoManager } from './gizmo-manager';

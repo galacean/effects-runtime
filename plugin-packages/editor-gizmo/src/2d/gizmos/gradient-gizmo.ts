@@ -14,7 +14,7 @@ import type { GizmoOwner } from '../gizmo-owner';
 import { Gizmo } from '../gizmo';
 import type { GizmoActionEvent, GizmoActionPhase } from '../gizmo-action';
 import { GizmoType } from '../gizmo-type';
-import { Vector2, Vector3 } from '../math';
+import { Vector2, Vector3 } from '../../math';
 import { toColor } from '../drawing';
 import { gradientConfig } from '../configs/builtin-configs';
 import type { GradientConfig } from '../configs/types';

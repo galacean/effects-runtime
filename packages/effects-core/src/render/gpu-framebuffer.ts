@@ -10,6 +10,8 @@ export interface FramebufferProps {
   viewport: [x: number, y: number, width: number, height: number],
   storeAction: RenderPassStoreAction,
   name?: string,
+  /** Requested sample count. Unsupported counts fall back to a supported count. */
+  samples?: number,
 }
 
 export enum FilterMode {
@@ -34,6 +36,16 @@ export abstract class GPUFramebuffer extends GPUResource implements RestoreHandl
   storeAction: RenderPassStoreAction;
 
   abstract initialize (): void;
+
+  /** Actual sample count selected by the rendering device. */
+  get samples (): number {
+    return 1;
+  }
+
+  /** Makes multisampled color and depth attachments available through their textures. */
+  resolve (): void {
+    // OVERRIDE
+  }
 
   resize (x: number, y: number, width: number, height: number) {
     // OVERRIDE

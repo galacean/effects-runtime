@@ -19,6 +19,11 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
   stencilTexture?: Texture;
   colorTextures: Texture[] = [];
   fbo?: WebGLFramebuffer;
+  private multisampleFbo?: WebGLFramebuffer;
+  private readonly multisampleColorBuffers: GPURenderbufferWebGL[] = [];
+  private multisampleDepthBuffer?: GPURenderbufferWebGL;
+  private readonly requestedSamples: number;
+  private sampleCount = 1;
   private props?: FramebufferProps;
   private readonly useFbo: boolean;
 
@@ -40,6 +45,11 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
     this.viewport = viewport;
     this.name = name;
     this.storeAction = storeAction;
+    this.requestedSamples = props.samples ?? 1;
+  }
+
+  override get samples (): number {
+    return this.sampleCount;
   }
 
   override initialize (): void {
@@ -236,6 +246,163 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
 
     this.storeInvalidAttachments = this.getStoreAttachments(this.storeAction, separateDepthStencil);
     this.updateAttachmentTextures();
+    this.updateMultisampleBuffers();
+  }
+
+  private updateMultisampleBuffers (): void {
+    const device = this.device as RenderingDeviceWebGL;
+    const gl = device.gl;
+
+    if (!isWebGL2(gl) || this.requestedSamples === 1 || !this.useFbo || this.externalStorage) {
+      return;
+    }
+
+    // Unsized byte texture formats have corresponding sized renderbuffer formats.
+    const sizedFormats: Record<number, GLenum> = {
+      [gl.RGBA]: gl.RGBA8,
+      [gl.RGB]: gl.RGB8,
+      [gl.RED]: gl.R8,
+      [gl.RG]: gl.RG8,
+    };
+    const colorFormats = this.colorTextures.map(texture => {
+      const format = (texture.getGPUTexture() as GPUTextureWebGL).internalFormat;
+
+      return sizedFormats[format] ?? format;
+    });
+    const depthFormat = this.depthTexture
+      ? (this.depthTexture.getGPUTexture() as GPUTextureWebGL).internalFormat
+      : this.depthStencilRenderbuffer?.format;
+    const sizedDepthFormat = depthFormat === gl.DEPTH_STENCIL ? gl.DEPTH24_STENCIL8 : depthFormat;
+    const formats = sizedDepthFormat ? [...colorFormats, sizedDepthFormat] : colorFormats;
+    let supported: number[] | undefined;
+
+    for (const format of formats) {
+      const counts = Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER, format, gl.SAMPLES) as Int32Array);
+
+      supported = supported ? supported.filter(count => counts.includes(count)) : counts;
+    }
+    const samples = Math.max(1, ...(supported ?? []).filter(count => count <= this.requestedSamples));
+
+    if (samples === this.sampleCount &&
+      this.multisampleColorBuffers.length === colorFormats.length &&
+      this.multisampleColorBuffers.every((buffer, index) => buffer.format === colorFormats[index]) &&
+      this.multisampleDepthBuffer?.format === sizedDepthFormat) {
+      return;
+    }
+    this.disposeMultisampleBuffers();
+    this.sampleCount = samples;
+    if (samples === 1) {
+      return;
+    }
+    for (let index = 0; index < colorFormats.length; index++) {
+      const buffer = device.createRenderbuffer({
+        storageType: RenderPassAttachmentStorageType.color,
+        format: colorFormats[index],
+        attachment: gl.COLOR_ATTACHMENT0 + index,
+        samples,
+      });
+
+      buffer.initialize();
+      this.multisampleColorBuffers.push(buffer);
+    }
+    if (sizedDepthFormat) {
+      this.multisampleDepthBuffer = device.createRenderbuffer({
+        storageType: this.depthStencilStorageType,
+        format: sizedDepthFormat,
+        attachment: this.depthStencilRenderbuffer?.attachment ?? (this.stencilTexture ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT),
+        samples,
+      });
+      this.multisampleDepthBuffer.initialize();
+    }
+  }
+
+  private bindMultisampleAttachments (): void {
+    if (this.sampleCount === 1) {
+      return;
+    }
+    const device = this.device as RenderingDeviceWebGL;
+    const gl = device.gl;
+
+    if (!this.multisampleFbo) {
+      this.multisampleFbo = gl.createFramebuffer() ?? undefined;
+      if (!this.multisampleFbo) {
+        throw new Error(`Failed to create multisample framebuffer: ${this.name}.`);
+      }
+      assignInspectorName(this.multisampleFbo, `${this.name}##msaa`);
+    }
+    device.bindFramebuffer(gl.FRAMEBUFFER, this.multisampleFbo);
+    const buffers = this.multisampleDepthBuffer
+      ? [...this.multisampleColorBuffers, this.multisampleDepthBuffer]
+      : this.multisampleColorBuffers;
+
+    for (const buffer of buffers) {
+      buffer.setSize(this.viewport[2], this.viewport[3]);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, buffer.attachment, gl.RENDERBUFFER, buffer.buffer);
+    }
+    gl.drawBuffers(this.multisampleColorBuffers.map(buffer => buffer.attachment));
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error(`Multisample framebuffer failed. gl status=${status}, samples=${this.sampleCount}.`);
+    }
+  }
+
+  override resolve (): void {
+    if (!this.ready || !this.multisampleFbo || !this.fbo) {
+      return;
+    }
+    const device = this.device as RenderingDeviceWebGL;
+    const gl = device.gl;
+    const readFramebuffer = device.getFramebufferBinding(gl.READ_FRAMEBUFFER);
+    const drawFramebuffer = device.getFramebufferBinding(gl.DRAW_FRAMEBUFFER);
+    const scissorEnabled = device.isEnabled(gl.SCISSOR_TEST);
+    const [, , width, height] = this.viewport;
+    const attachments = this.multisampleColorBuffers.map(buffer => buffer.attachment);
+    let depthStencilMask = 0;
+
+    if (this.depthTexture || this.depthStorage) {
+      depthStencilMask |= gl.DEPTH_BUFFER_BIT;
+    }
+    if (this.stencilTexture || this.stencilStorage) {
+      depthStencilMask |= gl.STENCIL_BUFFER_BIT;
+    }
+    try {
+      device.disable(gl.SCISSOR_TEST);
+      device.bindFramebuffer(gl.READ_FRAMEBUFFER, this.multisampleFbo);
+      device.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.fbo);
+      for (let index = 0; index < attachments.length; index++) {
+        gl.readBuffer(attachments[index]);
+        gl.drawBuffers(attachments.map((attachment, i) => i === index ? attachment : gl.NONE));
+        gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height,
+          gl.COLOR_BUFFER_BIT | (index === 0 ? depthStencilMask : 0), gl.NEAREST);
+      }
+    } finally {
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      gl.drawBuffers(attachments);
+      device.bindFramebuffer(gl.READ_FRAMEBUFFER, readFramebuffer);
+      device.bindFramebuffer(gl.DRAW_FRAMEBUFFER, drawFramebuffer);
+      if (scissorEnabled) {
+        device.enable(gl.SCISSOR_TEST);
+      }
+    }
+  }
+
+  private disposeMultisampleBuffers (): void {
+    for (const buffer of this.multisampleColorBuffers) {
+      buffer.dispose();
+    }
+    this.multisampleColorBuffers.length = 0;
+    this.multisampleDepthBuffer?.dispose();
+    this.multisampleDepthBuffer = undefined;
+    if (this.multisampleFbo) {
+      const device = this.device as RenderingDeviceWebGL;
+
+      device.invalidateFramebuffer(this.multisampleFbo);
+      if (!device.gl.isContextLost()) {
+        device.gl.deleteFramebuffer(this.multisampleFbo);
+      }
+      this.multisampleFbo = undefined;
+    }
   }
 
   private getStoreAttachments (
@@ -265,6 +432,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
   }
 
   override unbind () {
+    this.resolve();
     const attachments = this.storeInvalidAttachments;
 
     if (attachments?.length) {
@@ -286,7 +454,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
     const state = this.device as RenderingDeviceWebGL;
     const [x, y, width, height] = this.viewport;
 
-    state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    state.bindFramebuffer(gl.FRAMEBUFFER, this.ready && this.multisampleFbo ? this.multisampleFbo : this.fbo);
 
     // TODO 不在bind中设置viewport
     state.setViewport(x, y, width, height);
@@ -330,29 +498,31 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
 
       gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, (depthTexture.getGPUTexture() as GPUTextureWebGL).textureBuffer, 0);
     }
-    this.resetColorTextures(this.colorTextures);
+    this.bindColorAttachments();
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
       throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}. width=${width}, height=${height}.`);
     }
 
+    this.bindMultisampleAttachments();
     this.ready = true;
   }
 
-  override resetColorTextures (colorTextures?: Texture[]) {
-    const colors = colorTextures as Texture[];
+  override resetColorTextures (colorTextures: Texture[]) {
+    this.colorTextures = colorTextures.slice();
+    this.updateAttachmentTextures();
+    this.updateMultisampleBuffers();
+    this.ready = false;
+    this.bind();
+  }
+
+  private bindColorAttachments () {
     const gl = (this.device as RenderingDeviceWebGL).gl;
     const gpuCapability = (this.device as RenderingDeviceWebGL).gpuCapability;
     const viewport = this.viewport;
     const buffers: boolean[] = [];
 
-    if (colors) {
-      for (const texture of colors) {
-        texture.initialize();
-      }
-      this.colorTextures = colors.slice();
-    }
     (this.device as RenderingDeviceWebGL).activeTexture(gl.TEXTURE0);
 
     this.colorTextures.forEach((tex, index) => {
@@ -400,6 +570,13 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
       device.gl.deleteFramebuffer(this.fbo!);
     }
     this.fbo = undefined;
+    if (this.multisampleFbo) {
+      device.invalidateFramebuffer(this.multisampleFbo);
+      if (!device.gl.isContextLost()) {
+        device.gl.deleteFramebuffer(this.multisampleFbo);
+      }
+      this.multisampleFbo = undefined;
+    }
     this.ready = false;
     this.attachmentTextures.length = 0;
   }
@@ -409,6 +586,7 @@ export class GPUFramebufferWebGL extends GPUFramebuffer {
       return;
     }
     super.dispose();
+    this.disposeMultisampleBuffers();
     const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
 
     if (

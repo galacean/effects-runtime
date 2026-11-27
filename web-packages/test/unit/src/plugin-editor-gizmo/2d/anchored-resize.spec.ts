@@ -1,5 +1,5 @@
 import { restoreTestState } from '../helpers/spies';
-import { Matrix4, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { calculateAnchoredResize } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/resize-selection-gizmo/anchored-resize';
 
 const { expect } = chai;

@@ -14,7 +14,7 @@ import {
   math,
   type InputEventMouse,
 } from '@galacean/effects';
-import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import type { FrameManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/frame-manager';
 import { SnapManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/selection/snap-manager';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';

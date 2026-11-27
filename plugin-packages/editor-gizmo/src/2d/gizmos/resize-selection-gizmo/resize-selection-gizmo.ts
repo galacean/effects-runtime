@@ -5,8 +5,8 @@ import { FrameComponent, MouseButton, MouseButtonMask, ShapeComponent, spec, Tex
 import type { Control } from '@galacean/effects-plugin-gui';
 import type { Plane } from '@galacean/effects-math/es/extension/index';
 import { Box2, Circle, Line2, roundNumber } from '@galacean/effects-math/es/extension/index';
-import type { Matrix3 } from '../../math';
-import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../math';
+import type { Matrix3 } from '../../../math';
+import { Euler, EulerOrder, Vector2, Vector3, Matrix4, isEqual, RAD2DEG, Quaternion, getBoxCorners, getBoxTransform, getBoxTransformFromBox, getTransformedBox, getTransformedBoxCorners, getVector2Angle, transformBoxPoint, transformedBoxContainsPoint } from '../../../math';
 import { Gizmo } from '../../gizmo';
 import { GizmoViewportUtils } from '../../viewport/viewport-utils';
 import type { GizmoOwner } from '../../gizmo-owner';

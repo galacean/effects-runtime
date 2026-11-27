@@ -1,6 +1,6 @@
 import { restoreTestState, getSpyCalls, type TestSpy } from '../helpers/spies';
 import { FrameComponent, spec, type VFXItem } from '@galacean/effects';
-import { Matrix4, Quaternion, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Matrix4, Quaternion, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { getItemWorldSize } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-geometry';
 import { resizeFrameItem } from '../../../../../../plugin-packages/editor-gizmo/src/2d/frame/frame-resize';
 

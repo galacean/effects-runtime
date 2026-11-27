@@ -1,5 +1,5 @@
-import type { Matrix4 } from '../../math';
-import { Vector3, isEqual } from '../../math';
+import type { Matrix4 } from '../../../math';
+import { Vector3, isEqual } from '../../../math';
 
 /** 一次锚定缩放在 pointer down 时冻结的几何。 */
 export type AnchoredResizeGeometry = {

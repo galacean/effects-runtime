@@ -1,5 +1,5 @@
 import type { VFXItem } from '@galacean/effects';
-import { Matrix4, type Vector2, Vector3 } from '../math';
+import { Matrix4, type Vector2, Vector3 } from '../../math';
 import { getItemWorldSize } from '../items/item-geometry';
 import { isFramePlayerItem } from '../items/item-predicates';
 

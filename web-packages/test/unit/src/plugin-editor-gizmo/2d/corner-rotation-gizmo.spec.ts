@@ -1,7 +1,7 @@
 import { restoreTestState, getSpyCalls, type TestSpy } from '../helpers/spies';
 import { InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, type InputEventMouse, type Engine, type VFXItem } from '@galacean/effects';
 import { Box2, Circle } from '@galacean/effects-math/es/extension/index';
-import { getBoxTransform, Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { getBoxTransform, Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, setBoxFromPoints } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import {
   CornerRotationGizmo,
   GestureCursorType,

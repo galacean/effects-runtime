@@ -2,7 +2,7 @@ import { restoreTestState } from '../helpers/spies';
 import { setItemViewTransform, TEST_VIEW_SIZE } from '../helpers/items';
 import { FrameComponent, spec, type Engine, type VFXItem } from '@galacean/effects';
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Vector2, getBoxTransformFromBox } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import type { GizmoOwner } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { ViewportOverlayGizmo } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/viewport-overlay-gizmo';
 

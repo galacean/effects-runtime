@@ -16,10 +16,20 @@ import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { SceneRendering } from './scene-rendering';
 import type { RendererFeature } from './renderer-feature';
 import type { RenderPass, RenderPassClearAction } from './render-pass';
+import { RenderPassEvent } from './render-pass';
 import type { ShaderLibrary } from './shader';
 import type { Texture } from '../texture';
 import { math } from '..';
 import { glContext } from '../gl';
+
+const renderPassEvents: readonly RenderPassEvent[] = [
+  RenderPassEvent.BeforeRendering,
+  RenderPassEvent.BeforeRenderingObjects,
+  RenderPassEvent.AfterRenderingObjects,
+  RenderPassEvent.BeforeRenderingPostProcessing,
+  RenderPassEvent.AfterRenderingPostProcessing,
+  RenderPassEvent.AfterRendering,
+];
 
 // Blit shader 定义
 const BLIT_VERTEX_SHADER = `
@@ -55,13 +65,16 @@ export class Renderer {
   /** Data for the current render invocation. */
   renderingData = new RenderingData();
 
+  /** Requested MSAA samples for the offscreen scene target. Use 1 to disable. */
+  msaaSamples: number;
+
   protected currentFramebuffer: GPUFramebuffer | null = null;
   protected disposed = false;
   private readonly drawObjectPass: DrawObjectPass;
   private readonly bloomPass: BloomPass;
   private readonly toneMappingPass: ToneMappingPass;
   private readonly features: RendererFeature[] = [];
-  private readonly activeRenderPassQueue: RenderPass[] = [];
+  private readonly customRenderPassQueue: RenderPass[] = [];
 
   private readonly overlayRenderers: OverlayRenderer[] = [];
 
@@ -69,6 +82,7 @@ export class Renderer {
   private blitMaterial: Material | null = null;
 
   constructor (public engine: Engine) {
+    this.msaaSamples = engine.options.antialias === false ? 1 : 4;
     this.drawObjectPass = new DrawObjectPass(this);
     this.bloomPass = new BloomPass(this, 7);
     this.toneMappingPass = new ToneMappingPass(this);
@@ -222,20 +236,21 @@ export class Renderer {
     }
   }
 
-  /** Add a pass to the current render queue. */
+  /** Add a custom pass at its renderPassEvent insertion point. */
   enqueuePass (pass: RenderPass): void {
-    this.activeRenderPassQueue.push(pass);
+    this.customRenderPassQueue.push(pass);
   }
 
   renderScene (scene: SceneRendering, options: RenderOptions): void {
     if (this.disposed) {
       return;
     }
-    if (options.postProcessingEnabled) {
-      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
 
-      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear) {
-        throw new Error('Post processing requires half float textures with color attachment and linear filtering support.');
+    if (options.postProcessingEnabled) {
+      const { halfFloatTexture, halfFloatColorAttachment, halfFloatLinear, readableDepthStencilTextures, writableFragDepth } = this.engine.displayServer.renderingDevice.gpuCapability.detail;
+
+      if (!halfFloatTexture || !halfFloatColorAttachment || !halfFloatLinear || !readableDepthStencilTextures || !writableFragDepth) {
+        throw new Error('Post processing requires half float textures with color attachment and linear filtering support, readable depth stencil textures, and fragment depth writes.');
       }
     }
 
@@ -246,21 +261,17 @@ export class Renderer {
     const data = new RenderingData(options);
     const resourceData = data.frameData.get(ResourceData);
 
-    this.activeRenderPassQueue.length = 0;
+    this.customRenderPassQueue.length = 0;
     this.renderingData = data;
     this.prepareRenderingData(scene, data);
-    this.enqueuePass(this.drawObjectPass);
 
-    if (options.postProcessingEnabled) {
-      this.enqueuePass(this.bloomPass);
-      this.enqueuePass(this.toneMappingPass);
-    }
     for (const feature of this.features) {
       if (feature.active) {
         feature.addRenderPasses(this, data);
       }
     }
-    this.activeRenderPassQueue.sort((a, b) => a.renderPassEvent - b.renderPassEvent);
+
+    this.customRenderPassQueue.sort((a, b) => a.renderPassEvent - b.renderPassEvent);
     this.getShaderLibrary()?.compileAllShaders();
     let sceneTarget: GPUFramebuffer | undefined;
 
@@ -268,25 +279,71 @@ export class Renderer {
       const width = options.target?.viewport[2] ?? this.getWidth();
       const height = options.target?.viewport[3] ?? this.getHeight();
 
-      sceneTarget = this.getTemporaryRT('DrawObjectPass', width, height, 16, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+      sceneTarget = this.getTemporaryRT('_CameraColor', width, height, 24, FilterMode.Linear, RenderTextureFormat.RGBAHalf, this.msaaSamples);
       resourceData.cameraColor = sceneTarget.getColorTextures()[0];
+      resourceData.cameraDepth = sceneTarget.getDepthTexture();
     }
+
     this.setFramebuffer(sceneTarget ?? options.target ?? null);
 
-    for (const pass of this.activeRenderPassQueue) {
-      this.renderRenderPass(pass);
+    this.executeCustomPasses(RenderPassEvent.BeforeRendering);
+    this.executeCustomPasses(RenderPassEvent.BeforeRenderingObjects);
+    this.renderRenderPass(this.drawObjectPass);
+    this.executeCustomPasses(RenderPassEvent.AfterRenderingObjects);
+
+    if (sceneTarget) {
+      this.resolveSceneTarget(sceneTarget);
     }
-    for (const pass of this.activeRenderPassQueue) {
+
+    this.executeCustomPasses(RenderPassEvent.BeforeRenderingPostProcessing);
+
+    if (options.postProcessingEnabled) {
+      this.renderRenderPass(this.bloomPass);
+      this.renderRenderPass(this.toneMappingPass);
+    }
+
+    this.executeCustomPasses(RenderPassEvent.AfterRenderingPostProcessing);
+    this.executeCustomPasses(RenderPassEvent.AfterRendering);
+
+    for (const pass of this.customRenderPassQueue) {
       pass.onCameraCleanup(this, data);
     }
-    this.activeRenderPassQueue.length = 0;
+
+    this.drawObjectPass.onCameraCleanup(this, data);
+
+    if (options.postProcessingEnabled) {
+      this.bloomPass.onCameraCleanup(this, data);
+      this.toneMappingPass.onCameraCleanup(this);
+    }
+
+    this.customRenderPassQueue.length = 0;
+
     if (sceneTarget) {
       this.releaseTemporaryRT(sceneTarget);
     }
+
     data.frameData.dispose();
     this.renderingData = previousData;
     this.setFramebuffer(previousTarget);
     this.setViewport(...previousViewport);
+  }
+
+  /** Executes one insertion point, including offsets up to the next declared event. */
+  private executeCustomPasses (injectionPoint: RenderPassEvent): void {
+    const index = renderPassEvents.indexOf(injectionPoint);
+    // The final insertion point includes all remaining custom passes.
+    const endEvent: RenderPassEvent = renderPassEvents[index + 1] ?? Infinity;
+
+    for (const pass of this.customRenderPassQueue) {
+      if (pass.renderPassEvent >= injectionPoint && pass.renderPassEvent < endEvent) {
+        this.renderRenderPass(pass);
+      }
+    }
+  }
+
+  /** Resolve after all scene geometry, before any post-processing texture reads. */
+  private resolveSceneTarget (target: GPUFramebuffer): void {
+    target.resolve();
   }
 
   /** Collects scene inputs and initializes uniforms for the current render. */
@@ -362,8 +419,9 @@ export class Renderer {
     depthBuffer: number,
     filter: FilterMode,
     format: RenderTextureFormat,
+    samples = 1,
   ): GPUFramebuffer {
-    return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
+    return this.engine.renderingServer.renderTargetPool.get(name, width, height, depthBuffer, filter, format, samples);
   }
 
   releaseTemporaryRT (rt: GPUFramebuffer): void {
@@ -372,6 +430,7 @@ export class Renderer {
 
   /**
    * 将源纹理复制到目标 GPUFramebuffer，可使用自定义材质进行处理
+   * 结束后恢复原 framebuffer 和视口。
    * @param source - 源纹理
    * @param destination - 目标 GPUFramebuffer，如果为 null 则渲染到屏幕
    * @param material - 可选的自定义材质，不传则使用默认复制材质
@@ -410,25 +469,16 @@ export class Renderer {
     // 设置源纹理
     blitMat.setTexture('_MainTex', source);
 
-    // 保存当前 framebuffer
+    // 保存当前 framebuffer 和视口
     const prevFramebuffer = this.currentFramebuffer;
+    const prevViewport = this.getViewport();
 
-    // 设置目标
-    if (destination) {
-      const [x, y, width, height] = destination.viewport;
-
-      this.setFramebuffer(destination);
-      this.setViewport(x, y, width, height);
-    } else {
-      // 渲染到屏幕
-      this.setFramebuffer(null);
-      this.setViewport(0, 0, this.getWidth(), this.getHeight());
-    }
+    this.setFramebuffer(destination);
 
     this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
 
-    // 恢复之前的 framebuffer
     this.setFramebuffer(prevFramebuffer);
+    this.setViewport(...prevViewport);
   }
 
   dispose (): void {
@@ -443,7 +493,7 @@ export class Renderer {
       feature.dispose();
     }
     this.features.length = 0;
-    this.activeRenderPassQueue.length = 0;
+    this.customRenderPassQueue.length = 0;
     this.overlayRenderers.length = 0;
     this.blitGeometry?.dispose();
     this.blitGeometry = null;

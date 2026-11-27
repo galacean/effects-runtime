@@ -5,7 +5,7 @@ import {
   type Engine,
   type InputEventMouseButton,
 } from '@galacean/effects';
-import { clamp, Vector2 } from '../math';
+import { clamp, Vector2 } from '../../math';
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
 import type { ViewportNavigationRange } from './types';
 import { getViewportTranslationRange } from './viewport-range';

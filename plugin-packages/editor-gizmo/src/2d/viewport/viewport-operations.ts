@@ -1,5 +1,5 @@
 import type { Engine } from '@galacean/effects';
-import { Matrix4, Quaternion, Vector2, Vector3 } from '../math';
+import { Matrix4, Quaternion, Vector2, Vector3 } from '../../math';
 
 /**
  * 缩放视图。

@@ -3,7 +3,7 @@ import { createPixelCamera, TEST_VIEW_SIZE } from '../helpers/items';
 
 import { FrameComponent, ShapeComponent, spec, type VFXItem } from '@galacean/effects';
 import { Box3 } from '@galacean/effects-math/es/core/box3';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, getTransformedBoxCorners, transformedBoxContainsPoint } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Euler, Matrix4, Quaternion, Vector2, Vector3, getBoxCorners, getTransformedBoxCorners, transformedBoxContainsPoint } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { getItemViewBox, getItemViewTransform } from '../../../../../../plugin-packages/editor-gizmo/src/2d/items/item-geometry';
 
 const { expect } = chai;

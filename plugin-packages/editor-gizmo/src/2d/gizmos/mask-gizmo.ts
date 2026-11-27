@@ -1,5 +1,5 @@
 import { Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getTransformedBoxCorners, inverseTransformBoxPoint, transformedBoxContainsPoint, type Matrix3 } from '../math';
+import { Vector2, getTransformedBoxCorners, inverseTransformBoxPoint, transformedBoxContainsPoint, type Matrix3 } from '../../math';
 import type { MaskConfig } from '../configs/types';
 import { maskConfig } from '../configs/builtin-configs';
 import type { ConfigChange } from '../configs/config-definition';

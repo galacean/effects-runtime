@@ -9,7 +9,7 @@ import {
 } from '@galacean/effects';
 import { Control, FocusMode, MouseFilter } from '@galacean/effects-plugin-gui';
 import { isDragThresholdReached } from '../drag-threshold';
-import { Vector2 } from '../math';
+import { Vector2 } from '../../math';
 
 /** 拖拽距离阈值状态。 */
 enum DragThresholdState {
@@ -41,6 +41,8 @@ export class GizmoViewport extends Control {
   onKeyDownCallback: ((event: InputEventKey) => void) | null = null;
   /** 键盘抬起回调。 */
   onKeyUpCallback: ((event: InputEventKey) => void) | null = null;
+  /** 视口失去键盘焦点时的回调。 */
+  onLostFocusCallback: (() => void) | null = null;
   /** 每帧更新回调。 */
   onUpdateCallback: (() => void) | null = null;
   /** 绘制回调。 */
@@ -70,9 +72,9 @@ export class GizmoViewport extends Control {
 
   /**
    * 在每帧更新时触发 Gizmo 更新回调。
-   * @param _deltaTime 帧间隔
+   * @param deltaTime 帧间隔
    */
-  override update (_deltaTime: number): void {
+  override update (deltaTime: number): void {
     this.onUpdateCallback?.();
   }
 
@@ -173,6 +175,11 @@ export class GizmoViewport extends Control {
     this.onKeyUpCallback?.(event);
   }
 
+  override onLostFocus (): void {
+    this.clearModifiers();
+    this.onLostFocusCallback?.();
+  }
+
   /** @returns 当前鼠标本地坐标。 */
   getMousePosition (): Vector2 {
     return this.mousePosition;
@@ -220,6 +227,7 @@ export class GizmoViewport extends Control {
     this.onMouseUpCallback = null;
     this.onKeyDownCallback = null;
     this.onKeyUpCallback = null;
+    this.onLostFocusCallback = null;
     this.onUpdateCallback = null;
     this.drawCallBack = null;
     this.mousePosition.setZero();
@@ -228,10 +236,7 @@ export class GizmoViewport extends Control {
     this.mouseButtonMask = MouseButtonMask.None;
     this.dragThresholdState = DragThresholdState.Idle;
     this.dragStart.setZero();
-    this.shiftPressed = false;
-    this.altPressed = false;
-    this.metaPressed = false;
-    this.ctrlPressed = false;
+    this.clearModifiers();
     super.onDestroy();
   }
 
@@ -255,5 +260,12 @@ export class GizmoViewport extends Control {
     this.altPressed = event.altPressed;
     this.metaPressed = event.metaPressed;
     this.ctrlPressed = event.ctrlPressed;
+  }
+
+  private clearModifiers (): void {
+    this.shiftPressed = false;
+    this.altPressed = false;
+    this.metaPressed = false;
+    this.ctrlPressed = false;
   }
 }

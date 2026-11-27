@@ -1,6 +1,6 @@
 import { restoreTestState } from '../helpers/spies';
 import { createCompositionFixture } from '../helpers/items';
-import { Euler, Matrix4, Quaternion, Ray, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
+import { Euler, Matrix4, Quaternion, Ray, Vector2, Vector3 } from '../../../../../../plugin-packages/editor-gizmo/src/math';
 import { Selection } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
 import { FrameComponent, spec, type Engine, type VFXItem } from '@galacean/effects';
 

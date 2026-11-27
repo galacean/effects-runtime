@@ -19,7 +19,7 @@ import {
 import { FrameLayoutMode, type FrameInfo } from './types';
 import type { Box2 } from '@galacean/effects-math/es/extension/index';
 import { Line2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2, getBoxCorners } from '../math';
+import { Vector2, getBoxCorners } from '../../math';
 import { GizmoViewportUtils } from '../viewport';
 
 /** 选区拖拽产生的层级位置变更。 */
