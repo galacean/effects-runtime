@@ -1,0 +1,37 @@
+plugin-packages/editor-gizmo/src/3d/gizmo-component.ts
+  s_41a2855eb678e1::t_a00cb414429658 176
+plugin-packages/editor-gizmo/src/3d/viewport/viewport-gizmo-3d.ts
+  s_41a2855eb678e1::t_ee078578381d10 50,183,192,234-235,241-243,290,309
+  s_41a2855eb678e1::t_68cbb6e2c963da 282
+  s_41a2855eb678e1::t_64d812c0b00a3a 356
+  s_41a2855eb678e1::t_3ad56cc09bc7dc 247,291,315,358
+  s_41a2855eb678e1::t_103125306ef6ef 42-48
+  s_41a2855eb678e1::t_56b1c9225d6261 148-149,154-155,157
+  s_41a2855eb678e1::t_ca836499d7278b 41,99,108,126,206
+  s_41a2855eb678e1::t_595d72a082e51d 3,18-20,25-26,28,30,55,101,150-153,176,184,201,215,230,236-240,244,284,292-294,300,303-305,307-308,311,314,357
+plugin-packages/editor-gizmo/src/3d/viewport/camera-navigation.ts
+  s_41a2855eb678e1::t_7f3102dea7dd7d 14,16-31,43,49-50
+  s_41a2855eb678e1::t_e573836181539e 41
+plugin-packages/editor-gizmo/src/3d/editor-3d.ts
+  s_41a2855eb678e1::t_56b1c9225d6261 172
+  s_41a2855eb678e1::t_7077ef2e921be5 193
+  s_41a2855eb678e1::t_ae11e7909968af 39,78-79,86-87,260
+plugin-packages/editor-gizmo/src/3d/viewport/transform-gizmo-3d.ts
+  s_41a2855eb678e1::t_49dba5b7b2d735 5,35-40,134-149,153-155,185-189,193,196,203-205,207-211,213-216,218,220-221,223-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "333ba8ce388305da34ba4b30f0478f13fd4ff775",
+  "prompts": {},
+  "sessions": {
+    "s_41a2855eb678e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c93-f12b-7883-b6b6-cfe81faccf0f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}

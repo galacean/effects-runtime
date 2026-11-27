@@ -1,0 +1,58 @@
+plugin-packages/editor-gizmo/src/2d/gizmos/move-selection-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 12
+plugin-packages/editor-gizmo/src/2d/gizmos/transform-handles-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 15
+  s_f6efbe870d523e::t_4974666c3425c7 12-14
+  s_f6efbe870d523e::t_e060428a24cf92 16-18
+web-packages/test/unit/src/plugin-editor-gizmo/2d/content-gizmos.spec.ts
+  s_f6efbe870d523e::t_180912f993197a 35-2897,2914
+  s_f6efbe870d523e::t_f3d4c63b8082b7 32-34
+  s_f6efbe870d523e::t_02a6162859c187 2898-2900,2911-2913
+  s_f6efbe870d523e::t_97de76dc55fee4 2915-2917
+plugin-packages/editor-gizmo/src/2d/gizmos/content-edit-utils.ts
+  s_f6efbe870d523e::t_180912f993197a 2
+  s_f6efbe870d523e::t_eb77cc4df32d65 1
+  s_f6efbe870d523e::t_1c50694784537f 3-5
+plugin-packages/editor-gizmo/src/2d/gizmos/gradient-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 17
+  s_f6efbe870d523e::t_58fb9743b767b2 14-16
+  s_f6efbe870d523e::t_a416fa067cfb61 18-20
+plugin-packages/editor-gizmo/src/2d/gizmos/crystal-lattice-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 15-16
+  s_f6efbe870d523e::t_ea237312bee634 12-14
+  s_f6efbe870d523e::t_831449eca2dca8 17-19
+plugin-packages/editor-gizmo/src/2d/gizmos/ffd-wireframe-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 6-7
+  s_f6efbe870d523e::t_227049238a9580 3-5
+  s_f6efbe870d523e::t_548f557c4ba93b 8-10
+web-packages/demo/src/gizmo-2d/app.ts
+  s_f6efbe870d523e::t_180912f993197a 3-4
+  s_f6efbe870d523e::t_9b5b2ce75aaa32 2
+  s_f6efbe870d523e::t_16640a61e85722 5-7
+plugin-packages/editor-gizmo/src/2d/gizmos/curve-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 14-15
+  s_f6efbe870d523e::t_39a6fa288298e6 11-13
+  s_f6efbe870d523e::t_1ad20fe449e60e 16-18
+plugin-packages/editor-gizmo/src/2d/gizmos/motion-path.ts
+  s_f6efbe870d523e::t_180912f993197a 9
+  s_f6efbe870d523e::t_2ef5a104ade812 6-8
+  s_f6efbe870d523e::t_17559047f9f91e 10-12
+plugin-packages/editor-gizmo/src/2d/gizmos/corner-rotation-gizmo.ts
+  s_f6efbe870d523e::t_180912f993197a 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ed9235473ded515ffc4765e8afa89df56c0e8219",
+  "prompts": {},
+  "sessions": {
+    "s_f6efbe870d523e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21818-2b10-7993-975d-968a1cb5a304",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "wumaolinmaoan <wumaolin1998@outlook.com>"
+    }
+  }
+}
