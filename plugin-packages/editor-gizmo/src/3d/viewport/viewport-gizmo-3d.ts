@@ -1,14 +1,14 @@
 import { MouseButton, PluginSystem, Transform, glContext, math, type Camera, type Composition, type InputEventMouseButton, type InputEventMouseMotion, type InputEventKey, type Renderer } from '@galacean/effects';
 import type { Point2, Point3 } from '../../math/types';
-import { add3, sub3, mul3, cross3, length3, unit3 } from '../../math/vector3';
+import { add3, sub3, mul3, length3, unit3 } from '../../math/vector3';
 import { orbitEditorCamera, dollyEditorCamera, lookEditorCamera, flyEditorCamera, type CameraEditData } from './camera-navigation';
 import { Gizmo3D, type Viewport3DCameraEvent } from './gizmo-3d';
 import { getItemWorldBoundsCorners } from './item-bounds';
 import { GizmoGeometry } from './gizmo-geometry';
 import { GizmoSubType } from '../define';
-import type { GizmoItemBoundingSphere } from '../gizmo-bounds';
 import type { EditorGizmoPlugin } from '../gizmo-loader';
 import { computeOrthographicOffCenter } from '../../math/projection';
+import { viewHelperStyle } from '../constants';
 
 const vector = (point: Point3) => new math.Vector3(point.x, point.y, point.z);
 
@@ -54,7 +54,9 @@ export class ViewportGizmo3D extends Gizmo3D {
   private alignment?: { to: CameraEditData, elapsed: number };
   private smoothing = false;
   private start?: math.Vector2;
-  private action?: 'orbit' | 'pan' | 'look';
+  private action?: 'orbit' | 'pan' | 'look' | 'dolly';
+  private zoomUsesY = true;
+  private hoveredAxis?: string;
   private flyKeys = new Set<string>();
   private flyTime = 0;
   private flySpeed = 5;
@@ -79,22 +81,42 @@ export class ViewportGizmo3D extends Gizmo3D {
     const geometry = this.geometry;
     const camera = composition.camera;
     const orientation = camera.getInverseViewMatrix().getTransform().rotation.conjugate();
-    const rotation = new math.Matrix4().compose(math.Vector3.ZERO, orientation, math.Vector3.ONE);
-    const width = 2 * Math.tan(30 * Math.PI / 360) * 16;
-    const height = width * composition.renderer.getHeight() / composition.renderer.getWidth();
-    const model = new math.Matrix4().compose(new math.Vector3(width / 2 - 0.8, height / 2 - 0.8, 0), orientation, math.Vector3.ONE);
+    const { x: width, y: height } = this.owner.viewportSize;
+    const inset = viewHelperStyle.margin + viewHelperStyle.size / 2;
+    const model = new math.Matrix4().compose(new math.Vector3(width / 2 - inset, height / 2 - inset, 0), new math.Quaternion(), math.Vector3.ONE);
 
-    geometry.projection = computeOrthographicOffCenter(-width / 2, width / 2, -height / 2, height / 2, -16, 16);
-    geometry.updateMatrix(camera.getInverseViewMatrix().multiply(model));
-    for (const { data, local } of geometry.parts) {
-      if (!geometry.bounds.has(data.name)) { continue; }
-      const position = rotation.projectPoint(local.position, new math.Vector3());
-      const radius = (geometry.bounds.get(data.name) as GizmoItemBoundingSphere).radius;
-      const distance = position.toVector2().length();
-      const alpha = data.name.endsWith('Z') ? 1 : Math.max(0, Math.min(1, distance * 2 / radius - 1));
+    geometry.projection = computeOrthographicOffCenter(-width / 2, width / 2, -height / 2, height / 2, -100, 100);
 
-      data.material.setVector2('u_alpha', new math.Vector2(alpha, 0));
+    geometry.highlight(this.hoveredAxis);
+    for (const [index, axis] of ['X', 'Y', 'Z'].entries()) {
+      const direction = new math.Vector3();
+
+      direction.setElement(index, 1);
+      direction.applyQuaternion(orientation).multiply(viewHelperStyle.axisLength);
+      for (const part of geometry.parts) {
+        if (!part.data.name.endsWith(axis) && part.data.name !== 'pos' + axis + 'Line') { continue; }
+        const line = part.data.name.endsWith('Line');
+        const sign = part.data.name.startsWith('neg') ? -1 : 1;
+        const point = direction.clone().multiply(sign);
+
+        if (line) {
+          const length = point.toVector2().length();
+          const start = Math.min(0.5, length);
+          const midpoint = length > 0 ? (length + start) / (2 * length) : 0;
+
+          part.local.setTransform({ position: new math.Vector3(point.x * midpoint, point.y * midpoint, point.z),
+            quat: new math.Quaternion().setFromAxisAngle(new math.Vector3(0, 0, 1), Math.atan2(point.y, point.x)),
+            scale: new math.Vector3((length - start) / viewHelperStyle.axisLength, 1, 1) });
+        } else {
+          part.local.setTransform({ position: point });
+        }
+      }
     }
+    // Paint far markers first; the front-facing circles cover lines and rear markers.
+    geometry.parts.sort((a, b) => {
+      return a.local.position.z - b.local.position.z || Number(!a.data.name.endsWith('Line')) - Number(!b.data.name.endsWith('Line'));
+    });
+    geometry.updateMatrix(camera.getInverseViewMatrix().multiply(model));
   }
 
   override draw (renderer: Renderer): void {
@@ -106,6 +128,11 @@ export class ViewportGizmo3D extends Gizmo3D {
     this.geometry?.dispose();
     this.geometry = undefined;
     this.geometryScene = undefined;
+  }
+
+  hover (point?: Point2): void {
+    this.hoveredAxis = point ? this.owner.picker.hit(point, 'view-helper')?.key : undefined;
+    this.geometry?.highlight(this.hoveredAxis);
   }
 
   get state (): CameraEditData | undefined {
@@ -282,7 +309,7 @@ export class ViewportGizmo3D extends Gizmo3D {
     }
     if (this.navigation && this.action === 'look' && this.flyKeys.size) {
       const down = (key: string) => this.flyKeys.has(key) ? 1 : 0;
-      const camera = this.navigation.current, distance = dt * this.flySpeed;
+      const camera = this.navigation.current, distance = dt * this.flySpeed * (this.flyKeys.has('shift') ? 5 : 1);
 
       this.preview(flyEditorCamera(camera, down('d') - down('a'), down('e') - down('q'), down('w') - down('s'), distance));
     }
@@ -312,31 +339,52 @@ export class ViewportGizmo3D extends Gizmo3D {
         return;
       }
     }
-    const pan = event.buttonIndex === MouseButton.Middle || (event.buttonIndex === MouseButton.Right && event.shiftPressed);
-    const orbit = event.buttonIndex === MouseButton.Right || (event.buttonIndex === MouseButton.Left && event.altPressed);
+    const actionKey = event.ctrlPressed || event.metaPressed;
+    let action: typeof this.action;
 
-    if (!pan && !orbit) { return; }
+    if (event.buttonIndex === MouseButton.Middle || event.buttonIndex === MouseButton.Left
+      && (event.altPressed && actionKey || this.owner.tool === 'camera' && !event.altPressed)) {
+      action = 'pan';
+    } else if (event.buttonIndex === MouseButton.Right && event.altPressed) {
+      action = 'dolly';
+    } else if (event.buttonIndex === MouseButton.Left && event.altPressed) {
+      action = 'orbit';
+    } else if (event.buttonIndex === MouseButton.Right && !actionKey) {
+      action = 'look';
+    }
+    if (!action) { return; }
     if (!this.beginNavigation()) { return; }
     this.start = event.position.clone();
-    this.action = pan ? 'pan' : event.buttonIndex === MouseButton.Right && !event.altPressed && !event.metaPressed ? 'look' : 'orbit';
+    this.action = action;
+    if (event.shiftPressed) { this.flyKeys.add('shift'); }
     event.accept();
   }
   override onMouseDrag (event: InputEventMouseMotion): void {
     if (!this.navigation || !this.start) { return; }
-    const before = this.action === 'look' ? this.navigation.current : this.navigation.initial;
+    const before = this.navigation.current;
     const dx = event.position.x - this.start.x, dy = event.position.y - this.start.y;
 
+    this.start.copyFrom(event.position);
+
     if (this.action === 'look') {
-      this.start = event.position.clone();
       this.preview(lookEditorCamera(before, dx, dy));
     } else if (this.action === 'orbit') {
       this.preview(orbitEditorCamera(before, dx, dy));
-    } else {
-      const forward = unit3(sub3(before.target, before.position)), right = unit3(cross3(forward, before.up)), up = unit3(cross3(right, forward));
-      const depth = length3(sub3(before.position, before.target));
-      const delta = mul3(add3(mul3(right, -dx), mul3(up, dy)), depth / 600);
+    } else if (this.action === 'dolly') {
+      if (Math.abs(Math.abs(dx) - Math.abs(dy)) > Math.max(Math.abs(dx), Math.abs(dy)) * 0.1) {
+        this.zoomUsesY = Math.abs(dy) > Math.abs(dx);
+      }
+      const delta = -Math.sign(this.zoomUsesY ? dy : dx) * Math.hypot(dx, dy);
 
-      this.preview({ ...before, position: add3(before.position, delta), target: add3(before.target, delta) }, true);
+      this.preview(dollyEditorCamera(before, Math.exp(delta * 0.003 * (event.shiftPressed ? 3 : 1))));
+    } else {
+      const from = this.owner.unproject({ x: event.position.x - dx, y: event.position.y - dy }, before.target);
+      const to = this.owner.unproject(event.position, before.target);
+
+      if (!from || !to) { return; }
+      const delta = mul3(sub3(from, to), event.shiftPressed ? 4 : 1);
+
+      this.preview({ ...before, position: add3(before.position, delta), target: add3(before.target, delta) });
     }
     event.accept();
   }
@@ -366,14 +414,23 @@ export class ViewportGizmo3D extends Gizmo3D {
     const camera = this.alignment || !this.navigation ? this.beginNavigation() : this.navigation.current;
 
     if (!camera) { return; }
-    this.preview(dollyEditorCamera(camera, direction < 0 ? 1 / factor : factor), true);
-    this.navigation!.committed = true;
+    let next = dollyEditorCamera(camera, direction < 0 ? 1 / factor : factor);
+    const mousePoint = event.altPressed && this.owner.unproject(event.position, camera.target);
+
+    if (mousePoint) {
+      const ratio = length3(sub3(next.position, next.target)) / length3(sub3(camera.position, camera.target));
+      const delta = mul3(sub3(mousePoint, camera.target), 1 - ratio);
+
+      next = { ...next, position: add3(next.position, delta), target: add3(next.target, delta) };
+    }
+    this.preview(next);
+    this.finish(false);
     event.accept();
   }
   override onKeyDown (event: InputEventKey): void {
     const key = event.keycode.toLowerCase();
 
-    if (this.action === 'look' && ['w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
+    if (this.action === 'look' && ['w', 'a', 's', 'd', 'q', 'e', 'shift'].includes(key)) {
       this.flyKeys.add(key); event.accept();
 
       return;

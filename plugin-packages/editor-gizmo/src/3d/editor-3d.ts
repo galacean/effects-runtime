@@ -3,7 +3,8 @@ import { Control, FocusMode, MouseFilter, type ControlEvent } from '@galacean/ef
 import type { Selection } from '../2d/selection/selection';
 import type { Editor } from '../editor';
 import type { Point2, Point3, Ray3 } from '../math/types';
-import type { Gizmo3D, Gizmo3DEvents, Viewport3DSpace, Viewport3DTool } from './viewport/gizmo-3d';
+import { rayPlanePoint } from '../math/plane';
+import type { Gizmo3D, Gizmo3DEvents, Viewport3DPivotMode, Viewport3DSpace, Viewport3DTool } from './viewport/gizmo-3d';
 import { GizmoRenderer3D } from './viewport/gizmo-renderer-3d';
 import { GridGizmo3D } from './viewport/grid-gizmo-3d';
 import { SelectionGizmo3D } from './viewport/selection-gizmo-3d';
@@ -136,6 +137,43 @@ export class Editor3D extends Control {
     }
   }
 
+  /** Unproject a CSS pixel onto the camera-facing plane through a world point. */
+  unproject (point: Point2, worldPoint: Point3): math.Vector3 | undefined {
+    const ray = this.ray(point);
+    const camera = this.composition?.camera;
+
+    if (!ray || !camera) { return; }
+    const normal = camera.getInverseViewMatrix().transformNormal(new math.Vector3(0, 0, 1));
+    const hit = rayPlanePoint(ray, worldPoint, normal);
+
+    return hit && new math.Vector3(hit.x, hit.y, hit.z);
+  }
+
+  /** World length of a fixed CSS-pixel handle at this depth. */
+  getHandleSize (worldPoint: Point3): number {
+    const screen = this.project(worldPoint);
+    const edge = screen && this.unproject({ x: screen.x + 80, y: screen.y }, worldPoint);
+
+    return edge ? edge.distance(new math.Vector3(worldPoint.x, worldPoint.y, worldPoint.z)) : 0;
+  }
+
+  /** Convert a mouse displacement to world units along a projected unit axis. */
+  getLineTranslation (start: Point2, end: Point2, worldPoint: Point3, axis: Point3): number {
+    const camera = this.composition?.camera;
+
+    if (!camera) { return 0; }
+    const forward = camera.getInverseViewMatrix().transformNormal(new math.Vector3(0, 0, -1));
+    const sign = forward.dot(new math.Vector3(axis.x, axis.y, axis.z)) < 0 ? -1 : 1;
+    const from = this.project(worldPoint);
+    const to = this.project({ x: worldPoint.x + axis.x * sign, y: worldPoint.y + axis.y * sign, z: worldPoint.z + axis.z * sign });
+
+    if (!from || !to) { return 0; }
+    const direction = to.subtract(from);
+
+    return direction.lengthSquared() > 1e-8
+      ? ((end.x - start.x) * direction.x + (end.y - start.y) * direction.y) / direction.lengthSquared() * sign : 0;
+  }
+
   override on<E extends keyof Editor3DEvents> (name: E, listener: EventEmitterListener<Editor3DEvents[E]>): () => void {
     if (isGizmoEvent(name)) { return this.gizmoEvents.on<E>(name, listener); }
     super.on(name, listener as never);
@@ -149,6 +187,15 @@ export class Editor3D extends Control {
 
   get tool (): Viewport3DTool { return this.cameraOnly ? 'camera' : this.transform.operation; }
   get space (): Viewport3DSpace { return this.transform.space; }
+  get pivotMode (): Viewport3DPivotMode { return this.transform.pivotMode; }
+
+  setPivotMode (pivot: Viewport3DPivotMode): void {
+    if (pivot === this.pivotMode) { return; }
+    this.cancel('pivot-change');
+    this.transform.pivotMode = pivot;
+    this.updateGizmos();
+    this.emit('toolchange', this.tool, this.space);
+  }
 
   setTool (tool: Viewport3DTool, space: Viewport3DSpace = this.space): void {
     if (tool === this.tool && space === this.space) { return; }
@@ -183,7 +230,13 @@ export class Editor3D extends Control {
   override onMouseMove (event: InputEventMouseMotion): void {
     const capture = this.capture;
 
-    if (!capture || event.isAccepted()) { return; }
+    if (event.isAccepted()) { return; }
+    if (!capture) {
+      this.transform.hover(event.position);
+      this.camera.hover(event.position);
+
+      return;
+    }
     if (capture.gizmo === this.selectionGizmo && !capture.dragging && capture.start.distance(event.position) < 5) { return; }
     capture.dragging = true;
     capture.gizmo.onMouseDrag(event);
@@ -215,7 +268,7 @@ export class Editor3D extends Control {
       this.capture.gizmo.onKeyDown(event);
     } else {
       this.camera.onKeyDown(event);
-      if (!event.isAccepted() && !this.cameraOnly) { this.transform.onKeyDown(event); }
+      if (!event.isAccepted()) { this.transform.onKeyDown(event); }
     }
     if (!event.isAccepted()) { this.gizmoEvents.emit('keyDown', event); }
   }
@@ -247,6 +300,13 @@ export class Editor3D extends Control {
     this.camera.cancel();
     this.transform.cancel(reason);
     this.selectionGizmo.cancel();
+    this.transform.hover();
+    this.camera.hover();
+  }
+
+  override onMouseLeave (): void {
+    this.transform.hover();
+    this.camera.hover();
   }
 
   override onLostFocus (): void { this.cancel('focus-lost'); }

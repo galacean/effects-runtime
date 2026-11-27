@@ -299,7 +299,7 @@ export function createShapeGeometry (engine: Engine, args: { shape: string, type
 }
 
 /** Material for scene helpers that respect scene occlusion after post-processing. */
-export function createSceneShapeMaterial (engine: Engine, color: vec3): Material {
+export function createSceneShapeMaterial (engine: Engine, color: vec3, alpha = 1): Material {
   const material = Material.create(engine, {
     shader: {
       shared: true,
@@ -308,10 +308,11 @@ export function createSceneShapeMaterial (engine: Engine, color: vec3): Material
 
         ${sceneDepthTest}
         uniform vec3 u_color;
+        uniform float u_alpha;
 
         void main() {
           testSceneDepth();
-          gl_FragColor = vec4(u_color, 1.0);
+          gl_FragColor = vec4(u_color, u_alpha);
         }`,
       vertex: `
         precision highp float;
@@ -327,9 +328,11 @@ export function createSceneShapeMaterial (engine: Engine, color: vec3): Material
   });
 
   material.setVector3('u_color', Vector3.fromArray(color));
+  material.setFloat('u_alpha', alpha);
   material.depthTest = true;
   material.stencilTest = false;
-  material.blending = false;
+  material.blending = alpha < 1;
+  material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
   material.depthMask = true;
 
   return material;

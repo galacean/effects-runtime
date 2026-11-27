@@ -13,10 +13,9 @@ export class GridGizmo3D extends Gizmo3D {
   override onUpdate (): void {
     if (this.geometries.length) { return; }
     this.transform.setRotation(90, 0, 0);
-    this.geometries = [50, 200].map((parts, index) => {
-      const gray = (index ? 50 : 100) / 255;
+    this.geometries = [50, 200].map(parts => {
       const geometry = createGeometry(this.owner.engine, GeometryType.FloorGrid, { sideLength: 100, parts }, glContext.LINES);
-      const material = createSceneShapeMaterial(this.owner.engine, [gray, gray, gray]);
+      const material = createSceneShapeMaterial(this.owner.engine, [0.5, 0.5, 0.5], 0.5);
 
       return { geometry, material };
     });

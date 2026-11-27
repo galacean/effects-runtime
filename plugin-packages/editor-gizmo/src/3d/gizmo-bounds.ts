@@ -10,7 +10,15 @@ export enum BoundingType {
   box,
   sphere,
   triangle,
-  line
+  line,
+  circle,
+}
+
+export interface GizmoItemBoundingCircle {
+  type: BoundingType.circle,
+  normal: Vector3,
+  radius: number,
+  frontOnly?: boolean,
 }
 
 /**
@@ -60,4 +68,5 @@ export type GizmoItemBounding =
   | GizmoItemBoundingSphere
   | GizmoItemBoundingTriangle
   | GizmoItemBoundingLine
+  | GizmoItemBoundingCircle
   ;

@@ -6,6 +6,7 @@ import type { TransformGizmo3D } from './transform-gizmo-3d';
 export type Transform3DOperation = 'translate' | 'rotate' | 'scale';
 export type Viewport3DTool = Transform3DOperation | 'camera';
 export type Viewport3DSpace = 'local' | 'world';
+export type Viewport3DPivotMode = 'pivot' | 'center';
 
 /** IDs identify the top-level items whose live transforms the gizmo edits. */
 export interface Transform3DActionEvent {

@@ -33,11 +33,25 @@ export class SelectionGizmo3D extends Gizmo3D {
     return this.owner.selection.getSelectedPlayerItems().filter(item => this.isSelectable(item));
   }
 
+  /** The last entry in the shared, ordered selection is the active object. */
+  get activeItem (): VFXItem | undefined {
+    const items = this.items;
+
+    return items[items.length - 1];
+  }
+
+  setActiveItem (item: VFXItem): void {
+    const items = this.items;
+
+    if (!items.includes(item)) { return; }
+    this.selectHits(new Set(items), item);
+  }
+
   private isSelectable (item: VFXItem): boolean {
     return !this.selectableItems || this.selectableItems.has(item);
   }
 
-  private selectHits (hits: Set<VFXItem>): void {
+  private selectHits (hits: Set<VFXItem>, active?: VFXItem): void {
     // A 3D marquee that hits both a container and its descendants selects the container.
     const roots = Array.from(hits).filter(item => {
       for (let parent = item.parent; parent; parent = parent.parent) {
@@ -47,7 +61,9 @@ export class SelectionGizmo3D extends Gizmo3D {
       return true;
     });
 
-    this.owner.selection.setSelectedItems(roots.map(item => item.getInstanceId()));
+    const ordered = active && roots.includes(active) ? [...roots.filter(item => item !== active), active] : roots;
+
+    this.owner.selection.setSelectedItems(ordered.map(item => item.getInstanceId()));
   }
 
   canTransform (item: VFXItem): boolean {
@@ -90,14 +106,21 @@ export class SelectionGizmo3D extends Gizmo3D {
   override onMouseUp (event: InputEventMouseButton): void {
     if (!this.start) { return; }
     if (!event.isCanceled()) {
-      const additive = event.shiftPressed || event.ctrlPressed || event.metaPressed;
+      const subtractive = event.ctrlPressed || event.metaPressed;
+      const additive = event.shiftPressed || subtractive;
       const hits = this.rect ? this.itemsInRect(rectBetween(this.start, event.position)) : this.itemAt(this.start);
       const result = new Set<VFXItem>(additive ? this.items : []);
+      let active = this.rect && additive ? this.activeItem : hits[0];
 
       for (const item of hits) {
-        if (additive && !this.rect && result.has(item)) { result.delete(item); } else { result.add(item); }
+        if (this.rect ? subtractive : result.has(item) && (subtractive || event.shiftPressed && item === this.activeItem)) {
+          result.delete(item);
+        } else {
+          result.add(item);
+          if (!this.rect) { active = item; }
+        }
       }
-      this.selectHits(result);
+      this.selectHits(result, active);
     }
     this.cancel();
     event.accept();

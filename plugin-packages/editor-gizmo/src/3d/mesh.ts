@@ -1,11 +1,11 @@
-import type { Engine, Geometry, spec } from '@galacean/effects';
-import { glContext, Material, Texture, Transform, math } from '@galacean/effects';
+import type { Engine, spec } from '@galacean/effects';
+import { BufferUsage, Geometry, glContext, Material, Texture, Transform, math } from '@galacean/effects';
 import type { MeshOption } from './geometry';
 import { createGeometry, GeometryType } from './geometry';
 import { GizmoSubType } from './define';
 import type { GizmoItemBounding } from './gizmo-bounds';
 import { BoundingType } from './gizmo-bounds';
-import { color, renderMode } from './constants';
+import { color, gizmoOpacity, renderMode, viewHelperStyle } from './constants';
 
 type vec3 = spec.vec3;
 type Vector3 = math.Vector3;
@@ -89,72 +89,47 @@ function createRotationGeometry (
   options: MeshOption,
   boundingMap: Map<string, GizmoItemBounding>,
 ): Map<GizmoGeometryData, Transform> {
-  const result: Map<GizmoGeometryData, Transform> = new Map();
+  const result = new Map<GizmoGeometryData, Transform>();
   const scale = options.size.scale || 1;
-  const size = {
-    radius: 0.8 * scale,
-    tube: 0.02 * scale,
-    radiusSegments: 10 * scale,
-    widthSegments: 20,
-    heightSegments: 20,
-  };
-  const boundSize = { ...size, tube: size.tube * 2 };
-  const name = 'rotation';
-  const xCircle = createBasicGeometry(engine, GizmoSubType.torus, {
-    size, color: color.xAxisColor as vec3, renderMode, name,
-  }, 'hideBack');
-  const yCircle = createBasicGeometry(engine, GizmoSubType.torus, {
-    size, color: color.yAxisColor as vec3, renderMode, name,
-  }, 'hideBack');
-  const zCircle = createBasicGeometry(engine, GizmoSubType.torus, {
-    size, color: color.zAxisColor as vec3, renderMode, name,
-  }, 'hideBack');
-  const center = createBasicGeometry(engine, GizmoSubType.sphere, {
-    size, color: [0.3, 0.3, 0.3], alpha: 0.1, renderMode, name,
-  }, 'blend');
-  const xCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
-  const yCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
-  const zCircleBounding = createGeometry(engine, GeometryType.Torus, boundSize, renderMode);
-
-  const xCircleTransform = new Transform({
-    valid: true,
-  });
-  const yCircleTransform = new Transform({
-    valid: true,
-  });
-  const zCircleTransform = new Transform({
-    valid: true,
-  });
-  const centerTransform = new Transform({
-    valid: true,
+  const size = { radius: 0.8 * scale, tube: 0.008 * scale, radiusSegments: 8, widthSegments: 96, heightSegments: 96 };
+  const freeRing = createBasicGeometry(engine, GizmoSubType.torus, {
+    size, color: [0.45, 0.45, 0.45], renderMode, name: 'freeRing',
   });
 
-  xCircleTransform.setRotation(0, 90, 0);
-  yCircleTransform.setRotation(-90, 0, 0);
-  zCircleTransform.setRotation(0, 0, 0);
-  result.set(center, centerTransform);
-  result.set(xCircle, xCircleTransform);
-  result.set(yCircle, yCircleTransform);
-  result.set(zCircle, zCircleTransform);
+  result.set(freeRing, new Transform());
+  for (const [index, name] of ['xAxis', 'yAxis', 'zAxis'].entries()) {
+    const mesh = createBasicGeometry(engine, GizmoSubType.torus, {
+      size, color: [color.xAxisColor, color.yAxisColor, color.zAxisColor][index] as vec3, renderMode, name,
+    }, 'hideBack');
+    const local = new Transform();
+    const normal = new Vector3();
 
-  boundingMap.set('xAxis', {
-    type: BoundingType.triangle,
-    triangles: getTriangle(xCircleBounding, xCircleTransform),
-    backfaceCulling: true,
+    normal.setElement(index, 1);
+    if (index === 0) { local.setRotation(0, 90, 0); }
+    if (index === 1) { local.setRotation(-90, 0, 0); }
+    result.set(mesh, local);
+    boundingMap.set(name, { type: BoundingType.circle, normal, radius: size.radius, frontOnly: true });
+  }
+  const screenRing = createBasicGeometry(engine, GizmoSubType.torus, {
+    size: { ...size, radius: size.radius * 1.1 }, color: [0.8, 0.8, 0.8], renderMode, name: 'screenRing',
   });
-  boundingMap.set('yAxis', {
-    type: BoundingType.triangle,
-    triangles: getTriangle(yCircleBounding, yCircleTransform),
-    backfaceCulling: true,
-  });
-  boundingMap.set('zAxis', {
-    type: BoundingType.triangle,
-    triangles: getTriangle(zCircleBounding, zCircleTransform),
-    backfaceCulling: true,
-  });
-  xCircleBounding.dispose();
-  yCircleBounding.dispose();
-  zCircleBounding.dispose();
+
+  result.set(screenRing, new Transform());
+  boundingMap.set('screenRing', { type: BoundingType.circle, normal: new Vector3(0, 0, 1), radius: size.radius * 1.1 });
+  for (const [name, mode, count, alpha] of [
+    ['rotationSector', glContext.TRIANGLES, 64 * 3, 0.2], ['rotationLines', glContext.LINES, 4, 1],
+  ] as const) {
+    const indices = name === 'rotationSector' ? new Uint16Array(Array.from({ length: 64 }, (v, i) => [0, i + 1, i + 2]).flat()) : undefined;
+    const geometry = Geometry.create(engine, {
+      attributes: { a_Position: { size: 3, data: new Float32Array(name === 'rotationSector' ? 66 * 3 : count * 3) } },
+      indices: indices ? { data: indices } : undefined,
+      mode, drawCount: 0, bufferUsage: BufferUsage.Dynamic,
+    });
+    const material = createBlendMaterial(engine, color.highlightColor as vec3, false, alpha);
+
+    material.depthMask = false;
+    result.set({ name, geometry, material }, new Transform());
+  }
 
   return result;
 }
@@ -224,20 +199,20 @@ function createTranslationGeometry (engine: Engine, options: MeshOption, boundin
     color: color.xAxisColor as vec3,
     renderMode,
     depthTest: true,
-    name,
+    name: 'xAxis',
   }, 'blend');
   const yArrow = createBasicGeometry(engine, GizmoSubType.cone, {
     size: arrowSize,
     color: color.yAxisColor as vec3,
     renderMode,
     depthTest: true,
-    name,
+    name: 'yAxis',
   }, 'blend');
   const zArrow = createBasicGeometry(engine, GizmoSubType.cone, {
     size: arrowSize,
     color: color.zAxisColor as vec3,
     renderMode,
-    name,
+    name: 'zAxis',
     depthTest: true,
   }, 'blend');
   const xArrowTransform = new Transform({
@@ -262,14 +237,20 @@ function createTranslationGeometry (engine: Engine, options: MeshOption, boundin
     height: 0.2 * scale,
   };
   const xyPlane = createBasicGeometry(engine, GizmoSubType.plane, {
-    size: planeSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
-  });
+    size: planeSize, color: color.zAxisColor as vec3, renderMode, alpha: gizmoOpacity, name: 'xyPlane',
+  }, 'blend');
   const yzPlane = createBasicGeometry(engine, GizmoSubType.plane, {
-    size: planeSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
-  });
+    size: planeSize, color: color.xAxisColor as vec3, renderMode, alpha: gizmoOpacity, name: 'yzPlane',
+  }, 'blend');
   const zxPlane = createBasicGeometry(engine, GizmoSubType.plane, {
-    size: planeSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
-  });
+    size: planeSize, color: color.yAxisColor as vec3, renderMode, alpha: gizmoOpacity, name: 'zxPlane',
+  }, 'blend');
+
+  for (const { material } of [xyPlane, yzPlane, zxPlane]) {
+    material.culling = false;
+    material.depthMask = false;
+    material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
+  }
   const xyPlaneTransform = new Transform({
     valid: true,
   });
@@ -348,20 +329,20 @@ function createScaleGeometry (engine: Engine, options: MeshOption, boundingMap: 
     depth: 0.2 * scale,
   };
   const xCube = createBasicGeometry(engine, GizmoSubType.box, {
-    size: boxSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
+    size: boxSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name: 'xAxis',
   }, 'blend');
   const yCube = createBasicGeometry(engine, GizmoSubType.box, {
-    size: boxSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
+    size: boxSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name: 'yAxis',
   }, 'blend');
   const zCube = createBasicGeometry(engine, GizmoSubType.box, {
-    size: boxSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
+    size: boxSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name: 'zAxis',
   }, 'blend');
   const centerCube = createBasicGeometry(engine, GizmoSubType.box, {
     size: centerBoxSize,
     color: [0.8, 0.8, 0.8],
     renderMode,
     depthTest: true,
-    name,
+    name: 'center',
   }, 'blend');
   const xCubeTransform = new Transform({
     valid: true,
@@ -402,96 +383,32 @@ function createScaleGeometry (engine: Engine, options: MeshOption, boundingMap: 
  * @returns 绘制数据和对应的局部变换
  */
 function createViewHelperGeometry (engine: Engine, options: MeshOption, boundingMap: Map<string, GizmoItemBounding>, texture: Map<string, Texture>): Map<GizmoGeometryData, Transform> {
-  const result: Map<GizmoGeometryData, Transform> = new Map();
-  const scale = options.size.scale || 1;
-  const axisSize = {
-    width: 0.8 * scale,
-    height: 0.02 * scale,
-    depth: 0.02 * scale,
-  };
-  const axisMesh = createAxisGeometry(engine, axisSize, true);
+  const result = new Map<GizmoGeometryData, Transform>();
+  const { axisLength, markerSize, lineWidth } = viewHelperStyle;
+  const colors = [color.xAxisColor, color.yAxisColor, color.zAxisColor];
 
-  for (const [mesh, transform] of axisMesh) {
-    result.set(mesh, transform);
+  for (const [index, axis] of ['X', 'Y', 'Z'].entries()) {
+    const stem = createBasicGeometry(engine, GizmoSubType.plane, {
+      size: { width: axisLength, height: lineWidth }, color: colors[index] as vec3,
+      renderMode, name: 'pos' + axis + 'Line',
+    });
+
+    stem.material.depthMask = false;
+    result.set(stem, new Transform());
+    for (const sign of [1, -1]) {
+      const name = (sign > 0 ? 'pos' : 'neg') + axis;
+      const local = new Transform();
+      const marker = createSpriteGeometry(engine, {
+        size: { width: markerSize, height: markerSize }, color: colors[index] as vec3, renderMode, name,
+      }, texture.get(name));
+
+      local.position.setElement(index, axisLength * sign);
+      marker.material.depthMask = false;
+      result.set(marker, local);
+      // Match the pick radius to the visible SVG circle.
+      boundingMap.set(name, { type: BoundingType.sphere, center: local.position, radius: markerSize * 0.42 });
+    }
   }
-  const planeSize = {
-    width: 0.14 * scale,
-    height: 0.14 * scale,
-  };
-  const length = (axisSize.width + planeSize.width) / 2;
-  const depthTest = true;
-  const posXSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posX' }, texture.get('posX'));
-  const posYSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posY' }, texture.get('posY'));
-  const posZSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'posZ' }, texture.get('posZ'));
-  const posXSphereTransform = new Transform({
-    valid: true,
-  });
-  const posYSphereTransform = new Transform({
-    valid: true,
-  });
-  const posZSphereTransform = new Transform({
-    valid: true,
-  });
-
-  posXSphereTransform.translate(length, 0, 0);
-  posYSphereTransform.translate(0, length, 0);
-  posZSphereTransform.translate(0, 0, length);
-  const negXSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negX' }, texture.get('negX'));
-  const negYSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negY' }, texture.get('negY'));
-  const negZSphere = createSpriteGeometry(engine, { size: planeSize, renderMode, depthTest, name: 'negZ' }, texture.get('negZ'));
-  const negXSphereTransform = new Transform({
-    valid: true,
-  });
-  const negYSphereTransform = new Transform({
-    valid: true,
-  });
-  const negZSphereTransform = new Transform({
-    valid: true,
-  });
-
-  negXSphereTransform.translate(-length, 0, 0);
-  negYSphereTransform.translate(0, -length, 0);
-  negZSphereTransform.translate(0, 0, -length);
-
-  result.set(posXSphere, posXSphereTransform);
-  result.set(posYSphere, posYSphereTransform);
-  result.set(posZSphere, posZSphereTransform);
-  result.set(negXSphere, negXSphereTransform);
-  result.set(negYSphere, negYSphereTransform);
-  result.set(negZSphere, negZSphereTransform);
-
-  const radius = (planeSize.height / 2) * 1.2;
-
-  boundingMap.set('posX', {
-    type: BoundingType.sphere,
-    center: posXSphereTransform.position,
-    radius: radius,
-  });
-  boundingMap.set('posY', {
-    type: BoundingType.sphere,
-    center: posYSphereTransform.position,
-    radius: radius,
-  });
-  boundingMap.set('posZ', {
-    type: BoundingType.sphere,
-    center: posZSphereTransform.position,
-    radius: radius,
-  });
-  boundingMap.set('negX', {
-    type: BoundingType.sphere,
-    center: negXSphereTransform.position,
-    radius: radius,
-  });
-  boundingMap.set('negY', {
-    type: BoundingType.sphere,
-    center: negYSphereTransform.position,
-    radius: radius,
-  });
-  boundingMap.set('negZ', {
-    type: BoundingType.sphere,
-    center: negZSphereTransform.position,
-    radius: radius,
-  });
 
   return result;
 }
@@ -506,13 +423,13 @@ function createViewHelperGeometry (engine: Engine, options: MeshOption, bounding
 function createAxisGeometry (engine: Engine, axisSize: { width: number, height: number, depth: number }, isCentered = false, name?: string): Map<GizmoGeometryData, Transform> {
   const result: Map<GizmoGeometryData, Transform> = new Map();
   const xAxis = createBasicGeometry(engine, GizmoSubType.box, {
-    size: axisSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name,
+    size: axisSize, color: color.xAxisColor as vec3, renderMode, depthTest: true, name: name === 'translation' || name === 'scale' ? 'xAxisLine' : name,
   });
   const yAxis = createBasicGeometry(engine, GizmoSubType.box, {
-    size: axisSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name,
+    size: axisSize, color: color.yAxisColor as vec3, renderMode, depthTest: true, name: name === 'translation' || name === 'scale' ? 'yAxisLine' : name,
   });
   const zAxis = createBasicGeometry(engine, GizmoSubType.box, {
-    size: axisSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name,
+    size: axisSize, color: color.zAxisColor as vec3, renderMode, depthTest: true, name: name === 'translation' || name === 'scale' ? 'zAxisLine' : name,
   });
 
   const xAxisTransform = new Transform({
@@ -642,6 +559,8 @@ function createSpriteGeometry (engine: Engine, options: MeshOption, texture?: Te
 
   const material = createSpriteMaterial(engine, spriteColor, options.depthTest);
 
+  material.setVector3('u_color', Vector3.fromArray(options.color ?? [1, 1, 1]));
+
   if (boundingMap) {
     boundingMap.set('sprite', {
       type: BoundingType.sphere,
@@ -724,6 +643,7 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
         u_cameraPos: new Float32Array([0, 0, 0]),
         u_center: new Float32Array([0, 0, 0]),
+        u_showFull: 0,
       },
       shader: {
         fragment: `
@@ -751,12 +671,12 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
 
         uniform vec3 u_cameraPos;
         uniform vec3 u_center;
+        uniform float u_showFull;
 
         varying float flag;
         void main(){
-          float distance = length(u_cameraPos - u_center);
           vec3 worldPosition = (u_model * vec4(a_Position,1.0)).xyz;
-          flag = length(u_cameraPos - worldPosition) - distance;
+          flag = u_showFull > 0.5 ? -1.0 : -dot(worldPosition - u_center, u_cameraPos - u_center);
           gl_Position = _MatrixP * effects_MatrixV * u_model * vec4(a_Position,1.0);
         }`,
         shared: true,
@@ -840,6 +760,7 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
   const uniformValues = {
     u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
     u_alpha: new Float32Array([1, 0]),
+    u_highlight: 0,
   };
 
   const material = Material.create(
@@ -854,6 +775,7 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
         uniform vec2 u_alpha;
         uniform vec3 u_color;
         uniform sampler2D u_iconTex;
+        uniform float u_highlight;
 
         varying vec2 v_uv;
 
@@ -863,7 +785,7 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
           {
               discard;
           }
-          gl_FragColor = vec4(color.xyz, color.w * u_alpha.x);
+          gl_FragColor = vec4(color.xyz * mix(u_color, vec3(1.0, 1.0, 0.0), u_highlight), color.w * u_alpha.x);
         }`,
         vertex: `
         precision highp float;

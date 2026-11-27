@@ -1,9 +1,9 @@
 import { GizmoSubType } from '../define';
 import type { Editor3D } from '../editor-3d';
-import type { Point2 } from '../../math/types';
+import type { Point2, Point3 } from '../../math/types';
 
 export type NativeGizmoType = keyof typeof gizmoSubTypes;
-export interface NativeGizmoHit { key: string, target?: string }
+export interface NativeGizmoHit { key: string, target?: string, position?: Point3 }
 
 export const gizmoSubTypes = {
   translation: GizmoSubType.translation,
@@ -45,6 +45,6 @@ export class ViewportGizmoPicker {
     const hit = geometry?.hit(composition.getHitTestRay(ndc.x, ndc.y), ndc, composition.camera);
     const items = this.owner.selectionGizmo.items;
 
-    return hit && { key: hit.key, target: !viewHelper && items.length === 1 ? items[0].getInstanceId() : undefined };
+    return hit && { key: hit.key, position: hit.position, target: !viewHelper && items.length === 1 ? items[0].getInstanceId() : undefined };
   }
 }
