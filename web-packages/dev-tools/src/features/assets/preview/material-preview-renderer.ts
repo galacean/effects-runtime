@@ -5,7 +5,6 @@ import { GLShaderLibrary } from '@galacean/effects-webgl';
 import type { GPUProgramWebGL } from '@galacean/effects-webgl';
 import { createPrimitiveGeometry, PrimitiveType } from '@galacean/effects-plugin-editor-gizmo';
 import type { EditorRenderingDevice } from '../../../platform/effects-runtime/editor-rendering-device';
-import { EditorRenderTarget } from '../../../platform/effects-runtime/editor-render-target';
 import type { RenderedPreview } from './texture-preview-cache';
 import { materialPreviewCamera, thumbnailMaterialView, type MaterialPreviewSettings, type PreviewPrimitive } from './material-preview-settings';
 
@@ -111,7 +110,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
   private ready = false;
   private disposed = false;
 
-  get byteSize (): number { return this.target instanceof EditorRenderTarget ? this.target.byteSize : this.width * this.height * 8; }
+  get byteSize (): number { return this.width * this.height * 8 * (this.target.samples > 1 ? this.target.samples + 1 : 1); }
 
   get statistics (): string {
     const vertices = this.geometry?.getAttributeData('a_Position')?.length ?? 0;
@@ -130,6 +129,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     this.color.unregisterObject();
     this.target = device.createFramebuffer({
       name: 'MaterialPreview', attachments: [this.color], viewport: [0, 0, width, height],
+      samples: this.renderer.msaaSamples,
       depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque },
       storeAction: { colorAction: TextureStoreAction.store },
     });
@@ -185,7 +185,7 @@ export class MaterialPreviewRenderer implements RenderedPreview {
     }
     this.renderer.drawGeometry(this.geometry!, model, material);
     if (doubleSided) { material.culling = false; }
-    device.resolveFramebuffer();
+    this.target.resolve();
     this.ready = true;
   }
 

@@ -31,6 +31,8 @@ const FORMAT_FLOAT: Record<string, number> = {
 export class GPUTextureWebGL extends GPUTexture {
   textureBuffer: WebGLTexture | null;
   target: GLenum = 0;
+  /** Internal format passed to the most recent texture upload. */
+  internalFormat: GLenum = 0;
 
   private sourceType?: TextureSourceType;
 
@@ -118,6 +120,8 @@ export class GPUTextureWebGL extends GPUTexture {
         logger.warn('Float linear not support, change to NEAREST.');
       }
     }
+
+    this.internalFormat = internalFormat;
 
     // 处理是否RGB透明度相乘和Y轴反转, 默认值都为false。
     if (source.premultiplyAlpha === undefined) {

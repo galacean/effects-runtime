@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   RenderingDevice, GPUCapability, TextureLoadAction, assertExist,
-  glContext, isIOS, logger, toBufferView, addItem, removeItem,
+  glContext, isIOS, isWebGL2, logger, toBufferView, addItem, removeItem,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import { GPUTextureWebGL } from './gpu-texture-webgl';
@@ -583,6 +583,10 @@ export class RenderingDeviceWebGL extends RenderingDevice {
     }
   }
 
+  isEnabled (capability: GLenum): boolean {
+    return this.glCapabilityCache[capability] ??= this.gl.isEnabled(capability);
+  }
+
   /**
    * 绑定framebuffer webgl2新增: gl.DRAW_FRAMEBUFFER 和 gl.READ_FRAMEBUFFER
    * @param target
@@ -592,10 +596,34 @@ export class RenderingDeviceWebGL extends RenderingDevice {
    * gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
    */
   bindFramebuffer (target: GLenum, framebuffer: WebGLFramebuffer | null) {
-    if (this.currentFramebuffer[target] !== framebuffer) {
+    const gl = this.gl;
+
+    if (isWebGL2(gl) && target === gl.FRAMEBUFFER) {
+      // FRAMEBUFFER changes both bindings; FRAMEBUFFER_BINDING aliases DRAW_FRAMEBUFFER_BINDING.
+      if (this.currentFramebuffer[gl.DRAW_FRAMEBUFFER] !== framebuffer || this.currentFramebuffer[gl.READ_FRAMEBUFFER] !== framebuffer) {
+        gl.bindFramebuffer(target, framebuffer);
+      }
+      this.currentFramebuffer[gl.READ_FRAMEBUFFER] = framebuffer;
+      this.currentFramebuffer[gl.DRAW_FRAMEBUFFER] = framebuffer;
+      this.currentFramebuffer[gl.FRAMEBUFFER] = framebuffer;
+    } else if (this.currentFramebuffer[target] !== framebuffer) {
       this.currentFramebuffer[target] = framebuffer;
-      this.gl.bindFramebuffer(target, framebuffer);
+      gl.bindFramebuffer(target, framebuffer);
+      if (isWebGL2(gl) && target === gl.DRAW_FRAMEBUFFER) {
+        this.currentFramebuffer[gl.FRAMEBUFFER] = framebuffer;
+      }
     }
+  }
+
+  getFramebufferBinding (target: GLenum): WebGLFramebuffer | null {
+    if (this.currentFramebuffer[target] === undefined) {
+      const gl = this.gl;
+      const binding = target === gl.READ_FRAMEBUFFER ? gl.READ_FRAMEBUFFER_BINDING : gl.FRAMEBUFFER_BINDING;
+
+      this.currentFramebuffer[target] = gl.getParameter(binding) as WebGLFramebuffer | null;
+    }
+
+    return this.currentFramebuffer[target];
   }
 
   bindRenderbuffer (target: GLenum, renderbuffer: WebGLRenderbuffer | null) {

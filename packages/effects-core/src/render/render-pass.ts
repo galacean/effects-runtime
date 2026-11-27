@@ -5,7 +5,10 @@ import type { Disposable } from '../utils';
 import type { GPUResource } from '../gpu-resource';
 import type { RenderingData } from './rendering-data';
 
-/** Pass execution stages. Passes at the same event retain enqueue order. */
+/**
+ * Custom pass insertion points. Offsets stay within the preceding point's range.
+ * Equal event values retain enqueue order; built-in passes follow the renderer's fixed flow.
+ */
 export enum RenderPassEvent {
   BeforeRendering = 0,
   BeforeRenderingObjects = 100,
@@ -109,7 +112,8 @@ let seed = 1;
  */
 export class RenderPass implements Disposable {
   /**
-   * 执行阶段，同阶段按入队顺序执行。
+   * 自定义 Pass 的插入阶段及阶段内排序；相同值按入队顺序执行。
+   * 内置 Pass 的执行位置由 Renderer 固定编排。
    */
   renderPassEvent: RenderPassEvent = RenderPassEvent.BeforeRendering;
   /**
