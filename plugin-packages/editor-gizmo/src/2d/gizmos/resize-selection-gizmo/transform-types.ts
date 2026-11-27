@@ -8,10 +8,14 @@ export enum TransformType {
   TRANSLATION = 'translation',
   /** 旋转。 */
   ROTATION = 'rotation',
+  /** 锚点和保持外观不变的位置补偿。 */
+  ANCHOR = 'anchor',
   /** 双轴缩放。 */
   SCALE = 'scale',
   /** 文本宽度缩放。 */
   WIDTH_SCALE = 'width-scale',
+  /** 同一次拖拽实际执行了多种变换，例如先平移、再按 Alt 旋转；具体类型见事件 transformTypes。 */
+  MIXED = 'mixed',
 }
 
 /** 选区缩放会话数据。 */

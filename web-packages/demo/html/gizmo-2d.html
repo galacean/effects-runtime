@@ -54,6 +54,8 @@
     #viewport > canvas { display: block; width: 100% !important; height: 100% !important; }
     .canvas-status { position: absolute; left: 20px; right: 20px; bottom: 8px; display: flex; justify-content: flex-end; color: #9c9c9c; font-size: 10px; pointer-events: none; }
     #status[data-error="true"] { color: #ba283d; }
+    .content-tools { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; padding: 8px; border: 1px solid #e3e3e3; border-radius: 8px; background: white; }
+    .content-tools button { padding: 4px 8px; }
     .toolbar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; padding: 7px; border: 1px solid #e3e3e3; border-radius: 13px; background: white; box-shadow: 0 2px 5px #0001, 0 8px 24px #0001; }
     .toolbar > button, .text-tool > button, .pen-tool > button, .shape-tools > button { width: 38px; height: 38px; padding: 0; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
     .toolbar > button:hover, .text-tool > button:hover, .pen-tool > button:hover, .shape-tools > button:hover { background: #f4f4f4; }
@@ -92,6 +94,7 @@
     .field:focus-within { border-color: var(--blue); }
     .field span { min-width: 11px; color: #969696; font-size: 11px; white-space: nowrap; }
     .field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-variant-numeric: tabular-nums; }
+    .field select { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; }
     input[type="number"] { appearance: textfield; }
     input::-webkit-inner-spin-button { appearance: none; }
     input:disabled { color: #a8a8a8; }
@@ -159,6 +162,9 @@
           <button id="menu-shape" type="button"><svg aria-hidden="true"><use href="#icon-shape"/></svg>造型工具<span class="shortcut">S</span></button>
           <button id="menu-video" type="button"><svg aria-hidden="true"><use href="#icon-video"/></svg>添加 Video</button>
           <button id="menu-effects" type="button"><svg aria-hidden="true"><use href="#icon-effects"/></svg>添加 Effects</button>
+          <button id="menu-gizmo-ffd" type="button">FFD 与晶格测试案例</button>
+          <button id="menu-gizmo-path" type="button">运动路径编辑测试案例</button>
+          <button id="menu-gizmo-gradient" type="button">渐变色编辑测试案例</button>
         </div>
       </div>
       <div id="items"></div>
@@ -166,6 +172,11 @@
     </aside>
     <div class="workspace">
       <div id="viewport"></div>
+      <div class="content-tools" role="group" aria-label="内容编辑">
+        <button id="edit-lattice" type="button">编辑晶格</button>
+        <button id="edit-gradient" type="button">编辑渐变</button>
+        <button id="exit-content-edit" type="button">结束编辑</button>
+      </div>
       <nav class="toolbar" aria-label="编辑工具">
         <button id="move" class="tooltip-trigger" type="button" aria-label="选择 / 移动" aria-pressed="true"><svg aria-hidden="true"><use href="#icon-move"/></svg><span class="tooltip" aria-hidden="true">选择 / 移动<kbd>V</kbd></span></button>
         <button id="hand" class="tooltip-trigger" type="button" aria-label="抓手" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-hand"/></svg><span class="tooltip" aria-hidden="true">抓手平移<kbd>H</kbd></span></button>
@@ -215,6 +226,15 @@
           <div class="field-grid"><label class="field"><span>W</span><input id="width" type="number" min="0.01" step="0.1" aria-label="宽度" disabled></label><label class="field"><span>H</span><input id="height" type="number" min="0.01" step="0.1" aria-label="高度" disabled></label></div>
           <div class="readout"><span>缩放</span><output id="scale">—</output></div>
         </section>
+        <section id="lattice-properties" hidden>
+          <h2>晶格编辑</h2>
+          <div class="readout"><span>已选择</span><output id="lattice-selection">0 个控制点</output></div>
+          <label><input id="lattice-soft" type="checkbox">软选择（O）</label>
+          <label class="field wide"><span>半径</span><input id="lattice-radius" type="number" min="1" max="200" step="1" aria-label="软选择半径"><span>%</span></label>
+          <p>半径相对于晶格原始尺寸；[ / ] 调整。橙色点会按距离跟随，每个选点均产生影响。</p>
+          <p>Shift 点击增减选，Shift 框选追加；Ctrl / ⌘ 减选，Shift + Ctrl / ⌘ 只加选。</p>
+          <p>方向键微调 1 px，Shift 加速到 10 px。拖动中 X / Y 锁轴；拖角点等比缩放，拖四角外侧旋转。</p>
+        </section>
         <section id="text-properties" hidden>
           <h2>文本</h2>
           <div id="rich-text-tools" hidden>
@@ -233,6 +253,8 @@
         </section>
         <section id="fill-properties" hidden>
           <h2>填充</h2>
+          <label id="fill-mode-field" class="field wide" hidden><span>模式</span><select id="fill-mode" aria-label="颜色模式"><option value="solid">纯色</option><option value="radial">径向渐变</option><option value="linear">线性渐变</option><option value="angular">弧向渐变</option></select></label>
+          <label id="gradient-stop-field" class="field wide" hidden><span>色标</span><select id="gradient-stop" aria-label="渐变色标"></select></label>
           <div class="fill-row"><input id="fill" type="color" aria-label="填充颜色"><span id="fill-value">FFFFFF</span></div>
           <label id="fill-opacity-field" class="field wide"><span>不透明度</span><input id="fill-opacity" type="number" min="0" max="100" step="1" aria-label="填充不透明度"><span>%</span></label>
         </section>

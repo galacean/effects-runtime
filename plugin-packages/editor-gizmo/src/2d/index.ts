@@ -25,6 +25,11 @@ export {
   imageCutConfig,
   imageExpandConfig,
   resizeSelectionConfig,
+  transformHandlesConfig,
+  curveConfig,
+  gradientConfig,
+  crystalLatticeConfig,
+  ffdWireframeConfig,
   selectionPreviewConfig,
   selectionSnapConfig,
   penConfig,
@@ -50,6 +55,11 @@ export type {
   ImageExpandConfig,
   ResizeSelectionBehavior,
   ResizeSelectionConfig,
+  TransformHandlesConfig,
+  CurveConfig,
+  GradientConfig,
+  CrystalLatticeConfig,
+  FFDWireframeConfig,
   SelectionPreviewConfig,
   SnapConfig,
   PenConfig,
@@ -96,3 +106,9 @@ export * from './gizmos/shape/geometry';
 export * from './gizmos/shape/pen-gizmo';
 export * from './gizmos/shape/shape-model-gizmo';
 export * from './rich-text';
+export { FFDWireframeGizmo } from './gizmos/ffd-wireframe-gizmo';
+export * from './gizmos/crystal-lattice-gizmo';
+export * from './gizmos/curve-gizmo';
+export * from './gizmos/motion-path';
+export { GradientGizmo, type GradientActionEvent, type GradientSelectionEvent } from './gizmos/gradient-gizmo';
+export { TransformHandlesGizmo } from './gizmos/transform-handles-gizmo';

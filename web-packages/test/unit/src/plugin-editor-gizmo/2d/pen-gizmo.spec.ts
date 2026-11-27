@@ -5,6 +5,7 @@ import type { GeometryGizmoHost, GeometryPathTarget, PenPathData, PenToolState, 
 import { Vector2 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 import { PenEditMode } from '../../../../../../plugin-packages/editor-gizmo/src/2d/modes/pen-edit-mode';
 import { ConfigManager } from '../../../../../../plugin-packages/editor-gizmo/src/2d/configs/config-manager';
+import type { Control } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -21,7 +22,7 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
     return event;
   }
 
-  function createHarness (options: { path?: PenPathData, mode?: PenToolState, zoom?: number, preserveTarget?: boolean } = {}) {
+  function createHarness (options: { path?: PenPathData, mode?: PenToolState, zoom?: number, preserveTarget?: boolean, combineCreateAndEdit?: boolean } = {}) {
     const path: PenPathData = {
       points: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
       easingIns: [{ x: 0, y: 0 }, { x: 0, y: 0 }],
@@ -43,7 +44,7 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
     };
     const configs = new ConfigManager();
     const events: ShapeDrawingActionEvent[] = [];
-    const target: { value: GeometryPathTarget | undefined } = { value: options.mode === 'create' && !options.preserveTarget ? undefined
+    const target: { value: GeometryPathTarget | undefined } = { value: options.mode === 'create' && !options.preserveTarget && !options.combineCreateAndEdit ? undefined
       : { itemId: 'shape', path: options.path ?? path } };
     const zoom = options.zoom ?? 1;
     const owner = {
@@ -62,7 +63,7 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
       localToView: (point: { x: number, y: number }) => new Vector2(point.x * zoom, point.y * zoom),
     } as GeometryGizmoHost;
 
-    return { gizmo: new PenGizmo(owner, host, options.mode ?? 'edit', undefined, options.preserveTarget), owner, host, events, target };
+    return { gizmo: new PenGizmo(owner, host, options.mode ?? 'edit', undefined, options.preserveTarget, undefined, options.combineCreateAndEdit), owner, host, events, target };
   }
 
   function click (gizmo: PenGizmo, x: number, y: number, shift = false): void {
@@ -111,6 +112,38 @@ describe('plugin-editor-gizmo/pen-gizmo', () => {
     event.keycode = keycode;
     gizmo.onKeyDown(event);
   }
+
+  it('inserts into an existing segment in the combined creation and editing tool', () => {
+    const { gizmo, events } = createHarness({ mode: 'create', combineCreateAndEdit: true });
+
+    click(gizmo, 50, 0);
+    const edited = events.at(-1)!.edit!.path;
+
+    expect(edited.shapes).length(1);
+    expect(edited.shapes[0].indexes).length(3);
+    expect(edited.points[edited.shapes[0].indexes[1].point]).deep.equals({ x: 50, y: 0 });
+  });
+
+  it('previews continuation from the first endpoint when prepending', () => {
+    const { gizmo } = createHarness({ mode: 'create', combineCreateAndEdit: true });
+    const press = mouseButton(0, 0, true);
+
+    press.doubleClick = true;
+    gizmo.onMouseDown(press);
+    gizmo.onMouseUp(mouseButton(0, 0, false));
+    const motion = new InputEventMouseMotion();
+
+    motion.position.set(-20, 20);
+    gizmo.onMouseMove(motion);
+    const lines: number[][] = [];
+    const control = {
+      drawLine: (...args: number[]) => lines.push(args.slice(0, 4)),
+      drawBezier: () => {}, fillCircle: () => {}, drawCircle: () => {},
+    } as unknown as Control;
+
+    gizmo.draw(control);
+    expect(lines.filter(line => line[2] === -20 && line[3] === 20)).deep.equals([[0, 0, -20, 20]]);
+  });
 
   it('Shift deselection clears the primary point and cannot delete or drag it', () => {
     const { gizmo, events } = createHarness();

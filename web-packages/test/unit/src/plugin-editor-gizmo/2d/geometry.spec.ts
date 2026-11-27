@@ -9,6 +9,7 @@ import {
   getTransformedBoxCorners,
   transformedBoxIntersectsBox,
   inverseTransformBoxPoint,
+  transformBoxPoint,
   transformedBoxContainsPoint,
 } from '../../../../../../plugin-packages/editor-gizmo/src/2d/math';
 
@@ -137,6 +138,41 @@ describe('plugin-editor-gizmo/geometry', () => {
       const point = new Vector2(5, 5);
 
       expect(getBoxTransform([point, point, point, point])).to.equal(undefined);
+    });
+
+    it('preserves all four perspective corners and maps interior points in both directions', () => {
+      const corners = [new Vector2(0, 0), new Vector2(200, 0), new Vector2(150, 100), new Vector2(50, 100)];
+      const transform = getBoxTransform(corners)!;
+
+      getTransformedBoxCorners(transform).forEach((point, index) => {
+        expect(point.distance(corners[index])).lessThan(1e-8);
+      });
+      const center = transformBoxPoint(transform, new Vector2(0.5, 0.5));
+
+      expect(center.x).closeTo(100, 1e-8);
+      expect(center.y).closeTo(200 / 3, 1e-8);
+      const local = inverseTransformBoxPoint(transform, center);
+
+      expect(local.x).closeTo(0.5, 1e-8);
+      expect(local.y).closeTo(0.5, 1e-8);
+      expect(getTransformedBox(transform).max.toArray()).deep.equals([200, 100]);
+    });
+
+    it('hit-tests and marquee-selects the perspective outline instead of an affine approximation', () => {
+      const transform = getBoxTransform([
+        new Vector2(0, 0), new Vector2(200, 0), new Vector2(150, 100), new Vector2(50, 100),
+      ])!;
+
+      expect(transformedBoxContainsPoint(transform, new Vector2(100, 90))).equals(true);
+      expect(transformedBoxContainsPoint(transform, new Vector2(180, 90))).equals(false);
+      expect(transformedBoxIntersectsBox(transform, new Box2(new Vector2(178, 88), new Vector2(182, 92)))).equals(false);
+      expect(transformedBoxIntersectsBox(transform, new Box2(new Vector2(98, 88), new Vector2(102, 92)))).equals(true);
+    });
+
+    it('rejects invalid projected corners and projections that collapse an edge', () => {
+      for (const corner of [new Vector2(NaN, 100), new Vector2(0, 100), new Vector2(0, 0)]) {
+        expect(getBoxTransform([new Vector2(), new Vector2(100, 0), corner, new Vector2(0, 100)])).equals(undefined);
+      }
     });
 
     it('detects transformed box intersections without rotated AABB false positives', () => {

@@ -21,6 +21,9 @@
     },
     {
       "path": "../rich-text"
+    },
+    {
+      "path": "../ffd"
     }
   ]
 }

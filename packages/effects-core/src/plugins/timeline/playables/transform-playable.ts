@@ -64,9 +64,15 @@ export class TransformPlayable extends ClipPlayable {
     const { sizeXOverLifetime, sizeYOverLifetime, sizeZOverLifetime, rotationOverLifetime, pathGetter } = curves;
 
     if (curves.sizeSeparateAxes) {
-      if (sizeXOverLifetime) { out.values[6] = sizeXOverLifetime.getValue(life); }
-      if (sizeYOverLifetime) { out.values[7] = sizeYOverLifetime.getValue(life); }
-      if (sizeZOverLifetime) { out.values[8] = sizeZOverLifetime.getValue(life); }
+      if (sizeXOverLifetime) {
+        out.values[6] = sizeXOverLifetime.getValue(life);
+      }
+      if (sizeYOverLifetime) {
+        out.values[7] = sizeYOverLifetime.getValue(life);
+      }
+      if (sizeZOverLifetime) {
+        out.values[8] = sizeZOverLifetime.getValue(life);
+      }
     } else if (sizeXOverLifetime) {
       const size = sizeXOverLifetime.getValue(life);
 
@@ -75,9 +81,15 @@ export class TransformPlayable extends ClipPlayable {
       }
     }
 
-    if (rotationOverLifetime?.x) { out.values[3] = rotationOverLifetime.x.getValue(life); }
-    if (rotationOverLifetime?.y) { out.values[4] = rotationOverLifetime.y.getValue(life); }
-    if (rotationOverLifetime?.z) { out.values[5] = rotationOverLifetime.z.getValue(life); }
+    if (rotationOverLifetime?.x) {
+      out.values[3] = rotationOverLifetime.x.getValue(life);
+    }
+    if (rotationOverLifetime?.y) {
+      out.values[4] = rotationOverLifetime.y.getValue(life);
+    }
+    if (rotationOverLifetime?.z) {
+      out.values[5] = rotationOverLifetime.z.getValue(life);
+    }
 
     if (pathGetter) {
       const position = pathGetter.getValue(life);
