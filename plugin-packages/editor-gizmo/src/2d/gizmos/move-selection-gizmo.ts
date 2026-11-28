@@ -19,12 +19,7 @@ import {
 } from '../viewport';
 import { getItemViewBox } from '../items';
 import { TransformType } from './resize-selection-gizmo';
-import {
-  captureMotionPaths,
-  restoreMotionPaths,
-  updateMotionPathTranslation,
-  type MotionPathSnapshot,
-} from './motion-path';
+import { beginDataEdit, updateDataEdit, transformEditTargets, type DataEditState } from '../data-editing';
 import {
   AssistedLayout,
   type AutoLayoutChangeInfo,
@@ -54,7 +49,7 @@ export class MoveSelectionGizmo extends Gizmo {
     quat: Quaternion,
     rotation: Euler,
   }[] = [];
-  private motionPaths: MotionPathSnapshot[] = [];
+  private dataEdit?: DataEditState;
 
   /**
    * 在选区内按下主键时开始移动交互。
@@ -90,7 +85,7 @@ export class MoveSelectionGizmo extends Gizmo {
       quat: item.transform.quat.clone(),
       rotation: item.transform.rotation.clone(),
     }));
-    this.motionPaths = selectedItems.map(captureMotionPaths);
+    this.dataEdit = beginDataEdit(transformEditTargets(selectedItems));
     this.cursorPoint.copyFrom(viewportPoint);
     this.active = true;
     this.startPoint = new Vector2(event.position.x, event.position.y);
@@ -100,6 +95,7 @@ export class MoveSelectionGizmo extends Gizmo {
       source: this,
       transformType: TransformType.TRANSLATION,
       itemIds: this.selectedItems.map(item => item.getInstanceId()),
+      changes: [],
     });
     if (this.assistedLayoutEnabled) {
       this.assistedLayout = new AssistedLayout(this._owner);
@@ -143,9 +139,9 @@ export class MoveSelectionGizmo extends Gizmo {
         this.cacheSnapTargets();
       }
       this.assistedLayout?.updateAutoLayout(pointer);
-      this.motionPaths.forEach(updateMotionPathTranslation);
       this._owner.emit('actionupdate', {
         source: this,
+        changes: updateDataEdit(this.dataEdit),
         transformType: TransformType.TRANSLATION,
       });
     }
@@ -169,7 +165,7 @@ export class MoveSelectionGizmo extends Gizmo {
 
     const finishResult = this.assistedLayout?.finish();
 
-    this.motionPaths.forEach(updateMotionPathTranslation);
+    const changes = updateDataEdit(this.dataEdit);
 
     for (const change of finishResult?.placementChanges ?? []) {
       this._owner.emit('placementchange', { source: this, ...change });
@@ -178,6 +174,7 @@ export class MoveSelectionGizmo extends Gizmo {
       source: this,
       transformType: TransformType.TRANSLATION,
       autoLayoutChange: finishResult?.autoLayoutChange,
+      changes,
     };
 
     this.resetDragState();
@@ -332,7 +329,7 @@ export class MoveSelectionGizmo extends Gizmo {
     this.active = false;
     this.selectedItems = [];
     this.initialTransforms = [];
-    this.motionPaths = [];
+    this.dataEdit = undefined;
     this.selectionBox = new Box2();
     this.interactionPlane = undefined;
     this.startPoint = new Vector2();
@@ -359,7 +356,6 @@ export class MoveSelectionGizmo extends Gizmo {
     if (!this.active) {
       return;
     }
-    this.motionPaths.forEach(restoreMotionPaths);
     for (const { item, parent, position, scale, quat, rotation } of this.initialTransforms) {
       if (item.parent !== parent) {
         item.setParent(parent ?? null);
@@ -369,8 +365,10 @@ export class MoveSelectionGizmo extends Gizmo {
       item.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
       item.transform.rotation.copyFrom(rotation);
     }
+    const changes = updateDataEdit(this.dataEdit, true);
+
     this.resetDragState();
-    this._owner.emit('actionupdate', { source: this, transformType: TransformType.TRANSLATION, canceled: true });
+    this._owner.emit('actionupdate', { source: this, transformType: TransformType.TRANSLATION, canceled: true, changes });
   }
 }
 

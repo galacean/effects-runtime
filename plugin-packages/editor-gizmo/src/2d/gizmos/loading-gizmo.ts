@@ -20,17 +20,16 @@ import { toColor } from '../drawing';
 import type { LoadingConfig } from '../configs/types';
 import type { ConfigChange } from '../configs/config-definition';
 import { loadingConfig } from '../configs/loading-config';
-import type { LoadingItemOptions, LoadingItemState, LoadingManager } from './loading-manager';
+import { LoadingTextTipType, type LoadingItemOptions, type LoadingManager } from './loading-manager';
 
 const LOADING_TIP_FONT_SIZE = 16;
 const LOADING_TIP_FONT_FAMILY = 'sans-serif';
 const LOADING_TIP_COLOR = 0x000000ff;
 
-/** 为目标元素叠加加载动画与提示文案。 */
+/** 为目标元素叠加加载动画与文本或纹理提示。 */
 export class LoadingGizmo extends Gizmo {
   readonly type = 'loading';
-  private configOff?: () => void;
-  private managerOff?: () => void;
+  private readonly releases: (() => void)[];
   private readonly manager: LoadingManager;
   private readonly loadingBoxSize = new Vector2();
   private _idMap = new Map<string, {
@@ -45,20 +44,15 @@ export class LoadingGizmo extends Gizmo {
   /**
    * 创建加载覆盖层。
    * @param owner Gizmo 宿主。
-   * @param manager 加载状态管理器。
    */
   constructor (owner: GizmoOwner) {
     super(owner);
     this.manager = owner.getLoadingManager();
-    this.configOff = owner.getConfigManager().onChange(
-      loadingConfig,
-      change => {
-        this.onConfigChange(change);
-      },
-    );
-    this.managerOff = this.manager.on('change', () => {
-      this.syncManager();
-    });
+    this.releases = [
+      owner.getConfigManager().onChange(loadingConfig, change => this.onConfigChange(change)),
+      this.manager.on('change', () => this.syncManager()),
+      this.manager.on('removeselecteditems', ids => owner.getSelection().removeSelectedItems(ids)),
+    ];
     this.syncManager();
   }
 
@@ -93,7 +87,7 @@ export class LoadingGizmo extends Gizmo {
   /**
    * 为指定元素添加 loading 覆盖层；同一元素不可重复添加。
    * @param id 目标元素 ID
-   * @param options loading 配置（文案、位置、自定义区域、是否清空选中）
+   * @param options loading 配置（文本或纹理、位置、自定义区域、是否清空选中）
    */
   add (id: string, options?: LoadingItemOptions) {
     this.manager.add(id, options);
@@ -108,9 +102,9 @@ export class LoadingGizmo extends Gizmo {
   }
 
   /**
-   * 更新指定 loading 元素的提示文案。
+   * 更新指定 loading 元素的文本或纹理提示。
    * @param id 目标元素 ID
-   * @param options 待合并更新的 LoadingTip 属性
+   * @param options 待合并更新的加载提示配置
    */
   updateItem (id: string, options: LoadingItemOptions) {
     this.manager.update(id, options);
@@ -118,25 +112,19 @@ export class LoadingGizmo extends Gizmo {
 
   /** 根据目标元素的实时包围盒刷新加载动画。 */
   override onUpdate (): void {
-    if (this._idMap.size === 0) {
-      return;
-    }
     for (const [id, loadingItem] of this._idMap) {
       this.updateLoadingVFXItemTransform(id, loadingItem);
     }
   }
 
   /**
-   * 绘制所有加载提示文案。
+   * 绘制所有加载提示。
    * @param control 绘制控制器。
    */
   override draw (control: Control): void {
-    if (this._idMap.size === 0) {
-      return;
-    }
 
     for (const [id, loadingItem] of this._idMap) {
-      if (!loadingItem.tip?.text) {
+      if (loadingItem.tip.type === LoadingTextTipType.TEXTURE ? loadingItem.tip.texture.isDestroyed : !loadingItem.tip.text) {
         continue;
       }
       const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
@@ -151,10 +139,7 @@ export class LoadingGizmo extends Gizmo {
 
   /** 释放当前实例的渲染投影；稳定 LoadingManager 不随 Gizmo 重建清空。 */
   override dispose (): void {
-    this.configOff?.();
-    this.configOff = undefined;
-    this.managerOff?.();
-    this.managerOff = undefined;
+    this.releases.splice(0).forEach(release => release());
     this._idMap.forEach(loadingItem => {
       this.disposeLoadingVFXItem(loadingItem.loadingVFXItem);
     });
@@ -178,67 +163,51 @@ export class LoadingGizmo extends Gizmo {
   }
 
   /**
-   * 绘制单条加载提示，并将文本限制在加载区域内。
+   * 按配置类型绘制单条加载提示。
    * @param control 绘制控制器。
    * @param loadingBox 加载区域。
    * @param itemBox 目标元素包围盒。
    * @param tip 加载提示配置。
    */
   private drawLoadingTip (control: Control, loadingBox: Box2, itemBox: Box2, tip: LoadingItemOptions): void {
-    // 步骤 1：计算提示位置与可用宽度。
     const { x: width, y: height } = loadingBox.getSize(this.loadingBoxSize);
+    const offset = (value = 0) => Number.isFinite(value) ? value : 0;
+    const left = tip.position ? Math.min(Math.max(itemBox.min.x + offset(tip.position.x), loadingBox.min.x), loadingBox.max.x) : loadingBox.min.x;
+    const top = tip.position ? Math.min(Math.max(itemBox.min.y + offset(tip.position.y), loadingBox.min.y), loadingBox.max.y) : loadingBox.min.y;
+    const availableWidth = loadingBox.max.x - left, availableHeight = loadingBox.max.y - top;
 
-    if (!tip.text || !Number.isFinite(width) || width <= 0) {
+    if (![availableWidth, availableHeight].every(value => Number.isFinite(value) && value > 0)) { return; }
+    if (tip.type === LoadingTextTipType.TEXTURE) {
+      const { texture } = tip;
+
+      if (![texture.width, texture.height].every(value => Number.isFinite(value) && value > 0)) { return; }
+      const scale = Math.min(availableWidth / texture.width, availableHeight / texture.height);
+      const drawWidth = texture.width * scale, drawHeight = texture.height * scale;
+
+      control.drawTexture(
+        tip.position ? left : loadingBox.min.x + (width - drawWidth) / 2,
+        tip.position ? top : loadingBox.min.y + (height - drawHeight) / 2,
+        drawWidth, drawHeight, texture,
+      );
+
       return;
     }
+    if (!tip.text) { return; }
+    const measure = (size: number) => control.measureText(tip.text, size, LOADING_TIP_FONT_FAMILY, 'bold');
+    let fontSize = LOADING_TIP_FONT_SIZE;
+    let metrics = measure(fontSize);
 
-    const positionedLeft = tip.position
-      ? itemBox.min.x + (Number.isFinite(tip.position.x) ? tip.position.x : 0)
-      : loadingBox.min.x;
-    const left = tip.position
-      ? Math.min(Math.max(positionedLeft, loadingBox.min.x), loadingBox.max.x)
-      : loadingBox.min.x;
-    const availableWidth = tip.position ? loadingBox.max.x - left : width;
+    // Remeasure after scaling because glyph metrics can round at small font sizes.
+    for (let i = 0; i < 2; i++) {
+      const scale = Math.min(1, availableWidth / metrics.width, availableHeight / metrics.inkHeight);
 
-    if (availableWidth <= 0) {
-      return;
+      if (scale >= 1) { break; }
+      fontSize *= scale; metrics = measure(fontSize);
     }
-
-    /**
-     * 测量加载提示的粗体字形。
-     * @param text 提示文本。
-     * @param fontSize 字号。
-     * @returns 文本字形尺寸。
-     */
-    const measureTipText = (text: string, fontSize: number) =>
-      control.measureText(text, fontSize, LOADING_TIP_FONT_FAMILY, 'bold');
-
-    // 步骤 2：测量文本并缩小字号以适应可用宽度。
-    const measuredAtBaseSize = measureTipText(tip.text, LOADING_TIP_FONT_SIZE);
-    let fontSize = measuredAtBaseSize.width > availableWidth
-      ? LOADING_TIP_FONT_SIZE * availableWidth / measuredAtBaseSize.width
-      : LOADING_TIP_FONT_SIZE;
-    let textMetrics = measureTipText(tip.text, fontSize);
-
-    if (textMetrics.width > availableWidth) {
-      fontSize *= availableWidth / textMetrics.width;
-      textMetrics = measureTipText(tip.text, fontSize);
-    }
-
-    // 步骤 3：按字形基线计算最终绘制位置。
-    const textLeft = tip.position ? left : loadingBox.min.x + (width - textMetrics.width) / 2;
-    const top = tip.position
-      ? itemBox.min.y + (Number.isFinite(tip.position.y) ? tip.position.y : 0)
-      : loadingBox.min.y + (height - textMetrics.inkHeight) / 2;
-
     control.drawText(
-      textLeft,
-      top - textMetrics.inkTop,
-      tip.text,
-      fontSize,
-      toColor(LOADING_TIP_COLOR),
-      LOADING_TIP_FONT_FAMILY,
-      'bold',
+      tip.position ? left : loadingBox.min.x + (width - metrics.width) / 2,
+      (tip.position ? top : loadingBox.min.y + (height - metrics.inkHeight) / 2) - metrics.inkTop,
+      tip.text, fontSize, toColor(LOADING_TIP_COLOR), LOADING_TIP_FONT_FAMILY, 'bold',
     );
   }
 
@@ -261,10 +230,11 @@ export class LoadingGizmo extends Gizmo {
       const existing = this._idMap.get(id);
 
       if (existing) {
-        existing.tip = {
-          ...state.tip,
-          position: state.tip.position ? state.tip.position.clone() : undefined,
-        };
+        if (existing.tip.loadingBox !== state.loadingBox) {
+          existing.loadingBox = this.getNormalizedLoadingBox(id, state.loadingBox);
+          this.updateLoadingVFXItemTransform(id, existing);
+        }
+        existing.tip = state;
       } else {
         this.createProjection(id, state);
       }
@@ -276,24 +246,31 @@ export class LoadingGizmo extends Gizmo {
    * @param id 目标元素 ID。
    * @param state 加载状态。
    */
-  private createProjection (id: string, state: LoadingItemState): void {
+  private createProjection (id: string, state: LoadingItemOptions): void {
+    this._idMap.set(id, {
+      loadingBox: this.getNormalizedLoadingBox(id, state.loadingBox),
+      loadingVFXItem: this.createLoadingVFXItem(),
+      tip: state,
+    });
+    this.updateLoadingVFXItemTransform(id, this._idMap.get(id)!);
+  }
+
+  /**
+   * 将配置的加载区域转换为相对元素的归一化区域。
+   * @param id 目标元素 ID。
+   * @param loadingBox 自定义加载区域；未设置时使用元素包围盒。
+   * @returns 归一化加载区域。
+   */
+  private getNormalizedLoadingBox (id: string, loadingBox?: Box2): Box2 {
     const item = getPlayerItemById(this._owner.getEngine().sceneServer.compositions[0], id);
     const itemViewBox = item
       ? getItemViewBox(item, GizmoViewportUtils.getContainerSize(this._owner.getEngine().canvas.parentElement!))
       : new Box2();
-    const currentBox = state.loadingBox
-      ? this.getViewBoxByPixelBox(state.loadingBox)
+    const currentBox = loadingBox
+      ? this.getViewBoxByPixelBox(loadingBox)
       : itemViewBox;
 
-    this._idMap.set(id, {
-      loadingBox: getNormalizeBoxByBoxes(itemViewBox, currentBox),
-      loadingVFXItem: this.createLoadingVFXItem(),
-      tip: {
-        ...state.tip,
-        position: state.tip.position ? state.tip.position.clone() : undefined,
-      },
-    });
-    this.updateLoadingVFXItemTransform(id, this._idMap.get(id)!);
+    return getNormalizeBoxByBoxes(itemViewBox, currentBox);
   }
 
   /** @returns 当前相机信息。 */

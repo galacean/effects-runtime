@@ -1,3 +1,4 @@
+import type { ShapeComponent } from '@galacean/effects';
 import { Line2 } from '@galacean/effects-math/es/extension/index';
 import type { GizmoActionEvent } from '../../gizmo-action';
 import { lerp, Vector2, type Vector2Like } from '../../math';
@@ -36,6 +37,8 @@ export interface PenEditOperation {
   index?: number,
 }
 export interface GeometryPathTarget {
+  /** Present only when path coordinates directly address this runtime custom shape. */
+  component?: ShapeComponent,
   itemId: string,
   path: PenPathData,
   kind?: GeometryEditKind,

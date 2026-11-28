@@ -1,3 +1,4 @@
+import { beginDataEdit, updateDataEdit, transformEditTargets, type DataEditState } from '../../data-editing';
 import type { VFXItem } from '@galacean/effects';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 import { applyRichTextResize, createRichTextResizeSnapshot, type RichTextResizeSnapshot } from '../../rich-text/rich-text-resize';
@@ -292,6 +293,7 @@ export type ResizeSelectionGizmoOptions = {
 
 /** 绘制选区线框，并通过边与角点手柄缩放选中元素。 */
 export class ResizeSelectionGizmo extends Gizmo {
+  private dataEdit?: DataEditState;
   readonly type: GizmoType = GizmoType.RESIZE_SELECTION;
 
   /** 光标结果。 */
@@ -571,7 +573,9 @@ export class ResizeSelectionGizmo extends Gizmo {
     this.lastPoint = new Vector2(event.position.x, event.position.y);
     this.handlesActive = true;
     this.beginTransformOperation();
+    this.dataEdit = beginDataEdit(transformEditTargets(this.selectedItems, true));
     this._owner.emit('actionstart', {
+      changes: [],
       source: this,
       transformType: this.wireframe.activeType,
     });
@@ -1058,6 +1062,7 @@ export class ResizeSelectionGizmo extends Gizmo {
     this.refreshCursorResult(activeType, cursorRotation);
     this.lastPoint.copyFrom(currentPoint);
     this._owner.emit('actionupdate', {
+      changes: updateDataEdit(this.dataEdit),
       source: this,
       transformType: this.wireframe.activeType,
     });
@@ -1079,6 +1084,7 @@ export class ResizeSelectionGizmo extends Gizmo {
       this._owner.setSelectionTransformKind('idle');
     }
     this.handlesActive = false;
+    this.dataEdit = undefined;
     this._owner.getSnapManager().reset();
     this.resizeSession = undefined;
     this.lastPoint = new Vector2();
@@ -1102,12 +1108,20 @@ export class ResizeSelectionGizmo extends Gizmo {
         session.text.component.setTextWidth(session.text.width);
         session.text.component.setTextHeight(session.text.height);
       }
-      session.item.transform.setPosition(...session.initialPosition.toArray());
+      const position = session.initialPosition.clone().add(session.externalTranslation ?? new Vector3());
+      const positionEdit = this.dataEdit?.properties.find(property => property.target === session.item
+        && property.path === 'transform.position' && !property.binding && !property.blocked);
+
+      // External layout movement is independent of the canceled resize.
+      if (positionEdit) { positionEdit.before = position.toArray(); }
+      session.item.transform.setPosition(...position.toArray());
       session.item.transform.setScale(...session.initialScale.toArray());
     }
+    const changes = updateDataEdit(this.dataEdit, true);
+
     this.resetTransformOperation();
     this.refreshWireframeBySelectedItems();
-    this._owner.emit('actionupdate', { source: this, transformType, canceled: true });
+    this._owner.emit('actionupdate', { source: this, transformType, canceled: true, changes });
   }
 
   /**
@@ -1129,8 +1143,10 @@ export class ResizeSelectionGizmo extends Gizmo {
     this.refreshAfterPointerUp(event);
     const transformType = this.wireframe.activeType;
 
+    const changes = updateDataEdit(this.dataEdit);
+
     this.resetTransformOperation();
-    this._owner.emit('actioncommit', { source: this, transformType });
+    this._owner.emit('actioncommit', { source: this, transformType, changes });
 
     return true;
   }

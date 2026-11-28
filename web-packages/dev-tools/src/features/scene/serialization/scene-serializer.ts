@@ -40,7 +40,7 @@ const TRANSIENT = new Set(['engine', 'item', 'guid', 'definition', 'id', 'name',
   'disposed', 'isRegistered', 'isAwakeCalled', 'isStartCalled', 'isEnableCalled', 'isEnabled', 'isDuringPlay', 'isEnded', 'isEndCalled',
   'isDirty', 'renderer', 'geometry', 'defaultGeometry', 'boundingBoxInfo', 'material', 'materials', 'canvas', 'context',
   'text', 'textStyle', 'textLayout', 'maxLineWidth', 'ALPHA_FIX_VALUE', 'eventEmitter', 'eventProcessor', 'maskManager',
-  'frameClipMasks', 'control', 'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty']);
+  'frameClipMasks', 'control', 'controlNode', 'linkedItemTransform', 'linkedControl', 'syncingLocation', 'timelineDirty', 'cacheFlattenedTracks']);
 
 function isRuntimeField (object: EffectsObject, key: string): boolean {
   return key.startsWith('_') || TRANSIENT.has(key) || object instanceof ParticleSystem ||
@@ -66,6 +66,23 @@ function editableValue (value: any, scene?: Scene, depth = 0, visited = new Set<
   visited.delete(value);
 
   return result;
+}
+
+/** Keep vector instances and animation bindings when restoring editable arrays. */
+function restoreEditableValue (current: any, next: any): any {
+  if (Array.isArray(current) && Array.isArray(next)) {
+    next.forEach((value, index) => { current[index] = restoreEditableValue(current[index], value); });
+    current.length = next.length;
+
+    return current;
+  }
+  if (current && next && typeof current === 'object' && typeof next === 'object' && !(current instanceof EffectsObject) && !(next instanceof EffectsObject)) {
+    for (const [key, value] of Object.entries(next)) { current[key] = restoreEditableValue(current[key], value); }
+
+    return current;
+  }
+
+  return next;
 }
 
 export class SceneSerializer {
@@ -144,7 +161,7 @@ export class SceneSerializer {
         live = effectsObjectServer.findObject<EffectsObject>({ id });
       }
     }
-    if (live) { this.ids.set(live, id); this.objects.set(id, live); }
+    if (live) { if (!this.ids.has(live)) { this.ids.set(live, id); } this.objects.set(id, live); }
 
     return live;
   }
@@ -382,10 +399,18 @@ export class SceneSerializer {
 
     if (targets) { targets.forEach(visit); } else { this.sceneObjects().filter(object => object instanceof VFXItem || object instanceof Component).forEach(visit); }
 
-    return new Map([...objects].filter(object => object !== this.composition.sceneRoot).map(object => [object, this.read(object)]));
+    return new Map(Array.from(objects).filter(object => object !== this.composition.sceneRoot).map(object => [object, this.read(object)]));
   }
 
   readProperty (states: ReadonlyMap<EffectsObject, ObjectState>, property: ObjectProperty): unknown {
+    const stop = property.target instanceof ShapeComponent && /^(fills|strokes)\.(\d+)\.gradientStops\.stops\.(\d+)\.color$/.exec(property.path);
+
+    if (stop) {
+      const data = states.get(property.target)?.data;
+      const value = data?.[stop[1]]?.[Number(stop[2])]?.gradientStops?.[1]?.[Number(stop[3])];
+
+      return value && { r: value[1], g: value[2], b: value[3], a: value[4] };
+    }
     for (const { data, path } of this.propertySources(states, property)) {
       const field = propertyField(data, path);
 
@@ -417,7 +442,14 @@ export class SceneSerializer {
     const state = object && states.get(object);
 
     if (state) {
-      sources.push({ data: state.extras, path: 'fields.' + path }, { data: state.data, path });
+      const storedPath = object instanceof ShapeComponent ? path.replace(/^shape\./, '')
+        : object instanceof VFXItem ? path.replace(/^transform\.rotation\./, 'transform.eulerHint.') : path;
+      const stop = object instanceof ShapeComponent && /^(fills|strokes)\.(\d+)\.gradientStops\.stops\.(\d+)\.color$/.exec(path);
+
+      sources.push({ data: state.extras, path: 'fields.' + path });
+      if (stop) {
+        for (let axis = 1; axis <= 4; axis++) { sources.push({ data: state.data, path: `${stop[1]}.${stop[2]}.gradientStops.1.${stop[3]}.${axis}` }); }
+      } else { sources.push({ data: state.data, path: storedPath }); }
       if (object instanceof Material) { sources.push({ data: state.extras, path: 'material.' + path }); }
     }
 
@@ -546,11 +578,7 @@ export class SceneSerializer {
       const current = (object as any)[key];
       const next = this.editorValue(value);
 
-      if (Array.isArray(current) && Array.isArray(next)) {
-        current.splice(0, current.length, ...next);
-      } else if (current && typeof current === 'object' && next && typeof next === 'object' && !(current instanceof EffectsObject) && !(next instanceof EffectsObject)) {
-        Object.assign(current, next);
-      } else { (object as any)[key] = next; }
+      (object as any)[key] = restoreEditableValue(current, next);
     }
     if (object instanceof UIControl && object.control && extras.layout) {
       const c = object.control, layout = extras.layout;

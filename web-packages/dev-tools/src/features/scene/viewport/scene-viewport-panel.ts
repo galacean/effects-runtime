@@ -1,3 +1,4 @@
+import type { GizmoDataChange } from '@galacean/effects-plugin-editor-gizmo';
 import type { Engine, VFXItem } from '@galacean/effects';
 import { InputEventKey, InputEventMouseButton, InputEventMouseMotion, MouseButton, MouseButtonMask, math } from '@galacean/effects';
 import { Control, FocusMode } from '@galacean/effects-plugin-gui';
@@ -229,21 +230,31 @@ export class SceneViewportPanel extends EditorWindow {
 
     try {
       document.observeEditor('Select objects', () => {
+        let changes: GizmoDataChange[] | undefined;
+        let canceled = false;
+
         document.observeChanges('Transform selection', capture => {
           const mode = handler.getActiveEditMode().id;
 
           if (this.transformTargets || mode !== 'default-selection' && mode !== 'effects-edit') {
             capture(this.transformTargets ?? gizmo.selectedItems);
           }
-          const unsubscribe = handler.on('actionstart', event => {
+          const collect = (event: { changes?: readonly GizmoDataChange[], canceled?: boolean }) => {
+            if (event.changes !== undefined) { changes ??= []; changes.push(...event.changes); }
+            canceled ||= !!event.canceled;
+          };
+          const onStart = handler.on('actionstart', event => {
             if ('transformType' in event && !this.transformTargets) {
               this.transformTargets = gizmo.selectedItems;
               capture(this.transformTargets);
             }
+            collect(event);
           });
+          const releases = [onStart, handler.on('actionupdate', collect), handler.on('actioncommit', collect)];
 
-          try { action(); } finally { unsubscribe(); }
-        });
+          try { action(); } finally { releases.forEach(release => release()); }
+        }, () => changes);
+        if (canceled) { document.cancel(); }
       });
     } catch (error) { sceneWorkspace.report(error); }
   }

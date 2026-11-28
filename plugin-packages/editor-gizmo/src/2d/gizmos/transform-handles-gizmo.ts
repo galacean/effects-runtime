@@ -1,3 +1,4 @@
+import { captureMotionPaths, updateMotionPathTranslation, restoreMotionPaths, motionPathChange, type MotionPathSnapshot } from './motion-path';
 import {
   MouseButton,
   ShapeComponent,
@@ -19,13 +20,7 @@ import type { TransformHandlesConfig } from '../configs/types';
 import { localToView, snapTranslation, viewToLocal } from './content-edit-utils';
 import { TransformType, type ResizeSelectionGizmo } from './resize-selection-gizmo';
 import { getShapeRenderBounds } from '../items/shape-editing';
-import {
-  captureMotionPaths,
-  restoreMotionPaths,
-  updateMotionPathTranslation,
-  transformMotionPaths,
-  type MotionPathSnapshot,
-} from './motion-path';
+import { beginDataEdit, updateDataEdit, transformEditTargets, type DataEditState } from '../data-editing';
 
 type Handle = 'anchor' | 'x' | 'y' | 'scale' | 'rotate';
 type Snapshot = {
@@ -54,6 +49,7 @@ export class TransformHandlesGizmo extends Gizmo {
   readonly type = GizmoType.TRANSFORM_HANDLES;
   private readonly configOff: () => void;
   private hover?: Handle;
+  private dataEdit?: DataEditState;
   private motionPaths: MotionPathSnapshot[] = [];
   private session?: {
     handle: Handle,
@@ -244,7 +240,17 @@ export class TransformHandlesGizmo extends Gizmo {
       angle: 0,
       applied: new Set(),
     };
-    this.motionPaths = items.map(captureMotionPaths);
+    const targets = transformEditTargets(items);
+
+    this.motionPaths = hit.handle === 'anchor' ? items.map(captureMotionPaths) : [];
+    if (hit.handle === 'anchor') {
+      targets.forEach(target => {
+        if (this.motionPaths.some(snapshot => snapshot.item === target.item && snapshot.paths.length)) {
+          target.paths = target.paths.filter(path => path !== 'transform.position');
+        }
+      });
+    }
+    this.dataEdit = beginDataEdit(targets);
     this.hover = hit.handle;
     this.updateCursor(hit.handle, event.altPressed);
     this.emit('actionstart');
@@ -347,7 +353,6 @@ export class TransformHandlesGizmo extends Gizmo {
 
           target.translate(local.x, local.y, local.z);
         }
-        this.motionPaths.forEach(updateMotionPathTranslation);
       }
       session.last.copyFrom(event.position);
     } else {
@@ -424,7 +429,6 @@ export class TransformHandlesGizmo extends Gizmo {
       item.transform.setRotation(...new Euler().setFromQuaternion(quat.clone().conjugate()).toArray());
       item.transform.setScale(scaling.x, scaling.y, scaling.z);
     }
-    this.motionPaths.forEach(snapshot => transformMotionPaths(snapshot, affine));
 
     return true;
   }
@@ -439,7 +443,6 @@ export class TransformHandlesGizmo extends Gizmo {
       this.cancelInteraction();
     } else {
       this.session = undefined;
-      this.motionPaths = [];
       this._owner.setSelectionTransformKind('idle');
       this.emit('actioncommit', false, session);
     }
@@ -480,7 +483,6 @@ export class TransformHandlesGizmo extends Gizmo {
     }
     this.session = undefined;
     this.motionPaths.forEach(restoreMotionPaths);
-    this.motionPaths = [];
     for (const { item, position, scale, quat, rotation, anchor } of session.snapshots) {
       item.transform.setAnchor(anchor.x, anchor.y);
       item.transform.setPosition(position.x, position.y, position.z);
@@ -508,7 +510,15 @@ export class TransformHandlesGizmo extends Gizmo {
     const transformType = applied.size > 1 ? TransformType.MIXED
       : applied.values().next().value ?? (phase === 'actionstart' ? initialType : TransformType.NULL);
 
-    this._owner.emit(phase, { source: this, canceled, itemIds: snapshots.map(({ item }) => item.getInstanceId()),
+    const changes = phase === 'actionstart' ? [] : updateDataEdit(this.dataEdit, canceled);
+
+    if (phase !== 'actionstart') {
+      for (const snapshot of this.motionPaths) {
+        for (const path of snapshot.paths) { changes.push(motionPathChange({ ...path, item: snapshot.item }, path.path)); }
+      }
+    }
+    if (canceled || phase === 'actioncommit') { this.dataEdit = undefined; this.motionPaths = []; }
+    this._owner.emit(phase, { source: this, canceled, changes, itemIds: snapshots.map(({ item }) => item.getInstanceId()),
       transformType, transformTypes: Array.from(applied) });
   }
 

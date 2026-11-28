@@ -1,4 +1,5 @@
-import { MouseButton, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion } from '@galacean/effects';
+import { beginDataEdit, updateDataEdit, type DataEditState } from '../../data-editing';
+import { MouseButton, type InputEventKey, type InputEventMouseButton, type InputEventMouseMotion, type ShapeComponent } from '@galacean/effects';
 import type { Control } from '@galacean/effects-plugin-gui';
 import { Gizmo } from '../../gizmo';
 import type { GizmoOwner } from '../../gizmo-owner';
@@ -14,6 +15,7 @@ import { createPenEditContext, type PenEditContext, type PenHit } from './pen-ed
 
 /** Shared pen interaction. Hosts own coordinates, document writes and history. */
 export class PenGizmo extends Gizmo {
+  private dataEdit?: DataEditState;
   readonly type = 'pen';
   private readonly editContext: PenEditContext;
   private hover?: PenHit;
@@ -605,7 +607,7 @@ export class PenGizmo extends Gizmo {
       return;
     }
     // 新投影在空闲时重新读取宿主，兼容未提供 revision 的目标。
-    if (!this.targetLoaded || target.itemId !== this.editContext.target || target.revision !== this.editContext.targetRevision) {
+    if (!this.targetLoaded || target.revision === undefined || target.itemId !== this.editContext.target || target.revision !== this.editContext.targetRevision) {
       const sameTarget = target.itemId === this.editContext.target;
       const previousSelected = sameTarget && this.editContext.selected ? { ...this.editContext.selected } : undefined;
       const previousNodes = sameTarget ? this.selectedPointsInfo : [];
@@ -976,6 +978,36 @@ export class PenGizmo extends Gizmo {
         kind: this.editContext.targetKind,
         selection: this.selectedPointsInfo,
       };
+      // A selection change can cancel the session after the host already points at another shape.
+      const component = phase === 'start' ? this.host.readPath()?.component : this.dataEdit?.properties[0]?.target as ShapeComponent | undefined;
+
+      if (component) {
+        if (!this.dataEdit || phase === 'start') {
+          this.dataEdit = beginDataEdit([{ item: component.item, target: component, keyAllVertices: true,
+            paths: ['points', 'easingIns', 'easingOuts'].flatMap(key =>
+              before[key as 'points'].map((_, index) => `shape.${key}.${index}`)) }]);
+        }
+        const topology = action.edit.operations.some(operation => operation.kind === 'topology');
+
+        if (topology && this.dataEdit.properties.some(property => property.binding || property.blocked)) {
+          // Indexed animated points require a full topology migration, not a sampled-array replacement.
+          this.editContext.path = cloneGeometry(before);
+          action.edit.path = cloneGeometry(before); action.edit.operations = [];
+          action.changes = updateDataEdit(this.dataEdit, true);
+        } else if (!topology) {
+          if (phase !== 'start') {
+            const shape = component.shape as typeof component.shape & Pick<PenPathData, 'points' | 'easingIns' | 'easingOuts'>;
+
+            if ('points' in shape) {
+              for (const key of ['points', 'easingIns', 'easingOuts'] as const) {
+                (phase === 'cancel' ? before : path)[key].forEach((point, index) => Object.assign(shape[key][index], point));
+              }
+            }
+          }
+          action.changes = phase === 'start' ? [] : updateDataEdit(this.dataEdit, phase === 'cancel');
+        }
+        if (phase === 'commit' || phase === 'cancel') { this.dataEdit = undefined; }
+      }
       action.finish = false;
     } else { action.create = { kind: 'pen', path: cloneGeometry(this.editContext.path) }; }
 

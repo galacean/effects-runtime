@@ -1,3 +1,4 @@
+import { beginDataEdit, updateDataEdit, type DataEditState } from '../data-editing';
 import {
   MouseButton,
   type InputEventKey,
@@ -42,6 +43,7 @@ type Session = {
 
 /** 单个 FFD 的点选择和变换；使用现有输入生命周期和局部回滚快照。 */
 export class CrystalLatticeGizmo extends Gizmo {
+  private dataEdit?: DataEditState;
   readonly type = GizmoType.CRYSTAL_LATTICE;
   readonly selected = new Set<number>();
   private hover = -1;
@@ -645,7 +647,7 @@ export class CrystalLatticeGizmo extends Gizmo {
       if (sameTarget) {
         session.component.setControlPoints(session.points);
       }
-      this.emit('actionupdate', true);
+      this.emit('actionupdate', true, sameTarget);
     }
     this.cursor();
   }
@@ -664,8 +666,16 @@ export class CrystalLatticeGizmo extends Gizmo {
     this._owner.setCursor({ type, angle: 0 });
   }
 
-  private emit (phase: GizmoActionPhase, canceled = false): void {
+  private emit (phase: GizmoActionPhase, canceled = false, restoreValues = true): void {
+    if (phase === 'actionstart') {
+      this.dataEdit = beginDataEdit([{ item: this.item, target: this.component, keyAllVertices: true,
+        paths: this.component.getLattice().points.map((_, i) => `controlPoints.${i}`) }]);
+    }
+    const changes = phase === 'actionstart' ? [] : updateDataEdit(this.dataEdit, canceled, restoreValues);
+
+    if (canceled || phase === 'actioncommit') { this.dataEdit = undefined; }
     const event: CrystalLatticeActionEvent = {
+      changes,
       source: this,
       editType: 'lattice',
       itemId: this.item.getInstanceId(),

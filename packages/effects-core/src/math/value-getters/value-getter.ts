@@ -10,6 +10,7 @@ import { BezierPath, BezierQuat, buildEasingCurve } from '../bezier';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
 import { numberToFix } from '../utils';
 import type { BezierCurve } from './bezier-curve';
+import { keyframeInfo } from '../keyframe-info';
 
 export interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -491,11 +492,16 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
   keys: number[][];
   keyTimeData: string[];
+  private singlePoint: Vector3;
+  private singleTime: number;
 
   override onCreate (props: spec.BezierCurvePathValue) {
     const [keyframes, points, controlPoints] = props;
 
     this.curveSegments = {};
+    this.keyTimeData = [];
+    this.singlePoint = new Vector3(...(points[0] ?? [0, 0, 0]));
+    this.singleTime = keyframes[0] ? keyframeInfo.getPointInCurve(keyframes[0]).x : 0;
     if (!controlPoints.length) {
       return;
     }
@@ -532,7 +538,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const keyTimeData = this.keyTimeData;
 
     if (!keyTimeData.length) {
-      return point;
+      return this.singlePoint.clone();
     }
     const keyTimeStart = this.curveSegments[keyTimeData[0]].timeStart;
     const keyTimeEnd = this.curveSegments[keyTimeData[keyTimeData.length - 1]].timeEnd;
@@ -584,7 +590,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
   override getMaxTime (): number {
     const keyTimeData = this.keyTimeData;
 
-    return this.curveSegments[keyTimeData[keyTimeData.length - 1]].timeEnd;
+    return keyTimeData.length ? this.curveSegments[keyTimeData[keyTimeData.length - 1]].timeEnd : this.singleTime;
   }
 }
 
