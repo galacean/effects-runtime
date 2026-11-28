@@ -1,3 +1,5 @@
+import { beginDataEdit, updateDataEdit, type DataEditState } from '../data-editing';
+import { cloneConfigValue } from '../configs/config-definition';
 import {
   MouseButton,
   ShapeComponent,
@@ -63,6 +65,8 @@ export function sampleGradient (paint: GradientPaint, ratio: number): math.Color
 
 /** 编辑指定填充/描边的渐变，不接管对象选择和输入分发。 */
 export class GradientGizmo extends Gizmo {
+  private dataEdit?: DataEditState;
+  private originalStops?: number[][];
   readonly type = GizmoType.GRADIENT;
   private selected = -1;
   private preview?: number;
@@ -321,6 +325,12 @@ export class GradientGizmo extends Gizmo {
     const original = getGradientPaint(this.component, this.paintKind, this.paintIndex)!;
     const selected = this.selected;
 
+    this.beginDataEdit();
+    if (hit.type === 'add' && this.hasAnimatedStops()) {
+      this.dataEdit = undefined;
+
+      return;
+    }
     if (hit.type === 'add') {
       const ratio = hit.ratio;
       const existing = paint.gradientStops.stops.find(stop => Math.abs(stop.time - ratio) < 1e-6);
@@ -419,6 +429,11 @@ export class GradientGizmo extends Gizmo {
           && Math.abs(stop.time - ratio) < 1e-6)) {
         return;
       }
+      if (this.hasAnimatedStops()) {
+        const stops = paint.gradientStops.stops, index = stops.indexOf(hit.stop);
+
+        if (index > 0 && ratio <= stops[index - 1].time || index + 1 < stops.length && ratio >= stops[index + 1].time) { return; }
+      }
       hit.stop.time = ratio;
       paint.gradientStops.stops.sort((a, b) => a.time - b.time);
       this.selected = paint.gradientStops.stops.indexOf(hit.stop);
@@ -462,6 +477,12 @@ export class GradientGizmo extends Gizmo {
     }
     const previous = this.selectionInfo;
 
+    this.beginDataEdit();
+    if (this.hasAnimatedStops()) {
+      this.dataEdit = undefined;
+
+      return;
+    }
     this.emit('actionstart');
     paint.gradientStops.stops.splice(this.selected, 1);
     this.selected = -1;
@@ -520,8 +541,33 @@ export class GradientGizmo extends Gizmo {
     });
   }
 
+  private beginDataEdit (): void {
+    const prefix = `${this.paintKind === 'fill' ? 'fills' : 'strokes'}.${this.paintIndex}`;
+    const stops = this.component[this.paintKind === 'fill' ? 'fills' : 'strokes'][this.paintIndex] as GradientPaint;
+
+    this.originalStops = stops.gradientStops.stops.map(stop => [stop.time, ...stop.color.toArray()]);
+    this.dataEdit = beginDataEdit([{ item: this.item, target: this.component,
+      paths: [prefix + '.startPoint', prefix + '.endPoint',
+        ...stops.gradientStops.stops.map((_, i) => `${prefix}.gradientStops.stops.${i}.color`)] }]);
+  }
+
+  private hasAnimatedStops (): boolean {
+    return !!this.dataEdit?.properties.some(property => property.path.includes('.gradientStops.') && (property.binding || property.blocked));
+  }
+
   private emit (phase: GizmoActionPhase, canceled = false): void {
+    const changes = phase === 'actionstart' ? [] : updateDataEdit(this.dataEdit, canceled);
+    const paint = getGradientPaint(this.component, this.paintKind, this.paintIndex);
+    const stops = paint?.gradientStops.stops.map(stop => [stop.time, ...stop.color.toArray()]);
+
+    if (phase !== 'actionstart' && stops && this.originalStops) {
+      changes.push({ kind: 'value', itemId: this.item.getInstanceId(), targetId: this.component.getInstanceId(),
+        propertyPath: `${this.paintKind === 'fill' ? 'fills' : 'strokes'}.${this.paintIndex}.gradientStops`,
+        before: [spec.ValueType.GRADIENT_COLOR, cloneConfigValue(this.originalStops)], after: [spec.ValueType.GRADIENT_COLOR, stops] });
+    }
+    if (canceled || phase === 'actioncommit') { this.dataEdit = undefined; this.originalStops = undefined; }
     const event: GradientActionEvent = {
+      changes,
       source: this,
       editType: 'gradient',
       itemId: this.item.getInstanceId(),

@@ -305,6 +305,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
     this.updateTool(() => {
       this.resetEditMode();
       this.discardDraft();
+      this.setSelection([item.getInstanceId()]);
       const mode = this.createPenMode('edit');
 
       this.geometryMode = mode;
@@ -622,7 +623,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
         if (target?.kind === 'Vector' && snapshot) {
           this.scene.restoreVectorShape(target, snapshot);
-        } else if (target?.kind === 'CustomShape' || (target?.kind === 'Vector' && event.edit.operations.length > 0)) {
+        } else if (event.changes === undefined && (target?.kind === 'CustomShape' || (target?.kind === 'Vector' && event.edit.operations.length > 0))) {
           this.scene.updateCustomShape(target, event.edit.before);
         }
         this.vectorEditSnapshots.delete(event.edit.itemId);
@@ -682,7 +683,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
           this.vectorEditSnapshots.set(event.edit.itemId, snapshot);
         }
       }
-      if ((target?.kind === 'CustomShape' || target?.kind === 'Vector') && event.edit.operations.length > 0) {
+      if (event.changes === undefined && (target?.kind === 'CustomShape' || target?.kind === 'Vector') && event.edit.operations.length > 0) {
         this.scene.updateCustomShape(target, event.edit.path);
       }
       if (phase === 'actioncommit') {
@@ -846,6 +847,7 @@ export class DemoEditor extends EventEmitter<EditorEvents> {
 
         return {
           itemId,
+          component: shape.type === spec.ShapePrimitiveType.Custom ? component : undefined,
           kind,
           path,
         };

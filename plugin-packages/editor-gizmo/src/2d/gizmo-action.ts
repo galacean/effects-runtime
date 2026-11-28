@@ -64,10 +64,39 @@ export type GizmoItemCreateInfo =
   | GizmoRichTextItemCreateInfo
   | GizmoSimpleItemCreateInfo;
 
+/** Detached authored data emitted after a gizmo edit. */
+export type GizmoDataValue = number | string | boolean | null | undefined | GizmoDataValue[] | { [key: string]: GizmoDataValue };
+
+export type GizmoDataChange = {
+  kind: 'value',
+  itemId: string,
+  targetId: string,
+  propertyPath: string,
+  before: GizmoDataValue,
+  after: GizmoDataValue,
+} | {
+  kind: 'clip',
+  itemId: string,
+  targetId: string,
+  propertyPaths: string[],
+  compositionId: string,
+  trackId: string,
+  clipId: string,
+  time: number,
+  normalizedTime: number,
+  /** A vertex track created by this gesture; inactive means it was canceled or reverted. */
+  createdTrack?: { active: boolean, data: { [key: string]: GizmoDataValue } },
+  /** Complete clip data, including untouched channels, for persistence and undo. */
+  before: { [key: string]: GizmoDataValue },
+  after: { [key: string]: GizmoDataValue },
+};
+
 /** 所有 Gizmo 业务操作共享的基础事件。 */
 export interface GizmoActionEvent {
   /** 触发事件的 Gizmo。 */
   source: Gizmo,
+  /** Changes from gesture start to the current result; canceled updates contain restored data. */
+  changes?: readonly GizmoDataChange[],
   /** 本次预览已经恢复起始数据；通过 actionupdate 通知，不产生提交。 */
   canceled?: boolean,
 }

@@ -12,6 +12,7 @@ export abstract class SelectionContentEditMode implements EditMode {
   abstract readonly edit: SelectionContentEdit;
   /** 图重建不会立即释放被捕获的 Gizmo，退出时仍须取消其未提交操作。 */
   private readonly gizmos = new Set<SelectionContentGizmo>();
+  private exitTimeout?: ReturnType<typeof setTimeout>;
 
   constructor (
     protected readonly owner: GizmoOwner,
@@ -32,6 +33,15 @@ export abstract class SelectionContentEditMode implements EditMode {
 
     if (!item) {
       this.onExit();
+      if (this.owner.getActiveEditMode() === this) {
+        // 当前重建完成后再退出，避免空结果覆盖新模式的 Gizmo。
+        this.exitTimeout = setTimeout(() => {
+          this.exitTimeout = undefined;
+          if (this.owner.getActiveEditMode() === this && !this.canEdit()) {
+            this.exit();
+          }
+        }, 0);
+      }
 
       return [];
     }
@@ -43,6 +53,8 @@ export abstract class SelectionContentEditMode implements EditMode {
   }
 
   onExit (): void {
+    clearTimeout(this.exitTimeout);
+    this.exitTimeout = undefined;
     const gizmos = Array.from(this.gizmos);
 
     this.gizmos.clear();

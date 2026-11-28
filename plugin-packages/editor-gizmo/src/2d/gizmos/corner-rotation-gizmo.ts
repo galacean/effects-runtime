@@ -1,3 +1,4 @@
+import { beginDataEdit, updateDataEdit, transformEditTargets, type DataEditState } from '../data-editing';
 import {
   MouseButton,
   MouseButtonMask,
@@ -32,6 +33,7 @@ const SHIFT_ROTATION_STEP_DEGREES = 15;
 
 /** 通过选框角点命中区域旋转选中对象。 */
 export class CornerRotationGizmo extends Gizmo {
+  private dataEdit?: DataEditState;
   readonly type: GizmoType = GizmoType.CORNER_ROTATION;
 
   cursorResult: GestureCursorResult = {
@@ -151,10 +153,12 @@ export class CornerRotationGizmo extends Gizmo {
     this.initialRotations = this.rotationItems.map(item => item.transform.rotation.clone());
     this.initialSelectionAngle = this.resolveInitialSelectionAngle();
     this.rotationActive = true;
+    this.dataEdit = beginDataEdit(transformEditTargets(this.rotationItems));
     this._owner.emit('actionstart', {
       source: this,
       transformType: TransformType.ROTATION,
       itemIds: this.rotationItems.map(item => item.getInstanceId()),
+      changes: [],
     });
     event.accept();
   }
@@ -177,8 +181,11 @@ export class CornerRotationGizmo extends Gizmo {
     const currentPoint = new Vector2(event.position.x, event.position.y);
 
     this.cursorPoint.add(new Vector2().subtractVectors(currentPoint, this.lastPoint));
+    const changes = updateDataEdit(this.dataEdit);
+
     this.resetOperation();
     this._owner.emit('actioncommit', {
+      changes,
       source: this,
       transformType: TransformType.ROTATION,
     });
@@ -275,6 +282,7 @@ export class CornerRotationGizmo extends Gizmo {
     });
     this.rotationAngle = targetAngle;
     this._owner.emit('actionupdate', {
+      changes: updateDataEdit(this.dataEdit),
       source: this,
       transformType: TransformType.ROTATION,
     });
@@ -286,6 +294,7 @@ export class CornerRotationGizmo extends Gizmo {
       this._owner.setSelectionTransformKind('idle');
     }
     this.rotationActive = false;
+    this.dataEdit = undefined;
     this.rotationAngle = 0;
     this.lastPoint.set(0, 0);
     this.cursorPoint.set(0, 0);
@@ -319,9 +328,11 @@ export class CornerRotationGizmo extends Gizmo {
       item.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
       item.transform.rotation.copyFrom(this.initialRotations[index]);
     });
+    const changes = updateDataEdit(this.dataEdit, true);
+
     this.resetOperation();
     this.resizeSelection.refreshWireframeBySelectedItems();
-    this._owner.emit('actionupdate', { source: this, transformType: TransformType.ROTATION, canceled: true });
+    this._owner.emit('actionupdate', { source: this, transformType: TransformType.ROTATION, canceled: true, changes });
   }
 
   /**

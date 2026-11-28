@@ -1,5 +1,6 @@
+import type { GizmoDataChange } from '@galacean/effects-plugin-editor-gizmo';
 import type { Composition } from '@galacean/effects';
-import { EffectsObject, PostProcessVolume, VFXItem, spec } from '@galacean/effects';
+import { CompositionComponent, EffectsObject, PostProcessVolume, TimelineClip, VFXItem, spec } from '@galacean/effects';
 import { EditorHistory, historyBytes } from '../../../framework/history/editor-history';
 import { EditorSelection } from '../../../framework/selection/editor-selection';
 import type { ObjectState } from '../serialization/scene-serializer';
@@ -54,6 +55,7 @@ export class SceneDocument {
   autoKeyTarget: (item: VFXItem) => boolean = () => false;
   autoKeyTransforms?: (edits: TransformEdit[]) => boolean;
   autoKeyProperties?: (before: ReadonlyMap<EffectsObject, ObjectState>, after: ReadonlyMap<EffectsObject, ObjectState>) => (() => boolean) | undefined;
+  private readonly gizmoCompositions = new Set<string>();
   private version = 0;
   private nextVersion = 1;
   private savedVersion?: number;
@@ -270,7 +272,7 @@ export class SceneDocument {
   }
 
   /** Capture authored objects immediately before an input handler starts changing them. */
-  observeChanges (label: string, action: (capture: (targets?: unknown[]) => void) => void): boolean {
+  observeChanges (label: string, action: (capture: (targets?: unknown[]) => void) => void, gizmoChanges?: () => readonly GizmoDataChange[] | undefined): boolean {
     if (this.restoring) {
       action(() => {});
 
@@ -286,7 +288,7 @@ export class SceneDocument {
     const capture = (targets?: unknown[]): void => {
       if (observation) { return; }
       const before = this.serializer.capture(targets);
-      const items = [...before.keys()].filter((object): object is VFXItem => object instanceof VFXItem);
+      const items = Array.from(before.keys()).filter((object): object is VFXItem => object instanceof VFXItem);
 
       observation = { targets, before, transforms: new Map(items.map(item => [item, transformValues(item)])),
         states: this.readEditorStates(), transaction: this.transaction };
@@ -303,6 +305,58 @@ export class SceneDocument {
     const { targets, before, transforms, states, transaction } = observation;
     const keyed: TransformEdit[] = [];
     const after = this.serializer.capture(targets);
+    const changes = gizmoChanges?.();
+    const created = (changes ?? []).filter((change): change is Extract<GizmoDataChange, { kind: 'clip' }> => change.kind === 'clip' && !!change.createdTrack);
+
+    if (created.length) {
+      this.begin(label);
+      const trackIds = new Set(created.map(change => change.trackId));
+
+      for (const id of new Set(created.map(change => change.compositionId))) {
+        const component = this.serializer.object(id);
+
+        if (!(component instanceof CompositionComponent) || !component.timelineAsset) { continue; }
+        for (const object of [component, component.timelineAsset]) {
+          const current = this.serializer.read(object);
+          const original: ObjectState = { object, data: jsonData(current.data), extras: jsonData(current.extras) };
+
+          if (object === component) {
+            original.data.sceneBindings = original.data.sceneBindings.filter((binding: { key: { id: string } }) => !trackIds.has(binding.key.id));
+          } else {
+            original.data.tracks = original.data.tracks.filter((track: { id: string }) => !trackIds.has(track.id));
+            if (original.extras.fields?.tracks) { original.extras.fields.tracks = original.data.tracks; }
+          }
+          before.set(object, this.runtimeEdits.get(object)?.after ?? original); after.set(object, current);
+        }
+        this.gizmoCompositions.add(id);
+      }
+      for (const change of created) {
+        if (change.createdTrack!.active) {
+          this.serializer.put(this.scene, this.serializer.normalize(change.createdTrack!.data));
+          this.serializer.put(this.scene, this.serializer.normalize(change.after));
+        } else {
+          this.scene.miscs = this.scene.miscs.filter(data => data.id !== change.trackId && data.id !== change.clipId);
+        }
+      }
+    }
+
+    for (const change of changes ?? []) {
+      if (change.kind !== 'clip') { continue; }
+      const clip = this.serializer.object(change.clipId), target = this.serializer.object(change.targetId);
+
+      if (target) {
+        for (const path of change.propertyPaths) { this.serializer.preserveProperty(before, after, { target, path }); }
+      }
+      if (change.createdTrack) { continue; }
+      if (!(clip instanceof TimelineClip)) { continue; }
+      const current = this.serializer.read(clip);
+      const original: ObjectState = { object: clip, data: { ...current.data, ...this.serializer.normalize(change.before) }, extras: {} };
+      const result: ObjectState = { object: clip, data: { ...current.data, ...this.serializer.normalize(change.after) }, extras: {} };
+
+      before.set(clip, this.runtimeEdits.get(clip)?.after ?? original); after.set(clip, result);
+      this.gizmoCompositions.add(change.compositionId);
+    }
+    // Clip edits already preserve their sampled properties. Auto Key handles the remaining fields.
     const keyProperties = this.autoKeyProperties?.(before, after);
     let changed = false;
 
@@ -311,7 +365,8 @@ export class SceneDocument {
 
       if (!old) { continue; }
       if (object instanceof VFXItem && this.autoKeyTarget(object)) {
-        const previous = transforms.get(object)!, current = transformValues(object);
+        const previous = transforms.get(object)!;
+        const current = ['position', 'eulerHint', 'scale'].flatMap(key => ['x', 'y', 'z'].map(axis => state.data.transform[key][axis]));
 
         if (current.some((value, index) => Math.abs(value - previous[index]) > 1e-6)) { keyed.push({ item: object, before: previous, after: current }); }
         for (const key of ['position', 'eulerHint', 'scale']) { state.data.transform[key] = old.data.transform[key]; }
@@ -340,6 +395,9 @@ export class SceneDocument {
       });
     }
     this.transaction!.mutations.get(after.object)!.bytes = historyBytes([edit.before.data, edit.before.extras, edit.after.data, edit.after.extras]);
+    if (sameData(edit.before.data, edit.after.data) && sameData(edit.before.extras, edit.after.extras)) {
+      this.runtimeEdits.delete(after.object); this.transaction!.mutations.delete(after.object);
+    }
 
     return true;
   }
@@ -551,6 +609,11 @@ export class SceneDocument {
         }
       }, 'history');
       this.serializer.stabilizeRenderOrder(this.scene);
+      for (const id of this.gizmoCompositions) {
+        const component = this.serializer.object(id);
+
+        if (component instanceof CompositionComponent) { component.timelineAsset?.markAsChanged(); component.sampleTime(component.getTime()); }
+      }
       this.onRestored();
       this.notifyChanged();
     } catch (error) {

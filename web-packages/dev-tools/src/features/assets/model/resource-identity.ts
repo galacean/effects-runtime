@@ -48,7 +48,7 @@ export function isPersistentResource (value: unknown, engine: Engine, kind?: Res
 export function resourceCandidates (engine: Engine, kind: ResourceKind, scene?: Scene): ResourceIdentity[] {
   const database: Partial<EditorAssetDatabase> | undefined = engine.assetServer.database;
   const ids = new Set([...assetLibrary.entries.map(entry => entry.id), ...database?.getEffectsObjectDataIds?.() ?? [],
-    ...scene?.objectsDataCache?.keys() ?? [], ...Object.keys(BUILTIN_TEXTURES)]);
+    ...Array.from(scene?.objectsDataCache?.keys() ?? []), ...Object.keys(BUILTIN_TEXTURES)]);
 
-  return [...ids].map(id => resourceIdentity(engine, id, scene)).filter((entry): entry is ResourceIdentity => entry?.kind === kind);
+  return Array.from(ids).map(id => resourceIdentity(engine, id, scene)).filter((entry): entry is ResourceIdentity => entry?.kind === kind);
 }

@@ -892,6 +892,7 @@ describe('ResizeSelectionGizmo - handles only', () => {
     expect(accepted(drag, () => gizmo.onMouseDrag(drag))).to.equal(true);
     expect(owner.getSelectionTransformKind()).to.equal('resize');
     expect(emit).to.have.been.called.with.exactly('actionupdate', {
+      changes: [],
       source: gizmo,
       transformType: TransformType.SCALE,
     });

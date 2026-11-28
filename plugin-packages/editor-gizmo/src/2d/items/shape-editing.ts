@@ -10,9 +10,10 @@ export function isValidGradientPaint (paint: GradientPaint | undefined): paint i
   }
   const stops = paint.gradientStops.stops;
 
+  // 展开空槽，避免 every 跳过缺失的色标。
   return stops.length >= 2 && stops.length <= 8
     && [paint.startPoint.x, paint.startPoint.y, paint.endPoint.x, paint.endPoint.y].every(Number.isFinite)
-    && stops.every((stop, index) => Number.isFinite(stop.time) && stop.time >= 0 && stop.time <= 1
+    && Array.from(stops).every((stop, index) => !!stop && Number.isFinite(stop.time) && stop.time >= 0 && stop.time <= 1
       && (index === 0 || stop.time > stops[index - 1].time)
       && [stop.color.r, stop.color.g, stop.color.b, stop.color.a].every(Number.isFinite));
 }

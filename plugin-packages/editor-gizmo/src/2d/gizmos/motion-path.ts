@@ -1,3 +1,4 @@
+import type { GizmoDataChange } from '../gizmo-action';
 import {
   CompositionComponent,
   TransformPlayableAsset,
@@ -78,7 +79,6 @@ export type MotionPathSnapshot = {
   item: VFXItem,
   parentMatrix: Matrix4,
   position: Vector3,
-  anchor: Vector3,
   paths: Pick<MotionPathTarget, 'clip' | 'composition' | 'path'>[],
 };
 
@@ -88,7 +88,6 @@ export function captureMotionPaths (item: VFXItem): MotionPathSnapshot {
     item,
     parentMatrix: item.transform.getParentMatrix()?.clone() ?? new Matrix4(),
     position: item.transform.position.clone(),
-    anchor: item.transform.anchor.clone(),
     paths: findMotionPaths(item).map(({ clip, composition, path }) => ({ clip, composition, path: cloneConfigValue(path) })),
   };
 }
@@ -124,30 +123,24 @@ export function updateMotionPathTranslation (snapshot: MotionPathSnapshot): void
   }
 }
 
-/** Apply a group affine transform to paths in each item's parent space. */
-export function transformMotionPaths (snapshot: MotionPathSnapshot, worldTransform: Matrix4): void {
-  const parent = snapshot.item.transform.getParentMatrix() ?? new Matrix4();
-
-  if (Math.abs(parent.determinant()) < 1e-10) {
-    return;
-  }
-  const matrix = parent.clone().invert().multiply(worldTransform).multiply(snapshot.parentMatrix);
-
-  for (const target of snapshot.paths) {
-    const transformed = cloneConfigValue(target.path);
-    const linear = matrix.clone().setPosition(new Vector3());
-    const compensation = snapshot.anchor.clone().applyMatrix(linear).subtract(snapshot.anchor);
-
-    for (const channel of [1, 2] as const) {
-      transformed[channel] = target.path[channel].map(value => new Vector3(...value).applyMatrix(matrix).add(compensation).toArray());
-    }
-    setMotionPath(target, transformed);
-  }
-}
-
 /** 和元素变换一起回滚，下一次时间线采样也读取原始路径。 */
 export function restoreMotionPaths (snapshot: MotionPathSnapshot): void {
   for (const target of snapshot.paths) {
     setMotionPath(target, target.path);
   }
+}
+
+/** Full authored clip data for consumers that save only the commit event. */
+export function motionPathChange (target: MotionPathTarget, original: spec.BezierCurvePathValue): Extract<GizmoDataChange, { kind: 'clip' }> {
+  const after = cloneConfigValue(target.clip.transformAnimationData);
+  const before = cloneConfigValue(after);
+  const track = target.composition.timelineAsset?.flattenedTracks.find(track => track.getClips().includes(target.clip));
+
+  before.positionOverLifetime = { ...before.positionOverLifetime, path: [spec.ValueType.BEZIER_CURVE_PATH, cloneConfigValue(original)] };
+
+  return { kind: 'clip', itemId: target.item.getInstanceId(), targetId: target.item.getInstanceId(), propertyPaths: ['transform.position'],
+    clipId: target.clip.getInstanceId(), compositionId: target.composition.getInstanceId(), trackId: track?.getInstanceId() ?? '',
+    time: target.composition.getTime(), normalizedTime: (target.composition.getTime() - target.clip.start) / target.clip.duration,
+    before: before as unknown as Extract<GizmoDataChange, { kind: 'clip' }>['before'],
+    after: after as unknown as Extract<GizmoDataChange, { kind: 'clip' }>['after'] };
 }

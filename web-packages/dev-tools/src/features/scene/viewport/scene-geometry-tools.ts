@@ -50,7 +50,7 @@ export class SceneGeometryTools implements GeometryGizmoHost {
     if (!item || component?.shape.type !== spec.ShapePrimitiveType.Custom) { return; }
     const { points, easingIns, easingOuts, shapes } = readShapeComponentData(component);
 
-    return { itemId: item.getInstanceId(), kind: 'custom' as const, path: jsonData({ points, easingIns, easingOuts, shapes }) as PenPathData };
+    return { itemId: item.getInstanceId(), component, kind: 'custom' as const, path: jsonData({ points, easingIns, easingOuts, shapes }) as PenPathData };
   }
 
   viewToLocal (point: math.Vector2, itemId?: string): math.Vector2 | undefined {
@@ -158,7 +158,7 @@ export class SceneGeometryTools implements GeometryGizmoHost {
 
       if (!component) { return; }
       if (event.phase === 'start') { document.begin('Edit path'); document.setScopeActive(this, true); }
-      if (event.phase !== 'start') {
+      if (event.phase !== 'start' && event.changes === undefined) {
         document.observe('Edit path', () => {
           applyShapeComponentData(component, { ...readShapeComponentData(component), ...(event.canceled ? event.edit!.before : event.edit!.path) });
           component.onUpdate(0);

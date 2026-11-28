@@ -19,7 +19,7 @@ import type { CurveConfig } from '../configs/types';
 import { cloneConfigValue } from '../configs/config-definition';
 import { localToView, viewToLocal } from './content-edit-utils';
 import { GestureCursorType } from '../cursor';
-import { findMotionPaths, setMotionPath, type MotionPathTarget } from './motion-path';
+import { motionPathChange, findMotionPaths, setMotionPath, type MotionPathTarget } from './motion-path';
 
 /** 运动路径编辑事件。 */
 export interface CurveActionEvent extends GizmoActionEvent {
@@ -28,6 +28,7 @@ export interface CurveActionEvent extends GizmoActionEvent {
   itemId: string,
   /** 路径点在所属时间线中的关键帧时间，不改变播放头。 */
   keyframeTime: number,
+  clipId: string,
 }
 
 type CurveHit = { target: MotionPathTarget, index: number, control: boolean };
@@ -279,6 +280,8 @@ export class CurveGizmo extends Gizmo {
       : getControlPoints(keys[pointIndex - 1], keys[pointIndex], true).p3!.x;
 
     const event: CurveActionEvent = {
+      clipId: target.clip.getInstanceId(),
+      changes: phase === 'actionstart' ? [] : [{ ...motionPathChange(target, session.original), time: target.clip.start + time * target.clip.duration, normalizedTime: time }],
       source: this,
       editType: 'curve',
       itemId: target.item.getInstanceId(),

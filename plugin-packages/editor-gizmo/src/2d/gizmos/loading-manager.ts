@@ -1,26 +1,38 @@
 import { EventEmitter } from '@galacean/effects';
+import type { Texture } from '@galacean/effects';
 import { type Box2 } from '@galacean/effects-math/es/extension/index';
-import { Vector2 } from '../math';
+import type { Vector2 } from '../math';
 
-/** 单个元素的加载提示配置。 */
-export type LoadingItemOptions = {
-  /** 加载提示文本。 */
-  text?: string,
-  /** 相对目标元素实时包围盒左上角的视图像素偏移；未设置时文案在 loading 区域内居中。 */
+/** 文本与纹理提示共用的布局和加载配置。 */
+type LoadingItemCommonOptions = {
+  /** 相对目标元素实时包围盒左上角的视图像素偏移；未设置时提示在 loading 区域内居中。 */
   position?: Vector2,
   /** 打开 loading 时是否移除目标元素的选中状态。 */
   clearSelected?: boolean,
-  /** 自定义加载区域。 */
+  /** 自定义加载区域，同时约束覆盖层与提示；纹理在区域内保持比例缩放。 */
   loadingBox?: Box2,
 };
 
-/** 单个元素的当前加载状态。 */
-export interface LoadingItemState {
-  /** 加载提示配置。 */
-  tip: LoadingItemOptions,
-  /** 自定义加载区域。 */
-  loadingBox?: Box2,
+/** 加载提示的内容类型。 */
+export enum LoadingTextTipType {
+  TEXT = 'text',
+  TEXTURE = 'texture',
 }
+
+/** 文本加载提示。 */
+export type LoadingTextTipOptions = LoadingItemCommonOptions & {
+  type: LoadingTextTipType.TEXT,
+  text: string,
+};
+
+/** 纹理加载提示，纹理由调用方管理和释放。 */
+export type LoadingTextureTipOptions = LoadingItemCommonOptions & {
+  type: LoadingTextTipType.TEXTURE,
+  texture: Texture,
+};
+
+/** 单个元素的加载提示配置，文本与纹理互斥。 */
+export type LoadingItemOptions = LoadingTextTipOptions | LoadingTextureTipOptions;
 
 /** 加载状态集合的一次变更。 */
 export type LoadingManagerChange = {
@@ -44,7 +56,7 @@ type LoadingManagerEvents = {
 
 /** 管理元素加载状态并向 LoadingGizmo 提供稳定数据。 */
 export class LoadingManager extends EventEmitter<LoadingManagerEvents> {
-  private readonly items = new Map<string, LoadingItemState>();
+  private readonly items = new Map<string, LoadingItemOptions>();
 
   /** 当前加载元素 ID。 */
   get ids (): string[] {
@@ -56,7 +68,7 @@ export class LoadingManager extends EventEmitter<LoadingManagerEvents> {
    * @param id 元素 ID
    * @returns 加载状态；不存在时返回 undefined
    */
-  get (id: string): LoadingItemState | undefined {
+  get (id: string): LoadingItemOptions | undefined {
     return this.items.get(id);
   }
 
@@ -65,19 +77,17 @@ export class LoadingManager extends EventEmitter<LoadingManagerEvents> {
    * @param id 元素 ID
    * @param options 加载提示配置
    */
-  add (id: string, options?: LoadingItemOptions): void {
+  add (id: string, options: LoadingItemOptions = { type: LoadingTextTipType.TEXT, text: '' }): void {
     if (this.items.has(id)) {
       return;
     }
     this.items.set(id, {
-      tip: {
-        text: options?.text ?? '',
-        position: options?.position ? new Vector2(options.position.x, options.position.y) : undefined,
-      },
-      loadingBox: options?.loadingBox?.clone(),
+      ...options,
+      position: options.position?.clone(),
+      loadingBox: options.loadingBox?.clone(),
     });
     this.emitChange({ addedIds: [id], removedIds: [], updatedIds: [] });
-    if (options?.clearSelected) {
+    if (options.clearSelected) {
       this.emit('removeselecteditems', [id]);
     }
   }
@@ -96,7 +106,7 @@ export class LoadingManager extends EventEmitter<LoadingManagerEvents> {
   /**
    * 更新元素加载提示。
    * @param id 元素 ID
-   * @param options 增量加载提示配置
+   * @param options 替换提示内容；未提供的布局沿用当前配置
    */
   update (id: string, options: LoadingItemOptions): void {
     const item = this.items.get(id);
@@ -106,12 +116,11 @@ export class LoadingManager extends EventEmitter<LoadingManagerEvents> {
 
       return;
     }
-    if (options.text !== undefined) {
-      item.tip.text = options.text;
-    }
-    if (options.position !== undefined) {
-      item.tip.position = new Vector2(options.position.x, options.position.y);
-    }
+    this.items.set(id, {
+      ...options,
+      position: options.position?.clone() ?? item.position,
+      loadingBox: options.loadingBox?.clone() ?? item.loadingBox,
+    });
     this.emitChange({ addedIds: [], removedIds: [], updatedIds: [id] });
   }
 

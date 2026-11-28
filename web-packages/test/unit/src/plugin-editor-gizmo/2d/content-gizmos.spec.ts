@@ -1,6 +1,8 @@
 import {
   Composition,
   CompositionComponent,
+  FloatPropertyPlayableAsset,
+  FloatPropertyTrack,
   FrameComponent,
   Geometry,
   InputEventKey,
@@ -14,6 +16,10 @@ import {
   TimelineAsset,
   TransformPlayableAsset,
   TransformTrack,
+  Vector2PropertyPlayableAsset,
+  Vector2PropertyTrack,
+  Vector3ropertyPlayableAsset,
+  Vector3PropertyTrack,
   VertexElementType,
   math,
   spec,
@@ -37,8 +43,10 @@ import {
   GradientGizmo,
   GradientEditMode,
   LatticeEditMode,
+  LoadingTextTipType,
   MoveGizmoTool,
   MoveSelectionGizmo,
+  PenGizmo,
   ResizeSelectionGizmo,
   TransformType,
   registerItemGeometry,
@@ -46,6 +54,7 @@ import {
   getItemViewBox,
   TransformHandlesGizmo,
   transformHandlesConfig,
+  resizeSelectionConfig,
   curveConfig,
   gradientConfig,
   crystalLatticeConfig,
@@ -65,7 +74,12 @@ import {
   GizmoType,
   FFDWireframeGizmo,
   type GradientSelectionEvent,
+  type GizmoDataChange,
+  type PenPathData,
 } from '../../../../../../plugin-packages/editor-gizmo/src/2d';
+import { beginDataEdit, updateDataEdit } from '../../../../../../plugin-packages/editor-gizmo/src/2d/data-editing';
+import { SceneDocument } from '../../../../../dev-tools/src/features/scene/document/scene-document';
+import { SceneSerializer } from '../../../../../dev-tools/src/features/scene/serialization/scene-serializer';
 import { moveAnchor } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/transform-handles-gizmo';
 import { sampleGradient } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/gradient-gizmo';
 import { wireframeTriangles } from '../../../../../../plugin-packages/editor-gizmo/src/2d/gizmos/ffd-wireframe-gizmo';
@@ -1450,8 +1464,262 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     expect(findMotionPaths(item)[0].path).deep.equals(original);
   });
 
-  it('moves the path with a freely dragged item and keeps the result when the timeline samples again', () => {
-    const { item, component } = path();
+  it('updates existing keys, inserts only once, keeps static fields, and restores authored data', () => {
+    const item = DefaultVFXItems.createShapeItem(composition);
+    const shape = item.getComponent(ShapeComponent);
+
+    shape.fromData({ ...shape.definition, id: shape.getInstanceId(), dataType: spec.DataType.ShapeComponent, item: { id: item.getInstanceId() }, type: spec.ShapePrimitiveType.Rectangle, width: 2, height: 3, roundness: 0,
+      fills: [], strokes: [], renderer: { renderMode: spec.RenderMode.MESH } } as spec.ShapeComponentData);
+    const geometry = shape.shape as typeof shape.shape & { width: number, height: number };
+    const component = composition.sceneRoot.getComponent(CompositionComponent);
+    const timeline = new TimelineAsset(player.engine);
+    const track = new FloatPropertyTrack(player.engine);
+    const clip = track.createClip(FloatPropertyPlayableAsset);
+
+    track.setData({ id: track.getInstanceId(), dataType: spec.DataType.FloatPropertyTrack, path: 'shape.width' });
+    clip.setData({ id: clip.getInstanceId(), dataType: spec.DataType.FloatPropertyPlayableAsset,
+      start: 2, duration: 4, endBehavior: spec.EndBehavior.freeze,
+      curveData: [spec.ValueType.LINE, [[0, 2], [1, 4]]] });
+    timeline.tracks.push(track);
+    component.fromData({ id: component.getInstanceId(), dataType: spec.DataType.CompositionComponent, item: { id: composition.sceneRoot.getInstanceId() },
+      timelineAsset: { id: timeline.getInstanceId() }, sceneBindings: [] });
+    component.setBinding(track, shape);
+    component.sampleTime(2);
+    const original = structuredClone(clip.definition);
+    const height = geometry.height;
+    let state = beginDataEdit([{ item, target: shape, paths: ['shape.width', 'shape.height'] }]);
+
+    geometry.width = 5; geometry.height = height + 2;
+    let changes = updateDataEdit(state);
+
+    expect(clip.definition.curveData[1]).deep.equals([[0, 5], [1, 4]]);
+    expect(changes.some(change => change.kind === 'value' && change.propertyPath === 'shape.height')).equals(true);
+    component.sampleTime(2);
+    expect(geometry.width).equals(5);
+    expect(geometry.height).equals(height + 2);
+    updateDataEdit(state, true);
+    expect(clip.definition).deep.equals(original);
+    expect(geometry.height).equals(height);
+
+    component.sampleTime(3);
+    state = beginDataEdit([{ item, target: shape, paths: ['shape.width'] }]);
+    for (const value of [6, 7, 8]) { geometry.width = value; changes = updateDataEdit(state); }
+    expect(clip.definition.curveData[1]).deep.equals([[0, 2], [0.25, 8], [1, 4]]);
+    const change = changes.find(change => change.kind === 'clip')!;
+
+    expect(change.after).deep.equals(clip.definition);
+    (change.after as any).curveData[1][1][1] = -1;
+    component.sampleTime(3);
+    expect(geometry.width).equals(8);
+    geometry.width = 2.5; updateDataEdit(state);
+    expect(clip.definition).deep.equals(original);
+  });
+
+  it('clears loading selection and keeps one overlay through text, texture and tool rebuilds', () => {
+    const item = sprite(), id = item.getInstanceId();
+    const manager = handler.getLoadingManager();
+    const texture = player.engine.assetServer.whiteTexture;
+
+    manager.add(id, { type: LoadingTextTipType.TEXT, text: 'Loading', clearSelected: true });
+    expect(handler.getSelection().getSelectedPlayerItems()).not.includes(item);
+    manager.update(id, { type: LoadingTextTipType.TEXTURE, texture });
+    handler.rebuildGizmos();
+    expect(manager.ids).deep.equals([id]);
+    expect(handler.getGizmoManager().get('loading')!.idMap.size).equals(1);
+    manager.delete(id);
+    expect(handler.getGizmoManager().get('loading')!.idMap.size).equals(0);
+    expect(texture.isDestroyed).equals(false);
+  });
+
+  it('keeps a static lattice editable after saving, undoing and redoing a drag', () => {
+    const { item, component, gizmo } = lattice();
+    const initial = component.getLattice();
+
+    component.definition = { id: component.getInstanceId(), dataType: spec.DataType.FFDComponent,
+      item: { id: item.getInstanceId() }, rowNum: initial.rows, colNum: initial.columns,
+      boundMin: initial.min, boundMax: initial.max, controlPoints: initial.points };
+    component.fromData(component.definition as spec.FFDComponentData);
+    const document = new SceneDocument(composition, { compositionId: 'scene', items: [], components: [], miscs: [],
+      compositions: [{ id: 'scene', children: [], components: [], duration: 6, endBehavior: spec.EndBehavior.freeze }] } as unknown as spec.JSONScene);
+    const move = () => document.observe('Edit lattice', () => {
+      const start = localToView(item, component.getLattice().points[0]);
+
+      gizmo.onMouseDown(down(start));
+      gizmo.onMouseDrag(drag(start.clone().add(new Vector2(30, 0))));
+      gizmo.onMouseUp(down(start));
+    }, [item]);
+
+    move(); document.commit(true);
+    const edited = component.getLattice().points;
+    const saved = structuredClone(document.scene);
+
+    expect(edited[0].x).greaterThan(initial.points[0].x);
+    document.undo();
+    expect(component.getLattice().points).deep.equals(initial.points);
+    document.redo();
+    expect(component.getLattice().points).deep.equals(edited);
+    expect(document.scene).deep.equals(saved);
+    move(); document.commit(true);
+    expect(component.getLattice().points[0].x).greaterThan(edited[0].x);
+    gizmo.dispose(); document.dispose();
+  });
+
+  for (const kind of ['pen', 'lattice'] as const) {
+    it(`keys all ${kind} vertices and missing tracks together, with save, cancel, undo and redo`, () => {
+      let pathSelected = true;
+      const { item, component: target, gizmo } = kind === 'lattice' ? lattice() : (() => {
+        const item = DefaultVFXItems.createShapeItem(composition);
+        const component = item.getComponent(ShapeComponent);
+
+        component.fromData({ id: component.getInstanceId(), dataType: spec.DataType.ShapeComponent,
+          item: { id: item.getInstanceId() }, type: spec.ShapePrimitiveType.Custom,
+          points: [{ x: -1, y: -0.5 }, { x: 1, y: -0.5 }, { x: 0, y: 0.5 }],
+          easingIns: Array.from({ length: 3 }, () => ({ x: 0, y: 0 })),
+          easingOuts: Array.from({ length: 3 }, () => ({ x: 0, y: 0 })),
+          shapes: [{ close: true, indexes: [0, 1, 2].map(point => ({ point, easingIn: point, easingOut: point })) }],
+          fills: [], strokes: [], renderer: { renderMode: spec.RenderMode.MESH } } as spec.ShapeComponentData);
+        select(item);
+
+        return { item, component, gizmo: new PenGizmo(handler, {
+          canEdit: () => true,
+          readPath: () => pathSelected ? { itemId: item.getInstanceId(), component, path: component.shape as typeof component.shape & PenPathData } : undefined,
+          localToView: point => localToView(item, new Vector3(point.x, point.y, 0)),
+          viewToLocal: point => {
+            const local = viewToLocal(item, point);
+
+            return local && new Vector2(local.x, local.y);
+          },
+        }, 'edit') };
+      })();
+      const vertices = (): { path: string, value: number[] }[] => target instanceof FFDComponent
+        ? target.getLattice().points.map((point, i) => ({ path: `controlPoints.${i}`, value: point.toArray() }))
+        : (['points', 'easingIns', 'easingOuts'] as const).flatMap(field =>
+          (target.shape as typeof target.shape & PenPathData)[field].map((point, i) => ({ path: `shape.${field}.${i}`, value: [point.x, point.y] })));
+      const component = composition.sceneRoot.getComponent(CompositionComponent);
+      const timeline = new TimelineAsset(player.engine);
+      const track = kind === 'pen' ? new Vector2PropertyTrack(player.engine) : new Vector3PropertyTrack(player.engine);
+      const clip = kind === 'pen' ? track.createClip(Vector2PropertyPlayableAsset) : track.createClip(Vector3ropertyPlayableAsset);
+      const first = vertices()[0];
+
+      track.setData({ id: track.getInstanceId(), dataType: kind === 'pen' ? spec.DataType.Vector2PropertyTrack : spec.DataType.Vector3PropertyTrack, path: first.path });
+      clip.setData({ id: clip.getInstanceId(), dataType: kind === 'pen' ? spec.DataType.Vector2PropertyPlayableAsset : spec.DataType.Vector3PropertyPlayableAsset,
+        name: first.path, start: 2, duration: 4, endBehavior: spec.EndBehavior.freeze,
+        curveData: [kind === 'pen' ? spec.ValueType.VECTOR2_CURVE : spec.ValueType.VECTOR3_CURVE,
+          first.value.map((value, axis) => axis === 0 ? [spec.ValueType.LINE, [[0, value], [1, value + 1]]] : [spec.ValueType.CONSTANT, value])] });
+      timeline.tracks.push(track);
+      component.fromData({ id: component.getInstanceId(), dataType: spec.DataType.CompositionComponent, item: { id: composition.sceneRoot.getInstanceId() },
+        timelineAsset: { id: timeline.getInstanceId() }, sceneBindings: [] });
+      component.setBinding(track, target);
+      const serializer = new SceneSerializer(composition);
+
+      if (target instanceof FFDComponent) {
+        const lattice = target.getLattice();
+
+        target.definition = { dataType: spec.DataType.FFDComponent, rowNum: lattice.rows, colNum: lattice.columns,
+          controlPoints: lattice.points, boundMin: lattice.min, boundMax: lattice.max };
+      }
+      for (const object of [item, ...item.components, component]) { object.definition = serializer.read(object).data; }
+      if (target instanceof FFDComponent) { target.fromData(target.definition as spec.FFDComponentData); }
+      component.sampleTime(3);
+      const original = structuredClone(clip.definition);
+      const initial = vertices();
+      const start = localToView(item, new Vector3(...initial[0].value));
+      const document = new SceneDocument(composition, { compositionId: 'scene', items: [], components: [], miscs: [],
+        compositions: [{ id: 'scene', children: [], components: [], duration: 6, endBehavior: spec.EndBehavior.freeze }] } as unknown as spec.JSONScene);
+      const originalScene = structuredClone(document.scene);
+      let changes: readonly GizmoDataChange[] | undefined;
+
+      for (const phase of ['actionstart', 'actionupdate', 'actioncommit'] as const) {
+        handler.on(phase, event => { if (event.source === gizmo) { changes = event.changes; } });
+      }
+      const observe = (action: () => void) => document.observeChanges('Edit vertices', capture => {
+        capture([item]); changes = undefined; action();
+      }, () => changes);
+      const move = () => {
+        observe(() => gizmo.onMouseDown(down(start)));
+        for (const x of [20, 40]) { observe(() => gizmo.onMouseDrag(drag(start.clone().add(new Vector2(x, 0))))); }
+      };
+
+      move();
+      const canceledTracks = timeline.tracks.slice(1);
+
+      expect(canceledTracks).length(initial.length - 1);
+      // Losing selection during a drag must roll back the original component and its new tracks.
+      pathSelected = false;
+      observe(() => gizmo.onKeyDown(key()));
+      pathSelected = true;
+      document.commit(true);
+      expect(timeline.tracks).deep.equals([track]);
+      expect(canceledTracks.every(track => !track.isRegistered && !track.getClips()[0].isRegistered)).equals(true);
+      expect(clip.definition).deep.equals(original);
+      expect(document.scene).deep.equals(originalScene);
+
+      move();
+      const moved = vertices();
+
+      expect(moved[0].value[0]).greaterThan(initial[0].value[0]);
+      expect(moved.slice(1)).deep.equals(initial.slice(1));
+      expect(timeline.tracks).length(initial.length);
+      expect(changes?.filter(change => change.kind === 'clip')).length(initial.length);
+      for (const track of timeline.tracks) {
+        const vertex = moved.find(vertex => vertex.path === track.definition.path)!;
+        const curve = track.getClips()[0].definition.curveData;
+
+        expect(component.getBinding(track)).equals(target);
+        curve[1].forEach((channel: [number, number[][]], axis: number) => {
+          expect(channel[0]).equals(spec.ValueType.LINE);
+          expect(channel[1].map(key => key[0])).deep.equals([0, 0.25, 1]);
+          expect(channel[1][1][1]).closeTo(vertex.value[axis], 1e-7);
+        });
+      }
+      observe(() => gizmo.onMouseUp(down(start)));
+      document.commit(true);
+      const saved = structuredClone(document.scene);
+
+      for (const track of timeline.tracks) {
+        const clip = track.getClips()[0];
+
+        expect((saved.miscs.find(data => data.id === clip.getInstanceId()) as any).curveData).deep.equals(clip.definition.curveData);
+        expect(saved.miscs.some(data => data.id === track.getInstanceId())).equals(true);
+      }
+      expect((saved.miscs.find(data => data.id === timeline.getInstanceId()) as any).tracks).length(initial.length);
+      expect((saved.components.find(data => data.id === component.definition.id) as spec.CompositionComponentData).sceneBindings).length(initial.length);
+      document.undo();
+      expect(timeline.tracks).deep.equals([track]);
+      expect(clip.definition).deep.equals(original);
+      expect(vertices()).deep.equals(initial);
+      expect(document.scene).deep.equals(originalScene);
+      document.redo();
+      expect(timeline.tracks).length(initial.length);
+      expect(vertices()).deep.equals(moved);
+      expect(document.scene).deep.equals(saved);
+
+      // Reuse the existing frame, then add another complete frame using the same tracks.
+      const ids = timeline.tracks.map(track => track.getInstanceId());
+
+      for (const time of [3, 4]) {
+        component.sampleTime(time);
+        const previous = vertices()[0].value[0];
+        const nextStart = localToView(item, new Vector3(...vertices()[0].value));
+
+        observe(() => gizmo.onMouseDown(down(nextStart)));
+        observe(() => gizmo.onMouseDrag(drag(nextStart.clone().add(new Vector2(20, 0)))));
+        observe(() => gizmo.onMouseUp(down(nextStart)));
+        document.commit(true);
+        expect(vertices()[0].value[0]).greaterThan(previous);
+        expect(timeline.tracks.map(track => track.getInstanceId())).deep.equals(ids);
+        for (const track of timeline.tracks) {
+          track.getClips()[0].definition.curveData[1].forEach((channel: [number, number[][]]) =>
+            expect(channel[1].map(key => key[0])).deep.equals(time === 3 ? [0, 0.25, 1] : [0, 0.25, 0.5, 1]));
+        }
+      }
+      gizmo.dispose();
+      document.dispose();
+    });
+  }
+
+  it('inserts one path key while dragging, saves it, and restores it through undo and redo', () => {
+    const { item, component, clip } = path();
     const parent = DefaultVFXItems.createEmpty(composition);
 
     parent.transform.setScale(-1.2, 0.8, 1);
@@ -1461,30 +1729,50 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     const position = item.transform.position.clone();
     const start = localToView(item, new Vector3());
     const gizmo = new MoveSelectionGizmo(handler);
+    const document = new SceneDocument(composition, { compositionId: 'scene', items: [], components: [], miscs: [],
+      compositions: [{ id: 'scene', children: [], components: [], duration: 6, endBehavior: spec.EndBehavior.freeze }] } as unknown as spec.JSONScene);
+    let changes: readonly GizmoDataChange[] | undefined;
 
-    gizmo.onMouseDown(down(start));
-    gizmo.onMouseDrag(drag(start.clone().add(new Vector2(32, 18))));
-    gizmo.onMouseDrag(drag(start.clone().add(new Vector2(64, 36))));
+    for (const phase of ['actionstart', 'actionupdate', 'actioncommit'] as const) {
+      handler.on(phase, event => { if (event.source === gizmo) { changes = event.changes; } });
+    }
+    const observe = (action: () => void) => document.observeChanges('Move', capture => {
+      capture([item]); changes = undefined; action();
+    }, () => changes);
+
+    observe(() => gizmo.onMouseDown(down(start)));
+    observe(() => gizmo.onMouseDrag(drag(start.clone().add(new Vector2(32, 18)))));
+    observe(() => gizmo.onMouseDrag(drag(start.clone().add(new Vector2(64, 36)))));
     const movedPosition = item.transform.position.clone();
     const delta = movedPosition.clone().subtract(position);
     const moved = findMotionPaths(item)[0].path;
 
     expect(delta.length()).greaterThan(0.1);
-    expect(moved[0]).deep.equals(original[0]);
-    for (const channel of [1, 2] as const) {
-      moved[channel].forEach((value, index) => {
-        const expected = new Vector3(...original[channel][index]).add(delta);
+    expect(moved[1]).length(original[1].length + 1);
+    expect(moved[1][0]).deep.equals(original[1][0]);
+    expect(moved[1][2]).deep.equals(original[1][1]);
+    expect(moved[1][3]).deep.equals(original[1][2]);
+    moved[1][1].forEach((axis, i) => expect(axis).closeTo(movedPosition.toArray()[i], 1e-5));
+    observe(() => gizmo.onMouseUp(down(start)));
+    document.commit(true);
+    expect(changes?.find(change => change.kind === 'clip')?.after).deep.equals(clip.transformAnimationData);
+    const saved = document.scene.miscs.find(data => data.id === clip.getInstanceId()) as spec.TransformPlayableAssetData;
 
-        value.forEach((axis, i) => expect(axis).closeTo(expected.toArray()[i], 1e-5));
-      });
-    }
-    gizmo.onMouseUp(down(start));
+    expect(saved.positionOverLifetime!.path).deep.equals([spec.ValueType.BEZIER_CURVE_PATH, moved]);
     component.sampleTime(component.getTime());
     expect(component.getTime()).equals(3);
     item.transform.position.toArray().forEach((value, i) => expect(value).closeTo(movedPosition.toArray()[i], 1e-5));
     component.sampleTime(6);
-    item.transform.position.toArray().forEach((value, i) => expect(value).closeTo(moved[1][2][i], 1e-5));
+    item.transform.position.toArray().forEach((value, i) => expect(value).closeTo(original[1][2][i], 1e-5));
+    component.sampleTime(3);
+    document.undo();
+    expect(findMotionPaths(item)[0].path).deep.equals(original);
+    expect(item.transform.position.distance(position)).lessThan(1e-5);
+    document.redo();
+    expect(findMotionPaths(item)[0].path).deep.equals(moved);
+    expect(item.transform.position.distance(movedPosition)).lessThan(1e-5);
     expect(actions.filter(action => action.phase === 'actioncommit')).length(1);
+    document.dispose();
     gizmo.dispose();
   });
 
@@ -1506,8 +1794,8 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       expect(findMotionPaths(item)[0].path).not.deep.equals(original);
       const delta = item.transform.position.clone().subtract(position);
 
-      expect(findMotionPaths(item)[0].path[2][0][0]).closeTo(original[2][0][0] + delta.x, 1e-5);
-      expect(findMotionPaths(item)[0].path[2][0][1]).closeTo(original[2][0][1] + delta.y, 1e-5);
+      expect(findMotionPaths(item)[0].path[1]).length(original[1].length + 1);
+      expect(findMotionPaths(item)[0].path[1][0]).deep.equals(original[1][0]);
       if (axis === 'x') {
         expect(delta.y).closeTo(0, 1e-5);
       }
@@ -2649,6 +2937,9 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
     it(`restores the existing ${operation} tool on Escape, including mirrored transforms`, () => {
       const item = sprite();
 
+      if (operation === 'resize') {
+        handler.getConfigManager().set(resizeSelectionConfig, { resolveResizeBehavior: () => 'resize-x' });
+      }
       item.transform.setScale(1.2, -1.5, 1);
       item.transform.setRotation(0, 0, 20);
       const resize = new ResizeSelectionGizmo(handler);
@@ -2671,6 +2962,12 @@ describe('plugin-editor-gizmo/content-gizmos', () => {
       expect(press.isAccepted()).equals(true);
       gizmo.onMouseDrag(drag(end));
       expect([...item.transform.getWorldMatrix().elements]).not.deep.equals(matrix);
+      if (operation === 'resize') {
+        const position = item.transform.position;
+
+        item.transform.setPosition(position.x + 0.75, position.y - 0.5, position.z);
+        matrix[12] += 0.75; matrix[13] -= 0.5;
+      }
       gizmo.onKeyDown(key());
       gizmo.onMouseDrag(drag(end));
       gizmo.onMouseUp(down(end));
